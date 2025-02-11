@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package i18n;
+
+message I18N {
+    required string en = 1;
+    optional string zh = 2;
+    // not used yet
+    // optional string de = 3;
+    // optional string fr = 4;
+    // optional string ja = 5;
+    // optional string ru = 6;
+}

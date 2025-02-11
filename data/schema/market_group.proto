@@ -1,0 +1,17 @@
+syntax = "proto2";
+
+package market_group;
+
+import "i18n.proto";
+
+message MarketGroups {
+    message MarketGroup {
+        required i18n.I18N name = 1;
+        optional int32 parentGroup = 2;
+        optional int32 iconID = 3;
+        repeated int32 types = 4;
+        repeated int32 childGroups = 5;
+    }
+
+    map<int32, MarketGroup> entries = 1;
+}

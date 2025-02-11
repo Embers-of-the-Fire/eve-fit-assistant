@@ -1,0 +1,8 @@
+/**/__pycache__
+/fsd
+/out
+/cache
+/images
+
+resfileindex.txt
+*.tar.gz

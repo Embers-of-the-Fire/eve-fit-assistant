@@ -1,0 +1,44 @@
+syntax = "proto2";
+
+package slots;
+
+import "i18n.proto";
+
+message Slots {
+
+    message HighSlot {
+        required i18n.I18N name = 1;
+        required bool isTurret = 2;
+        required bool isLauncher = 3;
+        required bool published = 4;
+        required SlotState maxState = 5;
+        repeated int32 chargeGroups = 6;
+    }
+
+    message Slot {
+        required i18n.I18N name = 1;
+        required bool published = 2;
+        required SlotState maxState = 3;
+        repeated int32 chargeGroups = 4;
+    }
+
+    message ImplantSlot {
+        required i18n.I18N name = 1;
+        required bool published = 2;
+        required int32 slot = 3;
+    }
+
+    enum SlotState {
+        PASSIVE = 0;
+        ONLINE = 1;
+        ACTIVE = 2;
+        OVERLOAD = 3;
+    }
+
+    map<int32, HighSlot> high = 1;
+    map<int32, Slot> med = 2;
+    map<int32, Slot> low = 3;
+    map<int32, Slot> rig = 4;
+    map<int32, Slot> subsystem = 5;
+    map<int32, ImplantSlot> implant = 6;
+}

@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package types;
+
+import "i18n.proto";
+
+message Types {
+    message Type {
+        required i18n.I18N name = 1;
+        required int32 groupID = 2;
+        required bool published = 3;
+    }
+
+    map<int32, Type> entries = 1;
+}

@@ -50,3 +50,6 @@ target/
 
 # Generated messages
 */**/messages/
+
+# Python
+/.venv

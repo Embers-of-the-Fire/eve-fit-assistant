@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/pages/create.dart';
 import 'package:flutter/material.dart';
 
 class MainPage extends StatefulWidget {
@@ -10,29 +11,27 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final _scrollController = ScrollController();
 
-  final _cards = <Widget>[
-    MainPageCard(
-      onTap: () {},
-      icon: Icons.add,
-      text: '创建新配置',
-      height: 150,
-    ),
-    SizedBox(height: 20),
-    MainPageCard(
-      onTap: () {},
-      text: '物品市场',
-      icon: Icons.shopping_cart_rounded,
-      height: 150,
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: EdgeInsets.only(top: 20, bottom: 20),
+      padding: EdgeInsets.symmetric(vertical: 20),
       scrollDirection: Axis.vertical,
       controller: _scrollController,
-      children: _cards,
+      children: [
+        MainPageCard(
+          onTap: () => startFitCreation(context),
+          icon: Icons.add,
+          text: '创建新配置',
+          height: 150,
+        ),
+        SizedBox(height: 20),
+        MainPageCard(
+          onTap: () {},
+          text: '物品市场',
+          icon: Icons.shopping_cart_rounded,
+          height: 150,
+        ),
+      ],
     );
   }
 }

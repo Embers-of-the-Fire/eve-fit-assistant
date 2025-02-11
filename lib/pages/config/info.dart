@@ -10,11 +10,6 @@ class InfoPage extends StatelessWidget {
       backgroundColor: logoBackgroundColor,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        leading: TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Icon(Icons.arrow_back_ios_new_rounded),
-        ),
-        // title: Center(child: Row(children: [Icon(Icons.info), Text('关于')])),
         title: const Text('关于'),
         centerTitle: true,
       ),

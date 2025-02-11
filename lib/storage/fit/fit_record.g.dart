@@ -12,6 +12,8 @@ FitRecordBrief _$FitRecordBriefFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       description: json['description'] as String,
       shipID: (json['shipID'] as num).toInt(),
+      createTime: (json['createTime'] as num).toInt(),
+      lastModifyTime: (json['lastModifyTime'] as num).toInt(),
     );
 
 Map<String, dynamic> _$FitRecordBriefToJson(FitRecordBrief instance) =>
@@ -20,4 +22,6 @@ Map<String, dynamic> _$FitRecordBriefToJson(FitRecordBrief instance) =>
       'name': instance.name,
       'description': instance.description,
       'shipID': instance.shipID,
+      'createTime': instance.createTime,
+      'lastModifyTime': instance.lastModifyTime,
     };
