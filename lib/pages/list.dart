@@ -1,7 +1,6 @@
 import 'package:eve_fit_assistant/pages/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/itertools.dart';
-import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:eve_fit_assistant/utils/sort.dart';
 import 'package:flutter/material.dart';
 

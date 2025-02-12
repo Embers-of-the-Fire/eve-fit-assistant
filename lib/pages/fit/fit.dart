@@ -1,10 +1,9 @@
 library;
 
-import 'dart:developer';
-
+import 'package:eve_fit_assistant/native/port/api/error.dart';
+import 'package:eve_fit_assistant/pages/fit/slot.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
-import 'package:eve_fit_assistant/storage/static/slot_group.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/bool.dart';
 import 'package:eve_fit_assistant/utils/item_list.dart';
@@ -16,10 +15,6 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
-
-part 'slot.dart';
-
-part 'add_item_dialog.dart';
 
 part 'equipment.dart';
 

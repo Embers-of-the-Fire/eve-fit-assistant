@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eve_fit_assistant/main.dart';
-import 'package:eve_fit_assistant/native/frb_generated.dart';
+import 'package:eve_fit_assistant/native/port/frb_generated.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {

@@ -1,4 +1,12 @@
-part of 'fit.dart';
+import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
+import 'package:eve_fit_assistant/pages/fit/fit.dart';
+import 'package:eve_fit_assistant/pages/fit/item_info.dart';
+import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/optional.dart';
+import 'package:flutter/material.dart';
+import 'package:eve_fit_assistant/storage/fit/fit.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 Widget getSlotRow(
   String fitID,
@@ -135,6 +143,7 @@ class SlotRow extends ConsumerWidget {
               children: endAction,
             ),
       child: ListTile(
+        onLongPress: () => showItemInfoPage(context),
         leading: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.all(Radius.circular(20)),
@@ -184,14 +193,14 @@ class SlotRow extends ConsumerWidget {
                 ],
               )
             : null,
-        trailing: InkWell(
-          borderRadius: BorderRadius.all(Radius.circular(50)),
-          onTap: () {},
-          child: Container(
-            padding: EdgeInsets.all(5),
-            child: Icon(Icons.error_outline, color: Colors.red),
-          ),
-        ),
+        // trailing: InkWell(
+        //   borderRadius: BorderRadius.all(Radius.circular(50)),
+        //   onTap: () {},
+        //   child: Container(
+        //     padding: EdgeInsets.all(5),
+        //     child: Icon(Icons.error_outline, color: Colors.red),
+        //   ),
+        // ),
       ),
     );
   }

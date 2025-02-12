@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:eve_fit_assistant/pages/fit/fit.dart';
+import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
 import 'package:eve_fit_assistant/utils/map.dart';

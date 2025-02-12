@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:developer' as dev;
 
+import 'package:eve_fit_assistant/native/port/api/error.dart';
 import 'package:eve_fit_assistant/pages/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
@@ -12,6 +13,35 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'fit.g.dart';
 
 part 'fit.freezed.dart';
+
+enum FitItemType {
+  high,
+  med,
+  low,
+  rig,
+  subsystem,
+  drone,
+  implant;
+
+  factory FitItemType.fromNative(SlotType type) {
+    switch (type) {
+      case SlotType.high:
+        return FitItemType.high;
+      case SlotType.medium:
+        return FitItemType.med;
+      case SlotType.low:
+        return FitItemType.low;
+      case SlotType.rig:
+        return FitItemType.rig;
+      case SlotType.subsystem:
+        return FitItemType.subsystem;
+      case SlotType.drone:
+        return FitItemType.drone;
+      case SlotType.implant:
+        return FitItemType.implant;
+    }
+  }
+}
 
 @JsonSerializable(explicitToJson: true)
 class FitRecord {

@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
