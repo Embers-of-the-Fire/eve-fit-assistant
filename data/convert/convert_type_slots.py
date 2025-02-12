@@ -1,12 +1,12 @@
 from __future__ import annotations
 from enum import IntEnum, unique
 
-from cache import FsdCache
+from cache import ConvertCache
 import i18n
 import slots_pb2
 
 
-def convert(cache: FsdCache, external: dict):
+def convert(cache: ConvertCache, external: dict):
     data = slots_pb2.Slots()
 
     print("Converting slots...")

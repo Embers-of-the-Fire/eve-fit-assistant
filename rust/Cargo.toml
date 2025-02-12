@@ -8,3 +8,5 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.8.0"
+eve-fit-os = { path = "lib/eve-fit-os" }
+anyhow = "1.0.95"

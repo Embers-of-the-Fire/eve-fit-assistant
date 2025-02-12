@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from cache import FsdCache
+from cache import ConvertCache
 import i18n
 import ships_pb2
 
 
-def convert(cache: FsdCache, external: dict):
+def convert(cache: ConvertCache, external: dict):
     data = ships_pb2.Ships()
 
     print("Converting ships...")

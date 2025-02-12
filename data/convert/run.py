@@ -5,33 +5,46 @@ import os
 
 from google.protobuf.json_format import MessageToJson
 
-from cache import FsdCache
+from cache import ConvertCache
 import convert_market_group
 import convert_types
 import convert_ships
 import convert_type_slots
 import convert_groups
+import convert_skills
+import convert_character
 
 if not __name__ == "__main__":
     exit(0)
 
-if len(sys.argv) < 2:
-    print("Usage: python3 convert.py <path/to/eve-sde/fsd> <path/to/output>")
+USAGE = """Usage:
+    python3 convert.py
+        <path/to/eve-sde/fsd>
+        <path/to/resfileindex>
+        <path/to/output>
+        <path/to/resfileindex-cache>"""
+
+if len(sys.argv) < 5:
+    print(USAGE)
     exit(1)
 
 
-def convert(fsd_dir, out_dir):
+def convert(fsd_dir, resfileindex, out_dir, index_cache):
     os.makedirs(f"{out_dir}/pb2", exist_ok=True)
     os.makedirs(f"{out_dir}/json", exist_ok=True)
+    os.makedirs(f"{out_dir}/pb2/character", exist_ok=True)
+    os.makedirs(f"{out_dir}/json/character", exist_ok=True)
 
     data = {}
-    cache = FsdCache(fsd_dir)
+    cache = ConvertCache(fsd_dir, resfileindex, index_cache)
 
     convert_types.convert(cache, data)
     convert_market_group.convert(cache, data)
     convert_ships.convert(cache, data)
     convert_type_slots.convert(cache, data)
     convert_groups.convert(cache, data)
+    convert_skills.convert(cache, data)
+    convert_character.convert(cache, data)
 
     for key, value in data.items():
         with open(f"{out_dir}/json/{key}.json", "w", encoding="utf-8") as fp:
@@ -41,4 +54,4 @@ def convert(fsd_dir, out_dir):
             fp.write(value.SerializeToString())
 
 
-convert(sys.argv[1], sys.argv[2])
+convert(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])

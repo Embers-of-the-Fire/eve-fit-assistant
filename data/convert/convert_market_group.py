@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from cache import FsdCache
+from cache import ConvertCache
 import i18n
 import market_group_pb2
 
 
-def convert(cache: FsdCache, external: dict):
+def convert(cache: ConvertCache, external: dict):
     print("Converting market groups...")
 
     market_groups = cache.get("marketGroups")

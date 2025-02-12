@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+package skills;
+
+import "i18n.proto";
+
+message Skills {
+    message Skill {
+        required i18n.I18N name = 1;
+        required int32 groupID = 2;
+        required bool published = 3;
+        optional int32 alphaMaxLevel = 4;
+    }
+
+    map<int32, Skill> entries = 1;
+}

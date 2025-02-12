@@ -110,6 +110,8 @@ class FitRecord {
 
 @JsonSerializable(explicitToJson: true)
 class Fit {
+  final int shipID;
+
   final List<SlotItem?> high;
   final List<SlotItem?> med;
   final List<SlotItem?> low;
@@ -122,6 +124,7 @@ class Fit {
 
   /// Do not use this constructor directly, use [Fit.init] instead.
   const Fit({
+    required this.shipID,
     required this.high,
     required this.med,
     required this.low,
@@ -134,6 +137,7 @@ class Fit {
   factory Fit.init(int shipID) {
     final ship = GlobalStorage().static.ships[shipID];
     return Fit(
+      shipID: shipID,
       high: List.filled(ship?.highSlotNum ?? 0, null, growable: true),
       med: List.filled(ship?.medSlotNum ?? 0, null, growable: true),
       low: List.filled(ship?.lowSlotNum ?? 0, null, growable: true),

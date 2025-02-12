@@ -14,7 +14,7 @@ if len(sys.argv) < 5:
         "Usage: python extra.py\n"
         "\t<path/to/fsd>\n"
         "\t<path/to/image>\n"
-        "\t<path/to/res-file/index>\n"
+        "\t<path/to/res-file-index>\n"
         "\t<path/to/cache>\n"
         "\t<flag|-d|--download|default: false>"
     )

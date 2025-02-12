@@ -1,3 +1,5 @@
+import 'package:eve_fit_assistant/native/glue/fit_engine.dart';
+import 'package:eve_fit_assistant/storage/character/character.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
@@ -28,6 +30,8 @@ class GlobalStorage {
 
   final FitStorage _ship = FitStorage();
   final StaticStorage _static = StaticStorage();
+  final CharacterStorage _character = CharacterStorage();
+  late final FitEngine _fitEngine;
   late VersionInfo _version;
   bool _initialized = false;
   bool _initializing = false;
@@ -35,6 +39,10 @@ class GlobalStorage {
   FitStorage get ship => _ship;
 
   StaticStorage get static => _static;
+
+  CharacterStorage get character => _character;
+
+  FitEngine get fitEngine => _fitEngine;
 
   VersionInfo get version => _version;
 
@@ -48,6 +56,8 @@ class GlobalStorage {
     _version = await executeMigrate(version);
     await _ship.init();
     await _static.init();
+    await _character.init();
+    _fitEngine = await FitEngine.init();
     await Future.delayed(Duration(seconds: 5));
     _initialized = true;
     ref.read(globalStorageNotifierProvider.notifier).initialized();

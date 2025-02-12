@@ -1,10 +1,10 @@
 from __future__ import annotations
-from cache import FsdCache
+from cache import ConvertCache
 import i18n
 import types_pb2
 
 
-def convert(cache: FsdCache, external: dict):
+def convert(cache: ConvertCache, external: dict):
     data = types_pb2.Types()
 
     print("Converting types...")

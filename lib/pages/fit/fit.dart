@@ -1,17 +1,17 @@
 library;
 
+import 'package:eve_fit_assistant/native/codegen/constant/attribute.dart';
+import 'package:eve_fit_assistant/native/port/api.dart';
 import 'package:eve_fit_assistant/native/port/api/error.dart';
 import 'package:eve_fit_assistant/pages/fit/slot.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/bool.dart';
-import 'package:eve_fit_assistant/utils/item_list.dart';
 import 'package:eve_fit_assistant/utils/itertools.dart';
 import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
@@ -21,6 +21,8 @@ part 'equipment.dart';
 part 'fit.g.dart';
 
 part 'config.dart';
+
+part 'info.dart';
 
 void intoFitPage(BuildContext context, String fitID) {
   Navigator.of(context)
@@ -56,6 +58,7 @@ class FitRecordNotifier extends _$FitRecordNotifier {
 
 class FitRecordState {
   late FitRecord fit;
+  late CalculateOutput output;
   bool saved = false;
   bool initialized = false;
 
@@ -66,6 +69,8 @@ class FitRecordState {
     s.fit = fit;
     s.initialized = true;
     s.saved = true;
+    s.output = GlobalStorage().fitEngine.calculate(
+        fit: fit.body, character: GlobalStorage().character.predefinedAll5);
     return s;
   }
 }
@@ -191,7 +196,7 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             rig: fitRef.fit.body.rig,
             subsystem: fitRef.fit.body.subsystem,
           ),
-          Placeholder(),
+          InfoTab(fitID: widget.fitID),
           Placeholder(),
           ConfigTab(
             fitID: widget.fitID,

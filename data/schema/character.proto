@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package character;
+
+message Character {
+    required string name = 1;
+    required string description = 2;
+    map<int32, int32> skills = 3;
+}

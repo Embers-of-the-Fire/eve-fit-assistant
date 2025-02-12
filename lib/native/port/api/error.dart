@@ -8,28 +8,36 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'error.freezed.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`
-
-/// This function is used to force the frb to generate error defs.
-Future<SlotError> errorEcho({required SlotError err}) =>
-    RustLib.instance.api.crateApiErrorErrorEcho(err: err);
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
 
 @freezed
 sealed class ErrorKey with _$ErrorKey {
   const ErrorKey._();
 
-  const factory ErrorKey.incompatibleCharge({
-    required int charge,
-  }) = ErrorKey_IncompatibleCharge;
+  const factory ErrorKey.incompatibleChargeSize({
+    required int expected,
+    required int actual,
+  }) = ErrorKey_IncompatibleChargeSize;
+  const factory ErrorKey.incompatibleChargeCapacity({
+    required double max,
+    required double actual,
+  }) = ErrorKey_IncompatibleChargeCapacity;
 }
 
 @freezed
-class SlotError with _$SlotError {
-  const factory SlotError({
+sealed class SlotInfo with _$SlotInfo {
+  const SlotInfo._();
+
+  const factory SlotInfo.error({
     required SlotType slot,
     required int index,
     required ErrorKey errorKey,
-  }) = _SlotError;
+  }) = SlotInfo_Error;
+  const factory SlotInfo.warning({
+    required SlotType slot,
+    required int index,
+    required WarningKey warningKey,
+  }) = SlotInfo_Warning;
 }
 
 enum SlotType {
@@ -40,5 +48,10 @@ enum SlotType {
   subsystem,
   implant,
   drone,
+  ;
+}
+
+enum WarningKey {
+  missingCharge,
   ;
 }

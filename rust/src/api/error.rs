@@ -9,20 +9,28 @@ pub enum SlotType {
     Drone,
 }
 
-#[flutter_rust_bridge::frb(unignore, dart_metadata=("freezed"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SlotError {
-    pub slot: SlotType,
-    pub index: u32,
-    pub error_key: ErrorKey,
+#[flutter_rust_bridge::frb(unignore)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SlotInfo {
+    Error {
+        slot: SlotType,
+        index: i32,
+        error_key: ErrorKey,
+    },
+    Warning {
+        slot: SlotType,
+        index: i32,
+        warning_key: WarningKey,
+    }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ErrorKey {
-    IncompatibleCharge { charge: u32 },
+    IncompatibleChargeSize { expected: u8, actual: u8 },
+    IncompatibleChargeCapacity { max: f64, actual: f64 }
 }
 
-/// This function is used to force the frb to generate error defs.
-pub fn error_echo(err: SlotError) -> SlotError {
-    err
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WarningKey {
+    MissingCharge,
 }

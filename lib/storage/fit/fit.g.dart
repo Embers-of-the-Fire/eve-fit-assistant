@@ -17,6 +17,7 @@ Map<String, dynamic> _$FitRecordToJson(FitRecord instance) => <String, dynamic>{
     };
 
 Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
+      shipID: (json['shipID'] as num).toInt(),
       high: (json['high'] as List<dynamic>)
           .map((e) =>
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
@@ -47,6 +48,7 @@ Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
     );
 
 Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
+      'shipID': instance.shipID,
       'high': instance.high.map((e) => e?.toJson()).toList(),
       'med': instance.med.map((e) => e?.toJson()).toList(),
       'low': instance.low.map((e) => e?.toJson()).toList(),

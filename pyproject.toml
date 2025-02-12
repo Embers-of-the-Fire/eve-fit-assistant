@@ -9,6 +9,7 @@ dependencies = [
     "aiohttp>=3.11.12",
     "protobuf>=5.29.3",
     "pyyaml>=6.0.2",
+    "requests>=2.32.3",
 ]
 
 [tool.uv.workspace]

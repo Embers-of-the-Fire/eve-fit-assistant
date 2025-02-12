@@ -3,6 +3,7 @@
 /out
 /cache
 /images
+/index-cache
 
 resfileindex.txt
 *.tar.gz

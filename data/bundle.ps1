@@ -33,6 +33,15 @@ if ($Download) {
     & $uv run $bundle_python $fsd_dir $image_dir $index_file $cache_dir
 }
 
+Write-Host 'Copying `eve-fit-os` native data...'
+$eve_fit_os_out_dir = Join-Path $current "..\rust\lib\eve-fit-os\data\out\pb2"
+$native_cache_dir = Join-Path $cache_dir "native"
+New-Item -ItemType Directory -Force -Path $native_cache_dir | Out-Null
+Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dogmaAttributes.pb2") -Destination $native_cache_dir -Recurse -Force
+Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dogmaEffects.pb2") -Destination $native_cache_dir -Recurse -Force
+Copy-Item -Path (Join-Path $eve_fit_os_out_dir "typeDogma.pb2") -Destination $native_cache_dir -Recurse -Force
+Copy-Item -Path (Join-Path $eve_fit_os_out_dir "types.pb2") -Destination $native_cache_dir -Recurse -Force
+
 Write-Host "Creating tarball ..."
 $tarball = Join-Path $current "storage.tar.gz"
 & $tar -czf $tarball -C $cache_dir .

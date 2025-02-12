@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:developer' as dev;
 
+import 'package:eve_fit_assistant/native/glue/database.dart';
+import 'package:eve_fit_assistant/native/glue/fit_engine.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/static/groups.dart';

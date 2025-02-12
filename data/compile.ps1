@@ -6,7 +6,7 @@ $python_convert_dir = Join-Path $current "convert"
 $dart_convert_dir = Join-Path (Split-Path -Parent $current) "lib" "storage" "proto"
 
 Write-Host "Clearing previous generated files ..."
-$files_to_delete = Get-ChildItem -Path $dir -Filter "*_pb2.py" -Recurse -File
+$files_to_delete = Get-ChildItem -Path (Join-Path $current "convert") -Filter "*_pb2.py" -Recurse -File
 foreach ($file in $files_to_delete) {
     Write-Host "Deleting $file ..."
     Remove-Item $file.FullName
