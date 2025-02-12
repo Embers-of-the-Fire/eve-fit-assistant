@@ -1,0 +1,3 @@
+[submodule "rust/lib/eve-fit-os"]
+	path = rust/lib/eve-fit-os
+	url = https://github.com/Embers-of-the-Fire/eve-fit-os
