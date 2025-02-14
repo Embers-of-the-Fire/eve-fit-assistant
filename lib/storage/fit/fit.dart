@@ -79,6 +79,27 @@ class FitRecord {
     body.implant[index] = map(body.implant[index]);
   }
 
+  void modifyDrone(int index, DroneItem Function(DroneItem) map) {
+    final drone = map(body.drone[index]);
+    if (drone.amount <= 0) {
+      body.drone.removeAt(index);
+      return;
+    }
+    body.drone[index] = drone;
+  }
+
+  void addDrone(int droneID) {
+    body.drone.add(DroneItem(itemID: droneID, amount: 1, state: DroneState.active));
+  }
+
+  void removeDrone(int index) {
+    body.drone.removeAt(index);
+  }
+
+  void clearDrone() {
+    body.drone.clear();
+  }
+
   Future<void> save() async {
     final fullRecordDir = await getFullRecordDir(create: true);
     final file = File('${fullRecordDir.path}/${brief.id}.json');
@@ -245,4 +266,8 @@ enum DroneState {
   final int state;
 
   const DroneState(this.state);
+
+  DroneState nextState() {
+    return state == 0 ? DroneState.active : DroneState.passive;
+  }
 }

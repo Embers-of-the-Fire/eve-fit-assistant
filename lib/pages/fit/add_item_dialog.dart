@@ -1,15 +1,16 @@
+import 'package:eve_fit_assistant/constant/eve/groups.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/item_list.dart';
 import 'package:flutter/material.dart';
 
-class DialogMetadata {
+class _DialogMetadata {
   final String title;
   final String baseName;
   final int fallbackGroupID;
   final bool Function(int) predicate;
 
-  DialogMetadata({
+  _DialogMetadata({
     required this.title,
     required this.baseName,
     required this.fallbackGroupID,
@@ -23,43 +24,43 @@ Future<int?> showAddItemDialog(
   int? slotIndex,
 }) async {
   final dialogMetadataMap = {
-    FitItemType.high: DialogMetadata(
+    FitItemType.high: _DialogMetadata(
       title: '添加高槽物品',
       baseName: '装备',
       fallbackGroupID: 9,
       predicate: (int itemID) => GlobalStorage().static.typeSlot.high[itemID] != null,
     ),
-    FitItemType.med: DialogMetadata(
+    FitItemType.med: _DialogMetadata(
       title: '添加中槽物品',
       baseName: '装备',
       fallbackGroupID: 9,
       predicate: (int itemID) => GlobalStorage().static.typeSlot.med[itemID] != null,
     ),
-    FitItemType.low: DialogMetadata(
+    FitItemType.low: _DialogMetadata(
       title: '添加低槽物品',
       baseName: '装备',
       fallbackGroupID: 9,
       predicate: (int itemID) => GlobalStorage().static.typeSlot.low[itemID] != null,
     ),
-    FitItemType.rig: DialogMetadata(
+    FitItemType.rig: _DialogMetadata(
       title: '添加改装件',
       baseName: '改装件',
       fallbackGroupID: 1111,
       predicate: (int itemID) => GlobalStorage().static.typeSlot.rig[itemID] != null,
     ),
-    FitItemType.subsystem: DialogMetadata(
+    FitItemType.subsystem: _DialogMetadata(
       title: '添加子系统',
       baseName: '子系统',
       fallbackGroupID: 1112,
       predicate: (int itemID) => GlobalStorage().static.typeSlot.subsystem[itemID] != null,
     ),
-    FitItemType.drone: DialogMetadata(
+    FitItemType.drone: _DialogMetadata(
       title: '添加无人机',
       baseName: '无人机',
       fallbackGroupID: 157,
       predicate: (int itemID) => true,
     ),
-    FitItemType.implant: DialogMetadata(
+    FitItemType.implant: _DialogMetadata(
       title: '添加植入体',
       baseName: '植入体',
       fallbackGroupID: 27,
@@ -78,7 +79,7 @@ Future<int?> showAddChargeDialog(
 }) async {
   final itemMetadata = GlobalStorage().static.typeSlot[type][itemID];
   final chargeGroups = itemMetadata?.chargeGroups ?? [];
-  final metadata = DialogMetadata(
+  final metadata = _DialogMetadata(
       title: '添加弹药',
       baseName: '弹药',
       fallbackGroupID: 11,
@@ -91,7 +92,24 @@ Future<int?> showAddChargeDialog(
   return await _showAddItemDialogImpl(context, metadata);
 }
 
-Future<int?> _showAddItemDialogImpl(BuildContext context, DialogMetadata metadata) async {
+Future<int?> showAddDroneDialog(
+  BuildContext context,
+) async {
+  final metadata = _DialogMetadata(
+    title: '添加无人机',
+    baseName: '无人机',
+    fallbackGroupID: 157,
+    predicate: (item) {
+      final groupID = GlobalStorage().static.typesAbbr[item]?.groupID;
+
+      return groupID == null || !fighterGroupIDs.contains(groupID);
+    },
+  );
+
+  return await _showAddItemDialogImpl(context, metadata);
+}
+
+Future<int?> _showAddItemDialogImpl(BuildContext context, _DialogMetadata metadata) async {
   final out = await showDialog<int>(
       context: context,
       builder: (context) {

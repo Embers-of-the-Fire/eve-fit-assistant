@@ -1,6 +1,7 @@
 library;
 
 import 'package:eve_fit_assistant/native/port/api.dart';
+import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/info/info_component.dart';
 import 'package:eve_fit_assistant/pages/fit/slot.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
@@ -11,10 +12,12 @@ import 'package:eve_fit_assistant/utils/itertools.dart';
 import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
 part 'config.dart';
+part 'drone.dart';
 part 'equipment.dart';
 part 'fit.g.dart';
 part 'info.dart';
@@ -192,12 +195,7 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             subsystem: fitRef.fit.body.subsystem,
           ),
           InfoTab(fitID: widget.fitID),
-          // const Placeholder(),
-          const Center(
-              child: Text(
-            'Work in Progress...',
-            style: TextStyle(fontSize: 36),
-          )),
+          DroneTab(fitID: widget.fitID),
           ConfigTab(
             fitID: widget.fitID,
             name: fitRef.fit.brief.name,

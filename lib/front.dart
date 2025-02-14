@@ -2,10 +2,10 @@ library;
 
 import 'dart:developer' as dev;
 
-import 'package:eve_fit_assistant/native/port/api/simple.dart';
 import 'package:eve_fit_assistant/pages/config.dart' as config_page;
-import 'package:eve_fit_assistant/pages/list.dart' as list;
-import 'package:eve_fit_assistant/pages/main.dart' as main;
+import 'package:eve_fit_assistant/pages/create.dart';
+import 'package:eve_fit_assistant/pages/list.dart' as list_page;
+import 'package:eve_fit_assistant/pages/main.dart' as main_page;
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,8 +33,8 @@ class _FrontendPageState extends State<FrontendPage> {
   @override
   Widget build(BuildContext context) {
     const pages = <Widget>[
-      main.MainPage(),
-      list.ListPage(),
+      main_page.MainPage(),
+      list_page.ListPage(),
       config_page.ConfigPage(),
     ];
 
@@ -52,22 +52,7 @@ class _FrontendPageState extends State<FrontendPage> {
         children: pages,
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('提示'),
-            content: Text(greet(name: 'Reamid')),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('确定'),
-              ),
-            ],
-          ),
-        ),
+        onPressed: () => startFitCreation(context),
         shape: const CircleBorder(),
         child: const Icon(Icons.add),
       ),
