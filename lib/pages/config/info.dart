@@ -14,12 +14,12 @@ class InfoPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: DefaultTextStyle(
-        style: TextStyle(fontSize: 20, color: Colors.black),
+        style: const TextStyle(fontSize: 20, color: Colors.black),
         child: Center(
           child: Column(
             children: [
               Image.asset(logo),
-              Padding(
+              const Padding(
                 padding: EdgeInsets.only(bottom: 40),
                 child: Text(
                   'EVE Fit Assistant',
@@ -27,9 +27,9 @@ class InfoPage extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.only(left: 100, right: 100),
+                padding: const EdgeInsets.symmetric(horizontal: 100),
                 child: Row(children: [
-                  Text('软件版本'),
+                  const Text('软件版本'),
                   Expanded(
                       child: Align(
                     alignment: Alignment.centerRight,
@@ -38,9 +38,9 @@ class InfoPage extends StatelessWidget {
                 ]),
               ),
               Padding(
-                padding: EdgeInsets.only(left: 100, right: 100),
+                padding: const EdgeInsets.symmetric(horizontal: 100),
                 child: Row(children: [
-                  Text('Flutter 版本'),
+                  const Text('Flutter 版本'),
                   Expanded(
                       child: Align(
                     alignment: Alignment.centerRight,
@@ -49,9 +49,9 @@ class InfoPage extends StatelessWidget {
                 ]),
               ),
               Padding(
-                padding: EdgeInsets.only(left: 100, right: 100),
+                padding: const EdgeInsets.symmetric(horizontal: 100),
                 child: Row(children: [
-                  Text('Dart 版本'),
+                  const Text('Dart 版本'),
                   Expanded(
                       child: Align(
                     alignment: Alignment.centerRight,

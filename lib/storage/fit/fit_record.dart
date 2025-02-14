@@ -24,12 +24,11 @@ class FitRecordBrief {
     required this.lastModifyTime,
   });
 
-  factory FitRecordBrief.fromJson(Map<String, dynamic> json) =>
-      _$FitRecordBriefFromJson(json);
+  factory FitRecordBrief.fromJson(Map<String, dynamic> json) => _$FitRecordBriefFromJson(json);
 
   factory FitRecordBrief.blankNow(String fitName, int shipID) {
     final time = DateTime.now().millisecondsSinceEpoch;
-    final id = UuidV4().generate();
+    final id = const UuidV4().generate();
     return FitRecordBrief(
       id: id,
       name: fitName,

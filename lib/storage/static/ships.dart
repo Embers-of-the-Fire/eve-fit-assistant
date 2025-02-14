@@ -35,8 +35,7 @@ class Ship {
 
   static Map<int, Ship> _fromBuffer(Uint8List buffer) {
     final ships = Ships.fromBuffer(buffer);
-    return ships.entries
-        .map((key, value) => MapEntry(key, Ship._private(value)));
+    return ships.entries.map((key, value) => MapEntry(key, Ship._private(value)));
   }
 
   static Future<ReadonlyMap<int, Ship>> read(Directory staticDir) async {

@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/storage/proto/character.pb.dart' as proto;
+import 'package:eve_fit_assistant/storage/static/storage.dart';
 
 class Character {
   final proto.Character _raw;

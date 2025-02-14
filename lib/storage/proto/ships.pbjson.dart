@@ -51,15 +51,14 @@ const Ships_EntriesEntry$json = {
 };
 
 /// Descriptor for `Ships`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List shipsDescriptor = $convert.base64Decode(
-    'CgVTaGlwcxIzCgdlbnRyaWVzGAEgAygLMhkuc2hpcHMuU2hpcHMuRW50cmllc0VudHJ5Ugdlbn'
-    'RyaWVzGoQDCgRTaGlwEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSGAoHZ3JvdXBJ'
-    'RBgCIAIoBVIHZ3JvdXBJRBIcCglwdWJsaXNoZWQYAyACKAhSCXB1Ymxpc2hlZBIgCgtoaWdoU2'
-    'xvdE51bRgEIAIoBVILaGlnaFNsb3ROdW0SHgoKbWVkU2xvdE51bRgFIAIoBVIKbWVkU2xvdE51'
-    'bRIeCgpsb3dTbG90TnVtGAYgAigFUgpsb3dTbG90TnVtEh4KCnJpZ1Nsb3ROdW0YByACKAVSCn'
-    'JpZ1Nsb3ROdW0SKgoQc3Vic3lzdGVtU2xvdE51bRgIIAIoBVIQc3Vic3lzdGVtU2xvdE51bRIk'
-    'Cg10dXJyZXRTbG90TnVtGAkgAigFUg10dXJyZXRTbG90TnVtEigKD2xhdW5jaGVyU2xvdE51bR'
-    'gKIAIoBVIPbGF1bmNoZXJTbG90TnVtEiYKDmRyb25lQmFuZHdpZHRoGAsgAigFUg5kcm9uZUJh'
-    'bmR3aWR0aBpNCgxFbnRyaWVzRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoFdmFsdWUYAiABKA'
-    'syES5zaGlwcy5TaGlwcy5TaGlwUgV2YWx1ZToCOAE=');
-
+final $typed_data.Uint8List shipsDescriptor = $convert
+    .base64Decode('CgVTaGlwcxIzCgdlbnRyaWVzGAEgAygLMhkuc2hpcHMuU2hpcHMuRW50cmllc0VudHJ5Ugdlbn'
+        'RyaWVzGoQDCgRTaGlwEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSGAoHZ3JvdXBJ'
+        'RBgCIAIoBVIHZ3JvdXBJRBIcCglwdWJsaXNoZWQYAyACKAhSCXB1Ymxpc2hlZBIgCgtoaWdoU2'
+        'xvdE51bRgEIAIoBVILaGlnaFNsb3ROdW0SHgoKbWVkU2xvdE51bRgFIAIoBVIKbWVkU2xvdE51'
+        'bRIeCgpsb3dTbG90TnVtGAYgAigFUgpsb3dTbG90TnVtEh4KCnJpZ1Nsb3ROdW0YByACKAVSCn'
+        'JpZ1Nsb3ROdW0SKgoQc3Vic3lzdGVtU2xvdE51bRgIIAIoBVIQc3Vic3lzdGVtU2xvdE51bRIk'
+        'Cg10dXJyZXRTbG90TnVtGAkgAigFUg10dXJyZXRTbG90TnVtEigKD2xhdW5jaGVyU2xvdE51bR'
+        'gKIAIoBVIPbGF1bmNoZXJTbG90TnVtEiYKDmRyb25lQmFuZHdpZHRoGAsgAigFUg5kcm9uZUJh'
+        'bmR3aWR0aBpNCgxFbnRyaWVzRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoFdmFsdWUYAiABKA'
+        'syES5zaGlwcy5TaGlwcy5TaGlwUgV2YWx1ZToCOAE=');

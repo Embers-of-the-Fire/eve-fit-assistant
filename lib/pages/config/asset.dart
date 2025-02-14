@@ -16,23 +16,23 @@ class AssetPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: Container(
-          padding: EdgeInsets.symmetric(vertical: 20),
+          padding: const EdgeInsets.symmetric(vertical: 20),
           child: ListView(
             children: [
               ListTile(
-                leading: Icon(Icons.info_outline),
-                title: Text('本地存储版本'),
+                leading: const Icon(Icons.info_outline),
+                title: const Text('本地存储版本'),
                 trailing: Text(
                   GlobalStorage().version.version.toString(),
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                 ),
               ),
               ListTile(
-                leading: Icon(ExternalIcon.cubes),
-                title: Text('静态资产版本'),
+                leading: const Icon(ExternalIcon.cubes),
+                title: const Text('静态资产版本'),
                 trailing: Text(
                   GlobalStorage().static.version?.display() ?? '未知',
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                 ),
               ),
               TextButton(

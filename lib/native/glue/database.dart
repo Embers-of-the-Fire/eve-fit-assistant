@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:eve_fit_assistant/native/port/api/data.dart';
-import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/native/port/api.dart' as native;
+import 'package:eve_fit_assistant/native/port/api/data.dart';
 import 'package:eve_fit_assistant/native/port/api/schema.dart' as schema;
+import 'package:eve_fit_assistant/storage/static/storage.dart';
 
 class NativeDatabase {
   final EveDatabase _raw;
@@ -12,10 +12,8 @@ class NativeDatabase {
 
   static Future<NativeDatabase> init() async {
     final storage = await getNativeStorageDir(create: true);
-    final dogmaAttr =
-        await File('${storage.path}/dogmaAttributes.pb2').readAsBytes();
-    final dogmaEffect =
-        await File('${storage.path}/dogmaEffects.pb2').readAsBytes();
+    final dogmaAttr = await File('${storage.path}/dogmaAttributes.pb2').readAsBytes();
+    final dogmaEffect = await File('${storage.path}/dogmaEffects.pb2').readAsBytes();
     final typeDogma = await File('${storage.path}/typeDogma.pb2').readAsBytes();
     final types = await File('${storage.path}/types.pb2').readAsBytes();
 

@@ -23,6 +23,19 @@ linter:
   rules:
     avoid_print: true
     prefer_single_quotes: true
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_contains: true
+    sort_child_properties_last: true
+    use_full_hex_values_for_flutter_colors: true
+    no_logic_in_create_state: true
+    sized_box_for_whitespace: true
+    sized_box_shrink_expand: true
+
+formatter:
+  page_width: 100
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

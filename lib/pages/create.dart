@@ -4,6 +4,6 @@ import 'package:flutter/material.dart';
 startFitCreation(BuildContext context) {
   Navigator.push(
     context,
-    MaterialPageRoute(builder: (context) => ShipSelectPage()),
+    MaterialPageRoute(builder: (context) => const ShipSelectPage()),
   );
 }

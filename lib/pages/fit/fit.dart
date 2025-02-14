@@ -1,8 +1,7 @@
 library;
 
-import 'package:eve_fit_assistant/native/codegen/constant/attribute.dart';
 import 'package:eve_fit_assistant/native/port/api.dart';
-import 'package:eve_fit_assistant/native/port/api/error.dart';
+import 'package:eve_fit_assistant/pages/fit/info/info_component.dart';
 import 'package:eve_fit_assistant/pages/fit/slot.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
@@ -15,18 +14,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
-
-part 'equipment.dart';
-
-part 'fit.g.dart';
-
 part 'config.dart';
-
+part 'equipment.dart';
+part 'fit.g.dart';
 part 'info.dart';
 
 void intoFitPage(BuildContext context, String fitID) {
-  Navigator.of(context)
-      .push(MaterialPageRoute(builder: (context) => FitPage(fitID: fitID)));
+  Navigator.of(context).push(MaterialPageRoute(builder: (context) => FitPage(fitID: fitID)));
 }
 
 @riverpod
@@ -69,8 +63,9 @@ class FitRecordState {
     s.fit = fit;
     s.initialized = true;
     s.saved = true;
-    s.output = GlobalStorage().fitEngine.calculate(
-        fit: fit.body, character: GlobalStorage().character.predefinedAll5);
+    s.output = GlobalStorage()
+        .fitEngine
+        .calculate(fit: fit.body, character: GlobalStorage().character.predefinedAll5);
     return s;
   }
 }
@@ -178,7 +173,7 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
         centerTitle: true,
         actions: [
           Container(
-            padding: EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.only(right: 10),
             child: Icon(fitRef.saved ? Icons.download_done : Icons.downloading),
           )
         ],
@@ -197,7 +192,12 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             subsystem: fitRef.fit.body.subsystem,
           ),
           InfoTab(fitID: widget.fitID),
-          Placeholder(),
+          // const Placeholder(),
+          const Center(
+              child: Text(
+            'Work in Progress...',
+            style: TextStyle(fontSize: 36),
+          )),
           ConfigTab(
             fitID: widget.fitID,
             name: fitRef.fit.brief.name,

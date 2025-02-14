@@ -11,7 +11,7 @@ class CharacterTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: 10),
       child: ListView(
         controller: _controller,
         children: [

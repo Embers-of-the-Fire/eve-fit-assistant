@@ -16,11 +16,11 @@ class ShipSelectPage extends StatelessWidget {
         title: const Text('选择船只'),
       ),
       body: ItemList(
-        breadcrumbPadding: EdgeInsets.symmetric(horizontal: 20),
-        breadcrumbDecoration: BoxDecoration(
+        breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+        breadcrumbDecoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: Colors.grey)),
         ),
-        breadcrumbItemPadding: EdgeInsets.symmetric(vertical: 10),
+        breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
         fallbackGroupID: shipGroupID,
         baseGroup: '舰船',
         onSelect: (id) async {

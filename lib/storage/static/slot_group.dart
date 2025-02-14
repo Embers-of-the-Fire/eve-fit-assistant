@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
 import 'package:eve_fit_assistant/utils/map.dart';
@@ -146,18 +145,15 @@ class TypeSlotStorage {
   static TypeSlotStorage _fromBuffer(Uint8List buffer) {
     final slots = Slots.fromBuffer(buffer);
     return TypeSlotStorage._private(
-      high: ReadonlyMap(slots.high
-          .map((key, value) => MapEntry(key, TypeHighSlot._private(value)))),
-      med: ReadonlyMap(slots.med
-          .map((key, value) => MapEntry(key, TypeSlot._private(value)))),
-      low: ReadonlyMap(slots.low
-          .map((key, value) => MapEntry(key, TypeSlot._private(value)))),
-      rig: ReadonlyMap(slots.rig
-          .map((key, value) => MapEntry(key, TypeSlot._private(value)))),
-      subsystem: ReadonlyMap(slots.subsystem
-          .map((key, value) => MapEntry(key, TypeSlot._private(value)))),
-      implant: ReadonlyMap(slots.implant
-          .map((key, value) => MapEntry(key, TypeImplantSlot._private(value)))),
+      high:
+          ReadonlyMap(slots.high.map((key, value) => MapEntry(key, TypeHighSlot._private(value)))),
+      med: ReadonlyMap(slots.med.map((key, value) => MapEntry(key, TypeSlot._private(value)))),
+      low: ReadonlyMap(slots.low.map((key, value) => MapEntry(key, TypeSlot._private(value)))),
+      rig: ReadonlyMap(slots.rig.map((key, value) => MapEntry(key, TypeSlot._private(value)))),
+      subsystem:
+          ReadonlyMap(slots.subsystem.map((key, value) => MapEntry(key, TypeSlot._private(value)))),
+      implant: ReadonlyMap(
+          slots.implant.map((key, value) => MapEntry(key, TypeImplantSlot._private(value)))),
     );
   }
 

@@ -20,7 +20,7 @@ class MarketGroup {
 
   List<int> get childGroups => _raw.childGroups;
 
-  int? get parentGroup => (_raw.parentGroup != 0).thenWith(_raw.parentGroup);
+  int? get parentGroup => (_raw.parentGroup != 0).thenSome(_raw.parentGroup);
 
   int? get iconID => _raw.iconID != 0 ? _raw.iconID : null;
 
@@ -28,8 +28,7 @@ class MarketGroup {
 
   static Map<int, MarketGroup> _fromBuffer(Uint8List buffer) {
     final types = MarketGroups.fromBuffer(buffer);
-    return types.entries
-        .map((key, value) => MapEntry(key, MarketGroup._private(value)));
+    return types.entries.map((key, value) => MapEntry(key, MarketGroup._private(value)));
   }
 
   static Future<ReadonlyMap<int, MarketGroup>> read(Directory staticDir) async {

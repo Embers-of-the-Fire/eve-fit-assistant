@@ -75,8 +75,7 @@ class _ItemListState extends State<ItemList> {
               BreadCrumbItem(
                 content: Container(
                   padding: widget.breadcrumbItemPadding,
-                  child: Text(widget.baseGroup ?? '总览',
-                      style: TextStyle(fontSize: 16)),
+                  child: Text(widget.baseGroup ?? '总览', style: const TextStyle(fontSize: 16)),
                 ),
                 onTap: () => _resetBreadcrumbs(),
               ),
@@ -87,12 +86,11 @@ class _ItemListState extends State<ItemList> {
                     ),
                     onTap: () => setState(() {
                       _breadcrumbs.removeRange(el.$1 + 1, _breadcrumbs.length);
-                      _breadcrumbNames.removeRange(
-                          el.$1 + 1, _breadcrumbNames.length);
+                      _breadcrumbNames.removeRange(el.$1 + 1, _breadcrumbNames.length);
                     }),
                   ))
             ],
-            divider: Icon(Icons.chevron_right),
+            divider: const Icon(Icons.chevron_right),
             overflow: ScrollableOverflow(
               direction: Axis.horizontal,
               keepLastDivider: true,
@@ -106,14 +104,9 @@ class _ItemListState extends State<ItemList> {
             controller: _shipListController,
             child: Column(
               children: [
-                ..._filterMarketGroups(
-                        _breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
-                    .filterMap((id) => GlobalStorage()
-                        .static
-                        .marketGroups[id]
-                        .map((v) => (id, v)))
-                    .map((it) => _groupListTile(it.$2,
-                        onTap: () => _expandGroup(it.$1))),
+                ..._filterMarketGroups(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
+                    .filterMap((id) => GlobalStorage().static.marketGroups[id].map((v) => (id, v)))
+                    .map((it) => _groupListTile(it.$2, onTap: () => _expandGroup(it.$1))),
                 ...(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
                     .andThen((id) => GlobalStorage().static.marketGroups[id])
                     .map((group) => _itemListTile(
@@ -148,8 +141,7 @@ Iterable<ListTile> _itemListTile(MarketGroup group,
     types = group.types.filter(filter);
   }
   return types
-      .filterMap(
-          (id) => GlobalStorage().static.typesAbbr[id].map((u) => (id, u)))
+      .filterMap((id) => GlobalStorage().static.typesAbbr[id].map((u) => (id, u)))
       .map((val) => ListTile(
             // leading: Icon(Icons.article_sharp),
             leading: GlobalStorage().static.icons.getTypeIconSync(val.$1),

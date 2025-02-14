@@ -1,18 +1,16 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:developer' as dev;
+import 'dart:io';
 
 import 'package:eve_fit_assistant/native/port/api/error.dart';
-import 'package:eve_fit_assistant/pages/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'fit.g.dart';
-
 part 'fit.freezed.dart';
+part 'fit.g.dart';
 
 enum FitItemType {
   high,
@@ -102,8 +100,7 @@ class FitRecord {
     return rec;
   }
 
-  factory FitRecord.fromJson(Map<String, dynamic> json) =>
-      _$FitRecordFromJson(json);
+  factory FitRecord.fromJson(Map<String, dynamic> json) => _$FitRecordFromJson(json);
 
   Map<String, dynamic> toJson() => _$FitRecordToJson(this);
 }
@@ -180,8 +177,7 @@ class SlotItem with _$SlotItem {
     required SlotState state,
   }) = _SlotItem;
 
-  factory SlotItem.fromJson(Map<String, dynamic> json) =>
-      _$SlotItemFromJson(json);
+  factory SlotItem.fromJson(Map<String, dynamic> json) => _$SlotItemFromJson(json);
 }
 
 @JsonEnum(valueField: 'state')
@@ -238,8 +234,7 @@ class DroneItem with _$DroneItem {
     required DroneState state,
   }) = _DroneItem;
 
-  factory DroneItem.fromJson(Map<String, dynamic> json) =>
-      _$DroneItemFromJson(json);
+  factory DroneItem.fromJson(Map<String, dynamic> json) => _$DroneItemFromJson(json);
 }
 
 @JsonEnum(valueField: 'state')

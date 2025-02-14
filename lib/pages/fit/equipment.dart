@@ -48,22 +48,18 @@ class EquipmentTab extends StatelessWidget {
         ),
         ...high.enumerate().map((t) => getSlotRow(fitID, t.$2,
             type: FitItemType.high, index: t.$1, slotType: FitItemType.high)),
-        ListTile(title: const Text('中能量槽')),
-        ...med.enumerate().map((t) => getSlotRow(fitID, t.$2,
-            type: FitItemType.med, index: t.$1, slotType: FitItemType.med)),
-        ListTile(title: const Text('低能量槽')),
-        ...low.enumerate().map((t) => getSlotRow(fitID, t.$2,
-            type: FitItemType.low, index: t.$1, slotType: FitItemType.low)),
-        ListTile(title: const Text('改装件')),
-        ...rig.enumerate().map((t) => getSlotRow(fitID, t.$2,
-            type: FitItemType.rig, index: t.$1, slotType: FitItemType.rig)),
-        ...subsystem.isNotEmpty
-            .then(() => [ListTile(title: const Text('子系统'))])
-            .unwrapOr([]),
+        const ListTile(title: Text('中能量槽')),
+        ...med.enumerate().map((t) =>
+            getSlotRow(fitID, t.$2, type: FitItemType.med, index: t.$1, slotType: FitItemType.med)),
+        const ListTile(title: Text('低能量槽')),
+        ...low.enumerate().map((t) =>
+            getSlotRow(fitID, t.$2, type: FitItemType.low, index: t.$1, slotType: FitItemType.low)),
+        const ListTile(title: Text('改装件')),
+        ...rig.enumerate().map((t) =>
+            getSlotRow(fitID, t.$2, type: FitItemType.rig, index: t.$1, slotType: FitItemType.rig)),
+        ...subsystem.isNotEmpty.then(() => [const ListTile(title: Text('子系统'))]).unwrapOr([]),
         ...subsystem.enumerate().map((t) => getSlotRow(fitID, t.$2,
-            type: FitItemType.subsystem,
-            index: t.$1,
-            slotType: FitItemType.subsystem)),
+            type: FitItemType.subsystem, index: t.$1, slotType: FitItemType.subsystem)),
       ],
     );
   }

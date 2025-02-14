@@ -34,8 +34,7 @@ class VersionInfo {
 
   const VersionInfo({required this.version});
 
-  factory VersionInfo.fromJson(Map<String, dynamic> json) =>
-      _$VersionInfoFromJson(json);
+  factory VersionInfo.fromJson(Map<String, dynamic> json) => _$VersionInfoFromJson(json);
 
   Map<String, dynamic> toJson() => _$VersionInfoToJson(this);
 
@@ -50,6 +49,5 @@ class VersionInfo {
 
 Future<void> createVersionFile() async {
   final File versionFile = await _getVersionFile(create: true);
-  await versionFile
-      .writeAsString(jsonEncode(VersionInfo.currentVersion.toJson()));
+  await versionFile.writeAsString(jsonEncode(VersionInfo.currentVersion.toJson()));
 }

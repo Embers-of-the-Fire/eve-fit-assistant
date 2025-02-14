@@ -7,7 +7,7 @@ extension Bool on bool {
     }
   }
 
-  T? thenWith<T>(T init) {
+  T? thenSome<T>(T init) {
     if (this) {
       return init;
     } else {

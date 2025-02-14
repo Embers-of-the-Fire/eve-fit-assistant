@@ -12,16 +12,16 @@ class ConfigPage extends StatelessWidget {
       scrollDirection: Axis.vertical,
       children: [
         ListTile(
-          leading: Icon(Icons.info_outline_rounded),
-          title: Text('关于'),
-          onTap: () => Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) => InfoPage())),
+          leading: const Icon(Icons.info_outline_rounded),
+          title: const Text('关于'),
+          onTap: () =>
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const InfoPage())),
         ),
         ListTile(
-          leading: Icon(ExternalIcon.cubes),
-          title: Text('资产管理'),
-          onTap: () => Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) => AssetPage())),
+          leading: const Icon(ExternalIcon.cubes),
+          title: const Text('资产管理'),
+          onTap: () =>
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AssetPage())),
         )
       ],
     );

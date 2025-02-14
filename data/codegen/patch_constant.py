@@ -29,6 +29,6 @@ def codegen(native: Path, out_dir: Path):
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w+", encoding="utf-8") as f:
         for key, config in out.items():
-            f.write(f"/// Name: {config['name']}\n")
-            f.write(f"/// High is good: {config['high_is_good']}\n")
+            f.write(f"/// - Name: {config['name']}\n")
+            f.write(f"/// - High is good: {config['high_is_good']}\n")
             f.write(f"const int {config['name']} = {key};\n\n")

@@ -23,6 +23,5 @@ const I18N$json = {
 };
 
 /// Descriptor for `I18N`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List i18NDescriptor = $convert.base64Decode(
-    'CgRJMThOEg4KAmVuGAEgAigJUgJlbhIOCgJ6aBgCIAEoCVICemg=');
-
+final $typed_data.Uint8List i18NDescriptor =
+    $convert.base64Decode('CgRJMThOEg4KAmVuGAEgAigJUgJlbhIOCgJ6aBgCIAEoCVICemg=');

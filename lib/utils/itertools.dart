@@ -1,12 +1,10 @@
 extension Itertools<T> on Iterable<T> {
-  Iterable<T> filter(bool Function(T) predicate) =>
-      _FilterIterable(this, predicate);
+  Iterable<T> filter(bool Function(T) predicate) => _FilterIterable(this, predicate);
 
   Iterable<T> sortedByKey<R extends Comparable<R>>(R Function(T) key) =>
       _SortedByKeyIterable(this, key);
 
-  Iterable<U> filterMap<U>(U? Function(T) f) =>
-      map(f).filter((e) => e != null).map((e) => e!);
+  Iterable<U> filterMap<U>(U? Function(T) f) => map(f).filter((e) => e != null).map((e) => e!);
 
   Iterable<(int, T)> enumerate() => _EnumerateIterable(this);
 
@@ -28,8 +26,7 @@ class _FilterIterable<T> with Iterable<T> {
   const _FilterIterable(this._internal, this._predicate);
 
   @override
-  Iterator<T> get iterator =>
-      _FilterIterator(this._internal.iterator, this._predicate);
+  Iterator<T> get iterator => _FilterIterator(this._internal.iterator, this._predicate);
 }
 
 class _FilterIterator<T> implements Iterator<T> {
@@ -72,8 +69,7 @@ class _EnumerateIterable<T> with Iterable<(int, T)> {
   const _EnumerateIterable(this._internal);
 
   @override
-  Iterator<(int, T)> get iterator =>
-      _EnumerateIterator(this._internal.iterator);
+  Iterator<(int, T)> get iterator => _EnumerateIterator(this._internal.iterator);
 }
 
 class _EnumerateIterator<T> implements Iterator<(int, T)> {

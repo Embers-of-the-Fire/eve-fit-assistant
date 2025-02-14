@@ -27,6 +27,5 @@ class ExternalIcon {
   static const _kFontFam = 'ExternalIcon';
   static const String? _kFontPkg = null;
 
-  static const IconData cubes =
-      IconData(0xf1b3, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData cubes = IconData(0xf1b3, fontFamily: _kFontFam, fontPackage: _kFontPkg);
 }

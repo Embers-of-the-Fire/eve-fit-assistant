@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'dart:developer' as dev;
+import 'dart:io';
 
-import 'package:eve_fit_assistant/native/glue/database.dart';
-import 'package:eve_fit_assistant/native/glue/fit_engine.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/static/groups.dart';
@@ -40,7 +38,7 @@ class StaticStorage {
 
   StaticStorage();
 
-  Future<void> init() async {
+  Future<void> init({bool autoDismiss = true}) async {
     final start = DateTime.now();
     dev.log(
       'StaticStorage.init',
@@ -49,7 +47,7 @@ class StaticStorage {
     );
     final staticVersion = await StaticVersionInfo.read();
     if (staticVersion == null) {
-      await unpackBundledStorage(showLoading: true);
+      await unpackBundledStorage(showLoading: false, autoDismiss: autoDismiss);
     }
 
     final staticStorageDir = await getStaticStorageDir();
@@ -106,8 +104,7 @@ class StaticVersionInfo {
   }
 
   String display() {
-    final DateTime time =
-        DateTime.fromMillisecondsSinceEpoch(createTime * 1000);
+    final DateTime time = DateTime.fromMillisecondsSinceEpoch(createTime * 1000);
     return time.toIso8601String();
   }
 }

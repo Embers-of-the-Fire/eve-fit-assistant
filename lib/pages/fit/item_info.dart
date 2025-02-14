@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 Future<void> showItemInfoPage(BuildContext context) async {
-  await Navigator.of(context)
-      .push(MaterialPageRoute(builder: (context) => const ItemInfoPage()));
+  await Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ItemInfoPage()));
 }
 
 class ItemInfoPage extends StatelessWidget {

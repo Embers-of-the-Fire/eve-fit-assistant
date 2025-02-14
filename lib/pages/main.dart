@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/pages/announcement/announcement.dart';
 import 'package:eve_fit_assistant/pages/create.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +15,7 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       scrollDirection: Axis.vertical,
       controller: _scrollController,
       children: [
@@ -24,9 +25,23 @@ class _MainPageState extends State<MainPage> {
           text: '创建新配置',
           height: 150,
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
         MainPageCard(
-          onTap: () {},
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const AnnouncementPage()),
+          ),
+          icon: Icons.list,
+          text: '公告',
+          height: 150,
+        ),
+        const SizedBox(height: 20),
+        MainPageCard(
+          onTap: () => showDialog(
+              context: context,
+              builder: (context) => const AlertDialog(
+                    title: Text('提示'),
+                    content: Text('该功能尚未开放。\n敬请期待！'),
+                  )),
           text: '物品市场',
           icon: Icons.shopping_cart_rounded,
           height: 150,
@@ -57,7 +72,7 @@ class MainPageCard extends StatelessWidget {
     final List<Widget> row = [];
     if (icon != null) {
       row.add(Container(
-          padding: EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: 4),
           child: Icon(
             icon,
             size: 34,
@@ -73,12 +88,12 @@ class MainPageCard extends StatelessWidget {
       ),
     ));
     return Container(
-      padding: EdgeInsets.only(left: 30, right: 30),
+      padding: const EdgeInsets.only(left: 30, right: 30),
       height: height,
       child: Card(
         color: color ?? Colors.white70,
         elevation: 10.0,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(25.0)),
         ),
         clipBehavior: Clip.antiAlias,

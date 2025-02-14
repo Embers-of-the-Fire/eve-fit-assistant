@@ -7,13 +7,20 @@ class InfoTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fitRef = ref.read(fitRecordNotifierProvider(fitID));
+    final fitRef = ref.watch(fitRecordNotifierProvider(fitID));
     final out = fitRef.output.ship;
-
-    return Center(
-      child: Text(
-        (out.hull.attributes.getById(key: damagePerSecondWithoutReload) ?? 0.0)
-            .toString(),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Capacitor(ship: out),
+            Weapon(ship: out),
+            Resource(ship: out),
+            Hp(ship: out),
+            Extra(ship: out),
+          ],
+        ),
       ),
     );
   }

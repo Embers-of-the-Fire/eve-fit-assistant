@@ -46,16 +46,15 @@ class _ConfigTabState extends ConsumerState<ConfigTab> {
           descController.text = widget.description;
         }),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.red),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          side: const BorderSide(color: Colors.red),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         child: const Text(
           '取消',
           style: TextStyle(color: Colors.red),
         ),
       ));
-      bottomAction.add(SizedBox(width: 20));
+      bottomAction.add(const SizedBox(width: 20));
       bottomAction.add(OutlinedButton(
         onPressed: () {
           if (form.currentState?.validate() ?? false) {
@@ -70,9 +69,8 @@ class _ConfigTabState extends ConsumerState<ConfigTab> {
           }
         },
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.green),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          side: const BorderSide(color: Colors.green),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         child: const Text(
           '保存',
@@ -85,9 +83,8 @@ class _ConfigTabState extends ConsumerState<ConfigTab> {
           editable = true;
         }),
         style: TextButton.styleFrom(
-          side: BorderSide(color: Colors.blue),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          side: const BorderSide(color: Colors.blue),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         child: const Text(
           '修改',
@@ -99,7 +96,7 @@ class _ConfigTabState extends ConsumerState<ConfigTab> {
     return Form(
       key: form,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
         child: Column(
           children: [
             TextFormField(
@@ -112,7 +109,6 @@ class _ConfigTabState extends ConsumerState<ConfigTab> {
                 return null;
               },
               decoration: const InputDecoration(
-                // hintText: '装配名称',
                 label: Text('装配名称'),
               ),
             ),
@@ -125,7 +121,7 @@ class _ConfigTabState extends ConsumerState<ConfigTab> {
               ),
             ),
             Container(
-              padding: EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: bottomAction,

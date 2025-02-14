@@ -1,10 +1,10 @@
 import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/fit.dart';
 import 'package:eve_fit_assistant/pages/fit/item_info.dart';
+import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:flutter/material.dart';
-import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
@@ -22,9 +22,7 @@ Widget getSlotRow(
     fitID: fitID,
     typeID: item.itemID,
     state: item.state,
-    maxState:
-        GlobalStorage().static.typeSlot[slotType][item.itemID]?.maxState ??
-            SlotState.passive,
+    maxState: GlobalStorage().static.typeSlot[slotType][item.itemID]?.maxState ?? SlotState.passive,
     type: type,
     index: index,
     chargeID: item.chargeID,
@@ -52,8 +50,7 @@ class SlotRow extends ConsumerWidget {
     required this.type,
     required this.index,
     required this.chargeID,
-  }) : slotHasCharge =
-            GlobalStorage().static.typeSlot[type][typeID]?.hasCharge ?? false;
+  }) : slotHasCharge = GlobalStorage().static.typeSlot[type][typeID]?.hasCharge ?? false;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -86,9 +83,8 @@ class SlotRow extends ConsumerWidget {
       label: '复制',
     ));
     endAction.add(SlidableAction(
-      onPressed: (_) =>
-          _modifyFit(index: index, type: type, fit: fit, op: (_) => null),
-      backgroundColor: Color(0xFFFE4A49),
+      onPressed: (_) => _modifyFit(index: index, type: type, fit: fit, op: (_) => null),
+      backgroundColor: const Color(0xFFFE4A49),
       foregroundColor: Colors.white,
       icon: Icons.delete,
       label: '删除',
@@ -96,8 +92,7 @@ class SlotRow extends ConsumerWidget {
     if (slotHasCharge) {
       startAction.add(SlidableAction(
         onPressed: (_) async {
-          final chargeID =
-              await showAddChargeDialog(context, typeID, type: type);
+          final chargeID = await showAddChargeDialog(context, typeID, type: type);
           if (chargeID == null) return;
           _modifyFit(
             index: index,
@@ -145,11 +140,11 @@ class SlotRow extends ConsumerWidget {
       child: ListTile(
         onLongPress: () => showItemInfoPage(context),
         leading: Ink(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             borderRadius: BorderRadius.all(Radius.circular(20)),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
+            borderRadius: const BorderRadius.all(Radius.circular(20)),
             onTap: () async {
               final newState = state.nextState(maxState: maxState);
               await _modifyFit(
@@ -164,11 +159,8 @@ class SlotRow extends ConsumerWidget {
               backgroundColor: getSlotColor(state),
               child: CircleAvatar(
                 radius: 18,
-                backgroundColor: Colors.grey.shade200,
-                foregroundImage: GlobalStorage()
-                    .static
-                    .icons
-                    .getTypeIconFileImageSync(typeID),
+                backgroundColor: Colors.grey.shade800,
+                foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID),
               ),
             ),
           ),
@@ -183,12 +175,12 @@ class SlotRow extends ConsumerWidget {
                       .getTypeIconSync(chargeID!, width: 18, height: 18)
                       .map((u) => [u])
                       .unwrapOr([]),
-                  SizedBox(
+                  const SizedBox(
                     width: 10,
                   ),
                   Text(
                     GlobalStorage().static.typesAbbr[chargeID!]?.nameZH ?? '未知',
-                    style: TextStyle(fontSize: 14),
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ],
               )
@@ -223,10 +215,9 @@ class SlotRowPlaceholder extends ConsumerWidget {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
 
     return ListTile(
-      leading: CircleAvatar(
+      leading: const CircleAvatar(
         radius: 20,
-        backgroundColor: Colors.grey.shade200,
-        child: const Icon(Icons.add_circle_outline),
+        child: Icon(Icons.add_circle_outline),
       ),
       title: const Text('无装备'),
       onTap: () async {
@@ -237,10 +228,8 @@ class SlotRowPlaceholder extends ConsumerWidget {
         );
         if (newItemID == null) return;
         final maxState =
-            GlobalStorage().static.typeSlot[type][newItemID]?.maxState ??
-                SlotState.passive;
-        final defaultState =
-            maxState >= SlotState.active ? SlotState.active : maxState;
+            GlobalStorage().static.typeSlot[type][newItemID]?.maxState ?? SlotState.passive;
+        final defaultState = maxState >= SlotState.active ? SlotState.active : maxState;
         await _modifyFit(
           index: index,
           type: type,

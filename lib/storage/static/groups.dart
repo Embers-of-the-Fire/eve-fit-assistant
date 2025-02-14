@@ -19,8 +19,7 @@ class Group {
 
   static Map<int, Group> _fromBuffer(Uint8List buffer) {
     final groups = Groups.fromBuffer(buffer);
-    return groups.entries
-        .map((key, value) => MapEntry(key, Group._private(value)));
+    return groups.entries.map((key, value) => MapEntry(key, Group._private(value)));
   }
 
   static Future<ReadonlyMap<int, Group>> read(Directory staticDir) async {

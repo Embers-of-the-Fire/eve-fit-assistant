@@ -5,7 +5,10 @@ import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
-Future<void> unpackBundledStorage({bool showLoading = false}) async {
+Future<void> unpackBundledStorage({
+  bool showLoading = false,
+  bool autoDismiss = true,
+}) async {
   if (showLoading) {
     EasyLoading.show(status: '正在解压静态资产');
   }
@@ -18,7 +21,7 @@ Future<void> unpackBundledStorage({bool showLoading = false}) async {
 
   final storageDir = await getStaticStorageDir(create: true);
   final storageBundle = await getStorageBundle();
-  final gz = GZipDecoder().decodeBytes(storageBundle.buffer.asUint8List());
+  final gz = const GZipDecoder().decodeBytes(storageBundle.buffer.asUint8List());
   final tar = TarDecoder().decodeBytes(gz);
   await extractArchiveToDisk(tar, storageDir.path);
 
@@ -28,7 +31,7 @@ Future<void> unpackBundledStorage({bool showLoading = false}) async {
     name: 'storage',
     time: end,
   );
-  if (showLoading) {
+  if (showLoading && autoDismiss) {
     EasyLoading.dismiss();
   }
 }

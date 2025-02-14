@@ -43,10 +43,9 @@ const Types_EntriesEntry$json = {
 };
 
 /// Descriptor for `Types`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List typesDescriptor = $convert.base64Decode(
-    'CgVUeXBlcxIzCgdlbnRyaWVzGAEgAygLMhkudHlwZXMuVHlwZXMuRW50cmllc0VudHJ5Ugdlbn'
-    'RyaWVzGl4KBFR5cGUSHgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRIYCgdncm91cElE'
-    'GAIgAigFUgdncm91cElEEhwKCXB1Ymxpc2hlZBgDIAIoCFIJcHVibGlzaGVkGk0KDEVudHJpZX'
-    'NFbnRyeRIQCgNrZXkYASABKAVSA2tleRInCgV2YWx1ZRgCIAEoCzIRLnR5cGVzLlR5cGVzLlR5'
-    'cGVSBXZhbHVlOgI4AQ==');
-
+final $typed_data.Uint8List typesDescriptor = $convert
+    .base64Decode('CgVUeXBlcxIzCgdlbnRyaWVzGAEgAygLMhkudHlwZXMuVHlwZXMuRW50cmllc0VudHJ5Ugdlbn'
+        'RyaWVzGl4KBFR5cGUSHgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRIYCgdncm91cElE'
+        'GAIgAigFUgdncm91cElEEhwKCXB1Ymxpc2hlZBgDIAIoCFIJcHVibGlzaGVkGk0KDEVudHJpZX'
+        'NFbnRyeRIQCgNrZXkYASABKAVSA2tleRInCgV2YWx1ZRgCIAEoCzIRLnR5cGVzLlR5cGVzLlR5'
+        'cGVSBXZhbHVlOgI4AQ==');

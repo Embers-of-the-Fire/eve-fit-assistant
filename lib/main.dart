@@ -3,12 +3,13 @@ import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'front.dart' as front;
 
 Future main() async {
   await RustLib.init();
   configEasyLoading();
-  runApp(ProviderScope(child: const MyApp()));
+  runApp(const ProviderScope(child: MyApp()));
   // runApp(ChangeNotifierProvider.value(
   //   value: globalStorage,
   //   child: const MyApp(),
@@ -27,11 +28,12 @@ class MyApp extends ConsumerWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    GlobalStorage().init(ref);
+    Future.delayed(const Duration(milliseconds: 150)).then((_) => GlobalStorage().init(ref));
+
     return MaterialApp(
       title: 'EVE Fit Assistant',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(brightness: Brightness.dark, seedColor: Colors.blue),
         useMaterial3: true,
       ),
       home: const front.FrontendPage(),

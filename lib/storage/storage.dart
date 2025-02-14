@@ -4,6 +4,7 @@ import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/storage/version.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -52,14 +53,16 @@ class GlobalStorage {
     }
     _initializing = true;
 
+    EasyLoading.show(status: '初始化');
     final version = await getVersionInfo();
     _version = await executeMigrate(version);
     await _ship.init();
-    await _static.init();
+    await _static.init(autoDismiss: false);
     await _character.init();
     _fitEngine = await FitEngine.init();
-    await Future.delayed(Duration(seconds: 5));
+    await Future.delayed(const Duration(seconds: 5));
     _initialized = true;
+    EasyLoading.dismiss();
     ref.read(globalStorageNotifierProvider.notifier).initialized();
   }
 }

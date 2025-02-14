@@ -2,8 +2,7 @@ import 'package:eve_fit_assistant/native/port/api/schema.dart' as schema;
 import 'package:eve_fit_assistant/storage/fit/fit.dart' as local;
 import 'package:eve_fit_assistant/utils/itertools.dart';
 
-schema.Fit intoNativeFit(
-    {required local.Fit fit, required Map<int, int> skills}) {
+schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}) {
   return schema.Fit(
     shipId: fit.shipID,
     modules: _intoNativeModules(fit),
@@ -30,8 +29,7 @@ List<schema.Item> _intoNativeItems(List<local.SlotItem?> items) {
   }).toList();
 }
 
-schema.Item _intoNativeItem(
-    {required local.SlotItem item, required int index}) {
+schema.Item _intoNativeItem({required local.SlotItem item, required int index}) {
   return schema.Item(
     itemId: item.itemID,
     charge: item.chargeID,
@@ -47,8 +45,7 @@ List<schema.DroneGroup> _intoNativeDrones(List<local.DroneItem> items) {
   }).toList();
 }
 
-schema.DroneGroup _intoNativeDrone(
-    {required local.DroneItem item, required int index}) {
+schema.DroneGroup _intoNativeDrone({required local.DroneItem item, required int index}) {
   return schema.DroneGroup(
     itemId: item.itemID,
     amount: item.amount,
@@ -63,8 +60,7 @@ List<schema.Implant> _intoNativeImplants(List<local.SlotItem?> items) {
   }).toList();
 }
 
-schema.Implant _intoNativeImplant(
-    {required local.SlotItem item, required int index}) {
+schema.Implant _intoNativeImplant({required local.SlotItem item, required int index}) {
   return schema.Implant(
     itemId: item.itemID,
     index: index,

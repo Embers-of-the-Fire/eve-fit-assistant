@@ -1,7 +1,7 @@
+import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/item_list.dart';
 import 'package:flutter/material.dart';
-import 'package:eve_fit_assistant/storage/fit/fit.dart';
 
 class DialogMetadata {
   final String title;
@@ -27,36 +27,31 @@ Future<int?> showAddItemDialog(
       title: '添加高槽物品',
       baseName: '装备',
       fallbackGroupID: 9,
-      predicate: (int itemID) =>
-          GlobalStorage().static.typeSlot.high[itemID] != null,
+      predicate: (int itemID) => GlobalStorage().static.typeSlot.high[itemID] != null,
     ),
     FitItemType.med: DialogMetadata(
       title: '添加中槽物品',
       baseName: '装备',
       fallbackGroupID: 9,
-      predicate: (int itemID) =>
-          GlobalStorage().static.typeSlot.med[itemID] != null,
+      predicate: (int itemID) => GlobalStorage().static.typeSlot.med[itemID] != null,
     ),
     FitItemType.low: DialogMetadata(
       title: '添加低槽物品',
       baseName: '装备',
       fallbackGroupID: 9,
-      predicate: (int itemID) =>
-          GlobalStorage().static.typeSlot.low[itemID] != null,
+      predicate: (int itemID) => GlobalStorage().static.typeSlot.low[itemID] != null,
     ),
     FitItemType.rig: DialogMetadata(
       title: '添加改装件',
       baseName: '改装件',
       fallbackGroupID: 1111,
-      predicate: (int itemID) =>
-          GlobalStorage().static.typeSlot.rig[itemID] != null,
+      predicate: (int itemID) => GlobalStorage().static.typeSlot.rig[itemID] != null,
     ),
     FitItemType.subsystem: DialogMetadata(
       title: '添加子系统',
       baseName: '子系统',
       fallbackGroupID: 1112,
-      predicate: (int itemID) =>
-          GlobalStorage().static.typeSlot.subsystem[itemID] != null,
+      predicate: (int itemID) => GlobalStorage().static.typeSlot.subsystem[itemID] != null,
     ),
     FitItemType.drone: DialogMetadata(
       title: '添加无人机',
@@ -69,8 +64,7 @@ Future<int?> showAddItemDialog(
       baseName: '植入体',
       fallbackGroupID: 27,
       predicate: (int itemID) =>
-          (GlobalStorage().static.typeSlot.implant[itemID]?.slot ?? -1) ==
-          (slotIndex ?? -2),
+          (GlobalStorage().static.typeSlot.implant[itemID]?.slot ?? -1) == (slotIndex ?? -2),
     ),
   };
 
@@ -89,8 +83,7 @@ Future<int?> showAddChargeDialog(
       baseName: '弹药',
       fallbackGroupID: 11,
       predicate: (int chargeID) {
-        final chargeGroupID =
-            GlobalStorage().static.typesAbbr[chargeID]?.groupID;
+        final chargeGroupID = GlobalStorage().static.typesAbbr[chargeID]?.groupID;
         if (chargeGroupID == null) return true;
         return chargeGroups.contains(chargeGroupID);
       });
@@ -98,13 +91,12 @@ Future<int?> showAddChargeDialog(
   return await _showAddItemDialogImpl(context, metadata);
 }
 
-Future<int?> _showAddItemDialogImpl(
-    BuildContext context, DialogMetadata metadata) async {
+Future<int?> _showAddItemDialogImpl(BuildContext context, DialogMetadata metadata) async {
   final out = await showDialog<int>(
       context: context,
       builder: (context) {
         return Container(
-          padding: EdgeInsets.symmetric(vertical: 120),
+          padding: const EdgeInsets.symmetric(vertical: 120),
           child: AlertDialog(
             title: Text(metadata.title),
             shape: RoundedRectangleBorder(
@@ -139,13 +131,13 @@ class _AddItemDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ItemList(
-      breadcrumbPadding: EdgeInsets.symmetric(horizontal: 20),
-      breadcrumbDecoration: BoxDecoration(
+      breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+      breadcrumbDecoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.grey)),
       ),
       fallbackGroupID: fallbackGroupID,
       baseGroup: baseBreadcrumbName,
-      breadcrumbItemPadding: EdgeInsets.symmetric(vertical: 10),
+      breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
       filter: filter,
       onSelect: onSelect,
     );
