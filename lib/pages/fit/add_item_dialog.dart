@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
@@ -79,6 +81,7 @@ Future<int?> showAddChargeDialog(
 }) async {
   final itemMetadata = GlobalStorage().static.typeSlot[type][itemID];
   final chargeGroups = itemMetadata?.chargeGroups ?? [];
+  log('$chargeGroups', name: 'showAddChargeDialog');
   final metadata = _DialogMetadata(
       title: '添加弹药',
       baseName: '弹药',

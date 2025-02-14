@@ -31,7 +31,7 @@ def convert(cache: ConvertCache, external: dict):
         if slot_id is not None:
             i18n.into_i18n(data.implant[id].name, **typedef["name"])
             data.implant[id].published = typedef["published"]
-            data.implant[id].slot = slot_id - 1 # eve uses 1-based index
+            data.implant[id].slot = slot_id - 1  # eve uses 1-based index
             continue
 
     external["slots"] = data
@@ -107,9 +107,11 @@ def _find_max_state(attr_view: list[dict[str, str | int]]):
     max_state = slots_pb2.Slots.SlotState.ONLINE
 
     for attr in attr_view:
-        if attr["attributeID"] == 6 and attr["value"] > 0:
+        if attr["attributeID"] == 6 and attr["value"] > 0:  # energy need
             max_state = slots_pb2.Slots.SlotState.ACTIVE
-        elif attr["attributeID"] == 1211 and attr["value"] > 0:
+        if attr["attributeID"] == 73 and attr["value"] > 0:  # duration
+            max_state = slots_pb2.Slots.SlotState.ACTIVE
+        if attr["attributeID"] == 1211 and attr["value"] > 0:  # overload damage
             max_state = slots_pb2.Slots.SlotState.OVERLOAD
             break
 
@@ -119,7 +121,7 @@ def _find_max_state(attr_view: list[dict[str, str | int]]):
 def _find_slot_charge_groups(slot_def, attr_view: list[dict[str, str | int]]) -> None:
     charges = []
     for attr in attr_view:
-        if attr["attributeID"] in [604, 605, 606, 60, 610]:
+        if attr["attributeID"] in [604, 605, 606, 609, 610]:
             charges.append(int(attr["value"]))
 
     if len(charges) > 0:
