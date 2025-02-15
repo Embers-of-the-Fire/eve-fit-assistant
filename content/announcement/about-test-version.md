@@ -27,6 +27,9 @@
 - 软件作者的个人联系方式：
   - 邮箱：stellarishs@163.com
   - QQ：3562377918（暂不直接同意陌生人请求，请在好友请求中注明问题）
-  - Github: Embers-of-the-Fire（考虑到项目稳定性，目前暂未开源）
+  - Github: Embers-of-the-Fire
 - 软件的社区：
-  - QQ：1031146601（请与群主联系） 
+  - QQ：1031146601（请与群主联系）
+- 软件开源地址：
+  - [Github | eve-fit-assistant](https://github.com/Embers-of-the-Fire/eve-fit-assistant)
+  - [Github | eve-fit-os](https://github.com/Embers-of-the-Fire/eve-fit-os)
