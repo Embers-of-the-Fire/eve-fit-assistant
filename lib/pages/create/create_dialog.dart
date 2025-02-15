@@ -26,17 +26,17 @@ Future<String?> showShipCreateDialog(BuildContext context) {
         actions: <Widget>[
           TextButton(
             onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
               if (form.currentState?.validate() ?? false) {
                 Navigator.of(context).pop(controller.text);
               }
             },
             child: const Text('确认'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('取消'),
           ),
         ],
       );
