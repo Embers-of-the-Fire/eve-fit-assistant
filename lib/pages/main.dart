@@ -35,17 +35,18 @@ class _MainPageState extends State<MainPage> {
           height: 150,
         ),
         const SizedBox(height: 20),
-        MainPageCard(
-          onTap: () => showDialog(
-              context: context,
-              builder: (context) => const AlertDialog(
-                    title: Text('提示'),
-                    content: Text('该功能尚未开放。\n敬请期待！'),
-                  )),
-          text: '物品市场',
-          icon: Icons.shopping_cart_rounded,
-          height: 150,
-        ),
+        // TODO: Uncomment this block after implementing the market page
+        // MainPageCard(
+        //   onTap: () => showDialog(
+        //       context: context,
+        //       builder: (context) => const AlertDialog(
+        //             title: Text('提示'),
+        //             content: Text('该功能尚未开放。\n敬请期待！'),
+        //           )),
+        //   text: '物品市场',
+        //   icon: Icons.shopping_cart_rounded,
+        //   height: 150,
+        // ),
       ],
     );
   }
