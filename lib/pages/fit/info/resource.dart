@@ -45,6 +45,26 @@ class Resource extends StatelessWidget {
                 all: allPower,
                 unit: 'MW',
               ),
+            ]),
+            TableRow(children: List.filled(5, const SizedBox(height: 14))),
+            TableRow(children: [
+              const Image(image: rigImage, height: 28),
+              ResourceCompare(
+                alignment: MainAxisAlignment.end,
+                used: ship.hull.attributes.getById(key: upgradeLoad) ?? 0.0,
+                all: ship.hull.attributes.getById(key: upgradeCapacity) ?? 0.0,
+                warning: false,
+              ),
+              const SizedBox.shrink(),
+              const Image(image: droneImage, height: 28),
+              // const SizedBox.shrink(),
+              ResourceCompare(
+                alignment: MainAxisAlignment.end,
+                used: ship.hull.attributes.getById(key: droneCapacityLoad) ?? 0,
+                all: ship.hull.attributes.getById(key: droneBandwidth) ?? 0,
+                unit: 'mb/s',
+                warning: false,
+              )
             ])
           ],
         ),

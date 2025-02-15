@@ -60,3 +60,17 @@ const AssetImage scanMagnetometricImage = AssetImage('assets/icon/scan-magnetome
 const AssetImage scanGravimetricImage = AssetImage('assets/icon/scan-gravimetric.png');
 
 const AssetImage scanLadarImage = AssetImage('assets/icon/scan-ladar.png');
+
+const AssetImage rigImage = AssetImage('assets/icon/rig.png');
+
+const AssetImage droneImage = AssetImage('assets/icon/drone.png');
+
+const AssetImage highPlaceholderImage = AssetImage('assets/icon/high-placeholder.png');
+
+const AssetImage mediumPlaceholderImage = AssetImage('assets/icon/medium-placeholder.png');
+
+const AssetImage lowPlaceholderImage = AssetImage('assets/icon/low-placeholder.png');
+
+const AssetImage rigPlaceholderImage = AssetImage('assets/icon/rig-placeholder.png');
+
+const AssetImage subsystemPlaceholderImage = AssetImage('assets/icon/subsystem-placeholder.png');

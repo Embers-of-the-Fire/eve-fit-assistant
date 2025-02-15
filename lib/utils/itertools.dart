@@ -17,6 +17,15 @@ extension Itertools<T> on Iterable<T> {
     }
     return count;
   }
+
+  T? find(bool Function(T) predicate) {
+    for (final e in this) {
+      if (predicate(e)) {
+        return e;
+      }
+    }
+    return null;
+  }
 }
 
 class _FilterIterable<T> with Iterable<T> {

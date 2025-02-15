@@ -35,6 +35,12 @@ class FitStorage {
     return record;
   }
 
+  Future<void> deleteFit(String id) async {
+    await FitRecord.delete(id);
+    _briefRecords.write.remove(id);
+    await _saveBriefRecords();
+  }
+
   Future<void> save() async {
     await _saveBriefRecords();
   }

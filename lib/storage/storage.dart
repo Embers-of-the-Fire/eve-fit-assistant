@@ -56,8 +56,8 @@ class GlobalStorage {
     EasyLoading.show(status: '初始化');
     final version = await getVersionInfo();
     _version = await executeMigrate(version);
-    await _ship.init();
     await _static.init(autoDismiss: false);
+    await _ship.init();
     await _character.init();
     _fitEngine = await FitEngine.init();
     await Future.delayed(const Duration(seconds: 5));

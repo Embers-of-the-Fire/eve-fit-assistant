@@ -37,6 +37,8 @@ class _ItemListState extends State<ItemList> {
 
   List<int> _breadcrumbs = [];
   List<String> _breadcrumbNames = [];
+  final Set<int> _cachedValidTypes = {};
+  final Set<int> _cachedValidGroups = {};
 
   @override
   void initState() {
@@ -49,6 +51,37 @@ class _ItemListState extends State<ItemList> {
       _breadcrumbs = [];
       _breadcrumbNames = [];
     });
+  }
+
+  bool _isTypeValid(int id) {
+    if (_cachedValidTypes.contains(id)) {
+      return true;
+    }
+    final type = GlobalStorage().static.typesAbbr[id];
+    if (type == null) {
+      return false;
+    }
+    if (widget.filter?.call(id) ?? true) {
+      _cachedValidTypes.add(id);
+      return true;
+    }
+    return false;
+  }
+
+  bool _isGroupValid(int id) {
+    if (_cachedValidGroups.contains(id)) {
+      return true;
+    }
+    final group = GlobalStorage().static.marketGroups[id];
+    if (group == null) {
+      return false;
+    }
+    final subGroup = group.childGroups;
+    if (subGroup.any((id) => _isGroupValid(id)) || group.types.any((id) => _isTypeValid(id))) {
+      _cachedValidGroups.add(id);
+      return true;
+    }
+    return false;
   }
 
   void _expandGroup(int id) {
@@ -106,6 +139,7 @@ class _ItemListState extends State<ItemList> {
               children: [
                 ..._filterMarketGroups(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
                     .filterMap((id) => GlobalStorage().static.marketGroups[id].map((v) => (id, v)))
+                    .filter((it) => _isGroupValid(it.$1))
                     .map((it) => _groupListTile(it.$2, onTap: () => _expandGroup(it.$1))),
                 ...(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
                     .andThen((id) => GlobalStorage().static.marketGroups[id])
@@ -125,8 +159,17 @@ class _ItemListState extends State<ItemList> {
 }
 
 ListTile _groupListTile(MarketGroup group, {void Function()? onTap}) {
+  final image =
+      group.iconID.andThen((id) => GlobalStorage().static.icons.getIconSync(id, height: 32));
+  final Widget leading;
+  if (image != null) {
+    leading = image;
+  } else {
+    leading = Icon(group.hasTypes ? Icons.list_sharp : Icons.folder_copy_sharp);
+  }
+
   return ListTile(
-    leading: Icon(group.hasTypes ? Icons.list_sharp : Icons.folder_copy_sharp),
+    leading: leading,
     title: Text(group.nameZH),
     onTap: onTap,
   );

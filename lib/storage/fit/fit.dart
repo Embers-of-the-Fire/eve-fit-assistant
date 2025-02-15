@@ -113,6 +113,12 @@ class FitRecord {
     );
   }
 
+  static Future<void> delete(String id) async {
+    final fullRecordDir = await getFullRecordDir(create: false);
+    final file = File('${fullRecordDir.path}/$id.json');
+    await file.delete();
+  }
+
   static Future<FitRecord> read(String id) async {
     final fullRecordDir = await getFullRecordDir(create: false);
     final file = File('${fullRecordDir.path}/$id.json');

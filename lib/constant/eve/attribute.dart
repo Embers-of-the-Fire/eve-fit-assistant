@@ -119,3 +119,31 @@ const int maxLockedTargets = 192;
 /// - Name: signatureRadius
 /// - High is good: True
 const int signatureRadius = 552;
+
+/// - Name: upgradeCapacity
+/// - High is good: True
+const int upgradeCapacity = 1132;
+
+/// - Name: upgradeLoad
+/// - High is good: True
+const int upgradeLoad = 1152;
+
+/// - Name: droneBandwidth
+/// - High is good: True
+const int droneBandwidth = 1271;
+
+/// - Name: maxRange
+/// - High is good: True
+const int maxRange = 54;
+
+/// - Name: falloff
+/// - High is good: True
+const int falloff = 158;
+
+/// - Name: falloffEffectiveness
+/// - High is good: True
+const int falloffEffectiveness = 2044;
+
+/// - Name: explosionDelay
+/// - High is good: True
+const int explosionDelay = 281;

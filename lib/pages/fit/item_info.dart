@@ -9,21 +9,16 @@ class ItemInfoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // return SimpleDialog(
-    //   title: const Text('Item Info'),
-    //   children: <Widget>[
-    //     ListTile(
-    //       title: const Text('Item Name'),
-    //       subtitle: const Text('Item Description'),
-    //     ),
-    //   ],
-    // );
-    // return const Placeholder();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('物品信息'),
       ),
+      body: const Center(
+          child: Text(
+        'Work in Progress',
+        style: TextStyle(fontSize: 36),
+      )),
     );
   }
 }

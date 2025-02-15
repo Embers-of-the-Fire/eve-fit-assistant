@@ -70,6 +70,15 @@ class StaticIcon {
     );
   }
 
+  FileImage? getIconFileImageSync(int iconID, {double scale = 1.0}) {
+    final file = getIconFileSync(iconID);
+    if (file == null) return null;
+    if (!file.existsSync()) {
+      return null;
+    }
+    return FileImage(file, scale: scale);
+  }
+
   Future<File?> getTypeIconFile(int typeID) async {
     final file = File('${_iconDir.path}/type/$typeID.png');
     if (!await file.exists()) {

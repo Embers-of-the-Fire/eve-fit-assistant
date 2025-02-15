@@ -1,12 +1,34 @@
+import 'package:eve_fit_assistant/assets/icon.dart';
+import 'package:eve_fit_assistant/constant/eve/attribute.dart';
+import 'package:eve_fit_assistant/native/port/api/proxy.dart';
 import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/fit.dart';
 import 'package:eve_fit_assistant/pages/fit/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/optional.dart';
+import 'package:eve_fit_assistant/utils/itertools.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+
+extension ModulesProxyExt on ModulesProxy {
+  List<ItemProxy>? getSlots(FitItemType type) {
+    switch (type) {
+      case FitItemType.high:
+        return high;
+      case FitItemType.med:
+        return medium;
+      case FitItemType.low:
+        return low;
+      case FitItemType.rig:
+        return rig;
+      case FitItemType.implant:
+        return subsystem;
+      case _:
+        return null;
+    }
+  }
+}
 
 Widget getSlotRow(
   String fitID,
@@ -137,63 +159,140 @@ class SlotRow extends ConsumerWidget {
               motion: const StretchMotion(),
               children: endAction,
             ),
-      child: ListTile(
-        onLongPress: () => showItemInfoPage(context),
-        leading: Ink(
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-          ),
-          child: InkWell(
-            borderRadius: const BorderRadius.all(Radius.circular(20)),
-            onTap: () async {
-              final newState = state.nextState(maxState: maxState);
-              await _modifyFit(
-                index: index,
-                type: type,
-                fit: fit,
-                op: (item) => item?.copyWith(state: newState),
-              );
-            },
+      child: _SlotRowDisplay(
+          fitID: fitID,
+          index: index,
+          typeID: typeID,
+          chargeID: chargeID,
+          type: type,
+          state: state,
+          maxState: maxState),
+    );
+  }
+}
+
+class _SlotRowDisplay extends ConsumerWidget {
+  final String fitID;
+  final int index;
+  final int typeID;
+  final int? chargeID;
+  final FitItemType type;
+  final SlotState state;
+  final SlotState maxState;
+
+  const _SlotRowDisplay({
+    required this.fitID,
+    required this.index,
+    required this.typeID,
+    required this.chargeID,
+    required this.type,
+    required this.state,
+    required this.maxState,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
+    final fitData = ref.watch(fitRecordNotifierProvider(fitID));
+
+    final List<List<Widget>> subtitleGroup = [];
+
+    {
+      // charge
+      final List<Widget> row = [];
+
+      if (chargeID != null) {
+        final icon = GlobalStorage().static.icons.getTypeIconSync(chargeID!, width: 18, height: 18);
+        if (icon != null) {
+          row.add(icon);
+          row.add(const SizedBox(width: 10));
+        }
+        final chargeName = GlobalStorage().static.typesAbbr[chargeID!]?.nameZH ?? '未知';
+        row.add(Text(chargeName, style: const TextStyle(fontSize: 14)));
+      }
+
+      if (row.isNotEmpty) {
+        subtitleGroup.add(row);
+      }
+    }
+
+    {
+      // fire range
+      final List<Widget> row = [];
+
+      final List<ItemProxy> slots = fitData.output.ship.modules.getSlots(type)!;
+      final ItemProxy? item = slots.find((item) => item.index == index);
+      if (item != null) {
+        final range = item.attributes.getById(key: maxRange);
+        if (range != null) {
+          // turret
+          row.add(const Image(image: targetRangeImage, width: 18, height: 18));
+          row.add(const SizedBox(width: 10));
+          String text = '${(range / 1000).toStringAsFixed(1)} km';
+
+          final extraRange = item.attributes.getById(key: falloff);
+          if (extraRange != null && extraRange > 0) {
+            text += ' + ${(extraRange / 1000).toStringAsFixed(1)} km';
+          }
+
+          final extraEffectRange = item.attributes.getById(key: falloffEffectiveness);
+          if (extraEffectRange != null && extraEffectRange > 0) {
+            text += ' + ${(extraEffectRange / 1000).toStringAsFixed(1)} km';
+          }
+
+          row.add(Text(text, style: const TextStyle(fontSize: 14)));
+        } else if (item.charge != null) {
+          // missile launcher
+          final charge = item.charge!;
+          final speed = charge.attributes.getById(key: maxVelocity) ?? 0.0;
+          final time = charge.attributes.getById(key: explosionDelay) ?? 0.0;
+          final range = speed * time / 1000_000;
+          row.add(const Image(image: targetRangeImage, width: 18, height: 18));
+          row.add(const SizedBox(width: 10));
+          row.add(Text('${range.toStringAsFixed(1)} km', style: const TextStyle(fontSize: 14)));
+        }
+      }
+
+      if (row.isNotEmpty) {
+        subtitleGroup.add(row);
+      }
+    }
+
+    return ListTile(
+      onLongPress: () => showItemInfoPage(context),
+      leading: Ink(
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
+        child: InkWell(
+          borderRadius: const BorderRadius.all(Radius.circular(20)),
+          onTap: () async {
+            final newState = state.nextState(maxState: maxState);
+            await _modifyFit(
+              index: index,
+              type: type,
+              fit: fit,
+              op: (item) => item?.copyWith(state: newState),
+            );
+          },
+          child: CircleAvatar(
+            radius: 20,
+            backgroundColor: getSlotColor(state),
             child: CircleAvatar(
-              radius: 20,
-              backgroundColor: getSlotColor(state),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.grey.shade800,
-                foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID),
-              ),
+              radius: 18,
+              backgroundColor: Colors.grey.shade800,
+              foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID),
             ),
           ),
         ),
-        title: Text(GlobalStorage().static.typesAbbr[typeID]?.nameZH ?? '未知'),
-        subtitle: chargeID != null
-            ? Row(
-                children: [
-                  ...GlobalStorage()
-                      .static
-                      .icons
-                      .getTypeIconSync(chargeID!, width: 18, height: 18)
-                      .map((u) => [u])
-                      .unwrapOr([]),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  Text(
-                    GlobalStorage().static.typesAbbr[chargeID!]?.nameZH ?? '未知',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-              )
-            : null,
-        // trailing: InkWell(
-        //   borderRadius: BorderRadius.all(Radius.circular(50)),
-        //   onTap: () {},
-        //   child: Container(
-        //     padding: EdgeInsets.all(5),
-        //     child: Icon(Icons.error_outline, color: Colors.red),
-        //   ),
-        // ),
       ),
+      title: Text(GlobalStorage().static.typesAbbr[typeID]?.nameZH ?? '未知'),
+      subtitle: subtitleGroup.isEmpty
+          ? null
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: subtitleGroup.map((group) => Row(children: group)).toList(),
+            ),
     );
   }
 }
@@ -215,9 +314,17 @@ class SlotRowPlaceholder extends ConsumerWidget {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
 
     return ListTile(
-      leading: const CircleAvatar(
+      leading: CircleAvatar(
         radius: 20,
-        child: Icon(Icons.add_circle_outline),
+        child: switch (type) {
+          FitItemType.high => const Image(image: highPlaceholderImage, width: 30, height: 30),
+          FitItemType.med => const Image(image: mediumPlaceholderImage, width: 30, height: 30),
+          FitItemType.low => const Image(image: lowPlaceholderImage, width: 30, height: 30),
+          FitItemType.rig => const Image(image: rigPlaceholderImage, width: 30, height: 30),
+          FitItemType.subsystem =>
+            const Image(image: subsystemPlaceholderImage, width: 30, height: 30),
+          _ => const Icon(Icons.add_circle_outline)
+        },
       ),
       title: const Text('无装备'),
       onTap: () async {

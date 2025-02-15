@@ -8,7 +8,7 @@ class PatchAttrConfig(TypedDict):
     high_is_good: bool
 
 
-def codegen(native: Path, out_dir: Path):
+def codegen(native: Path, _, out_dir: Path):
     print("Generating patched attribute constant code...")
     patched_attr = native / "dogmaAttributes.json"
     with open(patched_attr, "r", encoding="utf-8") as f:

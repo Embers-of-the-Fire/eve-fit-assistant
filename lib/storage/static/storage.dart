@@ -1,6 +1,7 @@
 import 'dart:developer' as dev;
 import 'dart:io';
 
+import 'package:eve_fit_assistant/native/codegen/constant/bundle.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/static/groups.dart';
@@ -45,12 +46,16 @@ class StaticStorage {
       name: 'storage',
       time: start,
     );
+
+    final staticStorageDir = await getStaticStorageDir();
     final staticVersion = await StaticVersionInfo.read();
     if (staticVersion == null) {
       await unpackBundledStorage(showLoading: false, autoDismiss: autoDismiss);
+    } else if (dataVersion > staticVersion) {
+      await staticStorageDir.delete(recursive: true);
+      await unpackBundledStorage(showLoading: false, autoDismiss: autoDismiss);
     }
 
-    final staticStorageDir = await getStaticStorageDir();
     _typesAbbr = await TypeAbbr.read(staticStorageDir);
     _marketGroups = await MarketGroup.read(staticStorageDir);
     _groups = await Group.read(staticStorageDir);
@@ -92,7 +97,7 @@ class StaticVersionInfo {
     return createTime.toString();
   }
 
-  bool needsUpgrade(StaticVersionInfo local) => createTime > local.createTime;
+  bool operator >(StaticVersionInfo local) => createTime > local.createTime;
 
   static Future<StaticVersionInfo?> read() async {
     final File? versionFile = await _getStaticVersionFile();

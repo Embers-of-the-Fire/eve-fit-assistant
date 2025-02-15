@@ -3,6 +3,7 @@ import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/itertools.dart';
 import 'package:eve_fit_assistant/utils/sort.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 class ListPage extends StatefulWidget {
   const ListPage({super.key});
@@ -28,13 +29,24 @@ class _ListPageState extends State<ListPage> {
           .map((entry) {
         final icon = GlobalStorage().static.icons.getTypeIconSync(entry.value.shipID);
         final typeName = GlobalStorage().static.typesAbbr[entry.value.shipID]?.nameZH ?? '未知';
-        return ListTile(
-          leading: icon,
-          title: Text('[$typeName] ${entry.value.name}'),
-          subtitle: Text(
-            DateTime.fromMillisecondsSinceEpoch(entry.value.lastModifyTime).toString(),
+        return Slidable(
+          endActionPane: ActionPane(extentRatio: 0.2, motion: const StretchMotion(), children: [
+            SlidableAction(
+              onPressed: (_) =>
+                  GlobalStorage().ship.deleteFit(entry.key).then((_) => setState(() {})),
+              icon: Icons.delete_forever,
+              label: '删除',
+              backgroundColor: Colors.red,
+            )
+          ]),
+          child: ListTile(
+            leading: icon,
+            title: Text('[$typeName] ${entry.value.name}'),
+            subtitle: Text(
+              DateTime.fromMillisecondsSinceEpoch(entry.value.lastModifyTime).toString(),
+            ),
+            onTap: () => intoFitPage(context, entry.key),
           ),
-          onTap: () => intoFitPage(context, entry.key),
         );
       }).toList(),
     );

@@ -19,7 +19,9 @@ New-Item -ItemType Directory -Force -Path $cache_dir | Out-Null
 Copy-Item -Path (Join-Path $pb2_dir "*") -Destination $cache_dir -Recurse -Force
 New-Item -ItemType File -Force -Path $version_file | Out-Null
 $time = Get-Date -UFormat %s
+Write-Host "Creating version timestamp at $time"
 Set-Content -Path $version_file -Value $time -Force
+Copy-Item -Path $version_file -Destination $current
 
 Write-Host "Executing extra python commands"
 $uv = Get-Command -Name "uv.exe" -ErrorAction Stop

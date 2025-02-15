@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 Future<String?> showShipCreateDialog(BuildContext context) {
   final form = GlobalKey<FormState>();
-  final controller = TextEditingController();
+  final controller = TextEditingController(text: '新配置');
 
   return showDialog<String>(
     context: context,
