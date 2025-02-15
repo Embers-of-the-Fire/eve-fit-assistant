@@ -96,6 +96,7 @@ flutter:
     - assets/icon/
     # text content
     - content/announcement/
+    - content/changelog/
   
   # To add assets to your application, add an assets section, like this:
   # assets:

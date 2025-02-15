@@ -1,12 +1,12 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'detail.dart';
+part of 'content.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$markdownContentHash() => r'ac661bdb9672fda9a6826abb46925f0822d6fcae';
+String _$markdownContentHash() => r'1a81bc272ba02b96a8c74edc4688c5a0d1f82996';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -29,27 +29,27 @@ class _SystemHash {
   }
 }
 
-/// See also [_markdownContent].
-@ProviderFor(_markdownContent)
-const _markdownContentProvider = _MarkdownContentFamily();
+/// See also [markdownContent].
+@ProviderFor(markdownContent)
+const markdownContentProvider = MarkdownContentFamily();
 
-/// See also [_markdownContent].
-class _MarkdownContentFamily extends Family<AsyncValue<String>> {
-  /// See also [_markdownContent].
-  const _MarkdownContentFamily();
+/// See also [markdownContent].
+class MarkdownContentFamily extends Family<AsyncValue<String>> {
+  /// See also [markdownContent].
+  const MarkdownContentFamily();
 
-  /// See also [_markdownContent].
-  _MarkdownContentProvider call(
+  /// See also [markdownContent].
+  MarkdownContentProvider call(
     String contentKey,
   ) {
-    return _MarkdownContentProvider(
+    return MarkdownContentProvider(
       contentKey,
     );
   }
 
   @override
-  _MarkdownContentProvider getProviderOverride(
-    covariant _MarkdownContentProvider provider,
+  MarkdownContentProvider getProviderOverride(
+    covariant MarkdownContentProvider provider,
   ) {
     return call(
       provider.contentKey,
@@ -68,32 +68,32 @@ class _MarkdownContentFamily extends Family<AsyncValue<String>> {
       _allTransitiveDependencies;
 
   @override
-  String? get name => r'_markdownContentProvider';
+  String? get name => r'markdownContentProvider';
 }
 
-/// See also [_markdownContent].
-class _MarkdownContentProvider extends AutoDisposeFutureProvider<String> {
-  /// See also [_markdownContent].
-  _MarkdownContentProvider(
+/// See also [markdownContent].
+class MarkdownContentProvider extends AutoDisposeFutureProvider<String> {
+  /// See also [markdownContent].
+  MarkdownContentProvider(
     String contentKey,
   ) : this._internal(
-          (ref) => _markdownContent(
-            ref as _MarkdownContentRef,
+          (ref) => markdownContent(
+            ref as MarkdownContentRef,
             contentKey,
           ),
-          from: _markdownContentProvider,
-          name: r'_markdownContentProvider',
+          from: markdownContentProvider,
+          name: r'markdownContentProvider',
           debugGetCreateSourceHash:
               const bool.fromEnvironment('dart.vm.product')
                   ? null
                   : _$markdownContentHash,
-          dependencies: _MarkdownContentFamily._dependencies,
+          dependencies: MarkdownContentFamily._dependencies,
           allTransitiveDependencies:
-              _MarkdownContentFamily._allTransitiveDependencies,
+              MarkdownContentFamily._allTransitiveDependencies,
           contentKey: contentKey,
         );
 
-  _MarkdownContentProvider._internal(
+  MarkdownContentProvider._internal(
     super._createNotifier, {
     required super.name,
     required super.dependencies,
@@ -107,12 +107,12 @@ class _MarkdownContentProvider extends AutoDisposeFutureProvider<String> {
 
   @override
   Override overrideWith(
-    FutureOr<String> Function(_MarkdownContentRef provider) create,
+    FutureOr<String> Function(MarkdownContentRef provider) create,
   ) {
     return ProviderOverride(
       origin: this,
-      override: _MarkdownContentProvider._internal(
-        (ref) => create(ref as _MarkdownContentRef),
+      override: MarkdownContentProvider._internal(
+        (ref) => create(ref as MarkdownContentRef),
         from: from,
         name: null,
         dependencies: null,
@@ -130,7 +130,7 @@ class _MarkdownContentProvider extends AutoDisposeFutureProvider<String> {
 
   @override
   bool operator ==(Object other) {
-    return other is _MarkdownContentProvider && other.contentKey == contentKey;
+    return other is MarkdownContentProvider && other.contentKey == contentKey;
   }
 
   @override
@@ -144,17 +144,17 @@ class _MarkdownContentProvider extends AutoDisposeFutureProvider<String> {
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin _MarkdownContentRef on AutoDisposeFutureProviderRef<String> {
+mixin MarkdownContentRef on AutoDisposeFutureProviderRef<String> {
   /// The parameter `contentKey` of this provider.
   String get contentKey;
 }
 
 class _MarkdownContentProviderElement
-    extends AutoDisposeFutureProviderElement<String> with _MarkdownContentRef {
+    extends AutoDisposeFutureProviderElement<String> with MarkdownContentRef {
   _MarkdownContentProviderElement(super.provider);
 
   @override
-  String get contentKey => (origin as _MarkdownContentProvider).contentKey;
+  String get contentKey => (origin as MarkdownContentProvider).contentKey;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

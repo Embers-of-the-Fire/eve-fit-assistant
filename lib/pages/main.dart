@@ -1,4 +1,4 @@
-import 'package:eve_fit_assistant/pages/announcement/announcement.dart';
+import 'package:eve_fit_assistant/pages/announcement.dart';
 import 'package:eve_fit_assistant/pages/create.dart';
 import 'package:flutter/material.dart';
 
