@@ -4,6 +4,7 @@ from os import PathLike
 import csv
 import os
 import pathlib
+from typing import Any
 
 import yaml
 import requests
@@ -12,21 +13,27 @@ import requests
 class ConvertCache:
     fsd: FsdCache
     resfileindex: ResfileIndexCache
+    patches: PatchesCache
 
     def __init__(
         self,
         fsd_base_dir: PathLike,
         resfile_index_file: str,
         resfile_cache_dir: PathLike,
+        patch_dir: PathLike,
     ):
         self.fsd = FsdCache(fsd_base_dir)
         self.resfileindex = ResfileIndexCache(resfile_cache_dir, resfile_index_file)
+        self.patches = PatchesCache(patch_dir)
 
     def get(self, key: str) -> dict:
         return self.fsd.get(key)
 
     def download_cached(self, key: str) -> str:
         return self.resfileindex.download_cached(key)
+
+    def get_patch(self, key: str) -> Any:
+        return self.patches.read_cached(key)
 
 
 class FsdCache:
@@ -78,3 +85,20 @@ class ResfileIndexCache:
             for row in reader:
                 index[row[0]] = row[1]
         return index
+
+
+class PatchesCache:
+    patch_dir: PathLike
+    cached: dict[str, Any]
+
+    def __init__(self, patch_dir: PathLike):
+        self.patch_dir = patch_dir
+        self.cached = {}
+
+    def read_cached(self, key: str):
+        if key in self.cached.keys():
+            return self.cached[key]
+        with open(f"{self.patch_dir}/{key}.yaml", "r", encoding="utf-8") as f:
+            out = yaml.load(f, yaml.CSafeLoader)
+            self.cached[key] = out
+            return out

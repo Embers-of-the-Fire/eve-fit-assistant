@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 import i18n_pb2 as i18n__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bships.proto\x12\x05ships\x1a\ni18n.proto\"\xec\x02\n\x05Ships\x12*\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x19.ships.Ships.EntriesEntry\x1a\xf3\x01\n\x04Ship\x12\x18\n\x04name\x18\x01 \x02(\x0b\x32\n.i18n.I18N\x12\x0f\n\x07groupID\x18\x02 \x02(\x05\x12\x11\n\tpublished\x18\x03 \x02(\x08\x12\x13\n\x0bhighSlotNum\x18\x04 \x02(\x05\x12\x12\n\nmedSlotNum\x18\x05 \x02(\x05\x12\x12\n\nlowSlotNum\x18\x06 \x02(\x05\x12\x12\n\nrigSlotNum\x18\x07 \x02(\x05\x12\x14\n\x0chasSubsystem\x18\x08 \x02(\x08\x12\x15\n\rturretSlotNum\x18\t \x02(\x05\x12\x17\n\x0flauncherSlotNum\x18\n \x02(\x05\x12\x16\n\x0e\x64roneBandwidth\x18\x0b \x02(\x05\x1a\x41\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ships.Ships.Ship:\x02\x38\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bships.proto\x12\x05ships\x1a\ni18n.proto\"\x85\x03\n\x05Ships\x12*\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x19.ships.Ships.EntriesEntry\x1a\x8c\x02\n\x04Ship\x12\x18\n\x04name\x18\x01 \x02(\x0b\x32\n.i18n.I18N\x12\x0f\n\x07groupID\x18\x02 \x02(\x05\x12\x11\n\tpublished\x18\x03 \x02(\x08\x12\x13\n\x0bhighSlotNum\x18\x04 \x02(\x05\x12\x12\n\nmedSlotNum\x18\x05 \x02(\x05\x12\x12\n\nlowSlotNum\x18\x06 \x02(\x05\x12\x12\n\nrigSlotNum\x18\x07 \x02(\x05\x12\x14\n\x0chasSubsystem\x18\x08 \x02(\x08\x12\x15\n\rturretSlotNum\x18\t \x02(\x05\x12\x17\n\x0flauncherSlotNum\x18\n \x02(\x05\x12\x16\n\x0e\x64roneBandwidth\x18\x0b \x02(\x05\x12\x17\n\x0fhasTacticalMode\x18\x0c \x02(\x08\x1a\x41\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ships.Ships.Ship:\x02\x38\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,9 +35,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SHIPS_ENTRIESENTRY']._loaded_options = None
   _globals['_SHIPS_ENTRIESENTRY']._serialized_options = b'8\001'
   _globals['_SHIPS']._serialized_start=35
-  _globals['_SHIPS']._serialized_end=399
+  _globals['_SHIPS']._serialized_end=424
   _globals['_SHIPS_SHIP']._serialized_start=89
-  _globals['_SHIPS_SHIP']._serialized_end=332
-  _globals['_SHIPS_ENTRIESENTRY']._serialized_start=334
-  _globals['_SHIPS_ENTRIESENTRY']._serialized_end=399
+  _globals['_SHIPS_SHIP']._serialized_end=357
+  _globals['_SHIPS_ENTRIESENTRY']._serialized_start=359
+  _globals['_SHIPS_ENTRIESENTRY']._serialized_end=424
 # @@protoc_insertion_point(module_scope)

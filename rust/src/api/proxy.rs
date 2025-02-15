@@ -37,6 +37,7 @@ pub struct ModulesProxy {
     pub low: Vec<ItemProxy>,
     pub rig: Vec<ItemProxy>,
     pub subsystem: Vec<ItemProxy>,
+    pub tactical_mode: Option<ItemProxy>,
 }
 
 impl ModulesProxy {
@@ -53,6 +54,9 @@ impl ModulesProxy {
                 Low => out.low.push(ItemProxy::from_native(item)),
                 Rig => out.rig.push(ItemProxy::from_native(item)),
                 SubSystem => out.subsystem.push(ItemProxy::from_native(item)),
+                TacticalMode => {
+                    out.tactical_mode.replace(ItemProxy::from_native(item));
+                }
                 _ => {}
             }
         }

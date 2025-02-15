@@ -8,6 +8,8 @@ import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/bool.dart';
+import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'fit.freezed.dart';
@@ -138,6 +140,15 @@ class FitRecord {
     modifySlot(body.low, low);
   }
 
+  void changeTacticalMode() {
+    if (body.tacticalModeID == null) {
+      return;
+    }
+    final modeIDs =
+        GlobalStorage().static.tacticalModes[body.shipID]?.tacticalModes.keys.toList() ?? [];
+    body.tacticalModeID = modeIDs[(modeIDs.indexOf(body.tacticalModeID!) + 1) % modeIDs.length];
+  }
+
   Future<void> save() async {
     final fullRecordDir = await getFullRecordDir(create: true);
     final file = File('${fullRecordDir.path}/${brief.id}.json');
@@ -184,8 +195,10 @@ class Fit {
   final List<DroneItem> drone;
   final List<SlotItem?> implant;
 
+  int? tacticalModeID;
+
   /// Do not use this constructor directly, use [Fit.init] instead.
-  const Fit({
+  Fit({
     required this.shipID,
     required this.high,
     required this.med,
@@ -194,6 +207,7 @@ class Fit {
     required this.subsystem,
     required this.drone,
     required this.implant,
+    this.tacticalModeID,
   });
 
   factory Fit.init(int shipID) {
@@ -207,6 +221,8 @@ class Fit {
       subsystem: List.filled((ship?.hasSubsystem ?? false) ? 4 : 0, null),
       drone: List.empty(growable: true),
       implant: List.filled(10, null),
+      tacticalModeID: ship?.hasTacticalMode.unwrapOr(false).thenWith(() => shipID.andThen(
+          (id) => GlobalStorage().static.tacticalModes[id]?.tacticalModes.keys.firstOrNull)),
     );
   }
 

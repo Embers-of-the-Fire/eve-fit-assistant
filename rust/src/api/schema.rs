@@ -31,6 +31,12 @@ impl Fit {
             ]
             .into_iter()
             .flat_map(|(a, b)| a.into_iter().map(move |k| (k, b)))
+            .chain(
+                self.modules
+                    .tactical_mode
+                    .into_iter()
+                    .map(|t| (t, ItemSlotType::TacticalMode)),
+            )
             .map(|(item, slot)| ItemModule {
                 type_id: item.item_id,
                 slot: ItemSlot {
@@ -73,6 +79,7 @@ pub struct Module {
     pub low: Vec<Item>,
     pub rig: Vec<Item>,
     pub subsystem: Vec<Item>,
+    pub tactical_mode: Option<Item>,
 }
 
 #[flutter_rust_bridge::frb(non_opaque)]

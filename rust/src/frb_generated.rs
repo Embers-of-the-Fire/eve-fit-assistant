@@ -686,12 +686,14 @@ impl SseDecode for crate::api::schema::Module {
         let mut var_low = <Vec<crate::api::schema::Item>>::sse_decode(deserializer);
         let mut var_rig = <Vec<crate::api::schema::Item>>::sse_decode(deserializer);
         let mut var_subsystem = <Vec<crate::api::schema::Item>>::sse_decode(deserializer);
+        let mut var_tacticalMode = <Option<crate::api::schema::Item>>::sse_decode(deserializer);
         return crate::api::schema::Module {
             high: var_high,
             medium: var_medium,
             low: var_low,
             rig: var_rig,
             subsystem: var_subsystem,
+            tactical_mode: var_tacticalMode,
         };
     }
 }
@@ -704,12 +706,14 @@ impl SseDecode for crate::api::proxy::ModulesProxy {
         let mut var_low = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_rig = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_subsystem = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
+        let mut var_tacticalMode = <Option<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         return crate::api::proxy::ModulesProxy {
             high: var_high,
             medium: var_medium,
             low: var_low,
             rig: var_rig,
             subsystem: var_subsystem,
+            tactical_mode: var_tacticalMode,
         };
     }
 }
@@ -730,6 +734,28 @@ impl SseDecode for Option<i32> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<i32>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::schema::Item> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::schema::Item>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::proxy::ItemProxy> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::proxy::ItemProxy>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -1094,6 +1120,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::schema::Module {
             self.low.into_into_dart().into_dart(),
             self.rig.into_into_dart().into_dart(),
             self.subsystem.into_into_dart().into_dart(),
+            self.tactical_mode.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1113,6 +1140,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::proxy::ModulesProxy {
             self.low.into_into_dart().into_dart(),
             self.rig.into_into_dart().into_dart(),
             self.subsystem.into_into_dart().into_dart(),
+            self.tactical_mode.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1487,6 +1515,7 @@ impl SseEncode for crate::api::schema::Module {
         <Vec<crate::api::schema::Item>>::sse_encode(self.low, serializer);
         <Vec<crate::api::schema::Item>>::sse_encode(self.rig, serializer);
         <Vec<crate::api::schema::Item>>::sse_encode(self.subsystem, serializer);
+        <Option<crate::api::schema::Item>>::sse_encode(self.tactical_mode, serializer);
     }
 }
 
@@ -1498,6 +1527,7 @@ impl SseEncode for crate::api::proxy::ModulesProxy {
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.low, serializer);
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.rig, serializer);
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.subsystem, serializer);
+        <Option<crate::api::proxy::ItemProxy>>::sse_encode(self.tactical_mode, serializer);
     }
 }
 
@@ -1517,6 +1547,26 @@ impl SseEncode for Option<i32> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <i32>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::schema::Item> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::schema::Item>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::proxy::ItemProxy> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::proxy::ItemProxy>::sse_encode(value, serializer);
         }
     }
 }

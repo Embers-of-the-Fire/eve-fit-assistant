@@ -13,6 +13,8 @@ def convert(cache: ConvertCache, external: dict):
     groups = cache.get("groups")
     types = cache.get("types")
     dogma = cache.get("typeDogma")
+    
+    tactical = cache.get_patch("tactical_mode")
 
     ship_groups = [k for k, v in groups.items() if v.get("categoryID") == 6]
 
@@ -38,5 +40,6 @@ def convert(cache: ConvertCache, external: dict):
         data.entries[id].turretSlotNum = int(dogma_map.get(102, 0))
         data.entries[id].launcherSlotNum = int(dogma_map.get(101, 0))
         data.entries[id].droneBandwidth = int(dogma_map.get(1271, 0))
+        data.entries[id].hasTacticalMode = id in tactical.keys()
 
     external["ships"] = data

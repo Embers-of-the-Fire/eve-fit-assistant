@@ -14,6 +14,7 @@ import convert_groups
 import convert_skills
 import convert_character
 import convert_subsystem
+import convert_tactical_mode
 
 if not __name__ == "__main__":
     exit(0)
@@ -22,22 +23,23 @@ USAGE = """Usage:
     python3 convert.py
         <path/to/eve-sde/fsd>
         <path/to/resfileindex>
+        <path/to/patches>
         <path/to/output>
         <path/to/resfileindex-cache>"""
 
-if len(sys.argv) < 5:
+if len(sys.argv) < 6:
     print(USAGE)
     exit(1)
 
 
-def convert(fsd_dir, resfileindex, out_dir, index_cache):
+def convert(fsd_dir, resfileindex, patch_dir, out_dir, index_cache):
     os.makedirs(f"{out_dir}/pb2", exist_ok=True)
     os.makedirs(f"{out_dir}/json", exist_ok=True)
     os.makedirs(f"{out_dir}/pb2/character", exist_ok=True)
     os.makedirs(f"{out_dir}/json/character", exist_ok=True)
 
     data = {}
-    cache = ConvertCache(fsd_dir, resfileindex, index_cache)
+    cache = ConvertCache(fsd_dir, resfileindex, index_cache, patch_dir)
 
     convert_types.convert(cache, data)
     convert_market_group.convert(cache, data)
@@ -47,6 +49,7 @@ def convert(fsd_dir, resfileindex, out_dir, index_cache):
     convert_skills.convert(cache, data)
     convert_character.convert(cache, data)
     convert_subsystem.convert(cache, data)
+    convert_tactical_mode.convert(cache, data)
 
     for key, value in data.items():
         with open(f"{out_dir}/json/{key}.json", "w", encoding="utf-8") as fp:
@@ -56,4 +59,4 @@ def convert(fsd_dir, resfileindex, out_dir, index_cache):
             fp.write(value.SerializeToString())
 
 
-convert(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+convert(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])

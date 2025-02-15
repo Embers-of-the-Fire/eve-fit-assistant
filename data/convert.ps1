@@ -17,11 +17,12 @@ try {
     
     $index_path = Join-Path $current "resfileindex.txt"
     $index_cache = Join-Path $current "index-cache"
+    $patches = Join-Path $current "patches"
 
     $uv = Get-Command -Name "uv.exe" -ErrorAction Stop
     $convert_dir = Join-Path $current "convert"
     $convert_script = Join-Path $convert_dir "run.py"
-    & $uv run $convert_script $fsd_dir $index_path $out_dir $index_cache
+    & $uv run $convert_script $fsd_dir $index_path $patches $out_dir $index_cache
     
     Write-Host 'Executing `eve-fit-os` converters...'
     

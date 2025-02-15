@@ -14,4 +14,12 @@ extension Bool on bool {
       return null;
     }
   }
+
+  T? thenWith<T>(T? Function() init) {
+    if (this) {
+      return init();
+    } else {
+      return null;
+    }
+  }
 }

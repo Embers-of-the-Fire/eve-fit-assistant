@@ -10,6 +10,7 @@ import 'package:eve_fit_assistant/storage/static/market.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/static/slot_group.dart';
+import 'package:eve_fit_assistant/storage/static/tactical_mode.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/utils/map.dart';
 
@@ -18,6 +19,7 @@ class StaticStorage {
   late ReadonlyMap<int, MarketGroup> _marketGroups;
   late ReadonlyMap<int, Group> _groups;
   late ReadonlyMap<int, Ship> _ships;
+  late ReadonlyMap<int, TacticalModeShip> _tacticalModes;
   late StaticIcon _icons;
   late TypeSlotStorage _typeSlot;
   late ShipSubsystemStorage _subsystems;
@@ -30,6 +32,8 @@ class StaticStorage {
   ReadonlyMap<int, Group> get groups => _groups;
 
   ReadonlyMap<int, Ship> get ships => _ships;
+
+  ReadonlyMap<int, TacticalModeShip> get tacticalModes => _tacticalModes;
 
   MarketGroup get shipMarketGroup => _marketGroups[4]!;
 
@@ -64,6 +68,7 @@ class StaticStorage {
     _marketGroups = await MarketGroup.read(staticStorageDir);
     _groups = await Group.read(staticStorageDir);
     _ships = await Ship.read(staticStorageDir);
+    _tacticalModes = await TacticalModeShip.read(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);
     _subsystems = await ShipSubsystemStorage.read(staticStorageDir);

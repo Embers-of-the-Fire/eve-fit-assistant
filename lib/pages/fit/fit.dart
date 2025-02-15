@@ -16,10 +16,15 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
+
 part 'config.dart';
+
 part 'drone.dart';
+
 part 'equipment.dart';
+
 part 'fit.g.dart';
+
 part 'info.dart';
 
 void intoFitPage(BuildContext context, String fitID) {
@@ -184,16 +189,8 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
       body: TabBarView(
         controller: _tabController,
         children: [
-          CharacterTab(fitID: widget.fitID, implants: fitRef.fit.body.implant),
-          EquipmentTab(
-            fitID: widget.fitID,
-            ship: ship,
-            high: fitRef.fit.body.high,
-            med: fitRef.fit.body.med,
-            low: fitRef.fit.body.low,
-            rig: fitRef.fit.body.rig,
-            subsystem: fitRef.fit.body.subsystem,
-          ),
+          CharacterTab(fitID: widget.fitID),
+          EquipmentTab(fitID: widget.fitID, ship: ship),
           InfoTab(fitID: widget.fitID),
           DroneTab(fitID: widget.fitID),
           ConfigTab(

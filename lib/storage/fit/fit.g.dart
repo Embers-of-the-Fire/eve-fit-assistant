@@ -45,6 +45,7 @@ Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
           .map((e) =>
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      tacticalModeID: (json['tacticalModeID'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
@@ -56,6 +57,7 @@ Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
       'subsystem': instance.subsystem.map((e) => e?.toJson()).toList(),
       'drone': instance.drone.map((e) => e.toJson()).toList(),
       'implant': instance.implant.map((e) => e?.toJson()).toList(),
+      'tacticalModeID': instance.tacticalModeID,
     };
 
 _$SlotItemImpl _$$SlotItemImplFromJson(Map<String, dynamic> json) =>

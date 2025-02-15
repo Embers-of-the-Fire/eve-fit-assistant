@@ -1,6 +1,7 @@
 import 'package:eve_fit_assistant/native/port/api/schema.dart' as schema;
 import 'package:eve_fit_assistant/storage/fit/fit.dart' as local;
 import 'package:eve_fit_assistant/utils/itertools.dart';
+import 'package:eve_fit_assistant/utils/optional.dart';
 
 schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}) {
   return schema.Fit(
@@ -14,12 +15,15 @@ schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}
 
 schema.Module _intoNativeModules(local.Fit fit) {
   return schema.Module(
-    high: _intoNativeItems(fit.high),
-    medium: _intoNativeItems(fit.med),
-    low: _intoNativeItems(fit.low),
-    rig: _intoNativeItems(fit.rig),
-    subsystem: _intoNativeItems(fit.subsystem),
-  );
+      high: _intoNativeItems(fit.high),
+      medium: _intoNativeItems(fit.med),
+      low: _intoNativeItems(fit.low),
+      rig: _intoNativeItems(fit.rig),
+      subsystem: _intoNativeItems(fit.subsystem),
+      tacticalMode: fit.tacticalModeID.map((id) => _intoNativeItem(
+            item: local.SlotItem(itemID: id, chargeID: null, state: local.SlotState.active),
+            index: 0,
+          )));
 }
 
 List<schema.Item> _intoNativeItems(List<local.SlotItem?> items) {

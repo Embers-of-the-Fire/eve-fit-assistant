@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+package tactical_mode;
+
+import "i18n.proto";
+
+message ShipTacticalMode {
+    message Ship {
+        map<int32, TacticalMode> tacticalModes = 1;
+    }
+
+    message TacticalMode {
+        required i18n.I18N name = 1;
+        required int32 iconID = 2;
+    }
+
+    map<int32, Ship> ships = 1;
+}

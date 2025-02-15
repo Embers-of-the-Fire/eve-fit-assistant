@@ -8,11 +8,13 @@ import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/itertools.dart';
+import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
 part 'slot_subsystem.dart';
+part 'slot_tactical_mode.dart';
 
 extension ModulesProxyExt on ModulesProxy {
   List<ItemProxy>? getSlots(FitItemType type) {

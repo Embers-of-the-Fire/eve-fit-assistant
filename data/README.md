@@ -29,6 +29,15 @@ Official developer document: <https://developers.eveonline.com/docs/resources/>
 |--------------------|-----------------------|--------------------------------------------|
 | `resfileindex.txt` | `.`                   | `<path-to-eve-client>\tq\resfileindex.txt` |
 
+### Patches
+
+Some of the data cannot be unpacked even from the game client.
+So we have to manually create and record them.
+
+Those data is stored in the `./patches` directory and is preserved by the VCS.
+
+There's no definite rule about how each patch file means and operates.
+
 ### Cache directory
 
 - `index-cache`:

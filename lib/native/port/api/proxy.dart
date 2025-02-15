@@ -3,9 +3,8 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-
 import '../frb_generated.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `from_native`, `from_native`, `from_native`, `from_native`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`
@@ -29,7 +28,8 @@ class ItemProxy {
   });
 
   @override
-  int get hashCode => index.hashCode ^ itemId.hashCode ^ charge.hashCode ^ attributes.hashCode;
+  int get hashCode =>
+      index.hashCode ^ itemId.hashCode ^ charge.hashCode ^ attributes.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -48,6 +48,7 @@ class ModulesProxy {
   final List<ItemProxy> low;
   final List<ItemProxy> rig;
   final List<ItemProxy> subsystem;
+  final ItemProxy? tacticalMode;
 
   const ModulesProxy({
     required this.high,
@@ -55,13 +56,20 @@ class ModulesProxy {
     required this.low,
     required this.rig,
     required this.subsystem,
+    this.tacticalMode,
   });
 
-  static Future<ModulesProxy> default_() => RustLib.instance.api.crateApiProxyModulesProxyDefault();
+  static Future<ModulesProxy> default_() =>
+      RustLib.instance.api.crateApiProxyModulesProxyDefault();
 
   @override
   int get hashCode =>
-      high.hashCode ^ medium.hashCode ^ low.hashCode ^ rig.hashCode ^ subsystem.hashCode;
+      high.hashCode ^
+      medium.hashCode ^
+      low.hashCode ^
+      rig.hashCode ^
+      subsystem.hashCode ^
+      tacticalMode.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -72,7 +80,8 @@ class ModulesProxy {
           medium == other.medium &&
           low == other.low &&
           rig == other.rig &&
-          subsystem == other.subsystem;
+          subsystem == other.subsystem &&
+          tacticalMode == other.tacticalMode;
 }
 
 class ShipProxy {
@@ -89,7 +98,8 @@ class ShipProxy {
   });
 
   @override
-  int get hashCode => hull.hashCode ^ modules.hashCode ^ implants.hashCode ^ character.hashCode;
+  int get hashCode =>
+      hull.hashCode ^ modules.hashCode ^ implants.hashCode ^ character.hashCode;
 
   @override
   bool operator ==(Object other) =>

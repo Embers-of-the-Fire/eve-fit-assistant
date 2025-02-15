@@ -1,0 +1,17 @@
+## This file contains tactical modes for T3 destroyers.
+##
+## Schema:
+##
+## ```yaml
+## <ship id>:
+##   modes: [<mode id>, ...]
+## ```
+
+34828:
+  modes: [35676, 35677, 35678]
+34317:
+  modes: [34319, 34321, 34323]
+34562:
+  modes: [34564, 34566, 34570]
+35683:
+  modes: [35686, 35687, 35688]

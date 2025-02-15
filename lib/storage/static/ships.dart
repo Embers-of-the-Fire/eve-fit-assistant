@@ -31,6 +31,8 @@ class Ship {
 
   int get droneBandwidth => _raw.droneBandwidth;
 
+  bool get hasTacticalMode => _raw.hasTacticalMode;
+
   const Ship._private(this._raw);
 
   static Map<int, Ship> _fromBuffer(Uint8List buffer) {
