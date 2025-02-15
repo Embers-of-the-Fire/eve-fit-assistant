@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.8.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -952460546;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 833395624;
 
 // Section: executor
 
@@ -47,7 +47,7 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
-fn wire__crate__api__validate__ATTR_AMMO_CAP_impl(
+fn wire__crate__api__validate__pre_validate__charge__ATTR_AMMO_CAP_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -70,13 +70,14 @@ fn wire__crate__api__validate__ATTR_AMMO_CAP_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::validate::ATTR_AMMO_CAP)?;
+                let output_ok =
+                    Result::<_, ()>::Ok(crate::api::validate::pre_validate::charge::ATTR_AMMO_CAP)?;
                 Ok(output_ok)
             })())
         },
     )
 }
-fn wire__crate__api__validate__ATTR_CHARGE_SIZE_impl(
+fn wire__crate__api__validate__pre_validate__charge__ATTR_CHARGE_SIZE_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -99,13 +100,76 @@ fn wire__crate__api__validate__ATTR_CHARGE_SIZE_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::validate::ATTR_CHARGE_SIZE)?;
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::pre_validate::charge::ATTR_CHARGE_SIZE,
+                )?;
                 Ok(output_ok)
             })())
         },
     )
 }
-fn wire__crate__api__validate__ATTR_VOLUME_impl(
+fn wire__crate__api__validate__pre_validate__slot_num__ATTR_LAUNCHER_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ATTR_LAUNCHER",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::pre_validate::slot_num::ATTR_LAUNCHER,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__validate__pre_validate__slot_num__ATTR_TURRET_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ATTR_TURRET",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok =
+                    Result::<_, ()>::Ok(crate::api::validate::pre_validate::slot_num::ATTR_TURRET)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__validate__pre_validate__charge__ATTR_VOLUME_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -128,7 +192,8 @@ fn wire__crate__api__validate__ATTR_VOLUME_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::validate::ATTR_VOLUME)?;
+                let output_ok =
+                    Result::<_, ()>::Ok(crate::api::validate::pre_validate::charge::ATTR_VOLUME)?;
                 Ok(output_ok)
             })())
         },
@@ -177,6 +242,68 @@ fn wire__crate__api__proxy__AttributesProxy_get_by_id_impl(
                 let api_that_guard = api_that_guard.unwrap();
                 let output_ok = Result::<_, ()>::Ok(
                     crate::api::proxy::AttributesProxy::get_by_id(&*api_that_guard, api_key),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__validate__pre_validate__slot_num__EFFECT_LAUNCHER_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "EFFECT_LAUNCHER",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::pre_validate::slot_num::EFFECT_LAUNCHER,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__validate__pre_validate__slot_num__EFFECT_TURRET_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "EFFECT_TURRET",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::pre_validate::slot_num::EFFECT_TURRET,
                 )?;
                 Ok(output_ok)
             })())
@@ -511,6 +638,22 @@ impl SseDecode for crate::api::error::ErrorKey {
                     actual: var_actual,
                 };
             }
+            2 => {
+                let mut var_expected = <u8>::sse_decode(deserializer);
+                let mut var_actual = <u8>::sse_decode(deserializer);
+                return crate::api::error::ErrorKey::TooMuchTurret {
+                    expected: var_expected,
+                    actual: var_actual,
+                };
+            }
+            3 => {
+                let mut var_expected = <u8>::sse_decode(deserializer);
+                let mut var_actual = <u8>::sse_decode(deserializer);
+                return crate::api::error::ErrorKey::TooMuchLauncher {
+                    expected: var_expected,
+                    actual: var_actual,
+                };
+            }
             _ => {
                 unimplemented!("");
             }
@@ -807,7 +950,7 @@ impl SseDecode for crate::api::error::SlotInfo {
         match tag_ {
             0 => {
                 let mut var_slot = <crate::api::error::SlotType>::sse_decode(deserializer);
-                let mut var_index = <i32>::sse_decode(deserializer);
+                let mut var_index = <Option<i32>>::sse_decode(deserializer);
                 let mut var_errorKey = <crate::api::error::ErrorKey>::sse_decode(deserializer);
                 return crate::api::error::SlotInfo::Error {
                     slot: var_slot,
@@ -817,7 +960,7 @@ impl SseDecode for crate::api::error::SlotInfo {
             }
             1 => {
                 let mut var_slot = <crate::api::error::SlotType>::sse_decode(deserializer);
-                let mut var_index = <i32>::sse_decode(deserializer);
+                let mut var_index = <Option<i32>>::sse_decode(deserializer);
                 let mut var_warningKey = <crate::api::error::WarningKey>::sse_decode(deserializer);
                 return crate::api::error::SlotInfo::Warning {
                     slot: var_slot,
@@ -909,9 +1052,11 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        5 => wire__crate__api__data__EveDatabase_init_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__proxy__modules_proxy_default_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__data__EveDatabase_init_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        13 => {
+            wire__crate__api__proxy__modules_proxy_default_impl(port, ptr, rust_vec_len, data_len)
+        }
         _ => unreachable!(),
     }
 }
@@ -924,12 +1069,44 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__validate__ATTR_AMMO_CAP_impl(ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__validate__ATTR_CHARGE_SIZE_impl(ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__validate__ATTR_VOLUME_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__proxy__AttributesProxy_get_by_id_impl(ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__calculate_impl(ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__validate__pre_validate__charge__ATTR_AMMO_CAP_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        2 => wire__crate__api__validate__pre_validate__charge__ATTR_CHARGE_SIZE_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        3 => wire__crate__api__validate__pre_validate__slot_num__ATTR_LAUNCHER_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        4 => wire__crate__api__validate__pre_validate__slot_num__ATTR_TURRET_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        5 => wire__crate__api__validate__pre_validate__charge__ATTR_VOLUME_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        6 => wire__crate__api__proxy__AttributesProxy_get_by_id_impl(ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__validate__pre_validate__slot_num__EFFECT_LAUNCHER_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        8 => wire__crate__api__validate__pre_validate__slot_num__EFFECT_TURRET_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        10 => wire__crate__api__calculate_impl(ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1019,6 +1196,18 @@ impl flutter_rust_bridge::IntoDart for crate::api::error::ErrorKey {
             crate::api::error::ErrorKey::IncompatibleChargeCapacity { max, actual } => [
                 1.into_dart(),
                 max.into_into_dart().into_dart(),
+                actual.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ErrorKey::TooMuchTurret { expected, actual } => [
+                2.into_dart(),
+                expected.into_into_dart().into_dart(),
+                actual.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ErrorKey::TooMuchLauncher { expected, actual } => [
+                3.into_dart(),
+                expected.into_into_dart().into_dart(),
                 actual.into_into_dart().into_dart(),
             ]
             .into_dart(),
@@ -1377,6 +1566,16 @@ impl SseEncode for crate::api::error::ErrorKey {
                 <f64>::sse_encode(max, serializer);
                 <f64>::sse_encode(actual, serializer);
             }
+            crate::api::error::ErrorKey::TooMuchTurret { expected, actual } => {
+                <i32>::sse_encode(2, serializer);
+                <u8>::sse_encode(expected, serializer);
+                <u8>::sse_encode(actual, serializer);
+            }
+            crate::api::error::ErrorKey::TooMuchLauncher { expected, actual } => {
+                <i32>::sse_encode(3, serializer);
+                <u8>::sse_encode(expected, serializer);
+                <u8>::sse_encode(actual, serializer);
+            }
             _ => {
                 unimplemented!("");
             }
@@ -1610,7 +1809,7 @@ impl SseEncode for crate::api::error::SlotInfo {
             } => {
                 <i32>::sse_encode(0, serializer);
                 <crate::api::error::SlotType>::sse_encode(slot, serializer);
-                <i32>::sse_encode(index, serializer);
+                <Option<i32>>::sse_encode(index, serializer);
                 <crate::api::error::ErrorKey>::sse_encode(error_key, serializer);
             }
             crate::api::error::SlotInfo::Warning {
@@ -1620,7 +1819,7 @@ impl SseEncode for crate::api::error::SlotInfo {
             } => {
                 <i32>::sse_encode(1, serializer);
                 <crate::api::error::SlotType>::sse_encode(slot, serializer);
-                <i32>::sse_encode(index, serializer);
+                <Option<i32>>::sse_encode(index, serializer);
                 <crate::api::error::WarningKey>::sse_encode(warning_key, serializer);
             }
             _ => {

@@ -22,6 +22,14 @@ sealed class ErrorKey with _$ErrorKey {
     required double max,
     required double actual,
   }) = ErrorKey_IncompatibleChargeCapacity;
+  const factory ErrorKey.tooMuchTurret({
+    required int expected,
+    required int actual,
+  }) = ErrorKey_TooMuchTurret;
+  const factory ErrorKey.tooMuchLauncher({
+    required int expected,
+    required int actual,
+  }) = ErrorKey_TooMuchLauncher;
 }
 
 @freezed
@@ -30,12 +38,12 @@ sealed class SlotInfo with _$SlotInfo {
 
   const factory SlotInfo.error({
     required SlotType slot,
-    required int index,
+    int? index,
     required ErrorKey errorKey,
   }) = SlotInfo_Error;
   const factory SlotInfo.warning({
     required SlotType slot,
-    required int index,
+    int? index,
     required WarningKey warningKey,
   }) = SlotInfo_Warning;
 }

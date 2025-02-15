@@ -16,15 +16,10 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
-
 part 'config.dart';
-
 part 'drone.dart';
-
 part 'equipment.dart';
-
 part 'fit.g.dart';
-
 part 'info.dart';
 
 void intoFitPage(BuildContext context, String fitID) {

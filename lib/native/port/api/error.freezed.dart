@@ -22,18 +22,24 @@ mixin _$ErrorKey {
     required TResult Function(int expected, int actual) incompatibleChargeSize,
     required TResult Function(double max, double actual)
         incompatibleChargeCapacity,
+    required TResult Function(int expected, int actual) tooMuchTurret,
+    required TResult Function(int expected, int actual) tooMuchLauncher,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(int expected, int actual)? incompatibleChargeSize,
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult? Function(int expected, int actual)? tooMuchTurret,
+    TResult? Function(int expected, int actual)? tooMuchLauncher,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(int expected, int actual)? incompatibleChargeSize,
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult Function(int expected, int actual)? tooMuchTurret,
+    TResult Function(int expected, int actual)? tooMuchLauncher,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -43,6 +49,8 @@ mixin _$ErrorKey {
         incompatibleChargeSize,
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
         incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
+    required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -51,6 +59,8 @@ mixin _$ErrorKey {
         incompatibleChargeSize,
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
         incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -59,6 +69,8 @@ mixin _$ErrorKey {
         incompatibleChargeSize,
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
         incompatibleChargeCapacity,
+    TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -171,6 +183,8 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
     required TResult Function(int expected, int actual) incompatibleChargeSize,
     required TResult Function(double max, double actual)
         incompatibleChargeCapacity,
+    required TResult Function(int expected, int actual) tooMuchTurret,
+    required TResult Function(int expected, int actual) tooMuchLauncher,
   }) {
     return incompatibleChargeSize(expected, actual);
   }
@@ -180,6 +194,8 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(int expected, int actual)? incompatibleChargeSize,
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult? Function(int expected, int actual)? tooMuchTurret,
+    TResult? Function(int expected, int actual)? tooMuchLauncher,
   }) {
     return incompatibleChargeSize?.call(expected, actual);
   }
@@ -189,6 +205,8 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(int expected, int actual)? incompatibleChargeSize,
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult Function(int expected, int actual)? tooMuchTurret,
+    TResult Function(int expected, int actual)? tooMuchLauncher,
     required TResult orElse(),
   }) {
     if (incompatibleChargeSize != null) {
@@ -204,6 +222,8 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
         incompatibleChargeSize,
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
         incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
+    required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
   }) {
     return incompatibleChargeSize(this);
   }
@@ -215,6 +235,8 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
         incompatibleChargeSize,
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
         incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
   }) {
     return incompatibleChargeSize?.call(this);
   }
@@ -226,6 +248,8 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
         incompatibleChargeSize,
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
         incompatibleChargeCapacity,
+    TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
     required TResult orElse(),
   }) {
     if (incompatibleChargeSize != null) {
@@ -340,6 +364,8 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
     required TResult Function(int expected, int actual) incompatibleChargeSize,
     required TResult Function(double max, double actual)
         incompatibleChargeCapacity,
+    required TResult Function(int expected, int actual) tooMuchTurret,
+    required TResult Function(int expected, int actual) tooMuchLauncher,
   }) {
     return incompatibleChargeCapacity(max, actual);
   }
@@ -349,6 +375,8 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(int expected, int actual)? incompatibleChargeSize,
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult? Function(int expected, int actual)? tooMuchTurret,
+    TResult? Function(int expected, int actual)? tooMuchLauncher,
   }) {
     return incompatibleChargeCapacity?.call(max, actual);
   }
@@ -358,6 +386,8 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(int expected, int actual)? incompatibleChargeSize,
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult Function(int expected, int actual)? tooMuchTurret,
+    TResult Function(int expected, int actual)? tooMuchLauncher,
     required TResult orElse(),
   }) {
     if (incompatibleChargeCapacity != null) {
@@ -373,6 +403,8 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
         incompatibleChargeSize,
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
         incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
+    required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
   }) {
     return incompatibleChargeCapacity(this);
   }
@@ -384,6 +416,8 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
         incompatibleChargeSize,
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
         incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
   }) {
     return incompatibleChargeCapacity?.call(this);
   }
@@ -395,6 +429,8 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
         incompatibleChargeSize,
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
         incompatibleChargeCapacity,
+    TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
     required TResult orElse(),
   }) {
     if (incompatibleChargeCapacity != null) {
@@ -423,27 +459,384 @@ abstract class ErrorKey_IncompatibleChargeCapacity extends ErrorKey {
 }
 
 /// @nodoc
-mixin _$SlotInfo {
-  SlotType get slot => throw _privateConstructorUsedError;
-  int get index => throw _privateConstructorUsedError;
+abstract class _$$ErrorKey_TooMuchTurretImplCopyWith<$Res> {
+  factory _$$ErrorKey_TooMuchTurretImplCopyWith(
+          _$ErrorKey_TooMuchTurretImpl value,
+          $Res Function(_$ErrorKey_TooMuchTurretImpl) then) =
+      __$$ErrorKey_TooMuchTurretImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({int expected, int actual});
+}
+
+/// @nodoc
+class __$$ErrorKey_TooMuchTurretImplCopyWithImpl<$Res>
+    extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_TooMuchTurretImpl>
+    implements _$$ErrorKey_TooMuchTurretImplCopyWith<$Res> {
+  __$$ErrorKey_TooMuchTurretImplCopyWithImpl(
+      _$ErrorKey_TooMuchTurretImpl _value,
+      $Res Function(_$ErrorKey_TooMuchTurretImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? expected = null,
+    Object? actual = null,
+  }) {
+    return _then(_$ErrorKey_TooMuchTurretImpl(
+      expected: null == expected
+          ? _value.expected
+          : expected // ignore: cast_nullable_to_non_nullable
+              as int,
+      actual: null == actual
+          ? _value.actual
+          : actual // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
+  const _$ErrorKey_TooMuchTurretImpl(
+      {required this.expected, required this.actual})
+      : super._();
+
+  @override
+  final int expected;
+  @override
+  final int actual;
+
+  @override
+  String toString() {
+    return 'ErrorKey.tooMuchTurret(expected: $expected, actual: $actual)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ErrorKey_TooMuchTurretImpl &&
+            (identical(other.expected, expected) ||
+                other.expected == expected) &&
+            (identical(other.actual, actual) || other.actual == actual));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, expected, actual);
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ErrorKey_TooMuchTurretImplCopyWith<_$ErrorKey_TooMuchTurretImpl>
+      get copyWith => __$$ErrorKey_TooMuchTurretImplCopyWithImpl<
+          _$ErrorKey_TooMuchTurretImpl>(this, _$identity);
+
+  @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(SlotType slot, int index, ErrorKey errorKey)
+    required TResult Function(int expected, int actual) incompatibleChargeSize,
+    required TResult Function(double max, double actual)
+        incompatibleChargeCapacity,
+    required TResult Function(int expected, int actual) tooMuchTurret,
+    required TResult Function(int expected, int actual) tooMuchLauncher,
+  }) {
+    return tooMuchTurret(expected, actual);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(int expected, int actual)? incompatibleChargeSize,
+    TResult? Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult? Function(int expected, int actual)? tooMuchTurret,
+    TResult? Function(int expected, int actual)? tooMuchLauncher,
+  }) {
+    return tooMuchTurret?.call(expected, actual);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(int expected, int actual)? incompatibleChargeSize,
+    TResult Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult Function(int expected, int actual)? tooMuchTurret,
+    TResult Function(int expected, int actual)? tooMuchLauncher,
+    required TResult orElse(),
+  }) {
+    if (tooMuchTurret != null) {
+      return tooMuchTurret(expected, actual);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ErrorKey_IncompatibleChargeSize value)
+        incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
+        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
+    required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+  }) {
+    return tooMuchTurret(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
+        incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
+        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+  }) {
+    return tooMuchTurret?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ErrorKey_IncompatibleChargeSize value)?
+        incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
+        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    required TResult orElse(),
+  }) {
+    if (tooMuchTurret != null) {
+      return tooMuchTurret(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ErrorKey_TooMuchTurret extends ErrorKey {
+  const factory ErrorKey_TooMuchTurret(
+      {required final int expected,
+      required final int actual}) = _$ErrorKey_TooMuchTurretImpl;
+  const ErrorKey_TooMuchTurret._() : super._();
+
+  int get expected;
+  @override
+  int get actual;
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ErrorKey_TooMuchTurretImplCopyWith<_$ErrorKey_TooMuchTurretImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ErrorKey_TooMuchLauncherImplCopyWith<$Res> {
+  factory _$$ErrorKey_TooMuchLauncherImplCopyWith(
+          _$ErrorKey_TooMuchLauncherImpl value,
+          $Res Function(_$ErrorKey_TooMuchLauncherImpl) then) =
+      __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({int expected, int actual});
+}
+
+/// @nodoc
+class __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<$Res>
+    extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_TooMuchLauncherImpl>
+    implements _$$ErrorKey_TooMuchLauncherImplCopyWith<$Res> {
+  __$$ErrorKey_TooMuchLauncherImplCopyWithImpl(
+      _$ErrorKey_TooMuchLauncherImpl _value,
+      $Res Function(_$ErrorKey_TooMuchLauncherImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? expected = null,
+    Object? actual = null,
+  }) {
+    return _then(_$ErrorKey_TooMuchLauncherImpl(
+      expected: null == expected
+          ? _value.expected
+          : expected // ignore: cast_nullable_to_non_nullable
+              as int,
+      actual: null == actual
+          ? _value.actual
+          : actual // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
+  const _$ErrorKey_TooMuchLauncherImpl(
+      {required this.expected, required this.actual})
+      : super._();
+
+  @override
+  final int expected;
+  @override
+  final int actual;
+
+  @override
+  String toString() {
+    return 'ErrorKey.tooMuchLauncher(expected: $expected, actual: $actual)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ErrorKey_TooMuchLauncherImpl &&
+            (identical(other.expected, expected) ||
+                other.expected == expected) &&
+            (identical(other.actual, actual) || other.actual == actual));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, expected, actual);
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ErrorKey_TooMuchLauncherImplCopyWith<_$ErrorKey_TooMuchLauncherImpl>
+      get copyWith => __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<
+          _$ErrorKey_TooMuchLauncherImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(int expected, int actual) incompatibleChargeSize,
+    required TResult Function(double max, double actual)
+        incompatibleChargeCapacity,
+    required TResult Function(int expected, int actual) tooMuchTurret,
+    required TResult Function(int expected, int actual) tooMuchLauncher,
+  }) {
+    return tooMuchLauncher(expected, actual);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(int expected, int actual)? incompatibleChargeSize,
+    TResult? Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult? Function(int expected, int actual)? tooMuchTurret,
+    TResult? Function(int expected, int actual)? tooMuchLauncher,
+  }) {
+    return tooMuchLauncher?.call(expected, actual);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(int expected, int actual)? incompatibleChargeSize,
+    TResult Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult Function(int expected, int actual)? tooMuchTurret,
+    TResult Function(int expected, int actual)? tooMuchLauncher,
+    required TResult orElse(),
+  }) {
+    if (tooMuchLauncher != null) {
+      return tooMuchLauncher(expected, actual);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ErrorKey_IncompatibleChargeSize value)
+        incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
+        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
+    required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+  }) {
+    return tooMuchLauncher(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
+        incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
+        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+  }) {
+    return tooMuchLauncher?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ErrorKey_IncompatibleChargeSize value)?
+        incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
+        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    required TResult orElse(),
+  }) {
+    if (tooMuchLauncher != null) {
+      return tooMuchLauncher(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ErrorKey_TooMuchLauncher extends ErrorKey {
+  const factory ErrorKey_TooMuchLauncher(
+      {required final int expected,
+      required final int actual}) = _$ErrorKey_TooMuchLauncherImpl;
+  const ErrorKey_TooMuchLauncher._() : super._();
+
+  int get expected;
+  @override
+  int get actual;
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ErrorKey_TooMuchLauncherImplCopyWith<_$ErrorKey_TooMuchLauncherImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+mixin _$SlotInfo {
+  SlotType get slot => throw _privateConstructorUsedError;
+  int? get index => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(SlotType slot, int? index, ErrorKey errorKey)
         error,
-    required TResult Function(SlotType slot, int index, WarningKey warningKey)
+    required TResult Function(SlotType slot, int? index, WarningKey warningKey)
         warning,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(SlotType slot, int index, ErrorKey errorKey)? error,
-    TResult? Function(SlotType slot, int index, WarningKey warningKey)? warning,
+    TResult? Function(SlotType slot, int? index, ErrorKey errorKey)? error,
+    TResult? Function(SlotType slot, int? index, WarningKey warningKey)?
+        warning,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(SlotType slot, int index, ErrorKey errorKey)? error,
-    TResult Function(SlotType slot, int index, WarningKey warningKey)? warning,
+    TResult Function(SlotType slot, int? index, ErrorKey errorKey)? error,
+    TResult Function(SlotType slot, int? index, WarningKey warningKey)? warning,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -479,7 +872,7 @@ abstract class $SlotInfoCopyWith<$Res> {
   factory $SlotInfoCopyWith(SlotInfo value, $Res Function(SlotInfo) then) =
       _$SlotInfoCopyWithImpl<$Res, SlotInfo>;
   @useResult
-  $Res call({SlotType slot, int index});
+  $Res call({SlotType slot, int? index});
 }
 
 /// @nodoc
@@ -498,17 +891,17 @@ class _$SlotInfoCopyWithImpl<$Res, $Val extends SlotInfo>
   @override
   $Res call({
     Object? slot = null,
-    Object? index = null,
+    Object? index = freezed,
   }) {
     return _then(_value.copyWith(
       slot: null == slot
           ? _value.slot
           : slot // ignore: cast_nullable_to_non_nullable
               as SlotType,
-      index: null == index
+      index: freezed == index
           ? _value.index
           : index // ignore: cast_nullable_to_non_nullable
-              as int,
+              as int?,
     ) as $Val);
   }
 }
@@ -521,7 +914,7 @@ abstract class _$$SlotInfo_ErrorImplCopyWith<$Res>
       __$$SlotInfo_ErrorImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({SlotType slot, int index, ErrorKey errorKey});
+  $Res call({SlotType slot, int? index, ErrorKey errorKey});
 
   $ErrorKeyCopyWith<$Res> get errorKey;
 }
@@ -540,7 +933,7 @@ class __$$SlotInfo_ErrorImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? slot = null,
-    Object? index = null,
+    Object? index = freezed,
     Object? errorKey = null,
   }) {
     return _then(_$SlotInfo_ErrorImpl(
@@ -548,10 +941,10 @@ class __$$SlotInfo_ErrorImplCopyWithImpl<$Res>
           ? _value.slot
           : slot // ignore: cast_nullable_to_non_nullable
               as SlotType,
-      index: null == index
+      index: freezed == index
           ? _value.index
           : index // ignore: cast_nullable_to_non_nullable
-              as int,
+              as int?,
       errorKey: null == errorKey
           ? _value.errorKey
           : errorKey // ignore: cast_nullable_to_non_nullable
@@ -574,13 +967,13 @@ class __$$SlotInfo_ErrorImplCopyWithImpl<$Res>
 
 class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
   const _$SlotInfo_ErrorImpl(
-      {required this.slot, required this.index, required this.errorKey})
+      {required this.slot, this.index, required this.errorKey})
       : super._();
 
   @override
   final SlotType slot;
   @override
-  final int index;
+  final int? index;
   @override
   final ErrorKey errorKey;
 
@@ -615,9 +1008,9 @@ class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(SlotType slot, int index, ErrorKey errorKey)
+    required TResult Function(SlotType slot, int? index, ErrorKey errorKey)
         error,
-    required TResult Function(SlotType slot, int index, WarningKey warningKey)
+    required TResult Function(SlotType slot, int? index, WarningKey warningKey)
         warning,
   }) {
     return error(slot, index, errorKey);
@@ -626,8 +1019,9 @@ class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(SlotType slot, int index, ErrorKey errorKey)? error,
-    TResult? Function(SlotType slot, int index, WarningKey warningKey)? warning,
+    TResult? Function(SlotType slot, int? index, ErrorKey errorKey)? error,
+    TResult? Function(SlotType slot, int? index, WarningKey warningKey)?
+        warning,
   }) {
     return error?.call(slot, index, errorKey);
   }
@@ -635,8 +1029,8 @@ class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(SlotType slot, int index, ErrorKey errorKey)? error,
-    TResult Function(SlotType slot, int index, WarningKey warningKey)? warning,
+    TResult Function(SlotType slot, int? index, ErrorKey errorKey)? error,
+    TResult Function(SlotType slot, int? index, WarningKey warningKey)? warning,
     required TResult orElse(),
   }) {
     if (error != null) {
@@ -680,14 +1074,14 @@ class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
 abstract class SlotInfo_Error extends SlotInfo {
   const factory SlotInfo_Error(
       {required final SlotType slot,
-      required final int index,
+      final int? index,
       required final ErrorKey errorKey}) = _$SlotInfo_ErrorImpl;
   const SlotInfo_Error._() : super._();
 
   @override
   SlotType get slot;
   @override
-  int get index;
+  int? get index;
   ErrorKey get errorKey;
 
   /// Create a copy of SlotInfo
@@ -706,7 +1100,7 @@ abstract class _$$SlotInfo_WarningImplCopyWith<$Res>
       __$$SlotInfo_WarningImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({SlotType slot, int index, WarningKey warningKey});
+  $Res call({SlotType slot, int? index, WarningKey warningKey});
 }
 
 /// @nodoc
@@ -723,7 +1117,7 @@ class __$$SlotInfo_WarningImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? slot = null,
-    Object? index = null,
+    Object? index = freezed,
     Object? warningKey = null,
   }) {
     return _then(_$SlotInfo_WarningImpl(
@@ -731,10 +1125,10 @@ class __$$SlotInfo_WarningImplCopyWithImpl<$Res>
           ? _value.slot
           : slot // ignore: cast_nullable_to_non_nullable
               as SlotType,
-      index: null == index
+      index: freezed == index
           ? _value.index
           : index // ignore: cast_nullable_to_non_nullable
-              as int,
+              as int?,
       warningKey: null == warningKey
           ? _value.warningKey
           : warningKey // ignore: cast_nullable_to_non_nullable
@@ -747,13 +1141,13 @@ class __$$SlotInfo_WarningImplCopyWithImpl<$Res>
 
 class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
   const _$SlotInfo_WarningImpl(
-      {required this.slot, required this.index, required this.warningKey})
+      {required this.slot, this.index, required this.warningKey})
       : super._();
 
   @override
   final SlotType slot;
   @override
-  final int index;
+  final int? index;
   @override
   final WarningKey warningKey;
 
@@ -788,9 +1182,9 @@ class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(SlotType slot, int index, ErrorKey errorKey)
+    required TResult Function(SlotType slot, int? index, ErrorKey errorKey)
         error,
-    required TResult Function(SlotType slot, int index, WarningKey warningKey)
+    required TResult Function(SlotType slot, int? index, WarningKey warningKey)
         warning,
   }) {
     return warning(slot, index, warningKey);
@@ -799,8 +1193,9 @@ class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(SlotType slot, int index, ErrorKey errorKey)? error,
-    TResult? Function(SlotType slot, int index, WarningKey warningKey)? warning,
+    TResult? Function(SlotType slot, int? index, ErrorKey errorKey)? error,
+    TResult? Function(SlotType slot, int? index, WarningKey warningKey)?
+        warning,
   }) {
     return warning?.call(slot, index, warningKey);
   }
@@ -808,8 +1203,8 @@ class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(SlotType slot, int index, ErrorKey errorKey)? error,
-    TResult Function(SlotType slot, int index, WarningKey warningKey)? warning,
+    TResult Function(SlotType slot, int? index, ErrorKey errorKey)? error,
+    TResult Function(SlotType slot, int? index, WarningKey warningKey)? warning,
     required TResult orElse(),
   }) {
     if (warning != null) {
@@ -853,14 +1248,14 @@ class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
 abstract class SlotInfo_Warning extends SlotInfo {
   const factory SlotInfo_Warning(
       {required final SlotType slot,
-      required final int index,
+      final int? index,
       required final WarningKey warningKey}) = _$SlotInfo_WarningImpl;
   const SlotInfo_Warning._() : super._();
 
   @override
   SlotType get slot;
   @override
-  int get index;
+  int? get index;
   WarningKey get warningKey;
 
   /// Create a copy of SlotInfo

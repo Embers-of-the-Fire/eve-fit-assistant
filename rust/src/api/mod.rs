@@ -15,7 +15,7 @@ pub struct CalculateOutput {
 
 #[flutter_rust_bridge::frb(sync)]
 pub fn calculate(db: &EveDatabase, fit: schema::Fit) -> CalculateOutput {
-    let err = validate::validate(&fit, &db.inner);
+    let err = validate::pre_validate(&fit, &db.inner);
     let ship = data::calculate(db, fit);
     CalculateOutput { ship, errors: err }
 }
