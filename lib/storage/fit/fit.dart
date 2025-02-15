@@ -6,6 +6,7 @@ import 'package:eve_fit_assistant/native/port/api/error.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
+import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -100,6 +101,43 @@ class FitRecord {
     body.drone.clear();
   }
 
+  void addSubsystem(SubsystemType type, int typeID) {
+    body.subsystem[type.value] = SlotItem(itemID: typeID, chargeID: null, state: SlotState.online);
+    _postSubsystemModify();
+  }
+
+  void removeSubsystem(SubsystemType type) {
+    body.subsystem[type.value] = null;
+    _postSubsystemModify();
+  }
+
+  void _postSubsystemModify() {
+    int high = 0;
+    int med = 0;
+    int low = 0;
+    for (final subsystem in body.subsystem) {
+      if (subsystem == null) continue;
+
+      final type = GlobalStorage().static.subsystems.items[subsystem.itemID];
+      if (type == null) continue;
+      high += type.high;
+      med += type.medium;
+      low += type.low;
+    }
+
+    void modifySlot(List<SlotItem?> slot, int targetLength) {
+      if (slot.length < targetLength) {
+        slot.addAll(List.filled(targetLength - slot.length, null));
+      } else if (slot.length > targetLength) {
+        slot.removeRange(targetLength, slot.length);
+      }
+    }
+
+    modifySlot(body.high, high);
+    modifySlot(body.med, med);
+    modifySlot(body.low, low);
+  }
+
   Future<void> save() async {
     final fullRecordDir = await getFullRecordDir(create: true);
     final file = File('${fullRecordDir.path}/${brief.id}.json');
@@ -166,7 +204,7 @@ class Fit {
       med: List.filled(ship?.medSlotNum ?? 0, null, growable: true),
       low: List.filled(ship?.lowSlotNum ?? 0, null, growable: true),
       rig: List.filled(ship?.rigSlotNum ?? 0, null),
-      subsystem: List.filled(ship?.subsystemSlotNum ?? 0, null),
+      subsystem: List.filled((ship?.hasSubsystem ?? false) ? 4 : 0, null),
       drone: List.empty(growable: true),
       implant: List.filled(10, null),
     );

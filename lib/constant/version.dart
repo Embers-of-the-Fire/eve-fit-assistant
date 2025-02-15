@@ -22,8 +22,6 @@ class Version {
   }
 }
 
-const Version appVersion = Version(major: 0, minor: 1, patch: 0, appendix: 'alpha');
-
 const Version flutterVersion = Version(major: 3, minor: 27, patch: 3);
 
 const Version dartVersion = Version(major: 3, minor: 6, patch: 1);

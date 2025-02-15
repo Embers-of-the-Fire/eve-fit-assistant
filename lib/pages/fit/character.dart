@@ -18,13 +18,7 @@ class CharacterTab extends StatelessWidget {
           ...implants.enumerate().map((t) {
             final index = t.$1;
             final el = t.$2;
-            return getSlotRow(
-              fitID,
-              el,
-              type: FitItemType.implant,
-              index: index,
-              slotType: FitItemType.implant,
-            );
+            return getSlotRow(fitID, el, type: FitItemType.implant, index: index);
           })
         ],
       ),

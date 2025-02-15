@@ -34,7 +34,7 @@ def convert(cache: ConvertCache, external: dict):
         data.entries[id].medSlotNum = int(dogma_map.get(13, 0))
         data.entries[id].lowSlotNum = int(dogma_map.get(12, 0))
         data.entries[id].rigSlotNum = int(dogma_map.get(1137, 0))
-        data.entries[id].subsystemSlotNum = int(dogma_map.get(1367, 0))
+        data.entries[id].hasSubsystem = int(dogma_map.get(1367, 0)) > 0
         data.entries[id].turretSlotNum = int(dogma_map.get(102, 0))
         data.entries[id].launcherSlotNum = int(dogma_map.get(101, 0))
         data.entries[id].droneBandwidth = int(dogma_map.get(1271, 0))

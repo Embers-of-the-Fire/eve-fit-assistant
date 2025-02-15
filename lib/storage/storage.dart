@@ -7,6 +7,7 @@ import 'package:eve_fit_assistant/storage/version.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 part 'storage.g.dart';
 
@@ -34,6 +35,8 @@ class GlobalStorage {
   final CharacterStorage _character = CharacterStorage();
   late final FitEngine _fitEngine;
   late VersionInfo _version;
+  late PackageInfo _packageInfo;
+
   bool _initialized = false;
   bool _initializing = false;
 
@@ -47,6 +50,8 @@ class GlobalStorage {
 
   VersionInfo get version => _version;
 
+  PackageInfo get packageInfo => _packageInfo;
+
   Future<void> init(WidgetRef ref) async {
     if (_initialized || _initializing) {
       return;
@@ -56,6 +61,7 @@ class GlobalStorage {
     EasyLoading.show(status: '初始化');
     final version = await getVersionInfo();
     _version = await executeMigrate(version);
+    _packageInfo = await PackageInfo.fromPlatform();
     await _static.init(autoDismiss: false);
     await _ship.init();
     await _character.init();

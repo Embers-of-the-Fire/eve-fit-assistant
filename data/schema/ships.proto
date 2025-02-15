@@ -13,7 +13,7 @@ message Ships {
         required int32 medSlotNum = 5;
         required int32 lowSlotNum = 6;
         required int32 rigSlotNum = 7;
-        required int32 subsystemSlotNum = 8;
+        required bool hasSubsystem = 8;
         required int32 turretSlotNum = 9;
         required int32 launcherSlotNum = 10;
         required int32 droneBandwidth = 11;

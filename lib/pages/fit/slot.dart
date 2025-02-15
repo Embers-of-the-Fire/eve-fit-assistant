@@ -5,11 +5,14 @@ import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/fit.dart';
 import 'package:eve_fit_assistant/pages/fit/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
+import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/itertools.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+
+part 'slot_subsystem.dart';
 
 extension ModulesProxyExt on ModulesProxy {
   List<ItemProxy>? getSlots(FitItemType type) {
@@ -35,8 +38,16 @@ Widget getSlotRow(
   SlotItem? item, {
   required FitItemType type,
   required int index,
-  required FitItemType slotType,
 }) {
+  if (type == FitItemType.subsystem) {
+    final subType = SubsystemType.values[index];
+    if (item == null) {
+      return SubsystemSlotRowPlaceholder(fitID: fitID, type: subType);
+    } else {
+      return SubsystemSlotRow(fitID: fitID, typeID: item.itemID, type: subType);
+    }
+  }
+
   if (item == null) {
     return SlotRowPlaceholder(fitID: fitID, type: type, index: index);
   }
@@ -44,7 +55,7 @@ Widget getSlotRow(
     fitID: fitID,
     typeID: item.itemID,
     state: item.state,
-    maxState: GlobalStorage().static.typeSlot[slotType][item.itemID]?.maxState ?? SlotState.passive,
+    maxState: GlobalStorage().static.typeSlot[type][item.itemID]?.maxState ?? SlotState.passive,
     type: type,
     index: index,
     chargeID: item.chargeID,
@@ -321,8 +332,6 @@ class SlotRowPlaceholder extends ConsumerWidget {
           FitItemType.med => const Image(image: mediumPlaceholderImage, width: 30, height: 30),
           FitItemType.low => const Image(image: lowPlaceholderImage, width: 30, height: 30),
           FitItemType.rig => const Image(image: rigPlaceholderImage, width: 30, height: 30),
-          FitItemType.subsystem =>
-            const Image(image: subsystemPlaceholderImage, width: 30, height: 30),
           _ => const Icon(Icons.add_circle_outline)
         },
       ),

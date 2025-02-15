@@ -23,7 +23,7 @@ class Ship {
 
   int get rigSlotNum => _raw.rigSlotNum;
 
-  int get subsystemSlotNum => _raw.subsystemSlotNum;
+  bool get hasSubsystem => _raw.hasSubsystem;
 
   int get turretSlotNum => _raw.turretSlotNum;
 

@@ -1,4 +1,5 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
+import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:flutter/material.dart';
 
 class InfoPage extends StatelessWidget {
@@ -33,7 +34,7 @@ class InfoPage extends StatelessWidget {
                   Expanded(
                       child: Align(
                     alignment: Alignment.centerRight,
-                    child: Text(appVersion.stringify()),
+                    child: Text(GlobalStorage().packageInfo.version),
                   )),
                 ]),
               ),

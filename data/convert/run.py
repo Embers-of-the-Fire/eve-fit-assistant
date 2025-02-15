@@ -13,6 +13,7 @@ import convert_type_slots
 import convert_groups
 import convert_skills
 import convert_character
+import convert_subsystem
 
 if not __name__ == "__main__":
     exit(0)
@@ -45,6 +46,7 @@ def convert(fsd_dir, resfileindex, out_dir, index_cache):
     convert_groups.convert(cache, data)
     convert_skills.convert(cache, data)
     convert_character.convert(cache, data)
+    convert_subsystem.convert(cache, data)
 
     for key, value in data.items():
         with open(f"{out_dir}/json/{key}.json", "w", encoding="utf-8") as fp:

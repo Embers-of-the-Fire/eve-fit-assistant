@@ -7,6 +7,7 @@ import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/static/groups.dart';
 import 'package:eve_fit_assistant/storage/static/icon.dart';
 import 'package:eve_fit_assistant/storage/static/market.dart';
+import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/static/slot_group.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
@@ -19,6 +20,7 @@ class StaticStorage {
   late ReadonlyMap<int, Ship> _ships;
   late StaticIcon _icons;
   late TypeSlotStorage _typeSlot;
+  late ShipSubsystemStorage _subsystems;
   late StaticVersionInfo? _version;
 
   ReadonlyMap<int, TypeAbbr> get typesAbbr => _typesAbbr;
@@ -34,6 +36,8 @@ class StaticStorage {
   StaticIcon get icons => _icons;
 
   TypeSlotStorage get typeSlot => _typeSlot;
+
+  ShipSubsystemStorage get subsystems => _subsystems;
 
   StaticVersionInfo? get version => _version;
 
@@ -62,11 +66,12 @@ class StaticStorage {
     _ships = await Ship.read(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);
+    _subsystems = await ShipSubsystemStorage.read(staticStorageDir);
     _version = await StaticVersionInfo.read();
 
     final end = DateTime.now();
     dev.log(
-      'StaticStorage.init done in ${start.difference(end).inSeconds}s',
+      'StaticStorage.init done in ${end.difference(start).inSeconds}s',
       name: 'storage',
       time: end,
     );

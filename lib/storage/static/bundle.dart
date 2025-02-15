@@ -27,7 +27,7 @@ Future<void> unpackBundledStorage({
 
   final end = DateTime.now();
   dev.log(
-    'unpackBundledStorage done in ${start.difference(end).inSeconds}s',
+    'unpackBundledStorage done in ${end.difference(start).inSeconds}s',
     name: 'storage',
     time: end,
   );

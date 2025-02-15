@@ -132,3 +132,23 @@ class _ChainIterator<T> implements Iterator<T> {
     return false;
   }
 }
+
+extension ItertoolInt on Iterable<int> {
+  int sum() {
+    var sum = 0;
+    for (final e in this) {
+      sum += e;
+    }
+    return sum;
+  }
+}
+
+extension ItertoolDouble on Iterable<double> {
+  double sum() {
+    var sum = 0.0;
+    for (final e in this) {
+      sum += e;
+    }
+    return sum;
+  }
+}

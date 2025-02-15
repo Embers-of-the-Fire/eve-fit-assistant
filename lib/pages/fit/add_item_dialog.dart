@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
+import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/item_list.dart';
 import 'package:flutter/material.dart';
@@ -72,6 +73,29 @@ Future<int?> showAddItemDialog(
   };
 
   return await _showAddItemDialogImpl(context, dialogMetadataMap[type]!);
+}
+
+Future<int?> showAddSubsystemDialog(
+  BuildContext context, {
+  required int shipID,
+  required SubsystemType type,
+}) async {
+  final subShip = GlobalStorage().static.subsystems.ships[shipID];
+  final marketGroupID = subShip?.getMarketID(type) ?? 1112;
+  final groupName = GlobalStorage().static.marketGroups[marketGroupID]?.nameZH ?? '子系统';
+  final metadata = _DialogMetadata(
+    title: '添加子系统',
+    baseName: groupName,
+    fallbackGroupID: marketGroupID,
+    predicate: (int itemID) {
+      final ship = GlobalStorage().static.subsystems.ships[shipID];
+      if (ship == null) return false;
+      final subsystem = ship[type];
+      return subsystem.contains(itemID);
+    },
+  );
+
+  return await _showAddItemDialogImpl(context, metadata);
 }
 
 Future<int?> showAddChargeDialog(

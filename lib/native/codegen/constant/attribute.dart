@@ -198,6 +198,10 @@ const int scanStrength = -53;
 /// - High is good: True
 const int thousand = -54;
 
+/// - Name: upgradeUsed
+/// - High is good: True
+const int upgradeUsed = -55;
+
 /// - Name: capacitorPeakDeltaPercentage
 /// - High is good: True
 const int capacitorPeakDeltaPercentage = -6;

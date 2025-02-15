@@ -73,4 +73,13 @@ const AssetImage lowPlaceholderImage = AssetImage('assets/icon/low-placeholder.p
 
 const AssetImage rigPlaceholderImage = AssetImage('assets/icon/rig-placeholder.png');
 
-const AssetImage subsystemPlaceholderImage = AssetImage('assets/icon/subsystem-placeholder.png');
+const AssetImage subsystemOffensivePlaceholderImage =
+    AssetImage('assets/icon/subsystem-offensive-placeholder.png');
+
+const AssetImage subsystemDefensivePlaceholderImage =
+    AssetImage('assets/icon/subsystem-defensive-placeholder.png');
+
+const AssetImage subsystemCorePlaceholderImage = AssetImage('assets/icon/subsystem-core-placeholder.png');
+
+const AssetImage subsystemPropulsionPlaceholderImage =
+    AssetImage('assets/icon/subsystem-propulsion-placeholder.png');

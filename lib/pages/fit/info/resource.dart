@@ -51,7 +51,7 @@ class Resource extends StatelessWidget {
               const Image(image: rigImage, height: 28),
               ResourceCompare(
                 alignment: MainAxisAlignment.end,
-                used: ship.hull.attributes.getById(key: upgradeLoad) ?? 0.0,
+                used: ship.hull.attributes.getById(key: upgradeUsed) ?? 0.0,
                 all: ship.hull.attributes.getById(key: upgradeCapacity) ?? 0.0,
                 warning: false,
               ),

@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+package subsystem;
+
+import "i18n.proto";
+
+message ShipSubsystem {
+    /// all subsystems
+    message Ship {
+        repeated int32 offensive = 1;
+        required int32 offensiveMarket = 2;
+        repeated int32 propulsion = 3;
+        required int32 propulsionMarket = 4;
+        repeated int32 core = 5;
+        required int32 coreMarket = 6;
+        repeated int32 defensive = 7;
+        required int32 defensiveMarket = 8;
+    }
+
+    message Subsystem {
+        required i18n.I18N name = 1;
+        optional int32 high = 2;
+        optional int32 medium = 3;
+        optional int32 low = 4;
+
+        optional int32 turret = 5;
+        optional int32 launcher = 6;
+    }
+
+    map<int32, Ship> ships = 1;
+    map<int32, Subsystem> subsystems = 2;
+}
