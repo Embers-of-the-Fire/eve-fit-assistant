@@ -2,6 +2,7 @@ library;
 
 import 'package:eve_fit_assistant/native/port/api.dart';
 import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
+import 'package:eve_fit_assistant/pages/fit/equipment_header.dart';
 import 'package:eve_fit_assistant/pages/fit/info/info_component.dart';
 import 'package:eve_fit_assistant/pages/fit/slot.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';

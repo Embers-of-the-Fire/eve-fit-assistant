@@ -17,67 +17,37 @@ class EquipmentTab extends ConsumerWidget {
     final fit = ref.watch(fitRecordNotifierProvider(fitID));
     final fitBody = fit.fit.body;
 
-    final sumTurret = fitBody.high
-        .filterMap((item) => item)
-        .filterMap((item) => GlobalStorage().static.typeSlot.high[item.itemID])
-        .filter((item) => item.isTurret)
-        .count();
-    final sumLauncher = fitBody.high
-        .filterMap((item) => item)
-        .filterMap((item) => GlobalStorage().static.typeSlot.high[item.itemID])
-        .filter((item) => item.isLauncher)
-        .count();
-
-    final allTurret = ship.turretSlotNum +
-        fitBody.subsystem
-            .filterMap((u) => u?.itemID)
-            .filterMap((item) => GlobalStorage().static.subsystems.items[item]?.turret)
-            .sum();
-
-    final allLauncher = ship.launcherSlotNum +
-        fitBody.subsystem
-            .filterMap((u) => u?.itemID)
-            .filterMap((item) => GlobalStorage().static.subsystems.items[item]?.launcher)
-            .sum();
-
     return ListView(
       controller: _controller,
       children: <Widget>[
-        const ListTile(title: Text('战术模式')),
         ...fitBody.tacticalModeID == null
             ? []
             : [
+                const ListTile(title: Text('战术模式')),
                 TacticalModeSlotRow(
                   fitID: fitID,
                   shipID: fitBody.shipID,
                   modeID: fitBody.tacticalModeID!,
                 )
               ],
-        ListTile(
-          title: const Text('高能量槽'),
-          trailing: Text(
-            '炮塔 $sumTurret/$allTurret'
-            ' | 发射器 $sumLauncher/$allLauncher',
-            style: const TextStyle(fontSize: 14),
-          ),
-        ),
+        EquipmentHeader(fitID: fitID, type: FitItemType.high, ship: ship),
         ...fitBody.high
             .enumerate()
             .map((t) => getSlotRow(fitID, t.$2, type: FitItemType.high, index: t.$1)),
-        const ListTile(title: Text('中能量槽')),
+        EquipmentHeader(fitID: fitID, type: FitItemType.med, ship: ship),
         ...fitBody.med
             .enumerate()
             .map((t) => getSlotRow(fitID, t.$2, type: FitItemType.med, index: t.$1)),
-        const ListTile(title: Text('低能量槽')),
+        EquipmentHeader(fitID: fitID, type: FitItemType.low, ship: ship),
         ...fitBody.low
             .enumerate()
             .map((t) => getSlotRow(fitID, t.$2, type: FitItemType.low, index: t.$1)),
-        const ListTile(title: Text('改装件')),
+        EquipmentHeader(fitID: fitID, type: FitItemType.rig, ship: ship),
         ...fitBody.rig
             .enumerate()
             .map((t) => getSlotRow(fitID, t.$2, type: FitItemType.rig, index: t.$1)),
         ...fitBody.subsystem.isNotEmpty
-            .then(() => [const ListTile(title: Text('子系统'))])
+            .then(() => [EquipmentHeader(fitID: fitID, type: FitItemType.subsystem, ship: ship)])
             .unwrapOr([]),
         ...fitBody.subsystem.enumerate().map((t) => getSlotRow(
               fitID,
