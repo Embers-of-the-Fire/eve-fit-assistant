@@ -14,1970 +14,1245 @@ import 'api/validate/pre_validate/slot_num.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
-import 'frb_generated.io.dart'
-    if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'frb_generated.io.dart' if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-/// Main entrypoint of the Rust API
-class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
-  @internal
-  static final instance = RustLib._();
 
-  RustLib._();
+                /// Main entrypoint of the Rust API
+                class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
+                  @internal
+                  static final instance = RustLib._();
 
-  /// Initialize flutter_rust_bridge
-  static Future<void> init({
-    RustLibApi? api,
-    BaseHandler? handler,
-    ExternalLibrary? externalLibrary,
-  }) async {
-    await instance.initImpl(
-      api: api,
-      handler: handler,
-      externalLibrary: externalLibrary,
-    );
-  }
+                  RustLib._();
 
-  /// Initialize flutter_rust_bridge in mock mode.
-  /// No libraries for FFI are loaded.
-  static void initMock({
-    required RustLibApi api,
-  }) {
-    instance.initMockImpl(
-      api: api,
-    );
-  }
+                  /// Initialize flutter_rust_bridge
+                  static Future<void> init({
+                    RustLibApi? api,
+                    BaseHandler? handler,
+                    ExternalLibrary? externalLibrary,
+                  }) async {
+                    await instance.initImpl(
+                      api: api,
+                      handler: handler,
+                      externalLibrary: externalLibrary,
+                    );
+                  }
 
-  /// Dispose flutter_rust_bridge
-  ///
-  /// The call to this function is optional, since flutter_rust_bridge (and everything else)
-  /// is automatically disposed when the app stops.
-  static void dispose() => instance.disposeImpl();
+                  /// Initialize flutter_rust_bridge in mock mode.
+                  /// No libraries for FFI are loaded.
+                  static void initMock({
+                    required RustLibApi api,
+                  }) {
+                    instance.initMockImpl(
+                      api: api,
+                    );
+                  }
 
-  @override
-  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor =>
-      RustLibApiImpl.new;
+                  /// Dispose flutter_rust_bridge
+                  ///
+                  /// The call to this function is optional, since flutter_rust_bridge (and everything else)
+                  /// is automatically disposed when the app stops.
+                  static void dispose() => instance.disposeImpl();
 
-  @override
-  WireConstructor<RustLibWire> get wireConstructor =>
-      RustLibWire.fromExternalLibrary;
+                  @override
+                  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor => RustLibApiImpl.new;
 
-  @override
-  Future<void> executeRustInitializers() async {
-    await api.crateApiSimpleInitApp();
-  }
+                  @override
+                  WireConstructor<RustLibWire> get wireConstructor => RustLibWire.fromExternalLibrary;
 
-  @override
-  ExternalLibraryLoaderConfig get defaultExternalLibraryLoaderConfig =>
-      kDefaultExternalLibraryLoaderConfig;
+                  @override
+                  Future<void> executeRustInitializers() async {
+                    await api.crateApiSimpleInitApp();
 
-  @override
-  String get codegenVersion => '2.8.0';
+                  }
 
-  @override
-  int get rustContentHash => -1532163254;
+                  @override
+                  ExternalLibraryLoaderConfig get defaultExternalLibraryLoaderConfig => kDefaultExternalLibraryLoaderConfig;
 
-  static const kDefaultExternalLibraryLoaderConfig =
-      ExternalLibraryLoaderConfig(
-    stem: 'rust_lib_eve_fit_assistant',
-    ioDirectory: 'rust/target/release/',
-    webPrefix: 'pkg/',
-  );
-}
+                  @override
+                  String get codegenVersion => '2.8.0';
 
-abstract class RustLibApi extends BaseApi {
-  int crateApiValidatePostValidateChargeAttrAmmoCap();
+                  @override
+                  int get rustContentHash => -1532163254;
 
-  int crateApiValidatePostValidateChargeAttrChargeSize();
+                  static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
+                    stem: 'rust_lib_eve_fit_assistant',
+                    ioDirectory: 'rust/target/release/',
+                    webPrefix: 'pkg/',
+                  );
+                }
+                
 
-  int crateApiValidatePreValidateSlotNumAttrLauncher();
+                abstract class RustLibApi extends BaseApi {
+                  int crateApiValidatePostValidateChargeAttrAmmoCap();
 
-  int crateApiValidatePreValidateSlotNumAttrTurret();
+int crateApiValidatePostValidateChargeAttrChargeSize();
 
-  int crateApiValidatePostValidateChargeAttrVolume();
+int crateApiValidatePreValidateSlotNumAttrLauncher();
 
-  double? crateApiProxyAttributesProxyGetById(
-      {required AttributesProxy that, required int key});
+int crateApiValidatePreValidateSlotNumAttrTurret();
 
-  int crateApiValidatePreValidateSlotNumEffectLauncher();
+int crateApiValidatePostValidateChargeAttrVolume();
 
-  int crateApiValidatePreValidateSlotNumEffectTurret();
+double? crateApiProxyAttributesProxyGetById({required AttributesProxy that , required int key });
 
-  Future<EveDatabase> crateApiDataEveDatabaseInit(
-      {required List<int> dogmaAttrBuffer,
-      required List<int> dogmaEffectBuffer,
-      required List<int> typeDogmaBuffer,
-      required List<int> typesBuffer});
+int crateApiValidatePreValidateSlotNumEffectLauncher();
 
-  CalculateOutput crateApiCalculate(
-      {required EveDatabase db, required Fit fit});
+int crateApiValidatePreValidateSlotNumEffectTurret();
 
-  String crateApiSimpleGreet({required String name});
+Future<EveDatabase> crateApiDataEveDatabaseInit({required List<int> dogmaAttrBuffer , required List<int> dogmaEffectBuffer , required List<int> typeDogmaBuffer , required List<int> typesBuffer });
 
-  Future<void> crateApiSimpleInitApp();
+CalculateOutput crateApiCalculate({required EveDatabase db , required Fit fit });
 
-  Future<ModulesProxy> crateApiProxyModulesProxyDefault();
+String crateApiSimpleGreet({required String name });
 
-  RustArcIncrementStrongCountFnType
-      get rust_arc_increment_strong_count_AttributesProxy;
+Future<void> crateApiSimpleInitApp();
 
-  RustArcDecrementStrongCountFnType
-      get rust_arc_decrement_strong_count_AttributesProxy;
+Future<ModulesProxy> crateApiProxyModulesProxyDefault();
 
-  CrossPlatformFinalizerArg
-      get rust_arc_decrement_strong_count_AttributesProxyPtr;
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_AttributesProxy;
 
-  RustArcIncrementStrongCountFnType
-      get rust_arc_increment_strong_count_EveDatabase;
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_AttributesProxy;
 
-  RustArcDecrementStrongCountFnType
-      get rust_arc_decrement_strong_count_EveDatabase;
+CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_AttributesProxyPtr;
 
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_EveDatabasePtr;
-}
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_EveDatabase;
 
-class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
-  RustLibApiImpl({
-    required super.handler,
-    required super.wire,
-    required super.generalizedFrbRustBinding,
-    required super.portManager,
-  });
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_EveDatabase;
 
-  @override
-  int crateApiValidatePostValidateChargeAttrAmmoCap() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_i_32,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
+CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_EveDatabasePtr;
 
-  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta =>
-      const TaskConstMeta(
-        debugName: "ATTR_AMMO_CAP",
-        argNames: [],
-      );
 
-  @override
-  int crateApiValidatePostValidateChargeAttrChargeSize() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_i_32,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
+                }
+                
 
-  TaskConstMeta
-      get kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta =>
-          const TaskConstMeta(
+                class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
+                  RustLibApiImpl({
+                    required super.handler,
+                    required super.wire,
+                    required super.generalizedFrbRustBinding,
+                    required super.portManager,
+                  });
+
+                  @override int crateApiValidatePostValidateChargeAttrAmmoCap()  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta => const TaskConstMeta(
+            debugName: "ATTR_AMMO_CAP",
+            argNames: [],
+        );
+        
+
+@override int crateApiValidatePostValidateChargeAttrChargeSize()  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta => const TaskConstMeta(
             debugName: "ATTR_CHARGE_SIZE",
             argNames: [],
-          );
+        );
+        
 
-  @override
-  int crateApiValidatePreValidateSlotNumAttrLauncher() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_i_32,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiValidatePreValidateSlotNumAttrLauncherConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
+@override int crateApiValidatePreValidateSlotNumAttrLauncher()  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiValidatePreValidateSlotNumAttrLauncherConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrLauncherConstMeta =>
-      const TaskConstMeta(
-        debugName: "ATTR_LAUNCHER",
-        argNames: [],
-      );
 
-  @override
-  int crateApiValidatePreValidateSlotNumAttrTurret() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_i_32,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiValidatePreValidateSlotNumAttrTurretConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
+        TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrLauncherConstMeta => const TaskConstMeta(
+            debugName: "ATTR_LAUNCHER",
+            argNames: [],
+        );
+        
 
-  TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrTurretConstMeta =>
-      const TaskConstMeta(
-        debugName: "ATTR_TURRET",
-        argNames: [],
-      );
+@override int crateApiValidatePreValidateSlotNumAttrTurret()  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiValidatePreValidateSlotNumAttrTurretConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  @override
-  int crateApiValidatePostValidateChargeAttrVolume() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_i_32,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiValidatePostValidateChargeAttrVolumeConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
 
-  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrVolumeConstMeta =>
-      const TaskConstMeta(
-        debugName: "ATTR_VOLUME",
-        argNames: [],
-      );
+        TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrTurretConstMeta => const TaskConstMeta(
+            debugName: "ATTR_TURRET",
+            argNames: [],
+        );
+        
 
-  @override
-  double? crateApiProxyAttributesProxyGetById(
-      {required AttributesProxy that, required int key}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-            that, serializer);
-        sse_encode_i_32(key, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_opt_box_autoadd_f_64,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiProxyAttributesProxyGetByIdConstMeta,
-      argValues: [that, key],
-      apiImpl: this,
-    ));
-  }
+@override int crateApiValidatePostValidateChargeAttrVolume()  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiValidatePostValidateChargeAttrVolumeConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiProxyAttributesProxyGetByIdConstMeta =>
-      const TaskConstMeta(
-        debugName: "AttributesProxy_get_by_id",
-        argNames: ["that", "key"],
-      );
 
-  @override
-  int crateApiValidatePreValidateSlotNumEffectLauncher() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_i_32,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiValidatePreValidateSlotNumEffectLauncherConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
+        TaskConstMeta get kCrateApiValidatePostValidateChargeAttrVolumeConstMeta => const TaskConstMeta(
+            debugName: "ATTR_VOLUME",
+            argNames: [],
+        );
+        
 
-  TaskConstMeta
-      get kCrateApiValidatePreValidateSlotNumEffectLauncherConstMeta =>
-          const TaskConstMeta(
+@override double? crateApiProxyAttributesProxyGetById({required AttributesProxy that , required int key })  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(that, serializer);
+sse_encode_i_32(key, serializer);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_f_64,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiProxyAttributesProxyGetByIdConstMeta,
+            argValues: [that, key],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiProxyAttributesProxyGetByIdConstMeta => const TaskConstMeta(
+            debugName: "AttributesProxy_get_by_id",
+            argNames: ["that", "key"],
+        );
+        
+
+@override int crateApiValidatePreValidateSlotNumEffectLauncher()  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiValidatePreValidateSlotNumEffectLauncherConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiValidatePreValidateSlotNumEffectLauncherConstMeta => const TaskConstMeta(
             debugName: "EFFECT_LAUNCHER",
             argNames: [],
-          );
-
-  @override
-  int crateApiValidatePreValidateSlotNumEffectTurret() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_i_32,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiValidatePreValidateSlotNumEffectTurretConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiValidatePreValidateSlotNumEffectTurretConstMeta =>
-      const TaskConstMeta(
-        debugName: "EFFECT_TURRET",
-        argNames: [],
-      );
-
-  @override
-  Future<EveDatabase> crateApiDataEveDatabaseInit(
-      {required List<int> dogmaAttrBuffer,
-      required List<int> dogmaEffectBuffer,
-      required List<int> typeDogmaBuffer,
-      required List<int> typesBuffer}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_list_prim_u_8_loose(dogmaAttrBuffer, serializer);
-        sse_encode_list_prim_u_8_loose(dogmaEffectBuffer, serializer);
-        sse_encode_list_prim_u_8_loose(typeDogmaBuffer, serializer);
-        sse_encode_list_prim_u_8_loose(typesBuffer, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 9, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase,
-        decodeErrorData: sse_decode_AnyhowException,
-      ),
-      constMeta: kCrateApiDataEveDatabaseInitConstMeta,
-      argValues: [
-        dogmaAttrBuffer,
-        dogmaEffectBuffer,
-        typeDogmaBuffer,
-        typesBuffer
-      ],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiDataEveDatabaseInitConstMeta =>
-      const TaskConstMeta(
-        debugName: "EveDatabase_init",
-        argNames: [
-          "dogmaAttrBuffer",
-          "dogmaEffectBuffer",
-          "typeDogmaBuffer",
-          "typesBuffer"
-        ],
-      );
-
-  @override
-  CalculateOutput crateApiCalculate(
-      {required EveDatabase db, required Fit fit}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-            db, serializer);
-        sse_encode_box_autoadd_fit(fit, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_calculate_output,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiCalculateConstMeta,
-      argValues: [db, fit],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiCalculateConstMeta => const TaskConstMeta(
-        debugName: "calculate",
-        argNames: ["db", "fit"],
-      );
-
-  @override
-  String crateApiSimpleGreet({required String name}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_String(name, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiSimpleGreetConstMeta,
-      argValues: [name],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiSimpleGreetConstMeta => const TaskConstMeta(
-        debugName: "greet",
-        argNames: ["name"],
-      );
-
-  @override
-  Future<void> crateApiSimpleInitApp() {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 12, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_unit,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiSimpleInitAppConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiSimpleInitAppConstMeta => const TaskConstMeta(
-        debugName: "init_app",
-        argNames: [],
-      );
-
-  @override
-  Future<ModulesProxy> crateApiProxyModulesProxyDefault() {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 13, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_modules_proxy,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiProxyModulesProxyDefaultConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiProxyModulesProxyDefaultConstMeta =>
-      const TaskConstMeta(
-        debugName: "modules_proxy_default",
-        argNames: [],
-      );
-
-  RustArcIncrementStrongCountFnType
-      get rust_arc_increment_strong_count_AttributesProxy => wire
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy;
-
-  RustArcDecrementStrongCountFnType
-      get rust_arc_decrement_strong_count_AttributesProxy => wire
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy;
-
-  RustArcIncrementStrongCountFnType
-      get rust_arc_increment_strong_count_EveDatabase => wire
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
-
-  RustArcDecrementStrongCountFnType
-      get rust_arc_decrement_strong_count_EveDatabase => wire
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
-
-  @protected
-  AnyhowException dco_decode_AnyhowException(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return AnyhowException(raw as String);
-  }
-
-  @protected
-  AttributesProxy
-      dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-        raw);
-  }
-
-  @protected
-  AttributesProxy
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return AttributesProxyImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  EveDatabase
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return EveDatabaseImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  AttributesProxy
-      dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return AttributesProxyImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  EveDatabase
-      dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return EveDatabaseImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  Map<int, int> dco_decode_Map_i_32_u_8(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(
-        dco_decode_list_record_i_32_u_8(raw).map((e) => MapEntry(e.$1, e.$2)));
-  }
-
-  @protected
-  AttributesProxy
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return AttributesProxyImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  EveDatabase
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return EveDatabaseImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  String dco_decode_String(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as String;
-  }
-
-  @protected
-  ErrorKey dco_decode_box_autoadd_error_key(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_error_key(raw);
-  }
-
-  @protected
-  double dco_decode_box_autoadd_f_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as double;
-  }
-
-  @protected
-  Fit dco_decode_box_autoadd_fit(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_fit(raw);
-  }
-
-  @protected
-  int dco_decode_box_autoadd_i_32(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as int;
-  }
-
-  @protected
-  Item dco_decode_box_autoadd_item(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_item(raw);
-  }
-
-  @protected
-  ItemProxy dco_decode_box_autoadd_item_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_item_proxy(raw);
-  }
-
-  @protected
-  WarningKey dco_decode_box_autoadd_warning_key(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_warning_key(raw);
-  }
-
-  @protected
-  ItemProxy dco_decode_box_item_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_item_proxy(raw);
-  }
-
-  @protected
-  CalculateOutput dco_decode_calculate_output(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return CalculateOutput(
-      ship: dco_decode_ship_proxy(arr[0]),
-      errors: dco_decode_list_slot_info(arr[1]),
-    );
-  }
-
-  @protected
-  DroneGroup dco_decode_drone_group(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return DroneGroup(
-      itemId: dco_decode_i_32(arr[0]),
-      amount: dco_decode_i_32(arr[1]),
-      index: dco_decode_i_32(arr[2]),
-    );
-  }
-
-  @protected
-  ErrorKey dco_decode_error_key(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    switch (raw[0]) {
-      case 0:
-        return ErrorKey_IncompatibleChargeSize(
-          expected: dco_decode_u_8(raw[1]),
-          actual: dco_decode_u_8(raw[2]),
         );
-      case 1:
-        return ErrorKey_IncompatibleChargeCapacity(
-          max: dco_decode_f_64(raw[1]),
-          actual: dco_decode_f_64(raw[2]),
+        
+
+@override int crateApiValidatePreValidateSlotNumEffectTurret()  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiValidatePreValidateSlotNumEffectTurretConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiValidatePreValidateSlotNumEffectTurretConstMeta => const TaskConstMeta(
+            debugName: "EFFECT_TURRET",
+            argNames: [],
         );
-      case 2:
-        return ErrorKey_TooMuchTurret(
-          expected: dco_decode_u_8(raw[1]),
-          actual: dco_decode_u_8(raw[2]),
+        
+
+@override Future<EveDatabase> crateApiDataEveDatabaseInit({required List<int> dogmaAttrBuffer , required List<int> dogmaEffectBuffer , required List<int> typeDogmaBuffer , required List<int> typesBuffer })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(dogmaAttrBuffer, serializer);
+sse_encode_list_prim_u_8_loose(dogmaEffectBuffer, serializer);
+sse_encode_list_prim_u_8_loose(typeDogmaBuffer, serializer);
+sse_encode_list_prim_u_8_loose(typesBuffer, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase,
+          decodeErrorData: sse_decode_AnyhowException,
+        )
+        ,
+            constMeta: kCrateApiDataEveDatabaseInitConstMeta,
+            argValues: [dogmaAttrBuffer, dogmaEffectBuffer, typeDogmaBuffer, typesBuffer],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiDataEveDatabaseInitConstMeta => const TaskConstMeta(
+            debugName: "EveDatabase_init",
+            argNames: ["dogmaAttrBuffer", "dogmaEffectBuffer", "typeDogmaBuffer", "typesBuffer"],
         );
-      case 3:
-        return ErrorKey_TooMuchLauncher(
-          expected: dco_decode_u_8(raw[1]),
-          actual: dco_decode_u_8(raw[2]),
+        
+
+@override CalculateOutput crateApiCalculate({required EveDatabase db , required Fit fit })  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(db, serializer);
+sse_encode_box_autoadd_fit(fit, serializer);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_calculate_output,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiCalculateConstMeta,
+            argValues: [db, fit],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiCalculateConstMeta => const TaskConstMeta(
+            debugName: "calculate",
+            argNames: ["db", "fit"],
         );
-      default:
-        throw Exception("unreachable");
-    }
-  }
+        
 
-  @protected
-  double dco_decode_f_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as double;
-  }
+@override String crateApiSimpleGreet({required String name })  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(name, serializer);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiSimpleGreetConstMeta,
+            argValues: [name],
+            apiImpl: this,
+        )); }
 
-  @protected
-  Fit dco_decode_fit(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
-    return Fit(
-      shipId: dco_decode_i_32(arr[0]),
-      modules: dco_decode_module(arr[1]),
-      drones: dco_decode_list_drone_group(arr[2]),
-      implant: dco_decode_list_implant(arr[3]),
-      skills: dco_decode_Map_i_32_u_8(arr[4]),
-    );
-  }
 
-  @protected
-  int dco_decode_i_32(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as int;
-  }
-
-  @protected
-  Implant dco_decode_implant(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return Implant(
-      itemId: dco_decode_i_32(arr[0]),
-      index: dco_decode_i_32(arr[1]),
-    );
-  }
-
-  @protected
-  Item dco_decode_item(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return Item(
-      itemId: dco_decode_i_32(arr[0]),
-      charge: dco_decode_opt_box_autoadd_i_32(arr[1]),
-      state: dco_decode_state(arr[2]),
-      index: dco_decode_i_32(arr[3]),
-    );
-  }
-
-  @protected
-  ItemProxy dco_decode_item_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return ItemProxy(
-      index: dco_decode_opt_box_autoadd_i_32(arr[0]),
-      itemId: dco_decode_i_32(arr[1]),
-      charge: dco_decode_opt_box_item_proxy(arr[2]),
-      attributes:
-          dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-              arr[3]),
-    );
-  }
-
-  @protected
-  List<DroneGroup> dco_decode_list_drone_group(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_drone_group).toList();
-  }
-
-  @protected
-  List<Implant> dco_decode_list_implant(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_implant).toList();
-  }
-
-  @protected
-  List<Item> dco_decode_list_item(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_item).toList();
-  }
-
-  @protected
-  List<ItemProxy> dco_decode_list_item_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_item_proxy).toList();
-  }
-
-  @protected
-  List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as List<int>;
-  }
-
-  @protected
-  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as Uint8List;
-  }
-
-  @protected
-  List<(int, int)> dco_decode_list_record_i_32_u_8(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_record_i_32_u_8).toList();
-  }
-
-  @protected
-  List<SlotInfo> dco_decode_list_slot_info(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_slot_info).toList();
-  }
-
-  @protected
-  Module dco_decode_module(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return Module(
-      high: dco_decode_list_item(arr[0]),
-      medium: dco_decode_list_item(arr[1]),
-      low: dco_decode_list_item(arr[2]),
-      rig: dco_decode_list_item(arr[3]),
-      subsystem: dco_decode_list_item(arr[4]),
-      tacticalMode: dco_decode_opt_box_autoadd_item(arr[5]),
-    );
-  }
-
-  @protected
-  ModulesProxy dco_decode_modules_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return ModulesProxy(
-      high: dco_decode_list_item_proxy(arr[0]),
-      medium: dco_decode_list_item_proxy(arr[1]),
-      low: dco_decode_list_item_proxy(arr[2]),
-      rig: dco_decode_list_item_proxy(arr[3]),
-      subsystem: dco_decode_list_item_proxy(arr[4]),
-      tacticalMode: dco_decode_opt_box_autoadd_item_proxy(arr[5]),
-    );
-  }
-
-  @protected
-  double? dco_decode_opt_box_autoadd_f_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_f_64(raw);
-  }
-
-  @protected
-  int? dco_decode_opt_box_autoadd_i_32(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_i_32(raw);
-  }
-
-  @protected
-  Item? dco_decode_opt_box_autoadd_item(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_item(raw);
-  }
-
-  @protected
-  ItemProxy? dco_decode_opt_box_autoadd_item_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_item_proxy(raw);
-  }
-
-  @protected
-  ItemProxy? dco_decode_opt_box_item_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_item_proxy(raw);
-  }
-
-  @protected
-  (int, int) dco_decode_record_i_32_u_8(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2) {
-      throw Exception('Expected 2 elements, got ${arr.length}');
-    }
-    return (
-      dco_decode_i_32(arr[0]),
-      dco_decode_u_8(arr[1]),
-    );
-  }
-
-  @protected
-  ShipProxy dco_decode_ship_proxy(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return ShipProxy(
-      hull: dco_decode_item_proxy(arr[0]),
-      modules: dco_decode_modules_proxy(arr[1]),
-      implants: dco_decode_list_item_proxy(arr[2]),
-      character: dco_decode_item_proxy(arr[3]),
-    );
-  }
-
-  @protected
-  SlotInfo dco_decode_slot_info(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    switch (raw[0]) {
-      case 0:
-        return SlotInfo_Error(
-          slot: dco_decode_slot_type(raw[1]),
-          index: dco_decode_opt_box_autoadd_i_32(raw[2]),
-          errorKey: dco_decode_box_autoadd_error_key(raw[3]),
+        TaskConstMeta get kCrateApiSimpleGreetConstMeta => const TaskConstMeta(
+            debugName: "greet",
+            argNames: ["name"],
         );
-      case 1:
-        return SlotInfo_Warning(
-          slot: dco_decode_slot_type(raw[1]),
-          index: dco_decode_opt_box_autoadd_i_32(raw[2]),
-          warningKey: dco_decode_box_autoadd_warning_key(raw[3]),
+        
+
+@override Future<void> crateApiSimpleInitApp()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiSimpleInitAppConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiSimpleInitAppConstMeta => const TaskConstMeta(
+            debugName: "init_app",
+            argNames: [],
         );
-      default:
-        throw Exception("unreachable");
-    }
-  }
+        
 
-  @protected
-  SlotType dco_decode_slot_type(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return SlotType.values[raw as int];
-  }
+@override Future<ModulesProxy> crateApiProxyModulesProxyDefault()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_modules_proxy,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiProxyModulesProxyDefaultConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  @protected
-  State dco_decode_state(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return State.values[raw as int];
-  }
 
-  @protected
-  int dco_decode_u_8(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as int;
-  }
-
-  @protected
-  void dco_decode_unit(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return;
-  }
-
-  @protected
-  BigInt dco_decode_usize(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dcoDecodeU64(raw);
-  }
-
-  @protected
-  WarningKey dco_decode_warning_key(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    switch (raw[0]) {
-      case 0:
-        return WarningKey_MissingCharge();
-      case 1:
-        return WarningKey_Placeholder(
-          dco_decode_i_32(raw[1]),
+        TaskConstMeta get kCrateApiProxyModulesProxyDefaultConstMeta => const TaskConstMeta(
+            debugName: "modules_proxy_default",
+            argNames: [],
         );
-      default:
-        throw Exception("unreachable");
-    }
-  }
-
-  @protected
-  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_String(deserializer);
-    return AnyhowException(inner);
-  }
-
-  @protected
-  AttributesProxy
-      sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner =
-        sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-            deserializer);
-    return inner;
-  }
-
-  @protected
-  AttributesProxy
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return AttributesProxyImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  EveDatabase
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return EveDatabaseImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  AttributesProxy
-      sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return AttributesProxyImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  EveDatabase
-      sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return EveDatabaseImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  Map<int, int> sse_decode_Map_i_32_u_8(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_list_record_i_32_u_8(deserializer);
-    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
-  }
-
-  @protected
-  AttributesProxy
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return AttributesProxyImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  EveDatabase
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return EveDatabaseImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  String sse_decode_String(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_list_prim_u_8_strict(deserializer);
-    return utf8.decoder.convert(inner);
-  }
-
-  @protected
-  ErrorKey sse_decode_box_autoadd_error_key(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_error_key(deserializer));
-  }
-
-  @protected
-  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_f_64(deserializer));
-  }
-
-  @protected
-  Fit sse_decode_box_autoadd_fit(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_fit(deserializer));
-  }
-
-  @protected
-  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  Item sse_decode_box_autoadd_item(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_item(deserializer));
-  }
-
-  @protected
-  ItemProxy sse_decode_box_autoadd_item_proxy(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_item_proxy(deserializer));
-  }
-
-  @protected
-  WarningKey sse_decode_box_autoadd_warning_key(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_warning_key(deserializer));
-  }
-
-  @protected
-  ItemProxy sse_decode_box_item_proxy(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_item_proxy(deserializer));
-  }
-
-  @protected
-  CalculateOutput sse_decode_calculate_output(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_ship = sse_decode_ship_proxy(deserializer);
-    var var_errors = sse_decode_list_slot_info(deserializer);
-    return CalculateOutput(ship: var_ship, errors: var_errors);
-  }
-
-  @protected
-  DroneGroup sse_decode_drone_group(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_itemId = sse_decode_i_32(deserializer);
-    var var_amount = sse_decode_i_32(deserializer);
-    var var_index = sse_decode_i_32(deserializer);
-    return DroneGroup(itemId: var_itemId, amount: var_amount, index: var_index);
-  }
-
-  @protected
-  ErrorKey sse_decode_error_key(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var tag_ = sse_decode_i_32(deserializer);
-    switch (tag_) {
-      case 0:
-        var var_expected = sse_decode_u_8(deserializer);
-        var var_actual = sse_decode_u_8(deserializer);
-        return ErrorKey_IncompatibleChargeSize(
-            expected: var_expected, actual: var_actual);
-      case 1:
-        var var_max = sse_decode_f_64(deserializer);
-        var var_actual = sse_decode_f_64(deserializer);
-        return ErrorKey_IncompatibleChargeCapacity(
-            max: var_max, actual: var_actual);
-      case 2:
-        var var_expected = sse_decode_u_8(deserializer);
-        var var_actual = sse_decode_u_8(deserializer);
-        return ErrorKey_TooMuchTurret(
-            expected: var_expected, actual: var_actual);
-      case 3:
-        var var_expected = sse_decode_u_8(deserializer);
-        var var_actual = sse_decode_u_8(deserializer);
-        return ErrorKey_TooMuchLauncher(
-            expected: var_expected, actual: var_actual);
-      default:
-        throw UnimplementedError('');
-    }
-  }
-
-  @protected
-  double sse_decode_f_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getFloat64();
-  }
-
-  @protected
-  Fit sse_decode_fit(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_shipId = sse_decode_i_32(deserializer);
-    var var_modules = sse_decode_module(deserializer);
-    var var_drones = sse_decode_list_drone_group(deserializer);
-    var var_implant = sse_decode_list_implant(deserializer);
-    var var_skills = sse_decode_Map_i_32_u_8(deserializer);
-    return Fit(
-        shipId: var_shipId,
-        modules: var_modules,
-        drones: var_drones,
-        implant: var_implant,
-        skills: var_skills);
-  }
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
-  Implant sse_decode_implant(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_itemId = sse_decode_i_32(deserializer);
-    var var_index = sse_decode_i_32(deserializer);
-    return Implant(itemId: var_itemId, index: var_index);
-  }
-
-  @protected
-  Item sse_decode_item(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_itemId = sse_decode_i_32(deserializer);
-    var var_charge = sse_decode_opt_box_autoadd_i_32(deserializer);
-    var var_state = sse_decode_state(deserializer);
-    var var_index = sse_decode_i_32(deserializer);
-    return Item(
-        itemId: var_itemId,
-        charge: var_charge,
-        state: var_state,
-        index: var_index);
-  }
-
-  @protected
-  ItemProxy sse_decode_item_proxy(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
-    var var_itemId = sse_decode_i_32(deserializer);
-    var var_charge = sse_decode_opt_box_item_proxy(deserializer);
-    var var_attributes =
-        sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-            deserializer);
-    return ItemProxy(
-        index: var_index,
-        itemId: var_itemId,
-        charge: var_charge,
-        attributes: var_attributes);
-  }
-
-  @protected
-  List<DroneGroup> sse_decode_list_drone_group(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <DroneGroup>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_drone_group(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<Implant> sse_decode_list_implant(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <Implant>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_implant(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<Item> sse_decode_list_item(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <Item>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_item(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<ItemProxy> sse_decode_list_item_proxy(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <ItemProxy>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_item_proxy(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var len_ = sse_decode_i_32(deserializer);
-    return deserializer.buffer.getUint8List(len_);
-  }
-
-  @protected
-  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var len_ = sse_decode_i_32(deserializer);
-    return deserializer.buffer.getUint8List(len_);
-  }
-
-  @protected
-  List<(int, int)> sse_decode_list_record_i_32_u_8(
-      SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <(int, int)>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_record_i_32_u_8(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<SlotInfo> sse_decode_list_slot_info(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <SlotInfo>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_slot_info(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  Module sse_decode_module(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_high = sse_decode_list_item(deserializer);
-    var var_medium = sse_decode_list_item(deserializer);
-    var var_low = sse_decode_list_item(deserializer);
-    var var_rig = sse_decode_list_item(deserializer);
-    var var_subsystem = sse_decode_list_item(deserializer);
-    var var_tacticalMode = sse_decode_opt_box_autoadd_item(deserializer);
-    return Module(
-        high: var_high,
-        medium: var_medium,
-        low: var_low,
-        rig: var_rig,
-        subsystem: var_subsystem,
-        tacticalMode: var_tacticalMode);
-  }
-
-  @protected
-  ModulesProxy sse_decode_modules_proxy(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_high = sse_decode_list_item_proxy(deserializer);
-    var var_medium = sse_decode_list_item_proxy(deserializer);
-    var var_low = sse_decode_list_item_proxy(deserializer);
-    var var_rig = sse_decode_list_item_proxy(deserializer);
-    var var_subsystem = sse_decode_list_item_proxy(deserializer);
-    var var_tacticalMode = sse_decode_opt_box_autoadd_item_proxy(deserializer);
-    return ModulesProxy(
-        high: var_high,
-        medium: var_medium,
-        low: var_low,
-        rig: var_rig,
-        subsystem: var_subsystem,
-        tacticalMode: var_tacticalMode);
-  }
-
-  @protected
-  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_f_64(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_i_32(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  Item? sse_decode_opt_box_autoadd_item(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_item(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  ItemProxy? sse_decode_opt_box_autoadd_item_proxy(
-      SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_item_proxy(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  ItemProxy? sse_decode_opt_box_item_proxy(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_item_proxy(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  (int, int) sse_decode_record_i_32_u_8(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_field0 = sse_decode_i_32(deserializer);
-    var var_field1 = sse_decode_u_8(deserializer);
-    return (var_field0, var_field1);
-  }
-
-  @protected
-  ShipProxy sse_decode_ship_proxy(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_hull = sse_decode_item_proxy(deserializer);
-    var var_modules = sse_decode_modules_proxy(deserializer);
-    var var_implants = sse_decode_list_item_proxy(deserializer);
-    var var_character = sse_decode_item_proxy(deserializer);
-    return ShipProxy(
-        hull: var_hull,
-        modules: var_modules,
-        implants: var_implants,
-        character: var_character);
-  }
-
-  @protected
-  SlotInfo sse_decode_slot_info(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var tag_ = sse_decode_i_32(deserializer);
-    switch (tag_) {
-      case 0:
-        var var_slot = sse_decode_slot_type(deserializer);
-        var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
-        var var_errorKey = sse_decode_box_autoadd_error_key(deserializer);
-        return SlotInfo_Error(
-            slot: var_slot, index: var_index, errorKey: var_errorKey);
-      case 1:
-        var var_slot = sse_decode_slot_type(deserializer);
-        var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
-        var var_warningKey = sse_decode_box_autoadd_warning_key(deserializer);
-        return SlotInfo_Warning(
-            slot: var_slot, index: var_index, warningKey: var_warningKey);
-      default:
-        throw UnimplementedError('');
-    }
-  }
-
-  @protected
-  SlotType sse_decode_slot_type(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return SlotType.values[inner];
-  }
-
-  @protected
-  State sse_decode_state(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return State.values[inner];
-  }
-
-  @protected
-  int sse_decode_u_8(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8();
-  }
-
-  @protected
-  void sse_decode_unit(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  BigInt sse_decode_usize(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getBigUint64();
-  }
-
-  @protected
-  WarningKey sse_decode_warning_key(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var tag_ = sse_decode_i_32(deserializer);
-    switch (tag_) {
-      case 0:
-        return WarningKey_MissingCharge();
-      case 1:
-        var var_field0 = sse_decode_i_32(deserializer);
-        return WarningKey_Placeholder(var_field0);
-      default:
-        throw UnimplementedError('');
-    }
-  }
-
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
-  }
-
-  @protected
-  void sse_encode_AnyhowException(
-      AnyhowException self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.message, serializer);
-  }
-
-  @protected
-  void
-      sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          AttributesProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-        self, serializer);
-  }
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          AttributesProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as AttributesProxyImpl).frbInternalSseEncode(move: true),
-        serializer);
-  }
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          EveDatabase self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as EveDatabaseImpl).frbInternalSseEncode(move: true), serializer);
-  }
-
-  @protected
-  void
-      sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          AttributesProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as AttributesProxyImpl).frbInternalSseEncode(move: false),
-        serializer);
-  }
-
-  @protected
-  void
-      sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          EveDatabase self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as EveDatabaseImpl).frbInternalSseEncode(move: false),
-        serializer);
-  }
-
-  @protected
-  void sse_encode_Map_i_32_u_8(Map<int, int> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_record_i_32_u_8(
-        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
-  }
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-          AttributesProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as AttributesProxyImpl).frbInternalSseEncode(move: null),
-        serializer);
-  }
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          EveDatabase self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as EveDatabaseImpl).frbInternalSseEncode(move: null), serializer);
-  }
-
-  @protected
-  void sse_encode_String(String self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_error_key(
-      ErrorKey self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_error_key(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_f_64(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_fit(Fit self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_fit(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_item(Item self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_item(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_item_proxy(
-      ItemProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_item_proxy(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_warning_key(
-      WarningKey self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_warning_key(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_item_proxy(ItemProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_item_proxy(self, serializer);
-  }
-
-  @protected
-  void sse_encode_calculate_output(
-      CalculateOutput self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_ship_proxy(self.ship, serializer);
-    sse_encode_list_slot_info(self.errors, serializer);
-  }
-
-  @protected
-  void sse_encode_drone_group(DroneGroup self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.itemId, serializer);
-    sse_encode_i_32(self.amount, serializer);
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_error_key(ErrorKey self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    switch (self) {
-      case ErrorKey_IncompatibleChargeSize(
-          expected: final expected,
-          actual: final actual
-        ):
-        sse_encode_i_32(0, serializer);
-        sse_encode_u_8(expected, serializer);
-        sse_encode_u_8(actual, serializer);
-      case ErrorKey_IncompatibleChargeCapacity(
-          max: final max,
-          actual: final actual
-        ):
-        sse_encode_i_32(1, serializer);
-        sse_encode_f_64(max, serializer);
-        sse_encode_f_64(actual, serializer);
-      case ErrorKey_TooMuchTurret(
-          expected: final expected,
-          actual: final actual
-        ):
-        sse_encode_i_32(2, serializer);
-        sse_encode_u_8(expected, serializer);
-        sse_encode_u_8(actual, serializer);
-      case ErrorKey_TooMuchLauncher(
-          expected: final expected,
-          actual: final actual
-        ):
-        sse_encode_i_32(3, serializer);
-        sse_encode_u_8(expected, serializer);
-        sse_encode_u_8(actual, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_f_64(double self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putFloat64(self);
-  }
-
-  @protected
-  void sse_encode_fit(Fit self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.shipId, serializer);
-    sse_encode_module(self.modules, serializer);
-    sse_encode_list_drone_group(self.drones, serializer);
-    sse_encode_list_implant(self.implant, serializer);
-    sse_encode_Map_i_32_u_8(self.skills, serializer);
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
-  }
-
-  @protected
-  void sse_encode_implant(Implant self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.itemId, serializer);
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_item(Item self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.itemId, serializer);
-    sse_encode_opt_box_autoadd_i_32(self.charge, serializer);
-    sse_encode_state(self.state, serializer);
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_item_proxy(ItemProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_opt_box_autoadd_i_32(self.index, serializer);
-    sse_encode_i_32(self.itemId, serializer);
-    sse_encode_opt_box_item_proxy(self.charge, serializer);
-    sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(
-        self.attributes, serializer);
-  }
-
-  @protected
-  void sse_encode_list_drone_group(
-      List<DroneGroup> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_drone_group(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_implant(List<Implant> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_implant(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_item(List<Item> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_item(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_item_proxy(
-      List<ItemProxy> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_item_proxy(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_prim_u_8_loose(
-      List<int> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    serializer.buffer
-        .putUint8List(self is Uint8List ? self : Uint8List.fromList(self));
-  }
-
-  @protected
-  void sse_encode_list_prim_u_8_strict(
-      Uint8List self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    serializer.buffer.putUint8List(self);
-  }
-
-  @protected
-  void sse_encode_list_record_i_32_u_8(
-      List<(int, int)> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_record_i_32_u_8(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_slot_info(
-      List<SlotInfo> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_slot_info(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_module(Module self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_item(self.high, serializer);
-    sse_encode_list_item(self.medium, serializer);
-    sse_encode_list_item(self.low, serializer);
-    sse_encode_list_item(self.rig, serializer);
-    sse_encode_list_item(self.subsystem, serializer);
-    sse_encode_opt_box_autoadd_item(self.tacticalMode, serializer);
-  }
-
-  @protected
-  void sse_encode_modules_proxy(ModulesProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_item_proxy(self.high, serializer);
-    sse_encode_list_item_proxy(self.medium, serializer);
-    sse_encode_list_item_proxy(self.low, serializer);
-    sse_encode_list_item_proxy(self.rig, serializer);
-    sse_encode_list_item_proxy(self.subsystem, serializer);
-    sse_encode_opt_box_autoadd_item_proxy(self.tacticalMode, serializer);
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_f_64(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_i_32(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_item(Item? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_item(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_item_proxy(
-      ItemProxy? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_item_proxy(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_item_proxy(
-      ItemProxy? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_item_proxy(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_record_i_32_u_8((int, int) self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.$1, serializer);
-    sse_encode_u_8(self.$2, serializer);
-  }
-
-  @protected
-  void sse_encode_ship_proxy(ShipProxy self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_item_proxy(self.hull, serializer);
-    sse_encode_modules_proxy(self.modules, serializer);
-    sse_encode_list_item_proxy(self.implants, serializer);
-    sse_encode_item_proxy(self.character, serializer);
-  }
-
-  @protected
-  void sse_encode_slot_info(SlotInfo self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    switch (self) {
-      case SlotInfo_Error(
-          slot: final slot,
-          index: final index,
-          errorKey: final errorKey
-        ):
-        sse_encode_i_32(0, serializer);
-        sse_encode_slot_type(slot, serializer);
-        sse_encode_opt_box_autoadd_i_32(index, serializer);
-        sse_encode_box_autoadd_error_key(errorKey, serializer);
-      case SlotInfo_Warning(
-          slot: final slot,
-          index: final index,
-          warningKey: final warningKey
-        ):
-        sse_encode_i_32(1, serializer);
-        sse_encode_slot_type(slot, serializer);
-        sse_encode_opt_box_autoadd_i_32(index, serializer);
-        sse_encode_box_autoadd_warning_key(warningKey, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_slot_type(SlotType self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_state(State self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_u_8(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self);
-  }
-
-  @protected
-  void sse_encode_unit(void self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  void sse_encode_usize(BigInt self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_warning_key(WarningKey self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    switch (self) {
-      case WarningKey_MissingCharge():
-        sse_encode_i_32(0, serializer);
-      case WarningKey_Placeholder(field0: final field0):
-        sse_encode_i_32(1, serializer);
-        sse_encode_i_32(field0, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
-  }
-}
-
-@sealed
-class AttributesProxyImpl extends RustOpaque implements AttributesProxy {
-  // Not to be used by end users
-  AttributesProxyImpl.frbInternalDcoDecode(List<dynamic> wire)
-      : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  AttributesProxyImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_AttributesProxy,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_AttributesProxy,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_AttributesProxyPtr,
-  );
-
-  double? getById({required int key}) => RustLib.instance.api
-      .crateApiProxyAttributesProxyGetById(that: this, key: key);
-}
-
-@sealed
-class EveDatabaseImpl extends RustOpaque implements EveDatabase {
-  // Not to be used by end users
-  EveDatabaseImpl.frbInternalDcoDecode(List<dynamic> wire)
-      : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  EveDatabaseImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_EveDatabase,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_EveDatabase,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_EveDatabasePtr,
-  );
-}
+        
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_AttributesProxy => wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_AttributesProxy => wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy;
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_EveDatabase => wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_EveDatabase => wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
+
+
+
+                  @protected AnyhowException dco_decode_AnyhowException(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return AnyhowException(raw as String); }
+
+@protected AttributesProxy dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(raw); }
+
+@protected AttributesProxy dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return AttributesProxyImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected EveDatabase dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return EveDatabaseImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected AttributesProxy dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return AttributesProxyImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected EveDatabase dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return EveDatabaseImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected Map<int, int> dco_decode_Map_i_32_u_8(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return Map.fromEntries(dco_decode_list_record_i_32_u_8(raw).map((e) => MapEntry(e.$1, e.$2))); }
+
+@protected AttributesProxy dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return AttributesProxyImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected EveDatabase dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return EveDatabaseImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected String dco_decode_String(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as String; }
+
+@protected ErrorKey dco_decode_box_autoadd_error_key(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_error_key(raw); }
+
+@protected double dco_decode_box_autoadd_f_64(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as double; }
+
+@protected Fit dco_decode_box_autoadd_fit(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_fit(raw); }
+
+@protected int dco_decode_box_autoadd_i_32(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as int; }
+
+@protected Item dco_decode_box_autoadd_item(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_item(raw); }
+
+@protected ItemProxy dco_decode_box_autoadd_item_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_item_proxy(raw); }
+
+@protected WarningKey dco_decode_box_autoadd_warning_key(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_warning_key(raw); }
+
+@protected ItemProxy dco_decode_box_item_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_item_proxy(raw); }
+
+@protected CalculateOutput dco_decode_calculate_output(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+                return CalculateOutput(ship: dco_decode_ship_proxy(arr[0]),
+errors: dco_decode_list_slot_info(arr[1]),); }
+
+@protected DroneGroup dco_decode_drone_group(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+                return DroneGroup(itemId: dco_decode_i_32(arr[0]),
+amount: dco_decode_i_32(arr[1]),
+index: dco_decode_i_32(arr[2]),); }
+
+@protected ErrorKey dco_decode_error_key(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+switch (raw[0]) {
+                case 0: return ErrorKey_IncompatibleChargeSize(expected: dco_decode_u_8(raw[1]),actual: dco_decode_u_8(raw[2]),);
+case 1: return ErrorKey_IncompatibleChargeCapacity(max: dco_decode_f_64(raw[1]),actual: dco_decode_f_64(raw[2]),);
+case 2: return ErrorKey_TooMuchTurret(expected: dco_decode_u_8(raw[1]),actual: dco_decode_u_8(raw[2]),);
+case 3: return ErrorKey_TooMuchLauncher(expected: dco_decode_u_8(raw[1]),actual: dco_decode_u_8(raw[2]),);
+                default: throw Exception("unreachable");
+            } }
+
+@protected double dco_decode_f_64(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as double; }
+
+@protected Fit dco_decode_fit(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+                return Fit(shipId: dco_decode_i_32(arr[0]),
+modules: dco_decode_module(arr[1]),
+drones: dco_decode_list_drone_group(arr[2]),
+implant: dco_decode_list_implant(arr[3]),
+skills: dco_decode_Map_i_32_u_8(arr[4]),); }
+
+@protected int dco_decode_i_32(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as int; }
+
+@protected Implant dco_decode_implant(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+                return Implant(itemId: dco_decode_i_32(arr[0]),
+index: dco_decode_i_32(arr[1]),); }
+
+@protected Item dco_decode_item(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+                return Item(itemId: dco_decode_i_32(arr[0]),
+charge: dco_decode_opt_box_autoadd_i_32(arr[1]),
+state: dco_decode_state(arr[2]),
+index: dco_decode_i_32(arr[3]),); }
+
+@protected ItemProxy dco_decode_item_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+                return ItemProxy(index: dco_decode_opt_box_autoadd_i_32(arr[0]),
+itemId: dco_decode_i_32(arr[1]),
+charge: dco_decode_opt_box_item_proxy(arr[2]),
+attributes: dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(arr[3]),); }
+
+@protected List<DroneGroup> dco_decode_list_drone_group(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return (raw as List<dynamic>).map(dco_decode_drone_group).toList(); }
+
+@protected List<Implant> dco_decode_list_implant(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return (raw as List<dynamic>).map(dco_decode_implant).toList(); }
+
+@protected List<Item> dco_decode_list_item(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return (raw as List<dynamic>).map(dco_decode_item).toList(); }
+
+@protected List<ItemProxy> dco_decode_list_item_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return (raw as List<dynamic>).map(dco_decode_item_proxy).toList(); }
+
+@protected List<int> dco_decode_list_prim_u_8_loose(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as List<int>; }
+
+@protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as Uint8List; }
+
+@protected List<(int,int)> dco_decode_list_record_i_32_u_8(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return (raw as List<dynamic>).map(dco_decode_record_i_32_u_8).toList(); }
+
+@protected List<SlotInfo> dco_decode_list_slot_info(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return (raw as List<dynamic>).map(dco_decode_slot_info).toList(); }
+
+@protected Module dco_decode_module(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 6) throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+                return Module(high: dco_decode_list_item(arr[0]),
+medium: dco_decode_list_item(arr[1]),
+low: dco_decode_list_item(arr[2]),
+rig: dco_decode_list_item(arr[3]),
+subsystem: dco_decode_list_item(arr[4]),
+tacticalMode: dco_decode_opt_box_autoadd_item(arr[5]),); }
+
+@protected ModulesProxy dco_decode_modules_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 6) throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+                return ModulesProxy(high: dco_decode_list_item_proxy(arr[0]),
+medium: dco_decode_list_item_proxy(arr[1]),
+low: dco_decode_list_item_proxy(arr[2]),
+rig: dco_decode_list_item_proxy(arr[3]),
+subsystem: dco_decode_list_item_proxy(arr[4]),
+tacticalMode: dco_decode_opt_box_autoadd_item_proxy(arr[5]),); }
+
+@protected double? dco_decode_opt_box_autoadd_f_64(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_box_autoadd_f_64(raw); }
+
+@protected int? dco_decode_opt_box_autoadd_i_32(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_box_autoadd_i_32(raw); }
+
+@protected Item? dco_decode_opt_box_autoadd_item(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_box_autoadd_item(raw); }
+
+@protected ItemProxy? dco_decode_opt_box_autoadd_item_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_box_autoadd_item_proxy(raw); }
+
+@protected ItemProxy? dco_decode_opt_box_item_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_box_item_proxy(raw); }
+
+@protected (int,int) dco_decode_record_i_32_u_8(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+            if (arr.length != 2) {
+                throw Exception('Expected 2 elements, got ${arr.length}');
+            }
+            return (dco_decode_i_32(arr[0]),dco_decode_u_8(arr[1]),); }
+
+@protected ShipProxy dco_decode_ship_proxy(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+                return ShipProxy(hull: dco_decode_item_proxy(arr[0]),
+modules: dco_decode_modules_proxy(arr[1]),
+implants: dco_decode_list_item_proxy(arr[2]),
+character: dco_decode_item_proxy(arr[3]),); }
+
+@protected SlotInfo dco_decode_slot_info(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+switch (raw[0]) {
+                case 0: return SlotInfo_Error(slot: dco_decode_slot_type(raw[1]),index: dco_decode_opt_box_autoadd_i_32(raw[2]),errorKey: dco_decode_box_autoadd_error_key(raw[3]),);
+case 1: return SlotInfo_Warning(slot: dco_decode_slot_type(raw[1]),index: dco_decode_opt_box_autoadd_i_32(raw[2]),warningKey: dco_decode_box_autoadd_warning_key(raw[3]),);
+                default: throw Exception("unreachable");
+            } }
+
+@protected SlotType dco_decode_slot_type(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return SlotType.values[raw as int]; }
+
+@protected State dco_decode_state(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return State.values[raw as int]; }
+
+@protected int dco_decode_u_8(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as int; }
+
+@protected void dco_decode_unit(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return; }
+
+@protected BigInt dco_decode_usize(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dcoDecodeU64(raw); }
+
+@protected WarningKey dco_decode_warning_key(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+switch (raw[0]) {
+                case 0: return WarningKey_MissingCharge();
+case 1: return WarningKey_Placeholder(dco_decode_i_32(raw[1]),);
+                default: throw Exception("unreachable");
+            } }
+
+@protected AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_String(deserializer);
+        return AnyhowException(inner); }
+
+@protected AttributesProxy sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(deserializer);
+        return inner; }
+
+@protected AttributesProxy sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return AttributesProxyImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected EveDatabase sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return EveDatabaseImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected AttributesProxy sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return AttributesProxyImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected EveDatabase sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return EveDatabaseImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected Map<int, int> sse_decode_Map_i_32_u_8(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_list_record_i_32_u_8(deserializer);
+        return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2))); }
+
+@protected AttributesProxy sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return AttributesProxyImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected EveDatabase sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return EveDatabaseImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected String sse_decode_String(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_list_prim_u_8_strict(deserializer);
+        return utf8.decoder.convert(inner); }
+
+@protected ErrorKey sse_decode_box_autoadd_error_key(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_error_key(deserializer)); }
+
+@protected double sse_decode_box_autoadd_f_64(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_f_64(deserializer)); }
+
+@protected Fit sse_decode_box_autoadd_fit(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_fit(deserializer)); }
+
+@protected int sse_decode_box_autoadd_i_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_i_32(deserializer)); }
+
+@protected Item sse_decode_box_autoadd_item(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_item(deserializer)); }
+
+@protected ItemProxy sse_decode_box_autoadd_item_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_item_proxy(deserializer)); }
+
+@protected WarningKey sse_decode_box_autoadd_warning_key(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_warning_key(deserializer)); }
+
+@protected ItemProxy sse_decode_box_item_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_item_proxy(deserializer)); }
+
+@protected CalculateOutput sse_decode_calculate_output(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_ship = sse_decode_ship_proxy(deserializer);
+var var_errors = sse_decode_list_slot_info(deserializer);
+return CalculateOutput(ship: var_ship, errors: var_errors); }
+
+@protected DroneGroup sse_decode_drone_group(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_itemId = sse_decode_i_32(deserializer);
+var var_amount = sse_decode_i_32(deserializer);
+var var_index = sse_decode_i_32(deserializer);
+return DroneGroup(itemId: var_itemId, amount: var_amount, index: var_index); }
+
+@protected ErrorKey sse_decode_error_key(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            var tag_ = sse_decode_i_32(deserializer);
+            switch (tag_) { case 0: var var_expected = sse_decode_u_8(deserializer);
+var var_actual = sse_decode_u_8(deserializer);
+return ErrorKey_IncompatibleChargeSize(expected: var_expected, actual: var_actual);case 1: var var_max = sse_decode_f_64(deserializer);
+var var_actual = sse_decode_f_64(deserializer);
+return ErrorKey_IncompatibleChargeCapacity(max: var_max, actual: var_actual);case 2: var var_expected = sse_decode_u_8(deserializer);
+var var_actual = sse_decode_u_8(deserializer);
+return ErrorKey_TooMuchTurret(expected: var_expected, actual: var_actual);case 3: var var_expected = sse_decode_u_8(deserializer);
+var var_actual = sse_decode_u_8(deserializer);
+return ErrorKey_TooMuchLauncher(expected: var_expected, actual: var_actual); default: throw UnimplementedError(''); }
+             }
+
+@protected double sse_decode_f_64(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getFloat64(); }
+
+@protected Fit sse_decode_fit(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_shipId = sse_decode_i_32(deserializer);
+var var_modules = sse_decode_module(deserializer);
+var var_drones = sse_decode_list_drone_group(deserializer);
+var var_implant = sse_decode_list_implant(deserializer);
+var var_skills = sse_decode_Map_i_32_u_8(deserializer);
+return Fit(shipId: var_shipId, modules: var_modules, drones: var_drones, implant: var_implant, skills: var_skills); }
+
+@protected int sse_decode_i_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getInt32(); }
+
+@protected Implant sse_decode_implant(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_itemId = sse_decode_i_32(deserializer);
+var var_index = sse_decode_i_32(deserializer);
+return Implant(itemId: var_itemId, index: var_index); }
+
+@protected Item sse_decode_item(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_itemId = sse_decode_i_32(deserializer);
+var var_charge = sse_decode_opt_box_autoadd_i_32(deserializer);
+var var_state = sse_decode_state(deserializer);
+var var_index = sse_decode_i_32(deserializer);
+return Item(itemId: var_itemId, charge: var_charge, state: var_state, index: var_index); }
+
+@protected ItemProxy sse_decode_item_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
+var var_itemId = sse_decode_i_32(deserializer);
+var var_charge = sse_decode_opt_box_item_proxy(deserializer);
+var var_attributes = sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(deserializer);
+return ItemProxy(index: var_index, itemId: var_itemId, charge: var_charge, attributes: var_attributes); }
+
+@protected List<DroneGroup> sse_decode_list_drone_group(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+        var len_ = sse_decode_i_32(deserializer);
+        var ans_ = <DroneGroup>[];
+        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_drone_group(deserializer)); }
+        return ans_;
+         }
+
+@protected List<Implant> sse_decode_list_implant(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+        var len_ = sse_decode_i_32(deserializer);
+        var ans_ = <Implant>[];
+        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_implant(deserializer)); }
+        return ans_;
+         }
+
+@protected List<Item> sse_decode_list_item(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+        var len_ = sse_decode_i_32(deserializer);
+        var ans_ = <Item>[];
+        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_item(deserializer)); }
+        return ans_;
+         }
+
+@protected List<ItemProxy> sse_decode_list_item_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+        var len_ = sse_decode_i_32(deserializer);
+        var ans_ = <ItemProxy>[];
+        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_item_proxy(deserializer)); }
+        return ans_;
+         }
+
+@protected List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var len_ = sse_decode_i_32(deserializer);
+                return deserializer.buffer.getUint8List(len_); }
+
+@protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var len_ = sse_decode_i_32(deserializer);
+                return deserializer.buffer.getUint8List(len_); }
+
+@protected List<(int,int)> sse_decode_list_record_i_32_u_8(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+        var len_ = sse_decode_i_32(deserializer);
+        var ans_ = <(int,int)>[];
+        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_record_i_32_u_8(deserializer)); }
+        return ans_;
+         }
+
+@protected List<SlotInfo> sse_decode_list_slot_info(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+        var len_ = sse_decode_i_32(deserializer);
+        var ans_ = <SlotInfo>[];
+        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_slot_info(deserializer)); }
+        return ans_;
+         }
+
+@protected Module sse_decode_module(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_high = sse_decode_list_item(deserializer);
+var var_medium = sse_decode_list_item(deserializer);
+var var_low = sse_decode_list_item(deserializer);
+var var_rig = sse_decode_list_item(deserializer);
+var var_subsystem = sse_decode_list_item(deserializer);
+var var_tacticalMode = sse_decode_opt_box_autoadd_item(deserializer);
+return Module(high: var_high, medium: var_medium, low: var_low, rig: var_rig, subsystem: var_subsystem, tacticalMode: var_tacticalMode); }
+
+@protected ModulesProxy sse_decode_modules_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_high = sse_decode_list_item_proxy(deserializer);
+var var_medium = sse_decode_list_item_proxy(deserializer);
+var var_low = sse_decode_list_item_proxy(deserializer);
+var var_rig = sse_decode_list_item_proxy(deserializer);
+var var_subsystem = sse_decode_list_item_proxy(deserializer);
+var var_tacticalMode = sse_decode_opt_box_autoadd_item_proxy(deserializer);
+return ModulesProxy(high: var_high, medium: var_medium, low: var_low, rig: var_rig, subsystem: var_subsystem, tacticalMode: var_tacticalMode); }
+
+@protected double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_box_autoadd_f_64(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_box_autoadd_i_32(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected Item? sse_decode_opt_box_autoadd_item(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_box_autoadd_item(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected ItemProxy? sse_decode_opt_box_autoadd_item_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_box_autoadd_item_proxy(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected ItemProxy? sse_decode_opt_box_item_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_box_item_proxy(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected (int,int) sse_decode_record_i_32_u_8(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_field0 = sse_decode_i_32(deserializer);
+var var_field1 = sse_decode_u_8(deserializer);
+return (var_field0, var_field1); }
+
+@protected ShipProxy sse_decode_ship_proxy(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_hull = sse_decode_item_proxy(deserializer);
+var var_modules = sse_decode_modules_proxy(deserializer);
+var var_implants = sse_decode_list_item_proxy(deserializer);
+var var_character = sse_decode_item_proxy(deserializer);
+return ShipProxy(hull: var_hull, modules: var_modules, implants: var_implants, character: var_character); }
+
+@protected SlotInfo sse_decode_slot_info(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            var tag_ = sse_decode_i_32(deserializer);
+            switch (tag_) { case 0: var var_slot = sse_decode_slot_type(deserializer);
+var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
+var var_errorKey = sse_decode_box_autoadd_error_key(deserializer);
+return SlotInfo_Error(slot: var_slot, index: var_index, errorKey: var_errorKey);case 1: var var_slot = sse_decode_slot_type(deserializer);
+var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
+var var_warningKey = sse_decode_box_autoadd_warning_key(deserializer);
+return SlotInfo_Warning(slot: var_slot, index: var_index, warningKey: var_warningKey); default: throw UnimplementedError(''); }
+             }
+
+@protected SlotType sse_decode_slot_type(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_i_32(deserializer);
+        return SlotType.values[inner]; }
+
+@protected State sse_decode_state(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_i_32(deserializer);
+        return State.values[inner]; }
+
+@protected int sse_decode_u_8(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getUint8(); }
+
+@protected void sse_decode_unit(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+ }
+
+@protected BigInt sse_decode_usize(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getBigUint64(); }
+
+@protected WarningKey sse_decode_warning_key(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            var tag_ = sse_decode_i_32(deserializer);
+            switch (tag_) { case 0: return WarningKey_MissingCharge();case 1: var var_field0 = sse_decode_i_32(deserializer);
+return WarningKey_Placeholder(var_field0); default: throw UnimplementedError(''); }
+             }
+
+@protected bool sse_decode_bool(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getUint8() != 0; }
+
+@protected void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.message, serializer); }
+
+@protected void sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(AttributesProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(self, serializer); }
+
+@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(AttributesProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as AttributesProxyImpl).frbInternalSseEncode(move: true), serializer); }
+
+@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(EveDatabase self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as EveDatabaseImpl).frbInternalSseEncode(move: true), serializer); }
+
+@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(AttributesProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as AttributesProxyImpl).frbInternalSseEncode(move: false), serializer); }
+
+@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(EveDatabase self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as EveDatabaseImpl).frbInternalSseEncode(move: false), serializer); }
+
+@protected void sse_encode_Map_i_32_u_8(Map<int, int> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_list_record_i_32_u_8(self.entries.map((e) => (e.key, e.value)).toList(), serializer); }
+
+@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(AttributesProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as AttributesProxyImpl).frbInternalSseEncode(move: null), serializer); }
+
+@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(EveDatabase self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as EveDatabaseImpl).frbInternalSseEncode(move: null), serializer); }
+
+@protected void sse_encode_String(String self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer); }
+
+@protected void sse_encode_box_autoadd_error_key(ErrorKey self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_error_key(self, serializer); }
+
+@protected void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_f_64(self, serializer); }
+
+@protected void sse_encode_box_autoadd_fit(Fit self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_fit(self, serializer); }
+
+@protected void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self, serializer); }
+
+@protected void sse_encode_box_autoadd_item(Item self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_item(self, serializer); }
+
+@protected void sse_encode_box_autoadd_item_proxy(ItemProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_item_proxy(self, serializer); }
+
+@protected void sse_encode_box_autoadd_warning_key(WarningKey self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_warning_key(self, serializer); }
+
+@protected void sse_encode_box_item_proxy(ItemProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_item_proxy(self, serializer); }
+
+@protected void sse_encode_calculate_output(CalculateOutput self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_ship_proxy(self.ship, serializer);
+sse_encode_list_slot_info(self.errors, serializer);
+ }
+
+@protected void sse_encode_drone_group(DroneGroup self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.itemId, serializer);
+sse_encode_i_32(self.amount, serializer);
+sse_encode_i_32(self.index, serializer);
+ }
+
+@protected void sse_encode_error_key(ErrorKey self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+switch (self) { case ErrorKey_IncompatibleChargeSize(expected: final expected,actual: final actual): sse_encode_i_32(0, serializer); sse_encode_u_8(expected, serializer);
+sse_encode_u_8(actual, serializer);
+case ErrorKey_IncompatibleChargeCapacity(max: final max,actual: final actual): sse_encode_i_32(1, serializer); sse_encode_f_64(max, serializer);
+sse_encode_f_64(actual, serializer);
+case ErrorKey_TooMuchTurret(expected: final expected,actual: final actual): sse_encode_i_32(2, serializer); sse_encode_u_8(expected, serializer);
+sse_encode_u_8(actual, serializer);
+case ErrorKey_TooMuchLauncher(expected: final expected,actual: final actual): sse_encode_i_32(3, serializer); sse_encode_u_8(expected, serializer);
+sse_encode_u_8(actual, serializer);
+  } }
+
+@protected void sse_encode_f_64(double self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putFloat64(self); }
+
+@protected void sse_encode_fit(Fit self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.shipId, serializer);
+sse_encode_module(self.modules, serializer);
+sse_encode_list_drone_group(self.drones, serializer);
+sse_encode_list_implant(self.implant, serializer);
+sse_encode_Map_i_32_u_8(self.skills, serializer);
+ }
+
+@protected void sse_encode_i_32(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putInt32(self); }
+
+@protected void sse_encode_implant(Implant self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.itemId, serializer);
+sse_encode_i_32(self.index, serializer);
+ }
+
+@protected void sse_encode_item(Item self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.itemId, serializer);
+sse_encode_opt_box_autoadd_i_32(self.charge, serializer);
+sse_encode_state(self.state, serializer);
+sse_encode_i_32(self.index, serializer);
+ }
+
+@protected void sse_encode_item_proxy(ItemProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_opt_box_autoadd_i_32(self.index, serializer);
+sse_encode_i_32(self.itemId, serializer);
+sse_encode_opt_box_item_proxy(self.charge, serializer);
+sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAttributesProxy(self.attributes, serializer);
+ }
+
+@protected void sse_encode_list_drone_group(List<DroneGroup> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+        for (final item in self) { sse_encode_drone_group(item, serializer); } }
+
+@protected void sse_encode_list_implant(List<Implant> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+        for (final item in self) { sse_encode_implant(item, serializer); } }
+
+@protected void sse_encode_list_item(List<Item> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+        for (final item in self) { sse_encode_item(item, serializer); } }
+
+@protected void sse_encode_list_item_proxy(List<ItemProxy> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+        for (final item in self) { sse_encode_item_proxy(item, serializer); } }
+
+@protected void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+                    serializer.buffer.putUint8List(self is Uint8List ? self : Uint8List.fromList(self)); }
+
+@protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+                    serializer.buffer.putUint8List(self); }
+
+@protected void sse_encode_list_record_i_32_u_8(List<(int,int)> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+        for (final item in self) { sse_encode_record_i_32_u_8(item, serializer); } }
+
+@protected void sse_encode_list_slot_info(List<SlotInfo> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+        for (final item in self) { sse_encode_slot_info(item, serializer); } }
+
+@protected void sse_encode_module(Module self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_list_item(self.high, serializer);
+sse_encode_list_item(self.medium, serializer);
+sse_encode_list_item(self.low, serializer);
+sse_encode_list_item(self.rig, serializer);
+sse_encode_list_item(self.subsystem, serializer);
+sse_encode_opt_box_autoadd_item(self.tacticalMode, serializer);
+ }
+
+@protected void sse_encode_modules_proxy(ModulesProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_list_item_proxy(self.high, serializer);
+sse_encode_list_item_proxy(self.medium, serializer);
+sse_encode_list_item_proxy(self.low, serializer);
+sse_encode_list_item_proxy(self.rig, serializer);
+sse_encode_list_item_proxy(self.subsystem, serializer);
+sse_encode_opt_box_autoadd_item_proxy(self.tacticalMode, serializer);
+ }
+
+@protected void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_box_autoadd_f_64(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_box_autoadd_i_32(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_opt_box_autoadd_item(Item? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_box_autoadd_item(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_opt_box_autoadd_item_proxy(ItemProxy? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_box_autoadd_item_proxy(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_opt_box_item_proxy(ItemProxy? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_box_item_proxy(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_record_i_32_u_8((int,int) self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.$1, serializer);
+sse_encode_u_8(self.$2, serializer);
+ }
+
+@protected void sse_encode_ship_proxy(ShipProxy self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_item_proxy(self.hull, serializer);
+sse_encode_modules_proxy(self.modules, serializer);
+sse_encode_list_item_proxy(self.implants, serializer);
+sse_encode_item_proxy(self.character, serializer);
+ }
+
+@protected void sse_encode_slot_info(SlotInfo self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+switch (self) { case SlotInfo_Error(slot: final slot,index: final index,errorKey: final errorKey): sse_encode_i_32(0, serializer); sse_encode_slot_type(slot, serializer);
+sse_encode_opt_box_autoadd_i_32(index, serializer);
+sse_encode_box_autoadd_error_key(errorKey, serializer);
+case SlotInfo_Warning(slot: final slot,index: final index,warningKey: final warningKey): sse_encode_i_32(1, serializer); sse_encode_slot_type(slot, serializer);
+sse_encode_opt_box_autoadd_i_32(index, serializer);
+sse_encode_box_autoadd_warning_key(warningKey, serializer);
+  } }
+
+@protected void sse_encode_slot_type(SlotType self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.index, serializer); }
+
+@protected void sse_encode_state(State self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.index, serializer); }
+
+@protected void sse_encode_u_8(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putUint8(self); }
+
+@protected void sse_encode_unit(void self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+ }
+
+@protected void sse_encode_usize(BigInt self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putBigUint64(self); }
+
+@protected void sse_encode_warning_key(WarningKey self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+switch (self) { case WarningKey_MissingCharge(): sse_encode_i_32(0, serializer); case WarningKey_Placeholder(field0: final field0): sse_encode_i_32(1, serializer); sse_encode_i_32(field0, serializer);
+  } }
+
+@protected void sse_encode_bool(bool self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putUint8(self ? 1 : 0); }
+                }
+                
+
+            @sealed class AttributesProxyImpl extends RustOpaque implements AttributesProxy {
+                // Not to be used by end users
+                AttributesProxyImpl.frbInternalDcoDecode(List<dynamic> wire):
+                    super.frbInternalDcoDecode(wire, _kStaticData);
+
+                // Not to be used by end users
+                AttributesProxyImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative):
+                    super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+                static final _kStaticData = RustArcStaticData(
+                    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_AttributesProxy,
+                    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_AttributesProxy,
+                    rustArcDecrementStrongCountPtr: RustLib.instance.api.rust_arc_decrement_strong_count_AttributesProxyPtr,
+                );
+
+                 double?  getById({required int key })=>RustLib.instance.api.crateApiProxyAttributesProxyGetById(that: this, key: key);
+
+
+            }
+            @sealed class EveDatabaseImpl extends RustOpaque implements EveDatabase {
+                // Not to be used by end users
+                EveDatabaseImpl.frbInternalDcoDecode(List<dynamic> wire):
+                    super.frbInternalDcoDecode(wire, _kStaticData);
+
+                // Not to be used by end users
+                EveDatabaseImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative):
+                    super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+                static final _kStaticData = RustArcStaticData(
+                    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_EveDatabase,
+                    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_EveDatabase,
+                    rustArcDecrementStrongCountPtr: RustLib.instance.api.rust_arc_decrement_strong_count_EveDatabasePtr,
+                );
+
+                
+            }

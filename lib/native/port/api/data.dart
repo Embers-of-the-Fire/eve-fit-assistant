@@ -6,18 +6,20 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `calculate`
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<EveDatabase>>
-abstract class EveDatabase implements RustOpaqueInterface {
-  static Future<EveDatabase> init(
-          {required List<int> dogmaAttrBuffer,
-          required List<int> dogmaEffectBuffer,
-          required List<int> typeDogmaBuffer,
-          required List<int> typesBuffer}) =>
-      RustLib.instance.api.crateApiDataEveDatabaseInit(
-          dogmaAttrBuffer: dogmaAttrBuffer,
-          dogmaEffectBuffer: dogmaEffectBuffer,
-          typeDogmaBuffer: typeDogmaBuffer,
-          typesBuffer: typesBuffer);
-}
+            // These functions are ignored because they are not marked as `pub`: `calculate`
+
+
+            
+
+            
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<EveDatabase>>
+                abstract class EveDatabase implements RustOpaqueInterface {
+                    static Future<EveDatabase>  init({required List<int> dogmaAttrBuffer , required List<int> dogmaEffectBuffer , required List<int> typeDogmaBuffer , required List<int> typesBuffer })=>RustLib.instance.api.crateApiDataEveDatabaseInit(dogmaAttrBuffer: dogmaAttrBuffer, dogmaEffectBuffer: dogmaEffectBuffer, typeDogmaBuffer: typeDogmaBuffer, typesBuffer: typesBuffer);
+
+
+
+                    
+                }
+                
+            

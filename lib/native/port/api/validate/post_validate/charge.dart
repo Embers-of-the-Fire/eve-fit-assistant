@@ -6,13 +6,15 @@
 import '../../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `validate_charge`
 
-int get attrVolume =>
-    RustLib.instance.api.crateApiValidatePostValidateChargeAttrVolume();
+            // These functions are ignored because they are not marked as `pub`: `validate_charge`
 
-int get attrChargeSize =>
-    RustLib.instance.api.crateApiValidatePostValidateChargeAttrChargeSize();
 
-int get attrAmmoCap =>
-    RustLib.instance.api.crateApiValidatePostValidateChargeAttrAmmoCap();
+            int get attrVolume => RustLib.instance.api.crateApiValidatePostValidateChargeAttrVolume();
+
+int get attrChargeSize => RustLib.instance.api.crateApiValidatePostValidateChargeAttrChargeSize();
+
+int get attrAmmoCap => RustLib.instance.api.crateApiValidatePostValidateChargeAttrAmmoCap();
+
+            
+            
