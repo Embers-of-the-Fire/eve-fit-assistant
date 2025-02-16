@@ -6,26 +6,24 @@ class Extra extends StatelessWidget {
   const Extra({super.key, required this.ship});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 14, right: 22, top: 8, bottom: 8),
-      child: DefaultTextStyle(
-        style: const TextStyle(fontSize: 16),
-        textAlign: TextAlign.end,
-        child: Table(
-          columnWidths: const {
-            0: FixedColumnWidth(28),
-            1: FlexColumnWidth(),
-            2: FixedColumnWidth(10),
-            3: FixedColumnWidth(28),
-            4: FlexColumnWidth(),
-          },
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: _getExtraTableContent(ship.hull),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.only(left: 14, right: 22, top: 8, bottom: 8),
+        child: DefaultTextStyle(
+          style: const TextStyle(fontSize: 16),
+          textAlign: TextAlign.end,
+          child: Table(
+            columnWidths: const {
+              0: FixedColumnWidth(28),
+              1: FlexColumnWidth(),
+              2: FixedColumnWidth(10),
+              3: FixedColumnWidth(28),
+              4: FlexColumnWidth(),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: _getExtraTableContent(ship.hull),
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 List<TableRow> _getExtraTableContent(ItemProxy hull) {

@@ -12,7 +12,7 @@ import 'api/error.dart';
 import 'api/proxy.dart';
 import 'api/schema.dart';
 import 'api/simple.dart';
-import 'api/validate/pre_validate/charge.dart';
+import 'api/validate/post_validate/charge.dart';
 import 'api/validate/pre_validate/slot_num.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -96,6 +96,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ItemProxy dco_decode_box_autoadd_item_proxy(dynamic raw);
+
+  @protected
+  WarningKey dco_decode_box_autoadd_warning_key(dynamic raw);
 
   @protected
   ItemProxy dco_decode_box_item_proxy(dynamic raw);
@@ -260,6 +263,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ItemProxy sse_decode_box_autoadd_item_proxy(SseDeserializer deserializer);
+
+  @protected
+  WarningKey sse_decode_box_autoadd_warning_key(SseDeserializer deserializer);
 
   @protected
   ItemProxy sse_decode_box_item_proxy(SseDeserializer deserializer);
@@ -432,6 +438,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_item_proxy(
       ItemProxy self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_warning_key(
+      WarningKey self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_item_proxy(ItemProxy self, SseSerializer serializer);

@@ -99,13 +99,9 @@ class StaticVersionInfo {
 
   const StaticVersionInfo({required this.createTime});
 
-  factory StaticVersionInfo.fromText(String text) {
-    return StaticVersionInfo(createTime: int.parse(text));
-  }
+  factory StaticVersionInfo.fromText(String text) => StaticVersionInfo(createTime: int.parse(text));
 
-  String toText() {
-    return createTime.toString();
-  }
+  String toText() => createTime.toString();
 
   bool operator >(StaticVersionInfo local) => createTime > local.createTime;
 

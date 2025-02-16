@@ -96,66 +96,65 @@ class _ItemListState extends State<ItemList> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: widget.breadcrumbPadding,
-          decoration: widget.breadcrumbDecoration,
-          child: BreadCrumb(
-            items: [
-              BreadCrumbItem(
-                content: Container(
-                  padding: widget.breadcrumbItemPadding,
-                  child: Text(widget.baseGroup ?? '总览', style: const TextStyle(fontSize: 16)),
+  Widget build(BuildContext context) => Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: widget.breadcrumbPadding,
+            decoration: widget.breadcrumbDecoration,
+            child: BreadCrumb(
+              items: [
+                BreadCrumbItem(
+                  content: Container(
+                    padding: widget.breadcrumbItemPadding,
+                    child: Text(widget.baseGroup ?? '总览', style: const TextStyle(fontSize: 16)),
+                  ),
+                  onTap: () => _resetBreadcrumbs(),
                 ),
-                onTap: () => _resetBreadcrumbs(),
-              ),
-              ..._breadcrumbNames.enumerate().map((el) => BreadCrumbItem(
-                    content: Container(
-                      padding: widget.breadcrumbItemPadding,
-                      child: Text(el.$2, style: const TextStyle(fontSize: 16)),
-                    ),
-                    onTap: () => setState(() {
-                      _breadcrumbs.removeRange(el.$1 + 1, _breadcrumbs.length);
-                      _breadcrumbNames.removeRange(el.$1 + 1, _breadcrumbNames.length);
-                    }),
-                  ))
-            ],
-            divider: const Icon(Icons.chevron_right),
-            overflow: ScrollableOverflow(
-              direction: Axis.horizontal,
-              keepLastDivider: true,
-              controller: _breadcrumbController,
-            ),
-          ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            controller: _shipListController,
-            child: Column(
-              children: [
-                ..._filterMarketGroups(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
-                    .filterMap((id) => GlobalStorage().static.marketGroups[id].map((v) => (id, v)))
-                    .filter((it) => _isGroupValid(it.$1))
-                    .map((it) => _groupListTile(it.$2, onTap: () => _expandGroup(it.$1))),
-                ...(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
-                    .andThen((id) => GlobalStorage().static.marketGroups[id])
-                    .map((group) => _itemListTile(
-                          group,
-                          onTap: widget.onSelect,
-                          filter: widget.filter,
-                        ))
-                    .unwrapOr([])
+                ..._breadcrumbNames.enumerate().map((el) => BreadCrumbItem(
+                      content: Container(
+                        padding: widget.breadcrumbItemPadding,
+                        child: Text(el.$2, style: const TextStyle(fontSize: 16)),
+                      ),
+                      onTap: () => setState(() {
+                        _breadcrumbs.removeRange(el.$1 + 1, _breadcrumbs.length);
+                        _breadcrumbNames.removeRange(el.$1 + 1, _breadcrumbNames.length);
+                      }),
+                    ))
               ],
+              divider: const Icon(Icons.chevron_right),
+              overflow: ScrollableOverflow(
+                direction: Axis.horizontal,
+                keepLastDivider: true,
+                controller: _breadcrumbController,
+              ),
             ),
           ),
-        )
-      ],
-    );
-  }
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              controller: _shipListController,
+              child: Column(
+                children: [
+                  ..._filterMarketGroups(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
+                      .filterMap(
+                          (id) => GlobalStorage().static.marketGroups[id].map((v) => (id, v)))
+                      .filter((it) => _isGroupValid(it.$1))
+                      .map((it) => _groupListTile(it.$2, onTap: () => _expandGroup(it.$1))),
+                  ...(_breadcrumbs.lastOrNull ?? widget.fallbackGroupID)
+                      .andThen((id) => GlobalStorage().static.marketGroups[id])
+                      .map((group) => _itemListTile(
+                            group,
+                            onTap: widget.onSelect,
+                            filter: widget.filter,
+                          ))
+                      .unwrapOr([])
+                ],
+              ),
+            ),
+          )
+        ],
+      );
 }
 
 ListTile _groupListTile(MarketGroup group, {void Function()? onTap}) {

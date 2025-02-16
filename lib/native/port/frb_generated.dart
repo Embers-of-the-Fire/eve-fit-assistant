@@ -9,7 +9,7 @@ import 'api/error.dart';
 import 'api/proxy.dart';
 import 'api/schema.dart';
 import 'api/simple.dart';
-import 'api/validate/pre_validate/charge.dart';
+import 'api/validate/post_validate/charge.dart';
 import 'api/validate/pre_validate/slot_num.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -75,7 +75,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.8.0';
 
   @override
-  int get rustContentHash => 833395624;
+  int get rustContentHash => -1532163254;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -86,15 +86,15 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  int crateApiValidatePreValidateChargeAttrAmmoCap();
+  int crateApiValidatePostValidateChargeAttrAmmoCap();
 
-  int crateApiValidatePreValidateChargeAttrChargeSize();
+  int crateApiValidatePostValidateChargeAttrChargeSize();
 
   int crateApiValidatePreValidateSlotNumAttrLauncher();
 
   int crateApiValidatePreValidateSlotNumAttrTurret();
 
-  int crateApiValidatePreValidateChargeAttrVolume();
+  int crateApiValidatePostValidateChargeAttrVolume();
 
   double? crateApiProxyAttributesProxyGetById(
       {required AttributesProxy that, required int key});
@@ -145,7 +145,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  int crateApiValidatePreValidateChargeAttrAmmoCap() {
+  int crateApiValidatePostValidateChargeAttrAmmoCap() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -155,20 +155,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeSuccessData: sse_decode_i_32,
         decodeErrorData: null,
       ),
-      constMeta: kCrateApiValidatePreValidateChargeAttrAmmoCapConstMeta,
+      constMeta: kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta,
       argValues: [],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePreValidateChargeAttrAmmoCapConstMeta =>
+  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta =>
       const TaskConstMeta(
         debugName: "ATTR_AMMO_CAP",
         argNames: [],
       );
 
   @override
-  int crateApiValidatePreValidateChargeAttrChargeSize() {
+  int crateApiValidatePostValidateChargeAttrChargeSize() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -178,17 +178,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeSuccessData: sse_decode_i_32,
         decodeErrorData: null,
       ),
-      constMeta: kCrateApiValidatePreValidateChargeAttrChargeSizeConstMeta,
+      constMeta: kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta,
       argValues: [],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePreValidateChargeAttrChargeSizeConstMeta =>
-      const TaskConstMeta(
-        debugName: "ATTR_CHARGE_SIZE",
-        argNames: [],
-      );
+  TaskConstMeta
+      get kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta =>
+          const TaskConstMeta(
+            debugName: "ATTR_CHARGE_SIZE",
+            argNames: [],
+          );
 
   @override
   int crateApiValidatePreValidateSlotNumAttrLauncher() {
@@ -237,7 +238,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  int crateApiValidatePreValidateChargeAttrVolume() {
+  int crateApiValidatePostValidateChargeAttrVolume() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -247,13 +248,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeSuccessData: sse_decode_i_32,
         decodeErrorData: null,
       ),
-      constMeta: kCrateApiValidatePreValidateChargeAttrVolumeConstMeta,
+      constMeta: kCrateApiValidatePostValidateChargeAttrVolumeConstMeta,
       argValues: [],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePreValidateChargeAttrVolumeConstMeta =>
+  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrVolumeConstMeta =>
       const TaskConstMeta(
         debugName: "ATTR_VOLUME",
         argNames: [],
@@ -601,6 +602,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  WarningKey dco_decode_box_autoadd_warning_key(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_warning_key(raw);
+  }
+
+  @protected
   ItemProxy dco_decode_box_item_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_item_proxy(raw);
@@ -880,7 +887,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return SlotInfo_Warning(
           slot: dco_decode_slot_type(raw[1]),
           index: dco_decode_opt_box_autoadd_i_32(raw[2]),
-          warningKey: dco_decode_warning_key(raw[3]),
+          warningKey: dco_decode_box_autoadd_warning_key(raw[3]),
         );
       default:
         throw Exception("unreachable");
@@ -920,7 +927,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   WarningKey dco_decode_warning_key(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return WarningKey.values[raw as int];
+    switch (raw[0]) {
+      case 0:
+        return WarningKey_MissingCharge();
+      case 1:
+        return WarningKey_Placeholder(
+          dco_decode_i_32(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -1043,6 +1059,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ItemProxy sse_decode_box_autoadd_item_proxy(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_item_proxy(deserializer));
+  }
+
+  @protected
+  WarningKey sse_decode_box_autoadd_warning_key(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_warning_key(deserializer));
   }
 
   @protected
@@ -1381,7 +1403,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 1:
         var var_slot = sse_decode_slot_type(deserializer);
         var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
-        var var_warningKey = sse_decode_warning_key(deserializer);
+        var var_warningKey = sse_decode_box_autoadd_warning_key(deserializer);
         return SlotInfo_Warning(
             slot: var_slot, index: var_index, warningKey: var_warningKey);
       default:
@@ -1423,8 +1445,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   WarningKey sse_decode_warning_key(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return WarningKey.values[inner];
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return WarningKey_MissingCharge();
+      case 1:
+        var var_field0 = sse_decode_i_32(deserializer);
+        return WarningKey_Placeholder(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1556,6 +1587,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       ItemProxy self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_item_proxy(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_warning_key(
+      WarningKey self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_warning_key(self, serializer);
   }
 
   @protected
@@ -1849,7 +1887,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_i_32(1, serializer);
         sse_encode_slot_type(slot, serializer);
         sse_encode_opt_box_autoadd_i_32(index, serializer);
-        sse_encode_warning_key(warningKey, serializer);
+        sse_encode_box_autoadd_warning_key(warningKey, serializer);
     }
   }
 
@@ -1885,7 +1923,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_warning_key(WarningKey self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
+    switch (self) {
+      case WarningKey_MissingCharge():
+        sse_encode_i_32(0, serializer);
+      case WarningKey_Placeholder(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_i_32(field0, serializer);
+    }
   }
 
   @protected

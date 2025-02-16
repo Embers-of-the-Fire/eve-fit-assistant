@@ -6,18 +6,16 @@ class Capacitor extends StatelessWidget {
   const Capacitor({super.key, required this.ship});
 
   @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      minTileHeight: 0,
-      leading: const Image(image: capacitorChargeImage, height: 28),
-      title: DefaultTextStyle(
-          style: const TextStyle(fontSize: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: _getCapacitorTextGroup(ship.hull),
-          )),
-    );
-  }
+  Widget build(BuildContext context) => ListTile(
+        minTileHeight: 0,
+        leading: const Image(image: capacitorChargeImage, height: 28),
+        title: DefaultTextStyle(
+            style: const TextStyle(fontSize: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: _getCapacitorTextGroup(ship.hull),
+            )),
+      );
 }
 
 List<Text> _getCapacitorTextGroup(ItemProxy hull) {

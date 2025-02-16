@@ -23,9 +23,7 @@ extension Optional<T> on T? {
     }
   }
 
-  Future<T?> async() async {
-    return this;
-  }
+  Future<T?> async() async => this;
 }
 
 extension AsyncOptional<T> on Future<T?> {

@@ -10,7 +10,7 @@ Future<void> unpackBundledStorage({
   bool autoDismiss = true,
 }) async {
   if (showLoading) {
-    EasyLoading.show(status: '正在解压静态资产');
+    await EasyLoading.show(status: '正在解压静态资产');
   }
   final start = DateTime.now();
   dev.log(
@@ -32,7 +32,7 @@ Future<void> unpackBundledStorage({
     time: end,
   );
   if (showLoading && autoDismiss) {
-    EasyLoading.dismiss();
+    await EasyLoading.dismiss();
   }
 }
 

@@ -4,7 +4,5 @@ class Reversed<R extends Comparable<R>> implements Comparable<Reversed<R>> {
   const Reversed(this._raw);
 
   @override
-  int compareTo(Reversed<R> other) {
-    return other._raw.compareTo(_raw);
-  }
+  int compareTo(Reversed<R> other) => other._raw.compareTo(_raw);
 }

@@ -26,9 +26,7 @@ class NativeDatabase {
     return NativeDatabase._private(db);
   }
 
-  native.CalculateOutput calculate(schema.Fit fit) {
-    return native.calculate(db: _raw, fit: fit);
-  }
+  native.CalculateOutput calculate(schema.Fit fit) => native.calculate(db: _raw, fit: fit);
 }
 
 Future<Directory> getNativeStorageDir({bool create = false}) async {

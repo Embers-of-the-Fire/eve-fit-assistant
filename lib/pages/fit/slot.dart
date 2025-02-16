@@ -1,9 +1,11 @@
 import 'package:eve_fit_assistant/assets/icon.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
+import 'package:eve_fit_assistant/native/glue/native_slot.dart';
 import 'package:eve_fit_assistant/native/port/api/proxy.dart';
 import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/fit.dart';
 import 'package:eve_fit_assistant/pages/fit/item_info.dart';
+import 'package:eve_fit_assistant/pages/fit/native_error.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
@@ -129,7 +131,7 @@ class SlotRow extends ConsumerWidget {
         onPressed: (_) async {
           final chargeID = await showAddChargeDialog(context, typeID, type: type);
           if (chargeID == null) return;
-          _modifyFit(
+          await _modifyFit(
             index: index,
             type: type,
             fit: fit,
@@ -208,6 +210,9 @@ class _SlotRowDisplay extends ConsumerWidget {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
     final fitData = ref.watch(fitRecordNotifierProvider(fitID));
 
+    final List<ItemProxy> slots = fitData.output.ship.modules.getSlots(type)!;
+    final ItemProxy? item = slots.find((item) => item.index == index);
+
     final List<List<Widget>> subtitleGroup = [];
 
     {
@@ -232,12 +237,9 @@ class _SlotRowDisplay extends ConsumerWidget {
     {
       // fire range
       final List<Widget> row = [];
-
-      final List<ItemProxy> slots = fitData.output.ship.modules.getSlots(type)!;
-      final ItemProxy? item = slots.find((item) => item.index == index);
       if (item != null) {
         final range = item.attributes.getById(key: maxRange);
-        if (range != null) {
+        if (range != null && range > 0) {
           // turret
           row.add(const Image(image: targetRangeImage, width: 18, height: 18));
           row.add(const SizedBox(width: 10));
@@ -260,9 +262,11 @@ class _SlotRowDisplay extends ConsumerWidget {
           final speed = charge.attributes.getById(key: maxVelocity) ?? 0.0;
           final time = charge.attributes.getById(key: explosionDelay) ?? 0.0;
           final range = speed * time / 1000_000;
-          row.add(const Image(image: targetRangeImage, width: 18, height: 18));
-          row.add(const SizedBox(width: 10));
-          row.add(Text('${range.toStringAsFixed(1)} km', style: const TextStyle(fontSize: 14)));
+          if (range > 0) {
+            row.add(const Image(image: targetRangeImage, width: 18, height: 18));
+            row.add(const SizedBox(width: 10));
+            row.add(Text('${range.toStringAsFixed(1)} km', style: const TextStyle(fontSize: 14)));
+          }
         }
       }
 
@@ -270,6 +274,10 @@ class _SlotRowDisplay extends ConsumerWidget {
         subtitleGroup.add(row);
       }
     }
+
+    final errors = fitData.output.errors
+        .filter((err) => err.slot.fitItemType == type && err.index == index)
+        .toList();
 
     return ListTile(
       onLongPress: () => showItemInfoPage(context),
@@ -306,6 +314,7 @@ class _SlotRowDisplay extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: subtitleGroup.map((group) => Row(children: group)).toList(),
             ),
+      trailing: errors.isNotEmpty ? NativeErrorTrigger(errors: errors) : null,
     );
   }
 }
@@ -325,6 +334,11 @@ class SlotRowPlaceholder extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
+    final fitData = ref.watch(fitRecordNotifierProvider(fitID));
+
+    final errors = fitData.output.errors
+        .filter((err) => err.slot.fitItemType == type && err.index == index)
+        .toList();
 
     return ListTile(
       leading: CircleAvatar(
@@ -359,6 +373,7 @@ class SlotRowPlaceholder extends ConsumerWidget {
           ),
         );
       },
+      trailing: errors.isNotEmpty ? NativeErrorTrigger(errors: errors) : null,
     );
   }
 }
@@ -368,14 +383,13 @@ Future<void> _modifyFit({
   required FitItemType type,
   required FitRecordNotifier fit,
   required SlotItem? Function(SlotItem?) op,
-}) {
-  return fit.modify((fit) {
-    final func = _getModifyFunction(fit, type);
-    if (func == null) return fit;
-    func(index, op);
-    return fit;
-  });
-}
+}) =>
+    fit.modify((fit) {
+      final func = _getModifyFunction(fit, type);
+      if (func == null) return fit;
+      func(index, op);
+      return fit;
+    });
 
 void Function(int, SlotItem? Function(SlotItem?))? _getModifyFunction(
   FitRecord record,

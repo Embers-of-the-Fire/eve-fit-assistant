@@ -21,11 +21,9 @@ class Content {
     this.icon = Icons.dashboard,
   });
 
-  static List<Content> of(Iterable<Content> contents) {
-    return contents
-        .sortedByKey<Reversed<num>>((content) => Reversed(content.time.millisecondsSinceEpoch))
-        .toList();
-  }
+  static List<Content> of(Iterable<Content> contents) => contents
+      .sortedByKey<Reversed<num>>((content) => Reversed(content.time.millisecondsSinceEpoch))
+      .toList();
 }
 
 final List<Content> contents = Content.of([

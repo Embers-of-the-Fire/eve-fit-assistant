@@ -59,7 +59,12 @@ enum SlotType {
   ;
 }
 
-enum WarningKey {
-  missingCharge,
-  ;
+@freezed
+sealed class WarningKey with _$WarningKey {
+  const WarningKey._();
+
+  const factory WarningKey.missingCharge() = WarningKey_MissingCharge;
+  const factory WarningKey.placeholder(
+    int field0,
+  ) = WarningKey_Placeholder;
 }

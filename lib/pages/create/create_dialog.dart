@@ -6,40 +6,38 @@ Future<String?> showShipCreateDialog(BuildContext context) {
 
   return showDialog<String>(
     context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('创建舰船'),
-        content: Form(
-            key: form,
-            child: TextFormField(
-              controller: controller,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '请输入舰船名称';
-                }
-                return null;
-              },
-              decoration: const InputDecoration(
-                hintText: '装配名称',
-              ),
-            )),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (form.currentState?.validate() ?? false) {
-                Navigator.of(context).pop(controller.text);
+    builder: (BuildContext context) => AlertDialog(
+      title: const Text('创建舰船'),
+      content: Form(
+          key: form,
+          child: TextFormField(
+            controller: controller,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '请输入舰船名称';
               }
+              return null;
             },
-            child: const Text('确认'),
-          ),
-        ],
-      );
-    },
+            decoration: const InputDecoration(
+              hintText: '装配名称',
+            ),
+          )),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () {
+            if (form.currentState?.validate() ?? false) {
+              Navigator.of(context).pop(controller.text);
+            }
+          },
+          child: const Text('确认'),
+        ),
+      ],
+    ),
   );
 }

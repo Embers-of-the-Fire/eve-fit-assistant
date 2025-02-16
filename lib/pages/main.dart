@@ -13,43 +13,41 @@ class _MainPageState extends State<MainPage> {
   final _scrollController = ScrollController();
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      scrollDirection: Axis.vertical,
-      controller: _scrollController,
-      children: [
-        MainPageCard(
-          onTap: () => startFitCreation(context),
-          icon: Icons.add,
-          text: '创建新配置',
-          height: 150,
-        ),
-        const SizedBox(height: 20),
-        MainPageCard(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const AnnouncementPage()),
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        scrollDirection: Axis.vertical,
+        controller: _scrollController,
+        children: [
+          MainPageCard(
+            onTap: () => startFitCreation(context),
+            icon: Icons.add,
+            text: '创建新配置',
+            height: 150,
           ),
-          icon: Icons.list,
-          text: '公告',
-          height: 150,
-        ),
-        const SizedBox(height: 20),
-        // TODO: Uncomment this block after implementing the market page
-        // MainPageCard(
-        //   onTap: () => showDialog(
-        //       context: context,
-        //       builder: (context) => const AlertDialog(
-        //             title: Text('提示'),
-        //             content: Text('该功能尚未开放。\n敬请期待！'),
-        //           )),
-        //   text: '物品市场',
-        //   icon: Icons.shopping_cart_rounded,
-        //   height: 150,
-        // ),
-      ],
-    );
-  }
+          const SizedBox(height: 20),
+          MainPageCard(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const AnnouncementPage()),
+            ),
+            icon: Icons.list,
+            text: '公告',
+            height: 150,
+          ),
+          const SizedBox(height: 20),
+          // TODO: Uncomment this block after implementing the market page
+          // MainPageCard(
+          //   onTap: () => showDialog(
+          //       context: context,
+          //       builder: (context) => const AlertDialog(
+          //             title: Text('提示'),
+          //             content: Text('该功能尚未开放。\n敬请期待！'),
+          //           )),
+          //   text: '物品市场',
+          //   icon: Icons.shopping_cart_rounded,
+          //   height: 150,
+          // ),
+        ],
+      );
 }
 
 class MainPageCard extends StatelessWidget {

@@ -55,12 +55,10 @@ class FitRecord {
     required this.body,
   });
 
-  factory FitRecord.init(FitRecordBrief brief, int shipID) {
-    return FitRecord(
-      brief: brief,
-      body: Fit.init(shipID),
-    );
-  }
+  factory FitRecord.init(FitRecordBrief brief, int shipID) => FitRecord(
+        brief: brief,
+        body: Fit.init(shipID),
+      );
 
   void modifyHigh(int index, SlotItem? Function(SlotItem?) map) {
     body.high[index] = map(body.high[index]);
@@ -294,9 +292,7 @@ enum SlotState implements Comparable<SlotState> {
   }
 
   @override
-  int compareTo(SlotState other) {
-    return state.compareTo(other.state);
-  }
+  int compareTo(SlotState other) => state.compareTo(other.state);
 
   bool operator >(SlotState other) => state > other.state;
 
@@ -327,7 +323,5 @@ enum DroneState {
 
   const DroneState(this.state);
 
-  DroneState nextState() {
-    return state == 0 ? DroneState.active : DroneState.passive;
-  }
+  DroneState nextState() => state == 0 ? DroneState.active : DroneState.passive;
 }

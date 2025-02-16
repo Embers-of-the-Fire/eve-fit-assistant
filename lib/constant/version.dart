@@ -13,13 +13,9 @@ class Version {
     this.appendix,
   });
 
-  String stringify() {
-    return '$major.$minor.$patch';
-  }
+  String stringify() => '$major.$minor.$patch';
 
-  String stringifyFull() {
-    return '$major.$minor.$patch${appendix != null ? '-$appendix' : ''}';
-  }
+  String stringifyFull() => '$major.$minor.$patch${appendix != null ? '-$appendix' : ''}';
 }
 
 const Version flutterVersion = Version(major: 3, minor: 27, patch: 3);

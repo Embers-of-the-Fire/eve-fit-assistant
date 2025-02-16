@@ -1101,6 +1101,8 @@ abstract class _$$SlotInfo_WarningImplCopyWith<$Res>
   @override
   @useResult
   $Res call({SlotType slot, int? index, WarningKey warningKey});
+
+  $WarningKeyCopyWith<$Res> get warningKey;
 }
 
 /// @nodoc
@@ -1134,6 +1136,16 @@ class __$$SlotInfo_WarningImplCopyWithImpl<$Res>
           : warningKey // ignore: cast_nullable_to_non_nullable
               as WarningKey,
     ));
+  }
+
+  /// Create a copy of SlotInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $WarningKeyCopyWith<$Res> get warningKey {
+    return $WarningKeyCopyWith<$Res>(_value.warningKey, (value) {
+      return _then(_value.copyWith(warningKey: value));
+    });
   }
 }
 
@@ -1264,4 +1276,321 @@ abstract class SlotInfo_Warning extends SlotInfo {
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$SlotInfo_WarningImplCopyWith<_$SlotInfo_WarningImpl> get copyWith =>
       throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+mixin _$WarningKey {
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() missingCharge,
+    required TResult Function(int field0) placeholder,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? missingCharge,
+    TResult? Function(int field0)? placeholder,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? missingCharge,
+    TResult Function(int field0)? placeholder,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(WarningKey_MissingCharge value) missingCharge,
+    required TResult Function(WarningKey_Placeholder value) placeholder,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(WarningKey_MissingCharge value)? missingCharge,
+    TResult? Function(WarningKey_Placeholder value)? placeholder,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(WarningKey_MissingCharge value)? missingCharge,
+    TResult Function(WarningKey_Placeholder value)? placeholder,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $WarningKeyCopyWith<$Res> {
+  factory $WarningKeyCopyWith(
+          WarningKey value, $Res Function(WarningKey) then) =
+      _$WarningKeyCopyWithImpl<$Res, WarningKey>;
+}
+
+/// @nodoc
+class _$WarningKeyCopyWithImpl<$Res, $Val extends WarningKey>
+    implements $WarningKeyCopyWith<$Res> {
+  _$WarningKeyCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of WarningKey
+  /// with the given fields replaced by the non-null parameter values.
+}
+
+/// @nodoc
+abstract class _$$WarningKey_MissingChargeImplCopyWith<$Res> {
+  factory _$$WarningKey_MissingChargeImplCopyWith(
+          _$WarningKey_MissingChargeImpl value,
+          $Res Function(_$WarningKey_MissingChargeImpl) then) =
+      __$$WarningKey_MissingChargeImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$WarningKey_MissingChargeImplCopyWithImpl<$Res>
+    extends _$WarningKeyCopyWithImpl<$Res, _$WarningKey_MissingChargeImpl>
+    implements _$$WarningKey_MissingChargeImplCopyWith<$Res> {
+  __$$WarningKey_MissingChargeImplCopyWithImpl(
+      _$WarningKey_MissingChargeImpl _value,
+      $Res Function(_$WarningKey_MissingChargeImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of WarningKey
+  /// with the given fields replaced by the non-null parameter values.
+}
+
+/// @nodoc
+
+class _$WarningKey_MissingChargeImpl extends WarningKey_MissingCharge {
+  const _$WarningKey_MissingChargeImpl() : super._();
+
+  @override
+  String toString() {
+    return 'WarningKey.missingCharge()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$WarningKey_MissingChargeImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() missingCharge,
+    required TResult Function(int field0) placeholder,
+  }) {
+    return missingCharge();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? missingCharge,
+    TResult? Function(int field0)? placeholder,
+  }) {
+    return missingCharge?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? missingCharge,
+    TResult Function(int field0)? placeholder,
+    required TResult orElse(),
+  }) {
+    if (missingCharge != null) {
+      return missingCharge();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(WarningKey_MissingCharge value) missingCharge,
+    required TResult Function(WarningKey_Placeholder value) placeholder,
+  }) {
+    return missingCharge(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(WarningKey_MissingCharge value)? missingCharge,
+    TResult? Function(WarningKey_Placeholder value)? placeholder,
+  }) {
+    return missingCharge?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(WarningKey_MissingCharge value)? missingCharge,
+    TResult Function(WarningKey_Placeholder value)? placeholder,
+    required TResult orElse(),
+  }) {
+    if (missingCharge != null) {
+      return missingCharge(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class WarningKey_MissingCharge extends WarningKey {
+  const factory WarningKey_MissingCharge() = _$WarningKey_MissingChargeImpl;
+  const WarningKey_MissingCharge._() : super._();
+}
+
+/// @nodoc
+abstract class _$$WarningKey_PlaceholderImplCopyWith<$Res> {
+  factory _$$WarningKey_PlaceholderImplCopyWith(
+          _$WarningKey_PlaceholderImpl value,
+          $Res Function(_$WarningKey_PlaceholderImpl) then) =
+      __$$WarningKey_PlaceholderImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({int field0});
+}
+
+/// @nodoc
+class __$$WarningKey_PlaceholderImplCopyWithImpl<$Res>
+    extends _$WarningKeyCopyWithImpl<$Res, _$WarningKey_PlaceholderImpl>
+    implements _$$WarningKey_PlaceholderImplCopyWith<$Res> {
+  __$$WarningKey_PlaceholderImplCopyWithImpl(
+      _$WarningKey_PlaceholderImpl _value,
+      $Res Function(_$WarningKey_PlaceholderImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of WarningKey
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? field0 = null,
+  }) {
+    return _then(_$WarningKey_PlaceholderImpl(
+      null == field0
+          ? _value.field0
+          : field0 // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$WarningKey_PlaceholderImpl extends WarningKey_Placeholder {
+  const _$WarningKey_PlaceholderImpl(this.field0) : super._();
+
+  @override
+  final int field0;
+
+  @override
+  String toString() {
+    return 'WarningKey.placeholder(field0: $field0)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$WarningKey_PlaceholderImpl &&
+            (identical(other.field0, field0) || other.field0 == field0));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, field0);
+
+  /// Create a copy of WarningKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$WarningKey_PlaceholderImplCopyWith<_$WarningKey_PlaceholderImpl>
+      get copyWith => __$$WarningKey_PlaceholderImplCopyWithImpl<
+          _$WarningKey_PlaceholderImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() missingCharge,
+    required TResult Function(int field0) placeholder,
+  }) {
+    return placeholder(field0);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? missingCharge,
+    TResult? Function(int field0)? placeholder,
+  }) {
+    return placeholder?.call(field0);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? missingCharge,
+    TResult Function(int field0)? placeholder,
+    required TResult orElse(),
+  }) {
+    if (placeholder != null) {
+      return placeholder(field0);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(WarningKey_MissingCharge value) missingCharge,
+    required TResult Function(WarningKey_Placeholder value) placeholder,
+  }) {
+    return placeholder(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(WarningKey_MissingCharge value)? missingCharge,
+    TResult? Function(WarningKey_Placeholder value)? placeholder,
+  }) {
+    return placeholder?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(WarningKey_MissingCharge value)? missingCharge,
+    TResult Function(WarningKey_Placeholder value)? placeholder,
+    required TResult orElse(),
+  }) {
+    if (placeholder != null) {
+      return placeholder(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class WarningKey_Placeholder extends WarningKey {
+  const factory WarningKey_Placeholder(final int field0) =
+      _$WarningKey_PlaceholderImpl;
+  const WarningKey_Placeholder._() : super._();
+
+  int get field0;
+
+  /// Create a copy of WarningKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$WarningKey_PlaceholderImplCopyWith<_$WarningKey_PlaceholderImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }

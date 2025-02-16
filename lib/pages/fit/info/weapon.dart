@@ -6,18 +6,16 @@ class Weapon extends StatelessWidget {
   const Weapon({super.key, required this.ship});
 
   @override
-  Widget build(BuildContext context) {
-    return ListTile(
-        minTileHeight: 0,
-        leading: const Image(image: weaponImage, height: 28),
-        title: DefaultTextStyle(
-          style: const TextStyle(fontSize: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: _getWeaponTextGroup(ship.hull),
-          ),
-        ));
-  }
+  Widget build(BuildContext context) => ListTile(
+      minTileHeight: 0,
+      leading: const Image(image: weaponImage, height: 28),
+      title: DefaultTextStyle(
+        style: const TextStyle(fontSize: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: _getWeaponTextGroup(ship.hull),
+        ),
+      ));
 }
 
 List<Text> _getWeaponTextGroup(ItemProxy hull) {

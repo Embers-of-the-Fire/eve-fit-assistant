@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.8.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 833395624;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1532163254;
 
 // Section: executor
 
@@ -47,7 +47,7 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
-fn wire__crate__api__validate__pre_validate__charge__ATTR_AMMO_CAP_impl(
+fn wire__crate__api__validate__post_validate__charge__ATTR_AMMO_CAP_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -70,14 +70,15 @@ fn wire__crate__api__validate__pre_validate__charge__ATTR_AMMO_CAP_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok =
-                    Result::<_, ()>::Ok(crate::api::validate::pre_validate::charge::ATTR_AMMO_CAP)?;
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::post_validate::charge::ATTR_AMMO_CAP,
+                )?;
                 Ok(output_ok)
             })())
         },
     )
 }
-fn wire__crate__api__validate__pre_validate__charge__ATTR_CHARGE_SIZE_impl(
+fn wire__crate__api__validate__post_validate__charge__ATTR_CHARGE_SIZE_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -101,7 +102,7 @@ fn wire__crate__api__validate__pre_validate__charge__ATTR_CHARGE_SIZE_impl(
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let output_ok = Result::<_, ()>::Ok(
-                    crate::api::validate::pre_validate::charge::ATTR_CHARGE_SIZE,
+                    crate::api::validate::post_validate::charge::ATTR_CHARGE_SIZE,
                 )?;
                 Ok(output_ok)
             })())
@@ -169,7 +170,7 @@ fn wire__crate__api__validate__pre_validate__slot_num__ATTR_TURRET_impl(
         },
     )
 }
-fn wire__crate__api__validate__pre_validate__charge__ATTR_VOLUME_impl(
+fn wire__crate__api__validate__post_validate__charge__ATTR_VOLUME_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -193,7 +194,7 @@ fn wire__crate__api__validate__pre_validate__charge__ATTR_VOLUME_impl(
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let output_ok =
-                    Result::<_, ()>::Ok(crate::api::validate::pre_validate::charge::ATTR_VOLUME)?;
+                    Result::<_, ()>::Ok(crate::api::validate::post_validate::charge::ATTR_VOLUME)?;
                 Ok(output_ok)
             })())
         },
@@ -1028,11 +1029,19 @@ impl SseDecode for usize {
 impl SseDecode for crate::api::error::WarningKey {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <i32>::sse_decode(deserializer);
-        return match inner {
-            0 => crate::api::error::WarningKey::MissingCharge,
-            _ => unreachable!("Invalid variant for WarningKey: {}", inner),
-        };
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                return crate::api::error::WarningKey::MissingCharge;
+            }
+            1 => {
+                let mut var_field0 = <i32>::sse_decode(deserializer);
+                return crate::api::error::WarningKey::Placeholder(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -1069,12 +1078,12 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__validate__pre_validate__charge__ATTR_AMMO_CAP_impl(
+        1 => wire__crate__api__validate__post_validate__charge__ATTR_AMMO_CAP_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        2 => wire__crate__api__validate__pre_validate__charge__ATTR_CHARGE_SIZE_impl(
+        2 => wire__crate__api__validate__post_validate__charge__ATTR_CHARGE_SIZE_impl(
             ptr,
             rust_vec_len,
             data_len,
@@ -1089,7 +1098,7 @@ fn pde_ffi_dispatcher_sync_impl(
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__validate__pre_validate__charge__ATTR_VOLUME_impl(
+        5 => wire__crate__api__validate__post_validate__charge__ATTR_VOLUME_impl(
             ptr,
             rust_vec_len,
             data_len,
@@ -1450,8 +1459,13 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::State> for crate::api
 impl flutter_rust_bridge::IntoDart for crate::api::error::WarningKey {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            Self::MissingCharge => 0.into_dart(),
-            _ => unreachable!(),
+            crate::api::error::WarningKey::MissingCharge => [0.into_dart()].into_dart(),
+            crate::api::error::WarningKey::Placeholder(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
         }
     }
 }
@@ -1893,15 +1907,18 @@ impl SseEncode for usize {
 impl SseEncode for crate::api::error::WarningKey {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(
-            match self {
-                crate::api::error::WarningKey::MissingCharge => 0,
-                _ => {
-                    unimplemented!("");
-                }
-            },
-            serializer,
-        );
+        match self {
+            crate::api::error::WarningKey::MissingCharge => {
+                <i32>::sse_encode(0, serializer);
+            }
+            crate::api::error::WarningKey::Placeholder(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <i32>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 

@@ -10,11 +10,9 @@ class ContentList extends StatelessWidget {
   const ContentList({super.key, required this.contents});
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: contents.map((content) => ContentListTile(content: content)).toList(),
-    );
-  }
+  Widget build(BuildContext context) => ListView(
+        children: contents.map((content) => ContentListTile(content: content)).toList(),
+      );
 }
 
 class ContentListTile extends StatelessWidget {
@@ -23,21 +21,19 @@ class ContentListTile extends StatelessWidget {
   const ContentListTile({super.key, required this.content});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey)),
-      ),
-      child: ListTile(
-        leading: Icon(content.icon),
-        title: Text(content.title),
-        subtitle: Text(formatDate(content.time, [yyyy, '-', mm, '-', dd, ' ', HH, ':', nn])),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) => ContentDetailPage(content: content),
-        )),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.grey)),
+        ),
+        child: ListTile(
+          leading: Icon(content.icon),
+          title: Text(content.title),
+          subtitle: Text(formatDate(content.time, [yyyy, '-', mm, '-', dd, ' ', HH, ':', nn])),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => ContentDetailPage(content: content),
+          )),
+        ),
+      );
 }
 
 class ContentDetailPage extends ConsumerWidget {

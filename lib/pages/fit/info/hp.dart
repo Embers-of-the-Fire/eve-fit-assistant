@@ -13,37 +13,35 @@ class _HpState extends State<Hp> {
   bool displayEhp = false;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-          minTileHeight: 0,
-          leading: _getMaxEhpIcon(widget.ship.hull),
-          title: DefaultTextStyle(
-            style: const TextStyle(fontSize: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [_getEhpText(widget.ship.hull, displayEhp)],
+  Widget build(BuildContext context) => Column(
+        children: [
+          ListTile(
+            minTileHeight: 0,
+            leading: _getMaxEhpIcon(widget.ship.hull),
+            title: DefaultTextStyle(
+              style: const TextStyle(fontSize: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [_getEhpText(widget.ship.hull, displayEhp)],
+              ),
             ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-          child: _HpTable(
-            onToggle: () => setState(() {
-              displayEhp = !displayEhp;
-            }),
-            hull: widget.ship.hull,
-            displayEhp: displayEhp,
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+            child: _HpTable(
+              onToggle: () => setState(() {
+                displayEhp = !displayEhp;
+              }),
+              hull: widget.ship.hull,
+              displayEhp: displayEhp,
+            ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.only(right: 20, left: 20, bottom: 8),
-          child: _RepairTable(hull: widget.ship.hull, displayEhp: displayEhp),
-        )
-      ],
-    );
-  }
+          Container(
+            padding: const EdgeInsets.only(right: 20, left: 20, bottom: 8),
+            child: _RepairTable(hull: widget.ship.hull, displayEhp: displayEhp),
+          )
+        ],
+      );
 }
 
 Image _getMaxEhpIcon(ItemProxy hull) {
@@ -84,99 +82,97 @@ class _HpTable extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return DefaultTextStyle(
-      style: const TextStyle(fontSize: 16),
-      textAlign: TextAlign.center,
-      child: Table(
-        columnWidths: const {
-          0: FixedColumnWidth(28),
-          1: FlexColumnWidth(),
-          2: FlexColumnWidth(),
-          3: FlexColumnWidth(),
-          4: FlexColumnWidth(),
-          5: FlexColumnWidth(),
-        },
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        children: <TableRow>[
-          TableRow(children: [
-            InkWell(onTap: onToggle, child: const Icon(Icons.compare_arrows)),
-            Text(displayEhp ? 'EHP' : 'HP'),
-            const Image(image: dmgEmResistanceImage, height: 28),
-            const Image(image: dmgThermalResistanceImage, height: 28),
-            const Image(image: dmgKineticResistanceImage, height: 28),
-            const Image(image: dmgExplosiveResistanceImage, height: 28),
-          ]),
-          TableRow(children: [
-            const Image(image: hpShieldImage, height: 28),
-            Text(displayEhp
-                ? (hull.attributes.getById(key: shieldEhp) ?? 0.0).toStringAsFixed(0)
-                : (hull.attributes.getById(key: shieldCapacity) ?? 0.0).toStringAsFixed(0)),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: shieldEmDamageResonance) ?? 0.0,
-              type: ResonanceType.em,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: shieldThermalDamageResonance) ?? 0.0,
-              type: ResonanceType.thermal,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: shieldKineticDamageResonance) ?? 0.0,
-              type: ResonanceType.kinetic,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: shieldExplosiveDamageResonance) ?? 0.0,
-              type: ResonanceType.explosive,
-            ),
-          ]),
-          TableRow(children: [
-            const Image(image: hpArmorImage, height: 28),
-            Text(displayEhp
-                ? (hull.attributes.getById(key: armorEhp) ?? 0.0).toStringAsFixed(0)
-                : (hull.attributes.getById(key: armorHP) ?? 0.0).toStringAsFixed(0)),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: armorEmDamageResonance) ?? 0.0,
-              type: ResonanceType.em,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: armorThermalDamageResonance) ?? 0.0,
-              type: ResonanceType.thermal,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: armorKineticDamageResonance) ?? 0.0,
-              type: ResonanceType.kinetic,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: armorExplosiveDamageResonance) ?? 0.0,
-              type: ResonanceType.explosive,
-            ),
-          ]),
-          TableRow(children: [
-            const Image(image: hpHullImage, height: 28),
-            Text(displayEhp
-                ? (hull.attributes.getById(key: hullEhp) ?? 0.0).toStringAsFixed(0)
-                : (hull.attributes.getById(key: hp) ?? 0.0).toStringAsFixed(0)),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: emDamageResonance) ?? 0.0,
-              type: ResonanceType.em,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: thermalDamageResonance) ?? 0.0,
-              type: ResonanceType.thermal,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: kineticDamageResonance) ?? 0.0,
-              type: ResonanceType.kinetic,
-            ),
-            ResonanceBox(
-              ratio: hull.attributes.getById(key: explosiveDamageResonance) ?? 0.0,
-              type: ResonanceType.explosive,
-            ),
-          ]),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => DefaultTextStyle(
+        style: const TextStyle(fontSize: 16),
+        textAlign: TextAlign.center,
+        child: Table(
+          columnWidths: const {
+            0: FixedColumnWidth(28),
+            1: FlexColumnWidth(),
+            2: FlexColumnWidth(),
+            3: FlexColumnWidth(),
+            4: FlexColumnWidth(),
+            5: FlexColumnWidth(),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: <TableRow>[
+            TableRow(children: [
+              InkWell(onTap: onToggle, child: const Icon(Icons.compare_arrows)),
+              Text(displayEhp ? 'EHP' : 'HP'),
+              const Image(image: dmgEmResistanceImage, height: 28),
+              const Image(image: dmgThermalResistanceImage, height: 28),
+              const Image(image: dmgKineticResistanceImage, height: 28),
+              const Image(image: dmgExplosiveResistanceImage, height: 28),
+            ]),
+            TableRow(children: [
+              const Image(image: hpShieldImage, height: 28),
+              Text(displayEhp
+                  ? (hull.attributes.getById(key: shieldEhp) ?? 0.0).toStringAsFixed(0)
+                  : (hull.attributes.getById(key: shieldCapacity) ?? 0.0).toStringAsFixed(0)),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: shieldEmDamageResonance) ?? 0.0,
+                type: ResonanceType.em,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: shieldThermalDamageResonance) ?? 0.0,
+                type: ResonanceType.thermal,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: shieldKineticDamageResonance) ?? 0.0,
+                type: ResonanceType.kinetic,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: shieldExplosiveDamageResonance) ?? 0.0,
+                type: ResonanceType.explosive,
+              ),
+            ]),
+            TableRow(children: [
+              const Image(image: hpArmorImage, height: 28),
+              Text(displayEhp
+                  ? (hull.attributes.getById(key: armorEhp) ?? 0.0).toStringAsFixed(0)
+                  : (hull.attributes.getById(key: armorHP) ?? 0.0).toStringAsFixed(0)),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: armorEmDamageResonance) ?? 0.0,
+                type: ResonanceType.em,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: armorThermalDamageResonance) ?? 0.0,
+                type: ResonanceType.thermal,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: armorKineticDamageResonance) ?? 0.0,
+                type: ResonanceType.kinetic,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: armorExplosiveDamageResonance) ?? 0.0,
+                type: ResonanceType.explosive,
+              ),
+            ]),
+            TableRow(children: [
+              const Image(image: hpHullImage, height: 28),
+              Text(displayEhp
+                  ? (hull.attributes.getById(key: hullEhp) ?? 0.0).toStringAsFixed(0)
+                  : (hull.attributes.getById(key: hp) ?? 0.0).toStringAsFixed(0)),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: emDamageResonance) ?? 0.0,
+                type: ResonanceType.em,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: thermalDamageResonance) ?? 0.0,
+                type: ResonanceType.thermal,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: kineticDamageResonance) ?? 0.0,
+                type: ResonanceType.kinetic,
+              ),
+              ResonanceBox(
+                ratio: hull.attributes.getById(key: explosiveDamageResonance) ?? 0.0,
+                type: ResonanceType.explosive,
+              ),
+            ]),
+          ],
+        ),
+      );
 }
 
 class _RepairTable extends StatelessWidget {

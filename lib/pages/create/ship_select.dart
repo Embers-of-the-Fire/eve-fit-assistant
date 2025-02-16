@@ -9,30 +9,28 @@ class ShipSelectPage extends StatelessWidget {
   const ShipSelectPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('选择船只'),
-      ),
-      body: ItemList(
-        breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-        breadcrumbDecoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.grey)),
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('选择船只'),
         ),
-        breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
-        fallbackGroupID: shipGroupID,
-        baseGroup: '舰船',
-        onSelect: (id) async {
-          final fitName = await showShipCreateDialog(context);
-          if (fitName == null) return;
-          if (context.mounted) Navigator.pop(context);
-          final fit = await GlobalStorage().ship.createFit(fitName, id);
-          if (context.mounted) {
-            intoFitPage(context, fit.brief.id);
-          }
-        },
-      ),
-    );
-  }
+        body: ItemList(
+          breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+          breadcrumbDecoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Colors.grey)),
+          ),
+          breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+          fallbackGroupID: shipGroupID,
+          baseGroup: '舰船',
+          onSelect: (id) async {
+            final fitName = await showShipCreateDialog(context);
+            if (fitName == null) return;
+            if (context.mounted) Navigator.pop(context);
+            final fit = await GlobalStorage().ship.createFit(fitName, id);
+            if (context.mounted) {
+              intoFitPage(context, fit.brief.id);
+            }
+          },
+        ),
+      );
 }

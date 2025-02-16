@@ -139,23 +139,21 @@ Future<int?> showAddDroneDialog(
 Future<int?> _showAddItemDialogImpl(BuildContext context, _DialogMetadata metadata) async {
   final out = await showDialog<int>(
       context: context,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 120),
-          child: AlertDialog(
-            title: Text(metadata.title),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+      builder: (context) => Container(
+            padding: const EdgeInsets.symmetric(vertical: 120),
+            child: AlertDialog(
+              title: Text(metadata.title),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+              content: _AddItemDialog(
+                fallbackGroupID: metadata.fallbackGroupID,
+                baseBreadcrumbName: metadata.baseName,
+                filter: metadata.predicate,
+                onSelect: (id) => Navigator.pop(context, id),
+              ),
             ),
-            content: _AddItemDialog(
-              fallbackGroupID: metadata.fallbackGroupID,
-              baseBreadcrumbName: metadata.baseName,
-              filter: metadata.predicate,
-              onSelect: (id) => Navigator.pop(context, id),
-            ),
-          ),
-        );
-      });
+          ));
 
   return out;
 }
@@ -174,17 +172,15 @@ class _AddItemDialog extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ItemList(
-      breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-      breadcrumbDecoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey)),
-      ),
-      fallbackGroupID: fallbackGroupID,
-      baseGroup: baseBreadcrumbName,
-      breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
-      filter: filter,
-      onSelect: onSelect,
-    );
-  }
+  Widget build(BuildContext context) => ItemList(
+        breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+        breadcrumbDecoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.grey)),
+        ),
+        fallbackGroupID: fallbackGroupID,
+        baseGroup: baseBreadcrumbName,
+        breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+        filter: filter,
+        onSelect: onSelect,
+      );
 }

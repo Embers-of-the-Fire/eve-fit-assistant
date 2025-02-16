@@ -94,17 +94,15 @@ class FitPagePlaceholder extends StatelessWidget {
   const FitPagePlaceholder({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('加载中...'),
-      ),
-      body: const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('加载中...'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
 }
 
 class FitPageError extends StatelessWidget {
@@ -113,25 +111,23 @@ class FitPageError extends StatelessWidget {
   const FitPageError({super.key, required this.error});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('未知错误'),
-      ),
-      body: Center(
-        child: Column(
-          children: [
-            const Text(
-              '未知错误',
-              style: TextStyle(fontSize: 28, color: Colors.red),
-            ),
-            Text(error.toString()),
-          ],
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('未知错误'),
         ),
-      ),
-    );
-  }
+        body: Center(
+          child: Column(
+            children: [
+              const Text(
+                '未知错误',
+                style: TextStyle(fontSize: 28, color: Colors.red),
+              ),
+              Text(error.toString()),
+            ],
+          ),
+        ),
+      );
 }
 
 class FitPageContent extends ConsumerStatefulWidget {

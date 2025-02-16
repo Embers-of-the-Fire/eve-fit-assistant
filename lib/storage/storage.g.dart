@@ -7,7 +7,7 @@ part of 'storage.dart';
 // **************************************************************************
 
 String _$globalStorageNotifierHash() =>
-    r'392dcb7ae41712041b52c17b075d06ea8c51e38f';
+    r'e96196a1ddcfeb94a3f180bd3d67ad942d45db2d';
 
 /// See also [GlobalStorageNotifier].
 @ProviderFor(GlobalStorageNotifier)

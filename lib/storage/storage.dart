@@ -6,17 +6,15 @@ import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/storage/version.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'storage.g.dart';
 
 @riverpod
 class GlobalStorageNotifier extends _$GlobalStorageNotifier {
   @override
-  bool build() {
-    return false;
-  }
+  bool build() => false;
 
   void initialized() {
     state = true;
@@ -58,7 +56,7 @@ class GlobalStorage {
     }
     _initializing = true;
 
-    EasyLoading.show(status: '初始化');
+    await EasyLoading.show(status: '初始化');
     final version = await getVersionInfo();
     _version = await executeMigrate(version);
     _packageInfo = await PackageInfo.fromPlatform();
@@ -68,7 +66,7 @@ class GlobalStorage {
     _fitEngine = await FitEngine.init();
     await Future.delayed(const Duration(seconds: 5));
     _initialized = true;
-    EasyLoading.dismiss();
+    await EasyLoading.dismiss();
     ref.read(globalStorageNotifierProvider.notifier).initialized();
   }
 }

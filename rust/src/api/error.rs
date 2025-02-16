@@ -37,4 +37,7 @@ pub enum ErrorKey {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WarningKey {
     MissingCharge,
+    // used to let `frb` know that this enum has variants with fields
+    // TODO: remove this once we have actual warning keys with fields
+    Placeholder(i32),
 }
