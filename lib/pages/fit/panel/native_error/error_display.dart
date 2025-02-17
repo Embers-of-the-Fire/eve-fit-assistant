@@ -1,8 +1,8 @@
 library;
 
 import 'package:eve_fit_assistant/native/port/api/error.dart';
-import 'package:eve_fit_assistant/pages/fit/native_error/error/error.dart';
-import 'package:eve_fit_assistant/pages/fit/native_error/warning/warning.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/native_error/error/error.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/native_error/warning/warning.dart';
 import 'package:flutter/material.dart';
 
 class ErrorDisplayDialog extends StatelessWidget {

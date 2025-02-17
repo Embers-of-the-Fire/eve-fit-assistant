@@ -4,7 +4,7 @@ import 'package:eve_fit_assistant/constant/eve/groups.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/item_list.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 
 class _DialogMetadata {

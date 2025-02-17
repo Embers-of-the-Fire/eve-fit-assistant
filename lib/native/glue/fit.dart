@@ -1,7 +1,6 @@
 import 'package:eve_fit_assistant/native/port/api/schema.dart' as schema;
 import 'package:eve_fit_assistant/storage/fit/fit.dart' as local;
-import 'package:eve_fit_assistant/utils/itertools.dart';
-import 'package:eve_fit_assistant/utils/optional.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 
 schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}) => schema.Fit(
       shipId: fit.shipID,

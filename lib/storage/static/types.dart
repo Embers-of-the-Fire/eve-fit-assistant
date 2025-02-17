@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:eve_fit_assistant/storage/proto/types.pb.dart';
-import 'package:eve_fit_assistant/utils/map.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 
 class TypeAbbr {
   final Types_Type _raw;
@@ -14,6 +14,8 @@ class TypeAbbr {
   int get groupID => _raw.groupID;
 
   bool get published => _raw.published;
+
+  String get description => _raw.description;
 
   const TypeAbbr._private(this._raw);
 

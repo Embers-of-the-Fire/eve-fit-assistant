@@ -1,3 +1,5 @@
+part of 'utils.dart';
+
 extension Optional<T> on T? {
   U? map<U>(U Function(T value) f) {
     if (this == null) {

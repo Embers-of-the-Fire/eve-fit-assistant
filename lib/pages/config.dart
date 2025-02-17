@@ -1,7 +1,7 @@
 import 'package:eve_fit_assistant/pages/config/asset.dart';
 import 'package:eve_fit_assistant/pages/config/info.dart';
 import 'package:eve_fit_assistant/pages/config/version.dart';
-import 'package:eve_fit_assistant/utils/external_icon_icons.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 
 class ConfigPage extends StatelessWidget {

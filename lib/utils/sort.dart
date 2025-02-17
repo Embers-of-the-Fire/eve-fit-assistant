@@ -1,3 +1,5 @@
+part of 'utils.dart';
+
 class Reversed<R extends Comparable<R>> implements Comparable<Reversed<R>> {
   final R _raw;
 

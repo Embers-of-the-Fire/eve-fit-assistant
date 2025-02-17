@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
-import 'package:eve_fit_assistant/utils/map.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 
 class FitStorage {
   final MapView<String, FitRecordBrief> _briefRecords = MapView({});

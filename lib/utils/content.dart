@@ -1,8 +1,4 @@
-import 'package:date_format/date_format.dart';
-import 'package:eve_fit_assistant/content/content.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:markdown_widget/markdown_widget.dart';
+part of 'utils.dart';
 
 class ContentList extends StatelessWidget {
   final List<Content> contents;

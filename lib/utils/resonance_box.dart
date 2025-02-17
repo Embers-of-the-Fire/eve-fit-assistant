@@ -1,5 +1,4 @@
-import 'package:eve_fit_assistant/utils/bool.dart';
-import 'package:flutter/material.dart';
+part of 'utils.dart';
 
 enum ResonanceType {
   em,

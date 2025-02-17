@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:eve_fit_assistant/storage/proto/tactical_mode.pb.dart';
-import 'package:eve_fit_assistant/utils/map.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 
 class TacticalModeItem {
   final ShipTacticalMode_TacticalMode _raw;

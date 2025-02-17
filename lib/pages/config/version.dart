@@ -1,5 +1,5 @@
 import 'package:eve_fit_assistant/content/changelog.dart';
-import 'package:eve_fit_assistant/utils/content.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 
 class VersionPage extends StatelessWidget {

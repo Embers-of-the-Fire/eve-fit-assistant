@@ -1,3 +1,5 @@
+part of 'utils.dart';
+
 class ReadonlyMap<K, V> {
   final Map<K, V> _map;
 

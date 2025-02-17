@@ -1,10 +1,10 @@
 import 'package:eve_fit_assistant/native/glue/native_slot.dart';
-import 'package:eve_fit_assistant/pages/fit/fit.dart';
-import 'package:eve_fit_assistant/pages/fit/native_error.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/native_error.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/itertools.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

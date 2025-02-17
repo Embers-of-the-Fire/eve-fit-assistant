@@ -17,7 +17,14 @@ import 'dart:typed_data' as $typed_data;
 const ImplantGroups$json = {
   '1': 'ImplantGroups',
   '2': [
-    {'1': 'groups', '3': 1, '4': 3, '5': 11, '6': '.market_group.ImplantGroups.ImplantGroup', '10': 'groups'},
+    {
+      '1': 'groups',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.market_group.ImplantGroups.ImplantGroup',
+      '10': 'groups'
+    },
   ],
   '3': [ImplantGroups_ImplantGroup$json, ImplantGroups_ImplantSubGroup$json],
 };
@@ -27,7 +34,14 @@ const ImplantGroups_ImplantGroup$json = {
   '1': 'ImplantGroup',
   '2': [
     {'1': 'name', '3': 1, '4': 2, '5': 9, '10': 'name'},
-    {'1': 'groups', '3': 2, '4': 3, '5': 11, '6': '.market_group.ImplantGroups.ImplantSubGroup', '10': 'groups'},
+    {
+      '1': 'groups',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.market_group.ImplantGroups.ImplantSubGroup',
+      '10': 'groups'
+    },
   ],
 };
 
@@ -41,10 +55,9 @@ const ImplantGroups_ImplantSubGroup$json = {
 };
 
 /// Descriptor for `ImplantGroups`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List implantGroupsDescriptor = $convert.base64Decode(
-    'Cg1JbXBsYW50R3JvdXBzEkAKBmdyb3VwcxgBIAMoCzIoLm1hcmtldF9ncm91cC5JbXBsYW50R3'
-    'JvdXBzLkltcGxhbnRHcm91cFIGZ3JvdXBzGmcKDEltcGxhbnRHcm91cBISCgRuYW1lGAEgAigJ'
-    'UgRuYW1lEkMKBmdyb3VwcxgCIAMoCzIrLm1hcmtldF9ncm91cC5JbXBsYW50R3JvdXBzLkltcG'
-    'xhbnRTdWJHcm91cFIGZ3JvdXBzGjsKD0ltcGxhbnRTdWJHcm91cBISCgRuYW1lGAEgAigJUgRu'
-    'YW1lEhQKBWl0ZW1zGAIgAygFUgVpdGVtcw==');
-
+final $typed_data.Uint8List implantGroupsDescriptor = $convert
+    .base64Decode('Cg1JbXBsYW50R3JvdXBzEkAKBmdyb3VwcxgBIAMoCzIoLm1hcmtldF9ncm91cC5JbXBsYW50R3'
+        'JvdXBzLkltcGxhbnRHcm91cFIGZ3JvdXBzGmcKDEltcGxhbnRHcm91cBISCgRuYW1lGAEgAigJ'
+        'UgRuYW1lEkMKBmdyb3VwcxgCIAMoCzIrLm1hcmtldF9ncm91cC5JbXBsYW50R3JvdXBzLkltcG'
+        'xhbnRTdWJHcm91cFIGZ3JvdXBzGjsKD0ltcGxhbnRTdWJHcm91cBISCgRuYW1lGAEgAigJUgRu'
+        'YW1lEhQKBWl0ZW1zGAIgAygFUgVpdGVtcw==');

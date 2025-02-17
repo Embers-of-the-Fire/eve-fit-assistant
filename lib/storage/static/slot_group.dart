@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
-import 'package:eve_fit_assistant/utils/map.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 
 abstract mixin class TypeSlotLike {
   String get nameEN;

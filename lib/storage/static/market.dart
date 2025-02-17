@@ -2,8 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:eve_fit_assistant/storage/proto/market_group.pb.dart';
-import 'package:eve_fit_assistant/utils/bool.dart';
-import 'package:eve_fit_assistant/utils/map.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 
 class MarketGroup {
   final MarketGroups_MarketGroup _raw;

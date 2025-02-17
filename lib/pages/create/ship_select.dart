@@ -1,8 +1,8 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
-import 'package:eve_fit_assistant/pages/fit/fit.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/item_list.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 
 class ShipSelectPage extends StatelessWidget {

@@ -1,6 +1,6 @@
 import 'package:eve_fit_assistant/native/glue/native_slot.dart';
 import 'package:eve_fit_assistant/native/port/api/error.dart';
-import 'package:eve_fit_assistant/pages/fit/native_error/error_display.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/native_error/error_display.dart';
 import 'package:flutter/material.dart';
 
 enum ErrorLevel {

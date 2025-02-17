@@ -1,3 +1,5 @@
+part of 'utils.dart';
+
 extension DurationExt on Duration {
   String format() {
     final sign = isNegative ? '-' : '';

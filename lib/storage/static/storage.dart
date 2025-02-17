@@ -13,7 +13,7 @@ import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/static/slot_group.dart';
 import 'package:eve_fit_assistant/storage/static/tactical_mode.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
-import 'package:eve_fit_assistant/utils/map.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 
 class StaticStorage {
   late ReadonlyMap<int, TypeAbbr> _typesAbbr;

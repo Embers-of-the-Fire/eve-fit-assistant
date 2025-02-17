@@ -1,16 +1,14 @@
 library;
 
 import 'package:eve_fit_assistant/native/port/api.dart';
-import 'package:eve_fit_assistant/pages/fit/add_item_dialog.dart';
-import 'package:eve_fit_assistant/pages/fit/equipment_header.dart';
-import 'package:eve_fit_assistant/pages/fit/info/info_component.dart';
-import 'package:eve_fit_assistant/pages/fit/slot.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/add_item_dialog.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/equipment_header.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/info/info_component.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/slot.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/bool.dart';
-import 'package:eve_fit_assistant/utils/itertools.dart';
-import 'package:eve_fit_assistant/utils/optional.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

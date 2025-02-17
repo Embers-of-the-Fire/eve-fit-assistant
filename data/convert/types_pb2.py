@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 import i18n_pb2 as i18n__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btypes.proto\x12\x05types\x1a\ni18n.proto\"\xbc\x01\n\x05Types\x12*\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x19.types.Types.EntriesEntry\x1a\x44\n\x04Type\x12\x18\n\x04name\x18\x01 \x02(\x0b\x32\n.i18n.I18N\x12\x0f\n\x07groupID\x18\x02 \x02(\x05\x12\x11\n\tpublished\x18\x03 \x02(\x08\x1a\x41\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.types.Types.Type:\x02\x38\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btypes.proto\x12\x05types\x1a\ni18n.proto\"\xd1\x01\n\x05Types\x12*\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x19.types.Types.EntriesEntry\x1aY\n\x04Type\x12\x18\n\x04name\x18\x01 \x02(\x0b\x32\n.i18n.I18N\x12\x0f\n\x07groupID\x18\x02 \x02(\x05\x12\x11\n\tpublished\x18\x03 \x02(\x08\x12\x13\n\x0b\x64\x65scription\x18\x04 \x02(\t\x1a\x41\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.types.Types.Type:\x02\x38\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,9 +35,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_TYPES_ENTRIESENTRY']._loaded_options = None
   _globals['_TYPES_ENTRIESENTRY']._serialized_options = b'8\001'
   _globals['_TYPES']._serialized_start=35
-  _globals['_TYPES']._serialized_end=223
+  _globals['_TYPES']._serialized_end=244
   _globals['_TYPES_TYPE']._serialized_start=88
-  _globals['_TYPES_TYPE']._serialized_end=156
-  _globals['_TYPES_ENTRIESENTRY']._serialized_start=158
-  _globals['_TYPES_ENTRIESENTRY']._serialized_end=223
+  _globals['_TYPES_TYPE']._serialized_end=177
+  _globals['_TYPES_ENTRIESENTRY']._serialized_start=179
+  _globals['_TYPES_ENTRIESENTRY']._serialized_end=244
 # @@protoc_insertion_point(module_scope)

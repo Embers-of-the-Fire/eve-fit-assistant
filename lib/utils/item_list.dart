@@ -1,9 +1,4 @@
-import 'package:eve_fit_assistant/storage/static/market.dart';
-import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/itertools.dart';
-import 'package:eve_fit_assistant/utils/optional.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
+part of 'utils.dart';
 
 class ItemList extends StatefulWidget {
   final EdgeInsets? breadcrumbPadding;

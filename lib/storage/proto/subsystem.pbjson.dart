@@ -17,10 +17,29 @@ import 'dart:typed_data' as $typed_data;
 const ShipSubsystem$json = {
   '1': 'ShipSubsystem',
   '2': [
-    {'1': 'ships', '3': 1, '4': 3, '5': 11, '6': '.subsystem.ShipSubsystem.ShipsEntry', '10': 'ships'},
-    {'1': 'subsystems', '3': 2, '4': 3, '5': 11, '6': '.subsystem.ShipSubsystem.SubsystemsEntry', '10': 'subsystems'},
+    {
+      '1': 'ships',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.subsystem.ShipSubsystem.ShipsEntry',
+      '10': 'ships'
+    },
+    {
+      '1': 'subsystems',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.subsystem.ShipSubsystem.SubsystemsEntry',
+      '10': 'subsystems'
+    },
   ],
-  '3': [ShipSubsystem_Ship$json, ShipSubsystem_Subsystem$json, ShipSubsystem_ShipsEntry$json, ShipSubsystem_SubsystemsEntry$json],
+  '3': [
+    ShipSubsystem_Ship$json,
+    ShipSubsystem_Subsystem$json,
+    ShipSubsystem_ShipsEntry$json,
+    ShipSubsystem_SubsystemsEntry$json
+  ],
 };
 
 @$core.Deprecated('Use shipSubsystemDescriptor instead')
@@ -66,25 +85,31 @@ const ShipSubsystem_SubsystemsEntry$json = {
   '1': 'SubsystemsEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.subsystem.ShipSubsystem.Subsystem', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.subsystem.ShipSubsystem.Subsystem',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
 
 /// Descriptor for `ShipSubsystem`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List shipSubsystemDescriptor = $convert.base64Decode(
-    'Cg1TaGlwU3Vic3lzdGVtEjkKBXNoaXBzGAEgAygLMiMuc3Vic3lzdGVtLlNoaXBTdWJzeXN0ZW'
-    '0uU2hpcHNFbnRyeVIFc2hpcHMSSAoKc3Vic3lzdGVtcxgCIAMoCzIoLnN1YnN5c3RlbS5TaGlw'
-    'U3Vic3lzdGVtLlN1YnN5c3RlbXNFbnRyeVIKc3Vic3lzdGVtcxqWAgoEU2hpcBIcCglvZmZlbn'
-    'NpdmUYASADKAVSCW9mZmVuc2l2ZRIoCg9vZmZlbnNpdmVNYXJrZXQYAiACKAVSD29mZmVuc2l2'
-    'ZU1hcmtldBIeCgpwcm9wdWxzaW9uGAMgAygFUgpwcm9wdWxzaW9uEioKEHByb3B1bHNpb25NYX'
-    'JrZXQYBCACKAVSEHByb3B1bHNpb25NYXJrZXQSEgoEY29yZRgFIAMoBVIEY29yZRIeCgpjb3Jl'
-    'TWFya2V0GAYgAigFUgpjb3JlTWFya2V0EhwKCWRlZmVuc2l2ZRgHIAMoBVIJZGVmZW5zaXZlEi'
-    'gKD2RlZmVuc2l2ZU1hcmtldBgIIAIoBVIPZGVmZW5zaXZlTWFya2V0Gp0BCglTdWJzeXN0ZW0S'
-    'HgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRISCgRoaWdoGAIgASgFUgRoaWdoEhYKBm'
-    '1lZGl1bRgDIAEoBVIGbWVkaXVtEhAKA2xvdxgEIAEoBVIDbG93EhYKBnR1cnJldBgFIAEoBVIG'
-    'dHVycmV0EhoKCGxhdW5jaGVyGAYgASgFUghsYXVuY2hlchpXCgpTaGlwc0VudHJ5EhAKA2tleR'
-    'gBIAEoBVIDa2V5EjMKBXZhbHVlGAIgASgLMh0uc3Vic3lzdGVtLlNoaXBTdWJzeXN0ZW0uU2hp'
-    'cFIFdmFsdWU6AjgBGmEKD1N1YnN5c3RlbXNFbnRyeRIQCgNrZXkYASABKAVSA2tleRI4CgV2YW'
-    'x1ZRgCIAEoCzIiLnN1YnN5c3RlbS5TaGlwU3Vic3lzdGVtLlN1YnN5c3RlbVIFdmFsdWU6AjgB');
-
+final $typed_data.Uint8List shipSubsystemDescriptor = $convert
+    .base64Decode('Cg1TaGlwU3Vic3lzdGVtEjkKBXNoaXBzGAEgAygLMiMuc3Vic3lzdGVtLlNoaXBTdWJzeXN0ZW'
+        '0uU2hpcHNFbnRyeVIFc2hpcHMSSAoKc3Vic3lzdGVtcxgCIAMoCzIoLnN1YnN5c3RlbS5TaGlw'
+        'U3Vic3lzdGVtLlN1YnN5c3RlbXNFbnRyeVIKc3Vic3lzdGVtcxqWAgoEU2hpcBIcCglvZmZlbn'
+        'NpdmUYASADKAVSCW9mZmVuc2l2ZRIoCg9vZmZlbnNpdmVNYXJrZXQYAiACKAVSD29mZmVuc2l2'
+        'ZU1hcmtldBIeCgpwcm9wdWxzaW9uGAMgAygFUgpwcm9wdWxzaW9uEioKEHByb3B1bHNpb25NYX'
+        'JrZXQYBCACKAVSEHByb3B1bHNpb25NYXJrZXQSEgoEY29yZRgFIAMoBVIEY29yZRIeCgpjb3Jl'
+        'TWFya2V0GAYgAigFUgpjb3JlTWFya2V0EhwKCWRlZmVuc2l2ZRgHIAMoBVIJZGVmZW5zaXZlEi'
+        'gKD2RlZmVuc2l2ZU1hcmtldBgIIAIoBVIPZGVmZW5zaXZlTWFya2V0Gp0BCglTdWJzeXN0ZW0S'
+        'HgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRISCgRoaWdoGAIgASgFUgRoaWdoEhYKBm'
+        '1lZGl1bRgDIAEoBVIGbWVkaXVtEhAKA2xvdxgEIAEoBVIDbG93EhYKBnR1cnJldBgFIAEoBVIG'
+        'dHVycmV0EhoKCGxhdW5jaGVyGAYgASgFUghsYXVuY2hlchpXCgpTaGlwc0VudHJ5EhAKA2tleR'
+        'gBIAEoBVIDa2V5EjMKBXZhbHVlGAIgASgLMh0uc3Vic3lzdGVtLlNoaXBTdWJzeXN0ZW0uU2hp'
+        'cFIFdmFsdWU6AjgBGmEKD1N1YnN5c3RlbXNFbnRyeRIQCgNrZXkYASABKAVSA2tleRI4CgV2YW'
+        'x1ZRgCIAEoCzIiLnN1YnN5c3RlbS5TaGlwU3Vic3lzdGVtLlN1YnN5c3RlbVIFdmFsdWU6AjgB');

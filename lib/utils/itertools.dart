@@ -1,3 +1,5 @@
+part of 'utils.dart';
+
 extension Itertools<T> on Iterable<T> {
   Iterable<T> filter(bool Function(T) predicate) => _FilterIterable(this, predicate);
 
