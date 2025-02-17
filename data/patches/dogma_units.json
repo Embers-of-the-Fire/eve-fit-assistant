@@ -1,0 +1,302 @@
+{
+    "128": {
+        "displayName": "Mbit/s", 
+        "name": "Drone bandwidth", 
+        "description": "兆比特/秒"
+    }, 
+    "1": {
+        "displayName": "m", 
+        "name": "Length", 
+        "description": "米"
+    }, 
+    "2": {
+        "displayName": "kg", 
+        "name": "Mass", 
+        "description": "千克"
+    }, 
+    "3": {
+        "displayName": "s", 
+        "name": "Time", 
+        "description": "秒"
+    }, 
+    "4": {
+        "displayName": "A", 
+        "name": "Electric Current", 
+        "description": "安培"
+    }, 
+    "133": {
+        "displayName": "星币", 
+        "name": "Money", 
+        "description": "星币"
+    }, 
+    "134": {
+        "displayName": "立方米/时", 
+        "name": "Logistical Capacity", 
+        "description": "行星互动的带宽"
+    }, 
+    "135": {
+        "displayName": "AU", 
+        "name": "Astronomical Unit", 
+        "description": "表示距离，1AU等于地球到太阳的距离。"
+    }, 
+    "136": {
+        "displayName": "槽位", 
+        "name": "Slot", 
+        "description": "用于多种场合的槽位数字前缀"
+    }, 
+    "137": {
+        "displayName": "1=True 0=False", 
+        "name": "Boolean", 
+        "description": "用于显示布尔标记 1=True 0=False"
+    }, 
+    "138": {
+        "displayName": "单位", 
+        "name": "Units", 
+        "description": "某样物品的单位，比如燃料"
+    }, 
+    "139": {
+        "displayName": "+", 
+        "name": "Bonus", 
+        "description": "用于正值的加号"
+    }, 
+    "140": {
+        "displayName": "等级", 
+        "name": "Level", 
+        "description": "用于那些以等级划分的事物"
+    }, 
+    "141": {
+        "displayName": "安装座", 
+        "name": "Hardpoints", 
+        "description": "用于各种炮塔、发射器以及改装件的装配点数量"
+    }, 
+    "142": {
+        "displayName": "1=男性 2=中性 3=女性", 
+        "name": "Sex", 
+        "description": ""
+    }, 
+    "143": {
+        "displayName": "", 
+        "name": "Datetime", 
+        "description": "日期和时间"
+    }, 
+    "144": {
+        "displayName": "AU/s", 
+        "name": "Warp speed", 
+        "description": "AU每秒"
+    }, 
+    "17": {
+        "displayName": "mol/m3", 
+        "name": "Amount-Of-Substance Concentration", 
+        "description": "摩尔/立方米"
+    }, 
+    "18": {
+        "displayName": "cd/m2", 
+        "name": "Luminance", 
+        "description": "坎德拉/平方米"
+    }, 
+    "19": {
+        "displayName": "kg/kg = 1", 
+        "name": "Mass Fraction", 
+        "description": "千克/千克，可用数字1表示"
+    }, 
+    "5": {
+        "displayName": "K", 
+        "name": "Temperature", 
+        "description": "开尔文"
+    }, 
+    "6": {
+        "displayName": "mol", 
+        "name": "Amount Of Substance", 
+        "description": "摩尔"
+    }, 
+    "129": {
+        "displayName": "", 
+        "name": "Hours", 
+        "description": "小时"
+    }, 
+    "7": {
+        "displayName": "cd", 
+        "name": "Luminous Intensity", 
+        "description": "坎德拉"
+    }, 
+    "8": {
+        "displayName": "m2", 
+        "name": "Area", 
+        "description": "平方米"
+    }, 
+    "9": {
+        "displayName": "m3", 
+        "name": "Volume", 
+        "description": "立方米"
+    }, 
+    "10": {
+        "displayName": "m/s", 
+        "name": "Speed", 
+        "description": "米/秒"
+    }, 
+    "11": {
+        "displayName": "m/s", 
+        "name": "Acceleration", 
+        "description": "米/平方秒"
+    }, 
+    "12": {
+        "displayName": "m-1", 
+        "name": "Wave Number", 
+        "description": "米倒数"
+    }, 
+    "205": {
+        "displayName": "%", 
+        "name": "modifier realPercent", 
+        "description": "用于乘数，显示为 % 10 is +10% -10 is -10% 3.6 is +3.6%"
+    }, 
+    "13": {
+        "displayName": "kg/m3", 
+        "name": "Mass Density", 
+        "description": "千克/立方米"
+    }, 
+    "14": {
+        "displayName": "m3/kg", 
+        "name": "Specific Volume", 
+        "description": "立方米/千克"
+    }, 
+    "15": {
+        "displayName": "A/m2", 
+        "name": "Current Density", 
+        "description": "安培/平方米"
+    }, 
+    "16": {
+        "displayName": "A/m", 
+        "name": "Magnetic Field Strength", 
+        "description": "安培/米"
+    }, 
+    "101": {
+        "displayName": "s", 
+        "name": "Milliseconds", 
+        "description": ""
+    }, 
+    "102": {
+        "displayName": "mm", 
+        "name": "Millimeters", 
+        "description": ""
+    }, 
+    "103": {
+        "displayName": "", 
+        "name": "MegaPascals", 
+        "description": ""
+    }, 
+    "104": {
+        "displayName": "x", 
+        "name": "Multiplier", 
+        "description": "表明该单位是乘数。"
+    }, 
+    "105": {
+        "displayName": "%", 
+        "name": "Percentage", 
+        "description": ""
+    }, 
+    "106": {
+        "displayName": "tf", 
+        "name": "Teraflops", 
+        "description": ""
+    }, 
+    "107": {
+        "displayName": "MW", 
+        "name": "MegaWatts", 
+        "description": ""
+    }, 
+    "108": {
+        "displayName": "%", 
+        "name": "Inverse Absolute Percent", 
+        "description": "用于抗性。0.0 = 100% 1.0 = 0%"
+    }, 
+    "109": {
+        "displayName": "%", 
+        "name": "Modifier Percent", 
+        "description": "用于乘数，显示为 %1.1 = +10%0.9 = -10%"
+    }, 
+    "111": {
+        "displayName": "%", 
+        "name": "Inversed Modifier Percent", 
+        "description": "用来调整伤害抗性。伤害抗性加成。0.1 = 90%\n0.9 = 10%"
+    }, 
+    "112": {
+        "displayName": "r/s", 
+        "name": "Radians/Second", 
+        "description": "转速。"
+    }, 
+    "113": {
+        "displayName": "HP", 
+        "name": "Hitpoints", 
+        "description": ""
+    }, 
+    "114": {
+        "displayName": "GJ", 
+        "name": "capacitor units", 
+        "description": "千兆焦耳"
+    }, 
+    "115": {
+        "displayName": "组别ID", 
+        "name": "groupID", 
+        "description": ""
+    }, 
+    "116": {
+        "displayName": "类别ID", 
+        "name": "typeID", 
+        "description": ""
+    }, 
+    "117": {
+        "displayName": "1=小型  2=中型  3=大型", 
+        "name": "Sizeclass", 
+        "description": "1=小型 2=中型 3=大型 4=超大型"
+    }, 
+    "118": {
+        "displayName": "矿石单位", 
+        "name": "Ore units", 
+        "description": ""
+    }, 
+    "119": {
+        "displayName": "属性ID", 
+        "name": "attributeID", 
+        "description": ""
+    }, 
+    "120": {
+        "displayName": "点", 
+        "name": "attributePoints", 
+        "description": ""
+    }, 
+    "121": {
+        "displayName": "%", 
+        "name": "realPercent", 
+        "description": "用于真实百分比，比如数字5表示5%"
+    }, 
+    "122": {
+        "displayName": "", 
+        "name": "Fitting slots", 
+        "description": ""
+    }, 
+    "123": {
+        "displayName": "s", 
+        "name": "trueTime", 
+        "description": "直接显示秒"
+    }, 
+    "124": {
+        "displayName": "%", 
+        "name": "Modifier Relative Percent", 
+        "description": "用于相对百分比，显示为 %"
+    }, 
+    "125": {
+        "displayName": "N", 
+        "name": "Newton", 
+        "description": ""
+    }, 
+    "126": {
+        "displayName": "光年", 
+        "name": "Light Year", 
+        "description": ""
+    }, 
+    "127": {
+        "displayName": "%", 
+        "name": "Absolute Percent", 
+        "description": "0.0 = 0% 1.0 = 100%"
+    }
+}

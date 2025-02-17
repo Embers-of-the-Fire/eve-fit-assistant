@@ -43,9 +43,10 @@ const Groups_EntriesEntry$json = {
 };
 
 /// Descriptor for `Groups`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List groupsDescriptor = $convert
-    .base64Decode('CgZHcm91cHMSNQoHZW50cmllcxgBIAMoCzIbLmdyb3Vwcy5Hcm91cHMuRW50cmllc0VudHJ5Ug'
-        'dlbnRyaWVzGm8KBUdyb3VwEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSFAoFdHlw'
-        'ZXMYAiADKAVSBXR5cGVzEjAKE3JlbGF0ZWRNYXJrZXRHcm91cHMYAyADKAVSE3JlbGF0ZWRNYX'
-        'JrZXRHcm91cHMaUAoMRW50cmllc0VudHJ5EhAKA2tleRgBIAEoBVIDa2V5EioKBXZhbHVlGAIg'
-        'ASgLMhQuZ3JvdXBzLkdyb3Vwcy5Hcm91cFIFdmFsdWU6AjgB');
+final $typed_data.Uint8List groupsDescriptor = $convert.base64Decode(
+    'CgZHcm91cHMSNQoHZW50cmllcxgBIAMoCzIbLmdyb3Vwcy5Hcm91cHMuRW50cmllc0VudHJ5Ug'
+    'dlbnRyaWVzGm8KBUdyb3VwEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSFAoFdHlw'
+    'ZXMYAiADKAVSBXR5cGVzEjAKE3JlbGF0ZWRNYXJrZXRHcm91cHMYAyADKAVSE3JlbGF0ZWRNYX'
+    'JrZXRHcm91cHMaUAoMRW50cmllc0VudHJ5EhAKA2tleRgBIAEoBVIDa2V5EioKBXZhbHVlGAIg'
+    'ASgLMhQuZ3JvdXBzLkdyb3Vwcy5Hcm91cFIFdmFsdWU6AjgB');
+

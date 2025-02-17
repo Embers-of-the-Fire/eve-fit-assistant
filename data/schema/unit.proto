@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package unit;
+
+message Units {
+    message Unit {
+        required string name = 1;
+        required string displayName = 2;
+        required string description = 3;
+    }
+
+    map<int32, Unit> entries = 1;
+}

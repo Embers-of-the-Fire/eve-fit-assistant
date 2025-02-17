@@ -14,7 +14,7 @@ def convert(cache: ConvertCache, external: dict):
     types = cache.get("types")
     dogma = cache.get("typeDogma")
     
-    tactical = cache.get_patch("tactical_mode")
+    tactical = cache.get_patch("tactical_mode", "yaml")
 
     ship_groups = [k for k, v in groups.items() if v.get("categoryID") == 6]
 

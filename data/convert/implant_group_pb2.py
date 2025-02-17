@@ -24,17 +24,17 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13implant_group.proto\x12\x0cmarket_group\"\xd4\x01\n\rImplantGroups\x12\x38\n\x06groups\x18\x01 \x03(\x0b\x32(.market_group.ImplantGroups.ImplantGroup\x1aY\n\x0cImplantGroup\x12\x0c\n\x04name\x18\x01 \x02(\t\x12;\n\x06groups\x18\x02 \x03(\x0b\x32+.market_group.ImplantGroups.ImplantSubGroup\x1a.\n\x0fImplantSubGroup\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05items\x18\x02 \x03(\x05')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13implant_group.proto\x12\rimplant_group\"\xd6\x01\n\rImplantGroups\x12\x39\n\x06groups\x18\x01 \x03(\x0b\x32).implant_group.ImplantGroups.ImplantGroup\x1aZ\n\x0cImplantGroup\x12\x0c\n\x04name\x18\x01 \x02(\t\x12<\n\x06groups\x18\x02 \x03(\x0b\x32,.implant_group.ImplantGroups.ImplantSubGroup\x1a.\n\x0fImplantSubGroup\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05items\x18\x02 \x03(\x05')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'implant_group_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_IMPLANTGROUPS']._serialized_start=38
-  _globals['_IMPLANTGROUPS']._serialized_end=250
-  _globals['_IMPLANTGROUPS_IMPLANTGROUP']._serialized_start=113
-  _globals['_IMPLANTGROUPS_IMPLANTGROUP']._serialized_end=202
-  _globals['_IMPLANTGROUPS_IMPLANTSUBGROUP']._serialized_start=204
-  _globals['_IMPLANTGROUPS_IMPLANTSUBGROUP']._serialized_end=250
+  _globals['_IMPLANTGROUPS']._serialized_start=39
+  _globals['_IMPLANTGROUPS']._serialized_end=253
+  _globals['_IMPLANTGROUPS_IMPLANTGROUP']._serialized_start=115
+  _globals['_IMPLANTGROUPS_IMPLANTGROUP']._serialized_end=205
+  _globals['_IMPLANTGROUPS_IMPLANTSUBGROUP']._serialized_start=207
+  _globals['_IMPLANTGROUPS_IMPLANTSUBGROUP']._serialized_end=253
 # @@protoc_insertion_point(module_scope)

@@ -10,7 +10,7 @@ def convert(cache: ConvertCache, external: dict):
 
     print("Collecting tactical modes...")
 
-    tactical: dict[int, dict[str, list[int]]] = cache.get_patch("tactical_mode")
+    tactical: dict[int, dict[str, list[int]]] = cache.get_patch("tactical_mode", "yaml")
     types = cache.get("types")
 
     for ship_id, dataset in tactical.items():

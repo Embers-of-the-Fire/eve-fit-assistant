@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package market_group;
+package implant_group;
 
 message ImplantGroups {
     message ImplantGroup {

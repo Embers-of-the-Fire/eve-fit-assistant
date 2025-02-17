@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from os import PathLike
 import csv
 import os
 import pathlib
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 import requests
@@ -32,8 +33,8 @@ class ConvertCache:
     def download_cached(self, key: str) -> str:
         return self.resfileindex.download_cached(key)
 
-    def get_patch(self, key: str) -> Any:
-        return self.patches.read_cached(key)
+    def get_patch(self, key: str, style: Literal["yaml", "json"]) -> Any:
+        return self.patches.read_cached(key, style)
 
 
 class FsdCache:
@@ -95,10 +96,17 @@ class PatchesCache:
         self.patch_dir = patch_dir
         self.cached = {}
 
-    def read_cached(self, key: str):
+    def read_cached(self, key: str, style: Literal["yaml", "json"]):
         if key in self.cached.keys():
             return self.cached[key]
-        with open(f"{self.patch_dir}/{key}.yaml", "r", encoding="utf-8") as f:
-            out = yaml.load(f, yaml.CSafeLoader)
-            self.cached[key] = out
-            return out
+        match style:
+            case "yaml":
+                with open(f"{self.patch_dir}/{key}.yaml", "r", encoding="utf-8") as f:
+                    out = yaml.load(f, yaml.CSafeLoader)
+                    self.cached[key] = out
+                    return out
+            case "json":
+                with open(f"{self.patch_dir}/{key}.json", "r", encoding="utf-8") as f:
+                    out = json.load(f)
+                    self.cached[key] = out
+                    return out

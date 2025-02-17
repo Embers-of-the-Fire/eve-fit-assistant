@@ -7,7 +7,7 @@
 Official developer document: <https://developers.eveonline.com/docs/resources/>
 
 | Data Identifier | Recommended Save Path | Download URL                                  |
-|-----------------|-----------------------|-----------------------------------------------|
+| --------------- | --------------------- | --------------------------------------------- |
 | FSD             | `./fsd`               | [FSD (fsd.zip)][FSD URL]                      |
 | Images/Icons    | `./images/Icons`      | [Icons (XXX_Vxxx_Icons.zip)][Icon URL]        |
 | Images/Renders  | `./images/Renders`    | [Renders (XXX_Vxxx_Renders.zip)][Renders URL] |
@@ -26,7 +26,7 @@ Official developer document: <https://developers.eveonline.com/docs/resources/>
 **These data are collected from the game client**, so there's only instructions but no URLs.
 
 | Data Identifier    | Recommended Save Path | Local position                             |
-|--------------------|-----------------------|--------------------------------------------|
+| ------------------ | --------------------- | ------------------------------------------ |
 | `resfileindex.txt` | `.`                   | `<path-to-eve-client>\tq\resfileindex.txt` |
 
 ### Patches
@@ -36,7 +36,8 @@ So we have to manually create and record them.
 
 Those data is stored in the `./patches` directory and is preserved by the VCS.
 
-There's no definite rule about how each patch file means and operates.
+There's no definite rule about how each patch file means and operates,
+but some patches do have a documentation file or generator script.
 
 ### Cache directory
 

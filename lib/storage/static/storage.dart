@@ -13,18 +13,20 @@ import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/static/slot_group.dart';
 import 'package:eve_fit_assistant/storage/static/tactical_mode.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
+import 'package:eve_fit_assistant/storage/static/units.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 
 class StaticStorage {
-  late ReadonlyMap<int, TypeItem> _types;
-  late ReadonlyMap<int, MarketGroup> _marketGroups;
-  late ReadonlyMap<int, Group> _groups;
-  late ReadonlyMap<int, Ship> _ships;
-  late ReadonlyMap<int, TacticalModeShip> _tacticalModes;
-  late List<ImplantGroup> _implantGroups;
-  late StaticIcon _icons;
-  late TypeSlotStorage _typeSlot;
-  late ShipSubsystemStorage _subsystems;
+  late final ReadonlyMap<int, TypeItem> _types;
+  late final ReadonlyMap<int, MarketGroup> _marketGroups;
+  late final ReadonlyMap<int, Group> _groups;
+  late final ReadonlyMap<int, Ship> _ships;
+  late final ReadonlyMap<int, TacticalModeShip> _tacticalModes;
+  late final ReadonlyMap<int, UnitItem> _units;
+  late final List<ImplantGroup> _implantGroups;
+  late final StaticIcon _icons;
+  late final TypeSlotStorage _typeSlot;
+  late final ShipSubsystemStorage _subsystems;
   late StaticVersionInfo? _version;
 
   ReadonlyMap<int, TypeItem> get types => _types;
@@ -36,6 +38,8 @@ class StaticStorage {
   ReadonlyMap<int, Ship> get ships => _ships;
 
   ReadonlyMap<int, TacticalModeShip> get tacticalModes => _tacticalModes;
+
+  ReadonlyMap<int, UnitItem> get units => _units;
 
   List<ImplantGroup> get implantGroups => _implantGroups;
 
@@ -74,6 +78,7 @@ class StaticStorage {
     _ships = await Ship.read(staticStorageDir);
     _tacticalModes = await TacticalModeShip.read(staticStorageDir);
     _implantGroups = await ImplantGroup.read(staticStorageDir);
+    _units = await UnitItem.read(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);
     _subsystems = await ShipSubsystemStorage.read(staticStorageDir);
