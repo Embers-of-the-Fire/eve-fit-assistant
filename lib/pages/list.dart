@@ -26,7 +26,7 @@ class _ListPageState extends State<ListPage> {
             .sortedByKey<Reversed<num>>((entry) => Reversed(entry.value.lastModifyTime))
             .map((entry) {
           final icon = GlobalStorage().static.icons.getTypeIconSync(entry.value.shipID);
-          final typeName = GlobalStorage().static.typesAbbr[entry.value.shipID]?.nameZH ?? '未知';
+          final typeName = GlobalStorage().static.types[entry.value.shipID]?.nameZH ?? '未知';
           return Slidable(
             endActionPane: ActionPane(extentRatio: 0.2, motion: const StretchMotion(), children: [
               SlidableAction(

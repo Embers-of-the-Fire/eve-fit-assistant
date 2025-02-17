@@ -72,7 +72,7 @@ class _DroneSlot extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
 
-    final droneName = GlobalStorage().static.typesAbbr[droneID]?.nameZH ?? '未知';
+    final droneName = GlobalStorage().static.types[droneID]?.nameZH ?? '未知';
     final droneImage = GlobalStorage().static.icons.getTypeIconFileImageSync(droneID);
     return Slidable(
       startActionPane: ActionPane(

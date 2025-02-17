@@ -16,7 +16,7 @@ import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 
 class StaticStorage {
-  late ReadonlyMap<int, TypeAbbr> _typesAbbr;
+  late ReadonlyMap<int, TypeItem> _types;
   late ReadonlyMap<int, MarketGroup> _marketGroups;
   late ReadonlyMap<int, Group> _groups;
   late ReadonlyMap<int, Ship> _ships;
@@ -27,7 +27,7 @@ class StaticStorage {
   late ShipSubsystemStorage _subsystems;
   late StaticVersionInfo? _version;
 
-  ReadonlyMap<int, TypeAbbr> get typesAbbr => _typesAbbr;
+  ReadonlyMap<int, TypeItem> get types => _types;
 
   ReadonlyMap<int, MarketGroup> get marketGroups => _marketGroups;
 
@@ -68,7 +68,7 @@ class StaticStorage {
       await unpackBundledStorage(showLoading: false, autoDismiss: autoDismiss);
     }
 
-    _typesAbbr = await TypeAbbr.read(staticStorageDir);
+    _types = await TypeItem.read(staticStorageDir);
     _marketGroups = await MarketGroup.read(staticStorageDir);
     _groups = await Group.read(staticStorageDir);
     _ships = await Ship.read(staticStorageDir);

@@ -52,7 +52,7 @@ class _ItemListState extends State<ItemList> {
     if (_cachedValidTypes.contains(id)) {
       return true;
     }
-    final type = GlobalStorage().static.typesAbbr[id];
+    final type = GlobalStorage().static.types[id];
     if (type == null) {
       return false;
     }
@@ -178,7 +178,7 @@ Iterable<ListTile> _itemListTile(MarketGroup group,
     types = group.types.filter(filter);
   }
   return types
-      .filterMap((id) => GlobalStorage().static.typesAbbr[id].map((u) => (id, u)))
+      .filterMap((id) => GlobalStorage().static.types[id].map((u) => (id, u)))
       .map((val) => ListTile(
             // leading: Icon(Icons.article_sharp),
             leading: GlobalStorage().static.icons.getTypeIconSync(val.$1),

@@ -160,7 +160,6 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
         title: Text('[${ship.nameZH}] ${fitRef.fit.brief.name}'),
         bottom: TabBar(
           controller: _tabController,
-          indicatorSize: TabBarIndicatorSize.tab,
           tabs: const [
             Tab(text: '角色'),
             Tab(text: '装备'),

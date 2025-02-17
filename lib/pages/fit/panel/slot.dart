@@ -2,7 +2,7 @@ import 'package:eve_fit_assistant/assets/icon.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
 import 'package:eve_fit_assistant/native/glue/native_slot.dart';
 import 'package:eve_fit_assistant/native/port/api/proxy.dart';
-import 'package:eve_fit_assistant/pages/fit/item_info.dart';
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/native_error.dart';
@@ -224,7 +224,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           row.add(icon);
           row.add(const SizedBox(width: 10));
         }
-        final chargeName = GlobalStorage().static.typesAbbr[chargeID!]?.nameZH ?? '未知';
+        final chargeName = GlobalStorage().static.types[chargeID!]?.nameZH ?? '未知';
         row.add(Text(chargeName, style: const TextStyle(fontSize: 14)));
       }
 
@@ -279,7 +279,7 @@ class _SlotRowDisplay extends ConsumerWidget {
         .toList();
 
     return ListTile(
-      onLongPress: () => showItemInfoPage(context),
+      onLongPress: item.map((i) => () => showItemInfoPage(context, typeID: typeID, item: i)),
       leading: Ink(
         decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(20)),
@@ -306,7 +306,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           ),
         ),
       ),
-      title: Text(GlobalStorage().static.typesAbbr[typeID]?.nameZH ?? '未知'),
+      title: Text(GlobalStorage().static.types[typeID]?.nameZH ?? '未知'),
       subtitle: subtitleGroup.isEmpty
           ? null
           : Column(

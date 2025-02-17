@@ -63,7 +63,7 @@ class SubsystemSlotRow extends ConsumerWidget {
             foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID),
           ),
         ),
-        title: Text(GlobalStorage().static.typesAbbr[typeID]?.nameZH ?? '未知'),
+        title: Text(GlobalStorage().static.types[typeID]?.nameZH ?? '未知'),
       ),
     );
   }

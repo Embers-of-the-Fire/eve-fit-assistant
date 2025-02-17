@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:eve_fit_assistant/storage/proto/types.pb.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 
-class TypeAbbr {
+class TypeItem {
   final Types_Type _raw;
 
   String get nameEN => _raw.name.en;
@@ -17,14 +17,14 @@ class TypeAbbr {
 
   String get description => _raw.description;
 
-  const TypeAbbr._private(this._raw);
+  const TypeItem._private(this._raw);
 
-  static Map<int, TypeAbbr> _fromBuffer(Uint8List buffer) {
+  static Map<int, TypeItem> _fromBuffer(Uint8List buffer) {
     final types = Types.fromBuffer(buffer);
-    return types.entries.map((key, value) => MapEntry(key, TypeAbbr._private(value)));
+    return types.entries.map((key, value) => MapEntry(key, TypeItem._private(value)));
   }
 
-  static Future<ReadonlyMap<int, TypeAbbr>> read(Directory staticDir) async {
+  static Future<ReadonlyMap<int, TypeItem>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/types.pb');
     final buffer = await file.readAsBytes();
     return ReadonlyMap(_fromBuffer(buffer));

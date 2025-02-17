@@ -111,7 +111,7 @@ Future<int?> showAddChargeDialog(
       baseName: '弹药',
       fallbackGroupID: 11,
       predicate: (int chargeID) {
-        final chargeGroupID = GlobalStorage().static.typesAbbr[chargeID]?.groupID;
+        final chargeGroupID = GlobalStorage().static.types[chargeID]?.groupID;
         if (chargeGroupID == null) return true;
         return chargeGroups.contains(chargeGroupID);
       });
@@ -127,7 +127,7 @@ Future<int?> showAddDroneDialog(
     baseName: '无人机',
     fallbackGroupID: 157,
     predicate: (item) {
-      final groupID = GlobalStorage().static.typesAbbr[item]?.groupID;
+      final groupID = GlobalStorage().static.types[item]?.groupID;
 
       return groupID == null || !fighterGroupIDs.contains(groupID);
     },
