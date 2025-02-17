@@ -217,3 +217,4 @@ const int chargeAmount = -8;
 /// - Name: cpuFree
 /// - High is good: True
 const int cpuFree = -9;
+

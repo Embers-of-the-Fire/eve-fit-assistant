@@ -1,0 +1,17 @@
+syntax = "proto2";
+
+package market_group;
+
+message ImplantGroups {
+    message ImplantGroup {
+        required string name = 1;
+        repeated ImplantSubGroup groups = 2;
+    }
+
+    message ImplantSubGroup {
+        required string name = 1;
+        repeated int32 items = 2;
+    }
+
+    repeated ImplantGroup groups = 1;
+}

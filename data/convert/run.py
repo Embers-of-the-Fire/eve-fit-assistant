@@ -15,6 +15,7 @@ import convert_skills
 import convert_character
 import convert_subsystem
 import convert_tactical_mode
+import convert_implant_group
 
 if not __name__ == "__main__":
     exit(0)
@@ -50,6 +51,7 @@ def convert(fsd_dir, resfileindex, patch_dir, out_dir, index_cache):
     convert_character.convert(cache, data)
     convert_subsystem.convert(cache, data)
     convert_tactical_mode.convert(cache, data)
+    convert_implant_group.convert(cache, data)
 
     for key, value in data.items():
         with open(f"{out_dir}/json/{key}.json", "w", encoding="utf-8") as fp:

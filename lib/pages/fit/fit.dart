@@ -12,6 +12,7 @@ import 'package:eve_fit_assistant/utils/bool.dart';
 import 'package:eve_fit_assistant/utils/itertools.dart';
 import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

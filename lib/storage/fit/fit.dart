@@ -9,6 +9,7 @@ import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/bool.dart';
+import 'package:eve_fit_assistant/utils/list.dart';
 import 'package:eve_fit_assistant/utils/optional.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -78,6 +79,10 @@ class FitRecord {
 
   void modifyImplant(int index, SlotItem? Function(SlotItem?) map) {
     body.implant[index] = map(body.implant[index]);
+  }
+
+  void clearImplant() {
+    body.implant.fillAll(null);
   }
 
   void modifyDrone(int index, DroneItem Function(DroneItem) map) {
