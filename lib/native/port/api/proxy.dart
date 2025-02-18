@@ -6,8 +6,29 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `from_native`, `from_native`, `from_native`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `from_native_grouped`, `from_native`, `from_native`, `from_native`, `from_native`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`
+
+class DroneProxy {
+  final int groupIndex;
+  final List<ItemProxy> drones;
+
+  const DroneProxy({
+    required this.groupIndex,
+    required this.drones,
+  });
+
+  @override
+  int get hashCode => groupIndex.hashCode ^ drones.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DroneProxy &&
+          runtimeType == other.runtimeType &&
+          groupIndex == other.groupIndex &&
+          drones == other.drones;
+}
 
 class ItemProxy {
   final int? index;
@@ -44,6 +65,7 @@ class ModulesProxy {
   final List<ItemProxy> rig;
   final List<ItemProxy> subsystem;
   final ItemProxy? tacticalMode;
+  final List<DroneProxy> drones;
 
   const ModulesProxy({
     required this.high,
@@ -52,6 +74,7 @@ class ModulesProxy {
     required this.rig,
     required this.subsystem,
     this.tacticalMode,
+    required this.drones,
   });
 
   static Future<ModulesProxy> default_() =>
@@ -64,7 +87,8 @@ class ModulesProxy {
       low.hashCode ^
       rig.hashCode ^
       subsystem.hashCode ^
-      tacticalMode.hashCode;
+      tacticalMode.hashCode ^
+      drones.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -76,7 +100,8 @@ class ModulesProxy {
           low == other.low &&
           rig == other.rig &&
           subsystem == other.subsystem &&
-          tacticalMode == other.tacticalMode;
+          tacticalMode == other.tacticalMode &&
+          drones == other.drones;
 }
 
 class ShipProxy {

@@ -86,6 +86,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DroneGroup dco_decode_drone_group(dynamic raw);
 
   @protected
+  DroneProxy dco_decode_drone_proxy(dynamic raw);
+
+  @protected
   ErrorKey dco_decode_error_key(dynamic raw);
 
   @protected
@@ -108,6 +111,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DroneGroup> dco_decode_list_drone_group(dynamic raw);
+
+  @protected
+  List<DroneProxy> dco_decode_list_drone_proxy(dynamic raw);
 
   @protected
   List<Implant> dco_decode_list_implant(dynamic raw);
@@ -236,6 +242,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DroneGroup sse_decode_drone_group(SseDeserializer deserializer);
 
   @protected
+  DroneProxy sse_decode_drone_proxy(SseDeserializer deserializer);
+
+  @protected
   ErrorKey sse_decode_error_key(SseDeserializer deserializer);
 
   @protected
@@ -258,6 +267,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DroneGroup> sse_decode_list_drone_group(SseDeserializer deserializer);
+
+  @protected
+  List<DroneProxy> sse_decode_list_drone_proxy(SseDeserializer deserializer);
 
   @protected
   List<Implant> sse_decode_list_implant(SseDeserializer deserializer);
@@ -398,6 +410,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_drone_group(DroneGroup self, SseSerializer serializer);
 
   @protected
+  void sse_encode_drone_proxy(DroneProxy self, SseSerializer serializer);
+
+  @protected
   void sse_encode_error_key(ErrorKey self, SseSerializer serializer);
 
   @protected
@@ -421,6 +436,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_drone_group(
       List<DroneGroup> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_drone_proxy(
+      List<DroneProxy> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_implant(List<Implant> self, SseSerializer serializer);

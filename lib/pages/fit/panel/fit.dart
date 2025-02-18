@@ -1,6 +1,7 @@
 library;
 
 import 'package:eve_fit_assistant/native/port/api.dart';
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/equipment_header.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/info/info_component.dart';

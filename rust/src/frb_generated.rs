@@ -582,11 +582,23 @@ impl SseDecode for crate::api::schema::DroneGroup {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_itemId = <i32>::sse_decode(deserializer);
         let mut var_amount = <i32>::sse_decode(deserializer);
-        let mut var_index = <i32>::sse_decode(deserializer);
+        let mut var_index = <u8>::sse_decode(deserializer);
         return crate::api::schema::DroneGroup {
             item_id: var_itemId,
             amount: var_amount,
             index: var_index,
+        };
+    }
+}
+
+impl SseDecode for crate::api::proxy::DroneProxy {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_groupIndex = <u8>::sse_decode(deserializer);
+        let mut var_drones = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
+        return crate::api::proxy::DroneProxy {
+            group_index: var_groupIndex,
+            drones: var_drones,
         };
     }
 }
@@ -723,6 +735,18 @@ impl SseDecode for Vec<crate::api::schema::DroneGroup> {
     }
 }
 
+impl SseDecode for Vec<crate::api::proxy::DroneProxy> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::proxy::DroneProxy>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::schema::Implant> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -836,6 +860,7 @@ impl SseDecode for crate::api::proxy::ModulesProxy {
         let mut var_rig = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_subsystem = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_tacticalMode = <Option<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
+        let mut var_drones = <Vec<crate::api::proxy::DroneProxy>>::sse_decode(deserializer);
         return crate::api::proxy::ModulesProxy {
             high: var_high,
             medium: var_medium,
@@ -843,6 +868,7 @@ impl SseDecode for crate::api::proxy::ModulesProxy {
             rig: var_rig,
             subsystem: var_subsystem,
             tactical_mode: var_tacticalMode,
+            drones: var_drones,
         };
     }
 }
@@ -1161,6 +1187,24 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::DroneGroup>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::proxy::DroneProxy {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.group_index.into_into_dart().into_dart(),
+            self.drones.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::proxy::DroneProxy {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::proxy::DroneProxy>
+    for crate::api::proxy::DroneProxy
+{
+    fn into_into_dart(self) -> crate::api::proxy::DroneProxy {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::error::ErrorKey {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
@@ -1307,6 +1351,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::proxy::ModulesProxy {
             self.rig.into_into_dart().into_dart(),
             self.subsystem.into_into_dart().into_dart(),
             self.tactical_mode.into_into_dart().into_dart(),
+            self.drones.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1512,7 +1557,15 @@ impl SseEncode for crate::api::schema::DroneGroup {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.item_id, serializer);
         <i32>::sse_encode(self.amount, serializer);
-        <i32>::sse_encode(self.index, serializer);
+        <u8>::sse_encode(self.index, serializer);
+    }
+}
+
+impl SseEncode for crate::api::proxy::DroneProxy {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u8>::sse_encode(self.group_index, serializer);
+        <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.drones, serializer);
     }
 }
 
@@ -1610,6 +1663,16 @@ impl SseEncode for Vec<crate::api::schema::DroneGroup> {
     }
 }
 
+impl SseEncode for Vec<crate::api::proxy::DroneProxy> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::proxy::DroneProxy>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::schema::Implant> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1701,6 +1764,7 @@ impl SseEncode for crate::api::proxy::ModulesProxy {
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.rig, serializer);
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.subsystem, serializer);
         <Option<crate::api::proxy::ItemProxy>>::sse_encode(self.tactical_mode, serializer);
+        <Vec<crate::api::proxy::DroneProxy>>::sse_encode(self.drones, serializer);
     }
 }
 

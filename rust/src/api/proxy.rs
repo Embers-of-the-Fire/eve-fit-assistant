@@ -36,6 +36,7 @@ pub struct ModulesProxy {
     pub rig: Vec<ItemProxy>,
     pub subsystem: Vec<ItemProxy>,
     pub tactical_mode: Option<ItemProxy>,
+    pub drones: Vec<DroneProxy>,
 }
 
 impl ModulesProxy {
@@ -44,6 +45,8 @@ impl ModulesProxy {
         use calculate::item::SlotType::*;
 
         let mut out = Self::default();
+
+        let mut drones = vec![];
 
         for item in native {
             match item.slot.slot_type {
@@ -55,11 +58,52 @@ impl ModulesProxy {
                 TacticalMode => {
                     out.tactical_mode.replace(ItemProxy::from_native(item));
                 }
+                DroneBay { .. } => {
+                    drones.push(item);
+                }
                 _ => {}
             }
         }
 
+        out.drones = DroneProxy::from_native_grouped(drones);
+
         out
+    }
+}
+
+#[flutter_rust_bridge::frb(non_opaque)]
+#[derive(Debug, Clone)]
+pub struct DroneProxy {
+    pub group_index: u8,
+    pub drones: Vec<ItemProxy>,
+}
+
+impl DroneProxy {
+    #[flutter_rust_bridge::frb(ignore)]
+    pub(crate) fn from_native(group: u8, native: Vec<calculate::item::Item>) -> Self {
+        DroneProxy {
+            group_index: group,
+            drones: native.into_iter().map(ItemProxy::from_native).collect(),
+        }
+    }
+
+    #[flutter_rust_bridge::frb(ignore)]
+    pub(crate) fn from_native_grouped(native: Vec<calculate::item::Item>) -> Vec<Self> {
+        use std::collections::BTreeMap;
+
+        let mut map = BTreeMap::new();
+        for drone in native {
+            map.entry(match drone.slot.slot_type {
+                calculate::item::SlotType::DroneBay { group_id } => group_id,
+                _ => 0,
+            })
+            .or_insert_with(Vec::new)
+            .push(drone);
+        }
+
+        map.into_iter()
+            .map(|(group, drones)| Self::from_native(group, drones))
+            .collect()
     }
 }
 

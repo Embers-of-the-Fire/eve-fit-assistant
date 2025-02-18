@@ -70,7 +70,11 @@ class _DroneSlot extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
+    final fitNotifier = ref.read(fitRecordNotifierProvider(fitID).notifier);
+    final fit = ref.watch(fitRecordNotifierProvider(fitID));
+
+    final item =
+        fit.output.ship.modules.drones.find((u) => u.groupIndex == index)?.drones.firstOrNull;
 
     final droneName = GlobalStorage().static.types[droneID]?.nameZH ?? '未知';
     final droneImage = GlobalStorage().static.icons.getTypeIconFileImageSync(droneID);
@@ -81,7 +85,7 @@ class _DroneSlot extends ConsumerWidget {
         children: [
           SlidableAction(
             onPressed: (_) => _modifyDrone(
-              fit,
+              fitNotifier,
               index: index,
               modify: (drone) => drone.copyWith(amount: drone.amount + 1),
             ),
@@ -91,7 +95,7 @@ class _DroneSlot extends ConsumerWidget {
           ),
           SlidableAction(
             onPressed: (_) => _modifyDrone(
-              fit,
+              fitNotifier,
               index: index,
               modify: (drone) => drone.copyWith(amount: 5),
             ),
@@ -107,7 +111,7 @@ class _DroneSlot extends ConsumerWidget {
         children: [
           SlidableAction(
             onPressed: (_) => _modifyDrone(
-              fit,
+              fitNotifier,
               index: index,
               modify: (drone) => drone.copyWith(amount: drone.amount - 1),
             ),
@@ -116,7 +120,7 @@ class _DroneSlot extends ConsumerWidget {
             label: '-1',
           ),
           SlidableAction(
-            onPressed: (_) => _removeDrone(fit, index: index),
+            onPressed: (_) => _removeDrone(fitNotifier, index: index),
             icon: Icons.delete_forever,
             backgroundColor: Colors.red,
             label: '删除',
@@ -124,12 +128,13 @@ class _DroneSlot extends ConsumerWidget {
         ],
       ),
       child: ListTile(
+        onLongPress: () => item.map((i) => showItemInfoPage(context, typeID: droneID, item: i)),
         leading: Ink(
           decoration: const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(20))),
           child: InkWell(
             borderRadius: const BorderRadius.all(Radius.circular(20)),
             onTap: () => _modifyDrone(
-              fit,
+              fitNotifier,
               index: index,
               modify: (drone) => drone.copyWith(state: drone.state.nextState()),
             ),

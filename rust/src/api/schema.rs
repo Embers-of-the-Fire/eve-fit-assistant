@@ -53,6 +53,7 @@ impl Fit {
                 .flat_map(|drone| {
                     iter::repeat_n(
                         ItemDrone {
+                            group_id: drone.index,
                             type_id: drone.item_id,
                             state: ItemState::Active,
                         },
@@ -120,7 +121,7 @@ impl From<State> for eve_fit_os::fit::ItemState {
 pub struct DroneGroup {
     pub item_id: i32,
     pub amount: i32,
-    pub index: i32,
+    pub index: u8,
 }
 
 #[flutter_rust_bridge::frb(non_opaque)]
