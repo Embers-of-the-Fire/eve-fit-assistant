@@ -14,6 +14,7 @@ class ItemList extends StatefulWidget {
 
   final bool Function(int id)? filter;
   final void Function(int id)? onSelect;
+  final void Function(int id)? onLongPress;
 
   const ItemList({
     super.key,
@@ -24,6 +25,7 @@ class ItemList extends StatefulWidget {
     this.fallbackGroupID,
     this.filter,
     this.onSelect,
+    this.onLongPress,
   });
 
   @override
@@ -146,6 +148,7 @@ class _ItemListState extends State<ItemList> {
                             group,
                             onTap: widget.onSelect,
                             filter: widget.filter,
+                            onLongPress: widget.onLongPress,
                           ))
                       .unwrapOr([])
                 ],
@@ -173,8 +176,12 @@ ListTile _groupListTile(MarketGroup group, {void Function()? onTap}) {
   );
 }
 
-Iterable<ListTile> _itemListTile(MarketGroup group,
-    {void Function(int id)? onTap, bool Function(int id)? filter}) {
+Iterable<ListTile> _itemListTile(
+  MarketGroup group, {
+  required void Function(int id)? onTap,
+  required bool Function(int id)? filter,
+  required void Function(int id)? onLongPress,
+}) {
   late Iterable<int> types;
   if (filter == null) {
     types = group.types;
@@ -185,6 +192,7 @@ Iterable<ListTile> _itemListTile(MarketGroup group,
       .filterMap((id) => GlobalStorage().static.types[id].map((u) => (id, u)))
       .map((val) => ListTile(
             // leading: Icon(Icons.article_sharp),
+            onLongPress: () => onLongPress?.call(val.$1),
             leading: GlobalStorage().static.icons.getTypeIconSync(val.$1),
             title: Text(
               val.$2.nameZH,

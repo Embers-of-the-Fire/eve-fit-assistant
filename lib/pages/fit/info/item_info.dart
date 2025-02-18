@@ -19,9 +19,20 @@ Future<void> showItemInfoPage(
           )));
 }
 
+Future<void> showTypeInfoPage(
+  BuildContext context, {
+  required int typeID,
+}) async {
+  await Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => ItemInfoPage(
+            typeID: typeID,
+            item: null,
+          )));
+}
+
 class ItemInfoPage extends StatefulWidget {
   final int typeID;
-  final ItemProxy item;
+  final ItemProxy? item;
 
   const ItemInfoPage({super.key, required this.typeID, required this.item});
 
@@ -34,15 +45,18 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
 
   @override
   void initState() {
-    _controller = TabController(length: widget.item.charge == null ? 3 : 5, vsync: this);
+    _controller = TabController(length: widget.item?.charge == null ? 3 : 5, vsync: this);
     super.initState();
   }
 
   @override
-  Widget build(BuildContext context) =>
-      widget.item.charge == null ? renderNoCharge(context) : renderWithCharge(context);
+  Widget build(BuildContext context) => widget.item == null
+      ? renderNoAttr(context)
+      : widget.item?.charge == null
+          ? renderNoCharge(context, widget.item!)
+          : renderWithCharge(context, widget.item!, widget.item!.charge!);
 
-  Widget renderNoCharge(BuildContext context) => Scaffold(
+  Widget renderNoAttr(BuildContext context) => Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('物品信息'),
@@ -60,13 +74,37 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
         ),
         body: TabBarView(controller: _controller, children: [
           DescriptionTab(typeID: widget.typeID),
-          AttributeTab(typeID: widget.typeID, attr: widget.item.attributes),
+          AttributeTab(typeID: widget.typeID, attr: null),
           // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
           SkillTree(rootID: widget.typeID),
         ]),
       );
 
-  Widget renderWithCharge(BuildContext context) => Scaffold(
+  Widget renderNoCharge(BuildContext context, ItemProxy item) => Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('物品信息'),
+          bottom: TabBar(
+            controller: _controller,
+            tabs: const [
+              Tab(text: '描述'),
+              Tab(text: '属性'),
+              Tab(text: '技能'),
+              // future feature:
+              // Tab(text: '制造'),
+              // Tab(text: '市场')
+            ],
+          ),
+        ),
+        body: TabBarView(controller: _controller, children: [
+          DescriptionTab(typeID: widget.typeID),
+          AttributeTab(typeID: widget.typeID, attr: widget.item!.attributes),
+          // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
+          SkillTree(rootID: widget.typeID),
+        ]),
+      );
+
+  Widget renderWithCharge(BuildContext context, ItemProxy item, ItemProxy charge) => Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('物品信息'),
@@ -87,11 +125,11 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
         ),
         body: TabBarView(controller: _controller, children: [
           DescriptionTab(typeID: widget.typeID),
-          AttributeTab(typeID: widget.typeID, attr: widget.item.attributes),
-          AttributeTab(typeID: widget.item.charge!.itemId, attr: widget.item.charge!.attributes),
+          AttributeTab(typeID: widget.typeID, attr: item.attributes),
+          AttributeTab(typeID: charge.itemId, attr: charge.attributes),
           // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
           SkillTree(rootID: widget.typeID),
-          SkillTree(rootID: widget.item.charge!.itemId),
+          SkillTree(rootID: charge.itemId),
         ]),
       );
 }

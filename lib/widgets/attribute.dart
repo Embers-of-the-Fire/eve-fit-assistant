@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 class AttributeTab extends StatefulWidget {
   final int typeID;
-  final Map<int, double> attr;
+  final Map<int, double>? attr;
 
   const AttributeTab({super.key, required this.typeID, required this.attr});
 
@@ -20,8 +20,63 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
   Widget build(BuildContext context) {
     super.build(context);
 
+    return SingleChildScrollView(
+      controller: _controller,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Table(
+          columnWidths: const {
+            0: FixedColumnWidth(24),
+            1: FlexColumnWidth(),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children:
+              (widget.attr == null ? renderNoAttr(context) : renderAttr(context, widget.attr!))
+                  .toList(),
+        ),
+      ),
+    );
+  }
+
+  Iterable<TableRow> renderNoAttr(context) {
     final original = GlobalStorage().fitEngine.getTypeAttr(widget.typeID);
-    final out = widget.attr.entries
+    final out = original.entries
+        .filterMap((e) => GlobalStorage().static.attributes[e.key].map((a) => (e, a)))
+        .filter((e) => e.$2.published && e.$2.displayNameZH.isNotEmpty)
+        .groupBy<num>((e) => e.$2.categoryID ?? -1)
+        .sorted()
+        .flatMap((entry) => entry.value.sortedByKey<num>((v) => v.$1.key))
+        .map((entry) {
+      final value = entry.$1.value;
+      final data = entry.$2;
+      final icon = data.iconID
+          .andThen<Widget>((u) => GlobalStorage().static.icons.getIconSync(u, width: 24))
+          .unwrapOr(const Icon(Icons.square_outlined, color: Colors.transparent));
+      final title = data.displayNameZH;
+      final valueString = data.unitID?.format(value) ?? value.toStringAsFixed(2);
+      return TableRow(children: [
+        icon,
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),),
+                Text(
+                  valueString,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+                )
+              ],
+            ))
+      ]);
+    });
+
+    return out;
+  }
+
+  Iterable<TableRow> renderAttr(BuildContext context, Map<int, double> attr) {
+    final original = GlobalStorage().fitEngine.getTypeAttr(widget.typeID);
+    final out = attr.entries
         .filterMap((e) => GlobalStorage().static.attributes[e.key].map((a) => (e, a)))
         .filter((e) => e.$2.published && e.$2.displayNameZH.isNotEmpty)
         .groupBy<num>((e) => e.$2.categoryID ?? -1)
@@ -59,20 +114,7 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
       ]);
     });
 
-    return SingleChildScrollView(
-      controller: _controller,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Table(
-          columnWidths: const {
-            0: FixedColumnWidth(24),
-            1: FlexColumnWidth(),
-          },
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: out.toList(),
-        ),
-      ),
-    );
+    return out;
   }
 
   @override

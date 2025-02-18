@@ -1,5 +1,6 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
@@ -31,6 +32,7 @@ class ShipSelectPage extends StatelessWidget {
               intoFitPage(context, fit.brief.id);
             }
           },
+          onLongPress: (id) => showTypeInfoPage(context, typeID: id),
         ),
       );
 }
