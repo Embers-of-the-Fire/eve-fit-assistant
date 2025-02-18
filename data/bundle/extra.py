@@ -4,6 +4,7 @@ import sys
 import download
 import group_icon
 import type_icon
+import attr_icon
 
 
 if not __name__ == "__main__":
@@ -28,6 +29,7 @@ should_download = len(sys.argv) >= 6 and sys.argv[5] == "--download"
 need_download = []
 need_download.extend(group_icon.bundle(fsd_dir, image_dir, cache_dir))
 need_download.extend(type_icon.bundle(fsd_dir, image_dir, cache_dir))
+need_download.extend(attr_icon.bundle(fsd_dir, image_dir, cache_dir))
 
 if should_download:
     asyncio.run(download.download_all(need_download, res_index))

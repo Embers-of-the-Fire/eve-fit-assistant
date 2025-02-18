@@ -63,7 +63,11 @@ impl Fit {
             implants: self
                 .implant
                 .into_iter()
-                .map(|i| ItemImplant { type_id: i.item_id })
+                .enumerate()
+                .map(|(idx, imp)| ItemImplant {
+                    type_id: imp.item_id,
+                    index: idx as i32,
+                })
                 .collect(),
         };
 

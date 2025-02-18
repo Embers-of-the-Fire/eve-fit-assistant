@@ -21,7 +21,7 @@ pub enum SlotInfo {
         slot: SlotType,
         index: Option<i32>,
         warning_key: WarningKey,
-    }
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

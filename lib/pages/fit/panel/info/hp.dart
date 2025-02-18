@@ -45,9 +45,9 @@ class _HpState extends State<Hp> {
 }
 
 Image _getMaxEhpIcon(ItemProxy hull) {
-  final shieldHp = hull.attributes.getById(key: shieldEhp) ?? 0.0;
-  final armorHp = hull.attributes.getById(key: armorEhp) ?? 0.0;
-  final hullHp = hull.attributes.getById(key: hullEhp) ?? 0.0;
+  final shieldHp = hull.attributes[shieldEhp] ?? 0.0;
+  final armorHp = hull.attributes[armorEhp] ?? 0.0;
+  final hullHp = hull.attributes[hullEhp] ?? 0.0;
 
   if (shieldHp >= armorHp && shieldHp >= hullHp) {
     return const Image(image: hpShieldImage, height: 36);
@@ -59,10 +59,10 @@ Image _getMaxEhpIcon(ItemProxy hull) {
 }
 
 Text _getEhpText(ItemProxy hull, bool expFirst) {
-  final ehpNum = hull.attributes.getById(key: ehp) ?? 0.0;
-  final hpNum = (hull.attributes.getById(key: hp) ?? 0.0) +
-      (hull.attributes.getById(key: armorHP) ?? 0.0) +
-      (hull.attributes.getById(key: shieldCapacity) ?? 0.0);
+  final ehpNum = hull.attributes[ehp] ?? 0.0;
+  final hpNum = (hull.attributes[hp] ?? 0.0) +
+      (hull.attributes[armorHP] ?? 0.0) +
+      (hull.attributes[shieldCapacity] ?? 0.0);
   if (expFirst) {
     return Text('${ehpNum.toStringAsFixed(0)} EHP | ${hpNum.toStringAsFixed(0)} HP');
   } else {
@@ -107,66 +107,66 @@ class _HpTable extends StatelessWidget {
             TableRow(children: [
               const Image(image: hpShieldImage, height: 28),
               Text(displayEhp
-                  ? (hull.attributes.getById(key: shieldEhp) ?? 0.0).toStringAsFixed(0)
-                  : (hull.attributes.getById(key: shieldCapacity) ?? 0.0).toStringAsFixed(0)),
+                  ? (hull.attributes[shieldEhp] ?? 0.0).toStringAsFixed(0)
+                  : (hull.attributes[shieldCapacity] ?? 0.0).toStringAsFixed(0)),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: shieldEmDamageResonance) ?? 0.0,
+                ratio: hull.attributes[shieldEmDamageResonance] ?? 0.0,
                 type: ResonanceType.em,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: shieldThermalDamageResonance) ?? 0.0,
+                ratio: hull.attributes[shieldThermalDamageResonance] ?? 0.0,
                 type: ResonanceType.thermal,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: shieldKineticDamageResonance) ?? 0.0,
+                ratio: hull.attributes[shieldKineticDamageResonance] ?? 0.0,
                 type: ResonanceType.kinetic,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: shieldExplosiveDamageResonance) ?? 0.0,
+                ratio: hull.attributes[shieldExplosiveDamageResonance] ?? 0.0,
                 type: ResonanceType.explosive,
               ),
             ]),
             TableRow(children: [
               const Image(image: hpArmorImage, height: 28),
               Text(displayEhp
-                  ? (hull.attributes.getById(key: armorEhp) ?? 0.0).toStringAsFixed(0)
-                  : (hull.attributes.getById(key: armorHP) ?? 0.0).toStringAsFixed(0)),
+                  ? (hull.attributes[armorEhp] ?? 0.0).toStringAsFixed(0)
+                  : (hull.attributes[armorHP] ?? 0.0).toStringAsFixed(0)),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: armorEmDamageResonance) ?? 0.0,
+                ratio: hull.attributes[armorEmDamageResonance] ?? 0.0,
                 type: ResonanceType.em,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: armorThermalDamageResonance) ?? 0.0,
+                ratio: hull.attributes[armorThermalDamageResonance] ?? 0.0,
                 type: ResonanceType.thermal,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: armorKineticDamageResonance) ?? 0.0,
+                ratio: hull.attributes[armorKineticDamageResonance] ?? 0.0,
                 type: ResonanceType.kinetic,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: armorExplosiveDamageResonance) ?? 0.0,
+                ratio: hull.attributes[armorExplosiveDamageResonance] ?? 0.0,
                 type: ResonanceType.explosive,
               ),
             ]),
             TableRow(children: [
               const Image(image: hpHullImage, height: 28),
               Text(displayEhp
-                  ? (hull.attributes.getById(key: hullEhp) ?? 0.0).toStringAsFixed(0)
-                  : (hull.attributes.getById(key: hp) ?? 0.0).toStringAsFixed(0)),
+                  ? (hull.attributes[hullEhp] ?? 0.0).toStringAsFixed(0)
+                  : (hull.attributes[hp] ?? 0.0).toStringAsFixed(0)),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: emDamageResonance) ?? 0.0,
+                ratio: hull.attributes[emDamageResonance] ?? 0.0,
                 type: ResonanceType.em,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: thermalDamageResonance) ?? 0.0,
+                ratio: hull.attributes[thermalDamageResonance] ?? 0.0,
                 type: ResonanceType.thermal,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: kineticDamageResonance) ?? 0.0,
+                ratio: hull.attributes[kineticDamageResonance] ?? 0.0,
                 type: ResonanceType.kinetic,
               ),
               ResonanceBox(
-                ratio: hull.attributes.getById(key: explosiveDamageResonance) ?? 0.0,
+                ratio: hull.attributes[explosiveDamageResonance] ?? 0.0,
                 type: ResonanceType.explosive,
               ),
             ]),
@@ -189,15 +189,15 @@ class _RepairTable extends StatelessWidget {
     final double hullRepair;
 
     if (displayEhp) {
-      shieldAutoRepair = hull.attributes.getById(key: passiveShieldEffectiveRechargeRate) ?? 0.0;
-      shieldRepair = hull.attributes.getById(key: shieldEffectiveBoostRate) ?? 0.0;
-      armorRepair = hull.attributes.getById(key: armorEffectiveRepairRate) ?? 0.0;
-      hullRepair = hull.attributes.getById(key: hullEffectiveRepairRate) ?? 0.0;
+      shieldAutoRepair = hull.attributes[passiveShieldEffectiveRechargeRate] ?? 0.0;
+      shieldRepair = hull.attributes[shieldEffectiveBoostRate] ?? 0.0;
+      armorRepair = hull.attributes[armorEffectiveRepairRate] ?? 0.0;
+      hullRepair = hull.attributes[hullEffectiveRepairRate] ?? 0.0;
     } else {
-      shieldAutoRepair = hull.attributes.getById(key: passiveShieldRechargeRate) ?? 0.0;
-      shieldRepair = hull.attributes.getById(key: shieldBoostRate) ?? 0.0;
-      armorRepair = hull.attributes.getById(key: armorRepairRate) ?? 0.0;
-      hullRepair = hull.attributes.getById(key: hullRepairRate) ?? 0.0;
+      shieldAutoRepair = hull.attributes[passiveShieldRechargeRate] ?? 0.0;
+      shieldRepair = hull.attributes[shieldBoostRate] ?? 0.0;
+      armorRepair = hull.attributes[armorRepairRate] ?? 0.0;
+      hullRepair = hull.attributes[hullRepairRate] ?? 0.0;
     }
 
     return DefaultTextStyle(

@@ -22,4 +22,6 @@ class FitEngine {
         fit: fit,
         skills: character.skills,
       ));
+
+  Map<int, double> getTypeAttr(int typeID) => _database.getTypeAttr(typeID);
 }

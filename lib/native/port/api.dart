@@ -10,32 +10,29 @@ import 'api/schema.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+CalculateOutput calculate({required EveDatabase db, required Fit fit}) =>
+    RustLib.instance.api.crateApiCalculate(db: db, fit: fit);
 
-            
+Map<int, double> getTypeAttr({required EveDatabase db, required int typeId}) =>
+    RustLib.instance.api.crateApiGetTypeAttr(db: db, typeId: typeId);
 
-            CalculateOutput  calculate({required EveDatabase db , required Fit fit }) => RustLib.instance.api.crateApiCalculate(db: db, fit: fit);
+class CalculateOutput {
+  final ShipProxy ship;
+  final List<SlotInfo> errors;
 
-            class CalculateOutput  {
-                final ShipProxy ship;
-final List<SlotInfo> errors;
+  const CalculateOutput({
+    required this.ship,
+    required this.errors,
+  });
 
-                const CalculateOutput({required this.ship ,required this.errors ,});
+  @override
+  int get hashCode => ship.hashCode ^ errors.hashCode;
 
-                
-                
-
-                
-        @override
-        int get hashCode => ship.hashCode^errors.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is CalculateOutput &&
-                runtimeType == other.runtimeType
-                && ship == other.ship&& errors == other.errors;
-        
-            }
-            
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CalculateOutput &&
+          runtimeType == other.runtimeType &&
+          ship == other.ship &&
+          errors == other.errors;
+}

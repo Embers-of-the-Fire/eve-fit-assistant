@@ -17,23 +17,16 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 part 'slot_subsystem.dart';
 part 'slot_tactical_mode.dart';
 
-extension ModulesProxyExt on ModulesProxy {
-  List<ItemProxy>? getSlots(FitItemType type) {
-    switch (type) {
-      case FitItemType.high:
-        return high;
-      case FitItemType.med:
-        return medium;
-      case FitItemType.low:
-        return low;
-      case FitItemType.rig:
-        return rig;
-      case FitItemType.implant:
-        return subsystem;
-      case _:
-        return null;
-    }
-  }
+extension ModulesProxyExt on ShipProxy {
+  List<ItemProxy> getSlots(FitItemType type) => switch (type) {
+        FitItemType.high => modules.high,
+        FitItemType.med => modules.medium,
+        FitItemType.low => modules.low,
+        FitItemType.rig => modules.rig,
+        FitItemType.subsystem => modules.subsystem,
+        FitItemType.implant => implants,
+        _ => [],
+      };
 }
 
 Widget getSlotRow(
@@ -62,6 +55,10 @@ Widget getSlotRow(
     type: type,
     index: index,
     chargeID: item.chargeID,
+    enableCopy: switch (type) {
+      FitItemType.high || FitItemType.med || FitItemType.low || FitItemType.rig => true,
+      _ => false,
+    },
   );
 }
 
@@ -73,6 +70,7 @@ class SlotRow extends ConsumerWidget {
   final FitItemType type;
   final int index;
   final int? chargeID;
+  final bool enableCopy;
 
   /// Whether the slot can be "charged".
   final bool slotHasCharge;
@@ -86,6 +84,7 @@ class SlotRow extends ConsumerWidget {
     required this.type,
     required this.index,
     required this.chargeID,
+    required this.enableCopy,
   }) : slotHasCharge = GlobalStorage().static.typeSlot[type][typeID]?.hasCharge ?? false;
 
   @override
@@ -96,28 +95,30 @@ class SlotRow extends ConsumerWidget {
     final List<SlidableAction> startAction = [];
     final List<SlidableAction> endAction = [];
 
-    startAction.add(SlidableAction(
-      onPressed: (_) {
-        final fitSlot = fitData.fit.body.getSlots(type);
-        final index = fitSlot.indexWhere((el) => el == null);
-        if (index == -1) return;
-        _modifyFit(
-          index: index,
-          type: type,
-          fit: fit,
-          op: (_) => SlotItem(
-            itemID: typeID,
-            chargeID: chargeID,
-            state: state,
-          ),
-        );
-      },
-      autoClose: false,
-      icon: Icons.copy,
-      backgroundColor: Colors.grey.shade200,
-      foregroundColor: Colors.black,
-      label: '复制',
-    ));
+    if (enableCopy) {
+      startAction.add(SlidableAction(
+        onPressed: (_) {
+          final fitSlot = fitData.fit.body.getSlots(type);
+          final index = fitSlot.indexWhere((el) => el == null);
+          if (index == -1) return;
+          _modifyFit(
+            index: index,
+            type: type,
+            fit: fit,
+            op: (_) => SlotItem(
+              itemID: typeID,
+              chargeID: chargeID,
+              state: state,
+            ),
+          );
+        },
+        autoClose: false,
+        icon: Icons.copy,
+        backgroundColor: Colors.grey.shade200,
+        foregroundColor: Colors.black,
+        label: '复制',
+      ));
+    }
     endAction.add(SlidableAction(
       onPressed: (_) => _modifyFit(index: index, type: type, fit: fit, op: (_) => null),
       backgroundColor: const Color(0xFFFE4A49),
@@ -209,7 +210,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
     final fitData = ref.watch(fitRecordNotifierProvider(fitID));
 
-    final List<ItemProxy> slots = fitData.output.ship.modules.getSlots(type)!;
+    final List<ItemProxy> slots = fitData.output.ship.getSlots(type);
     final ItemProxy? item = slots.find((item) => item.index == index);
 
     final List<List<Widget>> subtitleGroup = [];
@@ -237,19 +238,19 @@ class _SlotRowDisplay extends ConsumerWidget {
       // fire range
       final List<Widget> row = [];
       if (item != null) {
-        final range = item.attributes.getById(key: maxRange);
+        final range = item.attributes[maxRange];
         if (range != null && range > 0) {
           // turret
           row.add(const Image(image: targetRangeImage, width: 18, height: 18));
           row.add(const SizedBox(width: 10));
           String text = '${(range / 1000).toStringAsFixed(1)} km';
 
-          final extraRange = item.attributes.getById(key: falloff);
+          final extraRange = item.attributes[falloff];
           if (extraRange != null && extraRange > 0) {
             text += ' + ${(extraRange / 1000).toStringAsFixed(1)} km';
           }
 
-          final extraEffectRange = item.attributes.getById(key: falloffEffectiveness);
+          final extraEffectRange = item.attributes[falloffEffectiveness];
           if (extraEffectRange != null && extraEffectRange > 0) {
             text += ' + ${(extraEffectRange / 1000).toStringAsFixed(1)} km';
           }
@@ -258,8 +259,8 @@ class _SlotRowDisplay extends ConsumerWidget {
         } else if (item.charge != null) {
           // missile launcher
           final charge = item.charge!;
-          final speed = charge.attributes.getById(key: maxVelocity) ?? 0.0;
-          final time = charge.attributes.getById(key: explosionDelay) ?? 0.0;
+          final speed = charge.attributes[maxVelocity] ?? 0.0;
+          final time = charge.attributes[explosionDelay] ?? 0.0;
           final range = speed * time / 1000_000;
           if (range > 0) {
             row.add(const Image(image: targetRangeImage, width: 18, height: 18));

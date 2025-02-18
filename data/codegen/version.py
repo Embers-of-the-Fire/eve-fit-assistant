@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def codegen(_, version_file: Path, out_dir: Path):
+def codegen(_1, _2, version_file: Path, out_dir: Path):
     print("Generating bundle version timestamp constant...")
 
     with open(version_file, "r", encoding="utf-8") as f:

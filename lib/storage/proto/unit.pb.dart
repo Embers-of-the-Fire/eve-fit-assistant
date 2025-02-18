@@ -16,12 +16,16 @@ import 'package:protobuf/protobuf.dart' as $pb;
 class Units_Unit extends $pb.GeneratedMessage {
   factory Units_Unit({
     $core.String? name,
+    $core.int? id,
     $core.String? displayName,
     $core.String? description,
   }) {
     final $result = create();
     if (name != null) {
       $result.name = name;
+    }
+    if (id != null) {
+      $result.id = id;
     }
     if (displayName != null) {
       $result.displayName = displayName;
@@ -37,8 +41,9 @@ class Units_Unit extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Units.Unit', package: const $pb.PackageName(_omitMessageNames ? '' : 'unit'), createEmptyInstance: create)
     ..aQS(1, _omitFieldNames ? '' : 'name')
-    ..aQS(2, _omitFieldNames ? '' : 'displayName', protoName: 'displayName')
-    ..aQS(3, _omitFieldNames ? '' : 'description')
+    ..a<$core.int>(2, _omitFieldNames ? '' : 'id', $pb.PbFieldType.Q3)
+    ..aQS(3, _omitFieldNames ? '' : 'displayName', protoName: 'displayName')
+    ..aQS(4, _omitFieldNames ? '' : 'description')
   ;
 
   @$core.Deprecated(
@@ -72,22 +77,31 @@ class Units_Unit extends $pb.GeneratedMessage {
   void clearName() => clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get displayName => $_getSZ(1);
+  $core.int get id => $_getIZ(1);
   @$pb.TagNumber(2)
-  set displayName($core.String v) { $_setString(1, v); }
+  set id($core.int v) { $_setSignedInt32(1, v); }
   @$pb.TagNumber(2)
-  $core.bool hasDisplayName() => $_has(1);
+  $core.bool hasId() => $_has(1);
   @$pb.TagNumber(2)
-  void clearDisplayName() => clearField(2);
+  void clearId() => clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get description => $_getSZ(2);
+  $core.String get displayName => $_getSZ(2);
   @$pb.TagNumber(3)
-  set description($core.String v) { $_setString(2, v); }
+  set displayName($core.String v) { $_setString(2, v); }
   @$pb.TagNumber(3)
-  $core.bool hasDescription() => $_has(2);
+  $core.bool hasDisplayName() => $_has(2);
   @$pb.TagNumber(3)
-  void clearDescription() => clearField(3);
+  void clearDisplayName() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get description => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set description($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasDescription() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDescription() => clearField(4);
 }
 
 class Units extends $pb.GeneratedMessage {

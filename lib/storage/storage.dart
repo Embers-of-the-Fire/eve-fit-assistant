@@ -64,7 +64,7 @@ class GlobalStorage {
     await _ship.init();
     await _character.init();
     _fitEngine = await FitEngine.init();
-    await Future.delayed(const Duration(seconds: 5));
+    await Future.delayed(const Duration(seconds: 1));
     _initialized = true;
     await EasyLoading.dismiss();
     ref.read(globalStorageNotifierProvider.notifier).initialized();

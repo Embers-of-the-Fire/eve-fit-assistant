@@ -27,8 +27,9 @@ const Units_Unit$json = {
   '1': 'Unit',
   '2': [
     {'1': 'name', '3': 1, '4': 2, '5': 9, '10': 'name'},
-    {'1': 'displayName', '3': 2, '4': 2, '5': 9, '10': 'displayName'},
-    {'1': 'description', '3': 3, '4': 2, '5': 9, '10': 'description'},
+    {'1': 'id', '3': 2, '4': 2, '5': 5, '10': 'id'},
+    {'1': 'displayName', '3': 3, '4': 2, '5': 9, '10': 'displayName'},
+    {'1': 'description', '3': 4, '4': 2, '5': 9, '10': 'description'},
   ],
 };
 
@@ -45,8 +46,8 @@ const Units_EntriesEntry$json = {
 /// Descriptor for `Units`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List unitsDescriptor = $convert.base64Decode(
     'CgVVbml0cxIyCgdlbnRyaWVzGAEgAygLMhgudW5pdC5Vbml0cy5FbnRyaWVzRW50cnlSB2VudH'
-    'JpZXMaXgoEVW5pdBISCgRuYW1lGAEgAigJUgRuYW1lEiAKC2Rpc3BsYXlOYW1lGAIgAigJUgtk'
-    'aXNwbGF5TmFtZRIgCgtkZXNjcmlwdGlvbhgDIAIoCVILZGVzY3JpcHRpb24aTAoMRW50cmllc0'
-    'VudHJ5EhAKA2tleRgBIAEoBVIDa2V5EiYKBXZhbHVlGAIgASgLMhAudW5pdC5Vbml0cy5Vbml0'
-    'UgV2YWx1ZToCOAE=');
+    'JpZXMabgoEVW5pdBISCgRuYW1lGAEgAigJUgRuYW1lEg4KAmlkGAIgAigFUgJpZBIgCgtkaXNw'
+    'bGF5TmFtZRgDIAIoCVILZGlzcGxheU5hbWUSIAoLZGVzY3JpcHRpb24YBCACKAlSC2Rlc2NyaX'
+    'B0aW9uGkwKDEVudHJpZXNFbnRyeRIQCgNrZXkYASABKAVSA2tleRImCgV2YWx1ZRgCIAEoCzIQ'
+    'LnVuaXQuVW5pdHMuVW5pdFIFdmFsdWU6AjgB');
 

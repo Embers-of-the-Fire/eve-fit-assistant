@@ -18,7 +18,7 @@ impl EveDatabase {
             type_dogma_buffer,
             types_buffer,
         )?;
-        
+
         Ok(Self { inner })
     }
 }

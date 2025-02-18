@@ -1,6 +1,6 @@
 part of 'utils.dart';
 
-extension Bool on bool {
+extension BoolExt on bool {
   T? then<T>(T Function() init) {
     if (this) {
       return init();

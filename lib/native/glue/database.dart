@@ -27,6 +27,8 @@ class NativeDatabase {
   }
 
   native.CalculateOutput calculate(schema.Fit fit) => native.calculate(db: _raw, fit: fit);
+
+  Map<int, double> getTypeAttr(int typeID) => native.getTypeAttr(db: _raw, typeId: typeID);
 }
 
 Future<Directory> getNativeStorageDir({bool create = false}) async {

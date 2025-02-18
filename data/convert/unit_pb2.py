@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nunit.proto\x12\x04unit\"\xb4\x01\n\x05Units\x12)\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x18.unit.Units.EntriesEntry\x1a>\n\x04Unit\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x02(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x02(\t\x1a@\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.unit.Units.Unit:\x02\x38\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nunit.proto\x12\x04unit\"\xc0\x01\n\x05Units\x12)\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x18.unit.Units.EntriesEntry\x1aJ\n\x04Unit\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\n\n\x02id\x18\x02 \x02(\x05\x12\x13\n\x0b\x64isplayName\x18\x03 \x02(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x02(\t\x1a@\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.unit.Units.Unit:\x02\x38\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,9 +34,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_UNITS_ENTRIESENTRY']._loaded_options = None
   _globals['_UNITS_ENTRIESENTRY']._serialized_options = b'8\001'
   _globals['_UNITS']._serialized_start=21
-  _globals['_UNITS']._serialized_end=201
+  _globals['_UNITS']._serialized_end=213
   _globals['_UNITS_UNIT']._serialized_start=73
-  _globals['_UNITS_UNIT']._serialized_end=135
-  _globals['_UNITS_ENTRIESENTRY']._serialized_start=137
-  _globals['_UNITS_ENTRIESENTRY']._serialized_end=201
+  _globals['_UNITS_UNIT']._serialized_end=147
+  _globals['_UNITS_ENTRIESENTRY']._serialized_start=149
+  _globals['_UNITS_ENTRIESENTRY']._serialized_end=213
 # @@protoc_insertion_point(module_scope)

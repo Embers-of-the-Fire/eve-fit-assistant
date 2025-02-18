@@ -46,7 +46,7 @@ with open(localization_file, 'rb') as f:
 ## and I'm sorry not to provide any example & docs.
 
 out = {}
-for k, v in dogma_units.iteritems():
+for k, v in sorted(dogma_units.iteritems(), key=lambda u: int(u[0])):
     display_name = localization.get(v.displayNameID, ("",))[0]
     description = localization.get(v.descriptionID, ("",))[0]
     out[k] = {'name': v.name, 'displayName': display_name, 'description': description}

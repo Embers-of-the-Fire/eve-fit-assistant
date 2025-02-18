@@ -37,7 +37,7 @@ class CharacterStorage {
   CharacterStorage();
 
   Future<void> init() async {
-    final staticDir = await getStaticPersonDir();
+    final staticDir = await getStaticCharacterDir();
     final all5File = File('${staticDir.path}/max.pb');
     final all0File = File('${staticDir.path}/min.pb');
     _predefinedAll5 = await Character.readFromFile(all5File);
@@ -45,9 +45,9 @@ class CharacterStorage {
   }
 }
 
-Future<Directory> getStaticPersonDir({bool create = false}) async {
+Future<Directory> getStaticCharacterDir({bool create = false}) async {
   final staticDir = await getStaticStorageDir();
-  final staticPersonDir = Directory('${staticDir.path}/person');
+  final staticPersonDir = Directory('${staticDir.path}/character');
   if (create && !await staticPersonDir.exists()) {
     await staticPersonDir.create();
   }

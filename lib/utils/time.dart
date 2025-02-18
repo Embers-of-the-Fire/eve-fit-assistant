@@ -10,3 +10,5 @@ extension DurationExt on Duration {
     return '$sign$hour:$min:$sec';
   }
 }
+
+DateTime fromSecondsSinceEpoch(int seconds) => DateTime.fromMillisecondsSinceEpoch(seconds * 1000);

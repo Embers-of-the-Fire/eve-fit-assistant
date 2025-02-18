@@ -14,6 +14,7 @@ def convert(cache: ConvertCache, external: dict):
         #     continue
         id = int(unit_id)
         data.entries[id].name = entry["name"]
+        data.entries[id].id = id
         data.entries[id].displayName = entry["displayName"]
         data.entries[id].description = entry["description"]
 

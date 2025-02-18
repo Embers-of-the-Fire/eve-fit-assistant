@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:eve_fit_assistant/storage/proto/market_group.pb.dart';
+import 'package:eve_fit_assistant/utils/num.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 
 class MarketGroup {
@@ -19,9 +20,9 @@ class MarketGroup {
 
   List<int> get childGroups => _raw.childGroups;
 
-  int? get parentGroup => (_raw.parentGroup != 0).thenSome(_raw.parentGroup);
+  int? get parentGroup => _raw.parentGroup.optional;
 
-  int? get iconID => _raw.iconID != 0 ? _raw.iconID : null;
+  int? get iconID => _raw.iconID.optional;
 
   MarketGroup._private(this._raw);
 

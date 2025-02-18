@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use eve_fit_os::calculate;
-
-use crate::frb_generated::RustAutoOpaque;
 
 #[flutter_rust_bridge::frb(non_opaque)]
 #[derive(Debug, Clone)]
@@ -71,7 +69,7 @@ pub struct ItemProxy {
     pub index: Option<i32>,
     pub item_id: i32,
     pub charge: Option<Box<ItemProxy>>,
-    pub attributes: RustAutoOpaque<AttributesProxy>,
+    pub attributes: HashMap<i32, f64>,
 }
 
 impl ItemProxy {
@@ -81,31 +79,11 @@ impl ItemProxy {
             index: native.slot.index,
             item_id: native.type_id,
             charge: native.charge.map(|t| Box::new(Self::from_native(*t))),
-            attributes: RustAutoOpaque::new(AttributesProxy::from_native(
-                native
-                    .attributes
-                    .into_iter()
-                    .map(|(key, value)| (key, value.value.unwrap_or(value.base_value)))
-                    .collect(),
-            )),
+            attributes: native
+                .attributes
+                .into_iter()
+                .map(|(key, value)| (key, value.value.unwrap_or(value.base_value)))
+                .collect(),
         }
-    }
-}
-
-#[flutter_rust_bridge::frb(opaque)]
-#[derive(Debug, Clone)]
-pub struct AttributesProxy {
-    attributes: BTreeMap<i32, f64>,
-}
-
-impl AttributesProxy {
-    #[flutter_rust_bridge::frb(ignore)]
-    pub(crate) fn from_native(native: BTreeMap<i32, f64>) -> Self {
-        AttributesProxy { attributes: native }
-    }
-
-    #[flutter_rust_bridge::frb(sync)]
-    pub fn get_by_id(&self, key: i32) -> Option<f64> {
-        self.attributes.get(&key).copied()
     }
 }

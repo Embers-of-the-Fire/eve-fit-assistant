@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:eve_fit_assistant/native/codegen/constant/bundle.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
+import 'package:eve_fit_assistant/storage/static/attribute.dart';
 import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/static/groups.dart';
 import 'package:eve_fit_assistant/storage/static/icon.dart';
@@ -23,6 +24,7 @@ class StaticStorage {
   late final ReadonlyMap<int, Ship> _ships;
   late final ReadonlyMap<int, TacticalModeShip> _tacticalModes;
   late final ReadonlyMap<int, UnitItem> _units;
+  late final ReadonlyMap<int, AttributeItem> _attributes;
   late final List<ImplantGroup> _implantGroups;
   late final StaticIcon _icons;
   late final TypeSlotStorage _typeSlot;
@@ -40,6 +42,8 @@ class StaticStorage {
   ReadonlyMap<int, TacticalModeShip> get tacticalModes => _tacticalModes;
 
   ReadonlyMap<int, UnitItem> get units => _units;
+
+  ReadonlyMap<int, AttributeItem> get attributes => _attributes;
 
   List<ImplantGroup> get implantGroups => _implantGroups;
 
@@ -79,6 +83,7 @@ class StaticStorage {
     _tacticalModes = await TacticalModeShip.read(staticStorageDir);
     _implantGroups = await ImplantGroup.read(staticStorageDir);
     _units = await UnitItem.read(staticStorageDir);
+    _attributes = await AttributeItem.read(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);
     _subsystems = await ShipSubsystemStorage.read(staticStorageDir);
@@ -125,7 +130,7 @@ class StaticVersionInfo {
   }
 
   String display() {
-    final DateTime time = DateTime.fromMillisecondsSinceEpoch(createTime * 1000);
+    final DateTime time = fromSecondsSinceEpoch(createTime);
     return time.toIso8601String();
   }
 }

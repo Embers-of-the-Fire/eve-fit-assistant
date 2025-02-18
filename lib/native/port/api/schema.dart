@@ -6,150 +6,161 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-
-            // These functions are ignored because they are not marked as `pub`: `into_native`
+// These functions are ignored because they are not marked as `pub`: `into_native`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseNotAllowedOwner): `from`
 
+class DroneGroup {
+  final int itemId;
+  final int amount;
+  final int index;
 
-            
+  const DroneGroup({
+    required this.itemId,
+    required this.amount,
+    required this.index,
+  });
 
-            class DroneGroup  {
-                final int itemId;
-final int amount;
-final int index;
+  @override
+  int get hashCode => itemId.hashCode ^ amount.hashCode ^ index.hashCode;
 
-                const DroneGroup({required this.itemId ,required this.amount ,required this.index ,});
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DroneGroup &&
+          runtimeType == other.runtimeType &&
+          itemId == other.itemId &&
+          amount == other.amount &&
+          index == other.index;
+}
 
-                
-                
+class Fit {
+  final int shipId;
+  final Module modules;
+  final List<DroneGroup> drones;
+  final List<Implant> implant;
+  final Map<int, int> skills;
 
-                
-        @override
-        int get hashCode => itemId.hashCode^amount.hashCode^index.hashCode;
-        
+  const Fit({
+    required this.shipId,
+    required this.modules,
+    required this.drones,
+    required this.implant,
+    required this.skills,
+  });
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is DroneGroup &&
-                runtimeType == other.runtimeType
-                && itemId == other.itemId&& amount == other.amount&& index == other.index;
-        
-            }
+  @override
+  int get hashCode =>
+      shipId.hashCode ^
+      modules.hashCode ^
+      drones.hashCode ^
+      implant.hashCode ^
+      skills.hashCode;
 
-class Fit  {
-                final int shipId;
-final Module modules;
-final List<DroneGroup> drones;
-final List<Implant> implant;
-final Map<int, int> skills;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Fit &&
+          runtimeType == other.runtimeType &&
+          shipId == other.shipId &&
+          modules == other.modules &&
+          drones == other.drones &&
+          implant == other.implant &&
+          skills == other.skills;
+}
 
-                const Fit({required this.shipId ,required this.modules ,required this.drones ,required this.implant ,required this.skills ,});
+class Implant {
+  final int itemId;
+  final int index;
 
-                
-                
+  const Implant({
+    required this.itemId,
+    required this.index,
+  });
 
-                
-        @override
-        int get hashCode => shipId.hashCode^modules.hashCode^drones.hashCode^implant.hashCode^skills.hashCode;
-        
+  @override
+  int get hashCode => itemId.hashCode ^ index.hashCode;
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is Fit &&
-                runtimeType == other.runtimeType
-                && shipId == other.shipId&& modules == other.modules&& drones == other.drones&& implant == other.implant&& skills == other.skills;
-        
-            }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Implant &&
+          runtimeType == other.runtimeType &&
+          itemId == other.itemId &&
+          index == other.index;
+}
 
-class Implant  {
-                final int itemId;
-final int index;
+class Item {
+  final int itemId;
+  final int? charge;
+  final State state;
+  final int index;
 
-                const Implant({required this.itemId ,required this.index ,});
+  const Item({
+    required this.itemId,
+    this.charge,
+    required this.state,
+    required this.index,
+  });
 
-                
-                
+  @override
+  int get hashCode =>
+      itemId.hashCode ^ charge.hashCode ^ state.hashCode ^ index.hashCode;
 
-                
-        @override
-        int get hashCode => itemId.hashCode^index.hashCode;
-        
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Item &&
+          runtimeType == other.runtimeType &&
+          itemId == other.itemId &&
+          charge == other.charge &&
+          state == other.state &&
+          index == other.index;
+}
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is Implant &&
-                runtimeType == other.runtimeType
-                && itemId == other.itemId&& index == other.index;
-        
-            }
+class Module {
+  final List<Item> high;
+  final List<Item> medium;
+  final List<Item> low;
+  final List<Item> rig;
+  final List<Item> subsystem;
+  final Item? tacticalMode;
 
-class Item  {
-                final int itemId;
-final int? charge;
-final State state;
-final int index;
+  const Module({
+    required this.high,
+    required this.medium,
+    required this.low,
+    required this.rig,
+    required this.subsystem,
+    this.tacticalMode,
+  });
 
-                const Item({required this.itemId ,this.charge ,required this.state ,required this.index ,});
+  @override
+  int get hashCode =>
+      high.hashCode ^
+      medium.hashCode ^
+      low.hashCode ^
+      rig.hashCode ^
+      subsystem.hashCode ^
+      tacticalMode.hashCode;
 
-                
-                
-
-                
-        @override
-        int get hashCode => itemId.hashCode^charge.hashCode^state.hashCode^index.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is Item &&
-                runtimeType == other.runtimeType
-                && itemId == other.itemId&& charge == other.charge&& state == other.state&& index == other.index;
-        
-            }
-
-class Module  {
-                final List<Item> high;
-final List<Item> medium;
-final List<Item> low;
-final List<Item> rig;
-final List<Item> subsystem;
-final Item? tacticalMode;
-
-                const Module({required this.high ,required this.medium ,required this.low ,required this.rig ,required this.subsystem ,this.tacticalMode ,});
-
-                
-                
-
-                
-        @override
-        int get hashCode => high.hashCode^medium.hashCode^low.hashCode^rig.hashCode^subsystem.hashCode^tacticalMode.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is Module &&
-                runtimeType == other.runtimeType
-                && high == other.high&& medium == other.medium&& low == other.low&& rig == other.rig&& subsystem == other.subsystem&& tacticalMode == other.tacticalMode;
-        
-            }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Module &&
+          runtimeType == other.runtimeType &&
+          high == other.high &&
+          medium == other.medium &&
+          low == other.low &&
+          rig == other.rig &&
+          subsystem == other.subsystem &&
+          tacticalMode == other.tacticalMode;
+}
 
 enum State {
-                    passive,
-online,
-active,
-overload,
-                    ;
-                    
-                }
-            
+  passive,
+  online,
+  active,
+  overload,
+  ;
+}

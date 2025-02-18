@@ -7,11 +7,11 @@ class Resource extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allCpu = ship.hull.attributes.getById(key: cpuOutput) ?? 0.0;
-    final cpuUsed = allCpu - (ship.hull.attributes.getById(key: cpuFree) ?? 0.0);
+    final allCpu = ship.hull.attributes[cpuOutput] ?? 0.0;
+    final cpuUsed = allCpu - (ship.hull.attributes[cpuFree] ?? 0.0);
 
-    final allPower = ship.hull.attributes.getById(key: powerOutput) ?? 0.0;
-    final powerUsed = allPower - (ship.hull.attributes.getById(key: powerFree) ?? 0.0);
+    final allPower = ship.hull.attributes[powerOutput] ?? 0.0;
+    final powerUsed = allPower - (ship.hull.attributes[powerFree] ?? 0.0);
 
     return Container(
       padding: const EdgeInsets.only(left: 20, right: 22, top: 8, bottom: 8),
@@ -51,8 +51,8 @@ class Resource extends StatelessWidget {
               const Image(image: rigImage, height: 28),
               ResourceCompare(
                 alignment: MainAxisAlignment.end,
-                used: ship.hull.attributes.getById(key: upgradeUsed) ?? 0.0,
-                all: ship.hull.attributes.getById(key: upgradeCapacity) ?? 0.0,
+                used: ship.hull.attributes[upgradeUsed] ?? 0.0,
+                all: ship.hull.attributes[upgradeCapacity] ?? 0.0,
                 warning: false,
               ),
               const SizedBox.shrink(),
@@ -60,8 +60,8 @@ class Resource extends StatelessWidget {
               // const SizedBox.shrink(),
               ResourceCompare(
                 alignment: MainAxisAlignment.end,
-                used: ship.hull.attributes.getById(key: droneCapacityLoad) ?? 0,
-                all: ship.hull.attributes.getById(key: droneBandwidth) ?? 0,
+                used: ship.hull.attributes[droneCapacityLoad] ?? 0,
+                all: ship.hull.attributes[droneBandwidth] ?? 0,
                 unit: 'mb/s',
                 warning: false,
               )

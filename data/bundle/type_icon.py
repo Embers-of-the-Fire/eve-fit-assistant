@@ -28,11 +28,12 @@ def bundle(fsd_path, image_path, cache_dir) -> list[DownloadItem]:
             shutil.copyfile(f"{item_icon_dir}/{tid}_32.png", f"{target_dir}/{tid}.png")
         else:
             to_download.append(
-                {
-                    "dir": target_dir,
-                    "file_name": f"{tid}.png",
-                    "url": f"https://image.eveonline.com/Type/{tid}_32.png",
-                }
+                DownloadItem(
+                    dir=target_dir,
+                    file_name=f"{tid}.png",
+                    url=f"https://image.eveonline.com/Type/{tid}_32.png",
+                    res_id=None,
+                )
             )
 
     return to_download

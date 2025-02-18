@@ -4,7 +4,7 @@ class EquipmentTab extends ConsumerStatefulWidget {
   final String fitID;
   final Ship ship;
 
-  EquipmentTab({
+  const EquipmentTab({
     super.key,
     required this.fitID,
     required this.ship,

@@ -7,6 +7,8 @@ import 'package:eve_fit_assistant/utils/utils.dart';
 class UnitItem {
   final Units_Unit _raw;
 
+  int get id => _raw.id;
+
   String get name => _raw.name;
 
   String get displayName => _raw.displayName;

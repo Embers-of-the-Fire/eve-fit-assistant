@@ -12,12 +12,14 @@ def bundle(fsd_path, image_path, cache_dir) -> list[DownloadItem]:
 
     item_icon_dir = f"{image_path}/Icons/items/"
 
-    with open(f"{fsd_path}/marketGroups.yaml", "r", encoding="utf-8") as f:
-        groups = yaml.load(f, yaml.CSafeLoader)
+    with open(f"{fsd_path}/dogmaAttributes.yaml", "r", encoding="utf-8") as f:
+        attrs = yaml.load(f, yaml.CSafeLoader)
     with open(f"{fsd_path}/iconIDs.yaml", "r", encoding="utf-8") as f:
         icons = yaml.load(f, yaml.CSafeLoader)
 
-    used_icon = {x["iconID"] for x in groups.values() if "iconID" in x.keys()}
+    used_icon = {
+        x["iconID"] for x in attrs.values() if "iconID" in x.keys() and x.get("published", False)
+    }
 
     to_download: list[DownloadItem] = []
 

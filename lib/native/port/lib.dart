@@ -3,9 +3,11 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-import 'frb_generated.dart';
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NHashMap < i32 , f64 >>>
+abstract class NHashMapI32F64 implements RustOpaqueInterface {}
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BTreeMap < i32 , u8 >>>
-abstract class BTreeMapI32U8 implements RustOpaqueInterface {}
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NHashMap < i32 , u8 >>>
+abstract class NHashMapI32U8 implements RustOpaqueInterface {}

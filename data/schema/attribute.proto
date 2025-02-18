@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package attribute;
+
+import "i18n.proto";
+
+message Attributes {
+    message Attribute {
+        required string name = 1;
+        optional double defaultValue = 2;
+        optional int32 categoryID = 3;
+        optional string description = 4;
+        optional i18n.I18N displayName = 5;
+        required bool highIsGood = 6;
+        optional int32 iconID = 7;
+        required bool published = 8;
+        optional int32 unitID = 9;
+    }
+
+    map<int32, Attribute> entries = 1;
+}

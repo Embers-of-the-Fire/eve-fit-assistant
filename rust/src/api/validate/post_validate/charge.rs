@@ -26,39 +26,36 @@ pub(crate) fn validate_charge(fit: &ShipProxy, info: &impl InfoProvider, err: &m
         _info: &impl InfoProvider,
         err: &mut Vec<SlotInfo>,
     ) {
-        let ammo_cap = item.attributes.blocking_read().get_by_id(ATTR_AMMO_CAP);
+        let ammo_cap = item.attributes.get(&ATTR_AMMO_CAP);
         if let Some(charge) = &item.charge {
-            let charge_cap = charge.attributes.blocking_read().get_by_id(ATTR_VOLUME);
+            let charge_cap = charge.attributes.get(&ATTR_VOLUME);
             if let (Some(cap), Some(ammo_cap)) = (charge_cap, ammo_cap) {
                 if cap > ammo_cap {
                     err.push(SlotInfo::Error {
                         slot,
                         index: item.index,
                         error_key: ErrorKey::IncompatibleChargeCapacity {
-                            max: ammo_cap,
-                            actual: cap,
+                            max: *ammo_cap,
+                            actual: *cap,
                         },
                     });
                 }
             }
 
-            let charge_size = item.attributes.blocking_read().get_by_id(ATTR_CHARGE_SIZE);
+            let charge_size = item.attributes.get(&ATTR_CHARGE_SIZE);
             if let Some(charge_size) = charge_size {
-                let charge_self_size = charge
-                    .attributes
-                    .blocking_read()
-                    .get_by_id(ATTR_CHARGE_SIZE);
+                let charge_self_size = charge.attributes.get(&ATTR_CHARGE_SIZE);
                 let Some(charge_self_size) = charge_self_size else {
                     return;
                 };
 
-                if (charge_size as u8) != (charge_self_size as u8) {
+                if (*charge_size as u8) != (*charge_self_size as u8) {
                     err.push(SlotInfo::Error {
                         slot,
                         index: item.index,
                         error_key: ErrorKey::IncompatibleChargeSize {
-                            expected: charge_size as u8,
-                            actual: charge_self_size as u8,
+                            expected: *charge_size as u8,
+                            actual: *charge_self_size as u8,
                         },
                     });
                 }

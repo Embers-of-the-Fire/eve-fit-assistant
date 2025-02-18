@@ -8,58 +8,63 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'error.freezed.dart';
 
-            // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
-
-
-            
-
-            @freezed
-                sealed class ErrorKey with _$ErrorKey  {
-                    const ErrorKey._();
-
-                     const factory ErrorKey.incompatibleChargeSize({   required int expected ,  required int actual , }) = ErrorKey_IncompatibleChargeSize;
- const factory ErrorKey.incompatibleChargeCapacity({   required double max ,  required double actual , }) = ErrorKey_IncompatibleChargeCapacity;
- const factory ErrorKey.tooMuchTurret({   required int expected ,  required int actual , }) = ErrorKey_TooMuchTurret;
- const factory ErrorKey.tooMuchLauncher({   required int expected ,  required int actual , }) = ErrorKey_TooMuchLauncher;
-
-                    
-
-                    
-                }
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
 
 @freezed
-                sealed class SlotInfo with _$SlotInfo  {
-                    const SlotInfo._();
+sealed class ErrorKey with _$ErrorKey {
+  const ErrorKey._();
 
-                     const factory SlotInfo.error({   required SlotType slot ,  int? index ,  required ErrorKey errorKey , }) = SlotInfo_Error;
- const factory SlotInfo.warning({   required SlotType slot ,  int? index ,  required WarningKey warningKey , }) = SlotInfo_Warning;
+  const factory ErrorKey.incompatibleChargeSize({
+    required int expected,
+    required int actual,
+  }) = ErrorKey_IncompatibleChargeSize;
+  const factory ErrorKey.incompatibleChargeCapacity({
+    required double max,
+    required double actual,
+  }) = ErrorKey_IncompatibleChargeCapacity;
+  const factory ErrorKey.tooMuchTurret({
+    required int expected,
+    required int actual,
+  }) = ErrorKey_TooMuchTurret;
+  const factory ErrorKey.tooMuchLauncher({
+    required int expected,
+    required int actual,
+  }) = ErrorKey_TooMuchLauncher;
+}
 
-                    
+@freezed
+sealed class SlotInfo with _$SlotInfo {
+  const SlotInfo._();
 
-                    
-                }
+  const factory SlotInfo.error({
+    required SlotType slot,
+    int? index,
+    required ErrorKey errorKey,
+  }) = SlotInfo_Error;
+  const factory SlotInfo.warning({
+    required SlotType slot,
+    int? index,
+    required WarningKey warningKey,
+  }) = SlotInfo_Warning;
+}
 
 enum SlotType {
-                    high,
-medium,
-low,
-rig,
-subsystem,
-implant,
-drone,
-                    ;
-                    
-                }
+  high,
+  medium,
+  low,
+  rig,
+  subsystem,
+  implant,
+  drone,
+  ;
+}
 
 @freezed
-                sealed class WarningKey with _$WarningKey  {
-                    const WarningKey._();
+sealed class WarningKey with _$WarningKey {
+  const WarningKey._();
 
-                     const factory WarningKey.missingCharge() = WarningKey_MissingCharge;
- const factory WarningKey.placeholder(  int field0,) = WarningKey_Placeholder;
-
-                    
-
-                    
-                }
-            
+  const factory WarningKey.missingCharge() = WarningKey_MissingCharge;
+  const factory WarningKey.placeholder(
+    int field0,
+  ) = WarningKey_Placeholder;
+}

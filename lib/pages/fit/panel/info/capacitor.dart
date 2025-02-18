@@ -21,17 +21,17 @@ class Capacitor extends StatelessWidget {
 List<Text> _getCapacitorTextGroup(ItemProxy hull) {
   final List<Text> texts = [];
 
-  final capPeakUsage = hull.attributes.getById(key: capacitorPeakLoad) ?? 0.0;
+  final capPeakUsage = hull.attributes[capacitorPeakLoad] ?? 0.0;
 
-  final capDeplete = hull.attributes.getById(key: capacitorDepletesIn);
+  final capDeplete = hull.attributes[capacitorDepletesIn];
   if (capDeplete != null && capDeplete > 0) {
     texts.add(Text(
       Duration(seconds: capDeplete.round()).format(),
       style: const TextStyle(color: Colors.red),
     ));
   } else {
-    final capRechargeRate = hull.attributes.getById(key: rechargeRate) ?? 0.0;
-    final cap = hull.attributes.getById(key: capacitorCapacity) ?? 0.0;
+    final capRechargeRate = hull.attributes[rechargeRate] ?? 0.0;
+    final cap = hull.attributes[capacitorCapacity] ?? 0.0;
     final capPeakDelta = capacitorStableAt(
         capacity: cap, targetRechargeRage: capPeakUsage, rechargeTime: capRechargeRate);
 
@@ -43,7 +43,7 @@ List<Text> _getCapacitorTextGroup(ItemProxy hull) {
 
   texts.add(const Text(' | '));
 
-  final diff = hull.attributes.getById(key: capacitorPeakDelta) ?? 0.0;
+  final diff = hull.attributes[capacitorPeakDelta] ?? 0.0;
   texts.add(Text(
     '${diff.isNegative ? '-' : '+'}${diff.abs().toStringAsFixed(2)} GJ/s',
     style: TextStyle(color: diff.isNegative ? Colors.red : Colors.green),
@@ -51,7 +51,7 @@ List<Text> _getCapacitorTextGroup(ItemProxy hull) {
 
   texts.add(const Text(' | '));
 
-  final cap = hull.attributes.getById(key: capacitorCapacity) ?? 0.0;
+  final cap = hull.attributes[capacitorCapacity] ?? 0.0;
   texts.add(Text('${cap.round().toString()} GJ'));
 
   return texts;

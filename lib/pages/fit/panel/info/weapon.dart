@@ -21,17 +21,17 @@ class Weapon extends StatelessWidget {
 List<Text> _getWeaponTextGroup(ItemProxy hull) {
   final List<Text> texts = [];
 
-  final dps = hull.attributes.getById(key: damagePerSecondWithoutReload) ?? 0.0;
+  final dps = hull.attributes[damagePerSecondWithoutReload] ?? 0.0;
   texts.add(Text('${dps.toStringAsFixed(1)}/s'));
 
   texts.add(const Text(' | '));
 
-  final dpsWithReload = hull.attributes.getById(key: damagePerSecondWithReload) ?? 0.0;
+  final dpsWithReload = hull.attributes[damagePerSecondWithReload] ?? 0.0;
   texts.add(Text('${dpsWithReload.toStringAsFixed(1)}/s'));
 
   texts.add(const Text(' | '));
 
-  final dmg = hull.attributes.getById(key: damageAlpha) ?? 0.0;
+  final dmg = hull.attributes[damageAlpha] ?? 0.0;
   texts.add(Text(dmg.toStringAsFixed(0)));
 
   return texts;

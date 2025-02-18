@@ -6,17 +6,16 @@
 import '../../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `validate_slot_num`
 
-            // These functions are ignored because they are not marked as `pub`: `validate_slot_num`
+int get effectLauncher =>
+    RustLib.instance.api.crateApiValidatePreValidateSlotNumEffectLauncher();
 
+int get effectTurret =>
+    RustLib.instance.api.crateApiValidatePreValidateSlotNumEffectTurret();
 
-            int get effectLauncher => RustLib.instance.api.crateApiValidatePreValidateSlotNumEffectLauncher();
+int get attrTurret =>
+    RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrTurret();
 
-int get effectTurret => RustLib.instance.api.crateApiValidatePreValidateSlotNumEffectTurret();
-
-int get attrTurret => RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrTurret();
-
-int get attrLauncher => RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrLauncher();
-
-            
-            
+int get attrLauncher =>
+    RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrLauncher();
