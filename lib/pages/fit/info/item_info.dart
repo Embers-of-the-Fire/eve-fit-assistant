@@ -1,9 +1,11 @@
 import 'package:eve_fit_assistant/native/port/api/proxy.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/widgets/attribute.dart';
+import 'package:eve_fit_assistant/widgets/skill_tree.dart';
 import 'package:flutter/material.dart';
 
 part 'description.dart';
+part 'skill.dart';
 
 Future<void> showItemInfoPage(
   BuildContext context, {
@@ -60,7 +62,7 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
           DescriptionTab(typeID: widget.typeID),
           AttributeTab(typeID: widget.typeID, attr: widget.item.attributes),
           // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
-          const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
+          SkillTree(rootID: widget.typeID),
         ]),
       );
 
@@ -85,7 +87,8 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
           DescriptionTab(typeID: widget.typeID),
           AttributeTab(typeID: widget.typeID, attr: widget.item.attributes),
           AttributeTab(typeID: widget.item.charge!.itemId, attr: widget.item.charge!.attributes),
-          const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
+          // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
+          SkillTree(rootID: widget.typeID),
         ]),
       );
 }

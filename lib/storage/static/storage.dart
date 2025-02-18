@@ -11,8 +11,10 @@ import 'package:eve_fit_assistant/storage/static/implant_group.dart';
 import 'package:eve_fit_assistant/storage/static/market.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
+import 'package:eve_fit_assistant/storage/static/skills.dart';
 import 'package:eve_fit_assistant/storage/static/slot_group.dart';
 import 'package:eve_fit_assistant/storage/static/tactical_mode.dart';
+import 'package:eve_fit_assistant/storage/static/type_skills.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/static/units.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
@@ -25,6 +27,8 @@ class StaticStorage {
   late final ReadonlyMap<int, TacticalModeShip> _tacticalModes;
   late final ReadonlyMap<int, UnitItem> _units;
   late final ReadonlyMap<int, AttributeItem> _attributes;
+  late final ReadonlyMap<int, SkillItem> _skills;
+  late final ReadonlyMap<int, TypeSkill> _typeSkills;
   late final List<ImplantGroup> _implantGroups;
   late final StaticIcon _icons;
   late final TypeSlotStorage _typeSlot;
@@ -44,6 +48,10 @@ class StaticStorage {
   ReadonlyMap<int, UnitItem> get units => _units;
 
   ReadonlyMap<int, AttributeItem> get attributes => _attributes;
+
+  ReadonlyMap<int, SkillItem> get skills => _skills;
+
+  ReadonlyMap<int, TypeSkill> get typeSkills => _typeSkills;
 
   List<ImplantGroup> get implantGroups => _implantGroups;
 
@@ -84,6 +92,8 @@ class StaticStorage {
     _implantGroups = await ImplantGroup.read(staticStorageDir);
     _units = await UnitItem.read(staticStorageDir);
     _attributes = await AttributeItem.read(staticStorageDir);
+    _skills = await SkillItem.read(staticStorageDir);
+    _typeSkills = await TypeSkill.read(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);
     _subsystems = await ShipSubsystemStorage.read(staticStorageDir);
