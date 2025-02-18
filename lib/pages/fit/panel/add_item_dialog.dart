@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
@@ -182,5 +183,6 @@ class _AddItemDialog extends StatelessWidget {
         breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
         filter: filter,
         onSelect: onSelect,
+        onLongPress: (id) => showTypeInfoPage(context, typeID: id),
       );
 }
