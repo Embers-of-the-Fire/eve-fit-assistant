@@ -52,3 +52,47 @@ final $typed_data.Uint8List skillsDescriptor = $convert.base64Decode(
     'GAEgASgFUgNrZXkSKgoFdmFsdWUYAiABKAsyFC5za2lsbHMuU2tpbGxzLlNraWxsUgV2YWx1ZT'
     'oCOAE=');
 
+@$core.Deprecated('Use typeSkillsDescriptor instead')
+const TypeSkills$json = {
+  '1': 'TypeSkills',
+  '2': [
+    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.skills.TypeSkills.EntriesEntry', '10': 'entries'},
+  ],
+  '3': [TypeSkills_Skill$json, TypeSkills_TypeSkill$json, TypeSkills_EntriesEntry$json],
+};
+
+@$core.Deprecated('Use typeSkillsDescriptor instead')
+const TypeSkills_Skill$json = {
+  '1': 'Skill',
+  '2': [
+    {'1': 'id', '3': 1, '4': 2, '5': 5, '10': 'id'},
+    {'1': 'level', '3': 2, '4': 2, '5': 5, '10': 'level'},
+  ],
+};
+
+@$core.Deprecated('Use typeSkillsDescriptor instead')
+const TypeSkills_TypeSkill$json = {
+  '1': 'TypeSkill',
+  '2': [
+    {'1': 'skills', '3': 1, '4': 3, '5': 11, '6': '.skills.TypeSkills.Skill', '10': 'skills'},
+  ],
+};
+
+@$core.Deprecated('Use typeSkillsDescriptor instead')
+const TypeSkills_EntriesEntry$json = {
+  '1': 'EntriesEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.skills.TypeSkills.TypeSkill', '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `TypeSkills`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List typeSkillsDescriptor = $convert.base64Decode(
+    'CgpUeXBlU2tpbGxzEjkKB2VudHJpZXMYASADKAsyHy5za2lsbHMuVHlwZVNraWxscy5FbnRyaW'
+    'VzRW50cnlSB2VudHJpZXMaLQoFU2tpbGwSDgoCaWQYASACKAVSAmlkEhQKBWxldmVsGAIgAigF'
+    'UgVsZXZlbBo9CglUeXBlU2tpbGwSMAoGc2tpbGxzGAEgAygLMhguc2tpbGxzLlR5cGVTa2lsbH'
+    'MuU2tpbGxSBnNraWxscxpYCgxFbnRyaWVzRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSMgoFdmFs'
+    'dWUYAiABKAsyHC5za2lsbHMuVHlwZVNraWxscy5UeXBlU2tpbGxSBXZhbHVlOgI4AQ==');
+

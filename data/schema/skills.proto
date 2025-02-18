@@ -14,3 +14,16 @@ message Skills {
 
     map<int32, Skill> entries = 1;
 }
+
+message TypeSkills {
+    message Skill {
+        required int32 id = 1;
+        required int32 level = 2;
+    }
+
+    message TypeSkill {
+        repeated Skill skills = 1;
+    }
+
+    map<int32, TypeSkill> entries = 1;
+}

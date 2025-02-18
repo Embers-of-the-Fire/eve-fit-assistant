@@ -25,6 +25,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.12.0"
+  animated_tree_view:
+    dependency: "direct main"
+    description:
+      name: animated_tree_view
+      sha256: ed982be7fa2cf51b62bb76e95b6a0f423cde12f1da8745a1da938e82a7baacf2
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.3.0"
   ansicolor:
     dependency: transitive
     description:
@@ -265,6 +273,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.9"
+  diffutil_dart:
+    dependency: transitive
+    description:
+      name: diffutil_dart
+      sha256: "5e74883aedf87f3b703cb85e815bdc1ed9208b33501556e4a8a5572af9845c81"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.0.1"
   fake_async:
     dependency: transitive
     description:

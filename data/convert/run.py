@@ -18,6 +18,7 @@ import convert_tactical_mode
 import convert_implant_group
 import convert_unit
 import convert_attribute
+import convert_type_skills
 
 if not __name__ == "__main__":
     exit(0)
@@ -44,18 +45,24 @@ def convert(fsd_dir, resfileindex, patch_dir, out_dir, index_cache):
     data = {}
     cache = ConvertCache(fsd_dir, resfileindex, index_cache, patch_dir)
 
-    convert_types.convert(cache, data)
-    convert_market_group.convert(cache, data)
-    convert_ships.convert(cache, data)
-    convert_type_slots.convert(cache, data)
-    convert_groups.convert(cache, data)
-    convert_skills.convert(cache, data)
-    convert_character.convert(cache, data)
-    convert_subsystem.convert(cache, data)
-    convert_tactical_mode.convert(cache, data)
-    convert_implant_group.convert(cache, data)
-    convert_unit.convert(cache, data)
-    convert_attribute.convert(cache, data)
+    modules = [
+        convert_types,
+        convert_market_group,
+        convert_ships,
+        convert_type_slots,
+        convert_groups,
+        convert_skills,
+        convert_character,
+        convert_subsystem,
+        convert_tactical_mode,
+        convert_implant_group,
+        convert_unit,
+        convert_attribute,
+        convert_type_skills,
+    ]
+
+    for module in modules:
+        module.convert(cache, data)
 
     for key, value in data.items():
         with open(f"{out_dir}/json/{key}.json", "w", encoding="utf-8") as fp:

@@ -1,4 +1,7 @@
-part of 'item_info.dart';
+import 'package:eve_fit_assistant/native/glue/unit.dart';
+import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:flutter/material.dart';
 
 class AttributeTab extends StatefulWidget {
   final int typeID;
@@ -20,7 +23,7 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
     final original = GlobalStorage().fitEngine.getTypeAttr(widget.typeID);
     final out = widget.attr.entries
         .filterMap((e) => GlobalStorage().static.attributes[e.key].map((a) => (e, a)))
-        .filter((e) => e.$2.published)
+        .filter((e) => e.$2.published && e.$2.displayNameZH.isNotEmpty)
         .groupBy<num>((e) => e.$2.categoryID ?? -1)
         .sorted()
         .flatMap((entry) => entry.value.sortedByKey<num>((v) => v.$1.key))

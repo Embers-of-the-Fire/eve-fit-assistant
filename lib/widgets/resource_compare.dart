@@ -1,4 +1,5 @@
-part of 'utils.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:flutter/material.dart';
 
 class ResourceCompare extends StatelessWidget {
   final double used;

@@ -22,7 +22,7 @@ schema.Module _intoNativeModules(local.Fit fit) => schema.Module(
         )));
 
 List<schema.Item> _intoNativeItems(List<local.SlotItem?> items) => items.enumerate().filterMap((e) {
-      if (e.$2 == null) return null;
+      if (e.$2 == null || e.$2?.state == local.SlotState.passive) return null;
       return _intoNativeItem(item: e.$2!, index: e.$1);
     }).toList();
 

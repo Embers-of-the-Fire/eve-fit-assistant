@@ -18,7 +18,7 @@
 ///         Homepage:  http://fortawesome.github.com/Font-Awesome/
 ///
 
-part of 'utils.dart';
+import 'package:flutter/material.dart';
 
 class ExternalIcon {
   ExternalIcon._();

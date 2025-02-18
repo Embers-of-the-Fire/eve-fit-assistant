@@ -267,6 +267,16 @@ class _SlotRowDisplay extends ConsumerWidget {
             row.add(const SizedBox(width: 10));
             row.add(Text('${range.toStringAsFixed(1)} km', style: const TextStyle(fontSize: 14)));
           }
+        } else {
+          final effectRange = item.attributes[empFieldRange];
+          if (effectRange != null) {
+            row.add(const Image(image: targetRangeImage, width: 18, height: 18));
+            row.add(const SizedBox(width: 10));
+            row.add(Text(
+              '${(effectRange / 1000).toStringAsFixed(1)} km',
+              style: const TextStyle(fontSize: 14),
+            ));
+          }
         }
       }
 

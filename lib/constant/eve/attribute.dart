@@ -147,3 +147,7 @@ const int falloffEffectiveness = 2044;
 /// - Name: explosionDelay
 /// - High is good: True
 const int explosionDelay = 281;
+
+/// - Name: empFieldRange
+/// - High is good: True
+const int empFieldRange = 99;

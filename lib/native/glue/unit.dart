@@ -40,6 +40,7 @@ extension UnitExt on UnitType {
         UnitType.boolean => value == 1 ? '是' : '否',
         UnitType.units => value.toStringAsFixed(0),
         UnitType.level => 'Lv. ${value.toStringAsFixed(0)}',
+        UnitType.hardpoints => value.toStringAsFixed(0),
         UnitType.sex => switch (value) {
             1 => '男性',
             2 => '中性',
