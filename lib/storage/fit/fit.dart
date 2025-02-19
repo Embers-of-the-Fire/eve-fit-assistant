@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:io';
 
+import 'package:eve_fit_assistant/native/codegen/constant/character.dart';
 import 'package:eve_fit_assistant/native/port/api/error.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
@@ -185,6 +186,7 @@ class FitRecord {
 @JsonSerializable(explicitToJson: true)
 class Fit {
   final int shipID;
+  final String characterID;
 
   final List<SlotItem?> high;
   final List<SlotItem?> med;
@@ -201,6 +203,7 @@ class Fit {
   /// Do not use this constructor directly, use [Fit.init] instead.
   Fit({
     required this.shipID,
+    this.characterID = predefinedLevelAll5,
     required this.high,
     required this.med,
     required this.low,
@@ -215,6 +218,7 @@ class Fit {
     final ship = GlobalStorage().static.ships[shipID];
     return Fit(
       shipID: shipID,
+      characterID: GlobalStorage().character.predefinedAll5.id,
       high: List.filled(ship?.highSlotNum ?? 0, null, growable: true),
       med: List.filled(ship?.medSlotNum ?? 0, null, growable: true),
       low: List.filled(ship?.lowSlotNum ?? 0, null, growable: true),

@@ -11,6 +11,7 @@ class CharacterStorage {
   late final Character _predefinedAll5;
   late final Character _predefinedAll0;
   final MapView<String, CharacterBrief> _briefRecords = MapView({});
+  final MapView<String, Character> _characters = MapView({});
 
   ReadonlyMap<String, CharacterBrief> get brief => _briefRecords.read;
 
@@ -59,14 +60,28 @@ class CharacterStorage {
   }
 
   Future<Character> read(String id) async {
+    if (id == _predefinedAll0.id) return _predefinedAll0;
+    if (id == _predefinedAll5.id) return _predefinedAll5;
+
     final character = await Character.read(id);
     return character;
   }
 
   Future<void> delete(String id) async {
+    if (id == _predefinedAll0.id || id == _predefinedAll5.id) return;
+
     await Character.delete(id);
     _briefRecords.write.remove(id);
     await _saveBrief();
+  }
+
+  Future<Character> get(String id) async {
+    if (id == _predefinedAll0.id) return _predefinedAll0;
+    if (id == _predefinedAll5.id) return _predefinedAll5;
+    if (!_characters.read.containsKey(id)) {
+      _characters.write[id] = await read(id);
+    }
+    return _characters.read[id]!;
   }
 }
 

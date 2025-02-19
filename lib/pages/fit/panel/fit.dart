@@ -34,8 +34,8 @@ class FitRecordNotifier extends _$FitRecordNotifier {
   FitRecordState build(String id) {
     final s = FitRecordState();
 
-    GlobalStorage().ship.readFit(id).then((rec) {
-      state = FitRecordState.init(rec);
+    GlobalStorage().ship.readFit(id).then((rec) async {
+      state = await FitRecordState.init(rec);
     });
 
     return s;
@@ -46,12 +46,12 @@ class FitRecordNotifier extends _$FitRecordNotifier {
       return;
     }
 
-    final temp = FitRecordState.init(state.fit);
+    final temp = await FitRecordState.init(state.fit);
     temp.saved = false;
     state = temp;
     final fit = await modifier(state.fit);
     await fit.save();
-    state = FitRecordState.init(fit);
+    state = await FitRecordState.init(fit);
   }
 }
 
@@ -63,14 +63,18 @@ class FitRecordState {
 
   FitRecordState({this.saved = false});
 
-  factory FitRecordState.init(FitRecord fit) {
+  static Future<FitRecordState> init(FitRecord fit) async {
     final s = FitRecordState();
     s.fit = fit;
-    s.initialized = true;
-    s.saved = true;
     s.output = GlobalStorage()
         .fitEngine
-        .calculate(fit: fit.body, character: GlobalStorage().character.predefinedAll5);
+        // .calculate(fit: fit.body, character: GlobalStorage().character.predefinedAll5);
+        .calculate(
+          fit: fit.body,
+          character: await GlobalStorage().character.get(fit.body.characterID),
+        );
+    s.initialized = true;
+    s.saved = true;
     return s;
   }
 }

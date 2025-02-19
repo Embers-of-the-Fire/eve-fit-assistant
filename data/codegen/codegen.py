@@ -4,6 +4,7 @@ import sys
 import patch_constant
 import version
 import units
+import character
 
 if __name__ != "__main__":
     exit(0)
@@ -24,6 +25,13 @@ app_out_dir = Path(sys.argv[2])
 bundle_version_file = Path(sys.argv[3])
 codegen_out_dir = Path(sys.argv[4])
 
-patch_constant.codegen(native_out_dir, app_out_dir, bundle_version_file, codegen_out_dir)
-version.codegen(native_out_dir, app_out_dir, bundle_version_file, codegen_out_dir)
-units.codegen(native_out_dir, app_out_dir, bundle_version_file, codegen_out_dir)
+modules = [
+    patch_constant,
+    version,
+    units,
+    character
+]
+
+for module in modules:
+    module.codegen(native_out_dir, app_out_dir, bundle_version_file, codegen_out_dir)
+

@@ -15,7 +15,7 @@ def convert(cache: ConvertCache, external: dict):
     skills = [k for k, v in types.items() if v.get("groupID") in skill_group]
 
     all_5_data = character_pb2.Character()
-    all_5_data.id = ""
+    all_5_data.id = "predefined-level-all5"
     all_5_data.name = "All 5"
     all_5_data.description = ""
     for skill_id in skills:
@@ -24,7 +24,7 @@ def convert(cache: ConvertCache, external: dict):
     external["character/max"] = all_5_data
 
     all_0_data = character_pb2.Character()
-    all_0_data.id = ""
+    all_0_data.id = "predefined-level-all0"
     all_0_data.name = "All 0"
     all_0_data.description = ""
     for skill_id in skills:
