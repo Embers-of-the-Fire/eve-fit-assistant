@@ -1,0 +1,89 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:eve_fit_assistant/storage/character/character.dart';
+import 'package:eve_fit_assistant/storage/character/character_brief.dart';
+import 'package:eve_fit_assistant/storage/path.dart';
+import 'package:eve_fit_assistant/storage/static/storage.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
+
+class CharacterStorage {
+  late final Character _predefinedAll5;
+  late final Character _predefinedAll0;
+  final MapView<String, CharacterBrief> _briefRecords = MapView({});
+
+  ReadonlyMap<String, CharacterBrief> get brief => _briefRecords.read;
+
+  Character get predefinedAll5 => _predefinedAll5;
+
+  Character get predefinedAll0 => _predefinedAll0;
+
+  CharacterStorage();
+
+  Future<void> init() async {
+    final staticDir = await getStaticCharacterDir();
+    final all5File = File('${staticDir.path}/max.pb');
+    final all0File = File('${staticDir.path}/min.pb');
+    _predefinedAll5 = await Character.readFromFile(all5File);
+    _predefinedAll0 = await Character.readFromFile(all0File);
+    await _loadBrief();
+  }
+
+  Future<void> _loadBrief() async {
+    final file = await getCharacterBriefFile(create: true);
+    final content = await file.readAsString();
+    final records = jsonDecode(content);
+    for (final entry in records.entries) {
+      _briefRecords.write[entry.key] = CharacterBrief.fromJson(entry.value);
+    }
+  }
+
+  Future<CharacterBrief> _createBrief(String name) async {
+    final brief = CharacterBrief.blankNow(name);
+    _briefRecords.write[brief.id] = brief;
+    await _saveBrief();
+    return brief;
+  }
+
+  Future<void> _saveBrief() async {
+    final records = _briefRecords.read.toJson();
+    final file = await getCharacterBriefFile(create: true);
+    await file.writeAsString(jsonEncode(records));
+  }
+
+  Future<Character> create(String name) async {
+    final brief = await _createBrief(name);
+    final character = Character.newBlank(brief, base: _predefinedAll0);
+    await character.save();
+    return character;
+  }
+
+  Future<Character> read(String id) async {
+    final character = await Character.read(id);
+    return character;
+  }
+
+  Future<void> delete(String id) async {
+    await Character.delete(id);
+    _briefRecords.write.remove(id);
+    await _saveBrief();
+  }
+}
+
+Future<Directory> getStaticCharacterDir({bool create = false}) async {
+  final staticDir = await getStaticStorageDir(create: create);
+  final staticPersonDir = Directory('${staticDir.path}/character');
+  if (create && !await staticPersonDir.exists()) {
+    await staticPersonDir.create();
+  }
+  return staticPersonDir;
+}
+
+Future<Directory> getCharacterDir({bool create = false}) async {
+  final storageDir = await getStorageDir(create: create);
+  final characterDir = Directory('${storageDir.path}/character');
+  if (create && !await characterDir.exists()) {
+    await characterDir.create();
+  }
+  return characterDir;
+}

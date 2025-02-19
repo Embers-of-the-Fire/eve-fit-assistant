@@ -38,7 +38,7 @@ class VersionInfo {
 
   Map<String, dynamic> toJson() => _$VersionInfoToJson(this);
 
-  static const VersionInfo currentVersion = VersionInfo(version: 1);
+  static const VersionInfo currentVersion = VersionInfo(version: 2);
 
   bool isCompatible() => version == currentVersion.version;
 

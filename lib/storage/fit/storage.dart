@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
@@ -19,7 +20,7 @@ class FitStorage {
 
   Future<void> _saveBriefRecords() async {
     final records = _briefRecords.read.toJson();
-    final file = await getBriefRecordFile(create: true);
+    final file = await getFitBriefFile(create: true);
     await file.writeAsString(jsonEncode(records));
   }
 
@@ -51,4 +52,40 @@ class FitStorage {
     final records = await FitRecordBrief.read();
     _briefRecords.write.addAll(records);
   }
+}
+
+
+
+Future<Directory> getFitDir({bool create = false}) async {
+  final storageDir = await getStorageDir();
+  final shipBriefRecordDir = Directory('${storageDir.path}/fit');
+  if (create) {
+    if (!await shipBriefRecordDir.exists()) {
+      await shipBriefRecordDir.create(recursive: true);
+    }
+  }
+  return shipBriefRecordDir;
+}
+
+Future<File> getFitBriefFile({bool create = false}) async {
+  final fitDir = await getFitDir();
+  final briefRecord = File('${fitDir.path}/brief.json');
+  if (create) {
+    if (!await briefRecord.exists()) {
+      await briefRecord.create(recursive: true);
+      await briefRecord.writeAsString('{}');
+    }
+  }
+  return briefRecord;
+}
+
+Future<Directory> getFitFullDir({bool create = false}) async {
+  final fitDir = await getFitDir();
+  final fullRecordDir = Directory('${fitDir.path}/full');
+  if (create) {
+    if (!await fullRecordDir.exists()) {
+      await fullRecordDir.create(recursive: true);
+    }
+  }
+  return fullRecordDir;
 }

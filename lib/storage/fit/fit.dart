@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:eve_fit_assistant/native/port/api/error.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
-import 'package:eve_fit_assistant/storage/path.dart';
+import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
@@ -151,7 +151,7 @@ class FitRecord {
   }
 
   Future<void> save() async {
-    final fullRecordDir = await getFullRecordDir(create: true);
+    final fullRecordDir = await getFitFullDir(create: true);
     final file = File('${fullRecordDir.path}/${brief.id}.json');
     brief.lastModifyTime = DateTime.now().millisecondsSinceEpoch;
     await file.writeAsString(jsonEncode(toJson()));
@@ -164,13 +164,13 @@ class FitRecord {
   }
 
   static Future<void> delete(String id) async {
-    final fullRecordDir = await getFullRecordDir(create: false);
+    final fullRecordDir = await getFitFullDir(create: false);
     final file = File('${fullRecordDir.path}/$id.json');
     await file.delete();
   }
 
   static Future<FitRecord> read(String id) async {
-    final fullRecordDir = await getFullRecordDir(create: false);
+    final fullRecordDir = await getFitFullDir(create: false);
     final file = File('${fullRecordDir.path}/$id.json');
     final json = jsonDecode(await file.readAsString());
     final rec = FitRecord.fromJson(json);

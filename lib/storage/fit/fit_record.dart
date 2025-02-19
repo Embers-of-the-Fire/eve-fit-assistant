@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:eve_fit_assistant/storage/path.dart';
+import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:uuid/v4.dart';
 
@@ -42,7 +42,7 @@ class FitRecordBrief {
   Map<String, dynamic> toJson() => _$FitRecordBriefToJson(this);
 
   static Future<Map<String, FitRecordBrief>> read() async {
-    final briefRecord = await getBriefRecordFile(create: true);
+    final briefRecord = await getFitBriefFile(create: true);
     final Map<String, FitRecordBrief> records = {};
     final data = jsonDecode(await briefRecord.readAsString());
     final rec = Map<String, dynamic>.from(data);

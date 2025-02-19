@@ -15,11 +15,15 @@ import 'package:protobuf/protobuf.dart' as $pb;
 
 class Character extends $pb.GeneratedMessage {
   factory Character({
+    $core.String? id,
     $core.String? name,
     $core.String? description,
     $core.Map<$core.int, $core.int>? skills,
   }) {
     final $result = create();
+    if (id != null) {
+      $result.id = id;
+    }
     if (name != null) {
       $result.name = name;
     }
@@ -36,9 +40,10 @@ class Character extends $pb.GeneratedMessage {
   factory Character.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Character', package: const $pb.PackageName(_omitMessageNames ? '' : 'character'), createEmptyInstance: create)
-    ..aQS(1, _omitFieldNames ? '' : 'name')
-    ..aQS(2, _omitFieldNames ? '' : 'description')
-    ..m<$core.int, $core.int>(3, _omitFieldNames ? '' : 'skills', entryClassName: 'Character.SkillsEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.O3, packageName: const $pb.PackageName('character'))
+    ..aQS(1, _omitFieldNames ? '' : 'id')
+    ..aQS(2, _omitFieldNames ? '' : 'name')
+    ..aQS(3, _omitFieldNames ? '' : 'description')
+    ..m<$core.int, $core.int>(4, _omitFieldNames ? '' : 'skills', entryClassName: 'Character.SkillsEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.O3, packageName: const $pb.PackageName('character'))
   ;
 
   @$core.Deprecated(
@@ -63,25 +68,34 @@ class Character extends $pb.GeneratedMessage {
   static Character? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get name => $_getSZ(0);
+  $core.String get id => $_getSZ(0);
   @$pb.TagNumber(1)
-  set name($core.String v) { $_setString(0, v); }
+  set id($core.String v) { $_setString(0, v); }
   @$pb.TagNumber(1)
-  $core.bool hasName() => $_has(0);
+  $core.bool hasId() => $_has(0);
   @$pb.TagNumber(1)
-  void clearName() => clearField(1);
+  void clearId() => clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get description => $_getSZ(1);
+  $core.String get name => $_getSZ(1);
   @$pb.TagNumber(2)
-  set description($core.String v) { $_setString(1, v); }
+  set name($core.String v) { $_setString(1, v); }
   @$pb.TagNumber(2)
-  $core.bool hasDescription() => $_has(1);
+  $core.bool hasName() => $_has(1);
   @$pb.TagNumber(2)
-  void clearDescription() => clearField(2);
+  void clearName() => clearField(2);
 
   @$pb.TagNumber(3)
-  $core.Map<$core.int, $core.int> get skills => $_getMap(2);
+  $core.String get description => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set description($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasDescription() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDescription() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.Map<$core.int, $core.int> get skills => $_getMap(3);
 }
 
 

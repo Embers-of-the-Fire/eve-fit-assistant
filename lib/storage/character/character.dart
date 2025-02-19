@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:eve_fit_assistant/storage/character/character_brief.dart';
+import 'package:eve_fit_assistant/storage/character/storage.dart';
 import 'package:eve_fit_assistant/storage/proto/character.pb.dart' as proto;
-import 'package:eve_fit_assistant/storage/static/storage.dart';
 
 class Character {
   final proto.Character _raw;
+
+  String get id => _raw.id;
 
   String get name => _raw.name;
 
@@ -13,7 +16,25 @@ class Character {
 
   Map<int, int> get skills => _raw.skills;
 
+  set name(String name) => _raw.name = name;
+
+  set description(String description) => _raw.description = description;
+
+  void getSkill(int id) => _raw.skills[id];
+
+  void setSkill(int id, int level) => _raw.skills[id] = level;
+
   const Character._private(this._raw);
+
+  factory Character.newBlank(CharacterBrief brief, {required Character base}) {
+    final raw = proto.Character(
+      id: brief.id,
+      name: brief.name,
+      description: brief.description,
+      skills: base.skills,
+    );
+    return Character._private(raw);
+  }
 
   static Character _fromBuffer(Uint8List buffer) {
     final raw = proto.Character.fromBuffer(buffer);
@@ -24,32 +45,32 @@ class Character {
     final buffer = await file.readAsBytes();
     return _fromBuffer(buffer);
   }
-}
 
-class CharacterStorage {
-  late final Character _predefinedAll5;
-  late final Character _predefinedAll0;
+  static Future<Character> read(String id) async {
+    final dir = await getCharacterFullDir();
+    final file = File('${dir.path}/$id.pb');
+    return readFromFile(file);
+  }
 
-  Character get predefinedAll5 => _predefinedAll5;
+  Future<void> save() async {
+    final dir = await getCharacterFullDir();
+    final file = File('${dir.path}/$id.pb');
+    final buffer = _raw.writeToBuffer();
+    await file.writeAsBytes(buffer);
+  }
 
-  Character get predefinedAll0 => _predefinedAll0;
-
-  CharacterStorage();
-
-  Future<void> init() async {
-    final staticDir = await getStaticCharacterDir();
-    final all5File = File('${staticDir.path}/max.pb');
-    final all0File = File('${staticDir.path}/min.pb');
-    _predefinedAll5 = await Character.readFromFile(all5File);
-    _predefinedAll0 = await Character.readFromFile(all0File);
+  static Future<void> delete(String id) async {
+    final dir = await getCharacterFullDir();
+    final file = File('${dir.path}/$id.pb');
+    await file.delete();
   }
 }
 
-Future<Directory> getStaticCharacterDir({bool create = false}) async {
-  final staticDir = await getStaticStorageDir();
-  final staticPersonDir = Directory('${staticDir.path}/character');
-  if (create && !await staticPersonDir.exists()) {
-    await staticPersonDir.create();
+Future<Directory> getCharacterFullDir({bool create = false}) async {
+  final storageDir = await getCharacterDir(create: create);
+  final record = Directory('${storageDir.path}/full');
+  if (create && !record.existsSync()) {
+    await record.create();
   }
-  return staticPersonDir;
+  return record;
 }

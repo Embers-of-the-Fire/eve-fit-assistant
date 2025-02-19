@@ -1,5 +1,5 @@
 import 'package:eve_fit_assistant/native/glue/fit_engine.dart';
-import 'package:eve_fit_assistant/storage/character/character.dart';
+import 'package:eve_fit_assistant/storage/character/storage.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';

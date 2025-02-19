@@ -17,9 +17,10 @@ import 'dart:typed_data' as $typed_data;
 const Character$json = {
   '1': 'Character',
   '2': [
-    {'1': 'name', '3': 1, '4': 2, '5': 9, '10': 'name'},
-    {'1': 'description', '3': 2, '4': 2, '5': 9, '10': 'description'},
-    {'1': 'skills', '3': 3, '4': 3, '5': 11, '6': '.character.Character.SkillsEntry', '10': 'skills'},
+    {'1': 'id', '3': 1, '4': 2, '5': 9, '10': 'id'},
+    {'1': 'name', '3': 2, '4': 2, '5': 9, '10': 'name'},
+    {'1': 'description', '3': 3, '4': 2, '5': 9, '10': 'description'},
+    {'1': 'skills', '3': 4, '4': 3, '5': 11, '6': '.character.Character.SkillsEntry', '10': 'skills'},
   ],
   '3': [Character_SkillsEntry$json],
 };
@@ -36,8 +37,8 @@ const Character_SkillsEntry$json = {
 
 /// Descriptor for `Character`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List characterDescriptor = $convert.base64Decode(
-    'CglDaGFyYWN0ZXISEgoEbmFtZRgBIAIoCVIEbmFtZRIgCgtkZXNjcmlwdGlvbhgCIAIoCVILZG'
-    'VzY3JpcHRpb24SOAoGc2tpbGxzGAMgAygLMiAuY2hhcmFjdGVyLkNoYXJhY3Rlci5Ta2lsbHNF'
-    'bnRyeVIGc2tpbGxzGjkKC1NraWxsc0VudHJ5EhAKA2tleRgBIAEoBVIDa2V5EhQKBXZhbHVlGA'
-    'IgASgFUgV2YWx1ZToCOAE=');
+    'CglDaGFyYWN0ZXISDgoCaWQYASACKAlSAmlkEhIKBG5hbWUYAiACKAlSBG5hbWUSIAoLZGVzY3'
+    'JpcHRpb24YAyACKAlSC2Rlc2NyaXB0aW9uEjgKBnNraWxscxgEIAMoCzIgLmNoYXJhY3Rlci5D'
+    'aGFyYWN0ZXIuU2tpbGxzRW50cnlSBnNraWxscxo5CgtTa2lsbHNFbnRyeRIQCgNrZXkYASABKA'
+    'VSA2tleRIUCgV2YWx1ZRgCIAEoBVIFdmFsdWU6AjgB');
 

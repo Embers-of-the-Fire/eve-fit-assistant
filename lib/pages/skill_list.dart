@@ -19,7 +19,6 @@ class _SkillListPageState extends State<SkillListPage> {
   @override
   void initState() {
     _selectedGroup = null;
-    _controller.expand();
     super.initState();
   }
 
