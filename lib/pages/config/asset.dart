@@ -2,7 +2,6 @@ import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/widgets/external_icon_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 class AssetPage extends StatelessWidget {
   const AssetPage({super.key});
@@ -57,10 +56,8 @@ class AssetPage extends StatelessWidget {
                               ],
                             ));
                     if (confirm ?? false) {
-                      await EasyLoading.show(status: '正在重置静态资产');
                       await clearStaticStorage();
                       await unpackBundledStorage();
-                      await EasyLoading.dismiss();
                     }
                   },
                   child: Text(

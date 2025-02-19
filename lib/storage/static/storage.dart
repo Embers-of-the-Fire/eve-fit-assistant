@@ -18,6 +18,9 @@ import 'package:eve_fit_assistant/storage/static/type_skills.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/static/units.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/widgets/loading.dart';
+
+const String _staticStorageLoadingKey = 'static';
 
 class StaticStorage {
   late final ReadonlyMap<int, TypeItem> _types;
@@ -67,21 +70,22 @@ class StaticStorage {
 
   StaticStorage();
 
-  Future<void> init({bool autoDismiss = true}) async {
+  Future<void> init() async {
     final start = DateTime.now();
     dev.log(
       'StaticStorage.init',
       name: 'storage',
       time: start,
     );
+    GlobalLoading().add(_staticStorageLoadingKey, '加载静态资产');
 
     final staticStorageDir = await getStaticStorageDir();
     final staticVersion = await StaticVersionInfo.read();
     if (staticVersion == null) {
-      await unpackBundledStorage(showLoading: false, autoDismiss: autoDismiss);
+      await unpackBundledStorage();
     } else if (dataVersion > staticVersion) {
       await staticStorageDir.delete(recursive: true);
-      await unpackBundledStorage(showLoading: false, autoDismiss: autoDismiss);
+      await unpackBundledStorage();
     }
 
     _types = await TypeItem.read(staticStorageDir);
@@ -99,6 +103,7 @@ class StaticStorage {
     _subsystems = await ShipSubsystemStorage.read(staticStorageDir);
     _version = await StaticVersionInfo.read();
 
+    GlobalLoading().dismiss(_staticStorageLoadingKey);
     final end = DateTime.now();
     dev.log(
       'StaticStorage.init done in ${end.difference(start).inSeconds}s',

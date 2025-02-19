@@ -1,20 +1,15 @@
 import 'package:eve_fit_assistant/front.dart' as front;
 import 'package:eve_fit_assistant/native/port/frb_generated.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/widgets/loading.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 Future main() async {
   await RustLib.init();
-  configEasyLoading();
+  GlobalLoading().init();
   runApp(const ProviderScope(child: MyApp()));
-}
-
-void configEasyLoading() {
-  EasyLoading.instance
-    ..dismissOnTap = false
-    ..userInteractions = false;
 }
 
 class MyApp extends ConsumerWidget {

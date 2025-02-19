@@ -2,16 +2,14 @@ import 'dart:developer' as dev;
 
 import 'package:archive/archive_io.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
+import 'package:eve_fit_assistant/widgets/loading.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
 
-Future<void> unpackBundledStorage({
-  bool showLoading = false,
-  bool autoDismiss = true,
-}) async {
-  if (showLoading) {
-    await EasyLoading.show(status: '正在解压静态资产');
-  }
+const String _bundleLoadingKey = 'unpack';
+
+Future<void> unpackBundledStorage() async {
+  GlobalLoading().add(_bundleLoadingKey, '正在解压静态资产');
+
   final start = DateTime.now();
   dev.log(
     'unpackBundledStorage',
@@ -31,9 +29,8 @@ Future<void> unpackBundledStorage({
     name: 'storage',
     time: end,
   );
-  if (showLoading && autoDismiss) {
-    await EasyLoading.dismiss();
-  }
+
+  GlobalLoading().dismiss(_bundleLoadingKey);
 }
 
 Future<ByteData> getStorageBundle() async {
@@ -41,7 +38,11 @@ Future<ByteData> getStorageBundle() async {
   return bundle;
 }
 
+const String _clearStorageLoadingKey = 'clear';
+
 Future<void> clearStaticStorage() async {
+  GlobalLoading().add(_clearStorageLoadingKey, '正在清理旧文件');
   final dir = await getStaticStorageDir();
   await dir.delete(recursive: true);
+  GlobalLoading().dismiss(_clearStorageLoadingKey);
 }

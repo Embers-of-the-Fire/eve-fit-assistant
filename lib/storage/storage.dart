@@ -4,12 +4,14 @@ import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/storage/version.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:eve_fit_assistant/widgets/loading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'storage.g.dart';
+
+const String _storageLoadingKey = 'storage';
 
 @riverpod
 class GlobalStorageNotifier extends _$GlobalStorageNotifier {
@@ -56,17 +58,18 @@ class GlobalStorage {
     }
     _initializing = true;
 
-    await EasyLoading.show(status: '初始化');
+    // await EasyLoading.show(status: '初始化');
+    GlobalLoading().add(_storageLoadingKey, '初始化');
     final version = await getVersionInfo();
     _version = await executeMigrate(version);
     _packageInfo = await PackageInfo.fromPlatform();
-    await _static.init(autoDismiss: false);
+    await _static.init();
     await _ship.init();
     await _character.init();
     _fitEngine = await FitEngine.init();
     await Future.delayed(const Duration(seconds: 1));
     _initialized = true;
-    await EasyLoading.dismiss();
+    GlobalLoading().dismiss(_storageLoadingKey);
     ref.read(globalStorageNotifierProvider.notifier).initialized();
   }
 }
