@@ -47,7 +47,7 @@ class _MainPageState extends State<MainPage> {
           //   icon: Icons.shopping_cart_rounded,
           //   height: 150,
           // ),
-          const SizedBox(height: 20),
+          // const SizedBox(height: 20),
           MainPageCard(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const SkillListPage()),
