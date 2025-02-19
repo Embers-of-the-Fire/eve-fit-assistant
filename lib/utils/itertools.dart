@@ -48,6 +48,41 @@ extension Itertools<T> on Iterable<T> {
     return map;
   }
 
+  Iterable<T> pad(int size, T pad) sync* {
+    yield* this;
+    for (var i = 0; i < size - length; i++) {
+      yield pad;
+    }
+  }
+
+  Iterable<T?> padNull(int size) sync* {
+    yield* this;
+    for (var i = 0; i < size - length; i++) {
+      yield null;
+    }
+  }
+
+  Iterable<Iterable<T>> chunk(int size) sync* {
+    final list = toList();
+    for (var i = 0; i < list.length; i += size) {
+      yield list.skip(i).take(size);
+    }
+  }
+
+  Iterable<Iterable<T>> chunkPad(int size, T pad) sync* {
+    final list = toList();
+    for (var i = 0; i < list.length; i += size) {
+      yield list.skip(i).take(size).pad(size, pad);
+    }
+  }
+
+  Iterable<Iterable<T?>> chunkNullPad(int size) sync* {
+    final list = toList();
+    for (var i = 0; i < list.length; i += size) {
+      yield list.skip(i).take(size).padNull(size);
+    }
+  }
+
   int count() {
     var count = 0;
     for (final _ in this) {

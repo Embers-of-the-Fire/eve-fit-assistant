@@ -22,7 +22,7 @@ class _FrontendPageState extends State<FrontendPage> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
 
-  final _pageTitle = const ['主页', '列表', '设置'];
+  final _pageTitle = const ['工作台', '列表', '设置'];
 
   @override
   void dispose() {
@@ -73,7 +73,7 @@ class _FrontendPageState extends State<FrontendPage> {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_rounded), label: '主页', backgroundColor: Colors.red),
+              icon: Icon(Icons.dashboard_rounded), label: '工作台', backgroundColor: Colors.red),
           BottomNavigationBarItem(
               icon: Icon(Icons.list_alt_rounded), label: '列表', backgroundColor: Colors.blue),
           BottomNavigationBarItem(

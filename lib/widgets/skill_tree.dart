@@ -1,4 +1,5 @@
 import 'package:animated_tree_view/animated_tree_view.dart';
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +31,7 @@ class _SkillTreeState extends State<SkillTree> with AutomaticKeepAliveClientMixi
           indentation: const Indentation(),
           tree: skillTree,
           onTreeReady: (tree) => tree.expandAllChildren(skillTree, recursive: true),
-          builder: (context, node) => _SkillRow(item: node.data!),
+          builder: (context, node) => SkillListTile(item: node.data!),
         ));
   }
 
@@ -39,11 +40,17 @@ class _SkillTreeState extends State<SkillTree> with AutomaticKeepAliveClientMixi
 }
 
 class SkillItem {
+  final int skillID;
   final String name;
   final int level;
   final int alphaMaxLevel;
 
-  const SkillItem({required this.name, required this.level, required this.alphaMaxLevel});
+  const SkillItem({
+    required this.skillID,
+    required this.name,
+    required this.level,
+    required this.alphaMaxLevel,
+  });
 }
 
 typedef SkillNode = TreeNode<SkillItem>;
@@ -52,19 +59,22 @@ SkillNode _buildSkillTree(int rootID) => _buildSkillTreeImpl(rootID, 1);
 
 SkillNode _buildSkillTreeImpl(int rootID, int level) => SkillNode(
     data: SkillItem(
+        skillID: rootID,
         name: GlobalStorage().static.skills[rootID]?.nameZH ?? '未知技能 $rootID',
         level: level,
         alphaMaxLevel: GlobalStorage().static.skills[rootID]?.alphaMaxLevel ?? 0))
   ..addAll((GlobalStorage().static.typeSkills[rootID]?.skills)
       .unwrapOr([]).map((el) => _buildSkillTreeImpl(el.id, el.level)));
 
-class _SkillRow extends StatelessWidget {
+class SkillListTile extends StatelessWidget {
   final SkillItem item;
 
-  const _SkillRow({required this.item});
+  const SkillListTile({super.key, required this.item});
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => InkWell(
+      onLongPress: () => showTypeInfoPage(context, typeID: item.skillID),
+      child: Padding(
         padding: const EdgeInsets.only(top: 5, bottom: 5, left: 25, right: 10),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -73,7 +83,7 @@ class _SkillRow extends StatelessWidget {
             _SkillLevelIndicator(level: item.level, alphaMaxLevel: item.alphaMaxLevel)
           ],
         ),
-      );
+      ));
 }
 
 class _SkillLevelIndicator extends StatelessWidget {

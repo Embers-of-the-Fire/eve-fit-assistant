@@ -1,5 +1,6 @@
 import 'package:eve_fit_assistant/pages/announcement.dart';
 import 'package:eve_fit_assistant/pages/create.dart';
+import 'package:eve_fit_assistant/pages/skill_list.dart';
 import 'package:flutter/material.dart';
 
 class MainPage extends StatefulWidget {
@@ -46,6 +47,15 @@ class _MainPageState extends State<MainPage> {
           //   icon: Icons.shopping_cart_rounded,
           //   height: 150,
           // ),
+          const SizedBox(height: 20),
+          MainPageCard(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const SkillListPage()),
+            ),
+            icon: Icons.account_tree_outlined,
+            text: '技能列表',
+            height: 150,
+          ),
         ],
       );
 }
@@ -102,6 +112,7 @@ class MainPageCard extends StatelessWidget {
           child: Container(
             alignment: Alignment.center,
             child: Row(
+              spacing: 10,
               mainAxisAlignment: MainAxisAlignment.center,
               children: row,
             ),

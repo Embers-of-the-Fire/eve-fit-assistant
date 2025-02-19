@@ -18,12 +18,20 @@ import 'i18n.pb.dart' as $0;
 class Groups_Group extends $pb.GeneratedMessage {
   factory Groups_Group({
     $0.I18N? name,
+    $core.int? categoryID,
+    $core.bool? published,
     $core.Iterable<$core.int>? types,
     $core.Iterable<$core.int>? relatedMarketGroups,
   }) {
     final $result = create();
     if (name != null) {
       $result.name = name;
+    }
+    if (categoryID != null) {
+      $result.categoryID = categoryID;
+    }
+    if (published != null) {
+      $result.published = published;
     }
     if (types != null) {
       $result.types.addAll(types);
@@ -39,8 +47,10 @@ class Groups_Group extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Groups.Group', package: const $pb.PackageName(_omitMessageNames ? '' : 'groups'), createEmptyInstance: create)
     ..aQM<$0.I18N>(1, _omitFieldNames ? '' : 'name', subBuilder: $0.I18N.create)
-    ..p<$core.int>(2, _omitFieldNames ? '' : 'types', $pb.PbFieldType.P3)
-    ..p<$core.int>(3, _omitFieldNames ? '' : 'relatedMarketGroups', $pb.PbFieldType.P3, protoName: 'relatedMarketGroups')
+    ..a<$core.int>(2, _omitFieldNames ? '' : 'categoryID', $pb.PbFieldType.Q3, protoName: 'categoryID')
+    ..a<$core.bool>(3, _omitFieldNames ? '' : 'published', $pb.PbFieldType.QB)
+    ..p<$core.int>(4, _omitFieldNames ? '' : 'types', $pb.PbFieldType.P3)
+    ..p<$core.int>(5, _omitFieldNames ? '' : 'relatedMarketGroups', $pb.PbFieldType.P3, protoName: 'relatedMarketGroups')
   ;
 
   @$core.Deprecated(
@@ -76,10 +86,28 @@ class Groups_Group extends $pb.GeneratedMessage {
   $0.I18N ensureName() => $_ensure(0);
 
   @$pb.TagNumber(2)
-  $core.List<$core.int> get types => $_getList(1);
+  $core.int get categoryID => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set categoryID($core.int v) { $_setSignedInt32(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasCategoryID() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCategoryID() => clearField(2);
 
   @$pb.TagNumber(3)
-  $core.List<$core.int> get relatedMarketGroups => $_getList(2);
+  $core.bool get published => $_getBF(2);
+  @$pb.TagNumber(3)
+  set published($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasPublished() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublished() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.List<$core.int> get types => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $core.List<$core.int> get relatedMarketGroups => $_getList(4);
 }
 
 class Groups extends $pb.GeneratedMessage {

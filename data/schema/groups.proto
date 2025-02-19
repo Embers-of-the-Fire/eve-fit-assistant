@@ -7,8 +7,10 @@ import "i18n.proto";
 message Groups {
     message Group {
         required i18n.I18N name = 1;
-        repeated int32 types = 2;
-        repeated int32 relatedMarketGroups = 3;
+        required int32 categoryID = 2;
+        required bool published = 3;
+        repeated int32 types = 4;
+        repeated int32 relatedMarketGroups = 5;
     }
 
     map<int32, Group> entries = 1;

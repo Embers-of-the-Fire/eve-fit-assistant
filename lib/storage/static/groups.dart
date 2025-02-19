@@ -13,6 +13,10 @@ class Group {
 
   List<int> get types => _raw.types;
 
+  int get categoryID => _raw.categoryID;
+
+  bool get published => _raw.published;
+
   List<int> get relatedMarketGroups => _raw.relatedMarketGroups;
 
   const Group._private(this._raw);
