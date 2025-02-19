@@ -13,16 +13,32 @@ class CharacterTab extends ConsumerWidget {
     final fit = ref.watch(fitRecordNotifierProvider(fitID));
 
     return Container(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: 0),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 10, right: 10, top: 8, bottom: 4),
+          ListTile(
+            onTap: () async {
+              final selected = await showDialog<String>(
+                context: context,
+                builder: (context) => const _SelectCharacterDialog(),
+              );
+              if (selected == null || selected == fit.character.id) return;
+              await fitNotifier.setCharacter(selected);
+            },
+            leading: CircleAvatar(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              child: const Icon(Icons.account_circle, size: 30),
+            ),
+            title: Text(fit.character.name),
+          ),
+          const Divider(height: 0),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             child: Row(spacing: 10, children: <InkWell>[
               InkWell(
                 onTap: () => showDialog(
                   context: context,
-                  builder: (context) => AddImplantGroupDialog(onSelected: (items) {
+                  builder: (context) => _AddImplantGroupDialog(onSelected: (items) {
                     final slots = items.filterMap((item) =>
                         GlobalStorage().static.typeSlot.implant[item].map((i) => (item, i)));
                     Navigator.pop(context);
@@ -48,7 +64,7 @@ class CharacterTab extends ConsumerWidget {
               )
             ]),
           ),
-          const Divider(),
+          const Divider(height: 8),
           Expanded(
               child: ListView(
             controller: _controller,
@@ -66,16 +82,41 @@ class CharacterTab extends ConsumerWidget {
   }
 }
 
-class AddImplantGroupDialog extends StatefulWidget {
-  final void Function(List<int>) onSelected;
-
-  const AddImplantGroupDialog({super.key, required this.onSelected});
+class _SelectCharacterDialog extends StatelessWidget {
+  const _SelectCharacterDialog();
 
   @override
-  State<AddImplantGroupDialog> createState() => _AddImplantGroupDialogState();
+  Widget build(BuildContext context) {
+    final characters = GlobalStorage().character.brief.values;
+    final characterList = characters.map((el) => ListTile(
+          onTap: () => Navigator.of(context).pop(el.id),
+          title: Text(el.name),
+        ));
+
+    return Container(
+        padding: const EdgeInsets.symmetric(vertical: 120),
+        child: AlertDialog(
+            title: const Text('修改角色'),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            contentTextStyle: const TextStyle(fontSize: 16),
+            content: SingleChildScrollView(
+              child: Column(
+                children: characterList.toList(),
+              ),
+            )));
+  }
 }
 
-class _AddImplantGroupDialogState extends State<AddImplantGroupDialog> {
+class _AddImplantGroupDialog extends StatefulWidget {
+  final void Function(List<int>) onSelected;
+
+  const _AddImplantGroupDialog({required this.onSelected});
+
+  @override
+  State<_AddImplantGroupDialog> createState() => _AddImplantGroupDialogState();
+}
+
+class _AddImplantGroupDialogState extends State<_AddImplantGroupDialog> {
   String? implantGroup;
 
   @override

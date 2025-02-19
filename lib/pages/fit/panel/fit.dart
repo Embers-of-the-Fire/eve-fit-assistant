@@ -6,6 +6,7 @@ import 'package:eve_fit_assistant/pages/fit/panel/add_item_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/equipment_header.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/info/info_component.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/slot.dart';
+import 'package:eve_fit_assistant/storage/character/character.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
@@ -53,10 +54,25 @@ class FitRecordNotifier extends _$FitRecordNotifier {
     await fit.save();
     state = await FitRecordState.init(fit);
   }
+
+  Future<void> setCharacter(String newCharacterID) async {
+    if (!state.initialized) {
+      return;
+    }
+
+    final temp = await FitRecordState.init(state.fit);
+    temp.saved = false;
+    state = temp;
+    final fit = state.fit;
+    fit.body.characterID = newCharacterID;
+    await fit.save();
+    state = await FitRecordState.init(fit);
+  }
 }
 
 class FitRecordState {
   late FitRecord fit;
+  late Character character;
   late CalculateOutput output;
   bool saved = false;
   bool initialized = false;
@@ -66,12 +82,13 @@ class FitRecordState {
   static Future<FitRecordState> init(FitRecord fit) async {
     final s = FitRecordState();
     s.fit = fit;
+    s.character = await GlobalStorage().character.get(fit.body.characterID);
     s.output = GlobalStorage()
         .fitEngine
         // .calculate(fit: fit.body, character: GlobalStorage().character.predefinedAll5);
         .calculate(
           fit: fit.body,
-          character: await GlobalStorage().character.get(fit.body.characterID),
+          character: s.character,
         );
     s.initialized = true;
     s.saved = true;

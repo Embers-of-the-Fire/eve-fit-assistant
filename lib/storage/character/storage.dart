@@ -27,11 +27,22 @@ class CharacterStorage {
     final all0File = File('${staticDir.path}/min.pb');
     _predefinedAll5 = await Character.readFromFile(all5File);
     _predefinedAll0 = await Character.readFromFile(all0File);
+
+    _characters.write[_predefinedAll5.id] = _predefinedAll5;
+    _characters.write[_predefinedAll0.id] = _predefinedAll0;
+
     await _loadBrief();
   }
 
   Future<void> _loadBrief() async {
-    final file = await getCharacterBriefFile(create: true);
+    final file = await getCharacterBriefFile(create: false);
+    if (!await file.exists()) {
+      _briefRecords.write[_predefinedAll5.id] = CharacterBrief.fromCharacter(_predefinedAll5);
+      _briefRecords.write[_predefinedAll0.id] = CharacterBrief.fromCharacter(_predefinedAll0);
+      await _saveBrief();
+      return;
+    }
+
     final content = await file.readAsString();
     final records = jsonDecode(content);
     for (final entry in records.entries) {
@@ -76,8 +87,6 @@ class CharacterStorage {
   }
 
   Future<Character> get(String id) async {
-    if (id == _predefinedAll0.id) return _predefinedAll0;
-    if (id == _predefinedAll5.id) return _predefinedAll5;
     if (!_characters.read.containsKey(id)) {
       _characters.write[id] = await read(id);
     }

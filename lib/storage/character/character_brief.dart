@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:eve_fit_assistant/storage/character/character.dart';
 import 'package:eve_fit_assistant/storage/character/storage.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:uuid/v4.dart';
@@ -29,6 +30,12 @@ class CharacterBrief {
       description: '',
     );
   }
+
+  factory CharacterBrief.fromCharacter(Character character) => CharacterBrief(
+      id: character.id,
+      name: character.name,
+      description: character.description,
+    );
 
   static Future<Map<String, CharacterBrief>> read() async {
     final briefRecord = await getCharacterBriefFile(create: true);

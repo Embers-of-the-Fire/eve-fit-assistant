@@ -186,7 +186,7 @@ class FitRecord {
 @JsonSerializable(explicitToJson: true)
 class Fit {
   final int shipID;
-  final String characterID;
+  String characterID;
 
   final List<SlotItem?> high;
   final List<SlotItem?> med;
