@@ -68,8 +68,15 @@ SkillNode _buildSkillTreeImpl(int rootID, int level) => SkillNode(
 
 class SkillListTile extends StatelessWidget {
   final SkillItem item;
+  final bool showHidden;
+  final void Function(int)? onTapLevel;
 
-  const SkillListTile({super.key, required this.item});
+  const SkillListTile({
+    super.key,
+    required this.item,
+    this.showHidden = false,
+    this.onTapLevel,
+  });
 
   @override
   Widget build(BuildContext context) => InkWell(
@@ -80,7 +87,12 @@ class SkillListTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(item.name),
-            _SkillLevelIndicator(level: item.level, alphaMaxLevel: item.alphaMaxLevel)
+            _SkillLevelIndicator(
+              level: item.level,
+              alphaMaxLevel: item.alphaMaxLevel,
+              showHidden: showHidden,
+              onTapLevel: onTapLevel,
+            )
           ],
         ),
       ));
@@ -89,21 +101,65 @@ class SkillListTile extends StatelessWidget {
 class _SkillLevelIndicator extends StatelessWidget {
   final int level;
   final int alphaMaxLevel;
+  final bool showHidden;
+  final void Function(int)? onTapLevel;
 
-  const _SkillLevelIndicator({required this.level, required this.alphaMaxLevel});
+  const _SkillLevelIndicator({
+    required this.level,
+    required this.alphaMaxLevel,
+    required this.showHidden,
+    required this.onTapLevel,
+  });
+
+  Widget Function({Color? color, Decoration? decoration, required int level}) _getContainer() {
+    if (onTapLevel == null) {
+      return ({Color? color, Decoration? decoration, required int level}) => Container(
+            height: 16,
+            width: 16,
+            color: color,
+            decoration: decoration,
+          );
+    } else {
+      return ({Color? color, Decoration? decoration, required int level}) => InkWell(
+          onTap: () => onTapLevel!(level),
+          child: Container(
+            height: 16,
+            width: 16,
+            color: color,
+            decoration: decoration,
+          ));
+    }
+  }
 
   @override
-  Widget build(BuildContext context) => Row(
-        spacing: 6,
-        children: List.generate(5, (index) {
-          final skillLevel = index + 1;
-          if (skillLevel > level) {
-            return Container(height: 16, width: 16, color: Colors.transparent);
-          } else if (skillLevel <= level && skillLevel > alphaMaxLevel) {
-            return Container(height: 16, width: 16, color: Colors.yellow.shade700);
+  Widget build(BuildContext context) {
+    final builder = _getContainer();
+    return Row(
+      spacing: 6,
+      children: List.generate(5, (index) {
+        final skillLevel = index + 1;
+        if (skillLevel > level) {
+          if (showHidden) {
+            if (skillLevel > alphaMaxLevel) {
+              return builder(
+                decoration: BoxDecoration(border: Border.all(color: Colors.yellow.shade700)),
+                level: skillLevel,
+              );
+            } else {
+              return builder(
+                decoration: BoxDecoration(border: Border.all(color: Colors.blue)),
+                level: skillLevel,
+              );
+            }
           } else {
-            return Container(height: 16, width: 16, color: Colors.blue);
+            return builder(color: Colors.transparent, level: skillLevel);
           }
-        }),
-      );
+        } else if (skillLevel <= level && skillLevel > alphaMaxLevel) {
+          return builder(color: Colors.yellow.shade700, level: skillLevel);
+        } else {
+          return builder(color: Colors.blue, level: skillLevel);
+        }
+      }),
+    );
+  }
 }

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:eve_fit_assistant/storage/character/character_brief.dart';
 import 'package:eve_fit_assistant/storage/character/storage.dart';
 import 'package:eve_fit_assistant/storage/proto/character.pb.dart' as proto;
+import 'package:eve_fit_assistant/storage/storage.dart';
 
 class Character {
   final proto.Character _raw;
@@ -55,8 +56,13 @@ class Character {
   Future<void> save() async {
     final dir = await getCharacterFullDir();
     final file = File('${dir.path}/$id.pb');
+    if (!await file.exists()) {
+      await file.create();
+    }
     final buffer = _raw.writeToBuffer();
     await file.writeAsBytes(buffer);
+
+    await GlobalStorage().character.updateBrief(id, this);
   }
 
   static Future<void> delete(String id) async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,6 +6,7 @@ import 'package:eve_fit_assistant/storage/character/character.dart';
 import 'package:eve_fit_assistant/storage/character/character_brief.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
+import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 
 class CharacterStorage {
@@ -63,9 +65,9 @@ class CharacterStorage {
     await file.writeAsString(jsonEncode(records));
   }
 
-  Future<Character> create(String name) async {
+  Future<Character> create(String name, {required String baseID}) async {
     final brief = await _createBrief(name);
-    final character = Character.newBlank(brief, base: _predefinedAll0);
+    final character = Character.newBlank(brief, base: await GlobalStorage().character.get(baseID));
     await character.save();
     return character;
   }
@@ -91,6 +93,14 @@ class CharacterStorage {
       _characters.write[id] = await read(id);
     }
     return _characters.read[id]!;
+  }
+
+  Future<void> updateBrief(String id, Character character) async {
+    final brief = _briefRecords.read[id]!;
+    brief.name = character.name;
+    brief.description = character.description;
+    brief.lastModifyTime = DateTime.now().millisecondsSinceEpoch;
+    await _saveBrief();
   }
 }
 

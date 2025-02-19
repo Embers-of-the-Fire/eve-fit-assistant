@@ -1,4 +1,5 @@
 import 'package:eve_fit_assistant/pages/announcement.dart';
+import 'package:eve_fit_assistant/pages/character/character.dart';
 import 'package:eve_fit_assistant/pages/create.dart';
 import 'package:eve_fit_assistant/pages/skill_list.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,15 @@ class _MainPageState extends State<MainPage> {
             onTap: () => startFitCreation(context),
             icon: Icons.add,
             text: '创建新配置',
+            height: 150,
+          ),
+          const SizedBox(height: 20),
+          MainPageCard(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CharacterPage()),
+            ),
+            icon: Icons.account_circle_outlined,
+            text: '角色配置',
             height: 150,
           ),
           const SizedBox(height: 20),

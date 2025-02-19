@@ -11,11 +11,13 @@ part 'character_brief.g.dart';
 @JsonSerializable()
 class CharacterBrief {
   final String id;
+  int lastModifyTime;
   String name;
   String description;
 
   CharacterBrief({
     required this.id,
+    required this.lastModifyTime,
     required this.name,
     required this.description,
   });
@@ -26,6 +28,7 @@ class CharacterBrief {
     final id = const UuidV4().generate();
     return CharacterBrief(
       id: id,
+      lastModifyTime: DateTime.now().millisecondsSinceEpoch,
       name: name,
       description: '',
     );
@@ -33,6 +36,9 @@ class CharacterBrief {
 
   factory CharacterBrief.fromCharacter(Character character) => CharacterBrief(
       id: character.id,
+      // `fromCharacter` should be only called when initializing
+      // pre-defined characters, so we can safely set `lastModifyTime` to 0.
+      lastModifyTime: 0,
       name: character.name,
       description: character.description,
     );
