@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'char_edit.g.dart';
+
 part 'char_profile.dart';
+
 part 'char_skill_list.dart';
 
 @riverpod
@@ -68,6 +70,10 @@ class CharacterState {
     return s;
   }
 }
+
+Future<void> showCharacterEditPage(BuildContext context, {required String id}) =>
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (context) => CharacterEditPageContent(id: id)));
 
 class CharacterEditPage extends ConsumerWidget {
   final String id;

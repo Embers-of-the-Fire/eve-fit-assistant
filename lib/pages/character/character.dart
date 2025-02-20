@@ -54,11 +54,8 @@ class _CharacterPageState extends State<CharacterPage> {
                   .map((el) => _CharacterListTile(
                         characterID: el.id,
                         onCopy: () => _onCopy(name: el.name, id: el.id),
-                        onEdit: () => Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(builder: (context) => CharacterEditPage(id: el.id)),
-                            )
-                            .then((_) => setState(() {})),
+                        onEdit: () =>
+                            showCharacterEditPage(context, id: el.id).then((_) => setState(() {})),
                         onDelete: () => _onDelete(id: el.id),
                       ))
                   .toList(),

@@ -17,12 +17,14 @@ class CharacterTab extends ConsumerWidget {
       child: Column(
         children: [
           ListTile(
+            onLongPress: () => showCharacterEditPage(context, id: fit.character.id)
+                .then((_) => fitNotifier.refresh()),
             onTap: () async {
               final selected = await showDialog<String>(
                 context: context,
                 builder: (context) => const _SelectCharacterDialog(),
               );
-              if (selected == null || selected == fit.character.id) return;
+              if (selected == null) return await fitNotifier.refresh();
               await fitNotifier.setCharacter(selected);
             },
             leading: CircleAvatar(
@@ -82,14 +84,20 @@ class CharacterTab extends ConsumerWidget {
   }
 }
 
-class _SelectCharacterDialog extends StatelessWidget {
+class _SelectCharacterDialog extends StatefulWidget {
   const _SelectCharacterDialog();
 
+  @override
+  State<_SelectCharacterDialog> createState() => _SelectCharacterDialogState();
+}
+
+class _SelectCharacterDialogState extends State<_SelectCharacterDialog> {
   @override
   Widget build(BuildContext context) {
     final characters = GlobalStorage().character.brief.values;
     final characterList = characters.map((el) => ListTile(
           onTap: () => Navigator.of(context).pop(el.id),
+          onLongPress: () => showCharacterEditPage(context, id: el.id).then((_) => setState(() {})),
           title: Text(el.name),
         ));
 
