@@ -46,8 +46,9 @@ def convert(fsd_dir, resfileindex, patch_dir, out_dir, index_cache):
     cache = ConvertCache(fsd_dir, resfileindex, index_cache, patch_dir)
 
     modules = [
-        convert_types,
+        convert_unit,
         convert_market_group,
+        convert_types,
         convert_ships,
         convert_type_slots,
         convert_groups,
@@ -56,7 +57,6 @@ def convert(fsd_dir, resfileindex, patch_dir, out_dir, index_cache):
         convert_subsystem,
         convert_tactical_mode,
         convert_implant_group,
-        convert_unit,
         convert_attribute,
         convert_type_skills,
     ]

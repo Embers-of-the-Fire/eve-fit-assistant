@@ -17,6 +17,8 @@ class TypeItem {
 
   String get description => _raw.description;
 
+  String? get traits => _raw.traits.optional;
+
   const TypeItem._private(this._raw);
 
   static Map<int, TypeItem> _fromBuffer(Uint8List buffer) {

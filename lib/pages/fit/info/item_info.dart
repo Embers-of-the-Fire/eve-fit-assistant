@@ -5,7 +5,10 @@ import 'package:eve_fit_assistant/widgets/skill_tree.dart';
 import 'package:flutter/material.dart';
 
 part 'description.dart';
+
 part 'skill.dart';
+
+part 'traits.dart';
 
 Future<void> showItemInfoPage(
   BuildContext context, {
@@ -45,91 +48,44 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
 
   @override
   void initState() {
-    _controller = TabController(length: widget.item?.charge == null ? 3 : 5, vsync: this);
+    final int pageCount = (widget.item?.charge == null ? 3 : 5) +
+        (GlobalStorage().static.types[widget.typeID]?.traits != null ? 1 : 0);
+    _controller = TabController(length: pageCount, vsync: this);
     super.initState();
   }
 
   @override
-  Widget build(BuildContext context) => widget.item == null
-      ? renderNoAttr(context)
-      : widget.item?.charge == null
-          ? renderNoCharge(context, widget.item!)
-          : renderWithCharge(context, widget.item!, widget.item!.charge!);
+  Widget build(BuildContext context) {
+    final List<String> tabLabels = [];
+    final List<Widget> tabs = [];
 
-  Widget renderNoAttr(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('物品信息'),
-          bottom: TabBar(
-            controller: _controller,
-            tabs: const [
-              Tab(text: '描述'),
-              Tab(text: '属性'),
-              Tab(text: '技能'),
-              // future feature:
-              // Tab(text: '制造'),
-              // Tab(text: '市场')
-            ],
-          ),
-        ),
-        body: TabBarView(controller: _controller, children: [
-          DescriptionTab(typeID: widget.typeID),
-          AttributeTab(typeID: widget.typeID, attr: null),
-          // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
-          SkillTree(rootID: widget.typeID),
-        ]),
-      );
+    if (GlobalStorage().static.types[widget.typeID]?.traits != null) {
+      tabLabels.add('特性');
+      tabs.add(TraitsTab(typeID: widget.typeID));
+    }
+    tabLabels.addAll(['描述', '属性', '技能']);
+    tabs.addAll([
+      DescriptionTab(typeID: widget.typeID),
+      AttributeTab(typeID: widget.typeID, attr: widget.item?.attributes),
+      SkillTree(rootID: widget.typeID),
+    ]);
+    if (widget.item?.charge != null) {
+      tabLabels.addAll(['弹药属性', '弹药技能']);
+      tabs.add(
+          AttributeTab(typeID: widget.item!.charge!.itemId, attr: widget.item!.charge!.attributes));
+      tabs.add(SkillTree(rootID: widget.item!.charge!.itemId));
+    }
 
-  Widget renderNoCharge(BuildContext context, ItemProxy item) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('物品信息'),
-          bottom: TabBar(
-            controller: _controller,
-            tabs: const [
-              Tab(text: '描述'),
-              Tab(text: '属性'),
-              Tab(text: '技能'),
-              // future feature:
-              // Tab(text: '制造'),
-              // Tab(text: '市场')
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('物品信息'),
+        bottom: TabBar(
+          controller: _controller,
+          tabs: tabLabels.map((label) => Tab(text: label)).toList(),
         ),
-        body: TabBarView(controller: _controller, children: [
-          DescriptionTab(typeID: widget.typeID),
-          AttributeTab(typeID: widget.typeID, attr: widget.item!.attributes),
-          // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
-          SkillTree(rootID: widget.typeID),
-        ]),
-      );
-
-  Widget renderWithCharge(BuildContext context, ItemProxy item, ItemProxy charge) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('物品信息'),
-          bottom: TabBar(
-            labelPadding: EdgeInsets.zero,
-            controller: _controller,
-            tabs: const [
-              Tab(text: '描述'),
-              Tab(text: '属性'),
-              Tab(text: '弹药属性'),
-              Tab(text: '技能'),
-              Tab(text: '弹药技能'),
-              // future feature:
-              // Tab(text: '制造'),
-              // Tab(text: '市场')
-            ],
-          ),
-        ),
-        body: TabBarView(controller: _controller, children: [
-          DescriptionTab(typeID: widget.typeID),
-          AttributeTab(typeID: widget.typeID, attr: item.attributes),
-          AttributeTab(typeID: charge.itemId, attr: charge.attributes),
-          // const Center(child: Text('Work in Progress...', style: TextStyle(fontSize: 32))),
-          SkillTree(rootID: widget.typeID),
-          SkillTree(rootID: charge.itemId),
-        ]),
-      );
+      ),
+      body: TabBarView(controller: _controller, children: tabs),
+    );
+  }
 }

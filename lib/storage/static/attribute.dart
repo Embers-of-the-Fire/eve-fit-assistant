@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:eve_fit_assistant/native/codegen/constant/unit.dart';
 import 'package:eve_fit_assistant/storage/proto/attribute.pb.dart';
-import 'package:eve_fit_assistant/utils/num.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 
 class AttributeItem {

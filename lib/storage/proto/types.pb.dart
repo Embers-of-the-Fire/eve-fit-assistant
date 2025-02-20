@@ -21,6 +21,7 @@ class Types_Type extends $pb.GeneratedMessage {
     $core.int? groupID,
     $core.bool? published,
     $core.String? description,
+    $core.String? traits,
   }) {
     final $result = create();
     if (name != null) {
@@ -35,6 +36,9 @@ class Types_Type extends $pb.GeneratedMessage {
     if (description != null) {
       $result.description = description;
     }
+    if (traits != null) {
+      $result.traits = traits;
+    }
     return $result;
   }
   Types_Type._() : super();
@@ -46,6 +50,7 @@ class Types_Type extends $pb.GeneratedMessage {
     ..a<$core.int>(2, _omitFieldNames ? '' : 'groupID', $pb.PbFieldType.Q3, protoName: 'groupID')
     ..a<$core.bool>(3, _omitFieldNames ? '' : 'published', $pb.PbFieldType.QB)
     ..aQS(4, _omitFieldNames ? '' : 'description')
+    ..aQS(5, _omitFieldNames ? '' : 'traits')
   ;
 
   @$core.Deprecated(
@@ -107,6 +112,15 @@ class Types_Type extends $pb.GeneratedMessage {
   $core.bool hasDescription() => $_has(3);
   @$pb.TagNumber(4)
   void clearDescription() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get traits => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set traits($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasTraits() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTraits() => clearField(5);
 }
 
 class Types extends $pb.GeneratedMessage {

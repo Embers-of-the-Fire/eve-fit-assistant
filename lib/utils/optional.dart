@@ -47,3 +47,15 @@ extension AsyncOptional<T> on Future<T?> {
     }
   }
 }
+
+extension ZeroOptionalInt on int {
+  int? get optional => this == 0 ? null : this;
+}
+
+extension ZeroOptionalDouble on double {
+  double? get optional => this == 0 ? null : this;
+}
+
+extension ZeroOptionalString on String {
+  String? get optional => isEmpty ? null : this;
+}
