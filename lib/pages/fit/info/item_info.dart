@@ -6,9 +6,7 @@ import 'package:eve_fit_assistant/widgets/skill_tree.dart';
 import 'package:flutter/material.dart';
 
 part 'description.dart';
-
 part 'skill.dart';
-
 part 'traits.dart';
 
 Future<void> showItemInfoPage(
@@ -83,6 +81,7 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
         title: const Text('物品信息'),
         bottom: TabBar(
           controller: _controller,
+          labelPadding: EdgeInsets.zero,
           tabs: tabLabels.map((label) => Tab(text: label)).toList(),
         ),
       ),
