@@ -1,6 +1,7 @@
 import 'package:eve_fit_assistant/native/port/api/proxy.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/widgets/attribute.dart';
+import 'package:eve_fit_assistant/widgets/description.dart';
 import 'package:eve_fit_assistant/widgets/skill_tree.dart';
 import 'package:flutter/material.dart';
 

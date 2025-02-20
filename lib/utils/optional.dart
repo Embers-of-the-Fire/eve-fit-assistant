@@ -48,6 +48,16 @@ extension AsyncOptional<T> on Future<T?> {
   }
 }
 
+extension OptionalAsync<T> on Future<T>? {
+  Future<T?> get transpose {
+    if (this == null) {
+      return Future.value(null);
+    } else {
+      return this!;
+    }
+  }
+}
+
 extension ZeroOptionalInt on int {
   int? get optional => this == 0 ? null : this;
 }

@@ -14,7 +14,8 @@ class DescriptionTab extends StatelessWidget {
       child: SingleChildScrollView(
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Text(text, style: const TextStyle(fontSize: 18)),
+          // child: Text(text, style: const TextStyle(fontSize: 18)),
+          child: DescriptionText(text: text, style: const TextStyle(fontSize: 18)),
         ),
       ),
     );

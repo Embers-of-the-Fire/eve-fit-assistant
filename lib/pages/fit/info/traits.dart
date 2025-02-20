@@ -10,10 +10,12 @@ class TraitsTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: SingleChildScrollView(
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Text(GlobalStorage().static.types[typeID]?.traits ?? '',
-                style: const TextStyle(fontSize: 18)),
-          ),
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              // child: Text(GlobalStorage().static.types[typeID]?.traits ?? '',
+              //     style: const TextStyle(fontSize: 18)),
+              child: DescriptionText(
+                  text: GlobalStorage().static.types[typeID]?.traits ?? '',
+                  style: const TextStyle(fontSize: 18))),
         ),
       );
 }
