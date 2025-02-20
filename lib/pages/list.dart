@@ -43,7 +43,7 @@ class _ListPageState extends State<ListPage> {
               subtitle: Text(
                 DateTime.fromMillisecondsSinceEpoch(entry.value.lastModifyTime).toString(),
               ),
-              onTap: () => intoFitPage(context, entry.key),
+              onTap: () => intoFitPage(context, entry.key).then((_) => setState(() {})),
             ),
           );
         }).toList(),

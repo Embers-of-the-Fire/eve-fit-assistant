@@ -156,7 +156,7 @@ class FitRecord {
     final file = File('${fullRecordDir.path}/${brief.id}.json');
     brief.lastModifyTime = DateTime.now().millisecondsSinceEpoch;
     await file.writeAsString(jsonEncode(toJson()));
-    await GlobalStorage().ship.save();
+    await GlobalStorage().ship.updateBrief(brief);
     dev.log(
       'FitRecord.save done',
       name: 'FitRecord.save',

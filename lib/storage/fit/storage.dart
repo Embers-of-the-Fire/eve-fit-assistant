@@ -42,6 +42,11 @@ class FitStorage {
     await _saveBriefRecords();
   }
 
+  Future<void> updateBrief(FitRecordBrief brief) async {
+    _briefRecords.write[brief.id] = brief;
+    await _saveBriefRecords();
+  }
+
   Future<void> save() async {
     await _saveBriefRecords();
   }

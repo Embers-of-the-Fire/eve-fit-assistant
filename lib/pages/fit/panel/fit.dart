@@ -25,8 +25,8 @@ part 'equipment.dart';
 part 'fit.g.dart';
 part 'info.dart';
 
-void intoFitPage(BuildContext context, String fitID) {
-  Navigator.of(context).push(MaterialPageRoute(builder: (context) => FitPage(fitID: fitID)));
+Future<void> intoFitPage(BuildContext context, String fitID) async {
+  await Navigator.of(context).push(MaterialPageRoute(builder: (context) => FitPage(fitID: fitID)));
 }
 
 @riverpod

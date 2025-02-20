@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'char_edit.g.dart';
+part 'char_profile.dart';
 part 'char_skill_list.dart';
 
 @riverpod
@@ -39,6 +40,14 @@ class CharacterNotifier extends _$CharacterNotifier {
   Future<void> setSkillLevel(int skillID, int level) async {
     await modify((char) {
       char.skills[skillID] = level;
+      return char;
+    });
+  }
+
+  Future<void> setProfile(String name, String desc) async {
+    await modify((char) {
+      char.name = name;
+      char.description = desc;
       return char;
     });
   }
@@ -92,27 +101,53 @@ class CharacterEditPagePlaceholder extends StatelessWidget {
       );
 }
 
-class CharacterEditPageContent extends ConsumerWidget {
+class CharacterEditPageContent extends ConsumerStatefulWidget {
   final String id;
 
   const CharacterEditPageContent({super.key, required this.id});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final char = ref.watch(characterNotifierProvider(id));
+  ConsumerState createState() => _CharacterEditPageContentState();
+}
+
+class _CharacterEditPageContentState extends ConsumerState<CharacterEditPageContent>
+    with SingleTickerProviderStateMixin {
+  late final TabController _controller;
+
+  @override
+  void initState() {
+    _controller = TabController(length: 2, vsync: this);
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final char = ref.watch(characterNotifierProvider(widget.id));
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('角色配置'),
-        actions: [
-          Container(
-            padding: const EdgeInsets.only(right: 10),
-            child: Icon(char.saved ? Icons.download_done : Icons.downloading),
-          )
-        ],
-      ),
-      body: CharacterSkillList(id: id),
-    );
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('角色配置'),
+          actions: [
+            Container(
+              padding: const EdgeInsets.only(right: 10),
+              child: Icon(char.saved ? Icons.download_done : Icons.downloading),
+            )
+          ],
+          bottom: TabBar(
+            controller: _controller,
+            tabs: const ['技能', '信息'].map((e) => Tab(text: e)).toList(),
+          ),
+        ),
+        // body: CharacterSkillList(id: id),
+        body: TabBarView(controller: _controller, children: [
+          CharacterSkillList(id: widget.id),
+          // CharacterInfoPage(id: widget.id),
+          CharacterProfileTab(
+            charID: widget.id,
+            name: char.character.name,
+            description: char.character.description,
+          ),
+        ]));
   }
 }

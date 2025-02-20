@@ -9,7 +9,8 @@ class CharacterSkillList extends ConsumerStatefulWidget {
   ConsumerState<CharacterSkillList> createState() => _CharacterSkillListState();
 }
 
-class _CharacterSkillListState extends ConsumerState<CharacterSkillList> {
+class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
+    with AutomaticKeepAliveClientMixin {
   final ExpansionTileController _controller = ExpansionTileController();
 
   int? _selectedGroup;
@@ -21,7 +22,12 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     final charNotifier = ref.read(characterNotifierProvider(widget.id).notifier);
     final char = ref.watch(characterNotifierProvider(widget.id));
 
