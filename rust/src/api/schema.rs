@@ -8,6 +8,7 @@ pub struct Fit {
     pub drones: Vec<DroneGroup>,
     pub implant: Vec<Implant>,
     pub skills: HashMap<i32, u8>,
+    pub damage_profile: DamageProfile,
 }
 
 impl Fit {
@@ -70,6 +71,12 @@ impl Fit {
                     index: idx as i32,
                 })
                 .collect(),
+            damage_profile: eve_fit_os::calculate::DamageProfile {
+                em: self.damage_profile.em,
+                explosive: self.damage_profile.explosive,
+                kinetic: self.damage_profile.kinetic,
+                thermal: self.damage_profile.thermal,
+            },
         };
 
         eve_fit_os::fit::FitContainer::new(fit, skills)
@@ -92,12 +99,12 @@ pub struct Module {
 pub struct Item {
     pub item_id: i32,
     pub charge: Option<i32>,
-    pub state: State,
+    pub state: ItemState,
     pub index: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum State {
+pub enum ItemState {
     Passive,
     Online,
     Active,
@@ -105,13 +112,13 @@ pub enum State {
 }
 
 #[flutter_rust_bridge::frb(ignore)]
-impl From<State> for eve_fit_os::fit::ItemState {
-    fn from(state: State) -> Self {
+impl From<ItemState> for eve_fit_os::fit::ItemState {
+    fn from(state: ItemState) -> Self {
         match state {
-            State::Passive => eve_fit_os::fit::ItemState::Passive,
-            State::Online => eve_fit_os::fit::ItemState::Online,
-            State::Active => eve_fit_os::fit::ItemState::Active,
-            State::Overload => eve_fit_os::fit::ItemState::Overload,
+            ItemState::Passive => eve_fit_os::fit::ItemState::Passive,
+            ItemState::Online => eve_fit_os::fit::ItemState::Online,
+            ItemState::Active => eve_fit_os::fit::ItemState::Active,
+            ItemState::Overload => eve_fit_os::fit::ItemState::Overload,
         }
     }
 }
@@ -129,4 +136,13 @@ pub struct DroneGroup {
 pub struct Implant {
     pub item_id: i32,
     pub index: i32,
+}
+
+#[flutter_rust_bridge::frb(non_opaque)]
+#[derive(Debug, Clone, Copy)]
+pub struct DamageProfile {
+    pub em: f64,
+    pub explosive: f64,
+    pub kinetic: f64,
+    pub thermal: f64,
 }

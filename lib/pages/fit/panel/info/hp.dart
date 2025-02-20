@@ -34,6 +34,7 @@ class _HpState extends State<Hp> {
               }),
               hull: widget.ship.hull,
               displayEhp: displayEhp,
+              damageProfile: widget.ship.damageProfile,
             ),
           ),
           Container(
@@ -73,11 +74,14 @@ Text _getEhpText(ItemProxy hull, bool expFirst) {
 class _HpTable extends StatelessWidget {
   final ItemProxy hull;
   final bool displayEhp;
+  final DamageProfile damageProfile;
+
   final void Function() onToggle;
 
   const _HpTable({
     required this.hull,
     required this.displayEhp,
+    required this.damageProfile,
     required this.onToggle,
   });
 
@@ -167,6 +171,26 @@ class _HpTable extends StatelessWidget {
               ),
               ResonanceBox(
                 ratio: hull.attributes[explosiveDamageResonance] ?? 0.0,
+                type: ResonanceType.explosive,
+              ),
+            ]),
+            TableRow(children: [
+              const Image(image: weaponImage, height: 28),
+              const Icon(Icons.settings),
+              ResonanceBox(
+                ratio: 1 - damageProfile.em,
+                type: ResonanceType.em,
+              ),
+              ResonanceBox(
+                ratio: 1 - damageProfile.thermal,
+                type: ResonanceType.thermal,
+              ),
+              ResonanceBox(
+                ratio: 1 - damageProfile.kinetic,
+                type: ResonanceType.kinetic,
+              ),
+              ResonanceBox(
+                ratio: 1 - damageProfile.explosive,
                 type: ResonanceType.explosive,
               ),
             ]),

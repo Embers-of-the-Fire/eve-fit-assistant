@@ -5,6 +5,7 @@
 
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'schema.dart';
 
 // These functions are ignored because they are not marked as `pub`: `from_native_grouped`, `from_native`, `from_native`, `from_native`, `from_native`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`
@@ -109,17 +110,23 @@ class ShipProxy {
   final ModulesProxy modules;
   final List<ItemProxy> implants;
   final ItemProxy character;
+  final DamageProfile damageProfile;
 
   const ShipProxy({
     required this.hull,
     required this.modules,
     required this.implants,
     required this.character,
+    required this.damageProfile,
   });
 
   @override
   int get hashCode =>
-      hull.hashCode ^ modules.hashCode ^ implants.hashCode ^ character.hashCode;
+      hull.hashCode ^
+      modules.hashCode ^
+      implants.hashCode ^
+      character.hashCode ^
+      damageProfile.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -129,5 +136,6 @@ class ShipProxy {
           hull == other.hull &&
           modules == other.modules &&
           implants == other.implants &&
-          character == other.character;
+          character == other.character &&
+          damageProfile == other.damageProfile;
 }

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use eve_fit_os::calculate;
 
+use super::schema::DamageProfile;
+
 #[flutter_rust_bridge::frb(non_opaque)]
 #[derive(Debug, Clone)]
 pub struct ShipProxy {
@@ -9,6 +11,7 @@ pub struct ShipProxy {
     pub modules: ModulesProxy,
     pub implants: Vec<ItemProxy>,
     pub character: ItemProxy,
+    pub damage_profile: DamageProfile,
 }
 
 impl ShipProxy {
@@ -23,6 +26,12 @@ impl ShipProxy {
                 .map(ItemProxy::from_native)
                 .collect(),
             character: ItemProxy::from_native(native.character),
+            damage_profile: DamageProfile {
+                em: native.damage_profile.em,
+                explosive: native.damage_profile.explosive,
+                kinetic: native.damage_profile.kinetic,
+                thermal: native.damage_profile.thermal,
+            },
         }
     }
 }

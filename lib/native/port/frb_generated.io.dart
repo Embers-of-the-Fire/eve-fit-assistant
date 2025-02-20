@@ -81,6 +81,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CalculateOutput dco_decode_calculate_output(dynamic raw);
 
   @protected
+  DamageProfile dco_decode_damage_profile(dynamic raw);
+
+  @protected
   DroneGroup dco_decode_drone_group(dynamic raw);
 
   @protected
@@ -106,6 +109,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ItemProxy dco_decode_item_proxy(dynamic raw);
+
+  @protected
+  ItemState dco_decode_item_state(dynamic raw);
 
   @protected
   List<DroneGroup> dco_decode_list_drone_group(dynamic raw);
@@ -171,9 +177,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SlotType dco_decode_slot_type(dynamic raw);
 
   @protected
-  State dco_decode_state(dynamic raw);
-
-  @protected
   int dco_decode_u_8(dynamic raw);
 
   @protected
@@ -237,6 +240,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CalculateOutput sse_decode_calculate_output(SseDeserializer deserializer);
 
   @protected
+  DamageProfile sse_decode_damage_profile(SseDeserializer deserializer);
+
+  @protected
   DroneGroup sse_decode_drone_group(SseDeserializer deserializer);
 
   @protected
@@ -262,6 +268,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ItemProxy sse_decode_item_proxy(SseDeserializer deserializer);
+
+  @protected
+  ItemState sse_decode_item_state(SseDeserializer deserializer);
 
   @protected
   List<DroneGroup> sse_decode_list_drone_group(SseDeserializer deserializer);
@@ -328,9 +337,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   SlotType sse_decode_slot_type(SseDeserializer deserializer);
-
-  @protected
-  State sse_decode_state(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -405,6 +411,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       CalculateOutput self, SseSerializer serializer);
 
   @protected
+  void sse_encode_damage_profile(DamageProfile self, SseSerializer serializer);
+
+  @protected
   void sse_encode_drone_group(DroneGroup self, SseSerializer serializer);
 
   @protected
@@ -430,6 +439,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_item_proxy(ItemProxy self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_item_state(ItemState self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_drone_group(
@@ -501,9 +513,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_slot_type(SlotType self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_state(State self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);

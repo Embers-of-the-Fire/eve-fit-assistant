@@ -19,6 +19,10 @@ Map<String, dynamic> _$FitRecordToJson(FitRecord instance) => <String, dynamic>{
 Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
       shipID: (json['shipID'] as num).toInt(),
       characterID: json['characterID'] as String? ?? predefinedLevelAll5,
+      damageProfile: json['damageProfile'] == null
+          ? DamageProfile.defaultProfile
+          : DamageProfile.fromJson(
+              json['damageProfile'] as Map<String, dynamic>),
       high: (json['high'] as List<dynamic>)
           .map((e) =>
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
@@ -52,6 +56,7 @@ Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
 Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
       'shipID': instance.shipID,
       'characterID': instance.characterID,
+      'damageProfile': instance.damageProfile.toJson(),
       'high': instance.high.map((e) => e?.toJson()).toList(),
       'med': instance.med.map((e) => e?.toJson()).toList(),
       'low': instance.low.map((e) => e?.toJson()).toList(),
@@ -60,6 +65,22 @@ Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
       'drone': instance.drone.map((e) => e.toJson()).toList(),
       'implant': instance.implant.map((e) => e?.toJson()).toList(),
       'tacticalModeID': instance.tacticalModeID,
+    };
+
+_$DamageProfileImpl _$$DamageProfileImplFromJson(Map<String, dynamic> json) =>
+    _$DamageProfileImpl(
+      em: (json['em'] as num).toDouble(),
+      thermal: (json['thermal'] as num).toDouble(),
+      kinetic: (json['kinetic'] as num).toDouble(),
+      explosive: (json['explosive'] as num).toDouble(),
+    );
+
+Map<String, dynamic> _$$DamageProfileImplToJson(_$DamageProfileImpl instance) =>
+    <String, dynamic>{
+      'em': instance.em,
+      'thermal': instance.thermal,
+      'kinetic': instance.kinetic,
+      'explosive': instance.explosive,
     };
 
 _$SlotItemImpl _$$SlotItemImplFromJson(Map<String, dynamic> json) =>

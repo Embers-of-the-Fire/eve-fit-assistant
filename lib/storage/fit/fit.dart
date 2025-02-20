@@ -188,6 +188,8 @@ class Fit {
   final int shipID;
   String characterID;
 
+  final DamageProfile damageProfile;
+
   final List<SlotItem?> high;
   final List<SlotItem?> med;
   final List<SlotItem?> low;
@@ -204,6 +206,7 @@ class Fit {
   Fit({
     required this.shipID,
     this.characterID = predefinedLevelAll5,
+    this.damageProfile = DamageProfile.defaultProfile,
     required this.high,
     required this.med,
     required this.low,
@@ -219,6 +222,7 @@ class Fit {
     return Fit(
       shipID: shipID,
       characterID: GlobalStorage().character.predefinedAll5.id,
+      damageProfile: DamageProfile.defaultProfile,
       high: List.filled(ship?.highSlotNum ?? 0, null, growable: true),
       med: List.filled(ship?.medSlotNum ?? 0, null, growable: true),
       low: List.filled(ship?.lowSlotNum ?? 0, null, growable: true),
@@ -253,6 +257,21 @@ class Fit {
   factory Fit.fromJson(Map<String, dynamic> json) => _$FitFromJson(json);
 
   Map<String, dynamic> toJson() => _$FitToJson(this);
+}
+
+@freezed
+class DamageProfile with _$DamageProfile {
+  const factory DamageProfile({
+    required double em,
+    required double thermal,
+    required double kinetic,
+    required double explosive,
+  }) = _DamageProfile;
+
+  factory DamageProfile.fromJson(Map<String, dynamic> json) => _$DamageProfileFromJson(json);
+
+  static const defaultProfile =
+      DamageProfile(em: 0.25, thermal: 0.25, kinetic: 0.25, explosive: 0.25);
 }
 
 @freezed

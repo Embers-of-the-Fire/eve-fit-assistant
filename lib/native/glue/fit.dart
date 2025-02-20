@@ -4,6 +4,12 @@ import 'package:eve_fit_assistant/utils/utils.dart';
 
 schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}) => schema.Fit(
       shipId: fit.shipID,
+      damageProfile: schema.DamageProfile(
+        em: fit.damageProfile.em,
+        explosive: fit.damageProfile.explosive,
+        kinetic: fit.damageProfile.kinetic,
+        thermal: fit.damageProfile.thermal,
+      ),
       modules: _intoNativeModules(fit),
       drones: _intoNativeDrones(fit.drone),
       implant: _intoNativeImplants(fit.implant),
@@ -58,15 +64,15 @@ schema.Implant _intoNativeImplant({required local.SlotItem item, required int in
       index: index,
     );
 
-schema.State _intoNativeState(local.SlotState state) {
+schema.ItemState _intoNativeState(local.SlotState state) {
   switch (state) {
     case local.SlotState.passive:
-      return schema.State.passive;
+      return schema.ItemState.passive;
     case local.SlotState.online:
-      return schema.State.online;
+      return schema.ItemState.online;
     case local.SlotState.active:
-      return schema.State.active;
+      return schema.ItemState.active;
     case local.SlotState.overload:
-      return schema.State.overload;
+      return schema.ItemState.overload;
   }
 }

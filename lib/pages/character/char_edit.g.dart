@@ -6,7 +6,7 @@ part of 'char_edit.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$characterNotifierHash() => r'22a5aaaec207bc1a6b76f5a64c3614fb4ce8a0e6';
+String _$characterNotifierHash() => r'c2231b72ba53142a82880b006fe591fc2e5a6103';
 
 /// Copied from Dart SDK
 class _SystemHash {

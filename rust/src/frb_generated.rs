@@ -577,6 +577,22 @@ impl SseDecode for crate::api::CalculateOutput {
     }
 }
 
+impl SseDecode for crate::api::schema::DamageProfile {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_em = <f64>::sse_decode(deserializer);
+        let mut var_explosive = <f64>::sse_decode(deserializer);
+        let mut var_kinetic = <f64>::sse_decode(deserializer);
+        let mut var_thermal = <f64>::sse_decode(deserializer);
+        return crate::api::schema::DamageProfile {
+            em: var_em,
+            explosive: var_explosive,
+            kinetic: var_kinetic,
+            thermal: var_thermal,
+        };
+    }
+}
+
 impl SseDecode for crate::api::schema::DroneGroup {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -662,12 +678,14 @@ impl SseDecode for crate::api::schema::Fit {
         let mut var_drones = <Vec<crate::api::schema::DroneGroup>>::sse_decode(deserializer);
         let mut var_implant = <Vec<crate::api::schema::Implant>>::sse_decode(deserializer);
         let mut var_skills = <std::collections::HashMap<i32, u8>>::sse_decode(deserializer);
+        let mut var_damageProfile = <crate::api::schema::DamageProfile>::sse_decode(deserializer);
         return crate::api::schema::Fit {
             ship_id: var_shipId,
             modules: var_modules,
             drones: var_drones,
             implant: var_implant,
             skills: var_skills,
+            damage_profile: var_damageProfile,
         };
     }
 }
@@ -696,7 +714,7 @@ impl SseDecode for crate::api::schema::Item {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_itemId = <i32>::sse_decode(deserializer);
         let mut var_charge = <Option<i32>>::sse_decode(deserializer);
-        let mut var_state = <crate::api::schema::State>::sse_decode(deserializer);
+        let mut var_state = <crate::api::schema::ItemState>::sse_decode(deserializer);
         let mut var_index = <i32>::sse_decode(deserializer);
         return crate::api::schema::Item {
             item_id: var_itemId,
@@ -719,6 +737,20 @@ impl SseDecode for crate::api::proxy::ItemProxy {
             item_id: var_itemId,
             charge: var_charge,
             attributes: var_attributes,
+        };
+    }
+}
+
+impl SseDecode for crate::api::schema::ItemState {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::schema::ItemState::Passive,
+            1 => crate::api::schema::ItemState::Online,
+            2 => crate::api::schema::ItemState::Active,
+            3 => crate::api::schema::ItemState::Overload,
+            _ => unreachable!("Invalid variant for ItemState: {}", inner),
         };
     }
 }
@@ -944,11 +976,13 @@ impl SseDecode for crate::api::proxy::ShipProxy {
         let mut var_modules = <crate::api::proxy::ModulesProxy>::sse_decode(deserializer);
         let mut var_implants = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_character = <crate::api::proxy::ItemProxy>::sse_decode(deserializer);
+        let mut var_damageProfile = <crate::api::schema::DamageProfile>::sse_decode(deserializer);
         return crate::api::proxy::ShipProxy {
             hull: var_hull,
             modules: var_modules,
             implants: var_implants,
             character: var_character,
+            damage_profile: var_damageProfile,
         };
     }
 }
@@ -998,20 +1032,6 @@ impl SseDecode for crate::api::error::SlotType {
             5 => crate::api::error::SlotType::Implant,
             6 => crate::api::error::SlotType::Drone,
             _ => unreachable!("Invalid variant for SlotType: {}", inner),
-        };
-    }
-}
-
-impl SseDecode for crate::api::schema::State {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <i32>::sse_decode(deserializer);
-        return match inner {
-            0 => crate::api::schema::State::Passive,
-            1 => crate::api::schema::State::Online,
-            2 => crate::api::schema::State::Active,
-            3 => crate::api::schema::State::Overload,
-            _ => unreachable!("Invalid variant for State: {}", inner),
         };
     }
 }
@@ -1165,6 +1185,29 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::CalculateOutput>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::schema::DamageProfile {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.em.into_into_dart().into_dart(),
+            self.explosive.into_into_dart().into_dart(),
+            self.kinetic.into_into_dart().into_dart(),
+            self.thermal.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::schema::DamageProfile
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::DamageProfile>
+    for crate::api::schema::DamageProfile
+{
+    fn into_into_dart(self) -> crate::api::schema::DamageProfile {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::schema::DroneGroup {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1255,6 +1298,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::schema::Fit {
             self.drones.into_into_dart().into_dart(),
             self.implant.into_into_dart().into_dart(),
             self.skills.into_into_dart().into_dart(),
+            self.damage_profile.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1322,6 +1366,26 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::proxy::ItemProxy>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::schema::ItemState {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Passive => 0.into_dart(),
+            Self::Online => 1.into_dart(),
+            Self::Active => 2.into_dart(),
+            Self::Overload => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::schema::ItemState {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::ItemState>
+    for crate::api::schema::ItemState
+{
+    fn into_into_dart(self) -> crate::api::schema::ItemState {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::schema::Module {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1375,6 +1439,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::proxy::ShipProxy {
             self.modules.into_into_dart().into_dart(),
             self.implants.into_into_dart().into_dart(),
             self.character.into_into_dart().into_dart(),
+            self.damage_profile.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1447,24 +1512,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::error::SlotType>
     for crate::api::error::SlotType
 {
     fn into_into_dart(self) -> crate::api::error::SlotType {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::schema::State {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            Self::Passive => 0.into_dart(),
-            Self::Online => 1.into_dart(),
-            Self::Active => 2.into_dart(),
-            Self::Overload => 3.into_dart(),
-            _ => unreachable!(),
-        }
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::schema::State {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::State> for crate::api::schema::State {
-    fn into_into_dart(self) -> crate::api::schema::State {
         self
     }
 }
@@ -1552,6 +1599,16 @@ impl SseEncode for crate::api::CalculateOutput {
     }
 }
 
+impl SseEncode for crate::api::schema::DamageProfile {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <f64>::sse_encode(self.em, serializer);
+        <f64>::sse_encode(self.explosive, serializer);
+        <f64>::sse_encode(self.kinetic, serializer);
+        <f64>::sse_encode(self.thermal, serializer);
+    }
+}
+
 impl SseEncode for crate::api::schema::DroneGroup {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1615,6 +1672,7 @@ impl SseEncode for crate::api::schema::Fit {
         <Vec<crate::api::schema::DroneGroup>>::sse_encode(self.drones, serializer);
         <Vec<crate::api::schema::Implant>>::sse_encode(self.implant, serializer);
         <std::collections::HashMap<i32, u8>>::sse_encode(self.skills, serializer);
+        <crate::api::schema::DamageProfile>::sse_encode(self.damage_profile, serializer);
     }
 }
 
@@ -1638,7 +1696,7 @@ impl SseEncode for crate::api::schema::Item {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.item_id, serializer);
         <Option<i32>>::sse_encode(self.charge, serializer);
-        <crate::api::schema::State>::sse_encode(self.state, serializer);
+        <crate::api::schema::ItemState>::sse_encode(self.state, serializer);
         <i32>::sse_encode(self.index, serializer);
     }
 }
@@ -1650,6 +1708,24 @@ impl SseEncode for crate::api::proxy::ItemProxy {
         <i32>::sse_encode(self.item_id, serializer);
         <Option<Box<crate::api::proxy::ItemProxy>>>::sse_encode(self.charge, serializer);
         <std::collections::HashMap<i32, f64>>::sse_encode(self.attributes, serializer);
+    }
+}
+
+impl SseEncode for crate::api::schema::ItemState {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::schema::ItemState::Passive => 0,
+                crate::api::schema::ItemState::Online => 1,
+                crate::api::schema::ItemState::Active => 2,
+                crate::api::schema::ItemState::Overload => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
@@ -1831,6 +1907,7 @@ impl SseEncode for crate::api::proxy::ShipProxy {
         <crate::api::proxy::ModulesProxy>::sse_encode(self.modules, serializer);
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.implants, serializer);
         <crate::api::proxy::ItemProxy>::sse_encode(self.character, serializer);
+        <crate::api::schema::DamageProfile>::sse_encode(self.damage_profile, serializer);
     }
 }
 
@@ -1877,24 +1954,6 @@ impl SseEncode for crate::api::error::SlotType {
                 crate::api::error::SlotType::Subsystem => 4,
                 crate::api::error::SlotType::Implant => 5,
                 crate::api::error::SlotType::Drone => 6,
-                _ => {
-                    unimplemented!("");
-                }
-            },
-            serializer,
-        );
-    }
-}
-
-impl SseEncode for crate::api::schema::State {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(
-            match self {
-                crate::api::schema::State::Passive => 0,
-                crate::api::schema::State::Online => 1,
-                crate::api::schema::State::Active => 2,
-                crate::api::schema::State::Overload => 3,
                 _ => {
                     unimplemented!("");
                 }

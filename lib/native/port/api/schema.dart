@@ -7,8 +7,36 @@ import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `into_native`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseNotAllowedOwner): `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `from`
+
+class DamageProfile {
+  final double em;
+  final double explosive;
+  final double kinetic;
+  final double thermal;
+
+  const DamageProfile({
+    required this.em,
+    required this.explosive,
+    required this.kinetic,
+    required this.thermal,
+  });
+
+  @override
+  int get hashCode =>
+      em.hashCode ^ explosive.hashCode ^ kinetic.hashCode ^ thermal.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DamageProfile &&
+          runtimeType == other.runtimeType &&
+          em == other.em &&
+          explosive == other.explosive &&
+          kinetic == other.kinetic &&
+          thermal == other.thermal;
+}
 
 class DroneGroup {
   final int itemId;
@@ -40,6 +68,7 @@ class Fit {
   final List<DroneGroup> drones;
   final List<Implant> implant;
   final Map<int, int> skills;
+  final DamageProfile damageProfile;
 
   const Fit({
     required this.shipId,
@@ -47,6 +76,7 @@ class Fit {
     required this.drones,
     required this.implant,
     required this.skills,
+    required this.damageProfile,
   });
 
   @override
@@ -55,7 +85,8 @@ class Fit {
       modules.hashCode ^
       drones.hashCode ^
       implant.hashCode ^
-      skills.hashCode;
+      skills.hashCode ^
+      damageProfile.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -66,7 +97,8 @@ class Fit {
           modules == other.modules &&
           drones == other.drones &&
           implant == other.implant &&
-          skills == other.skills;
+          skills == other.skills &&
+          damageProfile == other.damageProfile;
 }
 
 class Implant {
@@ -93,7 +125,7 @@ class Implant {
 class Item {
   final int itemId;
   final int? charge;
-  final State state;
+  final ItemState state;
   final int index;
 
   const Item({
@@ -116,6 +148,14 @@ class Item {
           charge == other.charge &&
           state == other.state &&
           index == other.index;
+}
+
+enum ItemState {
+  passive,
+  online,
+  active,
+  overload,
+  ;
 }
 
 class Module {
@@ -155,12 +195,4 @@ class Module {
           rig == other.rig &&
           subsystem == other.subsystem &&
           tacticalMode == other.tacticalMode;
-}
-
-enum State {
-  passive,
-  online,
-  active,
-  overload,
-  ;
 }

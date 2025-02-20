@@ -576,6 +576,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DamageProfile dco_decode_damage_profile(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return DamageProfile(
+      em: dco_decode_f_64(arr[0]),
+      explosive: dco_decode_f_64(arr[1]),
+      kinetic: dco_decode_f_64(arr[2]),
+      thermal: dco_decode_f_64(arr[3]),
+    );
+  }
+
+  @protected
   DroneGroup dco_decode_drone_group(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -639,14 +653,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Fit dco_decode_fit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return Fit(
       shipId: dco_decode_i_32(arr[0]),
       modules: dco_decode_module(arr[1]),
       drones: dco_decode_list_drone_group(arr[2]),
       implant: dco_decode_list_implant(arr[3]),
       skills: dco_decode_Map_i_32_u_8(arr[4]),
+      damageProfile: dco_decode_damage_profile(arr[5]),
     );
   }
 
@@ -677,7 +692,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return Item(
       itemId: dco_decode_i_32(arr[0]),
       charge: dco_decode_opt_box_autoadd_i_32(arr[1]),
-      state: dco_decode_state(arr[2]),
+      state: dco_decode_item_state(arr[2]),
       index: dco_decode_i_32(arr[3]),
     );
   }
@@ -694,6 +709,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       charge: dco_decode_opt_box_item_proxy(arr[2]),
       attributes: dco_decode_Map_i_32_f_64(arr[3]),
     );
+  }
+
+  @protected
+  ItemState dco_decode_item_state(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ItemState.values[raw as int];
   }
 
   @protected
@@ -843,13 +864,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ShipProxy dco_decode_ship_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return ShipProxy(
       hull: dco_decode_item_proxy(arr[0]),
       modules: dco_decode_modules_proxy(arr[1]),
       implants: dco_decode_list_item_proxy(arr[2]),
       character: dco_decode_item_proxy(arr[3]),
+      damageProfile: dco_decode_damage_profile(arr[4]),
     );
   }
 
@@ -878,12 +900,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   SlotType dco_decode_slot_type(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return SlotType.values[raw as int];
-  }
-
-  @protected
-  State dco_decode_state(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return State.values[raw as int];
   }
 
   @protected
@@ -1025,6 +1041,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DamageProfile sse_decode_damage_profile(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_em = sse_decode_f_64(deserializer);
+    var var_explosive = sse_decode_f_64(deserializer);
+    var var_kinetic = sse_decode_f_64(deserializer);
+    var var_thermal = sse_decode_f_64(deserializer);
+    return DamageProfile(
+        em: var_em,
+        explosive: var_explosive,
+        kinetic: var_kinetic,
+        thermal: var_thermal);
+  }
+
+  @protected
   DroneGroup sse_decode_drone_group(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_itemId = sse_decode_i_32(deserializer);
@@ -1086,12 +1116,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_drones = sse_decode_list_drone_group(deserializer);
     var var_implant = sse_decode_list_implant(deserializer);
     var var_skills = sse_decode_Map_i_32_u_8(deserializer);
+    var var_damageProfile = sse_decode_damage_profile(deserializer);
     return Fit(
         shipId: var_shipId,
         modules: var_modules,
         drones: var_drones,
         implant: var_implant,
-        skills: var_skills);
+        skills: var_skills,
+        damageProfile: var_damageProfile);
   }
 
   @protected
@@ -1113,7 +1145,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_itemId = sse_decode_i_32(deserializer);
     var var_charge = sse_decode_opt_box_autoadd_i_32(deserializer);
-    var var_state = sse_decode_state(deserializer);
+    var var_state = sse_decode_item_state(deserializer);
     var var_index = sse_decode_i_32(deserializer);
     return Item(
         itemId: var_itemId,
@@ -1134,6 +1166,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         itemId: var_itemId,
         charge: var_charge,
         attributes: var_attributes);
+  }
+
+  @protected
+  ItemState sse_decode_item_state(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return ItemState.values[inner];
   }
 
   @protected
@@ -1354,11 +1393,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_modules = sse_decode_modules_proxy(deserializer);
     var var_implants = sse_decode_list_item_proxy(deserializer);
     var var_character = sse_decode_item_proxy(deserializer);
+    var var_damageProfile = sse_decode_damage_profile(deserializer);
     return ShipProxy(
         hull: var_hull,
         modules: var_modules,
         implants: var_implants,
-        character: var_character);
+        character: var_character,
+        damageProfile: var_damageProfile);
   }
 
   @protected
@@ -1389,13 +1430,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return SlotType.values[inner];
-  }
-
-  @protected
-  State sse_decode_state(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return State.values[inner];
   }
 
   @protected
@@ -1547,6 +1581,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_damage_profile(DamageProfile self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_64(self.em, serializer);
+    sse_encode_f_64(self.explosive, serializer);
+    sse_encode_f_64(self.kinetic, serializer);
+    sse_encode_f_64(self.thermal, serializer);
+  }
+
+  @protected
   void sse_encode_drone_group(DroneGroup self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.itemId, serializer);
@@ -1610,6 +1653,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_drone_group(self.drones, serializer);
     sse_encode_list_implant(self.implant, serializer);
     sse_encode_Map_i_32_u_8(self.skills, serializer);
+    sse_encode_damage_profile(self.damageProfile, serializer);
   }
 
   @protected
@@ -1630,7 +1674,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.itemId, serializer);
     sse_encode_opt_box_autoadd_i_32(self.charge, serializer);
-    sse_encode_state(self.state, serializer);
+    sse_encode_item_state(self.state, serializer);
     sse_encode_i_32(self.index, serializer);
   }
 
@@ -1641,6 +1685,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.itemId, serializer);
     sse_encode_opt_box_item_proxy(self.charge, serializer);
     sse_encode_Map_i_32_f_64(self.attributes, serializer);
+  }
+
+  @protected
+  void sse_encode_item_state(ItemState self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -1825,6 +1875,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_modules_proxy(self.modules, serializer);
     sse_encode_list_item_proxy(self.implants, serializer);
     sse_encode_item_proxy(self.character, serializer);
+    sse_encode_damage_profile(self.damageProfile, serializer);
   }
 
   @protected
@@ -1854,12 +1905,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_slot_type(SlotType self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_state(State self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
   }

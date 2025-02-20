@@ -6,7 +6,7 @@ part of 'fit.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$fitRecordNotifierHash() => r'053e3fe6a6733f11a05f8e92d836f4f7a8a004e2';
+String _$fitRecordNotifierHash() => r'0b0bc497353ae034c71e300210ebbba7b9ce6745';
 
 /// Copied from Dart SDK
 class _SystemHash {
