@@ -2,219 +2,227 @@
 /// - High is good: False
 const int alignTime = -1;
 
+/// - Name: chargeAmount
+/// - High is good: True
+const int chargeAmount = -10;
+
+/// - Name: cpuFree
+/// - High is good: True
+const int cpuFree = -11;
+
 /// - Name: powerFree
 /// - High is good: True
-const int powerFree = -10;
+const int powerFree = -12;
 
 /// - Name: damageAlpha
 /// - High is good: True
-const int damageAlpha = -11;
+const int damageAlpha = -13;
 
 /// - Name: damagePerSecondWithoutReload
 /// - High is good: True
-const int damagePerSecondWithoutReload = -12;
+const int damagePerSecondWithoutReload = -14;
 
 /// - Name: damagePerSecondWithReload
 /// - High is good: True
-const int damagePerSecondWithReload = -13;
+const int damagePerSecondWithReload = -15;
 
 /// - Name: droneDamagePerSecond
 /// - High is good: True
-const int droneDamagePerSecond = -14;
+const int droneDamagePerSecond = -16;
 
 /// - Name: speedOfReload
 /// - High is good: True
-const int speedOfReload = -15;
+const int speedOfReload = -17;
 
 /// - Name: speedWithReload
 /// - High is good: True
-const int speedWithReload = -16;
+const int speedWithReload = -18;
 
 /// - Name: damageProfileEm
 /// - High is good: True
-const int damageProfileEm = -17;
-
-/// - Name: damageProfileExplosive
-/// - High is good: True
-const int damageProfileExplosive = -18;
-
-/// - Name: damageProfileKinetic
-/// - High is good: True
-const int damageProfileKinetic = -19;
+const int damageProfileEm = -19;
 
 /// - Name: capacitorPeakRecharge
 /// - High is good: True
 const int capacitorPeakRecharge = -2;
 
+/// - Name: damageProfileExplosive
+/// - High is good: True
+const int damageProfileExplosive = -20;
+
+/// - Name: damageProfileKinetic
+/// - High is good: True
+const int damageProfileKinetic = -21;
+
 /// - Name: damageProfileThermal
 /// - High is good: True
-const int damageProfileThermal = -20;
+const int damageProfileThermal = -22;
 
 /// - Name: damageVolley
 /// - High is good: True
-const int damageVolley = -21;
+const int damageVolley = -23;
 
 /// - Name: droneActive
 /// - High is good: True
-const int droneActive = -22;
+const int droneActive = -24;
 
 /// - Name: droneUsage
 /// - High is good: True
-const int droneUsage = -23;
+const int droneUsage = -25;
 
 /// - Name: droneCapacityLoad
 /// - High is good: True
-const int droneCapacityLoad = -24;
+const int droneCapacityLoad = -26;
 
 /// - Name: ehp
 /// - High is good: True
-const int ehp = -25;
+const int ehp = -27;
 
 /// - Name: armorEmDamageEffectiveResonance
 /// - High is good: True
-const int armorEmDamageEffectiveResonance = -26;
+const int armorEmDamageEffectiveResonance = -28;
 
 /// - Name: armorExplosiveDamageEffectiveResonance
 /// - High is good: True
-const int armorExplosiveDamageEffectiveResonance = -27;
-
-/// - Name: armorKineticDamageEffectiveResonance
-/// - High is good: True
-const int armorKineticDamageEffectiveResonance = -28;
-
-/// - Name: armorThermalDamageEffectiveResonance
-/// - High is good: True
-const int armorThermalDamageEffectiveResonance = -29;
+const int armorExplosiveDamageEffectiveResonance = -29;
 
 /// - Name: cycleTime
 /// - High is good: False
 const int cycleTime = -3;
 
+/// - Name: armorKineticDamageEffectiveResonance
+/// - High is good: True
+const int armorKineticDamageEffectiveResonance = -30;
+
+/// - Name: armorThermalDamageEffectiveResonance
+/// - High is good: True
+const int armorThermalDamageEffectiveResonance = -31;
+
 /// - Name: armorDamageEffectiveResonance
 /// - High is good: True
-const int armorDamageEffectiveResonance = -30;
+const int armorDamageEffectiveResonance = -32;
 
 /// - Name: armorEhp
 /// - High is good: True
-const int armorEhp = -31;
+const int armorEhp = -33;
 
 /// - Name: hullEmDamageEffectiveResonance
 /// - High is good: True
-const int hullEmDamageEffectiveResonance = -32;
+const int hullEmDamageEffectiveResonance = -34;
 
 /// - Name: hullExplosiveDamageEffectiveResonance
 /// - High is good: True
-const int hullExplosiveDamageEffectiveResonance = -33;
+const int hullExplosiveDamageEffectiveResonance = -35;
 
 /// - Name: hullKineticDamageEffectiveResonance
 /// - High is good: True
-const int hullKineticDamageEffectiveResonance = -34;
+const int hullKineticDamageEffectiveResonance = -36;
 
 /// - Name: hullThermalDamageEffectiveResonance
 /// - High is good: True
-const int hullThermalDamageEffectiveResonance = -35;
+const int hullThermalDamageEffectiveResonance = -37;
 
 /// - Name: hullDamageEffectiveResonance
 /// - High is good: True
-const int hullDamageEffectiveResonance = -36;
+const int hullDamageEffectiveResonance = -38;
 
 /// - Name: hullEhp
 /// - High is good: True
-const int hullEhp = -37;
-
-/// - Name: shieldEmDamageEffectiveResonance
-/// - High is good: True
-const int shieldEmDamageEffectiveResonance = -38;
-
-/// - Name: shieldExplosiveDamageEffectiveResonance
-/// - High is good: True
-const int shieldExplosiveDamageEffectiveResonance = -39;
+const int hullEhp = -39;
 
 /// - Name: capacitorPeakLoad
 /// - High is good: True
 const int capacitorPeakLoad = -4;
 
+/// - Name: shieldEmDamageEffectiveResonance
+/// - High is good: True
+const int shieldEmDamageEffectiveResonance = -40;
+
+/// - Name: shieldExplosiveDamageEffectiveResonance
+/// - High is good: True
+const int shieldExplosiveDamageEffectiveResonance = -41;
+
 /// - Name: shieldKineticDamageEffectiveResonance
 /// - High is good: True
-const int shieldKineticDamageEffectiveResonance = -40;
+const int shieldKineticDamageEffectiveResonance = -42;
 
 /// - Name: shieldThermalDamageEffectiveResonance
 /// - High is good: True
-const int shieldThermalDamageEffectiveResonance = -41;
+const int shieldThermalDamageEffectiveResonance = -43;
 
 /// - Name: shieldDamageEffectiveResonance
 /// - High is good: True
-const int shieldDamageEffectiveResonance = -42;
+const int shieldDamageEffectiveResonance = -44;
 
 /// - Name: shieldEhp
 /// - High is good: True
-const int shieldEhp = -43;
+const int shieldEhp = -45;
 
 /// - Name: velocityBoost
 /// - High is good: True
-const int velocityBoost = -44;
+const int velocityBoost = -46;
 
 /// - Name: armorRepairRate
 /// - High is good: True
-const int armorRepairRate = -45;
+const int armorRepairRate = -47;
 
 /// - Name: armorEffectiveRepairRate
 /// - High is good: True
-const int armorEffectiveRepairRate = -46;
+const int armorEffectiveRepairRate = -48;
 
 /// - Name: hullRepairRate
 /// - High is good: True
-const int hullRepairRate = -47;
-
-/// - Name: hullEffectiveRepairRate
-/// - High is good: True
-const int hullEffectiveRepairRate = -48;
-
-/// - Name: shieldBoostRate
-/// - High is good: True
-const int shieldBoostRate = -49;
+const int hullRepairRate = -49;
 
 /// - Name: capacitorPeakDelta
 /// - High is good: True
 const int capacitorPeakDelta = -5;
 
+/// - Name: hullEffectiveRepairRate
+/// - High is good: True
+const int hullEffectiveRepairRate = -50;
+
+/// - Name: shieldBoostRate
+/// - High is good: True
+const int shieldBoostRate = -51;
+
 /// - Name: shieldEffectiveBoostRate
 /// - High is good: True
-const int shieldEffectiveBoostRate = -50;
+const int shieldEffectiveBoostRate = -52;
 
 /// - Name: passiveShieldRechargeRate
 /// - High is good: True
-const int passiveShieldRechargeRate = -51;
+const int passiveShieldRechargeRate = -53;
 
 /// - Name: passiveShieldEffectiveRechargeRate
 /// - High is good: True
-const int passiveShieldEffectiveRechargeRate = -52;
+const int passiveShieldEffectiveRechargeRate = -54;
 
 /// - Name: scanStrength
 /// - High is good: True
-const int scanStrength = -53;
+const int scanStrength = -55;
 
 /// - Name: thousand
 /// - High is good: True
-const int thousand = -54;
+const int thousand = -56;
 
 /// - Name: upgradeUsed
 /// - High is good: True
-const int upgradeUsed = -55;
+const int upgradeUsed = -57;
 
 /// - Name: capacitorPeakDeltaPercentage
 /// - High is good: True
 const int capacitorPeakDeltaPercentage = -6;
 
+/// - Name: capacitorBoost
+/// - High is good: True
+const int capacitorBoost = -7;
+
+/// - Name: capacitorPeakLoadWithBoost
+/// - High is good: True
+const int capacitorPeakLoadWithBoost = -8;
+
 /// - Name: capacitorDepletesIn
 /// - High is good: True
-const int capacitorDepletesIn = -7;
-
-/// - Name: chargeAmount
-/// - High is good: True
-const int chargeAmount = -8;
-
-/// - Name: cpuFree
-/// - High is good: True
-const int cpuFree = -9;
+const int capacitorDepletesIn = -9;
 

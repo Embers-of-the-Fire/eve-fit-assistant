@@ -1,3 +1,7 @@
+param (
+    [switch] $Native
+)
+
 $original = Get-Location
 
 try {
@@ -12,8 +16,10 @@ try {
     }
     $out_dir = Join-Path $current "out"
 
-    Write-Host "Cleaning up previous conversion..."
-    Remove-Item -Path $out_dir -Recurse -Force -ErrorAction SilentlyContinue
+    if (!$Native) {
+        Write-Host "Cleaning up previous conversion..."
+        Remove-Item -Path $out_dir -Recurse -Force -ErrorAction SilentlyContinue
+    }
     
     $index_path = Join-Path $current "resfileindex.txt"
     $index_cache = Join-Path $current "index-cache"
@@ -22,7 +28,10 @@ try {
     $uv = Get-Command -Name "uv.exe" -ErrorAction Stop
     $convert_dir = Join-Path $current "convert"
     $convert_script = Join-Path $convert_dir "run.py"
-    & $uv run $convert_script $fsd_dir $index_path $patches $out_dir $index_cache
+    
+    if (!$Native) {
+        & $uv run $convert_script $fsd_dir $index_path $patches $out_dir $index_cache
+    }
     
     Write-Host 'Executing `eve-fit-os` converters...'
     

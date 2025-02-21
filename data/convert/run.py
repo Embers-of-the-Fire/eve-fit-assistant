@@ -19,6 +19,7 @@ import convert_implant_group
 import convert_unit
 import convert_attribute
 import convert_type_skills
+import convert_damage_profile
 
 if not __name__ == "__main__":
     exit(0)
@@ -59,6 +60,7 @@ def convert(fsd_dir, resfileindex, patch_dir, out_dir, index_cache):
         convert_implant_group,
         convert_attribute,
         convert_type_skills,
+        convert_damage_profile,
     ]
 
     for module in modules:

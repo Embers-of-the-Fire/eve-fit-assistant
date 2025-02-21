@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from logging import warning
 from os import PathLike
 import csv
 import os
@@ -73,10 +74,18 @@ class ResfileIndexCache:
         if key in self.cached:
             return key_dir
         url = self.resfileindex[key]
-        req = requests.get(f"https://resources.eveonline.com/{url}")
-        with open(key_dir, "wb") as f:
-            f.write(req.content)
-        return key_dir
+        try:
+            req = requests.get(f"https://resources.eveonline.com/{url}")
+            with open(key_dir, "wb") as f:
+                f.write(req.content)
+            return key_dir
+        except requests.exceptions.RequestException as e:
+            warning(f"Unable to download file: {e}")
+            try:
+                with open(key_dir, "rb") as f:
+                    return f.read()
+            except FileNotFoundError as e2:
+                raise ExceptionGroup("Failed to download resfile", [e, e2])
 
     @staticmethod
     def _read_resfile_index(resfile_index_file) -> dict[str, str]:

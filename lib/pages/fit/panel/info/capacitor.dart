@@ -36,7 +36,7 @@ List<Text> _getCapacitorTextGroup(ItemProxy hull) {
         capacity: cap, targetRechargeRage: capPeakUsage, rechargeTime: capRechargeRate);
 
     texts.add(Text(
-      '${capPeakDelta.toStringAsFixed(1)}% 稳定',
+      '${capPeakDelta.min(100).toStringAsFixed(1)}% 稳定',
       style: const TextStyle(color: Colors.green),
     ));
   }
