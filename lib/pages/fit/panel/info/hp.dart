@@ -266,10 +266,10 @@ class _RepairTable extends StatelessWidget {
             Text('${(hullRepair).toStringAsFixed(1)} /s'),
           ]),
           const TableRow(children: [
-            Image(image: capacitorChargeImage, height: 32),
-            Image(image: repairShieldImage, height: 32),
-            Image(image: repairArmorImage, height: 32),
-            Image(image: repairHullImage, height: 32),
+            Image(image: remoteCapacitorImage, height: 32),
+            Image(image: remoteShieldImage, height: 32),
+            Image(image: remoteArmorImage, height: 32),
+            Image(image: remoteHullImage, height: 32),
           ]),
           TableRow(children: [
             Text('${(remoteCapacitor).toStringAsFixed(1)} GJ/s'),

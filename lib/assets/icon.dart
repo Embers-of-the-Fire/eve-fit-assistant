@@ -84,3 +84,11 @@ const AssetImage subsystemCorePlaceholderImage =
 
 const AssetImage subsystemPropulsionPlaceholderImage =
     AssetImage('assets/icon/subsystem-propulsion-placeholder.png');
+
+const AssetImage remoteCapacitorImage = AssetImage('assets/icon/remote-capacitor.png');
+
+const AssetImage remoteShieldImage = AssetImage('assets/icon/remote-shield.png');
+
+const AssetImage remoteArmorImage = AssetImage('assets/icon/remote-armor.png');
+
+const AssetImage remoteHullImage = AssetImage('assets/icon/remote-hull.png');
