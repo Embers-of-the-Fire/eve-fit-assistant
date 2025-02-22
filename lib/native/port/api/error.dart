@@ -43,6 +43,11 @@ sealed class ErrorKey with _$ErrorKey {
   const factory ErrorKey.incompatibleShipType({
     required Int32List expected,
   }) = ErrorKey_IncompatibleShipType;
+
+  const factory ErrorKey.incompatibleRigSize({
+    required int expected,
+    required int actual,
+  }) = ErrorKey_IncompatibleRigSize;
 }
 
 @freezed

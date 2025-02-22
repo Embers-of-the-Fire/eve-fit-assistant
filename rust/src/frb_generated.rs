@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.8.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1922902882;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1740717091;
 
 // Section: executor
 
@@ -394,6 +394,37 @@ fn wire__crate__api__data__EveDatabase_init_impl(
                     })(),
                 )
             }
+        },
+    )
+}
+fn wire__crate__api__validate__pre_validate__rig_size__RIG_SIZE_ATTR_ID_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "RIG_SIZE_ATTR_ID",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::pre_validate::rig_size::RIG_SIZE_ATTR_ID,
+                )?;
+                Ok(output_ok)
+            })())
         },
     )
 }
@@ -759,6 +790,14 @@ impl SseDecode for crate::api::error::ErrorKey {
                 let mut var_expected = <Vec<i32>>::sse_decode(deserializer);
                 return crate::api::error::ErrorKey::IncompatibleShipType {
                     expected: var_expected,
+                };
+            }
+            6 => {
+                let mut var_expected = <u8>::sse_decode(deserializer);
+                let mut var_actual = <u8>::sse_decode(deserializer);
+                return crate::api::error::ErrorKey::IncompatibleRigSize {
+                    expected: var_expected,
+                    actual: var_actual,
                 };
             }
             _ => {
@@ -1232,8 +1271,8 @@ fn pde_ffi_dispatcher_primary_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         11 => wire__crate__api__data__EveDatabase_init_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        16 => {
+        16 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        17 => {
             wire__crate__api__proxy__modules_proxy_default_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -1298,9 +1337,14 @@ fn pde_ffi_dispatcher_sync_impl(
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__calculate_impl(ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__get_type_attr_impl(ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__validate__pre_validate__rig_size__RIG_SIZE_ATTR_ID_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        13 => wire__crate__api__calculate_impl(ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__get_type_attr_impl(ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1437,6 +1481,12 @@ impl flutter_rust_bridge::IntoDart for crate::api::error::ErrorKey {
             crate::api::error::ErrorKey::IncompatibleShipType { expected } => {
                 [5.into_dart(), expected.into_into_dart().into_dart()].into_dart()
             }
+            crate::api::error::ErrorKey::IncompatibleRigSize { expected, actual } => [
+                6.into_dart(),
+                expected.into_into_dart().into_dart(),
+                actual.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
             _ => {
                 unimplemented!("");
             }
@@ -1819,6 +1869,11 @@ impl SseEncode for crate::api::error::ErrorKey {
             crate::api::error::ErrorKey::IncompatibleShipType { expected } => {
                 <i32>::sse_encode(5, serializer);
                 <Vec<i32>>::sse_encode(expected, serializer);
+            }
+            crate::api::error::ErrorKey::IncompatibleRigSize { expected, actual } => {
+                <i32>::sse_encode(6, serializer);
+                <u8>::sse_encode(expected, serializer);
+                <u8>::sse_encode(actual, serializer);
             }
             _ => {
                 unimplemented!("");

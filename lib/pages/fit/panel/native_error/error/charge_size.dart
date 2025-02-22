@@ -11,13 +11,13 @@ class IncompatibleChargeSize extends StatelessWidget {
         leading: _errorIcon,
         title: const Text('弹药尺寸不匹配'),
         subtitle: Text(
-          '期望尺寸: ${_getChargeName(expected)}\n'
-          '实际尺寸: ${_getChargeName(actual)}',
+          '期望尺寸: ${getSizeName(expected)}\n'
+          '实际尺寸: ${getSizeName(actual)}',
         ),
       );
 }
 
-String _getChargeName(int size) => switch (size) {
+String getSizeName(int size) => switch (size) {
       1 => '小型',
       2 => '中型',
       3 => '大型',

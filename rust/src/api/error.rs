@@ -35,6 +35,7 @@ pub enum ErrorKey {
     // slot fit target
     IncompatibleShipGroup { expected: Vec<i32> },
     IncompatibleShipType { expected: Vec<i32> },
+    IncompatibleRigSize { expected: u8, actual: u8 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

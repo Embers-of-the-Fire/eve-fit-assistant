@@ -16,6 +16,7 @@ import 'api/schema.dart';
 import 'api/simple.dart';
 import 'api/validate/post_validate/charge.dart';
 import 'api/validate/pre_validate/fit_target.dart';
+import 'api/validate/pre_validate/rig_size.dart';
 import 'api/validate/pre_validate/slot_num.dart';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart' if (dart.library.js_interop) 'frb_generated.web.dart';
@@ -75,7 +76,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.8.0';
 
   @override
-  int get rustContentHash => -1922902882;
+  int get rustContentHash => 1740717091;
 
   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'rust_lib_eve_fit_assistant',
@@ -110,6 +111,8 @@ abstract class RustLibApi extends BaseApi {
       required List<int> dogmaEffectBuffer,
       required List<int> typeDogmaBuffer,
       required List<int> typesBuffer});
+
+  int crateApiValidatePreValidateRigSizeRigSizeAttrId();
 
   CalculateOutput crateApiCalculate({required EveDatabase db, required Fit fit});
 
@@ -393,6 +396,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  int crateApiValidatePreValidateRigSizeRigSizeAttrId() {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_i_32,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiValidatePreValidateRigSizeRigSizeAttrIdConstMeta,
+      argValues: [],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiValidatePreValidateRigSizeRigSizeAttrIdConstMeta =>
+      const TaskConstMeta(
+        debugName: "RIG_SIZE_ATTR_ID",
+        argNames: [],
+      );
+
+  @override
   CalculateOutput crateApiCalculate({required EveDatabase db, required Fit fit}) {
     return handler.executeSync(SyncTask(
       callFfi: () {
@@ -400,7 +426,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
             db, serializer);
         sse_encode_box_autoadd_fit(fit, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_calculate_output,
@@ -425,7 +451,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
             db, serializer);
         sse_encode_i_32(typeId, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_Map_i_32_f_64,
@@ -448,7 +474,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(name, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -470,7 +496,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15, port: port_);
+        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -492,7 +518,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16, port: port_);
+        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_modules_proxy,
@@ -682,6 +708,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 5:
         return ErrorKey_IncompatibleShipType(
           expected: dco_decode_list_prim_i_32_strict(raw[1]),
+        );
+      case 6:
+        return ErrorKey_IncompatibleRigSize(
+          expected: dco_decode_u_8(raw[1]),
+          actual: dco_decode_u_8(raw[2]),
         );
       default:
         throw Exception("unreachable");
@@ -1157,6 +1188,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 5:
         var var_expected = sse_decode_list_prim_i_32_strict(deserializer);
         return ErrorKey_IncompatibleShipType(expected: var_expected);
+      case 6:
+        var var_expected = sse_decode_u_8(deserializer);
+        var var_actual = sse_decode_u_8(deserializer);
+        return ErrorKey_IncompatibleRigSize(expected: var_expected, actual: var_actual);
       default:
         throw UnimplementedError('');
     }
@@ -1694,6 +1729,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case ErrorKey_IncompatibleShipType(expected: final expected):
         sse_encode_i_32(5, serializer);
         sse_encode_list_prim_i_32_strict(expected, serializer);
+      case ErrorKey_IncompatibleRigSize(expected: final expected, actual: final actual):
+        sse_encode_i_32(6, serializer);
+        sse_encode_u_8(expected, serializer);
+        sse_encode_u_8(actual, serializer);
     }
   }
 

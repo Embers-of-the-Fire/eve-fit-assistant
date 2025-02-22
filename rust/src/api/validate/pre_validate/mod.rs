@@ -4,9 +4,11 @@ use crate::api::{error::SlotInfo, schema};
 
 pub(crate) mod slot_num;
 pub(crate) mod fit_target;
+pub(crate) mod rig_size;
 
 #[flutter_rust_bridge::frb(ignore)]
 pub(crate) fn pre_validate(fit: &schema::Fit, info: &impl InfoProvider, err: &mut Vec<SlotInfo>) {
     slot_num::validate_slot_num(fit, info, err);
     fit_target::validate_fit_target(fit, info, err);
+    rig_size::validate_rig_size(fit, info, err);
 }
