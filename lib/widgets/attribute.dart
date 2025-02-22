@@ -61,7 +61,11 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),),
+                Expanded(
+                    child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+                )),
                 Text(
                   valueString,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
@@ -102,7 +106,9 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal)),
+                Expanded(
+                    child: Text(title,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal))),
                 Text(valueString,
                     style: TextStyle(
                       fontSize: 16,
