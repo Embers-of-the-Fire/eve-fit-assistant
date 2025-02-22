@@ -8,6 +8,6 @@ Future<void> initStorage() async {
   await getFitFullDir(create: true);
 
   await getCharacterDir(create: true);
-  await getCharacterBriefFile(create: true);
+  await getCharacterBriefFile();
   await getCharacterFullDir(create: true);
 }

@@ -25,6 +25,41 @@ class AssetPage extends StatelessWidget {
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
+                TextButton(
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                              title: const Text('清除本地存储'),
+                              content: const Text('确定要清除本地存储吗？\n这将会初始化所有本地存储数据。'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(false);
+                                  },
+                                  child: const Text('取消'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(true);
+                                  },
+                                  child: const Text('确定'),
+                                ),
+                              ],
+                            ));
+                    if (confirm == null || confirm == false) return;
+                    await clearStorage();
+                  },
+                  child: Text(
+                    '清除本地存储',
+                    style: TextStyle(
+                      color: Colors.red.shade600,
+                      fontSize: 18,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.red.shade600,
+                    ),
+                  ),
+                ),
                 ListTile(
                   leading: const Icon(ExternalIcon.cubes),
                   title: const Text('静态资产版本'),

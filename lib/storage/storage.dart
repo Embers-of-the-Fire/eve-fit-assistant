@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:eve_fit_assistant/native/glue/fit_engine.dart';
 import 'package:eve_fit_assistant/storage/character/storage.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
+import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/storage/version.dart';
 import 'package:eve_fit_assistant/widgets/loading.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -61,7 +65,7 @@ class GlobalStorage {
     // await EasyLoading.show(status: '初始化');
     GlobalLoading().add(_storageLoadingKey, '初始化');
     final version = await getVersionInfo();
-    _version = await executeMigrate(version);
+    _version = await executeMigrate(version) ?? VersionInfo.currentVersion;
     _packageInfo = await PackageInfo.fromPlatform();
     await _static.init();
     await _ship.init();
@@ -72,4 +76,13 @@ class GlobalStorage {
     GlobalLoading().dismiss(_storageLoadingKey);
     ref.read(globalStorageNotifierProvider.notifier).initialized();
   }
+}
+
+Future<void> clearStorage() async {
+  final dir = await getStorageDir();
+  if (await dir.exists()) {
+    await dir.delete(recursive: true);
+  }
+  await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+  exit(0);
 }

@@ -13,25 +13,19 @@ part 'migrate_1_to_2.dart';
 
 const String _migrateLoadingKey = 'migrate';
 
-Future<VersionInfo> executeMigrate(VersionInfo? version) async {
+Future<VersionInfo?> executeMigrate(VersionInfo? version) async {
   GlobalLoading().add(_migrateLoadingKey, '迁移旧版数据');
   if (version == null) {
     await initStorage();
     await createVersionFile();
-    return VersionInfo.currentVersion;
-  }
-
-  if (version.needsUpgrade()) {
+  } else if (version.needsUpgrade()) {
     throw Exception('Upgrade not supported yet');
-  }
-
-  if (version.needsMigration()) {
+  } else if (version.needsMigration()) {
     await initStorage();
     for (var i = version.version; i < VersionInfo.currentVersion.version; i++) {
       await _migrations[i]!();
     }
     await createVersionFile();
-    return VersionInfo.currentVersion;
   }
 
   GlobalLoading().dismiss(_migrateLoadingKey);

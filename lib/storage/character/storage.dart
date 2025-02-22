@@ -37,7 +37,7 @@ class CharacterStorage {
   }
 
   Future<void> _loadBrief() async {
-    final file = await getCharacterBriefFile(create: false);
+    final file = await getCharacterBriefFile();
     if (!await file.exists()) {
       _briefRecords.write[_predefinedAll5.id] = CharacterBrief.fromCharacter(_predefinedAll5);
       _briefRecords.write[_predefinedAll0.id] = CharacterBrief.fromCharacter(_predefinedAll0);
@@ -61,7 +61,7 @@ class CharacterStorage {
 
   Future<void> _saveBrief() async {
     final records = _briefRecords.read.toJson();
-    final file = await getCharacterBriefFile(create: true);
+    final file = await getCharacterBriefFile();
     await file.writeAsString(jsonEncode(records));
   }
 

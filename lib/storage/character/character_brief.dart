@@ -44,7 +44,7 @@ class CharacterBrief {
     );
 
   static Future<Map<String, CharacterBrief>> read() async {
-    final briefRecord = await getCharacterBriefFile(create: true);
+    final briefRecord = await getCharacterBriefFile();
     final Map<String, CharacterBrief> records = {};
     final data = jsonDecode(await briefRecord.readAsString());
     final rec = Map<String, dynamic>.from(data);
@@ -57,12 +57,8 @@ class CharacterBrief {
   Map<String, dynamic> toJson() => _$CharacterBriefToJson(this);
 }
 
-Future<File> getCharacterBriefFile({bool create = false}) async {
-  final storageDir = await getCharacterDir(create: create);
+Future<File> getCharacterBriefFile() async {
+  final storageDir = await getCharacterDir(create: true);
   final record = File('${storageDir.path}/brief.json');
-  if (create && !record.existsSync()) {
-    await record.create();
-    await record.writeAsString('{}');
-  }
   return record;
 }
