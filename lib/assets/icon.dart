@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 const AssetImage capacitorChargeImage = AssetImage('assets/icon/capacitor-charge.png');
 
-const AssetImage weaponImage = AssetImage('assets/icon/weapon.png');
+const AssetImage weaponTurretImage = AssetImage('assets/icon/weapon-turret.png');
+
+const AssetImage damageAlphaImage = AssetImage('assets/icon/damage-alpha.png');
 
 const AssetImage hpShieldImage = AssetImage('assets/icon/hp-shield.png');
 

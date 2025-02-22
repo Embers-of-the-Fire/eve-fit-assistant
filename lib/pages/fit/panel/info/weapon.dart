@@ -6,33 +6,74 @@ class Weapon extends StatelessWidget {
   const Weapon({super.key, required this.ship});
 
   @override
-  Widget build(BuildContext context) => ListTile(
-      minTileHeight: 0,
-      leading: const Image(image: weaponImage, height: 28),
-      title: DefaultTextStyle(
-        style: const TextStyle(fontSize: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: _getWeaponTextGroup(ship.hull),
-        ),
-      ));
+  Widget build(BuildContext context) => Column(children: [
+        ListTile(
+            minTileHeight: 0,
+            leading: const Image(image: damageAlphaImage, height: 28),
+            title: DefaultTextStyle(
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.end,
+              child: _getWeaponText(ship.hull),
+            )),
+        ListTile(
+            minTileHeight: 0,
+            leading: const Image(image: weaponTurretImage, height: 28),
+            title: DefaultTextStyle(
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.end,
+              child: _getWeaponNoDroneText(ship.hull),
+            )),
+        ListTile(
+            minTileHeight: 0,
+            leading: const Image(image: droneImage, height: 28),
+            title: DefaultTextStyle(
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.end,
+              child: _getDroneText(ship.hull),
+            )),
+      ]);
 }
 
-List<Text> _getWeaponTextGroup(ItemProxy hull) {
-  final List<Text> texts = [];
+Text _getWeaponText(ItemProxy hull) {
+  String texts = '';
 
   final dps = hull.attributes[damagePerSecondWithoutReload] ?? 0.0;
-  texts.add(Text('${dps.toStringAsFixed(1)}/s'));
+  texts += '${dps.toStringAsFixed(1)}/s';
 
-  texts.add(const Text(' | '));
+  texts += ' | ';
 
   final dpsWithReload = hull.attributes[damagePerSecondWithReload] ?? 0.0;
-  texts.add(Text('${dpsWithReload.toStringAsFixed(1)}/s'));
+  texts += '${dpsWithReload.toStringAsFixed(1)}/s';
 
-  texts.add(const Text(' | '));
+  return Text(texts);
+}
+
+Text _getWeaponNoDroneText(ItemProxy hull) {
+  String texts = '';
+
+  final drone = hull.attributes[droneDamagePerSecond] ?? 0.0;
+
+  final dps = hull.attributes[damagePerSecondWithoutReload] ?? 0.0;
+  texts += '${(dps - drone).toStringAsFixed(1)}/s';
+
+  texts += ' | ';
+
+  final dpsWithReload = hull.attributes[damagePerSecondWithReload] ?? 0.0;
+  texts += '${(dpsWithReload - drone).toStringAsFixed(1)}/s';
+
+  texts += ' | ';
 
   final dmg = hull.attributes[damageAlpha] ?? 0.0;
-  texts.add(Text(dmg.toStringAsFixed(0)));
+  texts += dmg.toStringAsFixed(0);
 
-  return texts;
+  return Text(texts);
+}
+
+Text _getDroneText(ItemProxy hull) {
+  String text = '';
+
+  final dps = hull.attributes[droneDamagePerSecond] ?? 0.0;
+  text += '${dps.toStringAsFixed(1)}/s';
+
+  return Text(text);
 }

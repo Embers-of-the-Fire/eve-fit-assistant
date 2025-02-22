@@ -182,7 +182,7 @@ class _HpTable extends ConsumerWidget {
             ),
           ]),
           TableRow(children: [
-            const Image(image: weaponImage, height: 28),
+            const Image(image: weaponTurretImage, height: 28),
             InkWell(
               onTap: () async {
                 final profile = await showDamageProfileDialog(context);
