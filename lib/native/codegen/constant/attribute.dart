@@ -170,49 +170,65 @@ const int armorRepairRate = -47;
 /// - High is good: True
 const int armorEffectiveRepairRate = -48;
 
-/// - Name: hullRepairRate
+/// - Name: armorRemoteRepairRate
 /// - High is good: True
-const int hullRepairRate = -49;
+const int armorRemoteRepairRate = -49;
 
 /// - Name: capacitorPeakDelta
 /// - High is good: True
 const int capacitorPeakDelta = -5;
 
+/// - Name: hullRepairRate
+/// - High is good: True
+const int hullRepairRate = -50;
+
 /// - Name: hullEffectiveRepairRate
 /// - High is good: True
-const int hullEffectiveRepairRate = -50;
+const int hullEffectiveRepairRate = -51;
+
+/// - Name: hullRemoteRepairRate
+/// - High is good: True
+const int hullRemoteRepairRate = -52;
 
 /// - Name: shieldBoostRate
 /// - High is good: True
-const int shieldBoostRate = -51;
+const int shieldBoostRate = -53;
 
 /// - Name: shieldEffectiveBoostRate
 /// - High is good: True
-const int shieldEffectiveBoostRate = -52;
+const int shieldEffectiveBoostRate = -54;
 
 /// - Name: passiveShieldRechargeRate
 /// - High is good: True
-const int passiveShieldRechargeRate = -53;
+const int passiveShieldRechargeRate = -55;
 
 /// - Name: passiveShieldEffectiveRechargeRate
 /// - High is good: True
-const int passiveShieldEffectiveRechargeRate = -54;
+const int passiveShieldEffectiveRechargeRate = -56;
+
+/// - Name: shieldRemoteBoostRate
+/// - High is good: True
+const int shieldRemoteBoostRate = -57;
+
+/// - Name: remoteCapacitorTransmitterRate
+/// - High is good: True
+const int remoteCapacitorTransmitterRate = -58;
 
 /// - Name: scanStrength
 /// - High is good: True
-const int scanStrength = -55;
-
-/// - Name: thousand
-/// - High is good: True
-const int thousand = -56;
-
-/// - Name: upgradeUsed
-/// - High is good: True
-const int upgradeUsed = -57;
+const int scanStrength = -59;
 
 /// - Name: capacitorPeakDeltaPercentage
 /// - High is good: True
 const int capacitorPeakDeltaPercentage = -6;
+
+/// - Name: thousand
+/// - High is good: True
+const int thousand = -60;
+
+/// - Name: upgradeUsed
+/// - High is good: True
+const int upgradeUsed = -61;
 
 /// - Name: capacitorBoost
 /// - High is good: True
@@ -225,3 +241,4 @@ const int capacitorPeakLoadWithBoost = -8;
 /// - Name: capacitorDepletesIn
 /// - High is good: True
 const int capacitorDepletesIn = -9;
+

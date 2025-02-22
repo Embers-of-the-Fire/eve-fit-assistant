@@ -242,6 +242,11 @@ class _RepairTable extends StatelessWidget {
       hullRepair = hull.attributes[hullRepairRate] ?? 0.0;
     }
 
+    final double remoteCapacitor = hull.attributes[remoteCapacitorTransmitterRate] ?? 0.0;
+    final double remoteShield = hull.attributes[shieldRemoteBoostRate] ?? 0.0;
+    final double remoteArmor = hull.attributes[armorRemoteRepairRate] ?? 0.0;
+    final double remoteHull = hull.attributes[hullRemoteRepairRate] ?? 0.0;
+
     return DefaultTextStyle(
       style: const TextStyle(fontSize: 16),
       textAlign: TextAlign.center,
@@ -259,6 +264,18 @@ class _RepairTable extends StatelessWidget {
             Text('${(shieldRepair).toStringAsFixed(1)} /s'),
             Text('${(armorRepair).toStringAsFixed(1)} /s'),
             Text('${(hullRepair).toStringAsFixed(1)} /s'),
+          ]),
+          const TableRow(children: [
+            Image(image: capacitorChargeImage, height: 32),
+            Image(image: repairShieldImage, height: 32),
+            Image(image: repairArmorImage, height: 32),
+            Image(image: repairHullImage, height: 32),
+          ]),
+          TableRow(children: [
+            Text('${(remoteCapacitor).toStringAsFixed(1)} GJ/s'),
+            Text('${(remoteShield).toStringAsFixed(1)} /s'),
+            Text('${(remoteArmor).toStringAsFixed(1)} /s'),
+            Text('${(remoteHull).toStringAsFixed(1)} /s'),
           ]),
         ],
       ),

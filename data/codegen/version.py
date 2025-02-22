@@ -14,4 +14,4 @@ def codegen(_1, _2, version_file: Path, out_dir: Path):
     with open(out_file, "w+", encoding="utf-8") as f:
         f.write("import 'package:eve_fit_assistant/storage/static/storage.dart';\n\n")
         f.write("/// Bundled static data version\n")
-        f.write(f"const StaticVersionInfo dataVersion = StaticVersionInfo(createTime: {time});\n")
+        f.write(f"const StaticVersionInfo bundledStaticVersion = StaticVersionInfo(createTime: {time});\n")
