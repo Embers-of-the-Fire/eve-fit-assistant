@@ -29,7 +29,7 @@ class ShipSelectPage extends StatelessWidget {
             if (context.mounted) Navigator.pop(context);
             final fit = await GlobalStorage().ship.createFit(fitName, id);
             if (context.mounted) {
-              intoFitPage(context, fit.brief.id);
+              await intoFitPage(context, fit.brief.id);
             }
           },
           onLongPress: (id) => showTypeInfoPage(context, typeID: id),

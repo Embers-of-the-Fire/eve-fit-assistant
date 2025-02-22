@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:eve_fit_assistant/native/codegen/constant/character.dart';
 import 'package:eve_fit_assistant/native/port/api/error.dart';
+import 'package:eve_fit_assistant/storage/static/damage_profile.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
@@ -188,7 +189,7 @@ class Fit {
   final int shipID;
   String characterID;
 
-  final DamageProfile damageProfile;
+  DamageProfile damageProfile;
 
   final List<SlotItem?> high;
   final List<SlotItem?> med;
@@ -257,21 +258,6 @@ class Fit {
   factory Fit.fromJson(Map<String, dynamic> json) => _$FitFromJson(json);
 
   Map<String, dynamic> toJson() => _$FitToJson(this);
-}
-
-@freezed
-class DamageProfile with _$DamageProfile {
-  const factory DamageProfile({
-    required double em,
-    required double thermal,
-    required double kinetic,
-    required double explosive,
-  }) = _DamageProfile;
-
-  factory DamageProfile.fromJson(Map<String, dynamic> json) => _$DamageProfileFromJson(json);
-
-  static const defaultProfile =
-      DamageProfile(em: 0.25, thermal: 0.25, kinetic: 0.25, explosive: 0.25);
 }
 
 @freezed

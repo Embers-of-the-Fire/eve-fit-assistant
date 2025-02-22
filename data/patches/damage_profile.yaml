@@ -1,0 +1,337 @@
+## This file contains pre-defined damage profiles.
+##
+## Schema:
+##
+## ```yaml
+## - name: <name>
+##   profiles:
+##     - name: <name>
+##       em: <em>
+##       thermal: <thermal>
+##       kinetic: <kinetic>
+##       explosive: <explosive>
+## ```
+
+- name: 通用
+  profiles:
+    - name: 均匀
+      em: 0.25
+      thermal: 0.25
+      kinetic: 0.25
+      explosive: 0.25
+    - name: 电磁
+      em: 1
+      thermal: 0
+      kinetic: 0
+      explosive: 0
+    - name: 热能
+      em: 0
+      thermal: 1
+      kinetic: 0
+      explosive: 0
+    - name: 动能
+      em: 0
+      thermal: 0
+      kinetic: 1
+      explosive: 0
+    - name: 爆炸
+      em: 0
+      thermal: 0
+      kinetic: 0
+      explosive: 1
+
+- name: 频率晶体
+  profiles:
+    - name: "[T2] 极光"
+      em: 0.625
+      thermal: 0.375
+      kinetic: 0
+      explosive: 0
+    - name: "[T2] 灼烧"
+      em: 0.8181
+      thermal: 0.1818
+      kinetic: 0
+      explosive: 0
+    - name: 射频
+      em: 1
+      thermal: 0
+      kinetic: 0
+      explosive: 0
+    - name: 微波
+      em: 0.6667
+      thermal: 0.3333
+      kinetic: 0
+      explosive: 0
+    - name: 红外
+      em: 0.7143
+      thermal: 0.2857
+      kinetic: 0
+      explosive: 0
+    - name: 标准
+      em: 0.625
+      thermal: 0.375
+      kinetic: 0
+      explosive: 0
+    - name: 紫外
+      em: 0.6667
+      thermal: 0.3333
+      kinetic: 0
+      explosive: 0
+    - name: X射线
+      em: 0.6
+      thermal: 0.4
+      kinetic: 0
+      explosive: 0
+    - name: 伽马
+      em: 0.6364
+      thermal: 0.3636
+      kinetic: 0
+      explosive: 0
+    - name: 多频
+      em: 0.5833
+      thermal: 0.4167
+      kinetic: 0
+      explosive: 0
+    - name: "[T2] 微光"
+      em: 0.5
+      thermal: 0.5
+      kinetic: 0
+      explosive: 0
+    - name: "[T2] 爆燃"
+      em: 0.5
+      thermal: 0.5
+      kinetic: 0
+      explosive: 0
+
+- name: 异种等离子
+  profiles:
+    - name: "[T2] 奥秘"
+      em: 0
+      thermal: 0.6667
+      kinetic: 0
+      explosive: 0.3333
+    - name: 介子
+      em: 0
+      thermal: 0.6136
+      kinetic: 0
+      explosive: 0.3864
+    - name: 重子
+      em: 0
+      thermal: 0.6034
+      kinetic: 0
+      explosive: 0.3966
+    - name: 四重子
+      em: 0
+      thermal: 0.6935
+      kinetic: 0
+      explosive: 0.3065
+    - name: "[T2] 神秘"
+      em: 0
+      thermal: 0.5844
+      kinetic: 0
+      explosive: 0.4156
+
+- name: 电容包
+  profiles:
+    - name: 超级狙击
+      em: 0.5031
+      thermal: 0
+      kinetic: 0.4969
+      explosive: 0
+    - name: 梅斯流
+      em: 0.7267
+      thermal: 0
+      kinetic: 0.2733
+      explosive: 0
+    - name: 瞬闪
+      em: 0.2688
+      thermal: 0
+      kinetic: 0.7312
+      explosive: 0
+    - name: 爆发
+      em: 0.2348
+      thermal: 0
+      kinetic: 0.7652
+      explosive: 0
+    - name: 加瓦波
+      em: 0.766
+      thermal: 0
+      kinetic: 0.234
+      explosive: 0
+    - name: 超级电击
+      em: 0.5147
+      thermal: 0
+      kinetic: 0.4853
+      explosive: 0
+
+- name: 混合弹药
+  profiles:
+    - name: "[T2] 钉刺"
+      em: 0
+      thermal: 0.5
+      kinetic: 0.5
+      explosive: 0
+    - name: "[T2] 虚空"
+      em: 0
+      thermal: 0.5455
+      kinetic: 0.4545
+      explosive: 0
+    - name: 铁质
+      em: 0
+      thermal: 0.4
+      kinetic: 0.6
+      explosive: 0
+    - name: 钨质
+      em: 0
+      thermal: 0.3333
+      kinetic: 0.6667
+      explosive: 0
+    - name: 铱质
+      em: 0
+      thermal: 0.4286
+      kinetic: 0.5714
+      explosive: 0
+    - name: 铅质
+      em: 0
+      thermal: 0.375
+      kinetic: 0.625
+      explosive: 0
+    - name: 钍质
+      em: 0
+      thermal: 0.4444
+      kinetic: 0.5556
+      explosive: 0
+    - name: 钼质
+      em: 0
+      thermal: 0.4
+      kinetic: 0.6
+      explosive: 0
+    - name: 锰质
+      em: 0
+      thermal: 0.4545
+      kinetic: 0.5455
+      explosive: 0
+    - name: 反物质
+      em: 0
+      thermal: 0.4167
+      kinetic: 0.5833
+      explosive: 0
+    - name: "[T2] 标枪"
+      em: 0
+      thermal: 0.5714
+      kinetic: 0.4286
+      explosive: 0
+    - name: "[T2] 涅槃"
+      em: 0
+      thermal: 0.5
+      kinetic: 0.5
+      explosive: 0
+
+- name: 射弹弹药
+  profiles:
+    - name: "[T2] 战栗"
+      em: 0
+      thermal: 0
+      kinetic: 0.375
+      explosive: 0.625
+    - name: "[T2] 雷暴"
+      em: 0
+      thermal: 0
+      kinetic: 0.4545
+      explosive: 0.5455
+    - name: 碳铅弹
+      em: 0
+      thermal: 0
+      kinetic: 0.8
+      explosive: 0.2
+    - name: 核芯弹
+      em: 0
+      thermal: 0
+      kinetic: 0.2
+      explosive: 0.8
+    - name: 质子弹
+      em: 0.6
+      thermal: 0
+      kinetic: 0.4
+      explosive: 0
+    - name: 硬钼弹
+      em: 0
+      thermal: 0.375
+      kinetic: 0.25
+      explosive: 0.375
+    - name: 钛合金萨博弹
+      em:  0
+      thermal: 0
+      kinetic: 0.75
+      explosive: 0.25
+    - name: 电磁脉冲弹
+      em: 0.75
+      thermal: 0
+      kinetic: 0.0833
+      explosive: 0.1667
+    - name: 定相等离子弹
+      em: 0
+      thermal: 0.8333
+      kinetic: 0.1667
+      explosive: 0
+    - name: 聚变弹
+      em: 0
+      thermal: 00
+      kinetic: 0.1667
+      explosive: 0.8333
+    - name: "[T2] 地震"
+      em: 0
+      thermal: 0
+      kinetic: 0.3571
+      explosive: 0.6429
+    - name: "[T2] 冰雹"
+      em: 0
+      thermal: 0
+      kinetic: 0.215
+      explosive: 0.785
+
+- name: 导弹
+  profiles:
+    - name: 雷神
+      em: 1
+      thermal: 0
+      kinetic: 0
+      explosive: 0
+    - name: 炼狱
+      em: 0
+      thermal: 1
+      kinetic: 0
+      explosive: 0
+    - name: 鞭挞
+      em: 0
+      thermal: 0
+      kinetic: 1
+      explosive: 0
+    - name: 星爆
+      em: 0
+      thermal: 0
+      kinetic: 0
+      explosive: 1
+
+- name: 炸弹
+  profiles:
+    - name: 电子
+      em: 1
+      thermal: 0
+      kinetic: 0
+      explosive: 0
+    - name: 灼烧
+      em: 0
+      thermal: 1
+      kinetic: 0
+      explosive: 0
+    - name: 震荡
+      em: 0
+      thermal: 0
+      kinetic: 1
+      explosive: 0
+    - name: 榴霰
+      em: 0
+      thermal: 0
+      kinetic: 0
+      explosive: 1

@@ -1,0 +1,20 @@
+syntax = "proto2";
+
+package damage_profile;
+
+message DamageProfiles {
+    message DamageProfile {
+        required string name = 1;
+        required double em = 2;
+        required double explosive = 3;
+        required double kinetic = 4;
+        required double thermal = 5;
+    }
+
+    message DamageProfileGroup {
+        required string name = 1;
+        repeated DamageProfile profiles = 2;
+    }
+    
+    repeated DamageProfileGroup groups = 1;
+}

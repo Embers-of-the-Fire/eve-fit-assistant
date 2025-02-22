@@ -17,7 +17,7 @@ class InfoTab extends ConsumerWidget {
             Capacitor(ship: out),
             Weapon(ship: out),
             Resource(ship: out),
-            Hp(ship: out),
+            Hp(fitID: fitID, ship: out),
             Extra(ship: out),
           ],
         ),
