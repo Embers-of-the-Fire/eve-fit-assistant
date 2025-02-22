@@ -1,4 +1,5 @@
-enum UnitType {  /// - Name: Length
+enum UnitType {
+  /// - Name: Length
   /// - Display: m
   /// - Description: 米
   length(1),
@@ -95,17 +96,17 @@ enum UnitType {  /// - Name: Length
 
   /// - Name: Milliseconds
   /// - Display: s
-  /// - Description: 
+  /// - Description:
   milliseconds(101),
 
   /// - Name: Millimeters
   /// - Display: mm
-  /// - Description: 
+  /// - Description:
   millimeters(102),
 
   /// - Name: MegaPascals
-  /// - Display: 
-  /// - Description: 
+  /// - Display:
+  /// - Description:
   megaPascals(103),
 
   /// - Name: Multiplier
@@ -115,17 +116,17 @@ enum UnitType {  /// - Name: Length
 
   /// - Name: Percentage
   /// - Display: %
-  /// - Description: 
+  /// - Description:
   percentage(105),
 
   /// - Name: Teraflops
   /// - Display: tf
-  /// - Description: 
+  /// - Description:
   teraflops(106),
 
   /// - Name: MegaWatts
   /// - Display: MW
-  /// - Description: 
+  /// - Description:
   megaWatts(107),
 
   /// - Name: Inverse Absolute Percent
@@ -150,7 +151,7 @@ enum UnitType {  /// - Name: Length
 
   /// - Name: Hitpoints
   /// - Display: HP
-  /// - Description: 
+  /// - Description:
   hitpoints(113),
 
   /// - Name: capacitor units
@@ -160,12 +161,12 @@ enum UnitType {  /// - Name: Length
 
   /// - Name: groupID
   /// - Display: 组别ID
-  /// - Description: 
+  /// - Description:
   groupId(115),
 
   /// - Name: typeID
   /// - Display: 类别ID
-  /// - Description: 
+  /// - Description:
   typeId(116),
 
   /// - Name: Sizeclass
@@ -175,17 +176,17 @@ enum UnitType {  /// - Name: Length
 
   /// - Name: Ore units
   /// - Display: 矿石单位
-  /// - Description: 
+  /// - Description:
   oreUnits(118),
 
   /// - Name: attributeID
   /// - Display: 属性ID
-  /// - Description: 
+  /// - Description:
   attributeId(119),
 
   /// - Name: attributePoints
   /// - Display: 点
-  /// - Description: 
+  /// - Description:
   attributePoints(120),
 
   /// - Name: realPercent
@@ -194,8 +195,8 @@ enum UnitType {  /// - Name: Length
   realPercent(121),
 
   /// - Name: Fitting slots
-  /// - Display: 
-  /// - Description: 
+  /// - Display:
+  /// - Description:
   fittingSlots(122),
 
   /// - Name: trueTime
@@ -210,12 +211,12 @@ enum UnitType {  /// - Name: Length
 
   /// - Name: Newton
   /// - Display: N
-  /// - Description: 
+  /// - Description:
   newton(125),
 
   /// - Name: Light Year
   /// - Display: 光年
-  /// - Description: 
+  /// - Description:
   lightYear(126),
 
   /// - Name: Absolute Percent
@@ -229,7 +230,7 @@ enum UnitType {  /// - Name: Length
   droneBandwidth(128),
 
   /// - Name: Hours
-  /// - Display: 
+  /// - Display:
   /// - Description: 小时
   hours(129),
 
@@ -280,11 +281,11 @@ enum UnitType {  /// - Name: Length
 
   /// - Name: Sex
   /// - Display: 1=男性 2=中性 3=女性
-  /// - Description: 
+  /// - Description:
   sex(142),
 
   /// - Name: Datetime
-  /// - Display: 
+  /// - Display:
   /// - Description: 日期和时间
   datetime(143),
 
@@ -297,7 +298,6 @@ enum UnitType {  /// - Name: Length
   /// - Display: %
   /// - Description: 用于乘数，显示为 % 10 is +10% -10 is -10% 3.6 is +3.6%
   modifierRealPercent(205),
-
   ;
 
   final int id;
@@ -305,66 +305,66 @@ enum UnitType {  /// - Name: Length
   const UnitType(this.id);
 
   static UnitType? fromID(int id) => switch (id) {
-    1 => UnitType.length,
-    2 => UnitType.mass,
-    3 => UnitType.time,
-    4 => UnitType.electricCurrent,
-    5 => UnitType.temperature,
-    6 => UnitType.amountOfSubstance,
-    7 => UnitType.luminousIntensity,
-    8 => UnitType.area,
-    9 => UnitType.volume,
-    10 => UnitType.speed,
-    11 => UnitType.acceleration,
-    12 => UnitType.waveNumber,
-    13 => UnitType.massDensity,
-    14 => UnitType.specificVolume,
-    15 => UnitType.currentDensity,
-    16 => UnitType.magneticFieldStrength,
-    17 => UnitType.amountOfSubstanceConcentration,
-    18 => UnitType.luminance,
-    19 => UnitType.massFraction,
-    101 => UnitType.milliseconds,
-    102 => UnitType.millimeters,
-    103 => UnitType.megaPascals,
-    104 => UnitType.multiplier,
-    105 => UnitType.percentage,
-    106 => UnitType.teraflops,
-    107 => UnitType.megaWatts,
-    108 => UnitType.inverseAbsolutePercent,
-    109 => UnitType.modifierPercent,
-    111 => UnitType.inversedModifierPercent,
-    112 => UnitType.radiansPerSecond,
-    113 => UnitType.hitpoints,
-    114 => UnitType.capacitorUnits,
-    115 => UnitType.groupId,
-    116 => UnitType.typeId,
-    117 => UnitType.sizeclass,
-    118 => UnitType.oreUnits,
-    119 => UnitType.attributeId,
-    120 => UnitType.attributePoints,
-    121 => UnitType.realPercent,
-    122 => UnitType.fittingSlots,
-    123 => UnitType.trueTime,
-    124 => UnitType.modifierRelativePercent,
-    125 => UnitType.newton,
-    126 => UnitType.lightYear,
-    127 => UnitType.absolutePercent,
-    128 => UnitType.droneBandwidth,
-    129 => UnitType.hours,
-    133 => UnitType.money,
-    134 => UnitType.logisticalCapacity,
-    135 => UnitType.astronomicalUnit,
-    136 => UnitType.slot,
-    137 => UnitType.boolean,
-    138 => UnitType.units,
-    139 => UnitType.bonus,
-    140 => UnitType.level,
-    141 => UnitType.hardpoints,
-    142 => UnitType.sex,
-    143 => UnitType.datetime,
-    144 => UnitType.warpSpeed,
-    205 => UnitType.modifierRealPercent,
-    _ => null,
-  };
+        1 => UnitType.length,
+        2 => UnitType.mass,
+        3 => UnitType.time,
+        4 => UnitType.electricCurrent,
+        5 => UnitType.temperature,
+        6 => UnitType.amountOfSubstance,
+        7 => UnitType.luminousIntensity,
+        8 => UnitType.area,
+        9 => UnitType.volume,
+        10 => UnitType.speed,
+        11 => UnitType.acceleration,
+        12 => UnitType.waveNumber,
+        13 => UnitType.massDensity,
+        14 => UnitType.specificVolume,
+        15 => UnitType.currentDensity,
+        16 => UnitType.magneticFieldStrength,
+        17 => UnitType.amountOfSubstanceConcentration,
+        18 => UnitType.luminance,
+        19 => UnitType.massFraction,
+        101 => UnitType.milliseconds,
+        102 => UnitType.millimeters,
+        103 => UnitType.megaPascals,
+        104 => UnitType.multiplier,
+        105 => UnitType.percentage,
+        106 => UnitType.teraflops,
+        107 => UnitType.megaWatts,
+        108 => UnitType.inverseAbsolutePercent,
+        109 => UnitType.modifierPercent,
+        111 => UnitType.inversedModifierPercent,
+        112 => UnitType.radiansPerSecond,
+        113 => UnitType.hitpoints,
+        114 => UnitType.capacitorUnits,
+        115 => UnitType.groupId,
+        116 => UnitType.typeId,
+        117 => UnitType.sizeclass,
+        118 => UnitType.oreUnits,
+        119 => UnitType.attributeId,
+        120 => UnitType.attributePoints,
+        121 => UnitType.realPercent,
+        122 => UnitType.fittingSlots,
+        123 => UnitType.trueTime,
+        124 => UnitType.modifierRelativePercent,
+        125 => UnitType.newton,
+        126 => UnitType.lightYear,
+        127 => UnitType.absolutePercent,
+        128 => UnitType.droneBandwidth,
+        129 => UnitType.hours,
+        133 => UnitType.money,
+        134 => UnitType.logisticalCapacity,
+        135 => UnitType.astronomicalUnit,
+        136 => UnitType.slot,
+        137 => UnitType.boolean,
+        138 => UnitType.units,
+        139 => UnitType.bonus,
+        140 => UnitType.level,
+        141 => UnitType.hardpoints,
+        142 => UnitType.sex,
+        143 => UnitType.datetime,
+        144 => UnitType.warpSpeed,
+        205 => UnitType.modifierRealPercent,
+        _ => null,
+      };
 }

@@ -3,16 +3,32 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import '../../../frb_generated.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `validate_charge`
+import '../../../frb_generated.dart';
 
-int get attrVolume =>
-    RustLib.instance.api.crateApiValidatePostValidateChargeAttrVolume();
+// These functions are ignored because they are not marked as `pub`: `has_charge`, `validate_charge`
 
-int get attrChargeSize =>
-    RustLib.instance.api.crateApiValidatePostValidateChargeAttrChargeSize();
+int get attrVolume => RustLib.instance.api.crateApiValidatePostValidateChargeAttrVolume();
 
-int get attrAmmoCap =>
-    RustLib.instance.api.crateApiValidatePostValidateChargeAttrAmmoCap();
+int get attrChargeSize => RustLib.instance.api.crateApiValidatePostValidateChargeAttrChargeSize();
+
+int get attrAmmoCap => RustLib.instance.api.crateApiValidatePostValidateChargeAttrAmmoCap();
+
+I32Array5 get attrChargeGroups =>
+    RustLib.instance.api.crateApiValidatePostValidateChargeAttrChargeGroups();
+
+class I32Array5 extends NonGrowableListView<int> {
+  static const arraySize = 5;
+
+  @internal
+  Int32List get inner => _inner;
+  final Int32List _inner;
+
+  I32Array5(this._inner)
+      : assert(_inner.length == arraySize),
+        super(_inner);
+
+  I32Array5.init() : this(Int32List(arraySize));
+}

@@ -3,8 +3,9 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+
+import '../frb_generated.dart';
 import 'schema.dart';
 
 // These functions are ignored because they are not marked as `pub`: `from_native_grouped`, `from_native`, `from_native`, `from_native`, `from_native`
@@ -45,8 +46,7 @@ class ItemProxy {
   });
 
   @override
-  int get hashCode =>
-      index.hashCode ^ itemId.hashCode ^ charge.hashCode ^ attributes.hashCode;
+  int get hashCode => index.hashCode ^ itemId.hashCode ^ charge.hashCode ^ attributes.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -78,8 +78,7 @@ class ModulesProxy {
     required this.drones,
   });
 
-  static Future<ModulesProxy> default_() =>
-      RustLib.instance.api.crateApiProxyModulesProxyDefault();
+  static Future<ModulesProxy> default_() => RustLib.instance.api.crateApiProxyModulesProxyDefault();
 
   @override
   int get hashCode =>

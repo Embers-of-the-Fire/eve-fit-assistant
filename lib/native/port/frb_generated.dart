@@ -3,6 +3,11 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+
 import 'api.dart';
 import 'api/data.dart';
 import 'api/error.dart';
@@ -11,12 +16,8 @@ import 'api/schema.dart';
 import 'api/simple.dart';
 import 'api/validate/post_validate/charge.dart';
 import 'api/validate/pre_validate/slot_num.dart';
-import 'dart:async';
-import 'dart:convert';
 import 'frb_generated.dart';
-import 'frb_generated.io.dart'
-    if (dart.library.js_interop) 'frb_generated.web.dart';
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'frb_generated.io.dart' if (dart.library.js_interop) 'frb_generated.web.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -55,12 +56,10 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   static void dispose() => instance.disposeImpl();
 
   @override
-  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor =>
-      RustLibApiImpl.new;
+  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor => RustLibApiImpl.new;
 
   @override
-  WireConstructor<RustLibWire> get wireConstructor =>
-      RustLibWire.fromExternalLibrary;
+  WireConstructor<RustLibWire> get wireConstructor => RustLibWire.fromExternalLibrary;
 
   @override
   Future<void> executeRustInitializers() async {
@@ -75,10 +74,9 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.8.0';
 
   @override
-  int get rustContentHash => -245287465;
+  int get rustContentHash => 625172210;
 
-  static const kDefaultExternalLibraryLoaderConfig =
-      ExternalLibraryLoaderConfig(
+  static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'rust_lib_eve_fit_assistant',
     ioDirectory: 'rust/target/release/',
     webPrefix: 'pkg/',
@@ -87,6 +85,8 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
 abstract class RustLibApi extends BaseApi {
   int crateApiValidatePostValidateChargeAttrAmmoCap();
+
+  I32Array5 crateApiValidatePostValidateChargeAttrChargeGroups();
 
   int crateApiValidatePostValidateChargeAttrChargeSize();
 
@@ -106,11 +106,9 @@ abstract class RustLibApi extends BaseApi {
       required List<int> typeDogmaBuffer,
       required List<int> typesBuffer});
 
-  CalculateOutput crateApiCalculate(
-      {required EveDatabase db, required Fit fit});
+  CalculateOutput crateApiCalculate({required EveDatabase db, required Fit fit});
 
-  Map<int, double> crateApiGetTypeAttr(
-      {required EveDatabase db, required int typeId});
+  Map<int, double> crateApiGetTypeAttr({required EveDatabase db, required int typeId});
 
   String crateApiSimpleGreet({required String name});
 
@@ -118,11 +116,9 @@ abstract class RustLibApi extends BaseApi {
 
   Future<ModulesProxy> crateApiProxyModulesProxyDefault();
 
-  RustArcIncrementStrongCountFnType
-      get rust_arc_increment_strong_count_EveDatabase;
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_EveDatabase;
 
-  RustArcDecrementStrongCountFnType
-      get rust_arc_decrement_strong_count_EveDatabase;
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_EveDatabase;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_EveDatabasePtr;
 }
@@ -152,9 +148,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta =>
-      const TaskConstMeta(
+  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrAmmoCapConstMeta => const TaskConstMeta(
         debugName: "ATTR_AMMO_CAP",
+        argNames: [],
+      );
+
+  @override
+  I32Array5 crateApiValidatePostValidateChargeAttrChargeGroups() {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_i_32_array_5,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiValidatePostValidateChargeAttrChargeGroupsConstMeta,
+      argValues: [],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrChargeGroupsConstMeta =>
+      const TaskConstMeta(
+        debugName: "ATTR_CHARGE_GROUPS",
         argNames: [],
       );
 
@@ -163,7 +181,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_i_32,
@@ -175,19 +193,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta
-      get kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta =>
-          const TaskConstMeta(
-            debugName: "ATTR_CHARGE_SIZE",
-            argNames: [],
-          );
+  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrChargeSizeConstMeta =>
+      const TaskConstMeta(
+        debugName: "ATTR_CHARGE_SIZE",
+        argNames: [],
+      );
 
   @override
   int crateApiValidatePreValidateSlotNumAttrLauncher() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_i_32,
@@ -199,8 +216,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrLauncherConstMeta =>
-      const TaskConstMeta(
+  TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrLauncherConstMeta => const TaskConstMeta(
         debugName: "ATTR_LAUNCHER",
         argNames: [],
       );
@@ -210,7 +226,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_i_32,
@@ -222,8 +238,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrTurretConstMeta =>
-      const TaskConstMeta(
+  TaskConstMeta get kCrateApiValidatePreValidateSlotNumAttrTurretConstMeta => const TaskConstMeta(
         debugName: "ATTR_TURRET",
         argNames: [],
       );
@@ -233,7 +248,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_i_32,
@@ -245,8 +260,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrVolumeConstMeta =>
-      const TaskConstMeta(
+  TaskConstMeta get kCrateApiValidatePostValidateChargeAttrVolumeConstMeta => const TaskConstMeta(
         debugName: "ATTR_VOLUME",
         argNames: [],
       );
@@ -256,7 +270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_i_32,
@@ -268,19 +282,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta
-      get kCrateApiValidatePreValidateSlotNumEffectLauncherConstMeta =>
-          const TaskConstMeta(
-            debugName: "EFFECT_LAUNCHER",
-            argNames: [],
-          );
+  TaskConstMeta get kCrateApiValidatePreValidateSlotNumEffectLauncherConstMeta =>
+      const TaskConstMeta(
+        debugName: "EFFECT_LAUNCHER",
+        argNames: [],
+      );
 
   @override
   int crateApiValidatePreValidateSlotNumEffectTurret() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_i_32,
@@ -292,8 +305,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta get kCrateApiValidatePreValidateSlotNumEffectTurretConstMeta =>
-      const TaskConstMeta(
+  TaskConstMeta get kCrateApiValidatePreValidateSlotNumEffectTurretConstMeta => const TaskConstMeta(
         debugName: "EFFECT_TURRET",
         argNames: [],
       );
@@ -311,8 +323,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_list_prim_u_8_loose(dogmaEffectBuffer, serializer);
         sse_encode_list_prim_u_8_loose(typeDogmaBuffer, serializer);
         sse_encode_list_prim_u_8_loose(typesBuffer, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 8, port: port_);
+        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -320,37 +331,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeErrorData: sse_decode_AnyhowException,
       ),
       constMeta: kCrateApiDataEveDatabaseInitConstMeta,
-      argValues: [
-        dogmaAttrBuffer,
-        dogmaEffectBuffer,
-        typeDogmaBuffer,
-        typesBuffer
-      ],
+      argValues: [dogmaAttrBuffer, dogmaEffectBuffer, typeDogmaBuffer, typesBuffer],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiDataEveDatabaseInitConstMeta =>
-      const TaskConstMeta(
+  TaskConstMeta get kCrateApiDataEveDatabaseInitConstMeta => const TaskConstMeta(
         debugName: "EveDatabase_init",
-        argNames: [
-          "dogmaAttrBuffer",
-          "dogmaEffectBuffer",
-          "typeDogmaBuffer",
-          "typesBuffer"
-        ],
+        argNames: ["dogmaAttrBuffer", "dogmaEffectBuffer", "typeDogmaBuffer", "typesBuffer"],
       );
 
   @override
-  CalculateOutput crateApiCalculate(
-      {required EveDatabase db, required Fit fit}) {
+  CalculateOutput crateApiCalculate({required EveDatabase db, required Fit fit}) {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
             db, serializer);
         sse_encode_box_autoadd_fit(fit, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_calculate_output,
@@ -368,15 +367,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Map<int, double> crateApiGetTypeAttr(
-      {required EveDatabase db, required int typeId}) {
+  Map<int, double> crateApiGetTypeAttr({required EveDatabase db, required int typeId}) {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
             db, serializer);
         sse_encode_i_32(typeId, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_Map_i_32_f_64,
@@ -399,7 +397,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(name, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -421,8 +419,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 12, port: port_);
+        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -444,8 +441,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 13, port: port_);
+        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_modules_proxy,
@@ -457,19 +453,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     ));
   }
 
-  TaskConstMeta get kCrateApiProxyModulesProxyDefaultConstMeta =>
-      const TaskConstMeta(
+  TaskConstMeta get kCrateApiProxyModulesProxyDefaultConstMeta => const TaskConstMeta(
         debugName: "modules_proxy_default",
         argNames: [],
       );
 
-  RustArcIncrementStrongCountFnType
-      get rust_arc_increment_strong_count_EveDatabase => wire
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_EveDatabase => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
 
-  RustArcDecrementStrongCountFnType
-      get rust_arc_decrement_strong_count_EveDatabase => wire
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_EveDatabase => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
@@ -496,21 +489,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Map<int, double> dco_decode_Map_i_32_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(
-        dco_decode_list_record_i_32_f_64(raw).map((e) => MapEntry(e.$1, e.$2)));
+    return Map.fromEntries(dco_decode_list_record_i_32_f_64(raw).map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
   Map<int, int> dco_decode_Map_i_32_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(
-        dco_decode_list_record_i_32_u_8(raw).map((e) => MapEntry(e.$1, e.$2)));
+    return Map.fromEntries(dco_decode_list_record_i_32_u_8(raw).map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
-  EveDatabase
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          dynamic raw) {
+  EveDatabase dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
+      dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return EveDatabaseImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -567,8 +557,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   CalculateOutput dco_decode_calculate_output(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
     return CalculateOutput(
       ship: dco_decode_ship_proxy(arr[0]),
       errors: dco_decode_list_slot_info(arr[1]),
@@ -579,8 +568,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DamageProfile dco_decode_damage_profile(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return DamageProfile(
       em: dco_decode_f_64(arr[0]),
       explosive: dco_decode_f_64(arr[1]),
@@ -593,8 +581,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DroneGroup dco_decode_drone_group(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return DroneGroup(
       itemId: dco_decode_i_32(arr[0]),
       amount: dco_decode_i_32(arr[1]),
@@ -606,8 +593,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DroneProxy dco_decode_drone_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
     return DroneProxy(
       groupIndex: dco_decode_u_8(arr[0]),
       drones: dco_decode_list_item_proxy(arr[1]),
@@ -653,8 +639,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Fit dco_decode_fit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 6) throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return Fit(
       shipId: dco_decode_i_32(arr[0]),
       modules: dco_decode_module(arr[1]),
@@ -672,11 +657,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  I32Array5 dco_decode_i_32_array_5(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return I32Array5(dco_decode_list_prim_i_32_strict(raw));
+  }
+
+  @protected
   Implant dco_decode_implant(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
     return Implant(
       itemId: dco_decode_i_32(arr[0]),
       index: dco_decode_i_32(arr[1]),
@@ -687,8 +677,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Item dco_decode_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return Item(
       itemId: dco_decode_i_32(arr[0]),
       charge: dco_decode_opt_box_autoadd_i_32(arr[1]),
@@ -701,8 +690,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ItemProxy dco_decode_item_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return ItemProxy(
       index: dco_decode_opt_box_autoadd_i_32(arr[0]),
       itemId: dco_decode_i_32(arr[1]),
@@ -748,6 +736,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Int32List dco_decode_list_prim_i_32_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as Int32List;
+  }
+
+  @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as List<int>;
@@ -781,8 +775,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Module dco_decode_module(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 6) throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return Module(
       high: dco_decode_list_item(arr[0]),
       medium: dco_decode_list_item(arr[1]),
@@ -797,8 +790,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ModulesProxy dco_decode_modules_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 7) throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return ModulesProxy(
       high: dco_decode_list_item_proxy(arr[0]),
       medium: dco_decode_list_item_proxy(arr[1]),
@@ -864,8 +856,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ShipProxy dco_decode_ship_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return ShipProxy(
       hull: dco_decode_item_proxy(arr[0]),
       modules: dco_decode_modules_proxy(arr[1]),
@@ -975,9 +966,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  EveDatabase
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          SseDeserializer deserializer) {
+  EveDatabase sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return EveDatabaseImpl.frbInternalSseDecode(
         sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
@@ -1048,10 +1038,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_kinetic = sse_decode_f_64(deserializer);
     var var_thermal = sse_decode_f_64(deserializer);
     return DamageProfile(
-        em: var_em,
-        explosive: var_explosive,
-        kinetic: var_kinetic,
-        thermal: var_thermal);
+        em: var_em, explosive: var_explosive, kinetic: var_kinetic, thermal: var_thermal);
   }
 
   @protected
@@ -1080,23 +1067,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 0:
         var var_expected = sse_decode_u_8(deserializer);
         var var_actual = sse_decode_u_8(deserializer);
-        return ErrorKey_IncompatibleChargeSize(
-            expected: var_expected, actual: var_actual);
+        return ErrorKey_IncompatibleChargeSize(expected: var_expected, actual: var_actual);
       case 1:
         var var_max = sse_decode_f_64(deserializer);
         var var_actual = sse_decode_f_64(deserializer);
-        return ErrorKey_IncompatibleChargeCapacity(
-            max: var_max, actual: var_actual);
+        return ErrorKey_IncompatibleChargeCapacity(max: var_max, actual: var_actual);
       case 2:
         var var_expected = sse_decode_u_8(deserializer);
         var var_actual = sse_decode_u_8(deserializer);
-        return ErrorKey_TooMuchTurret(
-            expected: var_expected, actual: var_actual);
+        return ErrorKey_TooMuchTurret(expected: var_expected, actual: var_actual);
       case 3:
         var var_expected = sse_decode_u_8(deserializer);
         var var_actual = sse_decode_u_8(deserializer);
-        return ErrorKey_TooMuchLauncher(
-            expected: var_expected, actual: var_actual);
+        return ErrorKey_TooMuchLauncher(expected: var_expected, actual: var_actual);
       default:
         throw UnimplementedError('');
     }
@@ -1133,6 +1116,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  I32Array5 sse_decode_i_32_array_5(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_prim_i_32_strict(deserializer);
+    return I32Array5(inner);
+  }
+
+  @protected
   Implant sse_decode_implant(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_itemId = sse_decode_i_32(deserializer);
@@ -1147,11 +1137,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_charge = sse_decode_opt_box_autoadd_i_32(deserializer);
     var var_state = sse_decode_item_state(deserializer);
     var var_index = sse_decode_i_32(deserializer);
-    return Item(
-        itemId: var_itemId,
-        charge: var_charge,
-        state: var_state,
-        index: var_index);
+    return Item(itemId: var_itemId, charge: var_charge, state: var_state, index: var_index);
   }
 
   @protected
@@ -1162,10 +1148,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_charge = sse_decode_opt_box_item_proxy(deserializer);
     var var_attributes = sse_decode_Map_i_32_f_64(deserializer);
     return ItemProxy(
-        index: var_index,
-        itemId: var_itemId,
-        charge: var_charge,
-        attributes: var_attributes);
+        index: var_index, itemId: var_itemId, charge: var_charge, attributes: var_attributes);
   }
 
   @protected
@@ -1236,6 +1219,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Int32List sse_decode_list_prim_i_32_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getInt32List(len_);
+  }
+
+  @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -1250,8 +1240,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<(int, double)> sse_decode_list_record_i_32_f_64(
-      SseDeserializer deserializer) {
+  List<(int, double)> sse_decode_list_record_i_32_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
@@ -1263,8 +1252,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<(int, int)> sse_decode_list_record_i_32_u_8(
-      SseDeserializer deserializer) {
+  List<(int, int)> sse_decode_list_record_i_32_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
@@ -1348,8 +1336,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ItemProxy? sse_decode_opt_box_autoadd_item_proxy(
-      SseDeserializer deserializer) {
+  ItemProxy? sse_decode_opt_box_autoadd_item_proxy(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
@@ -1412,14 +1399,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         var var_slot = sse_decode_slot_type(deserializer);
         var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
         var var_errorKey = sse_decode_box_autoadd_error_key(deserializer);
-        return SlotInfo_Error(
-            slot: var_slot, index: var_index, errorKey: var_errorKey);
+        return SlotInfo_Error(slot: var_slot, index: var_index, errorKey: var_errorKey);
       case 1:
         var var_slot = sse_decode_slot_type(deserializer);
         var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
         var var_warningKey = sse_decode_box_autoadd_warning_key(deserializer);
-        return SlotInfo_Warning(
-            slot: var_slot, index: var_index, warningKey: var_warningKey);
+        return SlotInfo_Warning(slot: var_slot, index: var_index, warningKey: var_warningKey);
       default:
         throw UnimplementedError('');
     }
@@ -1472,8 +1457,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_AnyhowException(
-      AnyhowException self, SseSerializer serializer) {
+  void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.message, serializer);
   }
@@ -1483,8 +1467,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
           EveDatabase self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as EveDatabaseImpl).frbInternalSseEncode(move: true), serializer);
+    sse_encode_usize((self as EveDatabaseImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
@@ -1492,14 +1475,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
           EveDatabase self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as EveDatabaseImpl).frbInternalSseEncode(move: false),
-        serializer);
+    sse_encode_usize((self as EveDatabaseImpl).frbInternalSseEncode(move: false), serializer);
   }
 
   @protected
-  void sse_encode_Map_i_32_f_64(
-      Map<int, double> self, SseSerializer serializer) {
+  void sse_encode_Map_i_32_f_64(Map<int, double> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_record_i_32_f_64(
         self.entries.map((e) => (e.key, e.value)).toList(), serializer);
@@ -1508,17 +1488,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_Map_i_32_u_8(Map<int, int> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_record_i_32_u_8(
-        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
+    sse_encode_list_record_i_32_u_8(self.entries.map((e) => (e.key, e.value)).toList(), serializer);
   }
 
   @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-          EveDatabase self, SseSerializer serializer) {
+  void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
+      EveDatabase self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as EveDatabaseImpl).frbInternalSseEncode(move: null), serializer);
+    sse_encode_usize((self as EveDatabaseImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
@@ -1528,8 +1505,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_box_autoadd_error_key(
-      ErrorKey self, SseSerializer serializer) {
+  void sse_encode_box_autoadd_error_key(ErrorKey self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_error_key(self, serializer);
   }
@@ -1553,15 +1529,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_box_autoadd_item_proxy(
-      ItemProxy self, SseSerializer serializer) {
+  void sse_encode_box_autoadd_item_proxy(ItemProxy self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_item_proxy(self, serializer);
   }
 
   @protected
-  void sse_encode_box_autoadd_warning_key(
-      WarningKey self, SseSerializer serializer) {
+  void sse_encode_box_autoadd_warning_key(WarningKey self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_warning_key(self, serializer);
   }
@@ -1573,8 +1547,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_calculate_output(
-      CalculateOutput self, SseSerializer serializer) {
+  void sse_encode_calculate_output(CalculateOutput self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_ship_proxy(self.ship, serializer);
     sse_encode_list_slot_info(self.errors, serializer);
@@ -1608,31 +1581,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_error_key(ErrorKey self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case ErrorKey_IncompatibleChargeSize(
-          expected: final expected,
-          actual: final actual
-        ):
+      case ErrorKey_IncompatibleChargeSize(expected: final expected, actual: final actual):
         sse_encode_i_32(0, serializer);
         sse_encode_u_8(expected, serializer);
         sse_encode_u_8(actual, serializer);
-      case ErrorKey_IncompatibleChargeCapacity(
-          max: final max,
-          actual: final actual
-        ):
+      case ErrorKey_IncompatibleChargeCapacity(max: final max, actual: final actual):
         sse_encode_i_32(1, serializer);
         sse_encode_f_64(max, serializer);
         sse_encode_f_64(actual, serializer);
-      case ErrorKey_TooMuchTurret(
-          expected: final expected,
-          actual: final actual
-        ):
+      case ErrorKey_TooMuchTurret(expected: final expected, actual: final actual):
         sse_encode_i_32(2, serializer);
         sse_encode_u_8(expected, serializer);
         sse_encode_u_8(actual, serializer);
-      case ErrorKey_TooMuchLauncher(
-          expected: final expected,
-          actual: final actual
-        ):
+      case ErrorKey_TooMuchLauncher(expected: final expected, actual: final actual):
         sse_encode_i_32(3, serializer);
         sse_encode_u_8(expected, serializer);
         sse_encode_u_8(actual, serializer);
@@ -1660,6 +1621,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_i_32_array_5(I32Array5 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_i_32_strict(self.inner, serializer);
   }
 
   @protected
@@ -1694,8 +1661,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_drone_group(
-      List<DroneGroup> self, SseSerializer serializer) {
+  void sse_encode_list_drone_group(List<DroneGroup> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1704,8 +1670,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_drone_proxy(
-      List<DroneProxy> self, SseSerializer serializer) {
+  void sse_encode_list_drone_proxy(List<DroneProxy> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1732,8 +1697,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_item_proxy(
-      List<ItemProxy> self, SseSerializer serializer) {
+  void sse_encode_list_item_proxy(List<ItemProxy> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1742,25 +1706,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_prim_u_8_loose(
-      List<int> self, SseSerializer serializer) {
+  void sse_encode_list_prim_i_32_strict(Int32List self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
-    serializer.buffer
-        .putUint8List(self is Uint8List ? self : Uint8List.fromList(self));
+    serializer.buffer.putInt32List(self);
   }
 
   @protected
-  void sse_encode_list_prim_u_8_strict(
-      Uint8List self, SseSerializer serializer) {
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putUint8List(self is Uint8List ? self : Uint8List.fromList(self));
+  }
+
+  @protected
+  void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
   }
 
   @protected
-  void sse_encode_list_record_i_32_f_64(
-      List<(int, double)> self, SseSerializer serializer) {
+  void sse_encode_list_record_i_32_f_64(List<(int, double)> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1769,8 +1736,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_record_i_32_u_8(
-      List<(int, int)> self, SseSerializer serializer) {
+  void sse_encode_list_record_i_32_u_8(List<(int, int)> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1779,8 +1745,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_slot_info(
-      List<SlotInfo> self, SseSerializer serializer) {
+  void sse_encode_list_slot_info(List<SlotInfo> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1832,8 +1797,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_opt_box_autoadd_item_proxy(
-      ItemProxy? self, SseSerializer serializer) {
+  void sse_encode_opt_box_autoadd_item_proxy(ItemProxy? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
@@ -1843,8 +1807,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_opt_box_item_proxy(
-      ItemProxy? self, SseSerializer serializer) {
+  void sse_encode_opt_box_item_proxy(ItemProxy? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
@@ -1854,8 +1817,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_record_i_32_f_64(
-      (int, double) self, SseSerializer serializer) {
+  void sse_encode_record_i_32_f_64((int, double) self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.$1, serializer);
     sse_encode_f_64(self.$2, serializer);
@@ -1882,20 +1844,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_slot_info(SlotInfo self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case SlotInfo_Error(
-          slot: final slot,
-          index: final index,
-          errorKey: final errorKey
-        ):
+      case SlotInfo_Error(slot: final slot, index: final index, errorKey: final errorKey):
         sse_encode_i_32(0, serializer);
         sse_encode_slot_type(slot, serializer);
         sse_encode_opt_box_autoadd_i_32(index, serializer);
         sse_encode_box_autoadd_error_key(errorKey, serializer);
-      case SlotInfo_Warning(
-          slot: final slot,
-          index: final index,
-          warningKey: final warningKey
-        ):
+      case SlotInfo_Warning(slot: final slot, index: final index, warningKey: final warningKey):
         sse_encode_i_32(1, serializer);
         sse_encode_slot_type(slot, serializer);
         sse_encode_opt_box_autoadd_i_32(index, serializer);
@@ -1956,10 +1910,8 @@ class EveDatabaseImpl extends RustOpaque implements EveDatabase {
       : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
 
   static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_EveDatabase,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_EveDatabase,
+    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_EveDatabase,
+    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_EveDatabase,
     rustArcDecrementStrongCountPtr:
         RustLib.instance.api.rust_arc_decrement_strong_count_EveDatabasePtr,
   );

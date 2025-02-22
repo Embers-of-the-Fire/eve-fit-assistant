@@ -3,9 +3,11 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+
+import '../frb_generated.dart';
+
 part 'error.freezed.dart';
 
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
@@ -18,14 +20,17 @@ sealed class ErrorKey with _$ErrorKey {
     required int expected,
     required int actual,
   }) = ErrorKey_IncompatibleChargeSize;
+
   const factory ErrorKey.incompatibleChargeCapacity({
     required double max,
     required double actual,
   }) = ErrorKey_IncompatibleChargeCapacity;
+
   const factory ErrorKey.tooMuchTurret({
     required int expected,
     required int actual,
   }) = ErrorKey_TooMuchTurret;
+
   const factory ErrorKey.tooMuchLauncher({
     required int expected,
     required int actual,
@@ -41,6 +46,7 @@ sealed class SlotInfo with _$SlotInfo {
     int? index,
     required ErrorKey errorKey,
   }) = SlotInfo_Error;
+
   const factory SlotInfo.warning({
     required SlotType slot,
     int? index,
@@ -64,6 +70,7 @@ sealed class WarningKey with _$WarningKey {
   const WarningKey._();
 
   const factory WarningKey.missingCharge() = WarningKey_MissingCharge;
+
   const factory WarningKey.placeholder(
     int field0,
   ) = WarningKey_Placeholder;

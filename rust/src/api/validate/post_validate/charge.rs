@@ -19,6 +19,8 @@ pub(crate) const ATTR_CHARGE_SIZE: i32 = 128;
 /// `capacity`
 pub(crate) const ATTR_AMMO_CAP: i32 = 38;
 
+pub(crate) const ATTR_CHARGE_GROUPS: [i32; 5] = [604, 605, 606, 609, 610];
+
 pub(crate) fn validate_charge(fit: &ShipProxy, info: &impl InfoProvider, err: &mut Vec<SlotInfo>) {
     fn validate_single(
         item: &ItemProxy,
@@ -60,7 +62,7 @@ pub(crate) fn validate_charge(fit: &ShipProxy, info: &impl InfoProvider, err: &m
                     });
                 }
             }
-        } else if ammo_cap.is_some() {
+        } else if ammo_cap.is_some() && has_charge(item) {
             err.push(SlotInfo::Warning {
                 slot,
                 index: item.index,
@@ -78,4 +80,10 @@ pub(crate) fn validate_charge(fit: &ShipProxy, info: &impl InfoProvider, err: &m
     for item in &fit.modules.low {
         validate_single(item, SlotType::Low, info, err);
     }
+}
+
+fn has_charge(item: &ItemProxy) -> bool {
+    ATTR_CHARGE_GROUPS
+        .iter()
+        .any(|group| item.attributes.get(group).is_some_and(|&u| u != 0.0))
 }

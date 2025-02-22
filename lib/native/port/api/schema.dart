@@ -3,8 +3,9 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+
+import '../frb_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `into_native`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
@@ -24,8 +25,7 @@ class DamageProfile {
   });
 
   @override
-  int get hashCode =>
-      em.hashCode ^ explosive.hashCode ^ kinetic.hashCode ^ thermal.hashCode;
+  int get hashCode => em.hashCode ^ explosive.hashCode ^ kinetic.hashCode ^ thermal.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -136,8 +136,7 @@ class Item {
   });
 
   @override
-  int get hashCode =>
-      itemId.hashCode ^ charge.hashCode ^ state.hashCode ^ index.hashCode;
+  int get hashCode => itemId.hashCode ^ charge.hashCode ^ state.hashCode ^ index.hashCode;
 
   @override
   bool operator ==(Object other) =>

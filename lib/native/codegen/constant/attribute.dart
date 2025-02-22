@@ -225,4 +225,3 @@ const int capacitorPeakLoadWithBoost = -8;
 /// - Name: capacitorDepletesIn
 /// - High is good: True
 const int capacitorDepletesIn = -9;
-
