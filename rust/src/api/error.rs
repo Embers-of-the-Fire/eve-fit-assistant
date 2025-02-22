@@ -10,7 +10,7 @@ pub enum SlotType {
 }
 
 #[flutter_rust_bridge::frb(unignore)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SlotInfo {
     Error {
         slot: SlotType,
@@ -24,7 +24,7 @@ pub enum SlotInfo {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKey {
     // charge
     IncompatibleChargeSize { expected: u8, actual: u8 },
@@ -32,6 +32,9 @@ pub enum ErrorKey {
     // slot num
     TooMuchTurret { expected: u8, actual: u8 },
     TooMuchLauncher { expected: u8, actual: u8 },
+    // slot fit target
+    IncompatibleShipGroup { expected: Vec<i32> },
+    IncompatibleShipType { expected: Vec<i32> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

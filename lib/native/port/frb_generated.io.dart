@@ -16,6 +16,7 @@ import 'api/proxy.dart';
 import 'api/schema.dart';
 import 'api/simple.dart';
 import 'api/validate/post_validate/charge.dart';
+import 'api/validate/pre_validate/fit_target.dart';
 import 'api/validate/pre_validate/slot_num.dart';
 import 'frb_generated.dart';
 
@@ -100,6 +101,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int dco_decode_i_32(dynamic raw);
+
+  @protected
+  I32Array11 dco_decode_i_32_array_11(dynamic raw);
+
+  @protected
+  I32Array20 dco_decode_i_32_array_20(dynamic raw);
 
   @protected
   I32Array5 dco_decode_i_32_array_5(dynamic raw);
@@ -264,6 +271,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  I32Array11 sse_decode_i_32_array_11(SseDeserializer deserializer);
+
+  @protected
+  I32Array20 sse_decode_i_32_array_20(SseDeserializer deserializer);
 
   @protected
   I32Array5 sse_decode_i_32_array_5(SseDeserializer deserializer);
@@ -431,6 +444,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32_array_11(I32Array11 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32_array_20(I32Array20 self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32_array_5(I32Array5 self, SseSerializer serializer);
