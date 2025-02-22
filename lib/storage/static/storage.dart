@@ -87,7 +87,7 @@ class StaticStorage {
     final staticVersion = await StaticVersionInfo.read();
     if (staticVersion == null) {
       await unpackBundledStorage();
-    } else if (dataVersion > staticVersion) {
+    } else if (bundledStaticVersion > staticVersion) {
       await staticStorageDir.delete(recursive: true);
       await unpackBundledStorage();
     }

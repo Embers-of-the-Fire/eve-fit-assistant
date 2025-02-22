@@ -31,6 +31,7 @@ Future<VersionInfo> executeMigrate(VersionInfo? version) async {
       await _migrations[i]!();
     }
     await createVersionFile();
+    return VersionInfo.currentVersion;
   }
 
   GlobalLoading().dismiss(_migrateLoadingKey);
