@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package fighter;
+
+message Fighters {
+    enum FighterType {
+        LIGHT = 1;
+        SUPPORT = 2;
+        HEAVY = 3;
+    }
+
+    message Fighter {
+        required FighterType type = 1;
+        required int32 amount = 2;
+        required int32 ability = 3;
+    }
+
+    map<int32, Fighter> entries = 1;
+}

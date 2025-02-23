@@ -1,6 +1,12 @@
 library;
 
+import 'package:eve_fit_assistant/assets/icon.dart';
+import 'package:eve_fit_assistant/constant/eve/attribute.dart';
+import 'package:eve_fit_assistant/constant/eve/groups.dart';
+import 'package:eve_fit_assistant/native/algo/fighter.dart';
+import 'package:eve_fit_assistant/native/glue/fit.dart';
 import 'package:eve_fit_assistant/native/port/api.dart';
+import 'package:eve_fit_assistant/native/port/api/proxy.dart';
 import 'package:eve_fit_assistant/pages/character/char_edit.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/add_item_dialog.dart';
@@ -13,6 +19,7 @@ import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/attribute.dart';
+import 'package:eve_fit_assistant/widgets/state_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +30,7 @@ part 'character.dart';
 part 'config.dart';
 part 'drone.dart';
 part 'equipment.dart';
+part 'fighter.dart';
 part 'fit.g.dart';
 part 'info.dart';
 
@@ -157,6 +165,17 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
     final fitRef = ref.read(fitRecordNotifierProvider(widget.fitID));
     final ship = GlobalStorage().static.ships[fitRef.fit.brief.shipID]!;
 
+    if (carrierGroupIDs.contains(ship.groupID)) {
+      return _buildFighter(context);
+    } else {
+      return _buildDrone(context);
+    }
+  }
+
+  Widget _buildDrone(BuildContext context) {
+    final fitRef = ref.read(fitRecordNotifierProvider(widget.fitID));
+    final ship = GlobalStorage().static.ships[fitRef.fit.brief.shipID]!;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -198,6 +217,55 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             description: fitRef.fit.brief.description,
           ),
           // Placeholder(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFighter(BuildContext context) {
+    final fitRef = ref.read(fitRecordNotifierProvider(widget.fitID));
+    final ship = GlobalStorage().static.ships[fitRef.fit.brief.shipID]!;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text('[${ship.nameZH}] ${fitRef.fit.brief.name}'),
+        bottom: TabBar(
+          controller: _tabController,
+          labelPadding: EdgeInsets.zero,
+          tabs: const [
+            Tab(text: '角色'),
+            Tab(text: '装备'),
+            Tab(text: '属性'),
+            Tab(text: '舰载机'),
+            Tab(text: '船体'),
+            Tab(text: '设置'),
+          ],
+        ),
+        centerTitle: true,
+        actions: [
+          Container(
+            padding: const EdgeInsets.only(right: 10),
+            child: Icon(fitRef.saved ? Icons.download_done : Icons.downloading),
+          )
+        ],
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          CharacterTab(fitID: widget.fitID),
+          EquipmentTab(fitID: widget.fitID, ship: ship),
+          InfoTab(fitID: widget.fitID),
+          FighterTab(fitID: widget.fitID),
+          AttributeTab(
+            typeID: fitRef.fit.brief.shipID,
+            attr: fitRef.output.ship.hull.attributes,
+          ),
+          ConfigTab(
+            fitID: widget.fitID,
+            name: fitRef.fit.brief.name,
+            description: fitRef.fit.brief.description,
+          ),
         ],
       ),
     );

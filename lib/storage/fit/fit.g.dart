@@ -43,8 +43,11 @@ Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
           .map((e) =>
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
           .toList(),
-      drone: (json['drone'] as List<dynamic>)
-          .map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
+      drone: (json['drone'] as List<dynamic>?)
+          ?.map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      fighter: (json['fighter'] as List<dynamic>?)
+          ?.map((e) => FighterItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       implant: (json['implant'] as List<dynamic>)
           .map((e) =>
@@ -63,6 +66,7 @@ Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
       'rig': instance.rig.map((e) => e?.toJson()).toList(),
       'subsystem': instance.subsystem.map((e) => e?.toJson()).toList(),
       'drone': instance.drone.map((e) => e.toJson()).toList(),
+      'fighter': instance.fighter.map((e) => e.toJson()).toList(),
       'implant': instance.implant.map((e) => e?.toJson()).toList(),
       'tacticalModeID': instance.tacticalModeID,
     };
@@ -106,3 +110,19 @@ const _$DroneStateEnumMap = {
   DroneState.passive: 0,
   DroneState.active: 1,
 };
+
+_$FighterItemImpl _$$FighterItemImplFromJson(Map<String, dynamic> json) =>
+    _$FighterItemImpl(
+      itemID: (json['itemID'] as num).toInt(),
+      amount: (json['amount'] as num).toInt(),
+      ability: (json['ability'] as num).toInt(),
+      state: $enumDecode(_$DroneStateEnumMap, json['state']),
+    );
+
+Map<String, dynamic> _$$FighterItemImplToJson(_$FighterItemImpl instance) =>
+    <String, dynamic>{
+      'itemID': instance.itemID,
+      'amount': instance.amount,
+      'ability': instance.ability,
+      'state': _$DroneStateEnumMap[instance.state]!,
+    };

@@ -29,6 +29,6 @@ class Group {
   static Future<ReadonlyMap<int, Group>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/groups.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(_fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }

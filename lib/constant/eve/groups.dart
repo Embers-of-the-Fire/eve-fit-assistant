@@ -7,3 +7,8 @@ const fighterGroupIDs = [
   4778, // structure support fighter
   4779, // structure heavy fighter
 ];
+
+const carrierGroupIDs = [
+  547, // carrier
+  659, // super carrier
+];

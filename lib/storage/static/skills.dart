@@ -27,6 +27,6 @@ class SkillItem {
   static Future<ReadonlyMap<int, SkillItem>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/skills.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(SkillItem._fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }

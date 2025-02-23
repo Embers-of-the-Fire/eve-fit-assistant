@@ -32,6 +32,6 @@ class TypeSkill {
   static Future<ReadonlyMap<int, TypeSkill>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/type_skills.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(_fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }

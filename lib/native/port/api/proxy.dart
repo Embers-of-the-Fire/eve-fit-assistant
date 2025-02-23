@@ -8,8 +8,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import '../frb_generated.dart';
 import 'schema.dart';
 
-// These functions are ignored because they are not marked as `pub`: `from_native_grouped`, `from_native`, `from_native`, `from_native`, `from_native`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `from_native_grouped`, `from_native_grouped`, `from_native`, `from_native`, `from_native`, `from_native`, `from_native`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 class DroneProxy {
   final int groupIndex;
@@ -30,6 +30,27 @@ class DroneProxy {
           runtimeType == other.runtimeType &&
           groupIndex == other.groupIndex &&
           drones == other.drones;
+}
+
+class FighterProxy {
+  final int groupIndex;
+  final List<ItemProxy> fighters;
+
+  const FighterProxy({
+    required this.groupIndex,
+    required this.fighters,
+  });
+
+  @override
+  int get hashCode => groupIndex.hashCode ^ fighters.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FighterProxy &&
+          runtimeType == other.runtimeType &&
+          groupIndex == other.groupIndex &&
+          fighters == other.fighters;
 }
 
 class ItemProxy {
@@ -67,6 +88,7 @@ class ModulesProxy {
   final List<ItemProxy> subsystem;
   final ItemProxy? tacticalMode;
   final List<DroneProxy> drones;
+  final List<FighterProxy> fighters;
 
   const ModulesProxy({
     required this.high,
@@ -76,6 +98,7 @@ class ModulesProxy {
     required this.subsystem,
     this.tacticalMode,
     required this.drones,
+    required this.fighters,
   });
 
   static Future<ModulesProxy> default_() => RustLib.instance.api.crateApiProxyModulesProxyDefault();
@@ -88,7 +111,8 @@ class ModulesProxy {
       rig.hashCode ^
       subsystem.hashCode ^
       tacticalMode.hashCode ^
-      drones.hashCode;
+      drones.hashCode ^
+      fighters.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -101,7 +125,8 @@ class ModulesProxy {
           rig == other.rig &&
           subsystem == other.subsystem &&
           tacticalMode == other.tacticalMode &&
-          drones == other.drones;
+          drones == other.drones &&
+          fighters == other.fighters;
 }
 
 class ShipProxy {

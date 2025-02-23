@@ -12,6 +12,7 @@ schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}
       ),
       modules: _intoNativeModules(fit),
       drones: _intoNativeDrones(fit.drone),
+      fighters: _intoNativeFighters(fit.fighter),
       implant: _intoNativeImplants(fit.implant),
       skills: skills,
     );
@@ -52,6 +53,20 @@ schema.DroneGroup _intoNativeDrone({required local.DroneItem item, required int 
       index: index,
     );
 
+List<schema.FighterGroup> _intoNativeFighters(List<local.FighterItem> items) =>
+    items.enumerate().filterMap((e) {
+      if (e.$2.state == local.DroneState.passive) return null;
+      return _intoNativeFighter(item: e.$2, index: e.$1);
+    }).toList();
+
+schema.FighterGroup _intoNativeFighter({required local.FighterItem item, required int index}) =>
+    schema.FighterGroup(
+      itemId: item.itemID,
+      amount: item.amount,
+      index: index,
+      ability: item.ability,
+    );
+
 List<schema.Implant> _intoNativeImplants(List<local.SlotItem?> items) =>
     items.enumerate().filterMap((e) {
       if (e.$2 == null) return null;
@@ -76,3 +91,8 @@ schema.ItemState _intoNativeState(local.SlotState state) {
       return schema.ItemState.overload;
   }
 }
+
+const fighterAbilityAttackTurret = 1; // 0b0000_0001
+const fighterAbilityMissiles = 2; // 0b0000_0010
+const fighterAbilityAttackMissile = 4; // 0b0000_0100
+const fighterAbilityBomb = 8; // 0b0000_1000

@@ -137,6 +137,23 @@ Future<int?> showAddDroneDialog(
   return await _showAddItemDialogImpl(context, metadata);
 }
 
+Future<int?> showAddFighterDialog(
+  BuildContext context,
+) async {
+  final metadata = _DialogMetadata(
+    title: '添加舰载机',
+    baseName: '舰载机',
+    fallbackGroupID: 2236,
+    predicate: (item) {
+      final groupID = GlobalStorage().static.types[item]?.groupID;
+
+      return groupID == null || fighterGroupIDs.contains(groupID);
+    },
+  );
+
+  return await _showAddItemDialogImpl(context, metadata);
+}
+
 Future<int?> _showAddItemDialogImpl(BuildContext context, _DialogMetadata metadata) async {
   final out = await showDialog<int>(
       context: context,

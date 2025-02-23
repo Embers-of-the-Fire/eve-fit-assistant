@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import '../frb_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `into_native`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `from`
 
 class DamageProfile {
@@ -62,10 +62,38 @@ class DroneGroup {
           index == other.index;
 }
 
+class FighterGroup {
+  final int itemId;
+  final int amount;
+  final int index;
+  final int ability;
+
+  const FighterGroup({
+    required this.itemId,
+    required this.amount,
+    required this.index,
+    required this.ability,
+  });
+
+  @override
+  int get hashCode => itemId.hashCode ^ amount.hashCode ^ index.hashCode ^ ability.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FighterGroup &&
+          runtimeType == other.runtimeType &&
+          itemId == other.itemId &&
+          amount == other.amount &&
+          index == other.index &&
+          ability == other.ability;
+}
+
 class Fit {
   final int shipId;
   final Module modules;
   final List<DroneGroup> drones;
+  final List<FighterGroup> fighters;
   final List<Implant> implant;
   final Map<int, int> skills;
   final DamageProfile damageProfile;
@@ -74,6 +102,7 @@ class Fit {
     required this.shipId,
     required this.modules,
     required this.drones,
+    required this.fighters,
     required this.implant,
     required this.skills,
     required this.damageProfile,
@@ -84,6 +113,7 @@ class Fit {
       shipId.hashCode ^
       modules.hashCode ^
       drones.hashCode ^
+      fighters.hashCode ^
       implant.hashCode ^
       skills.hashCode ^
       damageProfile.hashCode;
@@ -96,6 +126,7 @@ class Fit {
           shipId == other.shipId &&
           modules == other.modules &&
           drones == other.drones &&
+          fighters == other.fighters &&
           implant == other.implant &&
           skills == other.skills &&
           damageProfile == other.damageProfile;

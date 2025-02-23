@@ -22,14 +22,9 @@ class TacticalModeSlotRow extends ConsumerWidget {
     final typeName = modeInfo?.nameZH ?? '未知模式';
 
     return ListTile(
-      leading: CircleAvatar(
-        radius: 20,
-        backgroundColor: getSlotColor(SlotState.active),
-        child: CircleAvatar(
-          radius: 18,
-          backgroundColor: Colors.grey.shade800,
-          foregroundImage: modeImage,
-        ),
+      leading: StateIcon(
+        state: ItemState.active,
+        foregroundImage: modeImage,
       ),
       title: Text(typeName),
       onTap: () => fitNotifier.modify((record) {

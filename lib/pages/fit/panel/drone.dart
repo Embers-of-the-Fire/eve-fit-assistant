@@ -128,29 +128,20 @@ class _DroneSlot extends ConsumerWidget {
         ],
       ),
       child: ListTile(
-        onLongPress: () => item.map((i) => showItemInfoPage(context, typeID: droneID, item: i)),
-        leading: Ink(
-          decoration: const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(20))),
-          child: InkWell(
-            borderRadius: const BorderRadius.all(Radius.circular(20)),
-            onTap: () => _modifyDrone(
-              fitNotifier,
-              index: index,
-              modify: (drone) => drone.copyWith(state: drone.state.nextState()),
-            ),
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: switch (state) {
-                DroneState.passive => Colors.grey.shade800,
-                DroneState.active => Colors.green.shade800,
-              },
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.grey.shade800,
-                foregroundImage: droneImage,
-              ),
-            ),
+        onLongPress: () => item.mapOrElse(
+            map: (i) => showItemInfoPage(context, typeID: droneID, item: i),
+            orElse: () => showTypeInfoPage(context, typeID: droneID)),
+        leading: StateIcon(
+          state: switch (state) {
+            DroneState.passive => ItemState.passive,
+            DroneState.active => ItemState.active,
+          },
+          onTap: () => _modifyDrone(
+            fitNotifier,
+            index: index,
+            modify: (drone) => drone.copyWith(state: drone.state.nextState()),
           ),
+          foregroundImage: droneImage,
         ),
         title: Text('$droneName × $amount'),
       ),

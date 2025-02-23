@@ -1,11 +1,14 @@
 use std::{collections::HashMap, iter};
 
+use eve_fit_os::{calculate::item::FighterAbility, fit::ItemFighter};
+
 #[flutter_rust_bridge::frb(unignore, non_opaque)]
 #[derive(Debug, Clone)]
 pub struct Fit {
     pub ship_id: i32,
     pub modules: Module,
     pub drones: Vec<DroneGroup>,
+    pub fighters: Vec<FighterGroup>,
     pub implant: Vec<Implant>,
     pub skills: HashMap<i32, u8>,
     pub damage_profile: DamageProfile,
@@ -59,6 +62,20 @@ impl Fit {
                             state: ItemState::Active,
                         },
                         drone.amount as usize,
+                    )
+                })
+                .collect(),
+            fighters: self
+                .fighters
+                .into_iter()
+                .flat_map(|g| {
+                    iter::repeat_n(
+                        ItemFighter {
+                            group_id: g.index,
+                            type_id: g.item_id,
+                            ability: FighterAbility::from_bits_retain(g.ability),
+                        },
+                        g.amount as usize,
                     )
                 })
                 .collect(),
@@ -129,6 +146,15 @@ pub struct DroneGroup {
     pub item_id: i32,
     pub amount: i32,
     pub index: u8,
+}
+
+#[flutter_rust_bridge::frb(non_opaque)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FighterGroup {
+    pub item_id: i32,
+    pub amount: i32,
+    pub index: u8,
+    pub ability: u8,
 }
 
 #[flutter_rust_bridge::frb(non_opaque)]

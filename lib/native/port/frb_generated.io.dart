@@ -98,6 +98,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  FighterGroup dco_decode_fighter_group(dynamic raw);
+
+  @protected
+  FighterProxy dco_decode_fighter_proxy(dynamic raw);
+
+  @protected
   Fit dco_decode_fit(dynamic raw);
 
   @protected
@@ -129,6 +135,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DroneProxy> dco_decode_list_drone_proxy(dynamic raw);
+
+  @protected
+  List<FighterGroup> dco_decode_list_fighter_group(dynamic raw);
+
+  @protected
+  List<FighterProxy> dco_decode_list_fighter_proxy(dynamic raw);
 
   @protected
   List<Implant> dco_decode_list_implant(dynamic raw);
@@ -268,6 +280,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  FighterGroup sse_decode_fighter_group(SseDeserializer deserializer);
+
+  @protected
+  FighterProxy sse_decode_fighter_proxy(SseDeserializer deserializer);
+
+  @protected
   Fit sse_decode_fit(SseDeserializer deserializer);
 
   @protected
@@ -299,6 +317,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DroneProxy> sse_decode_list_drone_proxy(SseDeserializer deserializer);
+
+  @protected
+  List<FighterGroup> sse_decode_list_fighter_group(SseDeserializer deserializer);
+
+  @protected
+  List<FighterProxy> sse_decode_list_fighter_proxy(SseDeserializer deserializer);
 
   @protected
   List<Implant> sse_decode_list_implant(SseDeserializer deserializer);
@@ -441,6 +465,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_fighter_group(FighterGroup self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fighter_proxy(FighterProxy self, SseSerializer serializer);
+
+  @protected
   void sse_encode_fit(Fit self, SseSerializer serializer);
 
   @protected
@@ -472,6 +502,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_drone_proxy(List<DroneProxy> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fighter_group(List<FighterGroup> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fighter_proxy(List<FighterProxy> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_implant(List<Implant> self, SseSerializer serializer);

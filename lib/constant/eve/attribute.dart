@@ -151,3 +151,23 @@ const int explosionDelay = 281;
 /// - Name: empFieldRange
 /// - High is good: True
 const int empFieldRange = 99;
+
+/// - Name: fighterTubes
+/// - High is good: True
+const int fighterTubes = 2216;
+
+/// - Name: fighterLightSlots
+/// - High is good: True
+const int fighterLightSlots = 2217;
+
+/// - Name: fighterSupportSlots
+/// - High is good: True
+const int fighterSupportSlots = 2218;
+
+/// - Name: fighterHeavySlots
+/// - High is good: True
+const int fighterHeavySlots = 2219;
+
+/// - Name: fighterSquadronMaxSize
+/// - High is good: True
+const int fighterSquadronMaxSize = 2215;

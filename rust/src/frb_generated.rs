@@ -814,12 +814,41 @@ impl SseDecode for f64 {
     }
 }
 
+impl SseDecode for crate::api::schema::FighterGroup {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_itemId = <i32>::sse_decode(deserializer);
+        let mut var_amount = <i32>::sse_decode(deserializer);
+        let mut var_index = <u8>::sse_decode(deserializer);
+        let mut var_ability = <u8>::sse_decode(deserializer);
+        return crate::api::schema::FighterGroup {
+            item_id: var_itemId,
+            amount: var_amount,
+            index: var_index,
+            ability: var_ability,
+        };
+    }
+}
+
+impl SseDecode for crate::api::proxy::FighterProxy {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_groupIndex = <u8>::sse_decode(deserializer);
+        let mut var_fighters = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
+        return crate::api::proxy::FighterProxy {
+            group_index: var_groupIndex,
+            fighters: var_fighters,
+        };
+    }
+}
+
 impl SseDecode for crate::api::schema::Fit {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_shipId = <i32>::sse_decode(deserializer);
         let mut var_modules = <crate::api::schema::Module>::sse_decode(deserializer);
         let mut var_drones = <Vec<crate::api::schema::DroneGroup>>::sse_decode(deserializer);
+        let mut var_fighters = <Vec<crate::api::schema::FighterGroup>>::sse_decode(deserializer);
         let mut var_implant = <Vec<crate::api::schema::Implant>>::sse_decode(deserializer);
         let mut var_skills = <std::collections::HashMap<i32, u8>>::sse_decode(deserializer);
         let mut var_damageProfile = <crate::api::schema::DamageProfile>::sse_decode(deserializer);
@@ -827,6 +856,7 @@ impl SseDecode for crate::api::schema::Fit {
             ship_id: var_shipId,
             modules: var_modules,
             drones: var_drones,
+            fighters: var_fighters,
             implant: var_implant,
             skills: var_skills,
             damage_profile: var_damageProfile,
@@ -942,6 +972,30 @@ impl SseDecode for Vec<crate::api::proxy::DroneProxy> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<crate::api::proxy::DroneProxy>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::schema::FighterGroup> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::schema::FighterGroup>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::proxy::FighterProxy> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::proxy::FighterProxy>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1073,6 +1127,7 @@ impl SseDecode for crate::api::proxy::ModulesProxy {
         let mut var_subsystem = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_tacticalMode = <Option<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_drones = <Vec<crate::api::proxy::DroneProxy>>::sse_decode(deserializer);
+        let mut var_fighters = <Vec<crate::api::proxy::FighterProxy>>::sse_decode(deserializer);
         return crate::api::proxy::ModulesProxy {
             high: var_high,
             medium: var_medium,
@@ -1081,6 +1136,7 @@ impl SseDecode for crate::api::proxy::ModulesProxy {
             subsystem: var_subsystem,
             tactical_mode: var_tacticalMode,
             drones: var_drones,
+            fighters: var_fighters,
         };
     }
 }
@@ -1502,12 +1558,57 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::error::ErrorKey>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::schema::FighterGroup {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.item_id.into_into_dart().into_dart(),
+            self.amount.into_into_dart().into_dart(),
+            self.index.into_into_dart().into_dart(),
+            self.ability.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::schema::FighterGroup
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::FighterGroup>
+    for crate::api::schema::FighterGroup
+{
+    fn into_into_dart(self) -> crate::api::schema::FighterGroup {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::proxy::FighterProxy {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.group_index.into_into_dart().into_dart(),
+            self.fighters.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::proxy::FighterProxy
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::proxy::FighterProxy>
+    for crate::api::proxy::FighterProxy
+{
+    fn into_into_dart(self) -> crate::api::proxy::FighterProxy {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::schema::Fit {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.ship_id.into_into_dart().into_dart(),
             self.modules.into_into_dart().into_dart(),
             self.drones.into_into_dart().into_dart(),
+            self.fighters.into_into_dart().into_dart(),
             self.implant.into_into_dart().into_dart(),
             self.skills.into_into_dart().into_dart(),
             self.damage_profile.into_into_dart().into_dart(),
@@ -1628,6 +1729,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::proxy::ModulesProxy {
             self.subsystem.into_into_dart().into_dart(),
             self.tactical_mode.into_into_dart().into_dart(),
             self.drones.into_into_dart().into_dart(),
+            self.fighters.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1889,12 +1991,31 @@ impl SseEncode for f64 {
     }
 }
 
+impl SseEncode for crate::api::schema::FighterGroup {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.item_id, serializer);
+        <i32>::sse_encode(self.amount, serializer);
+        <u8>::sse_encode(self.index, serializer);
+        <u8>::sse_encode(self.ability, serializer);
+    }
+}
+
+impl SseEncode for crate::api::proxy::FighterProxy {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u8>::sse_encode(self.group_index, serializer);
+        <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.fighters, serializer);
+    }
+}
+
 impl SseEncode for crate::api::schema::Fit {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.ship_id, serializer);
         <crate::api::schema::Module>::sse_encode(self.modules, serializer);
         <Vec<crate::api::schema::DroneGroup>>::sse_encode(self.drones, serializer);
+        <Vec<crate::api::schema::FighterGroup>>::sse_encode(self.fighters, serializer);
         <Vec<crate::api::schema::Implant>>::sse_encode(self.implant, serializer);
         <std::collections::HashMap<i32, u8>>::sse_encode(self.skills, serializer);
         <crate::api::schema::DamageProfile>::sse_encode(self.damage_profile, serializer);
@@ -2013,6 +2134,26 @@ impl SseEncode for Vec<crate::api::proxy::DroneProxy> {
     }
 }
 
+impl SseEncode for Vec<crate::api::schema::FighterGroup> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::schema::FighterGroup>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::proxy::FighterProxy> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::proxy::FighterProxy>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::schema::Implant> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2115,6 +2256,7 @@ impl SseEncode for crate::api::proxy::ModulesProxy {
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.subsystem, serializer);
         <Option<crate::api::proxy::ItemProxy>>::sse_encode(self.tactical_mode, serializer);
         <Vec<crate::api::proxy::DroneProxy>>::sse_encode(self.drones, serializer);
+        <Vec<crate::api::proxy::FighterProxy>>::sse_encode(self.fighters, serializer);
     }
 }
 

@@ -54,14 +54,9 @@ class SubsystemSlotRow extends ConsumerWidget {
         ],
       ),
       child: ListTile(
-        leading: CircleAvatar(
-          radius: 20,
-          backgroundColor: getSlotColor(SlotState.online),
-          child: CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.grey.shade800,
-            foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID),
-          ),
+        leading: StateIcon(
+          state: ItemState.online,
+          child: Image(image: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID)!),
         ),
         title: Text(GlobalStorage().static.types[typeID]?.nameZH ?? '未知'),
       ),
@@ -85,19 +80,18 @@ class SubsystemSlotRowPlaceholder extends ConsumerWidget {
     final fit = ref.watch(fitRecordNotifierProvider(fitID));
 
     return ListTile(
-      leading: CircleAvatar(
-        radius: 20,
-        child: Image(
-          image: switch (type) {
-            SubsystemType.offensive => subsystemOffensivePlaceholderImage,
-            SubsystemType.defensive => subsystemDefensivePlaceholderImage,
-            SubsystemType.core => subsystemCorePlaceholderImage,
-            SubsystemType.propulsion => subsystemPropulsionPlaceholderImage,
-          },
-          width: 30,
-          height: 30,
-        ),
-      ),
+      leading: StateIcon(
+          state: ItemState.online,
+          child: Image(
+            image: switch (type) {
+              SubsystemType.offensive => subsystemOffensivePlaceholderImage,
+              SubsystemType.defensive => subsystemDefensivePlaceholderImage,
+              SubsystemType.core => subsystemCorePlaceholderImage,
+              SubsystemType.propulsion => subsystemPropulsionPlaceholderImage,
+            },
+            width: 30,
+            height: 30,
+          )),
       title: const Text('子系统'),
       onTap: () async {
         final subID = await showAddSubsystemDialog(

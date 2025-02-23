@@ -39,6 +39,6 @@ class AttributeItem {
   static Future<ReadonlyMap<int, AttributeItem>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/attribute.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(AttributeItem._fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }

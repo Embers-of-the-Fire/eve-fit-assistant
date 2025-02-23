@@ -10,6 +10,7 @@ import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/widgets/state_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -291,31 +292,18 @@ class _SlotRowDisplay extends ConsumerWidget {
 
     return ListTile(
       onLongPress: item.map((i) => () => showItemInfoPage(context, typeID: typeID, item: i)),
-      leading: Ink(
-        decoration: const BoxDecoration(
-          borderRadius: BorderRadius.all(Radius.circular(20)),
-        ),
-        child: InkWell(
-          borderRadius: const BorderRadius.all(Radius.circular(20)),
-          onTap: () async {
-            final newState = state.nextState(maxState: maxState);
-            await _modifyFit(
-              index: index,
-              type: type,
-              fit: fit,
-              op: (item) => item?.copyWith(state: newState),
-            );
-          },
-          child: CircleAvatar(
-            radius: 20,
-            backgroundColor: getSlotColor(state),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.grey.shade800,
-              foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID),
-            ),
-          ),
-        ),
+      leading: StateIcon(
+        onTap: () async {
+          final newState = state.nextState(maxState: maxState);
+          await _modifyFit(
+            index: index,
+            type: type,
+            fit: fit,
+            op: (item) => item?.copyWith(state: newState),
+          );
+        },
+        state: ItemState.fromInt(state.state),
+        foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID),
       ),
       title: Text(GlobalStorage().static.types[typeID]?.nameZH ?? '未知'),
       subtitle: subtitleGroup.isEmpty
@@ -413,17 +401,4 @@ void Function(int, SlotItem? Function(SlotItem?))? _getModifyFunction(
     FitItemType.implant: record.modifyImplant,
   };
   return mapping[type];
-}
-
-Color getSlotColor(SlotState state) {
-  switch (state) {
-    case SlotState.active:
-      return Colors.green.shade400;
-    case SlotState.online:
-      return Colors.grey.shade400;
-    case SlotState.overload:
-      return Colors.red.shade400;
-    case SlotState.passive:
-      return Colors.grey.shade800;
-  }
 }

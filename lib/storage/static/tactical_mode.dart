@@ -37,6 +37,6 @@ class TacticalModeShip {
   static Future<ReadonlyMap<int, TacticalModeShip>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/tactical_mode.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(TacticalModeShip._fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }

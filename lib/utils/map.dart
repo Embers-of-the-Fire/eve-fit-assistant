@@ -30,3 +30,9 @@ class MapView<K, V> {
 
   MapView(this._map) : _read = ReadonlyMap(_map);
 }
+
+extension MapExt<K, V> on Map<K, V> {
+  MapView<K, V> get view => MapView(this);
+
+  ReadonlyMap<K, V> get readonly => ReadonlyMap(this);
+}

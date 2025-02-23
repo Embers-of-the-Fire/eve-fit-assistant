@@ -46,6 +46,7 @@ pub struct ModulesProxy {
     pub subsystem: Vec<ItemProxy>,
     pub tactical_mode: Option<ItemProxy>,
     pub drones: Vec<DroneProxy>,
+    pub fighters: Vec<FighterProxy>,
 }
 
 impl ModulesProxy {
@@ -56,6 +57,7 @@ impl ModulesProxy {
         let mut out = Self::default();
 
         let mut drones = vec![];
+        let mut fighters = vec![];
 
         for item in native {
             match item.slot.slot_type {
@@ -70,11 +72,15 @@ impl ModulesProxy {
                 DroneBay { .. } => {
                     drones.push(item);
                 }
+                Fighter { .. } => {
+                    fighters.push(item);
+                }
                 _ => {}
             }
         }
 
         out.drones = DroneProxy::from_native_grouped(drones);
+        out.fighters = FighterProxy::from_native_grouped(fighters);
 
         out
     }
@@ -108,6 +114,42 @@ impl DroneProxy {
             })
             .or_insert_with(Vec::new)
             .push(drone);
+        }
+
+        map.into_iter()
+            .map(|(group, drones)| Self::from_native(group, drones))
+            .collect()
+    }
+}
+
+#[flutter_rust_bridge::frb(non_opaque)]
+#[derive(Debug, Clone)]
+pub struct FighterProxy {
+    pub group_index: u8,
+    pub fighters: Vec<ItemProxy>,
+}
+
+impl FighterProxy {
+    #[flutter_rust_bridge::frb(ignore)]
+    pub(crate) fn from_native(group: u8, native: Vec<calculate::item::Item>) -> Self {
+        FighterProxy {
+            group_index: group,
+            fighters: native.into_iter().map(ItemProxy::from_native).collect(),
+        }
+    }
+
+    #[flutter_rust_bridge::frb(ignore)]
+    pub(crate) fn from_native_grouped(native: Vec<calculate::item::Item>) -> Vec<Self> {
+        use std::collections::BTreeMap;
+
+        let mut map = BTreeMap::new();
+        for fighter in native {
+            map.entry(match fighter.slot.slot_type {
+                calculate::item::SlotType::Fighter { group_id, .. } => group_id,
+                _ => 0,
+            })
+            .or_insert_with(Vec::new)
+            .push(fighter);
         }
 
         map.into_iter()

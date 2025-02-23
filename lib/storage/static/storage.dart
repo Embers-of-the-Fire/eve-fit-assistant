@@ -6,6 +6,7 @@ import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/static/attribute.dart';
 import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/static/damage_profile.dart';
+import 'package:eve_fit_assistant/storage/static/fighter.dart';
 import 'package:eve_fit_assistant/storage/static/groups.dart';
 import 'package:eve_fit_assistant/storage/static/icon.dart';
 import 'package:eve_fit_assistant/storage/static/implant_group.dart';
@@ -33,6 +34,7 @@ class StaticStorage {
   late final ReadonlyMap<int, AttributeItem> _attributes;
   late final ReadonlyMap<int, SkillItem> _skills;
   late final ReadonlyMap<int, TypeSkill> _typeSkills;
+  late final ReadonlyMap<int, Fighter> _fighters;
   late final ReadonlyMap<String, DamageProfileGroup> _damageProfiles;
   late final List<ImplantGroup> _implantGroups;
   late final StaticIcon _icons;
@@ -57,6 +59,8 @@ class StaticStorage {
   ReadonlyMap<int, SkillItem> get skills => _skills;
 
   ReadonlyMap<int, TypeSkill> get typeSkills => _typeSkills;
+
+  ReadonlyMap<int, Fighter> get fighters => _fighters;
 
   ReadonlyMap<String, DamageProfileGroup> get damageProfiles => _damageProfiles;
 
@@ -102,6 +106,7 @@ class StaticStorage {
     _attributes = await AttributeItem.read(staticStorageDir);
     _skills = await SkillItem.read(staticStorageDir);
     _typeSkills = await TypeSkill.read(staticStorageDir);
+    _fighters = await Fighter.read(staticStorageDir);
     _damageProfiles = await DamageProfileGroup.read(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);

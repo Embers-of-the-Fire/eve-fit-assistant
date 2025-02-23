@@ -43,6 +43,6 @@ class Ship {
   static Future<ReadonlyMap<int, Ship>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/ships.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(_fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }

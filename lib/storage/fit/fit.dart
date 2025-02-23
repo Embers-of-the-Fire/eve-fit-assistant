@@ -4,10 +4,10 @@ import 'dart:io';
 
 import 'package:eve_fit_assistant/native/codegen/constant/character.dart';
 import 'package:eve_fit_assistant/native/port/api/error.dart';
-import 'package:eve_fit_assistant/storage/static/damage_profile.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/proto/slots.pb.dart';
+import 'package:eve_fit_assistant/storage/static/damage_profile.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
@@ -106,6 +106,33 @@ class FitRecord {
     body.drone.clear();
   }
 
+  void modifyFighter(int index, FighterItem Function(FighterItem) map) {
+    final fighter = map(body.fighter[index]);
+    if (fighter.amount <= 0) {
+      body.fighter.removeAt(index);
+      return;
+    }
+    body.fighter[index] = fighter;
+  }
+
+  void addFighter(int fighterID) {
+    final amount = GlobalStorage().static.fighters[fighterID]?.amount ?? 1;
+    body.fighter.add(FighterItem(
+      itemID: fighterID,
+      amount: amount,
+      ability: 0,
+      state: DroneState.active,
+    ));
+  }
+
+  void removeFighter(int index) {
+    body.fighter.removeAt(index);
+  }
+
+  void clearFighter() {
+    body.fighter.clear();
+  }
+
   void addSubsystem(SubsystemType type, int typeID) {
     body.subsystem[type.value] = SlotItem(itemID: typeID, chargeID: null, state: SlotState.online);
     _postSubsystemModify();
@@ -199,6 +226,7 @@ class Fit {
   final List<SlotItem?> subsystem;
 
   final List<DroneItem> drone;
+  final List<FighterItem> fighter;
   final List<SlotItem?> implant;
 
   int? tacticalModeID;
@@ -213,10 +241,12 @@ class Fit {
     required this.low,
     required this.rig,
     required this.subsystem,
-    required this.drone,
+    List<DroneItem>? drone,
+    List<FighterItem>? fighter,
     required this.implant,
     this.tacticalModeID,
-  });
+  })  : drone = drone ?? List.empty(growable: true),
+        fighter = fighter ?? List.empty(growable: true);
 
   factory Fit.init(int shipID) {
     final ship = GlobalStorage().static.ships[shipID];
@@ -230,6 +260,7 @@ class Fit {
       rig: List.filled(ship?.rigSlotNum ?? 0, null),
       subsystem: List.filled((ship?.hasSubsystem ?? false) ? 4 : 0, null),
       drone: List.empty(growable: true),
+      fighter: List.empty(growable: true),
       implant: List.filled(10, null),
       tacticalModeID: ship?.hasTacticalMode.unwrapOr(false).thenWith(() => shipID.andThen(
           (id) => GlobalStorage().static.tacticalModes[id]?.tacticalModes.keys.firstOrNull)),
@@ -336,4 +367,16 @@ enum DroneState {
   const DroneState(this.state);
 
   DroneState nextState() => state == 0 ? DroneState.active : DroneState.passive;
+}
+
+@freezed
+class FighterItem with _$FighterItem {
+  const factory FighterItem({
+    required int itemID,
+    required int amount,
+    required int ability,
+    required DroneState state,
+  }) = _FighterItem;
+
+  factory FighterItem.fromJson(Map<String, dynamic> json) => _$FighterItemFromJson(json);
 }

@@ -382,3 +382,208 @@ abstract class _DroneItem implements DroneItem {
   _$$DroneItemImplCopyWith<_$DroneItemImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
+
+FighterItem _$FighterItemFromJson(Map<String, dynamic> json) {
+  return _FighterItem.fromJson(json);
+}
+
+/// @nodoc
+mixin _$FighterItem {
+  int get itemID => throw _privateConstructorUsedError;
+  int get amount => throw _privateConstructorUsedError;
+  int get ability => throw _privateConstructorUsedError;
+  DroneState get state => throw _privateConstructorUsedError;
+
+  /// Serializes this FighterItem to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of FighterItem
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $FighterItemCopyWith<FighterItem> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $FighterItemCopyWith<$Res> {
+  factory $FighterItemCopyWith(
+          FighterItem value, $Res Function(FighterItem) then) =
+      _$FighterItemCopyWithImpl<$Res, FighterItem>;
+  @useResult
+  $Res call({int itemID, int amount, int ability, DroneState state});
+}
+
+/// @nodoc
+class _$FighterItemCopyWithImpl<$Res, $Val extends FighterItem>
+    implements $FighterItemCopyWith<$Res> {
+  _$FighterItemCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of FighterItem
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? itemID = null,
+    Object? amount = null,
+    Object? ability = null,
+    Object? state = null,
+  }) {
+    return _then(_value.copyWith(
+      itemID: null == itemID
+          ? _value.itemID
+          : itemID // ignore: cast_nullable_to_non_nullable
+              as int,
+      amount: null == amount
+          ? _value.amount
+          : amount // ignore: cast_nullable_to_non_nullable
+              as int,
+      ability: null == ability
+          ? _value.ability
+          : ability // ignore: cast_nullable_to_non_nullable
+              as int,
+      state: null == state
+          ? _value.state
+          : state // ignore: cast_nullable_to_non_nullable
+              as DroneState,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$FighterItemImplCopyWith<$Res>
+    implements $FighterItemCopyWith<$Res> {
+  factory _$$FighterItemImplCopyWith(
+          _$FighterItemImpl value, $Res Function(_$FighterItemImpl) then) =
+      __$$FighterItemImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({int itemID, int amount, int ability, DroneState state});
+}
+
+/// @nodoc
+class __$$FighterItemImplCopyWithImpl<$Res>
+    extends _$FighterItemCopyWithImpl<$Res, _$FighterItemImpl>
+    implements _$$FighterItemImplCopyWith<$Res> {
+  __$$FighterItemImplCopyWithImpl(
+      _$FighterItemImpl _value, $Res Function(_$FighterItemImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of FighterItem
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? itemID = null,
+    Object? amount = null,
+    Object? ability = null,
+    Object? state = null,
+  }) {
+    return _then(_$FighterItemImpl(
+      itemID: null == itemID
+          ? _value.itemID
+          : itemID // ignore: cast_nullable_to_non_nullable
+              as int,
+      amount: null == amount
+          ? _value.amount
+          : amount // ignore: cast_nullable_to_non_nullable
+              as int,
+      ability: null == ability
+          ? _value.ability
+          : ability // ignore: cast_nullable_to_non_nullable
+              as int,
+      state: null == state
+          ? _value.state
+          : state // ignore: cast_nullable_to_non_nullable
+              as DroneState,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$FighterItemImpl implements _FighterItem {
+  const _$FighterItemImpl(
+      {required this.itemID,
+      required this.amount,
+      required this.ability,
+      required this.state});
+
+  factory _$FighterItemImpl.fromJson(Map<String, dynamic> json) =>
+      _$$FighterItemImplFromJson(json);
+
+  @override
+  final int itemID;
+  @override
+  final int amount;
+  @override
+  final int ability;
+  @override
+  final DroneState state;
+
+  @override
+  String toString() {
+    return 'FighterItem(itemID: $itemID, amount: $amount, ability: $ability, state: $state)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FighterItemImpl &&
+            (identical(other.itemID, itemID) || other.itemID == itemID) &&
+            (identical(other.amount, amount) || other.amount == amount) &&
+            (identical(other.ability, ability) || other.ability == ability) &&
+            (identical(other.state, state) || other.state == state));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, itemID, amount, ability, state);
+
+  /// Create a copy of FighterItem
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FighterItemImplCopyWith<_$FighterItemImpl> get copyWith =>
+      __$$FighterItemImplCopyWithImpl<_$FighterItemImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$FighterItemImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _FighterItem implements FighterItem {
+  const factory _FighterItem(
+      {required final int itemID,
+      required final int amount,
+      required final int ability,
+      required final DroneState state}) = _$FighterItemImpl;
+
+  factory _FighterItem.fromJson(Map<String, dynamic> json) =
+      _$FighterItemImpl.fromJson;
+
+  @override
+  int get itemID;
+  @override
+  int get amount;
+  @override
+  int get ability;
+  @override
+  DroneState get state;
+
+  /// Create a copy of FighterItem
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$FighterItemImplCopyWith<_$FighterItemImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}

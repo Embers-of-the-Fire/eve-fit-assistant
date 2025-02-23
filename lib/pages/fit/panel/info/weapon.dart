@@ -37,13 +37,15 @@ class Weapon extends StatelessWidget {
 Text _getWeaponText(ItemProxy hull) {
   String texts = '';
 
+  final fighterDps = hull.attributes[fighterDamagePerSecond] ?? 0.0;
+
   final dps = hull.attributes[damagePerSecondWithoutReload] ?? 0.0;
-  texts += '${dps.toStringAsFixed(1)}/s';
+  texts += '${(dps + fighterDps).toStringAsFixed(1)}/s';
 
   texts += ' | ';
 
   final dpsWithReload = hull.attributes[damagePerSecondWithReload] ?? 0.0;
-  texts += '${dpsWithReload.toStringAsFixed(1)}/s';
+  texts += '${(dpsWithReload + fighterDps).toStringAsFixed(1)}/s';
 
   return Text(texts);
 }
@@ -72,8 +74,9 @@ Text _getWeaponNoDroneText(ItemProxy hull) {
 Text _getDroneText(ItemProxy hull) {
   String text = '';
 
+  final fighterDps = hull.attributes[fighterDamagePerSecond] ?? 0.0;
   final dps = hull.attributes[droneDamagePerSecond] ?? 0.0;
-  text += '${dps.toStringAsFixed(1)}/s';
+  text += '${(dps + fighterDps).toStringAsFixed(1)}/s';
 
   return Text(text);
 }

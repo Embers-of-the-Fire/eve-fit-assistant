@@ -94,3 +94,13 @@ const AssetImage remoteShieldImage = AssetImage('assets/icon/remote-shield.png')
 const AssetImage remoteArmorImage = AssetImage('assets/icon/remote-armor.png');
 
 const AssetImage remoteHullImage = AssetImage('assets/icon/remote-hull.png');
+
+const AssetImage charLargeImage = AssetImage('assets/icon/char-large.png');
+
+const AssetImage charMediumImage = AssetImage('assets/icon/char-medium.png');
+
+const AssetImage charSmallImage = AssetImage('assets/icon/char-small.png');
+
+const AssetImage torpedoImage = AssetImage('assets/icon/type-torpedo.png');
+
+const AssetImage laserImage = AssetImage('assets/icon/type-laser.png');

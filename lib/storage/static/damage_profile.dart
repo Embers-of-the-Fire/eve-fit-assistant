@@ -68,6 +68,6 @@ class DamageProfileGroup {
   static Future<ReadonlyMap<String, DamageProfileGroup>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/damage_profile.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(_fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }

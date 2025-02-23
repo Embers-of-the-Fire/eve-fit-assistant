@@ -108,13 +108,12 @@ class ShipSubsystemStorage {
 
   factory ShipSubsystemStorage._fromBuffer(Uint8List buffer) {
     final raw = ShipSubsystem.fromBuffer(buffer);
-    final ships =
-        raw.ships.entries.map((entry) => MapEntry(entry.key, SubsystemShip._private(entry.value)));
-    final subsystems = raw.subsystems.entries
-        .map((entry) => MapEntry(entry.key, SubsystemItem._private(entry.value)));
+    final ships = raw.ships.map((key, value) => MapEntry(key, SubsystemShip._private(value)));
+    final subsystems =
+        raw.subsystems.map((key, value) => MapEntry(key, SubsystemItem._private(value)));
     return ShipSubsystemStorage._private(
-      ReadonlyMap(Map.fromEntries(ships)),
-      ReadonlyMap(Map.fromEntries(subsystems)),
+      ReadonlyMap(ships),
+      ReadonlyMap(subsystems),
     );
   }
 

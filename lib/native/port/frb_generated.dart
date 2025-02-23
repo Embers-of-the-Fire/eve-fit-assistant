@@ -726,17 +726,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FighterGroup dco_decode_fighter_group(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return FighterGroup(
+      itemId: dco_decode_i_32(arr[0]),
+      amount: dco_decode_i_32(arr[1]),
+      index: dco_decode_u_8(arr[2]),
+      ability: dco_decode_u_8(arr[3]),
+    );
+  }
+
+  @protected
+  FighterProxy dco_decode_fighter_proxy(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return FighterProxy(
+      groupIndex: dco_decode_u_8(arr[0]),
+      fighters: dco_decode_list_item_proxy(arr[1]),
+    );
+  }
+
+  @protected
   Fit dco_decode_fit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6) throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7) throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return Fit(
       shipId: dco_decode_i_32(arr[0]),
       modules: dco_decode_module(arr[1]),
       drones: dco_decode_list_drone_group(arr[2]),
-      implant: dco_decode_list_implant(arr[3]),
-      skills: dco_decode_Map_i_32_u_8(arr[4]),
-      damageProfile: dco_decode_damage_profile(arr[5]),
+      fighters: dco_decode_list_fighter_group(arr[3]),
+      implant: dco_decode_list_implant(arr[4]),
+      skills: dco_decode_Map_i_32_u_8(arr[5]),
+      damageProfile: dco_decode_damage_profile(arr[6]),
     );
   }
 
@@ -820,6 +845,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<FighterGroup> dco_decode_list_fighter_group(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_fighter_group).toList();
+  }
+
+  @protected
+  List<FighterProxy> dco_decode_list_fighter_proxy(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_fighter_proxy).toList();
+  }
+
+  @protected
   List<Implant> dco_decode_list_implant(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_implant).toList();
@@ -892,7 +929,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ModulesProxy dco_decode_modules_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7) throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 8) throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
     return ModulesProxy(
       high: dco_decode_list_item_proxy(arr[0]),
       medium: dco_decode_list_item_proxy(arr[1]),
@@ -901,6 +938,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       subsystem: dco_decode_list_item_proxy(arr[4]),
       tacticalMode: dco_decode_opt_box_autoadd_item_proxy(arr[5]),
       drones: dco_decode_list_drone_proxy(arr[6]),
+      fighters: dco_decode_list_fighter_proxy(arr[7]),
     );
   }
 
@@ -1204,11 +1242,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FighterGroup sse_decode_fighter_group(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_itemId = sse_decode_i_32(deserializer);
+    var var_amount = sse_decode_i_32(deserializer);
+    var var_index = sse_decode_u_8(deserializer);
+    var var_ability = sse_decode_u_8(deserializer);
+    return FighterGroup(
+        itemId: var_itemId, amount: var_amount, index: var_index, ability: var_ability);
+  }
+
+  @protected
+  FighterProxy sse_decode_fighter_proxy(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_groupIndex = sse_decode_u_8(deserializer);
+    var var_fighters = sse_decode_list_item_proxy(deserializer);
+    return FighterProxy(groupIndex: var_groupIndex, fighters: var_fighters);
+  }
+
+  @protected
   Fit sse_decode_fit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_shipId = sse_decode_i_32(deserializer);
     var var_modules = sse_decode_module(deserializer);
     var var_drones = sse_decode_list_drone_group(deserializer);
+    var var_fighters = sse_decode_list_fighter_group(deserializer);
     var var_implant = sse_decode_list_implant(deserializer);
     var var_skills = sse_decode_Map_i_32_u_8(deserializer);
     var var_damageProfile = sse_decode_damage_profile(deserializer);
@@ -1216,6 +1274,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         shipId: var_shipId,
         modules: var_modules,
         drones: var_drones,
+        fighters: var_fighters,
         implant: var_implant,
         skills: var_skills,
         damageProfile: var_damageProfile);
@@ -1304,6 +1363,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <DroneProxy>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_drone_proxy(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<FighterGroup> sse_decode_list_fighter_group(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FighterGroup>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_fighter_group(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<FighterProxy> sse_decode_list_fighter_proxy(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FighterProxy>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_fighter_proxy(deserializer));
     }
     return ans_;
   }
@@ -1429,6 +1512,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_subsystem = sse_decode_list_item_proxy(deserializer);
     var var_tacticalMode = sse_decode_opt_box_autoadd_item_proxy(deserializer);
     var var_drones = sse_decode_list_drone_proxy(deserializer);
+    var var_fighters = sse_decode_list_fighter_proxy(deserializer);
     return ModulesProxy(
         high: var_high,
         medium: var_medium,
@@ -1436,7 +1520,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         rig: var_rig,
         subsystem: var_subsystem,
         tacticalMode: var_tacticalMode,
-        drones: var_drones);
+        drones: var_drones,
+        fighters: var_fighters);
   }
 
   @protected
@@ -1743,11 +1828,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_fighter_group(FighterGroup self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.itemId, serializer);
+    sse_encode_i_32(self.amount, serializer);
+    sse_encode_u_8(self.index, serializer);
+    sse_encode_u_8(self.ability, serializer);
+  }
+
+  @protected
+  void sse_encode_fighter_proxy(FighterProxy self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_8(self.groupIndex, serializer);
+    sse_encode_list_item_proxy(self.fighters, serializer);
+  }
+
+  @protected
   void sse_encode_fit(Fit self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.shipId, serializer);
     sse_encode_module(self.modules, serializer);
     sse_encode_list_drone_group(self.drones, serializer);
+    sse_encode_list_fighter_group(self.fighters, serializer);
     sse_encode_list_implant(self.implant, serializer);
     sse_encode_Map_i_32_u_8(self.skills, serializer);
     sse_encode_damage_profile(self.damageProfile, serializer);
@@ -1823,6 +1925,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_drone_proxy(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_fighter_group(List<FighterGroup> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_fighter_group(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_fighter_proxy(List<FighterProxy> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_fighter_proxy(item, serializer);
     }
   }
 
@@ -1922,6 +2042,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_item_proxy(self.subsystem, serializer);
     sse_encode_opt_box_autoadd_item_proxy(self.tacticalMode, serializer);
     sse_encode_list_drone_proxy(self.drones, serializer);
+    sse_encode_list_fighter_proxy(self.fighters, serializer);
   }
 
   @protected

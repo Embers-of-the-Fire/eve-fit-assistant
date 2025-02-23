@@ -25,6 +25,17 @@ extension Optional<T> on T? {
     }
   }
 
+  U mapOrElse<U>({
+    required U Function(T value) map,
+    required U Function() orElse,
+  }) {
+    if (this == null) {
+      return orElse();
+    } else {
+      return map(this as T);
+    }
+  }
+
   Future<T?> async() async => this;
 }
 

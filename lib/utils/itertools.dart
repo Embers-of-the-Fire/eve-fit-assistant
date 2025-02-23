@@ -83,6 +83,24 @@ extension Itertools<T> on Iterable<T> {
     }
   }
 
+  Iterable<T> unique() sync* {
+    final set = <T>{};
+    for (final e in this) {
+      if (set.add(e)) {
+        yield e;
+      }
+    }
+  }
+
+  Iterable<T> uniqueBy<R>(R Function(T) key) sync* {
+    final set = <R>{};
+    for (final e in this) {
+      if (set.add(key(e))) {
+        yield e;
+      }
+    }
+  }
+
   int count() {
     var count = 0;
     for (final _ in this) {

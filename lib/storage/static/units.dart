@@ -25,6 +25,6 @@ class UnitItem {
   static Future<ReadonlyMap<int, UnitItem>> read(Directory staticDir) async {
     final file = File('${staticDir.path}/units.pb');
     final buffer = await file.readAsBytes();
-    return ReadonlyMap(UnitItem._fromBuffer(buffer));
+    return _fromBuffer(buffer).readonly;
   }
 }
