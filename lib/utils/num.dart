@@ -19,3 +19,14 @@ extension NumDoubleExt on double {
 
   double min(double other) => this < other ? this : other;
 }
+
+extension NumExt on num {
+  String toStringAsMaxDecimals(int maxDecimals) {
+    final str = toString();
+    final dotIndex = str.indexOf('.');
+    if (dotIndex == -1) return str;
+    final decimals = str.substring(dotIndex + 1);
+    if (decimals.length <= maxDecimals) return str;
+    return str.substring(0, dotIndex + 1 + maxDecimals);
+  }
+}

@@ -2,6 +2,7 @@ library;
 
 import 'package:eve_fit_assistant/native/port/api/error.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 
 part 'charge_size.dart';

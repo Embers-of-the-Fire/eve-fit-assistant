@@ -7,12 +7,12 @@ extension UnitExt on UnitType {
   UnitItem get unitItem => GlobalStorage().static.units[id]!;
 
   String format(double value) => switch (this) {
-        UnitType.massFraction => '${(value).toStringAsFixed(2)} kg/kg',
+        UnitType.massFraction => '${(value).toStringAsMaxDecimals(2)} kg/kg',
         UnitType.milliseconds => value > 1000
-            ? '${(value / 1000).toStringAsFixed(2)} s'
-            : '${value.toStringAsFixed(0)} ms',
+            ? '${(value / 1000).toStringAsMaxDecimals(2)} s'
+            : '${value.toStringAsMaxDecimals(0)} ms',
         UnitType.millimeters => '${(value).toStringAsFixed(0)} mm',
-        UnitType.megaPascals => '${(value).toStringAsFixed(2)} MPa',
+        UnitType.megaPascals => '${(value).toStringAsMaxDecimals(2)} MPa',
         UnitType.inverseAbsolutePercent ||
         UnitType.inversedModifierPercent =>
           '${((1 - value) * 100).toStringAsFixed(0)} %',
@@ -32,11 +32,11 @@ extension UnitExt on UnitType {
             4 => '超大型',
             _ => '未知',
           },
-        UnitType.absolutePercent => '${(value * 100).toStringAsFixed(2)} %',
-        UnitType.droneBandwidth => '${value.toStringAsFixed(0)} Mbit/s',
+        UnitType.absolutePercent => '${(value * 100).toStringAsMaxDecimals(2)} %',
+        UnitType.droneBandwidth => '${value.toStringAsMaxDecimals(0)} Mbit/s',
         UnitType.hours => '${value.toStringAsFixed(0)} h',
-        UnitType.money => '${value.toStringAsFixed(2)} ISK',
-        UnitType.logisticalCapacity => '${value.toStringAsFixed(2)} m3/h',
+        UnitType.money => '${value.toStringAsMaxDecimals(2)} ISK',
+        UnitType.logisticalCapacity => '${value.toStringAsMaxDecimals(2)} m3/h',
         UnitType.boolean => value == 1 ? '是' : '否',
         UnitType.units => value.toStringAsFixed(0),
         UnitType.level => 'Lv. ${value.toStringAsFixed(0)}',
@@ -48,7 +48,8 @@ extension UnitExt on UnitType {
             _ => '未知',
           },
         UnitType.datetime => fromSecondsSinceEpoch(value.toInt()).toString(),
-        UnitType.modifierRealPercent => '${value >= 0 ? '+' : ''}${value.toStringAsFixed(2)} %',
-        _ => '${value.toStringAsFixed(2)} ${unitItem.displayName}',
+        UnitType.modifierRealPercent =>
+          '${value >= 0 ? '+' : ''}${value.toStringAsMaxDecimals(2)} %',
+        _ => '${value.toStringAsMaxDecimals(2)} ${unitItem.displayName}',
       };
 }

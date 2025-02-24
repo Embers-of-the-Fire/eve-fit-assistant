@@ -36,8 +36,8 @@ class IncompatibleChargeCapacity extends StatelessWidget {
         leading: _errorIcon,
         title: const Text('弹药尺寸过大'),
         subtitle: Text(
-          '最大容量: ${max.toStringAsFixed(1)} m³\n'
-          '实际体积: ${actual.toStringAsFixed(1)} m³',
+          '最大容量: ${max.toStringAsMaxDecimals(1)} m³\n'
+          '实际体积: ${actual.toStringAsMaxDecimals(1)} m³',
         ),
       );
 }

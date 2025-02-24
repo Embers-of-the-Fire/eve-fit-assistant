@@ -17,55 +17,57 @@ class Resource extends StatelessWidget {
       padding: const EdgeInsets.only(left: 20, right: 22, top: 8, bottom: 8),
       child: DefaultTextStyle(
         style: const TextStyle(fontSize: 16),
-        textAlign: TextAlign.end,
-        child: Table(
-          columnWidths: const {
-            0: FixedColumnWidth(28),
-            1: FlexColumnWidth(),
-            2: FixedColumnWidth(10),
-            3: FixedColumnWidth(28),
-            4: FlexColumnWidth(),
-          },
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: <TableRow>[
-            TableRow(children: [
+        child: Column(
+          spacing: 10,
+          children: <Widget>[
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Image(image: cpuImage, height: 28),
               ResourceCompare(
-                alignment: MainAxisAlignment.end,
                 used: cpuUsed,
                 all: allCpu,
                 fixed: 1,
                 unit: 'tf',
               ),
-              const SizedBox.shrink(),
+            ]),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Image(image: powerImage, height: 28),
               ResourceCompare(
-                alignment: MainAxisAlignment.end,
                 used: powerUsed,
                 all: allPower,
                 unit: 'MW',
               ),
             ]),
-            TableRow(children: List.filled(5, const SizedBox(height: 14))),
-            TableRow(children: [
-              const Image(image: rigImage, height: 28),
-              ResourceCompare(
-                alignment: MainAxisAlignment.end,
-                used: ship.hull.attributes[upgradeUsed] ?? 0.0,
-                all: ship.hull.attributes[upgradeCapacity] ?? 0.0,
-                warning: false,
-              ),
-              const SizedBox.shrink(),
-              const Image(image: droneImage, height: 28),
-              // const SizedBox.shrink(),
-              ResourceCompare(
-                alignment: MainAxisAlignment.end,
-                used: ship.hull.attributes[droneCapacityLoad] ?? 0,
-                all: ship.hull.attributes[droneBandwidth] ?? 0,
-                unit: 'mb/s',
-                warning: false,
-              )
-            ])
+            Table(
+              columnWidths: const {
+                0: FixedColumnWidth(28),
+                1: FlexColumnWidth(),
+                2: FixedColumnWidth(10),
+                3: FixedColumnWidth(28),
+                4: FlexColumnWidth(),
+              },
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: <TableRow>[
+                TableRow(children: [
+                  const Image(image: rigImage, height: 28),
+                  ResourceCompare(
+                    align: TextAlign.end,
+                    used: ship.hull.attributes[upgradeUsed] ?? 0.0,
+                    all: ship.hull.attributes[upgradeCapacity] ?? 0.0,
+                    warning: false,
+                  ),
+                  const SizedBox.shrink(),
+                  const Image(image: droneImage, height: 28),
+                  // const SizedBox.shrink(),
+                  ResourceCompare(
+                    align: TextAlign.end,
+                    used: ship.hull.attributes[droneCapacityLoad] ?? 0,
+                    all: ship.hull.attributes[droneBandwidth] ?? 0,
+                    unit: 'mb/s',
+                    warning: false,
+                  )
+                ])
+              ],
+            )
           ],
         ),
       ),

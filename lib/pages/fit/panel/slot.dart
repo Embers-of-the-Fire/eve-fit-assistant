@@ -244,16 +244,16 @@ class _SlotRowDisplay extends ConsumerWidget {
           // turret
           row.add(const Image(image: targetRangeImage, width: 18, height: 18));
           row.add(const SizedBox(width: 10));
-          String text = '${(range / 1000).toStringAsFixed(1)} km';
+          String text = '${(range / 1000).toStringAsMaxDecimals(1)} km';
 
           final extraRange = item.attributes[falloff];
           if (extraRange != null && extraRange > 0) {
-            text += ' + ${(extraRange / 1000).toStringAsFixed(1)} km';
+            text += ' + ${(extraRange / 1000).toStringAsMaxDecimals(1)} km';
           }
 
           final extraEffectRange = item.attributes[falloffEffectiveness];
           if (extraEffectRange != null && extraEffectRange > 0) {
-            text += ' + ${(extraEffectRange / 1000).toStringAsFixed(1)} km';
+            text += ' + ${(extraEffectRange / 1000).toStringAsMaxDecimals(1)} km';
           }
 
           row.add(Text(text, style: const TextStyle(fontSize: 14)));
@@ -266,7 +266,8 @@ class _SlotRowDisplay extends ConsumerWidget {
           if (range > 0) {
             row.add(const Image(image: targetRangeImage, width: 18, height: 18));
             row.add(const SizedBox(width: 10));
-            row.add(Text('${range.toStringAsFixed(1)} km', style: const TextStyle(fontSize: 14)));
+            row.add(
+                Text('${range.toStringAsMaxDecimals(1)} km', style: const TextStyle(fontSize: 14)));
           }
         } else {
           final effectRange = item.attributes[empFieldRange];
@@ -274,7 +275,7 @@ class _SlotRowDisplay extends ConsumerWidget {
             row.add(const Image(image: targetRangeImage, width: 18, height: 18));
             row.add(const SizedBox(width: 10));
             row.add(Text(
-              '${(effectRange / 1000).toStringAsFixed(1)} km',
+              '${(effectRange / 1000).toStringAsMaxDecimals(1)} km',
               style: const TextStyle(fontSize: 14),
             ));
           }

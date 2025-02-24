@@ -53,7 +53,7 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
           .andThen<Widget>((u) => GlobalStorage().static.icons.getIconSync(u, width: 24))
           .unwrapOr(const Icon(Icons.square_outlined, color: Colors.transparent));
       final title = data.displayNameZH;
-      final valueString = data.unitID?.format(value) ?? value.toStringAsFixed(2);
+      final valueString = data.unitID?.format(value) ?? value.toStringAsMaxDecimals(2);
       return TableRow(children: [
         icon,
         Padding(
@@ -94,7 +94,7 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
           .andThen<Widget>((u) => GlobalStorage().static.icons.getIconSync(u, width: 24))
           .unwrapOr(const Icon(Icons.square_outlined, color: Colors.transparent));
       final title = data.displayNameZH;
-      final valueString = data.unitID?.format(value) ?? value.toStringAsFixed(2);
+      final valueString = data.unitID?.format(value) ?? value.toStringAsMaxDecimals(2);
       final originalValue = original[id];
       final color = originalValue.map((orig) => data.highIsGood
           ? (orig > value ? Colors.red : (orig < value ? Colors.green : null))

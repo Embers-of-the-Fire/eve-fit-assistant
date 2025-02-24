@@ -34,7 +34,7 @@ List<TableRow> _getExtraTableContent(ItemProxy hull) {
     final List<Widget> children = [];
     final speed = hull.attributes[maxVelocity] ?? 0.0;
     children.add(const Image(image: speedImage));
-    children.add(Text('${speed.toStringAsFixed(1)} m/s'));
+    children.add(Text('${speed.toStringAsMaxDecimals(1)} m/s'));
 
     children.add(const SizedBox.shrink());
 
@@ -42,7 +42,7 @@ List<TableRow> _getExtraTableContent(ItemProxy hull) {
     final warpSpeedFactor = hull.attributes[warpSpeedMultiplier] ?? 0.0;
     final warpSpeed = warpSpeedBase * warpSpeedFactor;
     children.add(const Image(image: warpSpeedImage));
-    children.add(Text('${warpSpeed.toStringAsFixed(1)} AU/s'));
+    children.add(Text('${warpSpeed.toStringAsMaxDecimals(1)} AU/s'));
     rows.add(TableRow(children: children));
   }
 
@@ -71,7 +71,7 @@ List<TableRow> _getExtraTableContent(ItemProxy hull) {
     children.add(const SizedBox.shrink());
     final (image, strength) = _getMaxRadarStrength(hull);
     children.add(Image(image: image));
-    children.add(Text(strength.toStringAsFixed(1)));
+    children.add(Text(strength.toStringAsMaxDecimals(1)));
     rows.add(TableRow(children: children));
   }
 
@@ -80,12 +80,12 @@ List<TableRow> _getExtraTableContent(ItemProxy hull) {
     final List<Widget> children = [];
     final align = hull.attributes[alignTime] ?? 0.0;
     children.add(const Image(image: alignTimeImage));
-    children.add(Text('${align.toStringAsFixed(2)} s'));
+    children.add(Text('${align.toStringAsMaxDecimals(2)} s'));
 
     children.add(const SizedBox.shrink());
     final sigRadius = hull.attributes[signatureRadius] ?? 0.0;
     children.add(const Image(image: signatureRadiusImage));
-    children.add(Text('${sigRadius.toStringAsFixed(0)} m'));
+    children.add(Text('${sigRadius.toStringAsMaxDecimals(0)} m'));
     rows.add(TableRow(children: children));
   }
 

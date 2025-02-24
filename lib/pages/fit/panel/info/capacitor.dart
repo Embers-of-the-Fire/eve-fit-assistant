@@ -45,7 +45,7 @@ List<Text> _getCapacitorTextGroup(ItemProxy hull) {
 
   final diff = hull.attributes[capacitorPeakDelta] ?? 0.0;
   texts.add(Text(
-    '${diff.isNegative ? '-' : '+'}${diff.abs().toStringAsFixed(2)} GJ/s',
+    '${diff.isNegative ? '-' : '+'}${diff.abs().toStringAsMaxDecimals(2)} GJ/s',
     style: TextStyle(color: diff.isNegative ? Colors.red : Colors.green),
   ));
 

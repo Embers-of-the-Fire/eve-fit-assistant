@@ -6,22 +6,22 @@ class ResourceCompare extends StatelessWidget {
   final double all;
   final bool warning;
 
+  final TextAlign? align;
+
   /// The fixed number of decimal places to show.
   final int fixed;
 
   /// The unit of the resource.
   final String? unit;
 
-  final MainAxisAlignment? alignment;
-
   const ResourceCompare({
     super.key,
     required this.used,
     required this.all,
+    this.align,
     this.warning = true,
     this.fixed = 0,
     this.unit,
-    this.alignment,
   });
 
   @override
@@ -30,12 +30,13 @@ class ResourceCompare extends StatelessWidget {
     final all = this.all.toStringAsFixed(fixed);
     final unit = this.unit.map((u) => ' $u').unwrapOr('');
 
-    return Row(
-      mainAxisAlignment: alignment ?? MainAxisAlignment.start,
-      children: [
-        Text(used, style: TextStyle(color: _getColorFromValue(this.used, this.all, warning))),
-        Text('/$all$unit'),
-      ],
+    return Text.rich(
+      TextSpan(children: [
+        TextSpan(
+            text: used, style: TextStyle(color: _getColorFromValue(this.used, this.all, warning))),
+        TextSpan(text: '/$all$unit'),
+      ]),
+      textAlign: align,
     );
   }
 }
