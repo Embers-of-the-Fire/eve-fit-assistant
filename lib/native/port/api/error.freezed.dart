@@ -19,8 +19,7 @@ mixin _$ErrorKey {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -28,6 +27,7 @@ mixin _$ErrorKey {
     required TResult Function(int expected, int actual) incompatibleRigSize,
   }) =>
       throw _privateConstructorUsedError;
+
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(int expected, int actual)? incompatibleChargeSize,
@@ -51,47 +51,37 @@ mixin _$ErrorKey {
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
+
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) =>
       throw _privateConstructorUsedError;
+
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -106,13 +96,12 @@ abstract class $ErrorKeyCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ErrorKeyCopyWithImpl<$Res, $Val extends ErrorKey>
-    implements $ErrorKeyCopyWith<$Res> {
+class _$ErrorKeyCopyWithImpl<$Res, $Val extends ErrorKey> implements $ErrorKeyCopyWith<$Res> {
   _$ErrorKeyCopyWithImpl(this._value, this._then);
 
-  // ignore: unused_field
+// ignore: unused_field
   final $Val _value;
-  // ignore: unused_field
+// ignore: unused_field
   final $Res Function($Val) _then;
 
   /// Create a copy of ErrorKey
@@ -133,8 +122,7 @@ abstract class _$$ErrorKey_IncompatibleChargeSizeImplCopyWith<$Res> {
 class __$$ErrorKey_IncompatibleChargeSizeImplCopyWithImpl<$Res>
     extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_IncompatibleChargeSizeImpl>
     implements _$$ErrorKey_IncompatibleChargeSizeImplCopyWith<$Res> {
-  __$$ErrorKey_IncompatibleChargeSizeImplCopyWithImpl(
-      _$ErrorKey_IncompatibleChargeSizeImpl _value,
+  __$$ErrorKey_IncompatibleChargeSizeImplCopyWithImpl(_$ErrorKey_IncompatibleChargeSizeImpl _value,
       $Res Function(_$ErrorKey_IncompatibleChargeSizeImpl) _then)
       : super(_value, _then);
 
@@ -161,10 +149,8 @@ class __$$ErrorKey_IncompatibleChargeSizeImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$ErrorKey_IncompatibleChargeSizeImpl
-    extends ErrorKey_IncompatibleChargeSize {
-  const _$ErrorKey_IncompatibleChargeSizeImpl(
-      {required this.expected, required this.actual})
+class _$ErrorKey_IncompatibleChargeSizeImpl extends ErrorKey_IncompatibleChargeSize {
+  const _$ErrorKey_IncompatibleChargeSizeImpl({required this.expected, required this.actual})
       : super._();
 
   @override
@@ -182,8 +168,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ErrorKey_IncompatibleChargeSizeImpl &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -195,8 +180,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorKey_IncompatibleChargeSizeImplCopyWith<
-          _$ErrorKey_IncompatibleChargeSizeImpl>
+  _$$ErrorKey_IncompatibleChargeSizeImplCopyWith<_$ErrorKey_IncompatibleChargeSizeImpl>
       get copyWith => __$$ErrorKey_IncompatibleChargeSizeImplCopyWithImpl<
           _$ErrorKey_IncompatibleChargeSizeImpl>(this, _$identity);
 
@@ -204,8 +188,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -250,18 +233,13 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) {
     return incompatibleChargeSize(this);
   }
@@ -269,16 +247,12 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) {
     return incompatibleChargeSize?.call(this);
@@ -287,14 +261,11 @@ class _$ErrorKey_IncompatibleChargeSizeImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -318,8 +289,7 @@ abstract class ErrorKey_IncompatibleChargeSize extends ErrorKey {
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ErrorKey_IncompatibleChargeSizeImplCopyWith<
-          _$ErrorKey_IncompatibleChargeSizeImpl>
+  _$$ErrorKey_IncompatibleChargeSizeImplCopyWith<_$ErrorKey_IncompatibleChargeSizeImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
@@ -335,8 +305,7 @@ abstract class _$$ErrorKey_IncompatibleChargeCapacityImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$ErrorKey_IncompatibleChargeCapacityImplCopyWithImpl<$Res>
-    extends _$ErrorKeyCopyWithImpl<$Res,
-        _$ErrorKey_IncompatibleChargeCapacityImpl>
+    extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_IncompatibleChargeCapacityImpl>
     implements _$$ErrorKey_IncompatibleChargeCapacityImplCopyWith<$Res> {
   __$$ErrorKey_IncompatibleChargeCapacityImplCopyWithImpl(
       _$ErrorKey_IncompatibleChargeCapacityImpl _value,
@@ -366,10 +335,8 @@ class __$$ErrorKey_IncompatibleChargeCapacityImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$ErrorKey_IncompatibleChargeCapacityImpl
-    extends ErrorKey_IncompatibleChargeCapacity {
-  const _$ErrorKey_IncompatibleChargeCapacityImpl(
-      {required this.max, required this.actual})
+class _$ErrorKey_IncompatibleChargeCapacityImpl extends ErrorKey_IncompatibleChargeCapacity {
+  const _$ErrorKey_IncompatibleChargeCapacityImpl({required this.max, required this.actual})
       : super._();
 
   @override
@@ -399,8 +366,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorKey_IncompatibleChargeCapacityImplCopyWith<
-          _$ErrorKey_IncompatibleChargeCapacityImpl>
+  _$$ErrorKey_IncompatibleChargeCapacityImplCopyWith<_$ErrorKey_IncompatibleChargeCapacityImpl>
       get copyWith => __$$ErrorKey_IncompatibleChargeCapacityImplCopyWithImpl<
           _$ErrorKey_IncompatibleChargeCapacityImpl>(this, _$identity);
 
@@ -408,8 +374,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -454,18 +419,13 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) {
     return incompatibleChargeCapacity(this);
   }
@@ -473,16 +433,12 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) {
     return incompatibleChargeCapacity?.call(this);
@@ -491,14 +447,11 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -512,8 +465,8 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl
 
 abstract class ErrorKey_IncompatibleChargeCapacity extends ErrorKey {
   const factory ErrorKey_IncompatibleChargeCapacity(
-          {required final double max, required final double actual}) =
-      _$ErrorKey_IncompatibleChargeCapacityImpl;
+      {required final double max,
+      required final double actual}) = _$ErrorKey_IncompatibleChargeCapacityImpl;
   const ErrorKey_IncompatibleChargeCapacity._() : super._();
 
   double get max;
@@ -522,16 +475,14 @@ abstract class ErrorKey_IncompatibleChargeCapacity extends ErrorKey {
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ErrorKey_IncompatibleChargeCapacityImplCopyWith<
-          _$ErrorKey_IncompatibleChargeCapacityImpl>
+  _$$ErrorKey_IncompatibleChargeCapacityImplCopyWith<_$ErrorKey_IncompatibleChargeCapacityImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 abstract class _$$ErrorKey_TooMuchTurretImplCopyWith<$Res> {
   factory _$$ErrorKey_TooMuchTurretImplCopyWith(
-          _$ErrorKey_TooMuchTurretImpl value,
-          $Res Function(_$ErrorKey_TooMuchTurretImpl) then) =
+          _$ErrorKey_TooMuchTurretImpl value, $Res Function(_$ErrorKey_TooMuchTurretImpl) then) =
       __$$ErrorKey_TooMuchTurretImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int expected, int actual});
@@ -542,8 +493,7 @@ class __$$ErrorKey_TooMuchTurretImplCopyWithImpl<$Res>
     extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_TooMuchTurretImpl>
     implements _$$ErrorKey_TooMuchTurretImplCopyWith<$Res> {
   __$$ErrorKey_TooMuchTurretImplCopyWithImpl(
-      _$ErrorKey_TooMuchTurretImpl _value,
-      $Res Function(_$ErrorKey_TooMuchTurretImpl) _then)
+      _$ErrorKey_TooMuchTurretImpl _value, $Res Function(_$ErrorKey_TooMuchTurretImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ErrorKey
@@ -570,9 +520,7 @@ class __$$ErrorKey_TooMuchTurretImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
-  const _$ErrorKey_TooMuchTurretImpl(
-      {required this.expected, required this.actual})
-      : super._();
+  const _$ErrorKey_TooMuchTurretImpl({required this.expected, required this.actual}) : super._();
 
   @override
   final int expected;
@@ -589,8 +537,7 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ErrorKey_TooMuchTurretImpl &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -602,16 +549,14 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorKey_TooMuchTurretImplCopyWith<_$ErrorKey_TooMuchTurretImpl>
-      get copyWith => __$$ErrorKey_TooMuchTurretImplCopyWithImpl<
-          _$ErrorKey_TooMuchTurretImpl>(this, _$identity);
+  _$$ErrorKey_TooMuchTurretImplCopyWith<_$ErrorKey_TooMuchTurretImpl> get copyWith =>
+      __$$ErrorKey_TooMuchTurretImplCopyWithImpl<_$ErrorKey_TooMuchTurretImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -656,18 +601,13 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) {
     return tooMuchTurret(this);
   }
@@ -675,16 +615,12 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) {
     return tooMuchTurret?.call(this);
@@ -693,14 +629,11 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -713,9 +646,8 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
 }
 
 abstract class ErrorKey_TooMuchTurret extends ErrorKey {
-  const factory ErrorKey_TooMuchTurret(
-      {required final int expected,
-      required final int actual}) = _$ErrorKey_TooMuchTurretImpl;
+  const factory ErrorKey_TooMuchTurret({required final int expected, required final int actual}) =
+      _$ErrorKey_TooMuchTurretImpl;
   const ErrorKey_TooMuchTurret._() : super._();
 
   int get expected;
@@ -724,14 +656,13 @@ abstract class ErrorKey_TooMuchTurret extends ErrorKey {
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ErrorKey_TooMuchTurretImplCopyWith<_$ErrorKey_TooMuchTurretImpl>
-      get copyWith => throw _privateConstructorUsedError;
+  _$$ErrorKey_TooMuchTurretImplCopyWith<_$ErrorKey_TooMuchTurretImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 abstract class _$$ErrorKey_TooMuchLauncherImplCopyWith<$Res> {
-  factory _$$ErrorKey_TooMuchLauncherImplCopyWith(
-          _$ErrorKey_TooMuchLauncherImpl value,
+  factory _$$ErrorKey_TooMuchLauncherImplCopyWith(_$ErrorKey_TooMuchLauncherImpl value,
           $Res Function(_$ErrorKey_TooMuchLauncherImpl) then) =
       __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<$Res>;
   @useResult
@@ -743,8 +674,7 @@ class __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<$Res>
     extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_TooMuchLauncherImpl>
     implements _$$ErrorKey_TooMuchLauncherImplCopyWith<$Res> {
   __$$ErrorKey_TooMuchLauncherImplCopyWithImpl(
-      _$ErrorKey_TooMuchLauncherImpl _value,
-      $Res Function(_$ErrorKey_TooMuchLauncherImpl) _then)
+      _$ErrorKey_TooMuchLauncherImpl _value, $Res Function(_$ErrorKey_TooMuchLauncherImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ErrorKey
@@ -771,9 +701,7 @@ class __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
-  const _$ErrorKey_TooMuchLauncherImpl(
-      {required this.expected, required this.actual})
-      : super._();
+  const _$ErrorKey_TooMuchLauncherImpl({required this.expected, required this.actual}) : super._();
 
   @override
   final int expected;
@@ -790,8 +718,7 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ErrorKey_TooMuchLauncherImpl &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -803,16 +730,15 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorKey_TooMuchLauncherImplCopyWith<_$ErrorKey_TooMuchLauncherImpl>
-      get copyWith => __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<
-          _$ErrorKey_TooMuchLauncherImpl>(this, _$identity);
+  _$$ErrorKey_TooMuchLauncherImplCopyWith<_$ErrorKey_TooMuchLauncherImpl> get copyWith =>
+      __$$ErrorKey_TooMuchLauncherImplCopyWithImpl<_$ErrorKey_TooMuchLauncherImpl>(
+          this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -857,18 +783,13 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) {
     return tooMuchLauncher(this);
   }
@@ -876,16 +797,12 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) {
     return tooMuchLauncher?.call(this);
@@ -894,14 +811,11 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -914,9 +828,8 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
 }
 
 abstract class ErrorKey_TooMuchLauncher extends ErrorKey {
-  const factory ErrorKey_TooMuchLauncher(
-      {required final int expected,
-      required final int actual}) = _$ErrorKey_TooMuchLauncherImpl;
+  const factory ErrorKey_TooMuchLauncher({required final int expected, required final int actual}) =
+      _$ErrorKey_TooMuchLauncherImpl;
   const ErrorKey_TooMuchLauncher._() : super._();
 
   int get expected;
@@ -925,14 +838,13 @@ abstract class ErrorKey_TooMuchLauncher extends ErrorKey {
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ErrorKey_TooMuchLauncherImplCopyWith<_$ErrorKey_TooMuchLauncherImpl>
-      get copyWith => throw _privateConstructorUsedError;
+  _$$ErrorKey_TooMuchLauncherImplCopyWith<_$ErrorKey_TooMuchLauncherImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 abstract class _$$ErrorKey_IncompatibleShipGroupImplCopyWith<$Res> {
-  factory _$$ErrorKey_IncompatibleShipGroupImplCopyWith(
-          _$ErrorKey_IncompatibleShipGroupImpl value,
+  factory _$$ErrorKey_IncompatibleShipGroupImplCopyWith(_$ErrorKey_IncompatibleShipGroupImpl value,
           $Res Function(_$ErrorKey_IncompatibleShipGroupImpl) then) =
       __$$ErrorKey_IncompatibleShipGroupImplCopyWithImpl<$Res>;
   @useResult
@@ -943,8 +855,7 @@ abstract class _$$ErrorKey_IncompatibleShipGroupImplCopyWith<$Res> {
 class __$$ErrorKey_IncompatibleShipGroupImplCopyWithImpl<$Res>
     extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_IncompatibleShipGroupImpl>
     implements _$$ErrorKey_IncompatibleShipGroupImplCopyWith<$Res> {
-  __$$ErrorKey_IncompatibleShipGroupImplCopyWithImpl(
-      _$ErrorKey_IncompatibleShipGroupImpl _value,
+  __$$ErrorKey_IncompatibleShipGroupImplCopyWithImpl(_$ErrorKey_IncompatibleShipGroupImpl _value,
       $Res Function(_$ErrorKey_IncompatibleShipGroupImpl) _then)
       : super(_value, _then);
 
@@ -966,10 +877,8 @@ class __$$ErrorKey_IncompatibleShipGroupImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$ErrorKey_IncompatibleShipGroupImpl
-    extends ErrorKey_IncompatibleShipGroup {
-  const _$ErrorKey_IncompatibleShipGroupImpl({required this.expected})
-      : super._();
+class _$ErrorKey_IncompatibleShipGroupImpl extends ErrorKey_IncompatibleShipGroup {
+  const _$ErrorKey_IncompatibleShipGroupImpl({required this.expected}) : super._();
 
   @override
   final Int32List expected;
@@ -988,25 +897,23 @@ class _$ErrorKey_IncompatibleShipGroupImpl
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
+  int get hashCode => Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
 
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorKey_IncompatibleShipGroupImplCopyWith<
-          _$ErrorKey_IncompatibleShipGroupImpl>
-      get copyWith => __$$ErrorKey_IncompatibleShipGroupImplCopyWithImpl<
-          _$ErrorKey_IncompatibleShipGroupImpl>(this, _$identity);
+  _$$ErrorKey_IncompatibleShipGroupImplCopyWith<_$ErrorKey_IncompatibleShipGroupImpl>
+      get copyWith =>
+          __$$ErrorKey_IncompatibleShipGroupImplCopyWithImpl<_$ErrorKey_IncompatibleShipGroupImpl>(
+              this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -1051,18 +958,13 @@ class _$ErrorKey_IncompatibleShipGroupImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) {
     return incompatibleShipGroup(this);
   }
@@ -1070,16 +972,12 @@ class _$ErrorKey_IncompatibleShipGroupImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) {
     return incompatibleShipGroup?.call(this);
@@ -1088,14 +986,11 @@ class _$ErrorKey_IncompatibleShipGroupImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -1108,8 +1003,7 @@ class _$ErrorKey_IncompatibleShipGroupImpl
 }
 
 abstract class ErrorKey_IncompatibleShipGroup extends ErrorKey {
-  const factory ErrorKey_IncompatibleShipGroup(
-          {required final Int32List expected}) =
+  const factory ErrorKey_IncompatibleShipGroup({required final Int32List expected}) =
       _$ErrorKey_IncompatibleShipGroupImpl;
   const ErrorKey_IncompatibleShipGroup._() : super._();
 
@@ -1118,15 +1012,13 @@ abstract class ErrorKey_IncompatibleShipGroup extends ErrorKey {
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ErrorKey_IncompatibleShipGroupImplCopyWith<
-          _$ErrorKey_IncompatibleShipGroupImpl>
+  _$$ErrorKey_IncompatibleShipGroupImplCopyWith<_$ErrorKey_IncompatibleShipGroupImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 abstract class _$$ErrorKey_IncompatibleShipTypeImplCopyWith<$Res> {
-  factory _$$ErrorKey_IncompatibleShipTypeImplCopyWith(
-          _$ErrorKey_IncompatibleShipTypeImpl value,
+  factory _$$ErrorKey_IncompatibleShipTypeImplCopyWith(_$ErrorKey_IncompatibleShipTypeImpl value,
           $Res Function(_$ErrorKey_IncompatibleShipTypeImpl) then) =
       __$$ErrorKey_IncompatibleShipTypeImplCopyWithImpl<$Res>;
   @useResult
@@ -1137,8 +1029,7 @@ abstract class _$$ErrorKey_IncompatibleShipTypeImplCopyWith<$Res> {
 class __$$ErrorKey_IncompatibleShipTypeImplCopyWithImpl<$Res>
     extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_IncompatibleShipTypeImpl>
     implements _$$ErrorKey_IncompatibleShipTypeImplCopyWith<$Res> {
-  __$$ErrorKey_IncompatibleShipTypeImplCopyWithImpl(
-      _$ErrorKey_IncompatibleShipTypeImpl _value,
+  __$$ErrorKey_IncompatibleShipTypeImplCopyWithImpl(_$ErrorKey_IncompatibleShipTypeImpl _value,
       $Res Function(_$ErrorKey_IncompatibleShipTypeImpl) _then)
       : super(_value, _then);
 
@@ -1160,10 +1051,8 @@ class __$$ErrorKey_IncompatibleShipTypeImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$ErrorKey_IncompatibleShipTypeImpl
-    extends ErrorKey_IncompatibleShipType {
-  const _$ErrorKey_IncompatibleShipTypeImpl({required this.expected})
-      : super._();
+class _$ErrorKey_IncompatibleShipTypeImpl extends ErrorKey_IncompatibleShipType {
+  const _$ErrorKey_IncompatibleShipTypeImpl({required this.expected}) : super._();
 
   @override
   final Int32List expected;
@@ -1182,25 +1071,22 @@ class _$ErrorKey_IncompatibleShipTypeImpl
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
+  int get hashCode => Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
 
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorKey_IncompatibleShipTypeImplCopyWith<
-          _$ErrorKey_IncompatibleShipTypeImpl>
-      get copyWith => __$$ErrorKey_IncompatibleShipTypeImplCopyWithImpl<
-          _$ErrorKey_IncompatibleShipTypeImpl>(this, _$identity);
+  _$$ErrorKey_IncompatibleShipTypeImplCopyWith<_$ErrorKey_IncompatibleShipTypeImpl> get copyWith =>
+      __$$ErrorKey_IncompatibleShipTypeImplCopyWithImpl<_$ErrorKey_IncompatibleShipTypeImpl>(
+          this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -1245,18 +1131,13 @@ class _$ErrorKey_IncompatibleShipTypeImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) {
     return incompatibleShipType(this);
   }
@@ -1264,16 +1145,12 @@ class _$ErrorKey_IncompatibleShipTypeImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) {
     return incompatibleShipType?.call(this);
@@ -1282,14 +1159,11 @@ class _$ErrorKey_IncompatibleShipTypeImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -1302,8 +1176,7 @@ class _$ErrorKey_IncompatibleShipTypeImpl
 }
 
 abstract class ErrorKey_IncompatibleShipType extends ErrorKey {
-  const factory ErrorKey_IncompatibleShipType(
-          {required final Int32List expected}) =
+  const factory ErrorKey_IncompatibleShipType({required final Int32List expected}) =
       _$ErrorKey_IncompatibleShipTypeImpl;
   const ErrorKey_IncompatibleShipType._() : super._();
 
@@ -1312,15 +1185,13 @@ abstract class ErrorKey_IncompatibleShipType extends ErrorKey {
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ErrorKey_IncompatibleShipTypeImplCopyWith<
-          _$ErrorKey_IncompatibleShipTypeImpl>
-      get copyWith => throw _privateConstructorUsedError;
+  _$$ErrorKey_IncompatibleShipTypeImplCopyWith<_$ErrorKey_IncompatibleShipTypeImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 abstract class _$$ErrorKey_IncompatibleRigSizeImplCopyWith<$Res> {
-  factory _$$ErrorKey_IncompatibleRigSizeImplCopyWith(
-          _$ErrorKey_IncompatibleRigSizeImpl value,
+  factory _$$ErrorKey_IncompatibleRigSizeImplCopyWith(_$ErrorKey_IncompatibleRigSizeImpl value,
           $Res Function(_$ErrorKey_IncompatibleRigSizeImpl) then) =
       __$$ErrorKey_IncompatibleRigSizeImplCopyWithImpl<$Res>;
   @useResult
@@ -1331,8 +1202,7 @@ abstract class _$$ErrorKey_IncompatibleRigSizeImplCopyWith<$Res> {
 class __$$ErrorKey_IncompatibleRigSizeImplCopyWithImpl<$Res>
     extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_IncompatibleRigSizeImpl>
     implements _$$ErrorKey_IncompatibleRigSizeImplCopyWith<$Res> {
-  __$$ErrorKey_IncompatibleRigSizeImplCopyWithImpl(
-      _$ErrorKey_IncompatibleRigSizeImpl _value,
+  __$$ErrorKey_IncompatibleRigSizeImplCopyWithImpl(_$ErrorKey_IncompatibleRigSizeImpl _value,
       $Res Function(_$ErrorKey_IncompatibleRigSizeImpl) _then)
       : super(_value, _then);
 
@@ -1360,8 +1230,7 @@ class __$$ErrorKey_IncompatibleRigSizeImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
-  const _$ErrorKey_IncompatibleRigSizeImpl(
-      {required this.expected, required this.actual})
+  const _$ErrorKey_IncompatibleRigSizeImpl({required this.expected, required this.actual})
       : super._();
 
   @override
@@ -1379,8 +1248,7 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ErrorKey_IncompatibleRigSizeImpl &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -1392,17 +1260,15 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorKey_IncompatibleRigSizeImplCopyWith<
-          _$ErrorKey_IncompatibleRigSizeImpl>
-      get copyWith => __$$ErrorKey_IncompatibleRigSizeImplCopyWithImpl<
-          _$ErrorKey_IncompatibleRigSizeImpl>(this, _$identity);
+  _$$ErrorKey_IncompatibleRigSizeImplCopyWith<_$ErrorKey_IncompatibleRigSizeImpl> get copyWith =>
+      __$$ErrorKey_IncompatibleRigSizeImplCopyWithImpl<_$ErrorKey_IncompatibleRigSizeImpl>(
+          this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(int expected, int actual) incompatibleChargeSize,
-    required TResult Function(double max, double actual)
-        incompatibleChargeCapacity,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
     required TResult Function(Int32List expected) incompatibleShipGroup,
@@ -1447,18 +1313,13 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ErrorKey_IncompatibleChargeSize value)
-        incompatibleChargeSize,
-    required TResult Function(ErrorKey_IncompatibleChargeCapacity value)
-        incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
-    required TResult Function(ErrorKey_IncompatibleShipGroup value)
-        incompatibleShipGroup,
-    required TResult Function(ErrorKey_IncompatibleShipType value)
-        incompatibleShipType,
-    required TResult Function(ErrorKey_IncompatibleRigSize value)
-        incompatibleRigSize,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
   }) {
     return incompatibleRigSize(this);
   }
@@ -1466,16 +1327,12 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult? Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
-    TResult? Function(ErrorKey_IncompatibleShipType value)?
-        incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
   }) {
     return incompatibleRigSize?.call(this);
@@ -1484,14 +1341,11 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ErrorKey_IncompatibleChargeSize value)?
-        incompatibleChargeSize,
-    TResult Function(ErrorKey_IncompatibleChargeCapacity value)?
-        incompatibleChargeCapacity,
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
-    TResult Function(ErrorKey_IncompatibleShipGroup value)?
-        incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
     required TResult orElse(),
@@ -1515,9 +1369,8 @@ abstract class ErrorKey_IncompatibleRigSize extends ErrorKey {
   /// Create a copy of ErrorKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ErrorKey_IncompatibleRigSizeImplCopyWith<
-          _$ErrorKey_IncompatibleRigSizeImpl>
-      get copyWith => throw _privateConstructorUsedError;
+  _$$ErrorKey_IncompatibleRigSizeImplCopyWith<_$ErrorKey_IncompatibleRigSizeImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -1526,17 +1379,14 @@ mixin _$SlotInfo {
   int? get index => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(SlotType slot, int? index, ErrorKey errorKey)
-        error,
-    required TResult Function(SlotType slot, int? index, WarningKey warningKey)
-        warning,
+    required TResult Function(SlotType slot, int? index, ErrorKey errorKey) error,
+    required TResult Function(SlotType slot, int? index, WarningKey warningKey) warning,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(SlotType slot, int? index, ErrorKey errorKey)? error,
-    TResult? Function(SlotType slot, int? index, WarningKey warningKey)?
-        warning,
+    TResult? Function(SlotType slot, int? index, WarningKey warningKey)? warning,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1569,8 +1419,7 @@ mixin _$SlotInfo {
   /// Create a copy of SlotInfo
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  $SlotInfoCopyWith<SlotInfo> get copyWith =>
-      throw _privateConstructorUsedError;
+  $SlotInfoCopyWith<SlotInfo> get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -1582,13 +1431,12 @@ abstract class $SlotInfoCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SlotInfoCopyWithImpl<$Res, $Val extends SlotInfo>
-    implements $SlotInfoCopyWith<$Res> {
+class _$SlotInfoCopyWithImpl<$Res, $Val extends SlotInfo> implements $SlotInfoCopyWith<$Res> {
   _$SlotInfoCopyWithImpl(this._value, this._then);
 
-  // ignore: unused_field
+// ignore: unused_field
   final $Val _value;
-  // ignore: unused_field
+// ignore: unused_field
   final $Res Function($Val) _then;
 
   /// Create a copy of SlotInfo
@@ -1613,10 +1461,9 @@ class _$SlotInfoCopyWithImpl<$Res, $Val extends SlotInfo>
 }
 
 /// @nodoc
-abstract class _$$SlotInfo_ErrorImplCopyWith<$Res>
-    implements $SlotInfoCopyWith<$Res> {
-  factory _$$SlotInfo_ErrorImplCopyWith(_$SlotInfo_ErrorImpl value,
-          $Res Function(_$SlotInfo_ErrorImpl) then) =
+abstract class _$$SlotInfo_ErrorImplCopyWith<$Res> implements $SlotInfoCopyWith<$Res> {
+  factory _$$SlotInfo_ErrorImplCopyWith(
+          _$SlotInfo_ErrorImpl value, $Res Function(_$SlotInfo_ErrorImpl) then) =
       __$$SlotInfo_ErrorImplCopyWithImpl<$Res>;
   @override
   @useResult
@@ -1672,9 +1519,7 @@ class __$$SlotInfo_ErrorImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
-  const _$SlotInfo_ErrorImpl(
-      {required this.slot, this.index, required this.errorKey})
-      : super._();
+  const _$SlotInfo_ErrorImpl({required this.slot, this.index, required this.errorKey}) : super._();
 
   @override
   final SlotType slot;
@@ -1695,8 +1540,7 @@ class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
             other is _$SlotInfo_ErrorImpl &&
             (identical(other.slot, slot) || other.slot == slot) &&
             (identical(other.index, index) || other.index == index) &&
-            (identical(other.errorKey, errorKey) ||
-                other.errorKey == errorKey));
+            (identical(other.errorKey, errorKey) || other.errorKey == errorKey));
   }
 
   @override
@@ -1708,16 +1552,13 @@ class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
   @override
   @pragma('vm:prefer-inline')
   _$$SlotInfo_ErrorImplCopyWith<_$SlotInfo_ErrorImpl> get copyWith =>
-      __$$SlotInfo_ErrorImplCopyWithImpl<_$SlotInfo_ErrorImpl>(
-          this, _$identity);
+      __$$SlotInfo_ErrorImplCopyWithImpl<_$SlotInfo_ErrorImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(SlotType slot, int? index, ErrorKey errorKey)
-        error,
-    required TResult Function(SlotType slot, int? index, WarningKey warningKey)
-        warning,
+    required TResult Function(SlotType slot, int? index, ErrorKey errorKey) error,
+    required TResult Function(SlotType slot, int? index, WarningKey warningKey) warning,
   }) {
     return error(slot, index, errorKey);
   }
@@ -1726,8 +1567,7 @@ class _$SlotInfo_ErrorImpl extends SlotInfo_Error {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(SlotType slot, int? index, ErrorKey errorKey)? error,
-    TResult? Function(SlotType slot, int? index, WarningKey warningKey)?
-        warning,
+    TResult? Function(SlotType slot, int? index, WarningKey warningKey)? warning,
   }) {
     return error?.call(slot, index, errorKey);
   }
@@ -1799,10 +1639,9 @@ abstract class SlotInfo_Error extends SlotInfo {
 }
 
 /// @nodoc
-abstract class _$$SlotInfo_WarningImplCopyWith<$Res>
-    implements $SlotInfoCopyWith<$Res> {
-  factory _$$SlotInfo_WarningImplCopyWith(_$SlotInfo_WarningImpl value,
-          $Res Function(_$SlotInfo_WarningImpl) then) =
+abstract class _$$SlotInfo_WarningImplCopyWith<$Res> implements $SlotInfoCopyWith<$Res> {
+  factory _$$SlotInfo_WarningImplCopyWith(
+          _$SlotInfo_WarningImpl value, $Res Function(_$SlotInfo_WarningImpl) then) =
       __$$SlotInfo_WarningImplCopyWithImpl<$Res>;
   @override
   @useResult
@@ -1815,8 +1654,8 @@ abstract class _$$SlotInfo_WarningImplCopyWith<$Res>
 class __$$SlotInfo_WarningImplCopyWithImpl<$Res>
     extends _$SlotInfoCopyWithImpl<$Res, _$SlotInfo_WarningImpl>
     implements _$$SlotInfo_WarningImplCopyWith<$Res> {
-  __$$SlotInfo_WarningImplCopyWithImpl(_$SlotInfo_WarningImpl _value,
-      $Res Function(_$SlotInfo_WarningImpl) _then)
+  __$$SlotInfo_WarningImplCopyWithImpl(
+      _$SlotInfo_WarningImpl _value, $Res Function(_$SlotInfo_WarningImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of SlotInfo
@@ -1858,8 +1697,7 @@ class __$$SlotInfo_WarningImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
-  const _$SlotInfo_WarningImpl(
-      {required this.slot, this.index, required this.warningKey})
+  const _$SlotInfo_WarningImpl({required this.slot, this.index, required this.warningKey})
       : super._();
 
   @override
@@ -1881,8 +1719,7 @@ class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
             other is _$SlotInfo_WarningImpl &&
             (identical(other.slot, slot) || other.slot == slot) &&
             (identical(other.index, index) || other.index == index) &&
-            (identical(other.warningKey, warningKey) ||
-                other.warningKey == warningKey));
+            (identical(other.warningKey, warningKey) || other.warningKey == warningKey));
   }
 
   @override
@@ -1894,16 +1731,13 @@ class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
   @override
   @pragma('vm:prefer-inline')
   _$$SlotInfo_WarningImplCopyWith<_$SlotInfo_WarningImpl> get copyWith =>
-      __$$SlotInfo_WarningImplCopyWithImpl<_$SlotInfo_WarningImpl>(
-          this, _$identity);
+      __$$SlotInfo_WarningImplCopyWithImpl<_$SlotInfo_WarningImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(SlotType slot, int? index, ErrorKey errorKey)
-        error,
-    required TResult Function(SlotType slot, int? index, WarningKey warningKey)
-        warning,
+    required TResult Function(SlotType slot, int? index, ErrorKey errorKey) error,
+    required TResult Function(SlotType slot, int? index, WarningKey warningKey) warning,
   }) {
     return warning(slot, index, warningKey);
   }
@@ -1912,8 +1746,7 @@ class _$SlotInfo_WarningImpl extends SlotInfo_Warning {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(SlotType slot, int? index, ErrorKey errorKey)? error,
-    TResult? Function(SlotType slot, int? index, WarningKey warningKey)?
-        warning,
+    TResult? Function(SlotType slot, int? index, WarningKey warningKey)? warning,
   }) {
     return warning?.call(slot, index, warningKey);
   }
@@ -2028,19 +1861,17 @@ mixin _$WarningKey {
 
 /// @nodoc
 abstract class $WarningKeyCopyWith<$Res> {
-  factory $WarningKeyCopyWith(
-          WarningKey value, $Res Function(WarningKey) then) =
+  factory $WarningKeyCopyWith(WarningKey value, $Res Function(WarningKey) then) =
       _$WarningKeyCopyWithImpl<$Res, WarningKey>;
 }
 
 /// @nodoc
-class _$WarningKeyCopyWithImpl<$Res, $Val extends WarningKey>
-    implements $WarningKeyCopyWith<$Res> {
+class _$WarningKeyCopyWithImpl<$Res, $Val extends WarningKey> implements $WarningKeyCopyWith<$Res> {
   _$WarningKeyCopyWithImpl(this._value, this._then);
 
-  // ignore: unused_field
+// ignore: unused_field
   final $Val _value;
-  // ignore: unused_field
+// ignore: unused_field
   final $Res Function($Val) _then;
 
   /// Create a copy of WarningKey
@@ -2049,8 +1880,7 @@ class _$WarningKeyCopyWithImpl<$Res, $Val extends WarningKey>
 
 /// @nodoc
 abstract class _$$WarningKey_MissingChargeImplCopyWith<$Res> {
-  factory _$$WarningKey_MissingChargeImplCopyWith(
-          _$WarningKey_MissingChargeImpl value,
+  factory _$$WarningKey_MissingChargeImplCopyWith(_$WarningKey_MissingChargeImpl value,
           $Res Function(_$WarningKey_MissingChargeImpl) then) =
       __$$WarningKey_MissingChargeImplCopyWithImpl<$Res>;
 }
@@ -2060,8 +1890,7 @@ class __$$WarningKey_MissingChargeImplCopyWithImpl<$Res>
     extends _$WarningKeyCopyWithImpl<$Res, _$WarningKey_MissingChargeImpl>
     implements _$$WarningKey_MissingChargeImplCopyWith<$Res> {
   __$$WarningKey_MissingChargeImplCopyWithImpl(
-      _$WarningKey_MissingChargeImpl _value,
-      $Res Function(_$WarningKey_MissingChargeImpl) _then)
+      _$WarningKey_MissingChargeImpl _value, $Res Function(_$WarningKey_MissingChargeImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of WarningKey
@@ -2081,8 +1910,7 @@ class _$WarningKey_MissingChargeImpl extends WarningKey_MissingCharge {
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$WarningKey_MissingChargeImpl);
+        (other.runtimeType == runtimeType && other is _$WarningKey_MissingChargeImpl);
   }
 
   @override
@@ -2159,8 +1987,7 @@ abstract class WarningKey_MissingCharge extends WarningKey {
 /// @nodoc
 abstract class _$$WarningKey_PlaceholderImplCopyWith<$Res> {
   factory _$$WarningKey_PlaceholderImplCopyWith(
-          _$WarningKey_PlaceholderImpl value,
-          $Res Function(_$WarningKey_PlaceholderImpl) then) =
+          _$WarningKey_PlaceholderImpl value, $Res Function(_$WarningKey_PlaceholderImpl) then) =
       __$$WarningKey_PlaceholderImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
@@ -2171,8 +1998,7 @@ class __$$WarningKey_PlaceholderImplCopyWithImpl<$Res>
     extends _$WarningKeyCopyWithImpl<$Res, _$WarningKey_PlaceholderImpl>
     implements _$$WarningKey_PlaceholderImplCopyWith<$Res> {
   __$$WarningKey_PlaceholderImplCopyWithImpl(
-      _$WarningKey_PlaceholderImpl _value,
-      $Res Function(_$WarningKey_PlaceholderImpl) _then)
+      _$WarningKey_PlaceholderImpl _value, $Res Function(_$WarningKey_PlaceholderImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of WarningKey
@@ -2220,9 +2046,8 @@ class _$WarningKey_PlaceholderImpl extends WarningKey_Placeholder {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$WarningKey_PlaceholderImplCopyWith<_$WarningKey_PlaceholderImpl>
-      get copyWith => __$$WarningKey_PlaceholderImplCopyWithImpl<
-          _$WarningKey_PlaceholderImpl>(this, _$identity);
+  _$$WarningKey_PlaceholderImplCopyWith<_$WarningKey_PlaceholderImpl> get copyWith =>
+      __$$WarningKey_PlaceholderImplCopyWithImpl<_$WarningKey_PlaceholderImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -2288,8 +2113,7 @@ class _$WarningKey_PlaceholderImpl extends WarningKey_Placeholder {
 }
 
 abstract class WarningKey_Placeholder extends WarningKey {
-  const factory WarningKey_Placeholder(final int field0) =
-      _$WarningKey_PlaceholderImpl;
+  const factory WarningKey_Placeholder(final int field0) = _$WarningKey_PlaceholderImpl;
   const WarningKey_Placeholder._() : super._();
 
   int get field0;
@@ -2297,6 +2121,6 @@ abstract class WarningKey_Placeholder extends WarningKey {
   /// Create a copy of WarningKey
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$WarningKey_PlaceholderImplCopyWith<_$WarningKey_PlaceholderImpl>
-      get copyWith => throw _privateConstructorUsedError;
+  _$$WarningKey_PlaceholderImplCopyWith<_$WarningKey_PlaceholderImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
