@@ -105,7 +105,7 @@ class _FighterSlot extends ConsumerWidget {
     final itemList =
         fit.output.ship.modules.fighters.find((u) => u.groupIndex == index)?.fighters ?? [];
     final itemCount = itemList.length;
-    final item = itemList.first;
+    final item = itemList.firstOrNull;
 
     final fighterItem = GlobalStorage().static.fighters[fighterID]!;
 
@@ -193,7 +193,7 @@ class _FighterSlot extends ConsumerWidget {
                   index: index,
                   fitNotifier: fitNotifier,
                 )),
-            trailing: _getFighterDpsText(item, itemCount)),
+            trailing: item.map((u) => _getFighterDpsText(u, itemCount))),
       ]),
     );
   }
