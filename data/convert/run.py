@@ -21,6 +21,7 @@ import convert_attribute
 import convert_type_skills
 import convert_damage_profile
 import convert_fighter
+import convert_dynamic_item
 
 if not __name__ == "__main__":
     exit(0)
@@ -63,6 +64,7 @@ def convert(fsd_dir, resfileindex, patch_dir, out_dir, index_cache):
         convert_type_skills,
         convert_damage_profile,
         convert_fighter,
+        convert_dynamic_item,
     ]
 
     for module in modules:

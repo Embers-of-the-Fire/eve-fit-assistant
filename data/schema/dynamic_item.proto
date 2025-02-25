@@ -1,0 +1,22 @@
+syntax = "proto2";
+
+package dynamic_item;
+
+message DynamicItems {
+    message DynamicItem {
+        message InputOutputMapping {
+            required int32 resultingType = 1;
+            repeated int32 applicableTypes = 2;
+        }
+
+        message DynamicAttribute {
+            required double max = 1;
+            required double min = 2;
+        }
+
+        repeated InputOutputMapping inputOutputMapping = 1;
+        map<int32, DynamicAttribute> attributes = 2;
+    }
+
+    map<int32, DynamicItem> entries = 1;
+}
