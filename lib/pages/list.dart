@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
@@ -43,6 +44,7 @@ class _ListPageState extends State<ListPage> {
               subtitle: Text(
                 DateTime.fromMillisecondsSinceEpoch(entry.value.lastModifyTime).toString(),
               ),
+              onLongPress: () => showTypeInfoPage(context, typeID: entry.value.shipID),
               onTap: () => intoFitPage(context, entry.key).then((_) => setState(() {})),
             ),
           );
