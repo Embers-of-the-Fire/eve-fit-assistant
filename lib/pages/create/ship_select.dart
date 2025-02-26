@@ -2,9 +2,12 @@ import 'package:eve_fit_assistant/constant/constant.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
+import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class ShipSelectPage extends StatelessWidget {
   const ShipSelectPage({super.key});
@@ -15,24 +18,65 @@ class ShipSelectPage extends StatelessWidget {
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('选择船只'),
         ),
-        body: ItemList(
-          breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-          breadcrumbDecoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.grey)),
+        body: Column(children: [
+          TypeAheadField<(int, Ship)>(
+            onSelected: (data) => _onShipSelect(data.$1, context),
+            builder: (context, controller, focusNode) => Padding(
+                padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
+                child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    autofocus: false,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: '舰船',
+                    ))),
+            itemBuilder: (context, data) {
+              final id = data.$1;
+              final ship = data.$2;
+              return ListTile(
+                leading: GlobalStorage().static.icons.getTypeIconSync(id),
+                title: Text(ship.nameZH),
+                subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
+              );
+            },
+            suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()
+                .static
+                .ships
+                .tupleEntries
+                .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
+                .toList()),
+            emptyBuilder: (context) => Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                '未找到相关舰船',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
           ),
-          breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
-          fallbackGroupID: shipGroupID,
-          baseGroup: '舰船',
-          onSelect: (id) async {
-            final fitName = await showShipCreateDialog(context);
-            if (fitName == null) return;
-            if (context.mounted) Navigator.pop(context);
-            final fit = await GlobalStorage().ship.createFit(fitName, id);
-            if (context.mounted) {
-              await intoFitPage(context, fit.brief.id);
-            }
-          },
-          onLongPress: (id) => showTypeInfoPage(context, typeID: id),
-        ),
+          Expanded(
+              child: ItemList(
+            breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+            breadcrumbDecoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.grey)),
+            ),
+            breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+            fallbackGroupID: shipGroupID,
+            baseGroup: '舰船',
+            onSelect: (id) => _onShipSelect(id, context),
+            onLongPress: (id) => showTypeInfoPage(context, typeID: id),
+          ))
+        ]),
       );
+}
+
+Future<void> _onShipSelect(int id, BuildContext context) async {
+  final fitName = await showShipCreateDialog(context);
+  if (fitName == null) return;
+  if (context.mounted) Navigator.pop(context);
+  final fit = await GlobalStorage().ship.createFit(fitName, id);
+  if (context.mounted) {
+    await intoFitPage(context, fit.brief.id);
+  }
 }

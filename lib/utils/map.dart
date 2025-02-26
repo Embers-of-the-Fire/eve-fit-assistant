@@ -15,6 +15,8 @@ class ReadonlyMap<K, V> {
 
   bool containsKey(K key) => _map.containsKey(key);
 
+  Iterable<(K, V)> get tupleEntries => entries.map((e) => (e.key, e.value));
+
   int get length => _map.length;
 
   Map<String, dynamic> toJson() => _map as Map<String, dynamic>;
@@ -28,6 +30,10 @@ class MapView<K, V> {
 
   Map<K, V> get write => _map;
 
+  Iterable<MapEntry<K, V>> get entries => _map.entries;
+
+  Iterable<(K, V)> get tupleEntries => entries.map((e) => (e.key, e.value));
+
   MapView(this._map) : _read = ReadonlyMap(_map);
 }
 
@@ -35,4 +41,6 @@ extension MapExt<K, V> on Map<K, V> {
   MapView<K, V> get view => MapView(this);
 
   ReadonlyMap<K, V> get readonly => ReadonlyMap(this);
+
+  Iterable<(K, V)> get tupleEntries => entries.map((e) => (e.key, e.value));
 }

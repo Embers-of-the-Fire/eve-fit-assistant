@@ -56,6 +56,7 @@ dependencies:
   date_format: ^2.0.9
   package_info_plus: ^8.2.1
   animated_tree_view: ^2.3.0
+  flutter_typeahead: ^5.2.0
 
 dev_dependencies:
   flutter_test:
