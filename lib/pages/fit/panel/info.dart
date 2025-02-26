@@ -10,10 +10,12 @@ class InfoTab extends ConsumerWidget {
     final fitRef = ref.watch(fitRecordNotifierProvider(fitID));
     final out = fitRef.output.ship;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       child: SingleChildScrollView(
         child: Column(
           children: [
+            ShipInfo(fitID: fitID),
+            const Divider(height: 0),
             Capacitor(ship: out),
             Weapon(ship: out),
             Resource(ship: out),

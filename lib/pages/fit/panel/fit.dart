@@ -18,7 +18,6 @@ import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
-import 'package:eve_fit_assistant/widgets/attribute.dart';
 import 'package:eve_fit_assistant/widgets/state_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
@@ -27,11 +26,17 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
+
 part 'config.dart';
+
 part 'drone.dart';
+
 part 'equipment.dart';
+
 part 'fighter.dart';
+
 part 'fit.g.dart';
+
 part 'info.dart';
 
 Future<void> intoFitPage(BuildContext context, String fitID) async {
@@ -156,7 +161,7 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
 
   @override
   void initState() {
-    _tabController = TabController(initialIndex: 1, length: 6, vsync: this);
+    _tabController = TabController(initialIndex: 1, length: 5, vsync: this);
     super.initState();
   }
 
@@ -188,7 +193,6 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             Tab(text: '装备'),
             Tab(text: '属性'),
             Tab(text: '无人机'),
-            Tab(text: '船体'),
             Tab(text: '设置'),
           ],
         ),
@@ -207,10 +211,6 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
           EquipmentTab(fitID: widget.fitID, ship: ship),
           InfoTab(fitID: widget.fitID),
           DroneTab(fitID: widget.fitID),
-          AttributeTab(
-            typeID: fitRef.fit.brief.shipID,
-            attr: fitRef.output.ship.hull.attributes,
-          ),
           ConfigTab(
             fitID: widget.fitID,
             name: fitRef.fit.brief.name,
@@ -238,7 +238,6 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             Tab(text: '装备'),
             Tab(text: '属性'),
             Tab(text: '舰载机'),
-            Tab(text: '船体'),
             Tab(text: '设置'),
           ],
         ),
@@ -257,10 +256,6 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
           EquipmentTab(fitID: widget.fitID, ship: ship),
           InfoTab(fitID: widget.fitID),
           FighterTab(fitID: widget.fitID),
-          AttributeTab(
-            typeID: fitRef.fit.brief.shipID,
-            attr: fitRef.output.ship.hull.attributes,
-          ),
           ConfigTab(
             fitID: widget.fitID,
             name: fitRef.fit.brief.name,
