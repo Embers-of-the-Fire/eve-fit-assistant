@@ -165,6 +165,7 @@ pub struct ItemProxy {
     pub item_id: i32,
     pub charge: Option<Box<ItemProxy>>,
     pub attributes: HashMap<i32, f64>,
+    pub is_active: bool,
 }
 
 impl ItemProxy {
@@ -174,6 +175,8 @@ impl ItemProxy {
             index: native.slot.index,
             item_id: native.type_id,
             charge: native.charge.map(|t| Box::new(Self::from_native(*t))),
+            is_active: native.state == calculate::item::EffectCategory::Active
+                || native.state == calculate::item::EffectCategory::Overload,
             attributes: native
                 .attributes
                 .into_iter()

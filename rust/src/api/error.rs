@@ -29,9 +29,10 @@ pub enum ErrorKey {
     // charge
     IncompatibleChargeSize { expected: u8, actual: u8 },
     IncompatibleChargeCapacity { max: f64, actual: f64 },
-    // slot num
+    // item num
     TooMuchTurret { expected: u8, actual: u8 },
     TooMuchLauncher { expected: u8, actual: u8 },
+    ConflictItem { group_id: i32 },
     // slot fit target
     IncompatibleShipGroup { expected: Vec<i32> },
     IncompatibleShipType { expected: Vec<i32> },

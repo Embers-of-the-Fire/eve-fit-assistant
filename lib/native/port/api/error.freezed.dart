@@ -22,6 +22,7 @@ mixin _$ErrorKey {
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -34,6 +35,7 @@ mixin _$ErrorKey {
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -45,6 +47,7 @@ mixin _$ErrorKey {
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -58,6 +61,7 @@ mixin _$ErrorKey {
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -70,6 +74,7 @@ mixin _$ErrorKey {
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -81,6 +86,7 @@ mixin _$ErrorKey {
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -191,6 +197,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl extends ErrorKey_IncompatibleChargeS
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -205,6 +212,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl extends ErrorKey_IncompatibleChargeS
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -219,6 +227,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl extends ErrorKey_IncompatibleChargeS
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -237,6 +246,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl extends ErrorKey_IncompatibleChargeS
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -251,6 +261,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl extends ErrorKey_IncompatibleChargeS
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -265,6 +276,7 @@ class _$ErrorKey_IncompatibleChargeSizeImpl extends ErrorKey_IncompatibleChargeS
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -377,6 +389,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl extends ErrorKey_IncompatibleCha
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -391,6 +404,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl extends ErrorKey_IncompatibleCha
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -405,6 +419,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl extends ErrorKey_IncompatibleCha
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -423,6 +438,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl extends ErrorKey_IncompatibleCha
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -437,6 +453,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl extends ErrorKey_IncompatibleCha
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -451,6 +468,7 @@ class _$ErrorKey_IncompatibleChargeCapacityImpl extends ErrorKey_IncompatibleCha
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -559,6 +577,7 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -573,6 +592,7 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -587,6 +607,7 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -605,6 +626,7 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -619,6 +641,7 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -633,6 +656,7 @@ class _$ErrorKey_TooMuchTurretImpl extends ErrorKey_TooMuchTurret {
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -741,6 +765,7 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -755,6 +780,7 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -769,6 +795,7 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -787,6 +814,7 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -801,6 +829,7 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -815,6 +844,7 @@ class _$ErrorKey_TooMuchLauncherImpl extends ErrorKey_TooMuchLauncher {
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -839,6 +869,183 @@ abstract class ErrorKey_TooMuchLauncher extends ErrorKey {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ErrorKey_TooMuchLauncherImplCopyWith<_$ErrorKey_TooMuchLauncherImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ErrorKey_ConflictItemImplCopyWith<$Res> {
+  factory _$$ErrorKey_ConflictItemImplCopyWith(
+          _$ErrorKey_ConflictItemImpl value, $Res Function(_$ErrorKey_ConflictItemImpl) then) =
+      __$$ErrorKey_ConflictItemImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({int groupId});
+}
+
+/// @nodoc
+class __$$ErrorKey_ConflictItemImplCopyWithImpl<$Res>
+    extends _$ErrorKeyCopyWithImpl<$Res, _$ErrorKey_ConflictItemImpl>
+    implements _$$ErrorKey_ConflictItemImplCopyWith<$Res> {
+  __$$ErrorKey_ConflictItemImplCopyWithImpl(
+      _$ErrorKey_ConflictItemImpl _value, $Res Function(_$ErrorKey_ConflictItemImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? groupId = null,
+  }) {
+    return _then(_$ErrorKey_ConflictItemImpl(
+      groupId: null == groupId
+          ? _value.groupId
+          : groupId // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ErrorKey_ConflictItemImpl extends ErrorKey_ConflictItem {
+  const _$ErrorKey_ConflictItemImpl({required this.groupId}) : super._();
+
+  @override
+  final int groupId;
+
+  @override
+  String toString() {
+    return 'ErrorKey.conflictItem(groupId: $groupId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ErrorKey_ConflictItemImpl &&
+            (identical(other.groupId, groupId) || other.groupId == groupId));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, groupId);
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ErrorKey_ConflictItemImplCopyWith<_$ErrorKey_ConflictItemImpl> get copyWith =>
+      __$$ErrorKey_ConflictItemImplCopyWithImpl<_$ErrorKey_ConflictItemImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(int expected, int actual) incompatibleChargeSize,
+    required TResult Function(double max, double actual) incompatibleChargeCapacity,
+    required TResult Function(int expected, int actual) tooMuchTurret,
+    required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
+    required TResult Function(Int32List expected) incompatibleShipGroup,
+    required TResult Function(Int32List expected) incompatibleShipType,
+    required TResult Function(int expected, int actual) incompatibleRigSize,
+  }) {
+    return conflictItem(groupId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(int expected, int actual)? incompatibleChargeSize,
+    TResult? Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult? Function(int expected, int actual)? tooMuchTurret,
+    TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
+    TResult? Function(Int32List expected)? incompatibleShipGroup,
+    TResult? Function(Int32List expected)? incompatibleShipType,
+    TResult? Function(int expected, int actual)? incompatibleRigSize,
+  }) {
+    return conflictItem?.call(groupId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(int expected, int actual)? incompatibleChargeSize,
+    TResult Function(double max, double actual)? incompatibleChargeCapacity,
+    TResult Function(int expected, int actual)? tooMuchTurret,
+    TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
+    TResult Function(Int32List expected)? incompatibleShipGroup,
+    TResult Function(Int32List expected)? incompatibleShipType,
+    TResult Function(int expected, int actual)? incompatibleRigSize,
+    required TResult orElse(),
+  }) {
+    if (conflictItem != null) {
+      return conflictItem(groupId);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ErrorKey_IncompatibleChargeSize value) incompatibleChargeSize,
+    required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
+    required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
+    required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
+    required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
+    required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
+    required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
+  }) {
+    return conflictItem(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
+    TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
+    TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
+    TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
+  }) {
+    return conflictItem?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ErrorKey_IncompatibleChargeSize value)? incompatibleChargeSize,
+    TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
+    TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
+    TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
+    TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
+    TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
+    TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
+    required TResult orElse(),
+  }) {
+    if (conflictItem != null) {
+      return conflictItem(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ErrorKey_ConflictItem extends ErrorKey {
+  const factory ErrorKey_ConflictItem({required final int groupId}) = _$ErrorKey_ConflictItemImpl;
+  const ErrorKey_ConflictItem._() : super._();
+
+  int get groupId;
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ErrorKey_ConflictItemImplCopyWith<_$ErrorKey_ConflictItemImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -916,6 +1123,7 @@ class _$ErrorKey_IncompatibleShipGroupImpl extends ErrorKey_IncompatibleShipGrou
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -930,6 +1138,7 @@ class _$ErrorKey_IncompatibleShipGroupImpl extends ErrorKey_IncompatibleShipGrou
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -944,6 +1153,7 @@ class _$ErrorKey_IncompatibleShipGroupImpl extends ErrorKey_IncompatibleShipGrou
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -962,6 +1172,7 @@ class _$ErrorKey_IncompatibleShipGroupImpl extends ErrorKey_IncompatibleShipGrou
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -976,6 +1187,7 @@ class _$ErrorKey_IncompatibleShipGroupImpl extends ErrorKey_IncompatibleShipGrou
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -990,6 +1202,7 @@ class _$ErrorKey_IncompatibleShipGroupImpl extends ErrorKey_IncompatibleShipGrou
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -1089,6 +1302,7 @@ class _$ErrorKey_IncompatibleShipTypeImpl extends ErrorKey_IncompatibleShipType 
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -1103,6 +1317,7 @@ class _$ErrorKey_IncompatibleShipTypeImpl extends ErrorKey_IncompatibleShipType 
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -1117,6 +1332,7 @@ class _$ErrorKey_IncompatibleShipTypeImpl extends ErrorKey_IncompatibleShipType 
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -1135,6 +1351,7 @@ class _$ErrorKey_IncompatibleShipTypeImpl extends ErrorKey_IncompatibleShipType 
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -1149,6 +1366,7 @@ class _$ErrorKey_IncompatibleShipTypeImpl extends ErrorKey_IncompatibleShipType 
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -1163,6 +1381,7 @@ class _$ErrorKey_IncompatibleShipTypeImpl extends ErrorKey_IncompatibleShipType 
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -1271,6 +1490,7 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
     required TResult Function(double max, double actual) incompatibleChargeCapacity,
     required TResult Function(int expected, int actual) tooMuchTurret,
     required TResult Function(int expected, int actual) tooMuchLauncher,
+    required TResult Function(int groupId) conflictItem,
     required TResult Function(Int32List expected) incompatibleShipGroup,
     required TResult Function(Int32List expected) incompatibleShipType,
     required TResult Function(int expected, int actual) incompatibleRigSize,
@@ -1285,6 +1505,7 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
     TResult? Function(double max, double actual)? incompatibleChargeCapacity,
     TResult? Function(int expected, int actual)? tooMuchTurret,
     TResult? Function(int expected, int actual)? tooMuchLauncher,
+    TResult? Function(int groupId)? conflictItem,
     TResult? Function(Int32List expected)? incompatibleShipGroup,
     TResult? Function(Int32List expected)? incompatibleShipType,
     TResult? Function(int expected, int actual)? incompatibleRigSize,
@@ -1299,6 +1520,7 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
     TResult Function(double max, double actual)? incompatibleChargeCapacity,
     TResult Function(int expected, int actual)? tooMuchTurret,
     TResult Function(int expected, int actual)? tooMuchLauncher,
+    TResult Function(int groupId)? conflictItem,
     TResult Function(Int32List expected)? incompatibleShipGroup,
     TResult Function(Int32List expected)? incompatibleShipType,
     TResult Function(int expected, int actual)? incompatibleRigSize,
@@ -1317,6 +1539,7 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
     required TResult Function(ErrorKey_IncompatibleChargeCapacity value) incompatibleChargeCapacity,
     required TResult Function(ErrorKey_TooMuchTurret value) tooMuchTurret,
     required TResult Function(ErrorKey_TooMuchLauncher value) tooMuchLauncher,
+    required TResult Function(ErrorKey_ConflictItem value) conflictItem,
     required TResult Function(ErrorKey_IncompatibleShipGroup value) incompatibleShipGroup,
     required TResult Function(ErrorKey_IncompatibleShipType value) incompatibleShipType,
     required TResult Function(ErrorKey_IncompatibleRigSize value) incompatibleRigSize,
@@ -1331,6 +1554,7 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
     TResult? Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult? Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult? Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult? Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult? Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult? Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult? Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,
@@ -1345,6 +1569,7 @@ class _$ErrorKey_IncompatibleRigSizeImpl extends ErrorKey_IncompatibleRigSize {
     TResult Function(ErrorKey_IncompatibleChargeCapacity value)? incompatibleChargeCapacity,
     TResult Function(ErrorKey_TooMuchTurret value)? tooMuchTurret,
     TResult Function(ErrorKey_TooMuchLauncher value)? tooMuchLauncher,
+    TResult Function(ErrorKey_ConflictItem value)? conflictItem,
     TResult Function(ErrorKey_IncompatibleShipGroup value)? incompatibleShipGroup,
     TResult Function(ErrorKey_IncompatibleShipType value)? incompatibleShipType,
     TResult Function(ErrorKey_IncompatibleRigSize value)? incompatibleRigSize,

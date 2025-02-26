@@ -58,16 +58,19 @@ class ItemProxy {
   final int itemId;
   final ItemProxy? charge;
   final Map<int, double> attributes;
+  final bool isActive;
 
   const ItemProxy({
     this.index,
     required this.itemId,
     this.charge,
     required this.attributes,
+    required this.isActive,
   });
 
   @override
-  int get hashCode => index.hashCode ^ itemId.hashCode ^ charge.hashCode ^ attributes.hashCode;
+  int get hashCode =>
+      index.hashCode ^ itemId.hashCode ^ charge.hashCode ^ attributes.hashCode ^ isActive.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -77,7 +80,8 @@ class ItemProxy {
           index == other.index &&
           itemId == other.itemId &&
           charge == other.charge &&
-          attributes == other.attributes;
+          attributes == other.attributes &&
+          isActive == other.isActive;
 }
 
 class ModulesProxy {

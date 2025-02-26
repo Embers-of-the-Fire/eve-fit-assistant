@@ -33,3 +33,16 @@ class TooMuchLauncher extends StatelessWidget {
         ),
       );
 }
+
+class ConflictItem extends StatelessWidget {
+  final int groupID;
+
+  const ConflictItem({super.key, required this.groupID});
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: _errorIcon,
+        title: const Text('物品冲突'),
+        subtitle: Text('超出物品组 ${GlobalStorage().static.groups[groupID]?.nameZH ?? groupID} 的数量限制'),
+      );
+}

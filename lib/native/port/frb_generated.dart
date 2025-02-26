@@ -15,6 +15,7 @@ import 'api/proxy.dart';
 import 'api/schema.dart';
 import 'api/simple.dart';
 import 'api/validate/post_validate/charge.dart';
+import 'api/validate/post_validate/max_activate.dart';
 import 'api/validate/pre_validate/fit_target.dart';
 import 'api/validate/pre_validate/rig_size.dart';
 import 'api/validate/pre_validate/slot_num.dart';
@@ -76,7 +77,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.8.0';
 
   @override
-  int get rustContentHash => 1740717091;
+  int get rustContentHash => 952797991;
 
   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'rust_lib_eve_fit_assistant',
@@ -111,6 +112,8 @@ abstract class RustLibApi extends BaseApi {
       required List<int> dogmaEffectBuffer,
       required List<int> typeDogmaBuffer,
       required List<int> typesBuffer});
+
+  int crateApiValidatePostValidateMaxActivateMaxActivateAttrId();
 
   int crateApiValidatePreValidateRigSizeRigSizeAttrId();
 
@@ -396,11 +399,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  int crateApiValidatePreValidateRigSizeRigSizeAttrId() {
+  int crateApiValidatePostValidateMaxActivateMaxActivateAttrId() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_i_32,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiValidatePostValidateMaxActivateMaxActivateAttrIdConstMeta,
+      argValues: [],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiValidatePostValidateMaxActivateMaxActivateAttrIdConstMeta =>
+      const TaskConstMeta(
+        debugName: "MAX_ACTIVATE_ATTR_ID",
+        argNames: [],
+      );
+
+  @override
+  int crateApiValidatePreValidateRigSizeRigSizeAttrId() {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_i_32,
@@ -426,7 +452,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
             db, serializer);
         sse_encode_box_autoadd_fit(fit, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_calculate_output,
@@ -451,7 +477,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
             db, serializer);
         sse_encode_i_32(typeId, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_Map_i_32_f_64,
@@ -474,7 +500,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(name, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -496,7 +522,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16, port: port_);
+        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -518,7 +544,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17, port: port_);
+        pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_modules_proxy,
@@ -586,6 +612,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
   }
 
   @protected
@@ -702,14 +734,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           actual: dco_decode_u_8(raw[2]),
         );
       case 4:
+        return ErrorKey_ConflictItem(
+          groupId: dco_decode_i_32(raw[1]),
+        );
+      case 5:
         return ErrorKey_IncompatibleShipGroup(
           expected: dco_decode_list_prim_i_32_strict(raw[1]),
         );
-      case 5:
+      case 6:
         return ErrorKey_IncompatibleShipType(
           expected: dco_decode_list_prim_i_32_strict(raw[1]),
         );
-      case 6:
+      case 7:
         return ErrorKey_IncompatibleRigSize(
           expected: dco_decode_u_8(raw[1]),
           actual: dco_decode_u_8(raw[2]),
@@ -817,12 +853,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ItemProxy dco_decode_item_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return ItemProxy(
       index: dco_decode_opt_box_autoadd_i_32(arr[0]),
       itemId: dco_decode_i_32(arr[1]),
       charge: dco_decode_opt_box_item_proxy(arr[2]),
       attributes: dco_decode_Map_i_32_f_64(arr[3]),
+      isActive: dco_decode_bool(arr[4]),
     );
   }
 
@@ -1121,6 +1158,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
   ErrorKey sse_decode_box_autoadd_error_key(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_error_key(deserializer));
@@ -1221,12 +1264,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         var var_actual = sse_decode_u_8(deserializer);
         return ErrorKey_TooMuchLauncher(expected: var_expected, actual: var_actual);
       case 4:
-        var var_expected = sse_decode_list_prim_i_32_strict(deserializer);
-        return ErrorKey_IncompatibleShipGroup(expected: var_expected);
+        var var_groupId = sse_decode_i_32(deserializer);
+        return ErrorKey_ConflictItem(groupId: var_groupId);
       case 5:
         var var_expected = sse_decode_list_prim_i_32_strict(deserializer);
-        return ErrorKey_IncompatibleShipType(expected: var_expected);
+        return ErrorKey_IncompatibleShipGroup(expected: var_expected);
       case 6:
+        var var_expected = sse_decode_list_prim_i_32_strict(deserializer);
+        return ErrorKey_IncompatibleShipType(expected: var_expected);
+      case 7:
         var var_expected = sse_decode_u_8(deserializer);
         var var_actual = sse_decode_u_8(deserializer);
         return ErrorKey_IncompatibleRigSize(expected: var_expected, actual: var_actual);
@@ -1332,8 +1378,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_itemId = sse_decode_i_32(deserializer);
     var var_charge = sse_decode_opt_box_item_proxy(deserializer);
     var var_attributes = sse_decode_Map_i_32_f_64(deserializer);
+    var var_isActive = sse_decode_bool(deserializer);
     return ItemProxy(
-        index: var_index, itemId: var_itemId, charge: var_charge, attributes: var_attributes);
+        index: var_index,
+        itemId: var_itemId,
+        charge: var_charge,
+        attributes: var_attributes,
+        isActive: var_isActive);
   }
 
   @protected
@@ -1662,12 +1713,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
-  }
-
-  @protected
   void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.message, serializer);
@@ -1713,6 +1758,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
   }
 
   @protected
@@ -1808,14 +1859,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_i_32(3, serializer);
         sse_encode_u_8(expected, serializer);
         sse_encode_u_8(actual, serializer);
-      case ErrorKey_IncompatibleShipGroup(expected: final expected):
+      case ErrorKey_ConflictItem(groupId: final groupId):
         sse_encode_i_32(4, serializer);
-        sse_encode_list_prim_i_32_strict(expected, serializer);
-      case ErrorKey_IncompatibleShipType(expected: final expected):
+        sse_encode_i_32(groupId, serializer);
+      case ErrorKey_IncompatibleShipGroup(expected: final expected):
         sse_encode_i_32(5, serializer);
         sse_encode_list_prim_i_32_strict(expected, serializer);
-      case ErrorKey_IncompatibleRigSize(expected: final expected, actual: final actual):
+      case ErrorKey_IncompatibleShipType(expected: final expected):
         sse_encode_i_32(6, serializer);
+        sse_encode_list_prim_i_32_strict(expected, serializer);
+      case ErrorKey_IncompatibleRigSize(expected: final expected, actual: final actual):
+        sse_encode_i_32(7, serializer);
         sse_encode_u_8(expected, serializer);
         sse_encode_u_8(actual, serializer);
     }
@@ -1902,6 +1956,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.itemId, serializer);
     sse_encode_opt_box_item_proxy(self.charge, serializer);
     sse_encode_Map_i_32_f_64(self.attributes, serializer);
+    sse_encode_bool(self.isActive, serializer);
   }
 
   @protected
@@ -2159,12 +2214,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_i_32(1, serializer);
         sse_encode_i_32(field0, serializer);
     }
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
   }
 }
 

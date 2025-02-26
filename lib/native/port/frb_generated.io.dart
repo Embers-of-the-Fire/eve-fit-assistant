@@ -16,6 +16,7 @@ import 'api/proxy.dart';
 import 'api/schema.dart';
 import 'api/simple.dart';
 import 'api/validate/post_validate/charge.dart';
+import 'api/validate/post_validate/max_activate.dart';
 import 'api/validate/pre_validate/fit_target.dart';
 import 'api/validate/pre_validate/rig_size.dart';
 import 'api/validate/pre_validate/slot_num.dart';
@@ -57,6 +58,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String dco_decode_String(dynamic raw);
+
+  @protected
+  bool dco_decode_bool(dynamic raw);
 
   @protected
   ErrorKey dco_decode_box_autoadd_error_key(dynamic raw);
@@ -241,6 +245,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
   ErrorKey sse_decode_box_autoadd_error_key(SseDeserializer deserializer);
 
   @protected
@@ -397,9 +404,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WarningKey sse_decode_warning_key(SseDeserializer deserializer);
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer);
 
   @protected
@@ -424,6 +428,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_error_key(ErrorKey self, SseSerializer serializer);
@@ -580,9 +587,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_warning_key(WarningKey self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class

@@ -36,6 +36,10 @@ sealed class ErrorKey with _$ErrorKey {
     required int actual,
   }) = ErrorKey_TooMuchLauncher;
 
+  const factory ErrorKey.conflictItem({
+    required int groupId,
+  }) = ErrorKey_ConflictItem;
+
   const factory ErrorKey.incompatibleShipGroup({
     required Int32List expected,
   }) = ErrorKey_IncompatibleShipGroup;
