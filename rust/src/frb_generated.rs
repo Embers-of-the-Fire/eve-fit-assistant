@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.8.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 952797991;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1688554001;
 
 // Section: executor
 
@@ -164,6 +164,68 @@ fn wire__crate__api__validate__pre_validate__slot_num__ATTR_LAUNCHER_impl(
             transform_result_sse::<_, ()>((move || {
                 let output_ok = Result::<_, ()>::Ok(
                     crate::api::validate::pre_validate::slot_num::ATTR_LAUNCHER,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__validate__pre_validate__slot_num__ATTR_SUBSYSTEM_LAUNCHER_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ATTR_SUBSYSTEM_LAUNCHER",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::pre_validate::slot_num::ATTR_SUBSYSTEM_LAUNCHER,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__validate__pre_validate__slot_num__ATTR_SUBSYSTEM_TURRET_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ATTR_SUBSYSTEM_TURRET",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::validate::pre_validate::slot_num::ATTR_SUBSYSTEM_TURRET,
                 )?;
                 Ok(output_ok)
             })())
@@ -1365,9 +1427,9 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        11 => wire__crate__api__data__EveDatabase_init_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        18 => {
+        13 => wire__crate__api__data__EveDatabase_init_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        20 => {
             wire__crate__api__proxy__modules_proxy_default_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -1402,49 +1464,59 @@ fn pde_ffi_dispatcher_sync_impl(
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__validate__pre_validate__slot_num__ATTR_TURRET_impl(
+        5 => wire__crate__api__validate__pre_validate__slot_num__ATTR_SUBSYSTEM_LAUNCHER_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        6 => wire__crate__api__validate__post_validate__charge__ATTR_VOLUME_impl(
+        6 => wire__crate__api__validate__pre_validate__slot_num__ATTR_SUBSYSTEM_TURRET_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        7 => wire__crate__api__validate__pre_validate__fit_target__CAN_FIT_GROUP_ATTR_IDS_impl(
+        7 => wire__crate__api__validate__pre_validate__slot_num__ATTR_TURRET_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__validate__pre_validate__fit_target__CAN_FIT_TYPE_ATTR_IDS_impl(
+        8 => wire__crate__api__validate__post_validate__charge__ATTR_VOLUME_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__validate__pre_validate__slot_num__EFFECT_LAUNCHER_impl(
+        9 => wire__crate__api__validate__pre_validate__fit_target__CAN_FIT_GROUP_ATTR_IDS_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__validate__pre_validate__slot_num__EFFECT_TURRET_impl(
+        10 => wire__crate__api__validate__pre_validate__fit_target__CAN_FIT_TYPE_ATTR_IDS_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__validate__post_validate__max_activate__MAX_ACTIVATE_ATTR_ID_impl(
+        11 => wire__crate__api__validate__pre_validate__slot_num__EFFECT_LAUNCHER_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__validate__pre_validate__rig_size__RIG_SIZE_ATTR_ID_impl(
+        12 => wire__crate__api__validate__pre_validate__slot_num__EFFECT_TURRET_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__api__calculate_impl(ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__get_type_attr_impl(ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__validate__post_validate__max_activate__MAX_ACTIVATE_ATTR_ID_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        15 => wire__crate__api__validate__pre_validate__rig_size__RIG_SIZE_ATTR_ID_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        16 => wire__crate__api__calculate_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__get_type_attr_impl(ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

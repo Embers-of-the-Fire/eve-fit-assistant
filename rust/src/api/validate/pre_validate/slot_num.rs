@@ -11,6 +11,9 @@ pub(crate) const EFFECT_TURRET: i32 = 42;
 pub(crate) const ATTR_TURRET: i32 = 102;
 pub(crate) const ATTR_LAUNCHER: i32 = 101;
 
+pub(crate) const ATTR_SUBSYSTEM_TURRET: i32 = 1368;
+pub(crate) const ATTR_SUBSYSTEM_LAUNCHER: i32 = 1369;
+
 pub(crate) fn validate_slot_num(
     fit: &schema::Fit,
     info: &impl InfoProvider,
@@ -37,14 +40,26 @@ pub(crate) fn validate_slot_num(
         .unwrap_or((0, 0));
 
     let ship_dogma = info.get_dogma_attributes(fit.ship_id);
-    let turret = ship_dogma
+    let mut turret = ship_dogma
         .iter()
         .find_map(|a| (a.attribute_id == ATTR_TURRET).then_some(a.value))
         .unwrap_or(0.0) as u8;
-    let launcher = ship_dogma
+    let mut launcher = ship_dogma
         .iter()
         .find_map(|a| (a.attribute_id == ATTR_LAUNCHER).then_some(a.value))
         .unwrap_or(0.0) as u8;
+
+    for sub in &fit.modules.subsystem {
+        let dogma = info.get_dogma_attributes(sub.item_id);
+        turret += dogma
+            .iter()
+            .find_map(|a| (a.attribute_id == ATTR_SUBSYSTEM_TURRET).then_some(a.value))
+            .unwrap_or(0.0) as u8;
+        launcher += dogma
+            .iter()
+            .find_map(|a| (a.attribute_id == ATTR_SUBSYSTEM_LAUNCHER).then_some(a.value))
+            .unwrap_or(0.0) as u8;
+    }
 
     if actual_turret > turret {
         err.push(SlotInfo::Error {

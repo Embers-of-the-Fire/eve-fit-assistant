@@ -16,3 +16,9 @@ int get effectTurret => RustLib.instance.api.crateApiValidatePreValidateSlotNumE
 int get attrTurret => RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrTurret();
 
 int get attrLauncher => RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrLauncher();
+
+int get attrSubsystemTurret =>
+    RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrSubsystemTurret();
+
+int get attrSubsystemLauncher =>
+    RustLib.instance.api.crateApiValidatePreValidateSlotNumAttrSubsystemLauncher();
