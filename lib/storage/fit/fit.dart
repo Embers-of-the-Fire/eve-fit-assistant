@@ -61,6 +61,11 @@ class FitRecord {
         body: Fit.init(shipID),
       );
 
+  factory FitRecord.copy(FitRecordBrief brief, FitRecord origin) => FitRecord(
+        brief: brief,
+        body: origin.body,
+      );
+
   void modifyHigh(int index, SlotItem? Function(SlotItem?) map) {
     body.high[index] = map(body.high[index]);
   }

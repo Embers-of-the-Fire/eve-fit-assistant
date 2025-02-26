@@ -31,6 +31,15 @@ class FitStorage {
     return fit;
   }
 
+  Future<FitRecord> copyFit(String id) async {
+    final origin = _briefRecords.read[id]!;
+    final newRecord = await _createBriefRecord('${origin.name} 复制', origin.shipID);
+    final fit = await readFit(id);
+    final newFit = FitRecord.copy(newRecord, fit);
+    await newFit.save();
+    return newFit;
+  }
+
   Future<FitRecord> readFit(String id) async {
     final record = await FitRecord.read(id);
     return record;
