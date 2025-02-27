@@ -118,7 +118,8 @@ class SlotRow extends ConsumerWidget {
             type: type,
             fit: fit,
             op: (_) => SlotItem(
-              itemID: typeID,
+              itemID: itemID,
+              isDynamic: isDynamic,
               chargeID: chargeID,
               state: state,
             ),
