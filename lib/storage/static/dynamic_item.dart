@@ -22,3 +22,10 @@ class DynamicItem {
     return _fromBuffer(buffer).readonly;
   }
 }
+
+Future<ReadonlyMap<int, List<int>>> readDynamicType(Directory staticDir) async {
+  final file = File('${staticDir.path}/dynamic_type.pb');
+  final buffer = await file.readAsBytes();
+  final map = DynamicTypes.fromBuffer(buffer);
+  return map.entries.map((key, value) => MapEntry(key, value.mutaplasmidTypes)).readonly;
+}

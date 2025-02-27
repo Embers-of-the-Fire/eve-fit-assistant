@@ -21,3 +21,11 @@ message DynamicItems {
 
     map<int32, DynamicItem> entries = 1;
 }
+
+message DynamicTypes {
+    message DynamicType {
+        repeated int32 mutaplasmidTypes = 1;
+    }
+
+    map<int32, DynamicType> entries = 1;
+}

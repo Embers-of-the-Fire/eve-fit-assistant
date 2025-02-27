@@ -236,6 +236,94 @@ class DynamicItems extends $pb.GeneratedMessage {
   $core.Map<$core.int, DynamicItems_DynamicItem> get entries => $_getMap(0);
 }
 
+class DynamicTypes_DynamicType extends $pb.GeneratedMessage {
+  factory DynamicTypes_DynamicType({
+    $core.Iterable<$core.int>? mutaplasmidTypes,
+  }) {
+    final $result = create();
+    if (mutaplasmidTypes != null) {
+      $result.mutaplasmidTypes.addAll(mutaplasmidTypes);
+    }
+    return $result;
+  }
+  DynamicTypes_DynamicType._() : super();
+  factory DynamicTypes_DynamicType.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory DynamicTypes_DynamicType.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'DynamicTypes.DynamicType', package: const $pb.PackageName(_omitMessageNames ? '' : 'dynamic_item'), createEmptyInstance: create)
+    ..p<$core.int>(1, _omitFieldNames ? '' : 'mutaplasmidTypes', $pb.PbFieldType.P3, protoName: 'mutaplasmidTypes')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  DynamicTypes_DynamicType clone() => DynamicTypes_DynamicType()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  DynamicTypes_DynamicType copyWith(void Function(DynamicTypes_DynamicType) updates) => super.copyWith((message) => updates(message as DynamicTypes_DynamicType)) as DynamicTypes_DynamicType;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DynamicTypes_DynamicType create() => DynamicTypes_DynamicType._();
+  DynamicTypes_DynamicType createEmptyInstance() => create();
+  static $pb.PbList<DynamicTypes_DynamicType> createRepeated() => $pb.PbList<DynamicTypes_DynamicType>();
+  @$core.pragma('dart2js:noInline')
+  static DynamicTypes_DynamicType getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DynamicTypes_DynamicType>(create);
+  static DynamicTypes_DynamicType? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get mutaplasmidTypes => $_getList(0);
+}
+
+class DynamicTypes extends $pb.GeneratedMessage {
+  factory DynamicTypes({
+    $core.Map<$core.int, DynamicTypes_DynamicType>? entries,
+  }) {
+    final $result = create();
+    if (entries != null) {
+      $result.entries.addAll(entries);
+    }
+    return $result;
+  }
+  DynamicTypes._() : super();
+  factory DynamicTypes.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory DynamicTypes.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'DynamicTypes', package: const $pb.PackageName(_omitMessageNames ? '' : 'dynamic_item'), createEmptyInstance: create)
+    ..m<$core.int, DynamicTypes_DynamicType>(1, _omitFieldNames ? '' : 'entries', entryClassName: 'DynamicTypes.EntriesEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.OM, valueCreator: DynamicTypes_DynamicType.create, valueDefaultOrMaker: DynamicTypes_DynamicType.getDefault, packageName: const $pb.PackageName('dynamic_item'))
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  DynamicTypes clone() => DynamicTypes()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  DynamicTypes copyWith(void Function(DynamicTypes) updates) => super.copyWith((message) => updates(message as DynamicTypes)) as DynamicTypes;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DynamicTypes create() => DynamicTypes._();
+  DynamicTypes createEmptyInstance() => create();
+  static $pb.PbList<DynamicTypes> createRepeated() => $pb.PbList<DynamicTypes>();
+  @$core.pragma('dart2js:noInline')
+  static DynamicTypes getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DynamicTypes>(create);
+  static DynamicTypes? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.Map<$core.int, DynamicTypes_DynamicType> get entries => $_getMap(0);
+}
+
 
 const _omitFieldNames = $core.bool.fromEnvironment('protobuf.omit_field_names');
 const _omitMessageNames = $core.bool.fromEnvironment('protobuf.omit_message_names');

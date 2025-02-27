@@ -38,6 +38,7 @@ class StaticStorage {
   late final ReadonlyMap<int, Fighter> _fighters;
   late final ReadonlyMap<String, DamageProfileGroup> _damageProfiles;
   late final ReadonlyMap<int, DynamicItem> _dynamicItems;
+  late final ReadonlyMap<int, List<int>> _dynamicTypes;
   late final List<ImplantGroup> _implantGroups;
   late final StaticIcon _icons;
   late final TypeSlotStorage _typeSlot;
@@ -67,6 +68,8 @@ class StaticStorage {
   ReadonlyMap<String, DamageProfileGroup> get damageProfiles => _damageProfiles;
 
   ReadonlyMap<int, DynamicItem> get dynamicItems => _dynamicItems;
+
+  ReadonlyMap<int, List<int>> get dynamicTypes => _dynamicTypes;
 
   List<ImplantGroup> get implantGroups => _implantGroups;
 
@@ -113,6 +116,7 @@ class StaticStorage {
     _fighters = await Fighter.read(staticStorageDir);
     _damageProfiles = await DamageProfileGroup.read(staticStorageDir);
     _dynamicItems = await DynamicItem.read(staticStorageDir);
+    _dynamicTypes = await readDynamicType(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);
     _subsystems = await ShipSubsystemStorage.read(staticStorageDir);

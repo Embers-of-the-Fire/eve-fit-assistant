@@ -86,3 +86,38 @@ final $typed_data.Uint8List dynamicItemsDescriptor = $convert.base64Decode(
     'x1ZRgCIAEoCzImLmR5bmFtaWNfaXRlbS5EeW5hbWljSXRlbXMuRHluYW1pY0l0ZW1SBXZhbHVl'
     'OgI4AQ==');
 
+@$core.Deprecated('Use dynamicTypesDescriptor instead')
+const DynamicTypes$json = {
+  '1': 'DynamicTypes',
+  '2': [
+    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.dynamic_item.DynamicTypes.EntriesEntry', '10': 'entries'},
+  ],
+  '3': [DynamicTypes_DynamicType$json, DynamicTypes_EntriesEntry$json],
+};
+
+@$core.Deprecated('Use dynamicTypesDescriptor instead')
+const DynamicTypes_DynamicType$json = {
+  '1': 'DynamicType',
+  '2': [
+    {'1': 'mutaplasmidTypes', '3': 1, '4': 3, '5': 5, '10': 'mutaplasmidTypes'},
+  ],
+};
+
+@$core.Deprecated('Use dynamicTypesDescriptor instead')
+const DynamicTypes_EntriesEntry$json = {
+  '1': 'EntriesEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.dynamic_item.DynamicTypes.DynamicType', '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `DynamicTypes`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List dynamicTypesDescriptor = $convert.base64Decode(
+    'CgxEeW5hbWljVHlwZXMSQQoHZW50cmllcxgBIAMoCzInLmR5bmFtaWNfaXRlbS5EeW5hbWljVH'
+    'lwZXMuRW50cmllc0VudHJ5UgdlbnRyaWVzGjkKC0R5bmFtaWNUeXBlEioKEG11dGFwbGFzbWlk'
+    'VHlwZXMYASADKAVSEG11dGFwbGFzbWlkVHlwZXMaYgoMRW50cmllc0VudHJ5EhAKA2tleRgBIA'
+    'EoBVIDa2V5EjwKBXZhbHVlGAIgASgLMiYuZHluYW1pY19pdGVtLkR5bmFtaWNUeXBlcy5EeW5h'
+    'bWljVHlwZVIFdmFsdWU6AjgB');
+
