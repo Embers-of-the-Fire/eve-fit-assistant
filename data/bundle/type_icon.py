@@ -21,7 +21,7 @@ def bundle(fsd_path, image_path, cache_dir) -> list[DownloadItem]:
     to_download: list[DownloadItem] = []
 
     for tid, t in types.items():
-        if t.get("marketGroupID") is None:
+        if t.get("marketGroupID") is None and t.get("metaGroupID") != 15:
             continue
 
         if f"{tid}_32.png" in all_icons:
