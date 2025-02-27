@@ -138,6 +138,7 @@ Map<String, dynamic> _$$FighterItemImplToJson(_$FighterItemImpl instance) =>
 _$DynamicItemImpl _$$DynamicItemImplFromJson(Map<String, dynamic> json) =>
     _$DynamicItemImpl(
       baseType: (json['baseType'] as num).toInt(),
+      outType: (json['outType'] as num).toInt(),
       dynamicAttributes:
           (json['dynamicAttributes'] as Map<String, dynamic>).map(
         (k, e) => MapEntry(int.parse(k), (e as num).toDouble()),
@@ -147,6 +148,7 @@ _$DynamicItemImpl _$$DynamicItemImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$DynamicItemImplToJson(_$DynamicItemImpl instance) =>
     <String, dynamic>{
       'baseType': instance.baseType,
+      'outType': instance.outType,
       'dynamicAttributes':
           instance.dynamicAttributes.map((k, e) => MapEntry(k.toString(), e)),
     };

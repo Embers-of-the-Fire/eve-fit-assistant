@@ -189,6 +189,8 @@ class FitRecord {
     final id = body.dynamicItems.keys.nextPossible.map((u) => u + 1).unwrapOr(0);
     body.dynamicItems[id] = DynamicItem(
       baseType: baseType,
+      outType:
+          GlobalStorage().static.dynamicItems[mutaplasmidID]!.data.inputOutputMapping.resultingType,
       dynamicAttributes: GlobalStorage()
               .static
               .dynamicItems[mutaplasmidID]
@@ -425,6 +427,7 @@ class FighterItem with _$FighterItem {
 class DynamicItem with _$DynamicItem {
   const factory DynamicItem({
     required int baseType,
+    required int outType,
     required Map<int, double> dynamicAttributes,
   }) = _DynamicItem;
 

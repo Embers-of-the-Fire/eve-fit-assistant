@@ -618,6 +618,7 @@ DynamicItem _$DynamicItemFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$DynamicItem {
   int get baseType => throw _privateConstructorUsedError;
+  int get outType => throw _privateConstructorUsedError;
   Map<int, double> get dynamicAttributes => throw _privateConstructorUsedError;
 
   /// Serializes this DynamicItem to a JSON map.
@@ -636,7 +637,7 @@ abstract class $DynamicItemCopyWith<$Res> {
           DynamicItem value, $Res Function(DynamicItem) then) =
       _$DynamicItemCopyWithImpl<$Res, DynamicItem>;
   @useResult
-  $Res call({int baseType, Map<int, double> dynamicAttributes});
+  $Res call({int baseType, int outType, Map<int, double> dynamicAttributes});
 }
 
 /// @nodoc
@@ -655,12 +656,17 @@ class _$DynamicItemCopyWithImpl<$Res, $Val extends DynamicItem>
   @override
   $Res call({
     Object? baseType = null,
+    Object? outType = null,
     Object? dynamicAttributes = null,
   }) {
     return _then(_value.copyWith(
       baseType: null == baseType
           ? _value.baseType
           : baseType // ignore: cast_nullable_to_non_nullable
+              as int,
+      outType: null == outType
+          ? _value.outType
+          : outType // ignore: cast_nullable_to_non_nullable
               as int,
       dynamicAttributes: null == dynamicAttributes
           ? _value.dynamicAttributes
@@ -678,7 +684,7 @@ abstract class _$$DynamicItemImplCopyWith<$Res>
       __$$DynamicItemImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({int baseType, Map<int, double> dynamicAttributes});
+  $Res call({int baseType, int outType, Map<int, double> dynamicAttributes});
 }
 
 /// @nodoc
@@ -695,12 +701,17 @@ class __$$DynamicItemImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? baseType = null,
+    Object? outType = null,
     Object? dynamicAttributes = null,
   }) {
     return _then(_$DynamicItemImpl(
       baseType: null == baseType
           ? _value.baseType
           : baseType // ignore: cast_nullable_to_non_nullable
+              as int,
+      outType: null == outType
+          ? _value.outType
+          : outType // ignore: cast_nullable_to_non_nullable
               as int,
       dynamicAttributes: null == dynamicAttributes
           ? _value._dynamicAttributes
@@ -715,6 +726,7 @@ class __$$DynamicItemImplCopyWithImpl<$Res>
 class _$DynamicItemImpl implements _DynamicItem {
   const _$DynamicItemImpl(
       {required this.baseType,
+      required this.outType,
       required final Map<int, double> dynamicAttributes})
       : _dynamicAttributes = dynamicAttributes;
 
@@ -723,6 +735,8 @@ class _$DynamicItemImpl implements _DynamicItem {
 
   @override
   final int baseType;
+  @override
+  final int outType;
   final Map<int, double> _dynamicAttributes;
   @override
   Map<int, double> get dynamicAttributes {
@@ -734,7 +748,7 @@ class _$DynamicItemImpl implements _DynamicItem {
 
   @override
   String toString() {
-    return 'DynamicItem(baseType: $baseType, dynamicAttributes: $dynamicAttributes)';
+    return 'DynamicItem(baseType: $baseType, outType: $outType, dynamicAttributes: $dynamicAttributes)';
   }
 
   @override
@@ -744,13 +758,14 @@ class _$DynamicItemImpl implements _DynamicItem {
             other is _$DynamicItemImpl &&
             (identical(other.baseType, baseType) ||
                 other.baseType == baseType) &&
+            (identical(other.outType, outType) || other.outType == outType) &&
             const DeepCollectionEquality()
                 .equals(other._dynamicAttributes, _dynamicAttributes));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, baseType,
+  int get hashCode => Object.hash(runtimeType, baseType, outType,
       const DeepCollectionEquality().hash(_dynamicAttributes));
 
   /// Create a copy of DynamicItem
@@ -772,6 +787,7 @@ class _$DynamicItemImpl implements _DynamicItem {
 abstract class _DynamicItem implements DynamicItem {
   const factory _DynamicItem(
       {required final int baseType,
+      required final int outType,
       required final Map<int, double> dynamicAttributes}) = _$DynamicItemImpl;
 
   factory _DynamicItem.fromJson(Map<String, dynamic> json) =
@@ -779,6 +795,8 @@ abstract class _DynamicItem implements DynamicItem {
 
   @override
   int get baseType;
+  @override
+  int get outType;
   @override
   Map<int, double> get dynamicAttributes;
 

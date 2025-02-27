@@ -48,12 +48,12 @@ Widget getSlotRow(
   if (item == null) {
     return SlotRowPlaceholder(fitID: fitID, type: type, index: index);
   }
+
   return SlotRow(
     fitID: fitID,
-    typeID: item.itemID,
+    itemID: item.itemID,
     isDynamic: item.isDynamic,
     state: item.state,
-    maxState: GlobalStorage().static.typeSlot[type][item.itemID]?.maxState ?? SlotState.passive,
     type: type,
     index: index,
     chargeID: item.chargeID,
@@ -66,9 +66,8 @@ Widget getSlotRow(
 
 class SlotRow extends ConsumerWidget {
   final String fitID;
-  final int typeID;
+  final int itemID;
   final SlotState state;
-  final SlotState maxState;
   final FitItemType type;
   final int index;
   final int? chargeID;
@@ -84,22 +83,26 @@ class SlotRow extends ConsumerWidget {
   SlotRow({
     super.key,
     required this.fitID,
-    required this.typeID,
+    required this.itemID,
     required this.state,
-    required this.maxState,
     required this.type,
     required this.index,
     required this.chargeID,
     required this.enableCopy,
     required this.isDynamic,
-  })  : slotHasCharge = GlobalStorage().static.typeSlot[type][typeID]?.hasCharge ?? false,
+  })  : slotHasCharge = GlobalStorage().static.typeSlot[type][itemID]?.hasCharge ?? false,
         enableDynamicConvert = !isDynamic &&
-            GlobalStorage().static.dynamicTypes[typeID].isSomeAnd((t) => t.isNotEmpty);
+            GlobalStorage().static.dynamicTypes[itemID].isSomeAnd((t) => t.isNotEmpty);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
     final fitData = ref.watch(fitRecordNotifierProvider(fitID));
+
+    final typeID = isDynamic ? fitData.fit.body.dynamicItems[itemID]!.outType : itemID;
+    final baseTypeID = isDynamic ? fitData.fit.body.dynamicItems[itemID]!.baseType : itemID;
+    final maxState =
+        GlobalStorage().static.typeSlot[type][baseTypeID]?.maxState ?? SlotState.passive;
 
     final List<SlidableAction> startAction = [];
     final List<SlidableAction> endAction = [];
@@ -173,10 +176,49 @@ class SlotRow extends ConsumerWidget {
     }
     if (enableDynamicConvert) {
       startAction.add(SlidableAction(
-        onPressed: (_) {},
+        onPressed: (_) async {
+          final dynamicTypeID = await showDialog<int>(
+              context: context,
+              builder: (context) => Container(
+                  padding: const EdgeInsets.symmetric(vertical: 120),
+                  child: AlertDialog(
+                    title: const Text('选择深渊物质'),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    contentTextStyle: const TextStyle(fontSize: 16),
+                    content: _AddDynamicItemDialog(
+                      onSelect: (id) => Navigator.pop(context, id),
+                      items: GlobalStorage().static.dynamicTypes[typeID] ?? [],
+                    ),
+                  )));
+          if (dynamicTypeID == null) return;
+          await fit.modify((record) {
+            final dyn = record.createDynamicItem(itemID, dynamicTypeID);
+            final func = _getModifyFunction(record, type);
+            func?.call(index, (item) => item!.copyWith(itemID: dyn, isDynamic: true));
+            return record;
+          });
+        },
         backgroundColor: Colors.red,
         icon: Icons.cyclone_outlined,
         label: '深渊',
+        padding: EdgeInsets.zero,
+      ));
+    }
+    if (isDynamic) {
+      startAction.add(SlidableAction(
+        onPressed: (_) => _modifyFit(
+          index: index,
+          type: type,
+          fit: fit,
+          op: (item) => item?.copyWith(
+            isDynamic: false,
+            itemID: fitData.fit.body.dynamicItems[item.itemID]!.baseType,
+          ),
+        ),
+        backgroundColor: Colors.grey,
+        foregroundColor: Colors.white,
+        icon: Icons.cyclone_outlined,
+        label: '还原',
         padding: EdgeInsets.zero,
       ));
     }
@@ -423,4 +465,25 @@ void Function(int, SlotItem? Function(SlotItem?))? _getModifyFunction(
     FitItemType.implant: record.modifyImplant,
   };
   return mapping[type];
+}
+
+class _AddDynamicItemDialog extends StatelessWidget {
+  final List<int> items;
+  final void Function(int)? onSelect;
+
+  const _AddDynamicItemDialog({required this.items, this.onSelect});
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        child: Column(
+          children: items
+              .map((el) => ListTile(
+                    onTap: () => onSelect?.call(el),
+                    onLongPress: () => showTypeInfoPage(context, typeID: el),
+                    leading: GlobalStorage().static.icons.getTypeIconSync(el),
+                    title: Text(GlobalStorage().static.types[el]?.nameZH ?? el.toString()),
+                  ))
+              .toList(),
+        ),
+      );
 }
