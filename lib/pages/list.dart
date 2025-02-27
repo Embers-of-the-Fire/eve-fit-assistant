@@ -29,7 +29,7 @@ class _ListPageState extends State<ListPage> {
           final icon = GlobalStorage().static.icons.getTypeIconSync(entry.value.shipID);
           final typeName = GlobalStorage().static.types[entry.value.shipID]?.nameZH ?? '未知';
           return Slidable(
-            startActionPane: ActionPane(extentRatio: 0.2, motion: const StretchMotion(), children: [
+            startActionPane: ActionPane(extentRatio: 0.15, motion: const StretchMotion(), children: [
               SlidableAction(
                 onPressed: (_) async {
                   final fit = await GlobalStorage().ship.copyFit(entry.value.id);
@@ -37,15 +37,17 @@ class _ListPageState extends State<ListPage> {
                     await intoFitPage(context, fit.brief.id);
                   }
                 },
+                padding: EdgeInsets.zero,
                 icon: Icons.copy,
                 label: '复制',
                 backgroundColor: Colors.green,
               )
             ]),
-            endActionPane: ActionPane(extentRatio: 0.2, motion: const StretchMotion(), children: [
+            endActionPane: ActionPane(extentRatio: 0.15, motion: const StretchMotion(), children: [
               SlidableAction(
                 onPressed: (_) =>
                     GlobalStorage().ship.deleteFit(entry.key).then((_) => setState(() {})),
+                padding: EdgeInsets.zero,
                 icon: Icons.delete_forever,
                 label: '删除',
                 backgroundColor: Colors.red,

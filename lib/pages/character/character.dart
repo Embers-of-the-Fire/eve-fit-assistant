@@ -81,6 +81,7 @@ class _CharacterListTile extends StatelessWidget {
     if (onCopy != null) {
       startActions.add(SlidableAction(
         onPressed: (_) => onCopy!(),
+        padding: EdgeInsets.zero,
         icon: Icons.copy,
         label: '复制',
       ));
@@ -88,6 +89,7 @@ class _CharacterListTile extends StatelessWidget {
     if (onEdit != null) {
       startActions.add(SlidableAction(
         onPressed: (_) => onEdit!(),
+        padding: EdgeInsets.zero,
         icon: Icons.edit,
         backgroundColor: Colors.green,
         label: '编辑',
@@ -96,16 +98,17 @@ class _CharacterListTile extends StatelessWidget {
 
     return Slidable(
       startActionPane: startActions.isNotEmpty.then(() => ActionPane(
-            extentRatio: 0.2 * startActions.length,
+            extentRatio: 0.15 * startActions.length,
             motion: const StretchMotion(),
             children: startActions,
           )),
       endActionPane: onDelete.map((fn) => ActionPane(
-            extentRatio: 0.2,
+            extentRatio: 0.15,
             motion: const StretchMotion(),
             children: [
               SlidableAction(
                 onPressed: (_) => fn(),
+                padding: EdgeInsets.zero,
                 icon: Icons.delete_forever,
                 backgroundColor: Colors.red,
                 label: '删除',

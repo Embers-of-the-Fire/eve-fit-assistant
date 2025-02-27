@@ -19,7 +19,7 @@ class SubsystemSlotRow extends ConsumerWidget {
 
     return Slidable(
       startActionPane: ActionPane(
-        extentRatio: 0.2,
+        extentRatio: 0.15,
         motion: const StretchMotion(),
         children: [
           SlidableAction(
@@ -33,13 +33,14 @@ class SubsystemSlotRow extends ConsumerWidget {
                 });
               }
             },
+            padding: EdgeInsets.zero,
             icon: Icons.change_circle_outlined,
             label: '更换',
           )
         ],
       ),
       endActionPane: ActionPane(
-        extentRatio: 0.2,
+        extentRatio: 0.15,
         motion: const StretchMotion(),
         children: [
           SlidableAction(
@@ -47,6 +48,7 @@ class SubsystemSlotRow extends ConsumerWidget {
               record.removeSubsystem(type);
               return record;
             }),
+            padding: EdgeInsets.zero,
             icon: Icons.delete_forever,
             backgroundColor: Colors.red,
             label: '删除',
@@ -56,7 +58,7 @@ class SubsystemSlotRow extends ConsumerWidget {
       child: ListTile(
         leading: StateIcon(
           state: ItemState.online,
-          child: Image(image: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID)!),
+          foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(typeID)!,
         ),
         title: Text(GlobalStorage().static.types[typeID]?.nameZH ?? '未知'),
       ),

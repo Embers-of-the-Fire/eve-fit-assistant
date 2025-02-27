@@ -51,6 +51,7 @@ Widget getSlotRow(
   return SlotRow(
     fitID: fitID,
     typeID: item.itemID,
+    isDynamic: item.isDynamic,
     state: item.state,
     maxState: GlobalStorage().static.typeSlot[type][item.itemID]?.maxState ?? SlotState.passive,
     type: type,
@@ -72,9 +73,13 @@ class SlotRow extends ConsumerWidget {
   final int index;
   final int? chargeID;
   final bool enableCopy;
+  final bool isDynamic;
 
   /// Whether the slot can be "charged".
   final bool slotHasCharge;
+
+  /// Whether the slot can be converted to a dynamic type.
+  final bool enableDynamicConvert;
 
   SlotRow({
     super.key,
@@ -86,7 +91,10 @@ class SlotRow extends ConsumerWidget {
     required this.index,
     required this.chargeID,
     required this.enableCopy,
-  }) : slotHasCharge = GlobalStorage().static.typeSlot[type][typeID]?.hasCharge ?? false;
+    required this.isDynamic,
+  })  : slotHasCharge = GlobalStorage().static.typeSlot[type][typeID]?.hasCharge ?? false,
+        enableDynamicConvert = !isDynamic &&
+            GlobalStorage().static.dynamicTypes[typeID].isSomeAnd((t) => t.isNotEmpty);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -118,6 +126,7 @@ class SlotRow extends ConsumerWidget {
         backgroundColor: Colors.grey.shade200,
         foregroundColor: Colors.black,
         label: '复制',
+        padding: EdgeInsets.zero,
       ));
     }
     endAction.add(SlidableAction(
@@ -126,6 +135,7 @@ class SlotRow extends ConsumerWidget {
       foregroundColor: Colors.white,
       icon: Icons.delete,
       label: '删除',
+      padding: EdgeInsets.zero,
     ));
     if (slotHasCharge) {
       startAction.add(SlidableAction(
@@ -143,6 +153,7 @@ class SlotRow extends ConsumerWidget {
         foregroundColor: Colors.white,
         icon: Icons.battery_charging_full,
         label: '弹药',
+        padding: EdgeInsets.zero,
       ));
       if (chargeID != null) {
         endAction.add(SlidableAction(
@@ -154,24 +165,34 @@ class SlotRow extends ConsumerWidget {
           ),
           backgroundColor: Colors.grey,
           foregroundColor: Colors.white,
-          icon: Icons.cancel_outlined,
+          icon: Icons.cancel,
           label: '弹药',
+          padding: EdgeInsets.zero,
         ));
       }
+    }
+    if (enableDynamicConvert) {
+      startAction.add(SlidableAction(
+        onPressed: (_) {},
+        backgroundColor: Colors.red,
+        icon: Icons.cyclone_outlined,
+        label: '深渊',
+        padding: EdgeInsets.zero,
+      ));
     }
 
     return Slidable(
       startActionPane: startAction.isEmpty
           ? null
           : ActionPane(
-              extentRatio: 0.2 * startAction.length,
+              extentRatio: 0.15 * startAction.length,
               motion: const StretchMotion(),
               children: startAction,
             ),
       endActionPane: endAction.isEmpty
           ? null
           : ActionPane(
-              extentRatio: 0.2 * endAction.length,
+              extentRatio: 0.15 * endAction.length,
               motion: const StretchMotion(),
               children: endAction,
             ),

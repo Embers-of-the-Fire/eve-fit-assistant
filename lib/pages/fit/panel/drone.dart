@@ -81,7 +81,7 @@ class _DroneSlot extends ConsumerWidget {
     return Slidable(
       startActionPane: ActionPane(
         motion: const StretchMotion(),
-        extentRatio: 0.4,
+        extentRatio: 0.3,
         children: [
           SlidableAction(
             onPressed: (_) => _modifyDrone(
@@ -90,6 +90,7 @@ class _DroneSlot extends ConsumerWidget {
               modify: (drone) => drone.copyWith(amount: drone.amount + 1),
             ),
             autoClose: false,
+            padding: EdgeInsets.zero,
             icon: Icons.add,
             label: '+1',
           ),
@@ -99,6 +100,7 @@ class _DroneSlot extends ConsumerWidget {
               index: index,
               modify: (drone) => drone.copyWith(amount: 5),
             ),
+            padding: EdgeInsets.zero,
             icon: Icons.close,
             backgroundColor: Colors.green,
             label: 'x5',
@@ -107,7 +109,7 @@ class _DroneSlot extends ConsumerWidget {
       ),
       endActionPane: ActionPane(
         motion: const StretchMotion(),
-        extentRatio: 0.4,
+        extentRatio: 0.3,
         children: [
           SlidableAction(
             onPressed: (_) => _modifyDrone(
@@ -115,12 +117,14 @@ class _DroneSlot extends ConsumerWidget {
               index: index,
               modify: (drone) => drone.copyWith(amount: drone.amount - 1),
             ),
+            padding: EdgeInsets.zero,
             icon: Icons.remove,
             backgroundColor: Colors.white54,
             label: '-1',
           ),
           SlidableAction(
             onPressed: (_) => _removeDrone(fitNotifier, index: index),
+            padding: EdgeInsets.zero,
             icon: Icons.delete_forever,
             backgroundColor: Colors.red,
             label: '删除',

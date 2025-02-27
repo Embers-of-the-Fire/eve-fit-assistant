@@ -121,7 +121,7 @@ extension Itertools<T> on Iterable<T> {
 
 extension ItertoolInt on Iterable<int> {
   int sum() {
-    var sum = 0;
+    int sum = 0;
     for (final e in this) {
       sum += e;
     }
@@ -129,11 +129,23 @@ extension ItertoolInt on Iterable<int> {
   }
 
   int? get max => (this as Iterable<num>).max as int?;
+
+  int get nextPossible {
+    int i = 0;
+    for (final e in this) {
+      if (e == i) {
+        i++;
+      } else {
+        break;
+      }
+    }
+    return i;
+  }
 }
 
 extension ItertoolDouble on Iterable<double> {
   double sum() {
-    var sum = 0.0;
+    double sum = 0.0;
     for (final e in this) {
       sum += e;
     }

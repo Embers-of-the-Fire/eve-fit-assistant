@@ -36,6 +36,14 @@ extension Optional<T> on T? {
     }
   }
 
+  bool isSomeAnd(bool Function(T value) f) {
+    if (this == null) {
+      return false;
+    } else {
+      return f(this as T);
+    }
+  }
+
   Future<T?> async() async => this;
 }
 

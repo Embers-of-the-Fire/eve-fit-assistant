@@ -114,7 +114,7 @@ class _FighterSlot extends ConsumerWidget {
     return Slidable(
       startActionPane: ActionPane(
         motion: const StretchMotion(),
-        extentRatio: 0.4,
+        extentRatio: 0.3,
         children: [
           SlidableAction(
             onPressed: (_) => _modifyFighter(
@@ -123,6 +123,7 @@ class _FighterSlot extends ConsumerWidget {
               modify: (fighter) => fighter.copyWith(amount: fighter.amount + 1),
             ),
             autoClose: false,
+            padding: EdgeInsets.zero,
             icon: Icons.add,
             label: '+1',
           ),
@@ -132,6 +133,7 @@ class _FighterSlot extends ConsumerWidget {
               index: index,
               modify: (fighter) => fighter.copyWith(amount: fighterItem.amount),
             ),
+            padding: EdgeInsets.zero,
             icon: Icons.close,
             backgroundColor: Colors.green,
             label: '填满',
@@ -140,7 +142,7 @@ class _FighterSlot extends ConsumerWidget {
       ),
       endActionPane: ActionPane(
         motion: const StretchMotion(),
-        extentRatio: 0.4,
+        extentRatio: 0.3,
         children: [
           SlidableAction(
             onPressed: (_) => _modifyFighter(
@@ -148,12 +150,14 @@ class _FighterSlot extends ConsumerWidget {
               index: index,
               modify: (fighter) => fighter.copyWith(amount: fighter.amount - 1),
             ),
+            padding: EdgeInsets.zero,
             icon: Icons.remove,
             backgroundColor: Colors.white54,
             label: '-1',
           ),
           SlidableAction(
             onPressed: (_) => _removeFighter(fitNotifier, index: index),
+            padding: EdgeInsets.zero,
             icon: Icons.delete_forever,
             backgroundColor: Colors.red,
             label: '删除',

@@ -185,7 +185,8 @@ class FitRecord {
   }
 
   int createDynamicItem(int baseType, int mutaplasmidID) {
-    final id = body.dynamicItems.keys.max.map((u) => u + 1).unwrapOr(0);
+    _removeUnusedDynamicItem();
+    final id = body.dynamicItems.keys.nextPossible.map((u) => u + 1).unwrapOr(0);
     body.dynamicItems[id] = DynamicItem(
       baseType: baseType,
       dynamicAttributes: GlobalStorage()
@@ -197,6 +198,19 @@ class FitRecord {
           {},
     );
     return id;
+  }
+
+  void _removeUnusedDynamicItem() {
+    final dynItems = [body.high, body.med, body.low]
+        .flatten()
+        .filterMap((u) => u.andThen((t) => t.isDynamic.thenSome(t.itemID)))
+        .toSet();
+
+    for (final id in body.dynamicItems.keys.toList()) {
+      if (!dynItems.contains(id)) {
+        body.dynamicItems.remove(id);
+      }
+    }
   }
 
   Future<void> save() async {
