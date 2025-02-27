@@ -15,7 +15,9 @@ def convert(cache: ConvertCache, external: dict):
         dyn_id = int(dyn_id)
         mapping = dyn_entry["inputOutputMapping"][0]
         data.entries[dyn_id].inputOutputMapping.resultingType = mapping["resultingType"]
-        data.entries[dyn_id].inputOutputMapping.applicableTypes.extend(mapping["applicableTypes"])
+        data.entries[dyn_id].inputOutputMapping.applicableTypes.extend(
+            sorted(mapping["applicableTypes"])
+        )
         maybe_dynamic.update(mapping["applicableTypes"])
         for attr_id, attr_map in dyn_entry["attributeIDs"].items():
             data.entries[dyn_id].attributes[int(attr_id)].max = attr_map["max"]
@@ -29,6 +31,6 @@ def convert(cache: ConvertCache, external: dict):
             lambda x: any(type_id in t["applicableTypes"] for t in x[1]["inputOutputMapping"]),
             dyns.items(),
         )
-        data.entries[type_id].mutaplasmidTypes.extend({int(x[0]) for x in muts})
+        data.entries[type_id].mutaplasmidTypes.extend(sorted({int(x[0]) for x in muts}))
 
     external["dynamic_type"] = data

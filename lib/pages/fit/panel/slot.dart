@@ -74,13 +74,7 @@ class SlotRow extends ConsumerWidget {
   final bool enableCopy;
   final bool isDynamic;
 
-  /// Whether the slot can be "charged".
-  final bool slotHasCharge;
-
-  /// Whether the slot can be converted to a dynamic type.
-  final bool enableDynamicConvert;
-
-  SlotRow({
+  const SlotRow({
     super.key,
     required this.fitID,
     required this.itemID,
@@ -90,9 +84,7 @@ class SlotRow extends ConsumerWidget {
     required this.chargeID,
     required this.enableCopy,
     required this.isDynamic,
-  })  : slotHasCharge = GlobalStorage().static.typeSlot[type][itemID]?.hasCharge ?? false,
-        enableDynamicConvert = !isDynamic &&
-            GlobalStorage().static.dynamicTypes[itemID].isSomeAnd((t) => t.isNotEmpty);
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,6 +95,10 @@ class SlotRow extends ConsumerWidget {
     final baseTypeID = isDynamic ? fitData.fit.body.dynamicItems[itemID]!.baseType : itemID;
     final maxState =
         GlobalStorage().static.typeSlot[type][baseTypeID]?.maxState ?? SlotState.passive;
+
+    final slotHasCharge = GlobalStorage().static.typeSlot[type][baseTypeID]?.hasCharge ?? false;
+    final enableDynamicConvert =
+        !isDynamic && GlobalStorage().static.dynamicTypes[itemID].isSomeAnd((t) => t.isNotEmpty);
 
     final List<SlidableAction> startAction = [];
     final List<SlidableAction> endAction = [];
