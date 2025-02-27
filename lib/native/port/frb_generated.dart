@@ -640,6 +640,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Map<int, DynamicItem> dco_decode_Map_i_32_dynamic_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(
+        dco_decode_list_record_i_32_dynamic_item(raw).map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
   Map<int, double> dco_decode_Map_i_32_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return Map.fromEntries(dco_decode_list_record_i_32_f_64(raw).map((e) => MapEntry(e.$1, e.$2)));
@@ -760,6 +767,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DynamicItem dco_decode_dynamic_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return DynamicItem(
+      baseType: dco_decode_i_32(arr[0]),
+      dynamicAttributes: dco_decode_Map_i_32_f_64(arr[1]),
+    );
+  }
+
+  @protected
   ErrorKey dco_decode_error_key(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
@@ -839,7 +857,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Fit dco_decode_fit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7) throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 8) throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
     return Fit(
       shipId: dco_decode_i_32(arr[0]),
       modules: dco_decode_module(arr[1]),
@@ -848,6 +866,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       implant: dco_decode_list_implant(arr[4]),
       skills: dco_decode_Map_i_32_u_8(arr[5]),
       damageProfile: dco_decode_damage_profile(arr[6]),
+      dynamicItems: dco_decode_Map_i_32_dynamic_item(arr[7]),
     );
   }
 
@@ -890,12 +909,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Item dco_decode_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return Item(
       itemId: dco_decode_i_32(arr[0]),
-      charge: dco_decode_opt_box_autoadd_i_32(arr[1]),
-      state: dco_decode_item_state(arr[2]),
-      index: dco_decode_i_32(arr[3]),
+      isDynamic: dco_decode_bool(arr[1]),
+      charge: dco_decode_opt_box_autoadd_i_32(arr[2]),
+      state: dco_decode_item_state(arr[3]),
+      index: dco_decode_i_32(arr[4]),
     );
   }
 
@@ -903,13 +923,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ItemProxy dco_decode_item_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6) throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return ItemProxy(
       index: dco_decode_opt_box_autoadd_i_32(arr[0]),
       itemId: dco_decode_i_32(arr[1]),
-      charge: dco_decode_opt_box_item_proxy(arr[2]),
-      attributes: dco_decode_Map_i_32_f_64(arr[3]),
-      isActive: dco_decode_bool(arr[4]),
+      isDynamic: dco_decode_bool(arr[2]),
+      charge: dco_decode_opt_box_item_proxy(arr[3]),
+      attributes: dco_decode_Map_i_32_f_64(arr[4]),
+      isActive: dco_decode_bool(arr[5]),
     );
   }
 
@@ -977,6 +998,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<(int, DynamicItem)> dco_decode_list_record_i_32_dynamic_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_record_i_32_dynamic_item).toList();
   }
 
   @protected
@@ -1051,6 +1078,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ItemProxy? dco_decode_opt_box_item_proxy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_item_proxy(raw);
+  }
+
+  @protected
+  (int, DynamicItem) dco_decode_record_i_32_dynamic_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_i_32(arr[0]),
+      dco_decode_dynamic_item(arr[1]),
+    );
   }
 
   @protected
@@ -1179,6 +1219,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Map<int, DynamicItem> sse_decode_Map_i_32_dynamic_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_record_i_32_dynamic_item(deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
   Map<int, double> sse_decode_Map_i_32_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_record_i_32_f_64(deserializer);
@@ -1292,6 +1339,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DynamicItem sse_decode_dynamic_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_baseType = sse_decode_i_32(deserializer);
+    var var_dynamicAttributes = sse_decode_Map_i_32_f_64(deserializer);
+    return DynamicItem(baseType: var_baseType, dynamicAttributes: var_dynamicAttributes);
+  }
+
+  @protected
   ErrorKey sse_decode_error_key(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1366,6 +1421,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_implant = sse_decode_list_implant(deserializer);
     var var_skills = sse_decode_Map_i_32_u_8(deserializer);
     var var_damageProfile = sse_decode_damage_profile(deserializer);
+    var var_dynamicItems = sse_decode_Map_i_32_dynamic_item(deserializer);
     return Fit(
         shipId: var_shipId,
         modules: var_modules,
@@ -1373,7 +1429,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         fighters: var_fighters,
         implant: var_implant,
         skills: var_skills,
-        damageProfile: var_damageProfile);
+        damageProfile: var_damageProfile,
+        dynamicItems: var_dynamicItems);
   }
 
   @protected
@@ -1415,10 +1472,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Item sse_decode_item(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_itemId = sse_decode_i_32(deserializer);
+    var var_isDynamic = sse_decode_bool(deserializer);
     var var_charge = sse_decode_opt_box_autoadd_i_32(deserializer);
     var var_state = sse_decode_item_state(deserializer);
     var var_index = sse_decode_i_32(deserializer);
-    return Item(itemId: var_itemId, charge: var_charge, state: var_state, index: var_index);
+    return Item(
+        itemId: var_itemId,
+        isDynamic: var_isDynamic,
+        charge: var_charge,
+        state: var_state,
+        index: var_index);
   }
 
   @protected
@@ -1426,12 +1489,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_index = sse_decode_opt_box_autoadd_i_32(deserializer);
     var var_itemId = sse_decode_i_32(deserializer);
+    var var_isDynamic = sse_decode_bool(deserializer);
     var var_charge = sse_decode_opt_box_item_proxy(deserializer);
     var var_attributes = sse_decode_Map_i_32_f_64(deserializer);
     var var_isActive = sse_decode_bool(deserializer);
     return ItemProxy(
         index: var_index,
         itemId: var_itemId,
+        isDynamic: var_isDynamic,
         charge: var_charge,
         attributes: var_attributes,
         isActive: var_isActive);
@@ -1547,6 +1612,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<(int, DynamicItem)> sse_decode_list_record_i_32_dynamic_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(int, DynamicItem)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_i_32_dynamic_item(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -1670,6 +1747,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  (int, DynamicItem) sse_decode_record_i_32_dynamic_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_i_32(deserializer);
+    var var_field1 = sse_decode_dynamic_item(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
   (int, double) sse_decode_record_i_32_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_field0 = sse_decode_i_32(deserializer);
@@ -1785,6 +1870,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_Map_i_32_dynamic_item(Map<int, DynamicItem> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_i_32_dynamic_item(
+        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
+  }
+
+  @protected
   void sse_encode_Map_i_32_f_64(Map<int, double> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_record_i_32_f_64(
@@ -1890,6 +1982,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_dynamic_item(DynamicItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.baseType, serializer);
+    sse_encode_Map_i_32_f_64(self.dynamicAttributes, serializer);
+  }
+
+  @protected
   void sse_encode_error_key(ErrorKey self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
@@ -1957,6 +2056,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_implant(self.implant, serializer);
     sse_encode_Map_i_32_u_8(self.skills, serializer);
     sse_encode_damage_profile(self.damageProfile, serializer);
+    sse_encode_Map_i_32_dynamic_item(self.dynamicItems, serializer);
   }
 
   @protected
@@ -1994,6 +2094,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_item(Item self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.itemId, serializer);
+    sse_encode_bool(self.isDynamic, serializer);
     sse_encode_opt_box_autoadd_i_32(self.charge, serializer);
     sse_encode_item_state(self.state, serializer);
     sse_encode_i_32(self.index, serializer);
@@ -2004,6 +2105,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_opt_box_autoadd_i_32(self.index, serializer);
     sse_encode_i_32(self.itemId, serializer);
+    sse_encode_bool(self.isDynamic, serializer);
     sse_encode_opt_box_item_proxy(self.charge, serializer);
     sse_encode_Map_i_32_f_64(self.attributes, serializer);
     sse_encode_bool(self.isActive, serializer);
@@ -2100,6 +2202,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_record_i_32_dynamic_item(
+      List<(int, DynamicItem)> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_i_32_dynamic_item(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_record_i_32_f_64(List<(int, double)> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
@@ -2188,6 +2300,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_box_item_proxy(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_record_i_32_dynamic_item((int, DynamicItem) self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.$1, serializer);
+    sse_encode_dynamic_item(self.$2, serializer);
   }
 
   @protected

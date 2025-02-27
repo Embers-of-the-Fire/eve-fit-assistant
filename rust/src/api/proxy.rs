@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use eve_fit_os::calculate;
+use eve_fit_os::calculate::{self, item::ItemID};
 
 use super::schema::DamageProfile;
 
@@ -163,6 +163,7 @@ impl FighterProxy {
 pub struct ItemProxy {
     pub index: Option<i32>,
     pub item_id: i32,
+    pub is_dynamic: bool,
     pub charge: Option<Box<ItemProxy>>,
     pub attributes: HashMap<i32, f64>,
     pub is_active: bool,
@@ -173,7 +174,10 @@ impl ItemProxy {
     pub(crate) fn from_native(native: calculate::item::Item) -> Self {
         ItemProxy {
             index: native.slot.index,
-            item_id: native.type_id,
+            item_id: match native.item_id {
+                ItemID::Item(n) | ItemID::Dynamic(n) => n,
+            },
+            is_dynamic: matches!(native.item_id, ItemID::Dynamic(_)),
             charge: native.charge.map(|t| Box::new(Self::from_native(*t))),
             is_active: native.state == calculate::item::EffectCategory::Active
                 || native.state == calculate::item::EffectCategory::Overload,

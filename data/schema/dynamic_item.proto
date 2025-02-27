@@ -14,7 +14,8 @@ message DynamicItems {
             required double min = 2;
         }
 
-        repeated InputOutputMapping inputOutputMapping = 1;
+        // repeated InputOutputMapping inputOutputMapping = 1;
+        required InputOutputMapping inputOutputMapping = 1;
         map<int32, DynamicAttribute> attributes = 2;
     }
 

@@ -26,7 +26,7 @@ const DynamicItems$json = {
 const DynamicItems_DynamicItem$json = {
   '1': 'DynamicItem',
   '2': [
-    {'1': 'inputOutputMapping', '3': 1, '4': 3, '5': 11, '6': '.dynamic_item.DynamicItems.DynamicItem.InputOutputMapping', '10': 'inputOutputMapping'},
+    {'1': 'inputOutputMapping', '3': 1, '4': 2, '5': 11, '6': '.dynamic_item.DynamicItems.DynamicItem.InputOutputMapping', '10': 'inputOutputMapping'},
     {'1': 'attributes', '3': 2, '4': 3, '5': 11, '6': '.dynamic_item.DynamicItems.DynamicItem.AttributesEntry', '10': 'attributes'},
   ],
   '3': [DynamicItems_DynamicItem_InputOutputMapping$json, DynamicItems_DynamicItem_DynamicAttribute$json, DynamicItems_DynamicItem_AttributesEntry$json],
@@ -74,7 +74,7 @@ const DynamicItems_EntriesEntry$json = {
 final $typed_data.Uint8List dynamicItemsDescriptor = $convert.base64Decode(
     'CgxEeW5hbWljSXRlbXMSQQoHZW50cmllcxgBIAMoCzInLmR5bmFtaWNfaXRlbS5EeW5hbWljSX'
     'RlbXMuRW50cmllc0VudHJ5UgdlbnRyaWVzGuYDCgtEeW5hbWljSXRlbRJpChJpbnB1dE91dHB1'
-    'dE1hcHBpbmcYASADKAsyOS5keW5hbWljX2l0ZW0uRHluYW1pY0l0ZW1zLkR5bmFtaWNJdGVtLk'
+    'dE1hcHBpbmcYASACKAsyOS5keW5hbWljX2l0ZW0uRHluYW1pY0l0ZW1zLkR5bmFtaWNJdGVtLk'
     'lucHV0T3V0cHV0TWFwcGluZ1ISaW5wdXRPdXRwdXRNYXBwaW5nElYKCmF0dHJpYnV0ZXMYAiAD'
     'KAsyNi5keW5hbWljX2l0ZW0uRHluYW1pY0l0ZW1zLkR5bmFtaWNJdGVtLkF0dHJpYnV0ZXNFbn'
     'RyeVIKYXR0cmlidXRlcxpkChJJbnB1dE91dHB1dE1hcHBpbmcSJAoNcmVzdWx0aW5nVHlwZRgB'

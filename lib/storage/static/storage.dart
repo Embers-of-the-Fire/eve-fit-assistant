@@ -6,6 +6,7 @@ import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/static/attribute.dart';
 import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/static/damage_profile.dart';
+import 'package:eve_fit_assistant/storage/static/dynamic_item.dart';
 import 'package:eve_fit_assistant/storage/static/fighter.dart';
 import 'package:eve_fit_assistant/storage/static/groups.dart';
 import 'package:eve_fit_assistant/storage/static/icon.dart';
@@ -36,6 +37,7 @@ class StaticStorage {
   late final ReadonlyMap<int, TypeSkill> _typeSkills;
   late final ReadonlyMap<int, Fighter> _fighters;
   late final ReadonlyMap<String, DamageProfileGroup> _damageProfiles;
+  late final ReadonlyMap<int, DynamicItem> _dynamicItems;
   late final List<ImplantGroup> _implantGroups;
   late final StaticIcon _icons;
   late final TypeSlotStorage _typeSlot;
@@ -63,6 +65,8 @@ class StaticStorage {
   ReadonlyMap<int, Fighter> get fighters => _fighters;
 
   ReadonlyMap<String, DamageProfileGroup> get damageProfiles => _damageProfiles;
+
+  ReadonlyMap<int, DynamicItem> get dynamicItems => _dynamicItems;
 
   List<ImplantGroup> get implantGroups => _implantGroups;
 
@@ -108,6 +112,7 @@ class StaticStorage {
     _typeSkills = await TypeSkill.read(staticStorageDir);
     _fighters = await Fighter.read(staticStorageDir);
     _damageProfiles = await DamageProfileGroup.read(staticStorageDir);
+    _dynamicItems = await DynamicItem.read(staticStorageDir);
     _icons = await StaticIcon.init();
     _typeSlot = await TypeSlotStorage.read(staticStorageDir);
     _subsystems = await ShipSubsystemStorage.read(staticStorageDir);

@@ -8,8 +8,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import '../frb_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `into_native`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `from`, `into_native`
 
 class DamageProfile {
   final double em;
@@ -62,6 +62,27 @@ class DroneGroup {
           index == other.index;
 }
 
+class DynamicItem {
+  final int baseType;
+  final Map<int, double> dynamicAttributes;
+
+  const DynamicItem({
+    required this.baseType,
+    required this.dynamicAttributes,
+  });
+
+  @override
+  int get hashCode => baseType.hashCode ^ dynamicAttributes.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DynamicItem &&
+          runtimeType == other.runtimeType &&
+          baseType == other.baseType &&
+          dynamicAttributes == other.dynamicAttributes;
+}
+
 class FighterGroup {
   final int itemId;
   final int amount;
@@ -97,6 +118,7 @@ class Fit {
   final List<Implant> implant;
   final Map<int, int> skills;
   final DamageProfile damageProfile;
+  final Map<int, DynamicItem> dynamicItems;
 
   const Fit({
     required this.shipId,
@@ -106,6 +128,7 @@ class Fit {
     required this.implant,
     required this.skills,
     required this.damageProfile,
+    required this.dynamicItems,
   });
 
   @override
@@ -116,7 +139,8 @@ class Fit {
       fighters.hashCode ^
       implant.hashCode ^
       skills.hashCode ^
-      damageProfile.hashCode;
+      damageProfile.hashCode ^
+      dynamicItems.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -129,7 +153,8 @@ class Fit {
           fighters == other.fighters &&
           implant == other.implant &&
           skills == other.skills &&
-          damageProfile == other.damageProfile;
+          damageProfile == other.damageProfile &&
+          dynamicItems == other.dynamicItems;
 }
 
 class Implant {
@@ -155,19 +180,22 @@ class Implant {
 
 class Item {
   final int itemId;
+  final bool isDynamic;
   final int? charge;
   final ItemState state;
   final int index;
 
   const Item({
     required this.itemId,
+    required this.isDynamic,
     this.charge,
     required this.state,
     required this.index,
   });
 
   @override
-  int get hashCode => itemId.hashCode ^ charge.hashCode ^ state.hashCode ^ index.hashCode;
+  int get hashCode =>
+      itemId.hashCode ^ isDynamic.hashCode ^ charge.hashCode ^ state.hashCode ^ index.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -175,6 +203,7 @@ class Item {
       other is Item &&
           runtimeType == other.runtimeType &&
           itemId == other.itemId &&
+          isDynamic == other.isDynamic &&
           charge == other.charge &&
           state == other.state &&
           index == other.index;

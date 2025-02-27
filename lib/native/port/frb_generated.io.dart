@@ -47,6 +47,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
+  Map<int, DynamicItem> dco_decode_Map_i_32_dynamic_item(dynamic raw);
+
+  @protected
   Map<int, double> dco_decode_Map_i_32_f_64(dynamic raw);
 
   @protected
@@ -94,6 +97,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DroneProxy dco_decode_drone_proxy(dynamic raw);
+
+  @protected
+  DynamicItem dco_decode_dynamic_item(dynamic raw);
 
   @protected
   ErrorKey dco_decode_error_key(dynamic raw);
@@ -165,6 +171,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<(int, DynamicItem)> dco_decode_list_record_i_32_dynamic_item(dynamic raw);
+
+  @protected
   List<(int, double)> dco_decode_list_record_i_32_f_64(dynamic raw);
 
   @protected
@@ -190,6 +199,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ItemProxy? dco_decode_opt_box_item_proxy(dynamic raw);
+
+  @protected
+  (int, DynamicItem) dco_decode_record_i_32_dynamic_item(dynamic raw);
 
   @protected
   (int, double) dco_decode_record_i_32_f_64(dynamic raw);
@@ -230,6 +242,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   EveDatabase
       sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
           SseDeserializer deserializer);
+
+  @protected
+  Map<int, DynamicItem> sse_decode_Map_i_32_dynamic_item(SseDeserializer deserializer);
 
   @protected
   Map<int, double> sse_decode_Map_i_32_f_64(SseDeserializer deserializer);
@@ -279,6 +294,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DroneProxy sse_decode_drone_proxy(SseDeserializer deserializer);
+
+  @protected
+  DynamicItem sse_decode_dynamic_item(SseDeserializer deserializer);
 
   @protected
   ErrorKey sse_decode_error_key(SseDeserializer deserializer);
@@ -350,6 +368,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<(int, DynamicItem)> sse_decode_list_record_i_32_dynamic_item(SseDeserializer deserializer);
+
+  @protected
   List<(int, double)> sse_decode_list_record_i_32_f_64(SseDeserializer deserializer);
 
   @protected
@@ -375,6 +396,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ItemProxy? sse_decode_opt_box_item_proxy(SseDeserializer deserializer);
+
+  @protected
+  (int, DynamicItem) sse_decode_record_i_32_dynamic_item(SseDeserializer deserializer);
 
   @protected
   (int, double) sse_decode_record_i_32_f_64(SseDeserializer deserializer);
@@ -415,6 +439,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
       sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
           EveDatabase self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_Map_i_32_dynamic_item(Map<int, DynamicItem> self, SseSerializer serializer);
 
   @protected
   void sse_encode_Map_i_32_f_64(Map<int, double> self, SseSerializer serializer);
@@ -464,6 +491,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_drone_proxy(DroneProxy self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_dynamic_item(DynamicItem self, SseSerializer serializer);
 
   @protected
   void sse_encode_error_key(ErrorKey self, SseSerializer serializer);
@@ -535,6 +565,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_record_i_32_dynamic_item(
+      List<(int, DynamicItem)> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_record_i_32_f_64(List<(int, double)> self, SseSerializer serializer);
 
   @protected
@@ -560,6 +594,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_box_item_proxy(ItemProxy? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_record_i_32_dynamic_item((int, DynamicItem) self, SseSerializer serializer);
 
   @protected
   void sse_encode_record_i_32_f_64((int, double) self, SseSerializer serializer);

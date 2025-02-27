@@ -184,6 +184,21 @@ class FitRecord {
     body.tacticalModeID = modeIDs[(modeIDs.indexOf(body.tacticalModeID!) + 1) % modeIDs.length];
   }
 
+  int createDynamicItem(int baseType, int mutaplasmidID) {
+    final id = body.dynamicItems.keys.max.map((u) => u + 1).unwrapOr(0);
+    body.dynamicItems[id] = DynamicItem(
+      baseType: baseType,
+      dynamicAttributes: GlobalStorage()
+              .static
+              .dynamicItems[mutaplasmidID]
+              ?.data
+              .attributes
+              .map((key, _) => MapEntry(key, 1.0)) ??
+          {},
+    );
+    return id;
+  }
+
   Future<void> save() async {
     final fullRecordDir = await getFitFullDir(create: true);
     final file = File('${fullRecordDir.path}/${brief.id}.json');
@@ -234,6 +249,8 @@ class Fit {
   final List<FighterItem> fighter;
   final List<SlotItem?> implant;
 
+  final Map<int, DynamicItem> dynamicItems;
+
   int? tacticalModeID;
 
   /// Do not use this constructor directly, use [Fit.init] instead.
@@ -250,8 +267,10 @@ class Fit {
     List<FighterItem>? fighter,
     required this.implant,
     this.tacticalModeID,
+    Map<int, DynamicItem>? dynamicItems,
   })  : drone = drone ?? List.empty(growable: true),
-        fighter = fighter ?? List.empty(growable: true);
+        fighter = fighter ?? List.empty(growable: true),
+        dynamicItems = dynamicItems ?? {};
 
   factory Fit.init(int shipID) {
     final ship = GlobalStorage().static.ships[shipID];
@@ -269,6 +288,7 @@ class Fit {
       implant: List.filled(10, null),
       tacticalModeID: ship?.hasTacticalMode.unwrapOr(false).thenWith(() => shipID.andThen(
           (id) => GlobalStorage().static.tacticalModes[id]?.tacticalModes.keys.firstOrNull)),
+      dynamicItems: {},
     );
   }
 
@@ -300,6 +320,7 @@ class Fit {
 class SlotItem with _$SlotItem {
   const factory SlotItem({
     required int itemID,
+    @Default(false) bool isDynamic,
     required int? chargeID,
     required SlotState state,
   }) = _SlotItem;
@@ -384,4 +405,14 @@ class FighterItem with _$FighterItem {
   }) = _FighterItem;
 
   factory FighterItem.fromJson(Map<String, dynamic> json) => _$FighterItemFromJson(json);
+}
+
+@freezed
+class DynamicItem with _$DynamicItem {
+  const factory DynamicItem({
+    required int baseType,
+    required Map<int, double> dynamicAttributes,
+  }) = _DynamicItem;
+
+  factory DynamicItem.fromJson(Map<String, dynamic> json) => _$DynamicItemFromJson(json);
 }

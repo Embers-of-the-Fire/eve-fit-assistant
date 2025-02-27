@@ -741,6 +741,14 @@ impl SseDecode for EveDatabase {
     }
 }
 
+impl SseDecode for std::collections::HashMap<i32, crate::api::schema::DynamicItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <Vec<(i32, crate::api::schema::DynamicItem)>>::sse_decode(deserializer);
+        return inner.into_iter().collect();
+    }
+}
+
 impl SseDecode for std::collections::HashMap<i32, f64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -839,6 +847,19 @@ impl SseDecode for crate::api::proxy::DroneProxy {
         return crate::api::proxy::DroneProxy {
             group_index: var_groupIndex,
             drones: var_drones,
+        };
+    }
+}
+
+impl SseDecode for crate::api::schema::DynamicItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_baseType = <i32>::sse_decode(deserializer);
+        let mut var_dynamicAttributes =
+            <std::collections::HashMap<i32, f64>>::sse_decode(deserializer);
+        return crate::api::schema::DynamicItem {
+            base_type: var_baseType,
+            dynamic_attributes: var_dynamicAttributes,
         };
     }
 }
@@ -958,6 +979,10 @@ impl SseDecode for crate::api::schema::Fit {
         let mut var_implant = <Vec<crate::api::schema::Implant>>::sse_decode(deserializer);
         let mut var_skills = <std::collections::HashMap<i32, u8>>::sse_decode(deserializer);
         let mut var_damageProfile = <crate::api::schema::DamageProfile>::sse_decode(deserializer);
+        let mut var_dynamicItems =
+            <std::collections::HashMap<i32, crate::api::schema::DynamicItem>>::sse_decode(
+                deserializer,
+            );
         return crate::api::schema::Fit {
             ship_id: var_shipId,
             modules: var_modules,
@@ -966,6 +991,7 @@ impl SseDecode for crate::api::schema::Fit {
             implant: var_implant,
             skills: var_skills,
             damage_profile: var_damageProfile,
+            dynamic_items: var_dynamicItems,
         };
     }
 }
@@ -1017,11 +1043,13 @@ impl SseDecode for crate::api::schema::Item {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_itemId = <i32>::sse_decode(deserializer);
+        let mut var_isDynamic = <bool>::sse_decode(deserializer);
         let mut var_charge = <Option<i32>>::sse_decode(deserializer);
         let mut var_state = <crate::api::schema::ItemState>::sse_decode(deserializer);
         let mut var_index = <i32>::sse_decode(deserializer);
         return crate::api::schema::Item {
             item_id: var_itemId,
+            is_dynamic: var_isDynamic,
             charge: var_charge,
             state: var_state,
             index: var_index,
@@ -1034,12 +1062,14 @@ impl SseDecode for crate::api::proxy::ItemProxy {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_index = <Option<i32>>::sse_decode(deserializer);
         let mut var_itemId = <i32>::sse_decode(deserializer);
+        let mut var_isDynamic = <bool>::sse_decode(deserializer);
         let mut var_charge = <Option<Box<crate::api::proxy::ItemProxy>>>::sse_decode(deserializer);
         let mut var_attributes = <std::collections::HashMap<i32, f64>>::sse_decode(deserializer);
         let mut var_isActive = <bool>::sse_decode(deserializer);
         return crate::api::proxy::ItemProxy {
             index: var_index,
             item_id: var_itemId,
+            is_dynamic: var_isDynamic,
             charge: var_charge,
             attributes: var_attributes,
             is_active: var_isActive,
@@ -1169,6 +1199,20 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Vec<(i32, crate::api::schema::DynamicItem)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<(i32, crate::api::schema::DynamicItem)>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<(i32, f64)> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1292,6 +1336,15 @@ impl SseDecode for Option<Box<crate::api::proxy::ItemProxy>> {
         } else {
             return None;
         }
+    }
+}
+
+impl SseDecode for (i32, crate::api::schema::DynamicItem) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <i32>::sse_decode(deserializer);
+        let mut var_field1 = <crate::api::schema::DynamicItem>::sse_decode(deserializer);
+        return (var_field0, var_field1);
     }
 }
 
@@ -1620,6 +1673,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::proxy::DroneProxy>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::schema::DynamicItem {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.base_type.into_into_dart().into_dart(),
+            self.dynamic_attributes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::schema::DynamicItem
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::DynamicItem>
+    for crate::api::schema::DynamicItem
+{
+    fn into_into_dart(self) -> crate::api::schema::DynamicItem {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::error::ErrorKey {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
@@ -1731,6 +1805,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::schema::Fit {
             self.implant.into_into_dart().into_dart(),
             self.skills.into_into_dart().into_dart(),
             self.damage_profile.into_into_dart().into_dart(),
+            self.dynamic_items.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1764,6 +1839,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::schema::Item {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.item_id.into_into_dart().into_dart(),
+            self.is_dynamic.into_into_dart().into_dart(),
             self.charge.into_into_dart().into_dart(),
             self.state.into_into_dart().into_dart(),
             self.index.into_into_dart().into_dart(),
@@ -1783,6 +1859,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::proxy::ItemProxy {
         [
             self.index.into_into_dart().into_dart(),
             self.item_id.into_into_dart().into_dart(),
+            self.is_dynamic.into_into_dart().into_dart(),
             self.charge.into_into_dart().into_dart(),
             self.attributes.into_into_dart().into_dart(),
             self.is_active.into_into_dart().into_dart(),
@@ -1986,6 +2063,16 @@ impl SseEncode for EveDatabase {
     }
 }
 
+impl SseEncode for std::collections::HashMap<i32, crate::api::schema::DynamicItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<(i32, crate::api::schema::DynamicItem)>>::sse_encode(
+            self.into_iter().collect(),
+            serializer,
+        );
+    }
+}
+
 impl SseEncode for std::collections::HashMap<i32, f64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2064,6 +2151,14 @@ impl SseEncode for crate::api::proxy::DroneProxy {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u8>::sse_encode(self.group_index, serializer);
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.drones, serializer);
+    }
+}
+
+impl SseEncode for crate::api::schema::DynamicItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.base_type, serializer);
+        <std::collections::HashMap<i32, f64>>::sse_encode(self.dynamic_attributes, serializer);
     }
 }
 
@@ -2150,6 +2245,10 @@ impl SseEncode for crate::api::schema::Fit {
         <Vec<crate::api::schema::Implant>>::sse_encode(self.implant, serializer);
         <std::collections::HashMap<i32, u8>>::sse_encode(self.skills, serializer);
         <crate::api::schema::DamageProfile>::sse_encode(self.damage_profile, serializer);
+        <std::collections::HashMap<i32, crate::api::schema::DynamicItem>>::sse_encode(
+            self.dynamic_items,
+            serializer,
+        );
     }
 }
 
@@ -2211,6 +2310,7 @@ impl SseEncode for crate::api::schema::Item {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.item_id, serializer);
+        <bool>::sse_encode(self.is_dynamic, serializer);
         <Option<i32>>::sse_encode(self.charge, serializer);
         <crate::api::schema::ItemState>::sse_encode(self.state, serializer);
         <i32>::sse_encode(self.index, serializer);
@@ -2222,6 +2322,7 @@ impl SseEncode for crate::api::proxy::ItemProxy {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Option<i32>>::sse_encode(self.index, serializer);
         <i32>::sse_encode(self.item_id, serializer);
+        <bool>::sse_encode(self.is_dynamic, serializer);
         <Option<Box<crate::api::proxy::ItemProxy>>>::sse_encode(self.charge, serializer);
         <std::collections::HashMap<i32, f64>>::sse_encode(self.attributes, serializer);
         <bool>::sse_encode(self.is_active, serializer);
@@ -2336,6 +2437,16 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Vec<(i32, crate::api::schema::DynamicItem)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <(i32, crate::api::schema::DynamicItem)>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<(i32, f64)> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2429,6 +2540,14 @@ impl SseEncode for Option<Box<crate::api::proxy::ItemProxy>> {
         if let Some(value) = self {
             <Box<crate::api::proxy::ItemProxy>>::sse_encode(value, serializer);
         }
+    }
+}
+
+impl SseEncode for (i32, crate::api::schema::DynamicItem) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.0, serializer);
+        <crate::api::schema::DynamicItem>::sse_encode(self.1, serializer);
     }
 }
 

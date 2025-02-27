@@ -135,12 +135,12 @@ class DynamicItems_DynamicItem_DynamicAttribute extends $pb.GeneratedMessage {
 
 class DynamicItems_DynamicItem extends $pb.GeneratedMessage {
   factory DynamicItems_DynamicItem({
-    $core.Iterable<DynamicItems_DynamicItem_InputOutputMapping>? inputOutputMapping,
+    DynamicItems_DynamicItem_InputOutputMapping? inputOutputMapping,
     $core.Map<$core.int, DynamicItems_DynamicItem_DynamicAttribute>? attributes,
   }) {
     final $result = create();
     if (inputOutputMapping != null) {
-      $result.inputOutputMapping.addAll(inputOutputMapping);
+      $result.inputOutputMapping = inputOutputMapping;
     }
     if (attributes != null) {
       $result.attributes.addAll(attributes);
@@ -152,7 +152,7 @@ class DynamicItems_DynamicItem extends $pb.GeneratedMessage {
   factory DynamicItems_DynamicItem.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'DynamicItems.DynamicItem', package: const $pb.PackageName(_omitMessageNames ? '' : 'dynamic_item'), createEmptyInstance: create)
-    ..pc<DynamicItems_DynamicItem_InputOutputMapping>(1, _omitFieldNames ? '' : 'inputOutputMapping', $pb.PbFieldType.PM, protoName: 'inputOutputMapping', subBuilder: DynamicItems_DynamicItem_InputOutputMapping.create)
+    ..aQM<DynamicItems_DynamicItem_InputOutputMapping>(1, _omitFieldNames ? '' : 'inputOutputMapping', protoName: 'inputOutputMapping', subBuilder: DynamicItems_DynamicItem_InputOutputMapping.create)
     ..m<$core.int, DynamicItems_DynamicItem_DynamicAttribute>(2, _omitFieldNames ? '' : 'attributes', entryClassName: 'DynamicItems.DynamicItem.AttributesEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.OM, valueCreator: DynamicItems_DynamicItem_DynamicAttribute.create, valueDefaultOrMaker: DynamicItems_DynamicItem_DynamicAttribute.getDefault, packageName: const $pb.PackageName('dynamic_item'))
   ;
 
@@ -177,8 +177,17 @@ class DynamicItems_DynamicItem extends $pb.GeneratedMessage {
   static DynamicItems_DynamicItem getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DynamicItems_DynamicItem>(create);
   static DynamicItems_DynamicItem? _defaultInstance;
 
+  /// repeated InputOutputMapping inputOutputMapping = 1;
   @$pb.TagNumber(1)
-  $core.List<DynamicItems_DynamicItem_InputOutputMapping> get inputOutputMapping => $_getList(0);
+  DynamicItems_DynamicItem_InputOutputMapping get inputOutputMapping => $_getN(0);
+  @$pb.TagNumber(1)
+  set inputOutputMapping(DynamicItems_DynamicItem_InputOutputMapping v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasInputOutputMapping() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearInputOutputMapping() => clearField(1);
+  @$pb.TagNumber(1)
+  DynamicItems_DynamicItem_InputOutputMapping ensureInputOutputMapping() => $_ensure(0);
 
   @$pb.TagNumber(2)
   $core.Map<$core.int, DynamicItems_DynamicItem_DynamicAttribute> get attributes => $_getMap(1);

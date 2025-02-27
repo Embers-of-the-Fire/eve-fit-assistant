@@ -15,6 +15,12 @@ schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}
       fighters: _intoNativeFighters(fit.fighter),
       implant: _intoNativeImplants(fit.implant),
       skills: skills,
+      dynamicItems: fit.dynamicItems.map((key, value) => MapEntry(
+          key,
+          schema.DynamicItem(
+            baseType: value.baseType,
+            dynamicAttributes: value.dynamicAttributes,
+          ))),
     );
 
 schema.Module _intoNativeModules(local.Fit fit) => schema.Module(
@@ -35,6 +41,7 @@ List<schema.Item> _intoNativeItems(List<local.SlotItem?> items) => items.enumera
 
 schema.Item _intoNativeItem({required local.SlotItem item, required int index}) => schema.Item(
       itemId: item.itemID,
+      isDynamic: item.isDynamic,
       charge: item.chargeID,
       state: _intoNativeState(item.state),
       index: index,

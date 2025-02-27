@@ -12,11 +12,9 @@ def convert(cache: ConvertCache, external: dict):
 
     for dyn_id, dyn_entry in dyns.items():
         dyn_id = int(dyn_id)
-        for mapping in dyn_entry["inputOutputMapping"]:
-            m = dynamic_item_pb2.DynamicItems.DynamicItem.InputOutputMapping()
-            m.resultingType = mapping["resultingType"]
-            m.applicableTypes.extend(mapping["applicableTypes"])
-            data.entries[dyn_id].inputOutputMapping.append(m)
+        mapping = dyn_entry["inputOutputMapping"][0]
+        data.entries[dyn_id].inputOutputMapping.resultingType = mapping["resultingType"]
+        data.entries[dyn_id].inputOutputMapping.applicableTypes.extend(mapping["applicableTypes"])
         for attr_id, attr_map in dyn_entry["attributeIDs"].items():
             data.entries[dyn_id].attributes[int(attr_id)].max = attr_map["max"]
             data.entries[dyn_id].attributes[int(attr_id)].min = attr_map["min"]

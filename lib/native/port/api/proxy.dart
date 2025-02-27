@@ -56,6 +56,7 @@ class FighterProxy {
 class ItemProxy {
   final int? index;
   final int itemId;
+  final bool isDynamic;
   final ItemProxy? charge;
   final Map<int, double> attributes;
   final bool isActive;
@@ -63,6 +64,7 @@ class ItemProxy {
   const ItemProxy({
     this.index,
     required this.itemId,
+    required this.isDynamic,
     this.charge,
     required this.attributes,
     required this.isActive,
@@ -70,7 +72,12 @@ class ItemProxy {
 
   @override
   int get hashCode =>
-      index.hashCode ^ itemId.hashCode ^ charge.hashCode ^ attributes.hashCode ^ isActive.hashCode;
+      index.hashCode ^
+      itemId.hashCode ^
+      isDynamic.hashCode ^
+      charge.hashCode ^
+      attributes.hashCode ^
+      isActive.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -79,6 +86,7 @@ class ItemProxy {
           runtimeType == other.runtimeType &&
           index == other.index &&
           itemId == other.itemId &&
+          isDynamic == other.isDynamic &&
           charge == other.charge &&
           attributes == other.attributes &&
           isActive == other.isActive;

@@ -127,6 +127,8 @@ extension ItertoolInt on Iterable<int> {
     }
     return sum;
   }
+
+  int? get max => (this as Iterable<num>).max as int?;
 }
 
 extension ItertoolDouble on Iterable<double> {
@@ -137,6 +139,8 @@ extension ItertoolDouble on Iterable<double> {
     }
     return sum;
   }
+
+  double? get max => (this as Iterable<num>).max as double?;
 }
 
 extension ItertoolFlatten<T> on Iterable<Iterable<T>> {
@@ -149,4 +153,26 @@ extension ItertoolFlatten<T> on Iterable<Iterable<T>> {
 
 extension ItertoolMap<K extends Comparable<K>, V> on Map<K, V> {
   Iterable<MapEntry<K, V>> sorted() => entries.sortedByKey((i) => i.key);
+}
+
+extension ItertoolComparable<T extends Comparable<T>> on Iterable<T> {
+  T? get max {
+    T? max;
+    for (final e in this) {
+      if (max == null || e.compareTo(max) > 0) {
+        max = e;
+      }
+    }
+    return max;
+  }
+
+  T? get min {
+    T? min;
+    for (final e in this) {
+      if (min == null || e.compareTo(min) < 0) {
+        min = e;
+      }
+    }
+    return min;
+  }
 }

@@ -54,6 +54,10 @@ Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       tacticalModeID: (json['tacticalModeID'] as num?)?.toInt(),
+      dynamicItems: (json['dynamicItems'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(
+            int.parse(k), DynamicItem.fromJson(e as Map<String, dynamic>)),
+      ),
     );
 
 Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
@@ -68,12 +72,15 @@ Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
       'drone': instance.drone.map((e) => e.toJson()).toList(),
       'fighter': instance.fighter.map((e) => e.toJson()).toList(),
       'implant': instance.implant.map((e) => e?.toJson()).toList(),
+      'dynamicItems': instance.dynamicItems
+          .map((k, e) => MapEntry(k.toString(), e.toJson())),
       'tacticalModeID': instance.tacticalModeID,
     };
 
 _$SlotItemImpl _$$SlotItemImplFromJson(Map<String, dynamic> json) =>
     _$SlotItemImpl(
       itemID: (json['itemID'] as num).toInt(),
+      isDynamic: json['isDynamic'] as bool? ?? false,
       chargeID: (json['chargeID'] as num?)?.toInt(),
       state: $enumDecode(_$SlotStateEnumMap, json['state']),
     );
@@ -81,6 +88,7 @@ _$SlotItemImpl _$$SlotItemImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$SlotItemImplToJson(_$SlotItemImpl instance) =>
     <String, dynamic>{
       'itemID': instance.itemID,
+      'isDynamic': instance.isDynamic,
       'chargeID': instance.chargeID,
       'state': _$SlotStateEnumMap[instance.state]!,
     };
@@ -125,4 +133,20 @@ Map<String, dynamic> _$$FighterItemImplToJson(_$FighterItemImpl instance) =>
       'amount': instance.amount,
       'ability': instance.ability,
       'state': _$DroneStateEnumMap[instance.state]!,
+    };
+
+_$DynamicItemImpl _$$DynamicItemImplFromJson(Map<String, dynamic> json) =>
+    _$DynamicItemImpl(
+      baseType: (json['baseType'] as num).toInt(),
+      dynamicAttributes:
+          (json['dynamicAttributes'] as Map<String, dynamic>).map(
+        (k, e) => MapEntry(int.parse(k), (e as num).toDouble()),
+      ),
+    );
+
+Map<String, dynamic> _$$DynamicItemImplToJson(_$DynamicItemImpl instance) =>
+    <String, dynamic>{
+      'baseType': instance.baseType,
+      'dynamicAttributes':
+          instance.dynamicAttributes.map((k, e) => MapEntry(k.toString(), e)),
     };

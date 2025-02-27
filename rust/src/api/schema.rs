@@ -1,6 +1,9 @@
 use std::{collections::HashMap, iter};
 
-use eve_fit_os::{calculate::item::FighterAbility, fit::ItemFighter};
+use eve_fit_os::{
+    calculate::item::{FighterAbility, ItemID},
+    fit::ItemFighter,
+};
 
 #[flutter_rust_bridge::frb(unignore, non_opaque)]
 #[derive(Debug, Clone)]
@@ -12,6 +15,7 @@ pub struct Fit {
     pub implant: Vec<Implant>,
     pub skills: HashMap<i32, u8>,
     pub damage_profile: DamageProfile,
+    pub dynamic_items: HashMap<i32, DynamicItem>,
 }
 
 impl Fit {
@@ -23,6 +27,11 @@ impl Fit {
         };
 
         let skills = self.skills;
+        let dynamic_items = self
+            .dynamic_items
+            .into_iter()
+            .map(|(k, v)| (k, v.into_native()))
+            .collect();
 
         let fit = ItemFit {
             ship_type_id: self.ship_id,
@@ -42,7 +51,11 @@ impl Fit {
                     .map(|t| (t, ItemSlotType::TacticalMode)),
             )
             .map(|(item, slot)| ItemModule {
-                type_id: item.item_id,
+                item_id: if item.is_dynamic {
+                    ItemID::Dynamic(item.item_id)
+                } else {
+                    ItemID::Item(item.item_id)
+                },
                 slot: ItemSlot {
                     slot_type: slot,
                     index: item.index,
@@ -96,7 +109,7 @@ impl Fit {
             },
         };
 
-        eve_fit_os::fit::FitContainer::new(fit, skills)
+        eve_fit_os::fit::FitContainer::new(fit, skills, dynamic_items)
     }
 }
 
@@ -115,9 +128,27 @@ pub struct Module {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Item {
     pub item_id: i32,
+    pub is_dynamic: bool,
     pub charge: Option<i32>,
     pub state: ItemState,
     pub index: i32,
+}
+
+#[flutter_rust_bridge::frb(non_opaque)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct DynamicItem {
+    pub base_type: i32,
+    pub dynamic_attributes: HashMap<i32, f64>,
+}
+
+impl DynamicItem {
+    #[flutter_rust_bridge::frb(ignore)]
+    pub fn into_native(self) -> eve_fit_os::fit::DynamicItem {
+        eve_fit_os::fit::DynamicItem {
+            base_type: self.base_type,
+            dynamic_attributes: self.dynamic_attributes,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
