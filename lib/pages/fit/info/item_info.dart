@@ -1,7 +1,9 @@
 import 'package:eve_fit_assistant/native/port/api/proxy.dart';
+import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/widgets/attribute.dart';
 import 'package:eve_fit_assistant/widgets/description.dart';
+import 'package:eve_fit_assistant/widgets/dynamic_attribute.dart';
 import 'package:eve_fit_assistant/widgets/skill_tree.dart';
 import 'package:flutter/material.dart';
 
@@ -13,11 +15,15 @@ Future<void> showItemInfoPage(
   BuildContext context, {
   required int typeID,
   required ItemProxy item,
+  required DynamicItem? dynamicItem,
+  required void Function(int, double)? onDynamicAttributeChanged,
 }) async {
   await Navigator.of(context).push(MaterialPageRoute(
       builder: (context) => ItemInfoPage(
             typeID: typeID,
             item: item,
+            dynamicItem: dynamicItem,
+            onDynamicAttributeChanged: onDynamicAttributeChanged,
           )));
 }
 
@@ -29,14 +35,23 @@ Future<void> showTypeInfoPage(
       builder: (context) => ItemInfoPage(
             typeID: typeID,
             item: null,
+            dynamicItem: null,
           )));
 }
 
 class ItemInfoPage extends StatefulWidget {
   final int typeID;
+  final DynamicItem? dynamicItem;
+  final void Function(int, double)? onDynamicAttributeChanged;
   final ItemProxy? item;
 
-  const ItemInfoPage({super.key, required this.typeID, required this.item});
+  const ItemInfoPage({
+    super.key,
+    required this.typeID,
+    required this.item,
+    required this.dynamicItem,
+    this.onDynamicAttributeChanged,
+  });
 
   @override
   State<ItemInfoPage> createState() => _ItemInfoPageState();
@@ -48,7 +63,8 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
   @override
   void initState() {
     final int pageCount = (widget.item?.charge == null ? 3 : 5) +
-        (GlobalStorage().static.types[widget.typeID]?.traits != null ? 1 : 0);
+        (GlobalStorage().static.types[widget.typeID]?.traits != null ? 1 : 0) +
+        (widget.item?.isDynamic ?? false ? 1 : 0);
     _controller = TabController(length: pageCount, vsync: this);
     super.initState();
   }
@@ -61,6 +77,15 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
     if (GlobalStorage().static.types[widget.typeID]?.traits != null) {
       tabLabels.add('特性');
       tabs.add(TraitsTab(typeID: widget.typeID));
+    }
+    if (widget.item?.isDynamic ?? false) {
+      tabLabels.add('动态属性');
+      tabs.add(DynamicAttributeTab(
+        onChanged: (id, value) => widget.onDynamicAttributeChanged?.call(id, value),
+        typeID: widget.dynamicItem!.baseType,
+        mutaplasmidID: widget.dynamicItem!.mutaplasmidID,
+        attributes: widget.dynamicItem!.dynamicAttributes,
+      ));
     }
     tabLabels.addAll(['描述', '属性', '技能']);
     tabs.addAll([
@@ -80,8 +105,9 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('物品信息'),
         bottom: TabBar(
+          isScrollable: true,
           controller: _controller,
-          labelPadding: EdgeInsets.zero,
+          tabAlignment: TabAlignment.center,
           tabs: tabLabels.map((label) => Tab(text: label)).toList(),
         ),
       ),

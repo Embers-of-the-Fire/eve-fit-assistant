@@ -14,8 +14,13 @@ class ShipInfo extends ConsumerWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       minVerticalPadding: 10,
       minTileHeight: 0,
-      onLongPress: () =>
-          showItemInfoPage(context, typeID: fit.fit.brief.shipID, item: fit.output.ship.hull),
+      onLongPress: () => showItemInfoPage(
+        context,
+        typeID: fit.fit.brief.shipID,
+        item: fit.output.ship.hull,
+        dynamicItem: null,
+        onDynamicAttributeChanged: null,
+      ),
       leading: GlobalStorage().static.icons.getTypeIconSync(fit.fit.brief.shipID),
       title: Text(ship.nameZH, textAlign: TextAlign.center),
     );

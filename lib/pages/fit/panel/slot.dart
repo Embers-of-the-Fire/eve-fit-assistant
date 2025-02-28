@@ -109,17 +109,37 @@ class SlotRow extends ConsumerWidget {
           final fitSlot = fitData.fit.body.getSlots(type);
           final index = fitSlot.indexWhere((el) => el == null);
           if (index == -1) return;
-          _modifyFit(
-            index: index,
-            type: type,
-            fit: fit,
-            op: (_) => SlotItem(
-              itemID: itemID,
-              isDynamic: isDynamic,
-              chargeID: chargeID,
-              state: state,
-            ),
-          );
+          if (isDynamic) {
+            fit.modify((record) {
+              final dyn = record.createDynamicItem(
+                  baseTypeID, fitData.fit.body.dynamicItems[itemID]!.mutaplasmidID);
+              record.body.dynamicItems[dyn] = record.body.dynamicItems[dyn]!.copyWith(
+                dynamicAttributes: fitData.fit.body.dynamicItems[itemID]!.dynamicAttributes,
+              );
+              final func = _getModifyFunction(record, type);
+              func?.call(
+                  index,
+                  (_) => SlotItem(
+                        itemID: dyn,
+                        chargeID: chargeID,
+                        state: state,
+                        isDynamic: true,
+                      ));
+              return record;
+            });
+          } else {
+            _modifyFit(
+              index: index,
+              type: type,
+              fit: fit,
+              op: (_) => SlotItem(
+                itemID: itemID,
+                isDynamic: isDynamic,
+                chargeID: chargeID,
+                state: state,
+              ),
+            );
+          }
         },
         autoClose: false,
         icon: Icons.copy,
@@ -268,10 +288,10 @@ class _SlotRowDisplay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
-    final fitData = ref.watch(fitRecordNotifierProvider(fitID));
+    final fitNotifier = ref.read(fitRecordNotifierProvider(fitID).notifier);
+    final fit = ref.watch(fitRecordNotifierProvider(fitID));
 
-    final List<ItemProxy> slots = fitData.output.ship.getSlots(type);
+    final List<ItemProxy> slots = fit.output.ship.getSlots(type);
     final ItemProxy? item = slots.find((item) => item.index == index);
 
     final List<List<Widget>> subtitleGroup = [];
@@ -347,19 +367,30 @@ class _SlotRowDisplay extends ConsumerWidget {
       }
     }
 
-    final errors = fitData.output.errors
+    final errors = fit.output.errors
         .filter((err) => err.slot.fitItemType == type && err.index == index)
         .toList();
 
     return ListTile(
-      onLongPress: item.map((i) => () => showItemInfoPage(context, typeID: typeID, item: i)),
+      onLongPress: item.map((i) => () => showItemInfoPage(context,
+          typeID: typeID,
+          item: i,
+          dynamicItem: i.isDynamic.thenWith(() => fit.fit.body.dynamicItems[i.itemId]),
+          onDynamicAttributeChanged: (id, value) => fitNotifier.modify((record) {
+                final dynamicItem = record.body.dynamicItems[i.itemId]!;
+                record.body.dynamicItems[i.itemId] = dynamicItem.copyWith(dynamicAttributes: {
+                  ...dynamicItem.dynamicAttributes,
+                  id: value,
+                });
+                return record;
+              }))),
       leading: StateIcon(
         onTap: () async {
           final newState = state.nextState(maxState: maxState);
           await _modifyFit(
             index: index,
             type: type,
-            fit: fit,
+            fit: fitNotifier,
             op: (item) => item?.copyWith(state: newState),
           );
         },

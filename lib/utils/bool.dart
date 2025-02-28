@@ -24,4 +24,6 @@ extension BoolExt on bool {
       return null;
     }
   }
+
+  int get asSign => this ? 1 : -1;
 }

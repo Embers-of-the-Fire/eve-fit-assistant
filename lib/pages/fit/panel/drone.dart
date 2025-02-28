@@ -133,7 +133,15 @@ class _DroneSlot extends ConsumerWidget {
       ),
       child: ListTile(
         onLongPress: () => item.mapOrElse(
-            map: (i) => showItemInfoPage(context, typeID: droneID, item: i),
+            map: (i) => showItemInfoPage(context,
+                typeID: droneID,
+                item: i,
+                dynamicItem: i.isDynamic.thenWith(() => fit.fit.body.dynamicItems[i.itemId]),
+                onDynamicAttributeChanged: (id, value) => fitNotifier.modify((record) {
+                      final dynamicItem = record.body.dynamicItems[i.itemId]!;
+                      dynamicItem.dynamicAttributes[id] = value;
+                      return record;
+                    })),
             orElse: () => showTypeInfoPage(context, typeID: droneID)),
         leading: StateIcon(
           state: switch (state) {

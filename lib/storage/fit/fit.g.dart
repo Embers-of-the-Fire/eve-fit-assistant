@@ -137,6 +137,7 @@ Map<String, dynamic> _$$FighterItemImplToJson(_$FighterItemImpl instance) =>
 
 _$DynamicItemImpl _$$DynamicItemImplFromJson(Map<String, dynamic> json) =>
     _$DynamicItemImpl(
+      mutaplasmidID: (json['mutaplasmidID'] as num).toInt(),
       baseType: (json['baseType'] as num).toInt(),
       outType: (json['outType'] as num).toInt(),
       dynamicAttributes:
@@ -147,6 +148,7 @@ _$DynamicItemImpl _$$DynamicItemImplFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$$DynamicItemImplToJson(_$DynamicItemImpl instance) =>
     <String, dynamic>{
+      'mutaplasmidID': instance.mutaplasmidID,
       'baseType': instance.baseType,
       'outType': instance.outType,
       'dynamicAttributes':

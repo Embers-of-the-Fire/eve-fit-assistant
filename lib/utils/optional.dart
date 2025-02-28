@@ -44,7 +44,34 @@ extension Optional<T> on T? {
     }
   }
 
+  T? mFilter(bool Function(T value) f) {
+    if (this == null) {
+      return null;
+    } else {
+      final value = this as T;
+      if (f(value)) {
+        return value;
+      } else {
+        return null;
+      }
+    }
+  }
+
+  T? mInspect([String? name]) {
+    if (this != null) {
+      log('$name: $this');
+    }
+    return this;
+  }
+
   Future<T?> async() async => this;
+}
+
+extension Inspect<T> on T {
+  T inspect([String? name]) {
+    log('$name: $this');
+    return this;
+  }
 }
 
 extension AsyncOptional<T> on Future<T?> {
