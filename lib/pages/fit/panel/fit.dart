@@ -1,5 +1,7 @@
 library;
 
+import 'dart:math';
+
 import 'package:eve_fit_assistant/assets/icon.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
 import 'package:eve_fit_assistant/constant/eve/groups.dart';

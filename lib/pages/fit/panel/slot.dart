@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:eve_fit_assistant/assets/icon.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
 import 'package:eve_fit_assistant/native/glue/native_slot.dart';
@@ -372,18 +374,23 @@ class _SlotRowDisplay extends ConsumerWidget {
         .toList();
 
     return ListTile(
-      onLongPress: item.map((i) => () => showItemInfoPage(context,
-          typeID: typeID,
-          item: i,
-          dynamicItem: i.isDynamic.thenWith(() => fit.fit.body.dynamicItems[i.itemId]),
-          onDynamicAttributeChanged: (id, value) => fitNotifier.modify((record) {
-                final dynamicItem = record.body.dynamicItems[i.itemId]!;
-                record.body.dynamicItems[i.itemId] = dynamicItem.copyWith(dynamicAttributes: {
-                  ...dynamicItem.dynamicAttributes,
-                  id: value,
-                });
-                return record;
-              }))),
+      onLongPress: item.map(
+        (i) => () => showItemInfoPage(context,
+            typeID: typeID,
+            item: i,
+            fitID: fitID,
+            dynamicItem: i.isDynamic.thenWith(() => fit.fit.body.dynamicItems[i.itemId]),
+            // onDynamicAttributeChanged: (id, value) => ,
+            // onDynamicAttributeReset: () => ,
+            onDynamicAttributeRandom: () => fitNotifier.modify((record) {
+                  final dynamicItem = record.body.dynamicItems[i.itemId]!;
+                  final data = GlobalStorage().static.dynamicItems[dynamicItem.mutaplasmidID]!;
+                  record.body.dynamicItems[i.itemId] = dynamicItem.copyWith(
+                      dynamicAttributes: data.data.attributes.map((key, data) =>
+                          MapEntry(key, Random().nextDoubleRange(data.min, data.max))));
+                  return record;
+                })),
+      ),
       leading: StateIcon(
         onTap: () async {
           final newState = state.nextState(maxState: maxState);

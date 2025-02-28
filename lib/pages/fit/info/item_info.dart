@@ -15,15 +15,18 @@ Future<void> showItemInfoPage(
   BuildContext context, {
   required int typeID,
   required ItemProxy item,
-  required DynamicItem? dynamicItem,
-  required void Function(int, double)? onDynamicAttributeChanged,
+  required String fitID,
+  DynamicItem? dynamicItem,
+  void Function(int, double)? onDynamicAttributeChanged,
+  void Function()? onDynamicAttributeReset,
+  void Function()? onDynamicAttributeRandom,
 }) async {
   await Navigator.of(context).push(MaterialPageRoute(
       builder: (context) => ItemInfoPage(
             typeID: typeID,
             item: item,
+            fitID: fitID,
             dynamicItem: dynamicItem,
-            onDynamicAttributeChanged: onDynamicAttributeChanged,
           )));
 }
 
@@ -34,6 +37,7 @@ Future<void> showTypeInfoPage(
   await Navigator.of(context).push(MaterialPageRoute(
       builder: (context) => ItemInfoPage(
             typeID: typeID,
+            fitID: null,
             item: null,
             dynamicItem: null,
           )));
@@ -42,15 +46,16 @@ Future<void> showTypeInfoPage(
 class ItemInfoPage extends StatefulWidget {
   final int typeID;
   final DynamicItem? dynamicItem;
-  final void Function(int, double)? onDynamicAttributeChanged;
+  final String? fitID;
+
   final ItemProxy? item;
 
   const ItemInfoPage({
     super.key,
     required this.typeID,
+    required this.fitID,
     required this.item,
     required this.dynamicItem,
-    this.onDynamicAttributeChanged,
   });
 
   @override
@@ -81,9 +86,10 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
     if (widget.item?.isDynamic ?? false) {
       tabLabels.add('动态属性');
       tabs.add(DynamicAttributeTab(
-        onChanged: (id, value) => widget.onDynamicAttributeChanged?.call(id, value),
+        fitID: widget.fitID!,
         typeID: widget.dynamicItem!.baseType,
         mutaplasmidID: widget.dynamicItem!.mutaplasmidID,
+        itemID: widget.item!.itemId,
         attributes: widget.dynamicItem!.dynamicAttributes,
       ));
     }

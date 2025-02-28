@@ -1,41 +1,111 @@
+import 'dart:math' show Random;
+
 import 'package:eve_fit_assistant/native/glue/unit.dart';
+import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/static/dynamic_item.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DynamicAttributeTab extends StatelessWidget {
-  final void Function(int, double) onChanged;
+class DynamicAttributeTab extends ConsumerStatefulWidget {
+  final String fitID;
+  final int itemID;
   final int mutaplasmidID;
   final int typeID;
   final Map<int, double> attributes;
 
   const DynamicAttributeTab({
     super.key,
-    required this.onChanged,
+    required this.fitID,
+    required this.itemID,
     required this.mutaplasmidID,
     required this.typeID,
     required this.attributes,
   });
 
   @override
+  ConsumerState<ConsumerStatefulWidget> createState() => DynamicAttributeTabState();
+}
+
+class DynamicAttributeTabState extends ConsumerState<DynamicAttributeTab> {
+  Map<int, ValueNotifier<double>> attributeNotifier = {};
+
+  @override
+  void initState() {
+    for (final entry in widget.attributes.entries) {
+      attributeNotifier[entry.key] = ValueNotifier(entry.value);
+    }
+    super.initState();
+  }
+
+  void _updateAttributes(Map<int, double> attributes) {
+    for (final entry in attributes.entries) {
+      attributeNotifier[entry.key]!.value = entry.value;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final typeAttr = GlobalStorage().fitEngine.getTypeAttr(typeID);
+    final fitNotifier = ref.read(fitRecordNotifierProvider(widget.fitID).notifier);
+
+    final typeAttr = GlobalStorage().fitEngine.getTypeAttr(widget.typeID);
     return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         child: DefaultTextStyle(
             style: const TextStyle(fontSize: 16),
             child: Column(
               spacing: 8,
-              children: attributes.entries
-                  .map((u) => _DynamicAttributeRow(
-                        onChanged: (value) => onChanged(u.key, value),
-                        value: typeAttr[u.key]!,
-                        factor: u.value,
-                        attributeID: u.key,
-                        mutaplasmidID: mutaplasmidID,
-                      ))
-                  .toList(growable: false),
+              children: [
+                ...widget.attributes.entries.map((u) => _DynamicAttributeRow(
+                      factorNotifier: attributeNotifier[u.key]!,
+                      onChanged: (value) => fitNotifier.modify((record) {
+                        final dynamicItem = record.body.dynamicItems[widget.itemID]!;
+                        record.body.dynamicItems[widget.itemID] =
+                            dynamicItem.copyWith(dynamicAttributes: {
+                          ...dynamicItem.dynamicAttributes,
+                          u.key: value,
+                        });
+                        return record;
+                      }),
+                      value: typeAttr[u.key]!,
+                      attributeID: u.key,
+                      mutaplasmidID: widget.mutaplasmidID,
+                    )),
+                Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 10, children: [
+                  ElevatedButton(
+                    onPressed: () => fitNotifier.modify((record) {
+                      final dynamicItem = record.body.dynamicItems[widget.itemID]!;
+                      final newAttr =
+                          dynamicItem.dynamicAttributes.map((key, _) => MapEntry(key, 1.0));
+                      record.body.dynamicItems[widget.itemID] =
+                          dynamicItem.copyWith(dynamicAttributes: newAttr);
+                      _updateAttributes(newAttr);
+                      return record;
+                    }),
+                    style: ButtonStyle(
+                        shape: WidgetStateProperty.all(const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(5))))),
+                    child: const Text('重置', style: TextStyle(color: Colors.red)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => fitNotifier.modify((record) {
+                      final dynamicItem = record.body.dynamicItems[widget.itemID]!;
+                      final data = GlobalStorage().static.dynamicItems[dynamicItem.mutaplasmidID]!;
+                      final newAttr = data.data.attributes.map((key, data) =>
+                          MapEntry(key, Random().nextDoubleRange(data.min, data.max)));
+                      record.body.dynamicItems[widget.itemID] =
+                          dynamicItem.copyWith(dynamicAttributes: newAttr);
+                      _updateAttributes(newAttr);
+                      return record;
+                    }),
+                    style: ButtonStyle(
+                        shape: WidgetStateProperty.all(const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(5))))),
+                    child: const Text('随机'),
+                  )
+                ])
+              ],
             )));
   }
 }
@@ -44,16 +114,17 @@ class _DynamicAttributeRow extends StatefulWidget {
   /// factor
   final void Function(double) onChanged;
   final double value;
-  final double factor;
   final int mutaplasmidID;
   final int attributeID;
+
+  final ValueNotifier<double> factorNotifier;
 
   const _DynamicAttributeRow({
     required this.onChanged,
     required this.value,
-    required this.factor,
     required this.mutaplasmidID,
     required this.attributeID,
+    required this.factorNotifier,
   });
 
   @override
@@ -63,17 +134,41 @@ class _DynamicAttributeRow extends StatefulWidget {
 class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  late double factor;
   late final DynamicItem dyn;
 
-  double validator() {
+  @override
+  void initState() {
+    dyn = GlobalStorage().static.dynamicItems[widget.mutaplasmidID]!;
+    _controller.text = (widget.value * widget.factorNotifier.value).toStringAsFixed(2);
+    widget.factorNotifier.addListener(() {
+      _controller.text = (widget.value * widget.factorNotifier.value).toStringAsFixed(2);
+    });
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) {
+        setState(() {
+          widget.factorNotifier.value = _validator() / widget.value;
+          widget.onChanged(widget.factorNotifier.value);
+        });
+      }
+    });
+    super.initState();
+  }
+
+  void setFactor(double value) {
+    setState(() {
+      widget.factorNotifier.value = value;
+      _controller.text = (widget.value * value).toStringAsFixed(2);
+    });
+  }
+
+  double _validator() {
     final min = dyn.data.attributes[widget.attributeID]!.min;
     final max = dyn.data.attributes[widget.attributeID]!.max;
 
     final num = double.tryParse(_controller.text);
     if (num == null) {
-      _controller.text = (widget.value * widget.factor).toStringAsFixed(2);
-      return widget.value * widget.factor;
+      _controller.text = (widget.value * widget.factorNotifier.value).toStringAsFixed(2);
+      return widget.value * widget.factorNotifier.value;
     } else if (num < widget.value * min) {
       _controller.text = (widget.value * min).toStringAsFixed(2);
       return widget.value * min;
@@ -85,69 +180,55 @@ class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
   }
 
   @override
-  void initState() {
-    dyn = GlobalStorage().static.dynamicItems[widget.mutaplasmidID]!;
-    factor = widget.factor;
-    _controller.text = (widget.value * widget.factor).toStringAsFixed(2);
-    _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) {
-        setState(() {
-          factor = validator() / widget.value;
-          widget.onChanged(factor);
-        });
-      }
-    });
-    super.initState();
-  }
+  Widget build(BuildContext context) => ValueListenableBuilder(
+      valueListenable: widget.factorNotifier,
+      builder: (BuildContext context, double factor, Widget? child) {
+        final attr = GlobalStorage().static.attributes[widget.attributeID]!;
+        final min = dyn.data.attributes[widget.attributeID]!.min;
+        final max = dyn.data.attributes[widget.attributeID]!.max;
+        final minValue = attr.highIsGood ? widget.value * min : widget.value * max;
+        final maxValue = attr.highIsGood ? widget.value * max : widget.value * min;
+        final currentValue = widget.value * factor;
 
-  @override
-  Widget build(BuildContext context) {
-    final attr = GlobalStorage().static.attributes[widget.attributeID]!;
-    final min = dyn.data.attributes[widget.attributeID]!.min;
-    final max = dyn.data.attributes[widget.attributeID]!.max;
-    final minValue = attr.highIsGood ? widget.value * min : widget.value * max;
-    final maxValue = attr.highIsGood ? widget.value * max : widget.value * min;
-    final currentValue = widget.value * factor;
-
-    return Column(children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(attr.displayNameZH),
-        SizedBox(
-            height: 40,
-            width: 100,
-            child: TextField(
-              focusNode: _focusNode,
-              controller: _controller,
-              decoration: const InputDecoration(hintText: '属性值'),
-              textAlign: TextAlign.end,
-            )),
-      ]),
-      const SizedBox(height: 5),
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(attr.unitID.map((u) => u.format(minValue)).unwrapOr(minValue.toStringAsFixed(2)),
-            style: const TextStyle(color: Colors.red)),
-        Text(
-            attr.unitID
-                .map((u) => u.format(currentValue))
-                .unwrapOr(currentValue.toStringAsFixed(2)),
-            style: TextStyle(
-                color: switch (factor.compareTo(1) * attr.highIsGood.asSign) {
-              < 0 => Colors.red,
-              > 0 => Colors.green,
-              _ => Colors.white,
-            })),
-        Text(attr.unitID.map((u) => u.format(maxValue)).unwrapOr(maxValue.toStringAsFixed(2)),
-            style: const TextStyle(color: Colors.green)),
-      ]),
-      const SizedBox(height: 5),
-      _RatioBar(
-        value: factor,
-        highIsGood: GlobalStorage().static.attributes[widget.attributeID]!.highIsGood,
-        min: min,
-        max: max,
-      )
-    ]);
-  }
+        return Column(children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text(attr.displayNameZH),
+            SizedBox(
+                height: 40,
+                width: 100,
+                child: TextField(
+                  focusNode: _focusNode,
+                  controller: _controller,
+                  decoration: const InputDecoration(hintText: '属性值'),
+                  textAlign: TextAlign.end,
+                )),
+          ]),
+          const SizedBox(height: 5),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text(attr.unitID.map((u) => u.format(minValue)).unwrapOr(minValue.toStringAsFixed(2)),
+                style: const TextStyle(color: Colors.red)),
+            Text(
+                attr.unitID
+                    .map((u) => u.format(currentValue))
+                    .unwrapOr(currentValue.toStringAsFixed(2)),
+                style: TextStyle(
+                    color: switch (factor.compareTo(1) * attr.highIsGood.asSign) {
+                  < 0 => Colors.red,
+                  > 0 => Colors.green,
+                  _ => Colors.white,
+                })),
+            Text(attr.unitID.map((u) => u.format(maxValue)).unwrapOr(maxValue.toStringAsFixed(2)),
+                style: const TextStyle(color: Colors.green)),
+          ]),
+          const SizedBox(height: 5),
+          _RatioBar(
+            value: factor,
+            highIsGood: GlobalStorage().static.attributes[widget.attributeID]!.highIsGood,
+            min: min,
+            max: max,
+          )
+        ]);
+      });
 }
 
 class _RatioBar extends StatelessWidget {

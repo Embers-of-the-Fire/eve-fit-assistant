@@ -134,12 +134,31 @@ class _DroneSlot extends ConsumerWidget {
       child: ListTile(
         onLongPress: () => item.mapOrElse(
             map: (i) => showItemInfoPage(context,
+                fitID: fitID,
                 typeID: droneID,
                 item: i,
                 dynamicItem: i.isDynamic.thenWith(() => fit.fit.body.dynamicItems[i.itemId]),
                 onDynamicAttributeChanged: (id, value) => fitNotifier.modify((record) {
                       final dynamicItem = record.body.dynamicItems[i.itemId]!;
-                      dynamicItem.dynamicAttributes[id] = value;
+                      record.body.dynamicItems[i.itemId] = dynamicItem.copyWith(dynamicAttributes: {
+                        ...dynamicItem.dynamicAttributes,
+                        id: value,
+                      });
+                      return record;
+                    }),
+                onDynamicAttributeReset: () => fitNotifier.modify((record) {
+                      final dynamicItem = record.body.dynamicItems[i.itemId]!;
+                      record.body.dynamicItems[i.itemId] = dynamicItem.copyWith(
+                          dynamicAttributes:
+                              dynamicItem.dynamicAttributes.map((key, _) => MapEntry(key, 1.0)));
+                      return record;
+                    }),
+                onDynamicAttributeRandom: () => fitNotifier.modify((record) {
+                      final dynamicItem = record.body.dynamicItems[i.itemId]!;
+                      final data = GlobalStorage().static.dynamicItems[dynamicItem.mutaplasmidID]!;
+                      record.body.dynamicItems[i.itemId] = dynamicItem.copyWith(
+                          dynamicAttributes: data.data.attributes.map((key, data) =>
+                              MapEntry(key, Random().nextDoubleRange(data.min, data.max))));
                       return record;
                     })),
             orElse: () => showTypeInfoPage(context, typeID: droneID)),

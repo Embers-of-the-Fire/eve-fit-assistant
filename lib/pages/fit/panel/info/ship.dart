@@ -16,10 +16,9 @@ class ShipInfo extends ConsumerWidget {
       minTileHeight: 0,
       onLongPress: () => showItemInfoPage(
         context,
+        fitID: fitID,
         typeID: fit.fit.brief.shipID,
         item: fit.output.ship.hull,
-        dynamicItem: null,
-        onDynamicAttributeChanged: null,
       ),
       leading: GlobalStorage().static.icons.getTypeIconSync(fit.fit.brief.shipID),
       title: Text(ship.nameZH, textAlign: TextAlign.center),
