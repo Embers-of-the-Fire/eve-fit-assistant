@@ -1,3 +1,4 @@
+// dart format width=80
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
@@ -9,38 +10,54 @@ part of 'market.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
-
-MarketPrice _$MarketPriceFromJson(Map<String, dynamic> json) {
-  return _MarketPrice.fromJson(json);
-}
 
 /// @nodoc
 mixin _$MarketPrice {
-  int get typeID => throw _privateConstructorUsedError;
-  Server get server => throw _privateConstructorUsedError;
-  Price get all => throw _privateConstructorUsedError;
-  Price get buy => throw _privateConstructorUsedError;
-  Price get sell => throw _privateConstructorUsedError;
-
-  /// Serializes this MarketPrice to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  int get typeID;
+  Server get server;
+  Price get all;
+  Price get buy;
+  Price get sell;
 
   /// Create a copy of MarketPrice
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
   $MarketPriceCopyWith<MarketPrice> get copyWith =>
-      throw _privateConstructorUsedError;
+      _$MarketPriceCopyWithImpl<MarketPrice>(this as MarketPrice, _$identity);
+
+  /// Serializes this MarketPrice to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is MarketPrice &&
+            (identical(other.typeID, typeID) || other.typeID == typeID) &&
+            (identical(other.server, server) || other.server == server) &&
+            (identical(other.all, all) || other.all == all) &&
+            (identical(other.buy, buy) || other.buy == buy) &&
+            (identical(other.sell, sell) || other.sell == sell));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, typeID, server, all, buy, sell);
+
+  @override
+  String toString() {
+    return 'MarketPrice(typeID: $typeID, server: $server, all: $all, buy: $buy, sell: $sell)';
+  }
 }
 
 /// @nodoc
-abstract class $MarketPriceCopyWith<$Res> {
+abstract mixin class $MarketPriceCopyWith<$Res> {
   factory $MarketPriceCopyWith(
-          MarketPrice value, $Res Function(MarketPrice) then) =
-      _$MarketPriceCopyWithImpl<$Res, MarketPrice>;
+          MarketPrice value, $Res Function(MarketPrice) _then) =
+      _$MarketPriceCopyWithImpl;
   @useResult
   $Res call({int typeID, Server server, Price all, Price buy, Price sell});
 
@@ -50,14 +67,11 @@ abstract class $MarketPriceCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$MarketPriceCopyWithImpl<$Res, $Val extends MarketPrice>
-    implements $MarketPriceCopyWith<$Res> {
-  _$MarketPriceCopyWithImpl(this._value, this._then);
+class _$MarketPriceCopyWithImpl<$Res> implements $MarketPriceCopyWith<$Res> {
+  _$MarketPriceCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final MarketPrice _self;
+  final $Res Function(MarketPrice) _then;
 
   /// Create a copy of MarketPrice
   /// with the given fields replaced by the non-null parameter values.
@@ -70,28 +84,28 @@ class _$MarketPriceCopyWithImpl<$Res, $Val extends MarketPrice>
     Object? buy = null,
     Object? sell = null,
   }) {
-    return _then(_value.copyWith(
+    return _then(_self.copyWith(
       typeID: null == typeID
-          ? _value.typeID
+          ? _self.typeID
           : typeID // ignore: cast_nullable_to_non_nullable
               as int,
       server: null == server
-          ? _value.server
+          ? _self.server
           : server // ignore: cast_nullable_to_non_nullable
               as Server,
       all: null == all
-          ? _value.all
+          ? _self.all
           : all // ignore: cast_nullable_to_non_nullable
               as Price,
       buy: null == buy
-          ? _value.buy
+          ? _self.buy
           : buy // ignore: cast_nullable_to_non_nullable
               as Price,
       sell: null == sell
-          ? _value.sell
+          ? _self.sell
           : sell // ignore: cast_nullable_to_non_nullable
               as Price,
-    ) as $Val);
+    ));
   }
 
   /// Create a copy of MarketPrice
@@ -99,8 +113,8 @@ class _$MarketPriceCopyWithImpl<$Res, $Val extends MarketPrice>
   @override
   @pragma('vm:prefer-inline')
   $PriceCopyWith<$Res> get all {
-    return $PriceCopyWith<$Res>(_value.all, (value) {
-      return _then(_value.copyWith(all: value) as $Val);
+    return $PriceCopyWith<$Res>(_self.all, (value) {
+      return _then(_self.copyWith(all: value));
     });
   }
 
@@ -109,8 +123,8 @@ class _$MarketPriceCopyWithImpl<$Res, $Val extends MarketPrice>
   @override
   @pragma('vm:prefer-inline')
   $PriceCopyWith<$Res> get buy {
-    return $PriceCopyWith<$Res>(_value.buy, (value) {
-      return _then(_value.copyWith(buy: value) as $Val);
+    return $PriceCopyWith<$Res>(_self.buy, (value) {
+      return _then(_self.copyWith(buy: value));
     });
   }
 
@@ -119,86 +133,23 @@ class _$MarketPriceCopyWithImpl<$Res, $Val extends MarketPrice>
   @override
   @pragma('vm:prefer-inline')
   $PriceCopyWith<$Res> get sell {
-    return $PriceCopyWith<$Res>(_value.sell, (value) {
-      return _then(_value.copyWith(sell: value) as $Val);
+    return $PriceCopyWith<$Res>(_self.sell, (value) {
+      return _then(_self.copyWith(sell: value));
     });
   }
 }
 
 /// @nodoc
-abstract class _$$MarketPriceImplCopyWith<$Res>
-    implements $MarketPriceCopyWith<$Res> {
-  factory _$$MarketPriceImplCopyWith(
-          _$MarketPriceImpl value, $Res Function(_$MarketPriceImpl) then) =
-      __$$MarketPriceImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({int typeID, Server server, Price all, Price buy, Price sell});
-
-  @override
-  $PriceCopyWith<$Res> get all;
-  @override
-  $PriceCopyWith<$Res> get buy;
-  @override
-  $PriceCopyWith<$Res> get sell;
-}
-
-/// @nodoc
-class __$$MarketPriceImplCopyWithImpl<$Res>
-    extends _$MarketPriceCopyWithImpl<$Res, _$MarketPriceImpl>
-    implements _$$MarketPriceImplCopyWith<$Res> {
-  __$$MarketPriceImplCopyWithImpl(
-      _$MarketPriceImpl _value, $Res Function(_$MarketPriceImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of MarketPrice
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? typeID = null,
-    Object? server = null,
-    Object? all = null,
-    Object? buy = null,
-    Object? sell = null,
-  }) {
-    return _then(_$MarketPriceImpl(
-      typeID: null == typeID
-          ? _value.typeID
-          : typeID // ignore: cast_nullable_to_non_nullable
-              as int,
-      server: null == server
-          ? _value.server
-          : server // ignore: cast_nullable_to_non_nullable
-              as Server,
-      all: null == all
-          ? _value.all
-          : all // ignore: cast_nullable_to_non_nullable
-              as Price,
-      buy: null == buy
-          ? _value.buy
-          : buy // ignore: cast_nullable_to_non_nullable
-              as Price,
-      sell: null == sell
-          ? _value.sell
-          : sell // ignore: cast_nullable_to_non_nullable
-              as Price,
-    ));
-  }
-}
-
-/// @nodoc
 @JsonSerializable()
-class _$MarketPriceImpl implements _MarketPrice {
-  const _$MarketPriceImpl(
+class _MarketPrice implements MarketPrice {
+  const _MarketPrice(
       {required this.typeID,
       required this.server,
       required this.all,
       required this.buy,
       required this.sell});
-
-  factory _$MarketPriceImpl.fromJson(Map<String, dynamic> json) =>
-      _$$MarketPriceImplFromJson(json);
+  factory _MarketPrice.fromJson(Map<String, dynamic> json) =>
+      _$MarketPriceFromJson(json);
 
   @override
   final int typeID;
@@ -211,16 +162,26 @@ class _$MarketPriceImpl implements _MarketPrice {
   @override
   final Price sell;
 
+  /// Create a copy of MarketPrice
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  String toString() {
-    return 'MarketPrice(typeID: $typeID, server: $server, all: $all, buy: $buy, sell: $sell)';
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$MarketPriceCopyWith<_MarketPrice> get copyWith =>
+      __$MarketPriceCopyWithImpl<_MarketPrice>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$MarketPriceToJson(
+      this,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$MarketPriceImpl &&
+            other is _MarketPrice &&
             (identical(other.typeID, typeID) || other.typeID == typeID) &&
             (identical(other.server, server) || other.server == server) &&
             (identical(other.all, all) || other.all == all) &&
@@ -232,185 +193,124 @@ class _$MarketPriceImpl implements _MarketPrice {
   @override
   int get hashCode => Object.hash(runtimeType, typeID, server, all, buy, sell);
 
-  /// Create a copy of MarketPrice
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$MarketPriceImplCopyWith<_$MarketPriceImpl> get copyWith =>
-      __$$MarketPriceImplCopyWithImpl<_$MarketPriceImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$MarketPriceImplToJson(
-      this,
-    );
+  String toString() {
+    return 'MarketPrice(typeID: $typeID, server: $server, all: $all, buy: $buy, sell: $sell)';
   }
 }
 
-abstract class _MarketPrice implements MarketPrice {
-  const factory _MarketPrice(
-      {required final int typeID,
-      required final Server server,
-      required final Price all,
-      required final Price buy,
-      required final Price sell}) = _$MarketPriceImpl;
+/// @nodoc
+abstract mixin class _$MarketPriceCopyWith<$Res>
+    implements $MarketPriceCopyWith<$Res> {
+  factory _$MarketPriceCopyWith(
+          _MarketPrice value, $Res Function(_MarketPrice) _then) =
+      __$MarketPriceCopyWithImpl;
+  @override
+  @useResult
+  $Res call({int typeID, Server server, Price all, Price buy, Price sell});
 
-  factory _MarketPrice.fromJson(Map<String, dynamic> json) =
-      _$MarketPriceImpl.fromJson;
+  @override
+  $PriceCopyWith<$Res> get all;
+  @override
+  $PriceCopyWith<$Res> get buy;
+  @override
+  $PriceCopyWith<$Res> get sell;
+}
 
-  @override
-  int get typeID;
-  @override
-  Server get server;
-  @override
-  Price get all;
-  @override
-  Price get buy;
-  @override
-  Price get sell;
+/// @nodoc
+class __$MarketPriceCopyWithImpl<$Res> implements _$MarketPriceCopyWith<$Res> {
+  __$MarketPriceCopyWithImpl(this._self, this._then);
+
+  final _MarketPrice _self;
+  final $Res Function(_MarketPrice) _then;
 
   /// Create a copy of MarketPrice
   /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$MarketPriceImplCopyWith<_$MarketPriceImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? typeID = null,
+    Object? server = null,
+    Object? all = null,
+    Object? buy = null,
+    Object? sell = null,
+  }) {
+    return _then(_MarketPrice(
+      typeID: null == typeID
+          ? _self.typeID
+          : typeID // ignore: cast_nullable_to_non_nullable
+              as int,
+      server: null == server
+          ? _self.server
+          : server // ignore: cast_nullable_to_non_nullable
+              as Server,
+      all: null == all
+          ? _self.all
+          : all // ignore: cast_nullable_to_non_nullable
+              as Price,
+      buy: null == buy
+          ? _self.buy
+          : buy // ignore: cast_nullable_to_non_nullable
+              as Price,
+      sell: null == sell
+          ? _self.sell
+          : sell // ignore: cast_nullable_to_non_nullable
+              as Price,
+    ));
+  }
 
-Price _$PriceFromJson(Map<String, dynamic> json) {
-  return _Price.fromJson(json);
+  /// Create a copy of MarketPrice
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get all {
+    return $PriceCopyWith<$Res>(_self.all, (value) {
+      return _then(_self.copyWith(all: value));
+    });
+  }
+
+  /// Create a copy of MarketPrice
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get buy {
+    return $PriceCopyWith<$Res>(_self.buy, (value) {
+      return _then(_self.copyWith(buy: value));
+    });
+  }
+
+  /// Create a copy of MarketPrice
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get sell {
+    return $PriceCopyWith<$Res>(_self.sell, (value) {
+      return _then(_self.copyWith(sell: value));
+    });
+  }
 }
 
 /// @nodoc
 mixin _$Price {
-  double get min => throw _privateConstructorUsedError;
-  double get max => throw _privateConstructorUsedError;
-  int get volume => throw _privateConstructorUsedError;
-
-  /// Serializes this Price to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  double get min;
+  double get max;
+  int get volume;
 
   /// Create a copy of Price
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  $PriceCopyWith<Price> get copyWith => throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $PriceCopyWith<$Res> {
-  factory $PriceCopyWith(Price value, $Res Function(Price) then) =
-      _$PriceCopyWithImpl<$Res, Price>;
-  @useResult
-  $Res call({double min, double max, int volume});
-}
-
-/// @nodoc
-class _$PriceCopyWithImpl<$Res, $Val extends Price>
-    implements $PriceCopyWith<$Res> {
-  _$PriceCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of Price
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? min = null,
-    Object? max = null,
-    Object? volume = null,
-  }) {
-    return _then(_value.copyWith(
-      min: null == min
-          ? _value.min
-          : min // ignore: cast_nullable_to_non_nullable
-              as double,
-      max: null == max
-          ? _value.max
-          : max // ignore: cast_nullable_to_non_nullable
-              as double,
-      volume: null == volume
-          ? _value.volume
-          : volume // ignore: cast_nullable_to_non_nullable
-              as int,
-    ) as $Val);
-  }
-}
+  $PriceCopyWith<Price> get copyWith =>
+      _$PriceCopyWithImpl<Price>(this as Price, _$identity);
 
-/// @nodoc
-abstract class _$$PriceImplCopyWith<$Res> implements $PriceCopyWith<$Res> {
-  factory _$$PriceImplCopyWith(
-          _$PriceImpl value, $Res Function(_$PriceImpl) then) =
-      __$$PriceImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({double min, double max, int volume});
-}
-
-/// @nodoc
-class __$$PriceImplCopyWithImpl<$Res>
-    extends _$PriceCopyWithImpl<$Res, _$PriceImpl>
-    implements _$$PriceImplCopyWith<$Res> {
-  __$$PriceImplCopyWithImpl(
-      _$PriceImpl _value, $Res Function(_$PriceImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of Price
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? min = null,
-    Object? max = null,
-    Object? volume = null,
-  }) {
-    return _then(_$PriceImpl(
-      min: null == min
-          ? _value.min
-          : min // ignore: cast_nullable_to_non_nullable
-              as double,
-      max: null == max
-          ? _value.max
-          : max // ignore: cast_nullable_to_non_nullable
-              as double,
-      volume: null == volume
-          ? _value.volume
-          : volume // ignore: cast_nullable_to_non_nullable
-              as int,
-    ));
-  }
-}
-
-/// @nodoc
-@JsonSerializable()
-class _$PriceImpl implements _Price {
-  const _$PriceImpl(
-      {required this.min, required this.max, required this.volume});
-
-  factory _$PriceImpl.fromJson(Map<String, dynamic> json) =>
-      _$$PriceImplFromJson(json);
-
-  @override
-  final double min;
-  @override
-  final double max;
-  @override
-  final int volume;
-
-  @override
-  String toString() {
-    return 'Price(min: $min, max: $max, volume: $volume)';
-  }
+  /// Serializes this Price to a JSON map.
+  Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$PriceImpl &&
+            other is Price &&
             (identical(other.min, min) || other.min == min) &&
             (identical(other.max, max) || other.max == max) &&
             (identical(other.volume, volume) || other.volume == volume));
@@ -420,222 +320,165 @@ class _$PriceImpl implements _Price {
   @override
   int get hashCode => Object.hash(runtimeType, min, max, volume);
 
-  /// Create a copy of Price
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$PriceImplCopyWith<_$PriceImpl> get copyWith =>
-      __$$PriceImplCopyWithImpl<_$PriceImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$PriceImplToJson(
-      this,
-    );
+  String toString() {
+    return 'Price(min: $min, max: $max, volume: $volume)';
   }
 }
 
-abstract class _Price implements Price {
-  const factory _Price(
-      {required final double min,
-      required final double max,
-      required final int volume}) = _$PriceImpl;
+/// @nodoc
+abstract mixin class $PriceCopyWith<$Res> {
+  factory $PriceCopyWith(Price value, $Res Function(Price) _then) =
+      _$PriceCopyWithImpl;
+  @useResult
+  $Res call({double min, double max, int volume});
+}
 
-  factory _Price.fromJson(Map<String, dynamic> json) = _$PriceImpl.fromJson;
+/// @nodoc
+class _$PriceCopyWithImpl<$Res> implements $PriceCopyWith<$Res> {
+  _$PriceCopyWithImpl(this._self, this._then);
 
-  @override
-  double get min;
-  @override
-  double get max;
-  @override
-  int get volume;
+  final Price _self;
+  final $Res Function(Price) _then;
 
   /// Create a copy of Price
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$PriceImplCopyWith<_$PriceImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-CEveMarketResponse _$CEveMarketResponseFromJson(Map<String, dynamic> json) {
-  return _CEveMarketResponse.fromJson(json);
-}
-
-/// @nodoc
-mixin _$CEveMarketResponse {
-  Price get all => throw _privateConstructorUsedError;
-  Price get buy => throw _privateConstructorUsedError;
-  Price get sell => throw _privateConstructorUsedError;
-
-  /// Serializes this CEveMarketResponse to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of CEveMarketResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $CEveMarketResponseCopyWith<CEveMarketResponse> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $CEveMarketResponseCopyWith<$Res> {
-  factory $CEveMarketResponseCopyWith(
-          CEveMarketResponse value, $Res Function(CEveMarketResponse) then) =
-      _$CEveMarketResponseCopyWithImpl<$Res, CEveMarketResponse>;
-  @useResult
-  $Res call({Price all, Price buy, Price sell});
-
-  $PriceCopyWith<$Res> get all;
-  $PriceCopyWith<$Res> get buy;
-  $PriceCopyWith<$Res> get sell;
-}
-
-/// @nodoc
-class _$CEveMarketResponseCopyWithImpl<$Res, $Val extends CEveMarketResponse>
-    implements $CEveMarketResponseCopyWith<$Res> {
-  _$CEveMarketResponseCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of CEveMarketResponse
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? all = null,
-    Object? buy = null,
-    Object? sell = null,
+    Object? min = null,
+    Object? max = null,
+    Object? volume = null,
   }) {
-    return _then(_value.copyWith(
-      all: null == all
-          ? _value.all
-          : all // ignore: cast_nullable_to_non_nullable
-              as Price,
-      buy: null == buy
-          ? _value.buy
-          : buy // ignore: cast_nullable_to_non_nullable
-              as Price,
-      sell: null == sell
-          ? _value.sell
-          : sell // ignore: cast_nullable_to_non_nullable
-              as Price,
-    ) as $Val);
-  }
-
-  /// Create a copy of CEveMarketResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $PriceCopyWith<$Res> get all {
-    return $PriceCopyWith<$Res>(_value.all, (value) {
-      return _then(_value.copyWith(all: value) as $Val);
-    });
-  }
-
-  /// Create a copy of CEveMarketResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $PriceCopyWith<$Res> get buy {
-    return $PriceCopyWith<$Res>(_value.buy, (value) {
-      return _then(_value.copyWith(buy: value) as $Val);
-    });
-  }
-
-  /// Create a copy of CEveMarketResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $PriceCopyWith<$Res> get sell {
-    return $PriceCopyWith<$Res>(_value.sell, (value) {
-      return _then(_value.copyWith(sell: value) as $Val);
-    });
-  }
-}
-
-/// @nodoc
-abstract class _$$CEveMarketResponseImplCopyWith<$Res>
-    implements $CEveMarketResponseCopyWith<$Res> {
-  factory _$$CEveMarketResponseImplCopyWith(_$CEveMarketResponseImpl value,
-          $Res Function(_$CEveMarketResponseImpl) then) =
-      __$$CEveMarketResponseImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({Price all, Price buy, Price sell});
-
-  @override
-  $PriceCopyWith<$Res> get all;
-  @override
-  $PriceCopyWith<$Res> get buy;
-  @override
-  $PriceCopyWith<$Res> get sell;
-}
-
-/// @nodoc
-class __$$CEveMarketResponseImplCopyWithImpl<$Res>
-    extends _$CEveMarketResponseCopyWithImpl<$Res, _$CEveMarketResponseImpl>
-    implements _$$CEveMarketResponseImplCopyWith<$Res> {
-  __$$CEveMarketResponseImplCopyWithImpl(_$CEveMarketResponseImpl _value,
-      $Res Function(_$CEveMarketResponseImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of CEveMarketResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? all = null,
-    Object? buy = null,
-    Object? sell = null,
-  }) {
-    return _then(_$CEveMarketResponseImpl(
-      all: null == all
-          ? _value.all
-          : all // ignore: cast_nullable_to_non_nullable
-              as Price,
-      buy: null == buy
-          ? _value.buy
-          : buy // ignore: cast_nullable_to_non_nullable
-              as Price,
-      sell: null == sell
-          ? _value.sell
-          : sell // ignore: cast_nullable_to_non_nullable
-              as Price,
+    return _then(_self.copyWith(
+      min: null == min
+          ? _self.min
+          : min // ignore: cast_nullable_to_non_nullable
+              as double,
+      max: null == max
+          ? _self.max
+          : max // ignore: cast_nullable_to_non_nullable
+              as double,
+      volume: null == volume
+          ? _self.volume
+          : volume // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$CEveMarketResponseImpl implements _CEveMarketResponse {
-  const _$CEveMarketResponseImpl(
-      {required this.all, required this.buy, required this.sell});
-
-  factory _$CEveMarketResponseImpl.fromJson(Map<String, dynamic> json) =>
-      _$$CEveMarketResponseImplFromJson(json);
+class _Price implements Price {
+  const _Price({required this.min, required this.max, required this.volume});
+  factory _Price.fromJson(Map<String, dynamic> json) => _$PriceFromJson(json);
 
   @override
-  final Price all;
+  final double min;
   @override
-  final Price buy;
+  final double max;
   @override
-  final Price sell;
+  final int volume;
+
+  /// Create a copy of Price
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$PriceCopyWith<_Price> get copyWith =>
+      __$PriceCopyWithImpl<_Price>(this, _$identity);
 
   @override
-  String toString() {
-    return 'CEveMarketResponse(all: $all, buy: $buy, sell: $sell)';
+  Map<String, dynamic> toJson() {
+    return _$PriceToJson(
+      this,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$CEveMarketResponseImpl &&
+            other is _Price &&
+            (identical(other.min, min) || other.min == min) &&
+            (identical(other.max, max) || other.max == max) &&
+            (identical(other.volume, volume) || other.volume == volume));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, min, max, volume);
+
+  @override
+  String toString() {
+    return 'Price(min: $min, max: $max, volume: $volume)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$PriceCopyWith<$Res> implements $PriceCopyWith<$Res> {
+  factory _$PriceCopyWith(_Price value, $Res Function(_Price) _then) =
+      __$PriceCopyWithImpl;
+  @override
+  @useResult
+  $Res call({double min, double max, int volume});
+}
+
+/// @nodoc
+class __$PriceCopyWithImpl<$Res> implements _$PriceCopyWith<$Res> {
+  __$PriceCopyWithImpl(this._self, this._then);
+
+  final _Price _self;
+  final $Res Function(_Price) _then;
+
+  /// Create a copy of Price
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? min = null,
+    Object? max = null,
+    Object? volume = null,
+  }) {
+    return _then(_Price(
+      min: null == min
+          ? _self.min
+          : min // ignore: cast_nullable_to_non_nullable
+              as double,
+      max: null == max
+          ? _self.max
+          : max // ignore: cast_nullable_to_non_nullable
+              as double,
+      volume: null == volume
+          ? _self.volume
+          : volume // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+mixin _$CEveMarketResponse {
+  Price get all;
+  Price get buy;
+  Price get sell;
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $CEveMarketResponseCopyWith<CEveMarketResponse> get copyWith =>
+      _$CEveMarketResponseCopyWithImpl<CEveMarketResponse>(
+          this as CEveMarketResponse, _$identity);
+
+  /// Serializes this CEveMarketResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is CEveMarketResponse &&
             (identical(other.all, all) || other.all == all) &&
             (identical(other.buy, buy) || other.buy == buy) &&
             (identical(other.sell, sell) || other.sell == sell));
@@ -645,43 +488,219 @@ class _$CEveMarketResponseImpl implements _CEveMarketResponse {
   @override
   int get hashCode => Object.hash(runtimeType, all, buy, sell);
 
-  /// Create a copy of CEveMarketResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$CEveMarketResponseImplCopyWith<_$CEveMarketResponseImpl> get copyWith =>
-      __$$CEveMarketResponseImplCopyWithImpl<_$CEveMarketResponseImpl>(
-          this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$CEveMarketResponseImplToJson(
-      this,
-    );
+  String toString() {
+    return 'CEveMarketResponse(all: $all, buy: $buy, sell: $sell)';
   }
 }
 
-abstract class _CEveMarketResponse implements CEveMarketResponse {
-  const factory _CEveMarketResponse(
-      {required final Price all,
-      required final Price buy,
-      required final Price sell}) = _$CEveMarketResponseImpl;
+/// @nodoc
+abstract mixin class $CEveMarketResponseCopyWith<$Res> {
+  factory $CEveMarketResponseCopyWith(
+          CEveMarketResponse value, $Res Function(CEveMarketResponse) _then) =
+      _$CEveMarketResponseCopyWithImpl;
+  @useResult
+  $Res call({Price all, Price buy, Price sell});
 
-  factory _CEveMarketResponse.fromJson(Map<String, dynamic> json) =
-      _$CEveMarketResponseImpl.fromJson;
+  $PriceCopyWith<$Res> get all;
+  $PriceCopyWith<$Res> get buy;
+  $PriceCopyWith<$Res> get sell;
+}
+
+/// @nodoc
+class _$CEveMarketResponseCopyWithImpl<$Res>
+    implements $CEveMarketResponseCopyWith<$Res> {
+  _$CEveMarketResponseCopyWithImpl(this._self, this._then);
+
+  final CEveMarketResponse _self;
+  final $Res Function(CEveMarketResponse) _then;
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? all = null,
+    Object? buy = null,
+    Object? sell = null,
+  }) {
+    return _then(_self.copyWith(
+      all: null == all
+          ? _self.all
+          : all // ignore: cast_nullable_to_non_nullable
+              as Price,
+      buy: null == buy
+          ? _self.buy
+          : buy // ignore: cast_nullable_to_non_nullable
+              as Price,
+      sell: null == sell
+          ? _self.sell
+          : sell // ignore: cast_nullable_to_non_nullable
+              as Price,
+    ));
+  }
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get all {
+    return $PriceCopyWith<$Res>(_self.all, (value) {
+      return _then(_self.copyWith(all: value));
+    });
+  }
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get buy {
+    return $PriceCopyWith<$Res>(_self.buy, (value) {
+      return _then(_self.copyWith(buy: value));
+    });
+  }
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get sell {
+    return $PriceCopyWith<$Res>(_self.sell, (value) {
+      return _then(_self.copyWith(sell: value));
+    });
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _CEveMarketResponse implements CEveMarketResponse {
+  const _CEveMarketResponse(
+      {required this.all, required this.buy, required this.sell});
+  factory _CEveMarketResponse.fromJson(Map<String, dynamic> json) =>
+      _$CEveMarketResponseFromJson(json);
 
   @override
-  Price get all;
+  final Price all;
   @override
-  Price get buy;
+  final Price buy;
   @override
-  Price get sell;
+  final Price sell;
 
   /// Create a copy of CEveMarketResponse
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$CEveMarketResponseImplCopyWith<_$CEveMarketResponseImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  @pragma('vm:prefer-inline')
+  _$CEveMarketResponseCopyWith<_CEveMarketResponse> get copyWith =>
+      __$CEveMarketResponseCopyWithImpl<_CEveMarketResponse>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$CEveMarketResponseToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _CEveMarketResponse &&
+            (identical(other.all, all) || other.all == all) &&
+            (identical(other.buy, buy) || other.buy == buy) &&
+            (identical(other.sell, sell) || other.sell == sell));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, all, buy, sell);
+
+  @override
+  String toString() {
+    return 'CEveMarketResponse(all: $all, buy: $buy, sell: $sell)';
+  }
 }
+
+/// @nodoc
+abstract mixin class _$CEveMarketResponseCopyWith<$Res>
+    implements $CEveMarketResponseCopyWith<$Res> {
+  factory _$CEveMarketResponseCopyWith(
+          _CEveMarketResponse value, $Res Function(_CEveMarketResponse) _then) =
+      __$CEveMarketResponseCopyWithImpl;
+  @override
+  @useResult
+  $Res call({Price all, Price buy, Price sell});
+
+  @override
+  $PriceCopyWith<$Res> get all;
+  @override
+  $PriceCopyWith<$Res> get buy;
+  @override
+  $PriceCopyWith<$Res> get sell;
+}
+
+/// @nodoc
+class __$CEveMarketResponseCopyWithImpl<$Res>
+    implements _$CEveMarketResponseCopyWith<$Res> {
+  __$CEveMarketResponseCopyWithImpl(this._self, this._then);
+
+  final _CEveMarketResponse _self;
+  final $Res Function(_CEveMarketResponse) _then;
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? all = null,
+    Object? buy = null,
+    Object? sell = null,
+  }) {
+    return _then(_CEveMarketResponse(
+      all: null == all
+          ? _self.all
+          : all // ignore: cast_nullable_to_non_nullable
+              as Price,
+      buy: null == buy
+          ? _self.buy
+          : buy // ignore: cast_nullable_to_non_nullable
+              as Price,
+      sell: null == sell
+          ? _self.sell
+          : sell // ignore: cast_nullable_to_non_nullable
+              as Price,
+    ));
+  }
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get all {
+    return $PriceCopyWith<$Res>(_self.all, (value) {
+      return _then(_self.copyWith(all: value));
+    });
+  }
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get buy {
+    return $PriceCopyWith<$Res>(_self.buy, (value) {
+      return _then(_self.copyWith(buy: value));
+    });
+  }
+
+  /// Create a copy of CEveMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get sell {
+    return $PriceCopyWith<$Res>(_self.sell, (value) {
+      return _then(_self.copyWith(sell: value));
+    });
+  }
+}
+
+// dart format on

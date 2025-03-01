@@ -20,7 +20,8 @@ import 'api/validate/pre_validate/fit_target.dart';
 import 'api/validate/pre_validate/rig_size.dart';
 import 'api/validate/pre_validate/slot_num.dart';
 import 'frb_generated.dart';
-import 'frb_generated.io.dart' if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'frb_generated.io.dart'
+if (dart.library.js_interop) 'frb_generated.web.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {

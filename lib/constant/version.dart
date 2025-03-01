@@ -18,6 +18,6 @@ class Version {
   String stringifyFull() => '$major.$minor.$patch${appendix != null ? '-$appendix' : ''}';
 }
 
-const Version flutterVersion = Version(major: 3, minor: 27, patch: 3);
+const Version flutterVersion = Version(major: 3, minor: 29, patch: 0);
 
-const Version dartVersion = Version(major: 3, minor: 6, patch: 1);
+const Version dartVersion = Version(major: 3, minor: 7, patch: 0);

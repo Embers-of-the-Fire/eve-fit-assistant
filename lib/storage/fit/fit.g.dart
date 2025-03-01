@@ -77,16 +77,14 @@ Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
       'tacticalModeID': instance.tacticalModeID,
     };
 
-_$SlotItemImpl _$$SlotItemImplFromJson(Map<String, dynamic> json) =>
-    _$SlotItemImpl(
+_SlotItem _$SlotItemFromJson(Map<String, dynamic> json) => _SlotItem(
       itemID: (json['itemID'] as num).toInt(),
       isDynamic: json['isDynamic'] as bool? ?? false,
       chargeID: (json['chargeID'] as num?)?.toInt(),
       state: $enumDecode(_$SlotStateEnumMap, json['state']),
     );
 
-Map<String, dynamic> _$$SlotItemImplToJson(_$SlotItemImpl instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$SlotItemToJson(_SlotItem instance) => <String, dynamic>{
       'itemID': instance.itemID,
       'isDynamic': instance.isDynamic,
       'chargeID': instance.chargeID,
@@ -100,14 +98,13 @@ const _$SlotStateEnumMap = {
   SlotState.overload: 3,
 };
 
-_$DroneItemImpl _$$DroneItemImplFromJson(Map<String, dynamic> json) =>
-    _$DroneItemImpl(
+_DroneItem _$DroneItemFromJson(Map<String, dynamic> json) => _DroneItem(
       itemID: (json['itemID'] as num).toInt(),
       amount: (json['amount'] as num).toInt(),
       state: $enumDecode(_$DroneStateEnumMap, json['state']),
     );
 
-Map<String, dynamic> _$$DroneItemImplToJson(_$DroneItemImpl instance) =>
+Map<String, dynamic> _$DroneItemToJson(_DroneItem instance) =>
     <String, dynamic>{
       'itemID': instance.itemID,
       'amount': instance.amount,
@@ -119,15 +116,14 @@ const _$DroneStateEnumMap = {
   DroneState.active: 1,
 };
 
-_$FighterItemImpl _$$FighterItemImplFromJson(Map<String, dynamic> json) =>
-    _$FighterItemImpl(
+_FighterItem _$FighterItemFromJson(Map<String, dynamic> json) => _FighterItem(
       itemID: (json['itemID'] as num).toInt(),
       amount: (json['amount'] as num).toInt(),
       ability: (json['ability'] as num).toInt(),
       state: $enumDecode(_$DroneStateEnumMap, json['state']),
     );
 
-Map<String, dynamic> _$$FighterItemImplToJson(_$FighterItemImpl instance) =>
+Map<String, dynamic> _$FighterItemToJson(_FighterItem instance) =>
     <String, dynamic>{
       'itemID': instance.itemID,
       'amount': instance.amount,
@@ -135,8 +131,7 @@ Map<String, dynamic> _$$FighterItemImplToJson(_$FighterItemImpl instance) =>
       'state': _$DroneStateEnumMap[instance.state]!,
     };
 
-_$DynamicItemImpl _$$DynamicItemImplFromJson(Map<String, dynamic> json) =>
-    _$DynamicItemImpl(
+_DynamicItem _$DynamicItemFromJson(Map<String, dynamic> json) => _DynamicItem(
       mutaplasmidID: (json['mutaplasmidID'] as num).toInt(),
       baseType: (json['baseType'] as num).toInt(),
       outType: (json['outType'] as num).toInt(),
@@ -146,7 +141,7 @@ _$DynamicItemImpl _$$DynamicItemImplFromJson(Map<String, dynamic> json) =>
       ),
     );
 
-Map<String, dynamic> _$$DynamicItemImplToJson(_$DynamicItemImpl instance) =>
+Map<String, dynamic> _$DynamicItemToJson(_DynamicItem instance) =>
     <String, dynamic>{
       'mutaplasmidID': instance.mutaplasmidID,
       'baseType': instance.baseType,

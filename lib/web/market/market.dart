@@ -13,7 +13,7 @@ enum Server {
 }
 
 @freezed
-class MarketPrice with _$MarketPrice {
+abstract class MarketPrice with _$MarketPrice {
   const factory MarketPrice({
     required int typeID,
     required Server server,
@@ -26,7 +26,7 @@ class MarketPrice with _$MarketPrice {
 }
 
 @freezed
-class Price with _$Price {
+abstract class Price with _$Price {
   const factory Price({
     required double min,
     required double max,

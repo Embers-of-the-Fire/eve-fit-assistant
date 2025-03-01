@@ -334,7 +334,7 @@ class Fit {
 }
 
 @freezed
-class SlotItem with _$SlotItem {
+abstract class SlotItem with _$SlotItem {
   const factory SlotItem({
     required int itemID,
     @Default(false) bool isDynamic,
@@ -390,7 +390,7 @@ enum SlotState implements Comparable<SlotState> {
 }
 
 @freezed
-class DroneItem with _$DroneItem {
+abstract class DroneItem with _$DroneItem {
   const factory DroneItem({
     required int itemID,
     required int amount,
@@ -413,7 +413,7 @@ enum DroneState {
 }
 
 @freezed
-class FighterItem with _$FighterItem {
+abstract class FighterItem with _$FighterItem {
   const factory FighterItem({
     required int itemID,
     required int amount,
@@ -425,7 +425,7 @@ class FighterItem with _$FighterItem {
 }
 
 @freezed
-class DynamicItem with _$DynamicItem {
+abstract class DynamicItem with _$DynamicItem {
   const factory DynamicItem({
     required int mutaplasmidID,
     required int baseType,

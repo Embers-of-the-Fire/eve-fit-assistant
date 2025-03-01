@@ -5,7 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'market.freezed.dart';
 
 @freezed
-class MarketPriceCache with _$MarketPriceCache {
+abstract class MarketPriceCache with _$MarketPriceCache {
   const factory MarketPriceCache({
     required MarketPrice price,
     required DateTime timestamp,

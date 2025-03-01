@@ -1,3 +1,4 @@
+// dart format width=80
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
@@ -9,139 +10,27 @@ part of 'market.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
 mixin _$MarketPriceCache {
-  MarketPrice get price => throw _privateConstructorUsedError;
-  DateTime get timestamp => throw _privateConstructorUsedError;
+  MarketPrice get price;
+  DateTime get timestamp;
 
   /// Create a copy of MarketPriceCache
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
   $MarketPriceCacheCopyWith<MarketPriceCache> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $MarketPriceCacheCopyWith<$Res> {
-  factory $MarketPriceCacheCopyWith(
-          MarketPriceCache value, $Res Function(MarketPriceCache) then) =
-      _$MarketPriceCacheCopyWithImpl<$Res, MarketPriceCache>;
-  @useResult
-  $Res call({MarketPrice price, DateTime timestamp});
-
-  $MarketPriceCopyWith<$Res> get price;
-}
-
-/// @nodoc
-class _$MarketPriceCacheCopyWithImpl<$Res, $Val extends MarketPriceCache>
-    implements $MarketPriceCacheCopyWith<$Res> {
-  _$MarketPriceCacheCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of MarketPriceCache
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? price = null,
-    Object? timestamp = null,
-  }) {
-    return _then(_value.copyWith(
-      price: null == price
-          ? _value.price
-          : price // ignore: cast_nullable_to_non_nullable
-              as MarketPrice,
-      timestamp: null == timestamp
-          ? _value.timestamp
-          : timestamp // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-    ) as $Val);
-  }
-
-  /// Create a copy of MarketPriceCache
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $MarketPriceCopyWith<$Res> get price {
-    return $MarketPriceCopyWith<$Res>(_value.price, (value) {
-      return _then(_value.copyWith(price: value) as $Val);
-    });
-  }
-}
-
-/// @nodoc
-abstract class _$$MarketPriceCacheImplCopyWith<$Res>
-    implements $MarketPriceCacheCopyWith<$Res> {
-  factory _$$MarketPriceCacheImplCopyWith(_$MarketPriceCacheImpl value,
-          $Res Function(_$MarketPriceCacheImpl) then) =
-      __$$MarketPriceCacheImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({MarketPrice price, DateTime timestamp});
-
-  @override
-  $MarketPriceCopyWith<$Res> get price;
-}
-
-/// @nodoc
-class __$$MarketPriceCacheImplCopyWithImpl<$Res>
-    extends _$MarketPriceCacheCopyWithImpl<$Res, _$MarketPriceCacheImpl>
-    implements _$$MarketPriceCacheImplCopyWith<$Res> {
-  __$$MarketPriceCacheImplCopyWithImpl(_$MarketPriceCacheImpl _value,
-      $Res Function(_$MarketPriceCacheImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of MarketPriceCache
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? price = null,
-    Object? timestamp = null,
-  }) {
-    return _then(_$MarketPriceCacheImpl(
-      price: null == price
-          ? _value.price
-          : price // ignore: cast_nullable_to_non_nullable
-              as MarketPrice,
-      timestamp: null == timestamp
-          ? _value.timestamp
-          : timestamp // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-    ));
-  }
-}
-
-/// @nodoc
-
-class _$MarketPriceCacheImpl extends _MarketPriceCache {
-  const _$MarketPriceCacheImpl({required this.price, required this.timestamp})
-      : super._();
-
-  @override
-  final MarketPrice price;
-  @override
-  final DateTime timestamp;
-
-  @override
-  String toString() {
-    return 'MarketPriceCache(price: $price, timestamp: $timestamp)';
-  }
+      _$MarketPriceCacheCopyWithImpl<MarketPriceCache>(
+          this as MarketPriceCache, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$MarketPriceCacheImpl &&
+            other is MarketPriceCache &&
             (identical(other.price, price) || other.price == price) &&
             (identical(other.timestamp, timestamp) ||
                 other.timestamp == timestamp));
@@ -150,31 +39,151 @@ class _$MarketPriceCacheImpl extends _MarketPriceCache {
   @override
   int get hashCode => Object.hash(runtimeType, price, timestamp);
 
+  @override
+  String toString() {
+    return 'MarketPriceCache(price: $price, timestamp: $timestamp)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $MarketPriceCacheCopyWith<$Res> {
+  factory $MarketPriceCacheCopyWith(
+          MarketPriceCache value, $Res Function(MarketPriceCache) _then) =
+      _$MarketPriceCacheCopyWithImpl;
+  @useResult
+  $Res call({MarketPrice price, DateTime timestamp});
+
+  $MarketPriceCopyWith<$Res> get price;
+}
+
+/// @nodoc
+class _$MarketPriceCacheCopyWithImpl<$Res>
+    implements $MarketPriceCacheCopyWith<$Res> {
+  _$MarketPriceCacheCopyWithImpl(this._self, this._then);
+
+  final MarketPriceCache _self;
+  final $Res Function(MarketPriceCache) _then;
+
   /// Create a copy of MarketPriceCache
   /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? price = null,
+    Object? timestamp = null,
+  }) {
+    return _then(_self.copyWith(
+      price: null == price
+          ? _self.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as MarketPrice,
+      timestamp: null == timestamp
+          ? _self.timestamp
+          : timestamp // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ));
+  }
+
+  /// Create a copy of MarketPriceCache
+  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  _$$MarketPriceCacheImplCopyWith<_$MarketPriceCacheImpl> get copyWith =>
-      __$$MarketPriceCacheImplCopyWithImpl<_$MarketPriceCacheImpl>(
-          this, _$identity);
+  $MarketPriceCopyWith<$Res> get price {
+    return $MarketPriceCopyWith<$Res>(_self.price, (value) {
+      return _then(_self.copyWith(price: value));
+    });
+  }
 }
 
-abstract class _MarketPriceCache extends MarketPriceCache {
-  const factory _MarketPriceCache(
-      {required final MarketPrice price,
-      required final DateTime timestamp}) = _$MarketPriceCacheImpl;
-  const _MarketPriceCache._() : super._();
+/// @nodoc
+
+class _MarketPriceCache extends MarketPriceCache {
+  const _MarketPriceCache({required this.price, required this.timestamp})
+      : super._();
 
   @override
-  MarketPrice get price;
+  final MarketPrice price;
   @override
-  DateTime get timestamp;
+  final DateTime timestamp;
 
   /// Create a copy of MarketPriceCache
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$MarketPriceCacheImplCopyWith<_$MarketPriceCacheImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  @pragma('vm:prefer-inline')
+  _$MarketPriceCacheCopyWith<_MarketPriceCache> get copyWith =>
+      __$MarketPriceCacheCopyWithImpl<_MarketPriceCache>(this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _MarketPriceCache &&
+            (identical(other.price, price) || other.price == price) &&
+            (identical(other.timestamp, timestamp) ||
+                other.timestamp == timestamp));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, price, timestamp);
+
+  @override
+  String toString() {
+    return 'MarketPriceCache(price: $price, timestamp: $timestamp)';
+  }
 }
+
+/// @nodoc
+abstract mixin class _$MarketPriceCacheCopyWith<$Res>
+    implements $MarketPriceCacheCopyWith<$Res> {
+  factory _$MarketPriceCacheCopyWith(
+          _MarketPriceCache value, $Res Function(_MarketPriceCache) _then) =
+      __$MarketPriceCacheCopyWithImpl;
+  @override
+  @useResult
+  $Res call({MarketPrice price, DateTime timestamp});
+
+  @override
+  $MarketPriceCopyWith<$Res> get price;
+}
+
+/// @nodoc
+class __$MarketPriceCacheCopyWithImpl<$Res>
+    implements _$MarketPriceCacheCopyWith<$Res> {
+  __$MarketPriceCacheCopyWithImpl(this._self, this._then);
+
+  final _MarketPriceCache _self;
+  final $Res Function(_MarketPriceCache) _then;
+
+  /// Create a copy of MarketPriceCache
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? price = null,
+    Object? timestamp = null,
+  }) {
+    return _then(_MarketPriceCache(
+      price: null == price
+          ? _self.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as MarketPrice,
+      timestamp: null == timestamp
+          ? _self.timestamp
+          : timestamp // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ));
+  }
+
+  /// Create a copy of MarketPriceCache
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $MarketPriceCopyWith<$Res> get price {
+    return $MarketPriceCopyWith<$Res>(_self.price, (value) {
+      return _then(_self.copyWith(price: value));
+    });
+  }
+}
+
+// dart format on

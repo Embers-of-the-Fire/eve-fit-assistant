@@ -12,7 +12,7 @@ part 'schema.freezed.dart';
 part 'schema.g.dart';
 
 @freezed
-class FitExport with _$FitExport {
+abstract class FitExport with _$FitExport {
   const factory FitExport({
     required String name,
     required String description,

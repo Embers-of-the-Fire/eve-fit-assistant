@@ -9,7 +9,7 @@ part 'damage_profile.freezed.dart';
 part 'damage_profile.g.dart';
 
 @freezed
-class DamageProfile with _$DamageProfile {
+abstract class DamageProfile with _$DamageProfile {
   const factory DamageProfile({
     required double em,
     required double thermal,

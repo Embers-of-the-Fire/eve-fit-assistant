@@ -1,7 +1,7 @@
 part of 'market.dart';
 
 @freezed
-class CEveMarketResponse with _$CEveMarketResponse {
+abstract class CEveMarketResponse with _$CEveMarketResponse {
   const factory CEveMarketResponse({
     required Price all,
     required Price buy,

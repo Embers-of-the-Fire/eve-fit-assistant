@@ -1,3 +1,4 @@
+// dart format width=80
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
@@ -9,46 +10,90 @@ part of 'schema.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
-
-FitExport _$FitExportFromJson(Map<String, dynamic> json) {
-  return _FitExport.fromJson(json);
-}
 
 /// @nodoc
 mixin _$FitExport {
-  String get name => throw _privateConstructorUsedError;
-  String get description => throw _privateConstructorUsedError;
-  int get shipID => throw _privateConstructorUsedError;
-  DamageProfile get damageProfile => throw _privateConstructorUsedError;
-  List<SlotItem?> get high => throw _privateConstructorUsedError;
-  List<SlotItem?> get med => throw _privateConstructorUsedError;
-  List<SlotItem?> get low => throw _privateConstructorUsedError;
-  List<SlotItem?> get rig => throw _privateConstructorUsedError;
-  List<SlotItem?> get subSystem => throw _privateConstructorUsedError;
-  List<DroneItem> get drone => throw _privateConstructorUsedError;
-  List<FighterItem> get fighter => throw _privateConstructorUsedError;
-  List<SlotItem?> get implant => throw _privateConstructorUsedError;
-  Map<int, DynamicItem> get dynamicItems => throw _privateConstructorUsedError;
-  int? get tacticalModeID => throw _privateConstructorUsedError;
-
-  /// Serializes this FitExport to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  String get name;
+  String get description;
+  int get shipID;
+  DamageProfile get damageProfile;
+  List<SlotItem?> get high;
+  List<SlotItem?> get med;
+  List<SlotItem?> get low;
+  List<SlotItem?> get rig;
+  List<SlotItem?> get subSystem;
+  List<DroneItem> get drone;
+  List<FighterItem> get fighter;
+  List<SlotItem?> get implant;
+  Map<int, DynamicItem> get dynamicItems;
+  int? get tacticalModeID;
 
   /// Create a copy of FitExport
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
   $FitExportCopyWith<FitExport> get copyWith =>
-      throw _privateConstructorUsedError;
+      _$FitExportCopyWithImpl<FitExport>(this as FitExport, _$identity);
+
+  /// Serializes this FitExport to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is FitExport &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
+            (identical(other.shipID, shipID) || other.shipID == shipID) &&
+            (identical(other.damageProfile, damageProfile) ||
+                other.damageProfile == damageProfile) &&
+            const DeepCollectionEquality().equals(other.high, high) &&
+            const DeepCollectionEquality().equals(other.med, med) &&
+            const DeepCollectionEquality().equals(other.low, low) &&
+            const DeepCollectionEquality().equals(other.rig, rig) &&
+            const DeepCollectionEquality().equals(other.subSystem, subSystem) &&
+            const DeepCollectionEquality().equals(other.drone, drone) &&
+            const DeepCollectionEquality().equals(other.fighter, fighter) &&
+            const DeepCollectionEquality().equals(other.implant, implant) &&
+            const DeepCollectionEquality()
+                .equals(other.dynamicItems, dynamicItems) &&
+            (identical(other.tacticalModeID, tacticalModeID) ||
+                other.tacticalModeID == tacticalModeID));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      name,
+      description,
+      shipID,
+      damageProfile,
+      const DeepCollectionEquality().hash(high),
+      const DeepCollectionEquality().hash(med),
+      const DeepCollectionEquality().hash(low),
+      const DeepCollectionEquality().hash(rig),
+      const DeepCollectionEquality().hash(subSystem),
+      const DeepCollectionEquality().hash(drone),
+      const DeepCollectionEquality().hash(fighter),
+      const DeepCollectionEquality().hash(implant),
+      const DeepCollectionEquality().hash(dynamicItems),
+      tacticalModeID);
+
+  @override
+  String toString() {
+    return 'FitExport(name: $name, description: $description, shipID: $shipID, damageProfile: $damageProfile, high: $high, med: $med, low: $low, rig: $rig, subSystem: $subSystem, drone: $drone, fighter: $fighter, implant: $implant, dynamicItems: $dynamicItems, tacticalModeID: $tacticalModeID)';
+  }
 }
 
 /// @nodoc
-abstract class $FitExportCopyWith<$Res> {
-  factory $FitExportCopyWith(FitExport value, $Res Function(FitExport) then) =
-      _$FitExportCopyWithImpl<$Res, FitExport>;
+abstract mixin class $FitExportCopyWith<$Res> {
+  factory $FitExportCopyWith(FitExport value, $Res Function(FitExport) _then) =
+      _$FitExportCopyWithImpl;
   @useResult
   $Res call(
       {String name,
@@ -70,14 +115,11 @@ abstract class $FitExportCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$FitExportCopyWithImpl<$Res, $Val extends FitExport>
-    implements $FitExportCopyWith<$Res> {
-  _$FitExportCopyWithImpl(this._value, this._then);
+class _$FitExportCopyWithImpl<$Res> implements $FitExportCopyWith<$Res> {
+  _$FitExportCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final FitExport _self;
+  final $Res Function(FitExport) _then;
 
   /// Create a copy of FitExport
   /// with the given fields replaced by the non-null parameter values.
@@ -99,64 +141,64 @@ class _$FitExportCopyWithImpl<$Res, $Val extends FitExport>
     Object? dynamicItems = null,
     Object? tacticalModeID = freezed,
   }) {
-    return _then(_value.copyWith(
+    return _then(_self.copyWith(
       name: null == name
-          ? _value.name
+          ? _self.name
           : name // ignore: cast_nullable_to_non_nullable
               as String,
       description: null == description
-          ? _value.description
+          ? _self.description
           : description // ignore: cast_nullable_to_non_nullable
               as String,
       shipID: null == shipID
-          ? _value.shipID
+          ? _self.shipID
           : shipID // ignore: cast_nullable_to_non_nullable
               as int,
       damageProfile: null == damageProfile
-          ? _value.damageProfile
+          ? _self.damageProfile
           : damageProfile // ignore: cast_nullable_to_non_nullable
               as DamageProfile,
       high: null == high
-          ? _value.high
+          ? _self.high
           : high // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
       med: null == med
-          ? _value.med
+          ? _self.med
           : med // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
       low: null == low
-          ? _value.low
+          ? _self.low
           : low // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
       rig: null == rig
-          ? _value.rig
+          ? _self.rig
           : rig // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
       subSystem: null == subSystem
-          ? _value.subSystem
+          ? _self.subSystem
           : subSystem // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
       drone: null == drone
-          ? _value.drone
+          ? _self.drone
           : drone // ignore: cast_nullable_to_non_nullable
               as List<DroneItem>,
       fighter: null == fighter
-          ? _value.fighter
+          ? _self.fighter
           : fighter // ignore: cast_nullable_to_non_nullable
               as List<FighterItem>,
       implant: null == implant
-          ? _value.implant
+          ? _self.implant
           : implant // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
       dynamicItems: null == dynamicItems
-          ? _value.dynamicItems
+          ? _self.dynamicItems
           : dynamicItems // ignore: cast_nullable_to_non_nullable
               as Map<int, DynamicItem>,
       tacticalModeID: freezed == tacticalModeID
-          ? _value.tacticalModeID
+          ? _self.tacticalModeID
           : tacticalModeID // ignore: cast_nullable_to_non_nullable
               as int?,
-    ) as $Val);
+    ));
   }
 
   /// Create a copy of FitExport
@@ -164,133 +206,16 @@ class _$FitExportCopyWithImpl<$Res, $Val extends FitExport>
   @override
   @pragma('vm:prefer-inline')
   $DamageProfileCopyWith<$Res> get damageProfile {
-    return $DamageProfileCopyWith<$Res>(_value.damageProfile, (value) {
-      return _then(_value.copyWith(damageProfile: value) as $Val);
+    return $DamageProfileCopyWith<$Res>(_self.damageProfile, (value) {
+      return _then(_self.copyWith(damageProfile: value));
     });
   }
 }
 
 /// @nodoc
-abstract class _$$FitExportImplCopyWith<$Res>
-    implements $FitExportCopyWith<$Res> {
-  factory _$$FitExportImplCopyWith(
-          _$FitExportImpl value, $Res Function(_$FitExportImpl) then) =
-      __$$FitExportImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call(
-      {String name,
-      String description,
-      int shipID,
-      DamageProfile damageProfile,
-      List<SlotItem?> high,
-      List<SlotItem?> med,
-      List<SlotItem?> low,
-      List<SlotItem?> rig,
-      List<SlotItem?> subSystem,
-      List<DroneItem> drone,
-      List<FighterItem> fighter,
-      List<SlotItem?> implant,
-      Map<int, DynamicItem> dynamicItems,
-      int? tacticalModeID});
-
-  @override
-  $DamageProfileCopyWith<$Res> get damageProfile;
-}
-
-/// @nodoc
-class __$$FitExportImplCopyWithImpl<$Res>
-    extends _$FitExportCopyWithImpl<$Res, _$FitExportImpl>
-    implements _$$FitExportImplCopyWith<$Res> {
-  __$$FitExportImplCopyWithImpl(
-      _$FitExportImpl _value, $Res Function(_$FitExportImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of FitExport
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? name = null,
-    Object? description = null,
-    Object? shipID = null,
-    Object? damageProfile = null,
-    Object? high = null,
-    Object? med = null,
-    Object? low = null,
-    Object? rig = null,
-    Object? subSystem = null,
-    Object? drone = null,
-    Object? fighter = null,
-    Object? implant = null,
-    Object? dynamicItems = null,
-    Object? tacticalModeID = freezed,
-  }) {
-    return _then(_$FitExportImpl(
-      name: null == name
-          ? _value.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String,
-      description: null == description
-          ? _value.description
-          : description // ignore: cast_nullable_to_non_nullable
-              as String,
-      shipID: null == shipID
-          ? _value.shipID
-          : shipID // ignore: cast_nullable_to_non_nullable
-              as int,
-      damageProfile: null == damageProfile
-          ? _value.damageProfile
-          : damageProfile // ignore: cast_nullable_to_non_nullable
-              as DamageProfile,
-      high: null == high
-          ? _value._high
-          : high // ignore: cast_nullable_to_non_nullable
-              as List<SlotItem?>,
-      med: null == med
-          ? _value._med
-          : med // ignore: cast_nullable_to_non_nullable
-              as List<SlotItem?>,
-      low: null == low
-          ? _value._low
-          : low // ignore: cast_nullable_to_non_nullable
-              as List<SlotItem?>,
-      rig: null == rig
-          ? _value._rig
-          : rig // ignore: cast_nullable_to_non_nullable
-              as List<SlotItem?>,
-      subSystem: null == subSystem
-          ? _value._subSystem
-          : subSystem // ignore: cast_nullable_to_non_nullable
-              as List<SlotItem?>,
-      drone: null == drone
-          ? _value._drone
-          : drone // ignore: cast_nullable_to_non_nullable
-              as List<DroneItem>,
-      fighter: null == fighter
-          ? _value._fighter
-          : fighter // ignore: cast_nullable_to_non_nullable
-              as List<FighterItem>,
-      implant: null == implant
-          ? _value._implant
-          : implant // ignore: cast_nullable_to_non_nullable
-              as List<SlotItem?>,
-      dynamicItems: null == dynamicItems
-          ? _value._dynamicItems
-          : dynamicItems // ignore: cast_nullable_to_non_nullable
-              as Map<int, DynamicItem>,
-      tacticalModeID: freezed == tacticalModeID
-          ? _value.tacticalModeID
-          : tacticalModeID // ignore: cast_nullable_to_non_nullable
-              as int?,
-    ));
-  }
-}
-
-/// @nodoc
 @JsonSerializable()
-class _$FitExportImpl extends _FitExport {
-  const _$FitExportImpl(
+class _FitExport extends FitExport {
+  const _FitExport(
       {required this.name,
       required this.description,
       required this.shipID,
@@ -315,9 +240,8 @@ class _$FitExportImpl extends _FitExport {
         _implant = implant,
         _dynamicItems = dynamicItems,
         super._();
-
-  factory _$FitExportImpl.fromJson(Map<String, dynamic> json) =>
-      _$$FitExportImplFromJson(json);
+  factory _FitExport.fromJson(Map<String, dynamic> json) =>
+      _$FitExportFromJson(json);
 
   @override
   final String name;
@@ -402,16 +326,26 @@ class _$FitExportImpl extends _FitExport {
   @override
   final int? tacticalModeID;
 
+  /// Create a copy of FitExport
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  String toString() {
-    return 'FitExport(name: $name, description: $description, shipID: $shipID, damageProfile: $damageProfile, high: $high, med: $med, low: $low, rig: $rig, subSystem: $subSystem, drone: $drone, fighter: $fighter, implant: $implant, dynamicItems: $dynamicItems, tacticalModeID: $tacticalModeID)';
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$FitExportCopyWith<_FitExport> get copyWith =>
+      __$FitExportCopyWithImpl<_FitExport>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$FitExportToJson(
+      this,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$FitExportImpl &&
+            other is _FitExport &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.description, description) ||
                 other.description == description) &&
@@ -452,76 +386,136 @@ class _$FitExportImpl extends _FitExport {
       const DeepCollectionEquality().hash(_dynamicItems),
       tacticalModeID);
 
-  /// Create a copy of FitExport
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$FitExportImplCopyWith<_$FitExportImpl> get copyWith =>
-      __$$FitExportImplCopyWithImpl<_$FitExportImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$FitExportImplToJson(
-      this,
-    );
+  String toString() {
+    return 'FitExport(name: $name, description: $description, shipID: $shipID, damageProfile: $damageProfile, high: $high, med: $med, low: $low, rig: $rig, subSystem: $subSystem, drone: $drone, fighter: $fighter, implant: $implant, dynamicItems: $dynamicItems, tacticalModeID: $tacticalModeID)';
   }
 }
 
-abstract class _FitExport extends FitExport {
-  const factory _FitExport(
-      {required final String name,
-      required final String description,
-      required final int shipID,
-      required final DamageProfile damageProfile,
-      required final List<SlotItem?> high,
-      required final List<SlotItem?> med,
-      required final List<SlotItem?> low,
-      required final List<SlotItem?> rig,
-      required final List<SlotItem?> subSystem,
-      required final List<DroneItem> drone,
-      required final List<FighterItem> fighter,
-      required final List<SlotItem?> implant,
-      required final Map<int, DynamicItem> dynamicItems,
-      final int? tacticalModeID}) = _$FitExportImpl;
-  const _FitExport._() : super._();
+/// @nodoc
+abstract mixin class _$FitExportCopyWith<$Res>
+    implements $FitExportCopyWith<$Res> {
+  factory _$FitExportCopyWith(
+          _FitExport value, $Res Function(_FitExport) _then) =
+      __$FitExportCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {String name,
+      String description,
+      int shipID,
+      DamageProfile damageProfile,
+      List<SlotItem?> high,
+      List<SlotItem?> med,
+      List<SlotItem?> low,
+      List<SlotItem?> rig,
+      List<SlotItem?> subSystem,
+      List<DroneItem> drone,
+      List<FighterItem> fighter,
+      List<SlotItem?> implant,
+      Map<int, DynamicItem> dynamicItems,
+      int? tacticalModeID});
 
-  factory _FitExport.fromJson(Map<String, dynamic> json) =
-      _$FitExportImpl.fromJson;
+  @override
+  $DamageProfileCopyWith<$Res> get damageProfile;
+}
 
-  @override
-  String get name;
-  @override
-  String get description;
-  @override
-  int get shipID;
-  @override
-  DamageProfile get damageProfile;
-  @override
-  List<SlotItem?> get high;
-  @override
-  List<SlotItem?> get med;
-  @override
-  List<SlotItem?> get low;
-  @override
-  List<SlotItem?> get rig;
-  @override
-  List<SlotItem?> get subSystem;
-  @override
-  List<DroneItem> get drone;
-  @override
-  List<FighterItem> get fighter;
-  @override
-  List<SlotItem?> get implant;
-  @override
-  Map<int, DynamicItem> get dynamicItems;
-  @override
-  int? get tacticalModeID;
+/// @nodoc
+class __$FitExportCopyWithImpl<$Res> implements _$FitExportCopyWith<$Res> {
+  __$FitExportCopyWithImpl(this._self, this._then);
+
+  final _FitExport _self;
+  final $Res Function(_FitExport) _then;
 
   /// Create a copy of FitExport
   /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$FitExportImplCopyWith<_$FitExportImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? name = null,
+    Object? description = null,
+    Object? shipID = null,
+    Object? damageProfile = null,
+    Object? high = null,
+    Object? med = null,
+    Object? low = null,
+    Object? rig = null,
+    Object? subSystem = null,
+    Object? drone = null,
+    Object? fighter = null,
+    Object? implant = null,
+    Object? dynamicItems = null,
+    Object? tacticalModeID = freezed,
+  }) {
+    return _then(_FitExport(
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      description: null == description
+          ? _self.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String,
+      shipID: null == shipID
+          ? _self.shipID
+          : shipID // ignore: cast_nullable_to_non_nullable
+              as int,
+      damageProfile: null == damageProfile
+          ? _self.damageProfile
+          : damageProfile // ignore: cast_nullable_to_non_nullable
+              as DamageProfile,
+      high: null == high
+          ? _self._high
+          : high // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem?>,
+      med: null == med
+          ? _self._med
+          : med // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem?>,
+      low: null == low
+          ? _self._low
+          : low // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem?>,
+      rig: null == rig
+          ? _self._rig
+          : rig // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem?>,
+      subSystem: null == subSystem
+          ? _self._subSystem
+          : subSystem // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem?>,
+      drone: null == drone
+          ? _self._drone
+          : drone // ignore: cast_nullable_to_non_nullable
+              as List<DroneItem>,
+      fighter: null == fighter
+          ? _self._fighter
+          : fighter // ignore: cast_nullable_to_non_nullable
+              as List<FighterItem>,
+      implant: null == implant
+          ? _self._implant
+          : implant // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem?>,
+      dynamicItems: null == dynamicItems
+          ? _self._dynamicItems
+          : dynamicItems // ignore: cast_nullable_to_non_nullable
+              as Map<int, DynamicItem>,
+      tacticalModeID: freezed == tacticalModeID
+          ? _self.tacticalModeID
+          : tacticalModeID // ignore: cast_nullable_to_non_nullable
+              as int?,
+    ));
+  }
+
+  /// Create a copy of FitExport
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $DamageProfileCopyWith<$Res> get damageProfile {
+    return $DamageProfileCopyWith<$Res>(_self.damageProfile, (value) {
+      return _then(_self.copyWith(damageProfile: value));
+    });
+  }
 }
+
+// dart format on

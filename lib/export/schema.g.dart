@@ -6,8 +6,7 @@ part of 'schema.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$FitExportImpl _$$FitExportImplFromJson(Map<String, dynamic> json) =>
-    _$FitExportImpl(
+_FitExport _$FitExportFromJson(Map<String, dynamic> json) => _FitExport(
       name: json['name'] as String,
       description: json['description'] as String,
       shipID: (json['shipID'] as num).toInt(),
@@ -50,7 +49,7 @@ _$FitExportImpl _$$FitExportImplFromJson(Map<String, dynamic> json) =>
       tacticalModeID: (json['tacticalModeID'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$$FitExportImplToJson(_$FitExportImpl instance) =>
+Map<String, dynamic> _$FitExportToJson(_FitExport instance) =>
     <String, dynamic>{
       'name': instance.name,
       'description': instance.description,
