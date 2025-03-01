@@ -1,6 +1,6 @@
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/widgets/market_list.dart';
+import 'package:eve_fit_assistant/pages/market/market_list.dart';
 import 'package:flutter/material.dart';
 
 class MarketPage extends StatelessWidget {

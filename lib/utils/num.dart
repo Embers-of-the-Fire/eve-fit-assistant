@@ -29,4 +29,19 @@ extension NumExt on num {
     if (decimals.length <= maxDecimals) return str;
     return str.substring(0, dotIndex + 1 + maxDecimals);
   }
+
+  String get moneyFormat {
+    final str = toStringAsFixed(2);
+    final dotIndex = str.indexOf('.');
+    final integer = str.substring(0, dotIndex);
+    final decimal = str.substring(dotIndex + 1);
+    final integerList = <String>[];
+    for (int i = integer.length - 1; i >= 0; i--) {
+      integerList.add(integer[i]);
+      if ((integer.length - i) % 3 == 0 && i != 0) {
+        integerList.add(',');
+      }
+    }
+    return '${integerList.reversed.join()}.$decimal';
+  }
 }

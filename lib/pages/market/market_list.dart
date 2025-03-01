@@ -1,9 +1,17 @@
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/market.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/web/market/market.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loading_indicator/loading_indicator.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'market_list.g.dart';
+part 'market_tile.dart';
 
 class MarketList extends StatefulWidget {
   final bool Function(int id)? filter;
@@ -30,10 +38,13 @@ class _MarketListState extends State<MarketList> {
   final Set<int> _cachedValidTypes = {};
   final Set<int> _cachedValidGroups = {};
 
+  int timestamp = 0;
+
   @override
   void initState() {
     super.initState();
     _resetBreadcrumbs();
+    timestamp = DateTime.now().millisecondsSinceEpoch;
   }
 
   void _resetBreadcrumbs() {
@@ -137,10 +148,14 @@ class _MarketListState extends State<MarketList> {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              controller: _shipListController,
-              child: Column(
+              child: RefreshIndicator(
+            onRefresh: () async => setState(() {
+              GlobalStorage().market.clearCache();
+              timestamp = DateTime.now().millisecondsSinceEpoch;
+            }),
+            child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                controller: _shipListController,
                 children: [
                   ..._filterMarketGroups(_breadcrumbs.lastOrNull)
                       .filterMap(
@@ -149,17 +164,14 @@ class _MarketListState extends State<MarketList> {
                       .map((it) => _groupListTile(it.$2, onTap: () => _expandGroup(it.$1))),
                   ..._breadcrumbs.lastOrNull
                       .andThen((id) => GlobalStorage().static.marketGroups[id])
-                      .map((group) => _itemListTile(
-                            group,
-                            onTap: widget.onSelect,
-                            filter: widget.filter,
-                            onLongPress: widget.onLongPress,
-                          ))
+                      .map((group) => _itemListTile(group,
+                          onTap: widget.onSelect,
+                          filter: widget.filter,
+                          onLongPress: widget.onLongPress,
+                          timestamp: timestamp))
                       .unwrapOr([])
-                ],
-              ),
-            ),
-          )
+                ]),
+          ))
         ],
       ));
 }
@@ -181,11 +193,12 @@ ListTile _groupListTile(MarketGroup group, {void Function()? onTap}) {
   );
 }
 
-Iterable<ListTile> _itemListTile(
+Iterable<Widget> _itemListTile(
   MarketGroup group, {
   required void Function(int id)? onTap,
   required bool Function(int id)? filter,
   required void Function(int id)? onLongPress,
+  required int timestamp,
 }) {
   late Iterable<int> types;
   if (filter == null) {
@@ -195,16 +208,7 @@ Iterable<ListTile> _itemListTile(
   }
   return types
       .filterMap((id) => GlobalStorage().static.types[id].map((u) => (id, u)))
-      .map((val) => ListTile(
-            // leading: Icon(Icons.article_sharp),
-            onLongPress: () => onLongPress?.call(val.$1),
-            leading: GlobalStorage().static.icons.getTypeIconSync(val.$1),
-            title: Text(
-              val.$2.nameZH,
-              softWrap: true,
-            ),
-            onTap: () => onTap?.call(val.$1),
-          ));
+      .map((val) => MarketListTile(name: val.$2.nameZH, typeID: val.$1, timestamp: timestamp));
 }
 
 Iterable<int> _filterMarketGroups(

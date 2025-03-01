@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:eve_fit_assistant/native/glue/fit_engine.dart';
 import 'package:eve_fit_assistant/storage/character/storage.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
+import 'package:eve_fit_assistant/storage/market.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
@@ -38,6 +39,7 @@ class GlobalStorage {
   final FitStorage _ship = FitStorage();
   final StaticStorage _static = StaticStorage();
   final CharacterStorage _character = CharacterStorage();
+  final MarketStorage _market = MarketStorage();
   late final FitEngine _fitEngine;
   late VersionInfo _version;
   late PackageInfo _packageInfo;
@@ -50,6 +52,8 @@ class GlobalStorage {
   StaticStorage get static => _static;
 
   CharacterStorage get character => _character;
+
+  MarketStorage get market => _market;
 
   FitEngine get fitEngine => _fitEngine;
 

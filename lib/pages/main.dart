@@ -51,7 +51,7 @@ class _MainPageState extends State<MainPage> {
               MaterialPageRoute(builder: (context) => const MarketPage()),
             ),
             text: '物品市场',
-            icon: Icons.shopping_cart_rounded,
+            icon: Icons.shopping_cart_outlined,
             height: 150,
           ),
           const SizedBox(height: 20),
