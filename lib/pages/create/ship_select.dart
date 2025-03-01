@@ -1,4 +1,6 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
+import 'package:eve_fit_assistant/export/import_view.dart';
+import 'package:eve_fit_assistant/export/schema.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
@@ -7,10 +9,25 @@ import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
-class ShipSelectPage extends StatelessWidget {
+class ShipSelectPage extends StatefulWidget {
   const ShipSelectPage({super.key});
+
+  @override
+  State<ShipSelectPage> createState() => _ShipSelectPageState();
+}
+
+class _ShipSelectPageState extends State<ShipSelectPage> {
+  final FToast fToast = FToast();
+
+  @override
+  void initState() {
+    fToast.init(context);
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -68,6 +85,42 @@ class ShipSelectPage extends StatelessWidget {
             onLongPress: (id) => showTypeInfoPage(context, typeID: id),
           ))
         ]),
+        floatingActionButton: Container(
+            margin: const EdgeInsets.only(bottom: 55),
+            child: FloatingActionButton(
+              onPressed: () async {
+                final clip = await Clipboard.getData('text/plain');
+                if (!context.mounted) return;
+                final text = clip?.text;
+                if (text == null) return;
+                final data = FitExport.fromEncoded(text);
+                if (data == null) {
+                  fToast.showToast(
+                      child: Container(
+                    margin: const EdgeInsets.only(bottom: 20.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25.0),
+                      color: Colors.red,
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.error_outline),
+                      SizedBox(width: 12.0),
+                      Text('错误的配置代码'),
+                    ]),
+                  ));
+                } else {
+                  final status = await showImportDialog(context, data);
+                  if (status == false || !context.mounted) return;
+                  Navigator.pop(context);
+                  final fit = await GlobalStorage().ship.importFit(data);
+                  if (!context.mounted) return;
+                  await intoFitPage(context, fit.brief.id);
+                }
+              },
+              shape: const CircleBorder(),
+              child: const Icon(Icons.file_download_outlined),
+            )),
       );
 }
 

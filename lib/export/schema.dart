@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
+import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
+import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/static/damage_profile.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -48,13 +51,52 @@ class FitExport with _$FitExport {
 
   String get encoded {
     final json = jsonEncode(toJson());
-    final compressed = const GZipEncoder().encodeBytes(utf8.encode(json), level: 9);
+    final compressed = const GZipEncoder().encodeBytes(utf8.encode('EFA-EXPORT:$json'), level: 9);
     return base64Encode(compressed);
   }
 
-  factory FitExport.fromEncoded(String encoded) {
-    final compressed = base64Decode(encoded);
+  static FitExport? fromEncoded(String encoded) {
+    late final Uint8List compressed;
+    try {
+      compressed = base64Decode(encoded);
+    } catch (e) {
+      return null;
+    }
     final json = utf8.decode(const GZipDecoder().decodeBytes(compressed));
-    return FitExport.fromJson(jsonDecode(json));
+    if (json.startsWith('EFA-EXPORT:')) {
+      return FitExport.fromJson(jsonDecode(json.replaceFirst('EFA-EXPORT:', '')));
+    }
+    return null;
+  }
+}
+
+extension ImportFit on FitStorage {
+  Future<FitRecord> importFit(FitExport fit) async {
+    final newRecord = await createFit(fit.name, fit.shipID);
+    final newBrief = newRecord.brief;
+    final copiedRecord = FitRecord(
+        brief: FitRecordBrief(
+            id: newBrief.id,
+            name: fit.name,
+            description: fit.description,
+            shipID: fit.shipID,
+            createTime: newBrief.createTime,
+            lastModifyTime: newBrief.lastModifyTime),
+        body: Fit(
+            shipID: fit.shipID,
+            damageProfile: fit.damageProfile,
+            high: fit.high,
+            med: fit.med,
+            low: fit.low,
+            rig: fit.rig,
+            subsystem: fit.subSystem,
+            drone: fit.drone,
+            fighter: fit.fighter,
+            implant: fit.implant,
+            tacticalModeID: fit.tacticalModeID,
+            dynamicItems: fit.dynamicItems));
+    await copiedRecord.save();
+    await save();
+    return copiedRecord;
   }
 }
