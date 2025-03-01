@@ -1,5 +1,6 @@
 import 'package:eve_fit_assistant/pages/config/asset.dart';
 import 'package:eve_fit_assistant/pages/config/info.dart';
+import 'package:eve_fit_assistant/pages/config/preference.dart';
 import 'package:eve_fit_assistant/pages/config/version.dart';
 import 'package:eve_fit_assistant/widgets/external_icon_icons.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,13 @@ class ConfigPage extends StatelessWidget {
             title: const Text('资产管理'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const AssetPage()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('偏好设置'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const PreferencePage()),
             ),
           ),
           ListTile(

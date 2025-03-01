@@ -5,6 +5,7 @@ import 'package:eve_fit_assistant/storage/character/storage.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/migrate/migrate.dart';
 import 'package:eve_fit_assistant/storage/path.dart';
+import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/storage/version.dart';
 import 'package:eve_fit_assistant/widgets/loading.dart';
@@ -64,6 +65,7 @@ class GlobalStorage {
 
     // await EasyLoading.show(status: '初始化');
     GlobalLoading().add(_storageLoadingKey, '初始化');
+    await GlobalPreference.init();
     final version = await getVersionInfo();
     _version = await executeMigrate(version) ?? VersionInfo.currentVersion;
     _packageInfo = await PackageInfo.fromPlatform();

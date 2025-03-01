@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/market.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
@@ -98,8 +99,9 @@ class _ItemListState extends State<ItemList> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (pop, _) async {
+      canPop: GlobalPreference.itemListPopBehavior != ItemListPopBehavior.prevPage,
+      onPopInvokedWithResult: (GlobalPreference.itemListPopBehavior == ItemListPopBehavior.prevPage)
+          .thenSome((pop, _) async {
         if (pop) return;
         if (_breadcrumbs.isEmpty) {
           Navigator.of(context).pop();
@@ -109,7 +111,7 @@ class _ItemListState extends State<ItemList> {
             _breadcrumbNames.removeLast();
           });
         }
-      },
+      }),
       child: Column(
         children: [
           Container(
