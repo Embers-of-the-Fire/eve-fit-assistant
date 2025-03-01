@@ -64,7 +64,7 @@ extension Optional<T> on T? {
     return this;
   }
 
-  Future<T?> async() async => this;
+  Future<T?> get async async => this;
 }
 
 extension Inspect<T> on T {

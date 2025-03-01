@@ -18,7 +18,6 @@ class ListPage extends StatefulWidget {
 }
 
 class _ListPageState extends State<ListPage> {
-  final _scrollController = ScrollController();
   final FToast fToast = FToast();
 
   @override
@@ -28,10 +27,13 @@ class _ListPageState extends State<ListPage> {
   }
 
   @override
-  Widget build(BuildContext context) => ListView(
+  Widget build(BuildContext context) => RefreshIndicator(
+      onRefresh: () async {
+        setState(() {});
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 20),
-        scrollDirection: Axis.vertical,
-        controller: _scrollController,
         children: GlobalStorage()
             .ship
             .brief
@@ -104,5 +106,5 @@ class _ListPageState extends State<ListPage> {
             ),
           );
         }).toList(),
-      );
+      ));
 }
