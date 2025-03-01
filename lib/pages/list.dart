@@ -33,7 +33,7 @@ class _ListPageState extends State<ListPage> {
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.only(bottom: 20),
         children: GlobalStorage()
             .ship
             .brief
