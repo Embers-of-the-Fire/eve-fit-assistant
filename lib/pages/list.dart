@@ -1,9 +1,14 @@
+import 'dart:developer';
+
+import 'package:eve_fit_assistant/export/schema.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class ListPage extends StatefulWidget {
   const ListPage({super.key});
@@ -14,6 +19,13 @@ class ListPage extends StatefulWidget {
 
 class _ListPageState extends State<ListPage> {
   final _scrollController = ScrollController();
+  final FToast fToast = FToast();
+
+  @override
+  void initState() {
+    super.initState();
+    fToast.init(context);
+  }
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -29,7 +41,7 @@ class _ListPageState extends State<ListPage> {
           final icon = GlobalStorage().static.icons.getTypeIconSync(entry.value.shipID);
           final typeName = GlobalStorage().static.types[entry.value.shipID]?.nameZH ?? '未知';
           return Slidable(
-            startActionPane: ActionPane(extentRatio: 0.15, motion: const StretchMotion(), children: [
+            startActionPane: ActionPane(extentRatio: 0.3, motion: const StretchMotion(), children: [
               SlidableAction(
                 onPressed: (_) async {
                   final fit = await GlobalStorage().ship.copyFit(entry.value.id);
@@ -41,6 +53,34 @@ class _ListPageState extends State<ListPage> {
                 icon: Icons.copy,
                 label: '复制',
                 backgroundColor: Colors.green,
+              ),
+              SlidableAction(
+                onPressed: (_) async {
+                  final fit = await GlobalStorage().ship.readFit(entry.value.id);
+                  final export = FitExport.fromRecord(fit);
+                  final text = export.encoded;
+                  log(text, name: 'exportToBase64');
+                  await Clipboard.setData(ClipboardData(text: text));
+                  if (!context.mounted) return;
+                  fToast.showToast(
+                      child: Container(
+                    margin: const EdgeInsets.only(bottom: 20.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25.0),
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.check),
+                      SizedBox(width: 12.0),
+                      Text('已复制到剪贴板'),
+                    ]),
+                  ));
+                },
+                padding: EdgeInsets.zero,
+                icon: Icons.share,
+                label: '分享',
+                backgroundColor: Colors.white,
               )
             ]),
             endActionPane: ActionPane(extentRatio: 0.15, motion: const StretchMotion(), children: [

@@ -5,12 +5,15 @@ import 'package:eve_fit_assistant/widgets/loading.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 Future main() async {
   await RustLib.init();
   GlobalLoading().init();
   runApp(const ProviderScope(child: MyApp()));
 }
+
+final globalNavigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -26,7 +29,12 @@ class MyApp extends ConsumerWidget {
         useMaterial3: true,
       ),
       home: const front.FrontendPage(),
-      builder: EasyLoading.init(),
+      builder: (context, child) {
+        child = EasyLoading.init()(context, child);
+        child = FToastBuilder()(context, child);
+        return child;
+      },
+      navigatorKey: globalNavigatorKey,
     );
   }
 }
