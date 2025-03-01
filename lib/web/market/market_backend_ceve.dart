@@ -16,10 +16,8 @@ abstract class CEveMarketResponse with _$CEveMarketResponse {
       Server.tranquility => 'tqapi',
       Server.serenity => 'api',
     };
-    final url = Uri.https(
-      'www.ceve-market.org',
-      '/$apiText/market/region/10000002/type/$typeID.json',
-    );
+    final url =
+        Uri.parse('https://www.ceve-market.org/$apiText/market/region/10000002/type/$typeID.json');
     final response = await http.get(url);
     final json = jsonDecode(response.body);
     final resp = CEveMarketResponse.fromJson(json);

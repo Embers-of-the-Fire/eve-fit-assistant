@@ -64,7 +64,8 @@ TextSpan _buildFromElement(BuildContext context, html.Element element) {
         text: ch.map((u) => u.text).join(''),
         style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
         recognizer: TapGestureRecognizer()
-          ..onTap = () => element.attributes['href'].andThen((u) => launchUrlString(u))),
+          ..onTap = () => element.attributes['href']
+              .andThen((u) => launchUrlString(u, mode: LaunchMode.externalApplication))),
     'a' => (ch) => TextSpan(
         text: ch.map((u) => u.text).join(''),
         style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
