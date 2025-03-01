@@ -97,7 +97,20 @@ class _ItemListState extends State<ItemList> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (pop, _) async {
+        if (pop) return;
+        if (_breadcrumbs.isEmpty) {
+          Navigator.of(context).pop();
+        } else {
+          setState(() {
+            _breadcrumbs.removeLast();
+            _breadcrumbNames.removeLast();
+          });
+        }
+      },
+      child: Column(
         children: [
           Container(
             width: double.infinity,
@@ -156,7 +169,7 @@ class _ItemListState extends State<ItemList> {
             ),
           )
         ],
-      );
+      ));
 }
 
 ListTile _groupListTile(MarketGroup group, {void Function()? onTap}) {
