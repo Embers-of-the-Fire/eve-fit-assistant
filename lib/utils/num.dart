@@ -12,6 +12,18 @@ extension NumIntExt on int {
   int addFlag(int other) => (this & other) == other ? this : this | other;
 
   int toggleFlag(int other) => this ^ other;
+
+  String get separate {
+    final str = toString();
+    final integerList = <String>[];
+    for (int i = str.length - 1; i >= 0; i--) {
+      integerList.add(str[i]);
+      if ((str.length - i) % 3 == 0 && i != 0) {
+        integerList.add(',');
+      }
+    }
+    return integerList.reversed.join();
+  }
 }
 
 extension NumDoubleExt on double {

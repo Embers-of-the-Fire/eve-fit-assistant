@@ -23,12 +23,16 @@ class MarketListTile extends ConsumerWidget {
   final String name;
   final int typeID;
   final int timestamp;
+  final void Function() onLongPress;
+  final void Function() onTap;
 
   const MarketListTile({
     super.key,
     required this.name,
     required this.typeID,
     required this.timestamp,
+    required this.onTap,
+    required this.onLongPress,
   });
 
   @override
@@ -57,7 +61,8 @@ class MarketListTile extends ConsumerWidget {
     };
 
     return InkWell(
-        onLongPress: () => showTypeInfoPage(context, typeID: typeID),
+        onLongPress: onLongPress,
+        onTap: onTap,
         child: Column(
           children: [
             ListTile(

@@ -1,4 +1,5 @@
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
+import 'package:eve_fit_assistant/pages/market/market_order.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/market.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
@@ -7,6 +8,7 @@ import 'package:eve_fit_assistant/web/market/market.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -14,16 +16,7 @@ part 'market_list.g.dart';
 part 'market_tile.dart';
 
 class MarketList extends StatefulWidget {
-  final bool Function(int id)? filter;
-  final void Function(int id)? onSelect;
-  final void Function(int id)? onLongPress;
-
-  const MarketList({
-    super.key,
-    this.filter,
-    this.onSelect,
-    this.onLongPress,
-  });
+  const MarketList({super.key});
 
   @override
   State<MarketList> createState() => _MarketListState();
@@ -32,6 +25,7 @@ class MarketList extends StatefulWidget {
 class _MarketListState extends State<MarketList> {
   final ScrollController _breadcrumbController = ScrollController();
   final ScrollController _shipListController = ScrollController();
+  final FToast fToast = FToast();
 
   List<int> _breadcrumbs = [];
   List<String> _breadcrumbNames = [];
@@ -44,6 +38,7 @@ class _MarketListState extends State<MarketList> {
   void initState() {
     super.initState();
     _resetBreadcrumbs();
+    fToast.init(context);
     timestamp = DateTime.now().millisecondsSinceEpoch;
   }
 
@@ -62,7 +57,7 @@ class _MarketListState extends State<MarketList> {
     if (type == null) {
       return false;
     }
-    if (widget.filter?.call(id) ?? true) {
+    if (GlobalStorage().static.types[id]?.published == true) {
       _cachedValidTypes.add(id);
       return true;
     }
@@ -164,11 +159,32 @@ class _MarketListState extends State<MarketList> {
                       .map((it) => _groupListTile(it.$2, onTap: () => _expandGroup(it.$1))),
                   ..._breadcrumbs.lastOrNull
                       .andThen((id) => GlobalStorage().static.marketGroups[id])
-                      .map((group) => _itemListTile(group,
-                          onTap: widget.onSelect,
-                          filter: widget.filter,
-                          onLongPress: widget.onLongPress,
-                          timestamp: timestamp))
+                      .map((group) =>
+                          _itemListTile(context, group, timestamp: timestamp, onTap: (id) {
+                            if (GlobalPreference.marketApi == MarketApi.cEveMarket) {
+                              fToast.showToast(
+                                  gravity: ToastGravity.CENTER,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 24.0, vertical: 12.0),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(25.0),
+                                      color: Colors.red,
+                                    ),
+                                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                      Icon(Icons.error_outline),
+                                      SizedBox(width: 12.0),
+                                      Text('CEVE 接口不支持查看订单详情'),
+                                    ]),
+                                  ));
+                            } else {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (context) => MarketOrderPage(
+                                        typeID: id,
+                                        timestamp: timestamp,
+                                      )));
+                            }
+                          }))
                       .unwrapOr([])
                 ]),
           ))
@@ -194,21 +210,20 @@ ListTile _groupListTile(MarketGroup group, {void Function()? onTap}) {
 }
 
 Iterable<Widget> _itemListTile(
+  BuildContext context,
   MarketGroup group, {
-  required void Function(int id)? onTap,
-  required bool Function(int id)? filter,
-  required void Function(int id)? onLongPress,
+  required void Function(int id) onTap,
   required int timestamp,
 }) {
   late Iterable<int> types;
-  if (filter == null) {
-    types = group.types;
-  } else {
-    types = group.types.filter(filter);
-  }
-  return types
-      .filterMap((id) => GlobalStorage().static.types[id].map((u) => (id, u)))
-      .map((val) => MarketListTile(name: val.$2.nameZH, typeID: val.$1, timestamp: timestamp));
+  types = group.types.filter((id) => GlobalStorage().static.types[id]?.published == true);
+  return types.filterMap((id) => GlobalStorage().static.types[id].map((u) => (id, u))).map((val) =>
+      MarketListTile(
+          name: val.$2.nameZH,
+          typeID: val.$1,
+          timestamp: timestamp,
+          onLongPress: () => showTypeInfoPage(context, typeID: val.$1),
+          onTap: () => onTap(val.$1)));
 }
 
 Iterable<int> _filterMarketGroups(
