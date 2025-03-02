@@ -2,12 +2,14 @@ import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/market/market_order.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/market.dart';
+import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/market/market.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -91,6 +93,31 @@ class _MarketListState extends State<MarketList> {
     });
   }
 
+  void _onTapItem(int id) {
+    if (GlobalPreference.marketApi == MarketApi.cEveMarket) {
+      fToast.showToast(
+          gravity: ToastGravity.CENTER,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(25.0),
+              color: Colors.red,
+            ),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.error_outline),
+              SizedBox(width: 12.0),
+              Text('CEVE 接口不支持查看订单详情'),
+            ]),
+          ));
+    } else {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => MarketOrderPage(
+                typeID: id,
+                timestamp: timestamp,
+              )));
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PopScope(
       canPop: GlobalPreference.itemListPopBehavior != ItemListPopBehavior.prevPage,
@@ -108,6 +135,42 @@ class _MarketListState extends State<MarketList> {
       }),
       child: Column(
         children: [
+          TypeAheadField<(int, TypeItem)>(
+            onSelected: (data) => _onTapItem(data.$1),
+            builder: (context, controller, focusNode) => Padding(
+                padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
+                child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    autofocus: false,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: '物品',
+                    ))),
+            itemBuilder: (context, data) {
+              final id = data.$1;
+              final ship = data.$2;
+              return ListTile(
+                leading: GlobalStorage().static.icons.getTypeIconSync(id),
+                title: Text(ship.nameZH),
+                subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
+              );
+            },
+            suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()
+                .static
+                .types
+                .tupleEntries
+                .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
+                .toList()),
+            emptyBuilder: (context) => Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                '未找到相关舰船',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -160,31 +223,7 @@ class _MarketListState extends State<MarketList> {
                   ..._breadcrumbs.lastOrNull
                       .andThen((id) => GlobalStorage().static.marketGroups[id])
                       .map((group) =>
-                          _itemListTile(context, group, timestamp: timestamp, onTap: (id) {
-                            if (GlobalPreference.marketApi == MarketApi.cEveMarket) {
-                              fToast.showToast(
-                                  gravity: ToastGravity.CENTER,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 24.0, vertical: 12.0),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(25.0),
-                                      color: Colors.red,
-                                    ),
-                                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                                      Icon(Icons.error_outline),
-                                      SizedBox(width: 12.0),
-                                      Text('CEVE 接口不支持查看订单详情'),
-                                    ]),
-                                  ));
-                            } else {
-                              Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (context) => MarketOrderPage(
-                                        typeID: id,
-                                        timestamp: timestamp,
-                                      )));
-                            }
-                          }))
+                          _itemListTile(context, group, timestamp: timestamp, onTap: _onTapItem))
                       .unwrapOr([])
                 ]),
           ))
