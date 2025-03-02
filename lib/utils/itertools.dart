@@ -101,6 +101,19 @@ extension Itertools<T> on Iterable<T> {
     }
   }
 
+  (Iterable<T>, Iterable<T>) partition(bool Function(T) predicate) {
+    final left = <T>[];
+    final right = <T>[];
+    for (final e in this) {
+      if (predicate(e)) {
+        left.add(e);
+      } else {
+        right.add(e);
+      }
+    }
+    return (left, right);
+  }
+
   int count() {
     var count = 0;
     for (final _ in this) {
@@ -130,6 +143,8 @@ extension ItertoolInt on Iterable<int> {
 
   int? get max => (this as Iterable<num>).max as int?;
 
+  int? get min => (this as Iterable<num>).min as int?;
+
   int get nextPossible {
     int i = 0;
     for (final e in this) {
@@ -153,6 +168,8 @@ extension ItertoolDouble on Iterable<double> {
   }
 
   double? get max => (this as Iterable<num>).max as double?;
+
+  double? get min => (this as Iterable<num>).min as double?;
 }
 
 extension ItertoolFlatten<T> on Iterable<Iterable<T>> {

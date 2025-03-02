@@ -22,11 +22,9 @@ abstract class CEveMarketResponse with _$CEveMarketResponse {
     final json = jsonDecode(response.body);
     final resp = CEveMarketResponse.fromJson(json);
     return MarketPrice(
-      typeID: typeID,
-      server: server,
-      all: resp.all,
-      buy: resp.buy,
-      sell: resp.sell,
-    );
+        typeID: typeID,
+        server: server,
+        summary: PriceSummary(all: resp.all, buy: resp.buy, sell: resp.sell),
+        orders: const OrderGroup(buy: [], sell: []));
   }
 }

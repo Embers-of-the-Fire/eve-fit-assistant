@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/market/market.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -39,13 +40,21 @@ class MarketStorage {
         return price.price;
       }
     }
-    final price = await CEveMarketResponse.request(typeID, server);
+    final price = await switch (GlobalPreference.marketApi) {
+      MarketApi.cEveMarket => CEveMarketResponse.request(typeID, server),
+      MarketApi.esi => ESIMarketResponse.request(typeID, server),
+    };
     prices.write[typeID] = MarketPriceCache.now(price);
     return price;
   }
 
-  void clearCache() {
-    _tqPrices.write.clear();
-    _sePrices.write.clear();
+  void clearCache([int? typeID]) {
+    if (typeID != null) {
+      _tqPrices.write.remove(typeID);
+      _sePrices.write.remove(typeID);
+    } else {
+      _tqPrices.write.clear();
+      _sePrices.write.clear();
+    }
   }
 }

@@ -41,10 +41,10 @@ class MarketListTile extends ConsumerWidget {
           subtitle: Text('网络连接出错：$error', softWrap: true),
         ),
       AsyncData(:final value) => ListTile(
-          title: Text('欧服：买单：${value.tranquility.buy.max.moneyFormat}\n'
-              '　　　卖单：${value.tranquility.sell.min.moneyFormat}\n'
-              '国服：买单：${value.serenity.buy.max.moneyFormat}\n'
-              '　　　卖单：${value.serenity.sell.min.moneyFormat}'),
+          title: Text('欧服：买单：${value.tranquility.summary.buy.max.moneyFormat}\n'
+              '　　　卖单：${value.tranquility.summary.sell.min.moneyFormat}\n'
+              '国服：买单：${value.serenity.summary.buy.max.moneyFormat}\n'
+              '　　　卖单：${value.serenity.summary.sell.min.moneyFormat}'),
         ),
       AsyncLoading() || _ => const ListTile(
             title: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 10, children: [

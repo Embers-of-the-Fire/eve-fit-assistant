@@ -17,9 +17,8 @@ T _$identity<T>(T value) => value;
 mixin _$MarketPrice {
   int get typeID;
   Server get server;
-  Price get all;
-  Price get buy;
-  Price get sell;
+  PriceSummary get summary;
+  OrderGroup get orders;
 
   /// Create a copy of MarketPrice
   /// with the given fields replaced by the non-null parameter values.
@@ -38,18 +37,17 @@ mixin _$MarketPrice {
             other is MarketPrice &&
             (identical(other.typeID, typeID) || other.typeID == typeID) &&
             (identical(other.server, server) || other.server == server) &&
-            (identical(other.all, all) || other.all == all) &&
-            (identical(other.buy, buy) || other.buy == buy) &&
-            (identical(other.sell, sell) || other.sell == sell));
+            (identical(other.summary, summary) || other.summary == summary) &&
+            (identical(other.orders, orders) || other.orders == orders));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, typeID, server, all, buy, sell);
+  int get hashCode => Object.hash(runtimeType, typeID, server, summary, orders);
 
   @override
   String toString() {
-    return 'MarketPrice(typeID: $typeID, server: $server, all: $all, buy: $buy, sell: $sell)';
+    return 'MarketPrice(typeID: $typeID, server: $server, summary: $summary, orders: $orders)';
   }
 }
 
@@ -59,11 +57,11 @@ abstract mixin class $MarketPriceCopyWith<$Res> {
           MarketPrice value, $Res Function(MarketPrice) _then) =
       _$MarketPriceCopyWithImpl;
   @useResult
-  $Res call({int typeID, Server server, Price all, Price buy, Price sell});
+  $Res call(
+      {int typeID, Server server, PriceSummary summary, OrderGroup orders});
 
-  $PriceCopyWith<$Res> get all;
-  $PriceCopyWith<$Res> get buy;
-  $PriceCopyWith<$Res> get sell;
+  $PriceSummaryCopyWith<$Res> get summary;
+  $OrderGroupCopyWith<$Res> get orders;
 }
 
 /// @nodoc
@@ -80,9 +78,8 @@ class _$MarketPriceCopyWithImpl<$Res> implements $MarketPriceCopyWith<$Res> {
   $Res call({
     Object? typeID = null,
     Object? server = null,
-    Object? all = null,
-    Object? buy = null,
-    Object? sell = null,
+    Object? summary = null,
+    Object? orders = null,
   }) {
     return _then(_self.copyWith(
       typeID: null == typeID
@@ -93,18 +90,14 @@ class _$MarketPriceCopyWithImpl<$Res> implements $MarketPriceCopyWith<$Res> {
           ? _self.server
           : server // ignore: cast_nullable_to_non_nullable
               as Server,
-      all: null == all
-          ? _self.all
-          : all // ignore: cast_nullable_to_non_nullable
-              as Price,
-      buy: null == buy
-          ? _self.buy
-          : buy // ignore: cast_nullable_to_non_nullable
-              as Price,
-      sell: null == sell
-          ? _self.sell
-          : sell // ignore: cast_nullable_to_non_nullable
-              as Price,
+      summary: null == summary
+          ? _self.summary
+          : summary // ignore: cast_nullable_to_non_nullable
+              as PriceSummary,
+      orders: null == orders
+          ? _self.orders
+          : orders // ignore: cast_nullable_to_non_nullable
+              as OrderGroup,
     ));
   }
 
@@ -112,9 +105,9 @@ class _$MarketPriceCopyWithImpl<$Res> implements $MarketPriceCopyWith<$Res> {
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $PriceCopyWith<$Res> get all {
-    return $PriceCopyWith<$Res>(_self.all, (value) {
-      return _then(_self.copyWith(all: value));
+  $PriceSummaryCopyWith<$Res> get summary {
+    return $PriceSummaryCopyWith<$Res>(_self.summary, (value) {
+      return _then(_self.copyWith(summary: value));
     });
   }
 
@@ -122,19 +115,9 @@ class _$MarketPriceCopyWithImpl<$Res> implements $MarketPriceCopyWith<$Res> {
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $PriceCopyWith<$Res> get buy {
-    return $PriceCopyWith<$Res>(_self.buy, (value) {
-      return _then(_self.copyWith(buy: value));
-    });
-  }
-
-  /// Create a copy of MarketPrice
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $PriceCopyWith<$Res> get sell {
-    return $PriceCopyWith<$Res>(_self.sell, (value) {
-      return _then(_self.copyWith(sell: value));
+  $OrderGroupCopyWith<$Res> get orders {
+    return $OrderGroupCopyWith<$Res>(_self.orders, (value) {
+      return _then(_self.copyWith(orders: value));
     });
   }
 }
@@ -145,9 +128,8 @@ class _MarketPrice implements MarketPrice {
   const _MarketPrice(
       {required this.typeID,
       required this.server,
-      required this.all,
-      required this.buy,
-      required this.sell});
+      required this.summary,
+      required this.orders});
   factory _MarketPrice.fromJson(Map<String, dynamic> json) =>
       _$MarketPriceFromJson(json);
 
@@ -156,11 +138,9 @@ class _MarketPrice implements MarketPrice {
   @override
   final Server server;
   @override
-  final Price all;
+  final PriceSummary summary;
   @override
-  final Price buy;
-  @override
-  final Price sell;
+  final OrderGroup orders;
 
   /// Create a copy of MarketPrice
   /// with the given fields replaced by the non-null parameter values.
@@ -184,18 +164,17 @@ class _MarketPrice implements MarketPrice {
             other is _MarketPrice &&
             (identical(other.typeID, typeID) || other.typeID == typeID) &&
             (identical(other.server, server) || other.server == server) &&
-            (identical(other.all, all) || other.all == all) &&
-            (identical(other.buy, buy) || other.buy == buy) &&
-            (identical(other.sell, sell) || other.sell == sell));
+            (identical(other.summary, summary) || other.summary == summary) &&
+            (identical(other.orders, orders) || other.orders == orders));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, typeID, server, all, buy, sell);
+  int get hashCode => Object.hash(runtimeType, typeID, server, summary, orders);
 
   @override
   String toString() {
-    return 'MarketPrice(typeID: $typeID, server: $server, all: $all, buy: $buy, sell: $sell)';
+    return 'MarketPrice(typeID: $typeID, server: $server, summary: $summary, orders: $orders)';
   }
 }
 
@@ -207,14 +186,13 @@ abstract mixin class _$MarketPriceCopyWith<$Res>
       __$MarketPriceCopyWithImpl;
   @override
   @useResult
-  $Res call({int typeID, Server server, Price all, Price buy, Price sell});
+  $Res call(
+      {int typeID, Server server, PriceSummary summary, OrderGroup orders});
 
   @override
-  $PriceCopyWith<$Res> get all;
+  $PriceSummaryCopyWith<$Res> get summary;
   @override
-  $PriceCopyWith<$Res> get buy;
-  @override
-  $PriceCopyWith<$Res> get sell;
+  $OrderGroupCopyWith<$Res> get orders;
 }
 
 /// @nodoc
@@ -231,9 +209,8 @@ class __$MarketPriceCopyWithImpl<$Res> implements _$MarketPriceCopyWith<$Res> {
   $Res call({
     Object? typeID = null,
     Object? server = null,
-    Object? all = null,
-    Object? buy = null,
-    Object? sell = null,
+    Object? summary = null,
+    Object? orders = null,
   }) {
     return _then(_MarketPrice(
       typeID: null == typeID
@@ -244,6 +221,105 @@ class __$MarketPriceCopyWithImpl<$Res> implements _$MarketPriceCopyWith<$Res> {
           ? _self.server
           : server // ignore: cast_nullable_to_non_nullable
               as Server,
+      summary: null == summary
+          ? _self.summary
+          : summary // ignore: cast_nullable_to_non_nullable
+              as PriceSummary,
+      orders: null == orders
+          ? _self.orders
+          : orders // ignore: cast_nullable_to_non_nullable
+              as OrderGroup,
+    ));
+  }
+
+  /// Create a copy of MarketPrice
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceSummaryCopyWith<$Res> get summary {
+    return $PriceSummaryCopyWith<$Res>(_self.summary, (value) {
+      return _then(_self.copyWith(summary: value));
+    });
+  }
+
+  /// Create a copy of MarketPrice
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $OrderGroupCopyWith<$Res> get orders {
+    return $OrderGroupCopyWith<$Res>(_self.orders, (value) {
+      return _then(_self.copyWith(orders: value));
+    });
+  }
+}
+
+/// @nodoc
+mixin _$PriceSummary {
+  Price get all;
+  Price get buy;
+  Price get sell;
+
+  /// Create a copy of PriceSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $PriceSummaryCopyWith<PriceSummary> get copyWith =>
+      _$PriceSummaryCopyWithImpl<PriceSummary>(
+          this as PriceSummary, _$identity);
+
+  /// Serializes this PriceSummary to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is PriceSummary &&
+            (identical(other.all, all) || other.all == all) &&
+            (identical(other.buy, buy) || other.buy == buy) &&
+            (identical(other.sell, sell) || other.sell == sell));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, all, buy, sell);
+
+  @override
+  String toString() {
+    return 'PriceSummary(all: $all, buy: $buy, sell: $sell)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $PriceSummaryCopyWith<$Res> {
+  factory $PriceSummaryCopyWith(
+          PriceSummary value, $Res Function(PriceSummary) _then) =
+      _$PriceSummaryCopyWithImpl;
+  @useResult
+  $Res call({Price all, Price buy, Price sell});
+
+  $PriceCopyWith<$Res> get all;
+  $PriceCopyWith<$Res> get buy;
+  $PriceCopyWith<$Res> get sell;
+}
+
+/// @nodoc
+class _$PriceSummaryCopyWithImpl<$Res> implements $PriceSummaryCopyWith<$Res> {
+  _$PriceSummaryCopyWithImpl(this._self, this._then);
+
+  final PriceSummary _self;
+  final $Res Function(PriceSummary) _then;
+
+  /// Create a copy of PriceSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? all = null,
+    Object? buy = null,
+    Object? sell = null,
+  }) {
+    return _then(_self.copyWith(
       all: null == all
           ? _self.all
           : all // ignore: cast_nullable_to_non_nullable
@@ -259,7 +335,7 @@ class __$MarketPriceCopyWithImpl<$Res> implements _$MarketPriceCopyWith<$Res> {
     ));
   }
 
-  /// Create a copy of MarketPrice
+  /// Create a copy of PriceSummary
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
@@ -269,7 +345,7 @@ class __$MarketPriceCopyWithImpl<$Res> implements _$MarketPriceCopyWith<$Res> {
     });
   }
 
-  /// Create a copy of MarketPrice
+  /// Create a copy of PriceSummary
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
@@ -279,7 +355,139 @@ class __$MarketPriceCopyWithImpl<$Res> implements _$MarketPriceCopyWith<$Res> {
     });
   }
 
-  /// Create a copy of MarketPrice
+  /// Create a copy of PriceSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get sell {
+    return $PriceCopyWith<$Res>(_self.sell, (value) {
+      return _then(_self.copyWith(sell: value));
+    });
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _PriceSummary implements PriceSummary {
+  const _PriceSummary(
+      {required this.all, required this.buy, required this.sell});
+  factory _PriceSummary.fromJson(Map<String, dynamic> json) =>
+      _$PriceSummaryFromJson(json);
+
+  @override
+  final Price all;
+  @override
+  final Price buy;
+  @override
+  final Price sell;
+
+  /// Create a copy of PriceSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$PriceSummaryCopyWith<_PriceSummary> get copyWith =>
+      __$PriceSummaryCopyWithImpl<_PriceSummary>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$PriceSummaryToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _PriceSummary &&
+            (identical(other.all, all) || other.all == all) &&
+            (identical(other.buy, buy) || other.buy == buy) &&
+            (identical(other.sell, sell) || other.sell == sell));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, all, buy, sell);
+
+  @override
+  String toString() {
+    return 'PriceSummary(all: $all, buy: $buy, sell: $sell)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$PriceSummaryCopyWith<$Res>
+    implements $PriceSummaryCopyWith<$Res> {
+  factory _$PriceSummaryCopyWith(
+          _PriceSummary value, $Res Function(_PriceSummary) _then) =
+      __$PriceSummaryCopyWithImpl;
+  @override
+  @useResult
+  $Res call({Price all, Price buy, Price sell});
+
+  @override
+  $PriceCopyWith<$Res> get all;
+  @override
+  $PriceCopyWith<$Res> get buy;
+  @override
+  $PriceCopyWith<$Res> get sell;
+}
+
+/// @nodoc
+class __$PriceSummaryCopyWithImpl<$Res>
+    implements _$PriceSummaryCopyWith<$Res> {
+  __$PriceSummaryCopyWithImpl(this._self, this._then);
+
+  final _PriceSummary _self;
+  final $Res Function(_PriceSummary) _then;
+
+  /// Create a copy of PriceSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? all = null,
+    Object? buy = null,
+    Object? sell = null,
+  }) {
+    return _then(_PriceSummary(
+      all: null == all
+          ? _self.all
+          : all // ignore: cast_nullable_to_non_nullable
+              as Price,
+      buy: null == buy
+          ? _self.buy
+          : buy // ignore: cast_nullable_to_non_nullable
+              as Price,
+      sell: null == sell
+          ? _self.sell
+          : sell // ignore: cast_nullable_to_non_nullable
+              as Price,
+    ));
+  }
+
+  /// Create a copy of PriceSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get all {
+    return $PriceCopyWith<$Res>(_self.all, (value) {
+      return _then(_self.copyWith(all: value));
+    });
+  }
+
+  /// Create a copy of PriceSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PriceCopyWith<$Res> get buy {
+    return $PriceCopyWith<$Res>(_self.buy, (value) {
+      return _then(_self.copyWith(buy: value));
+    });
+  }
+
+  /// Create a copy of PriceSummary
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
@@ -453,6 +661,367 @@ class __$PriceCopyWithImpl<$Res> implements _$PriceCopyWith<$Res> {
           ? _self.volume
           : volume // ignore: cast_nullable_to_non_nullable
               as int,
+    ));
+  }
+}
+
+/// @nodoc
+mixin _$OrderGroup {
+  /// `buy` orders should be sorted in descending order by price.
+  List<Order> get buy;
+
+  /// `sell` orders should be sorted in ascending order by price.
+  List<Order> get sell;
+
+  /// Create a copy of OrderGroup
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $OrderGroupCopyWith<OrderGroup> get copyWith =>
+      _$OrderGroupCopyWithImpl<OrderGroup>(this as OrderGroup, _$identity);
+
+  /// Serializes this OrderGroup to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is OrderGroup &&
+            const DeepCollectionEquality().equals(other.buy, buy) &&
+            const DeepCollectionEquality().equals(other.sell, sell));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      const DeepCollectionEquality().hash(buy),
+      const DeepCollectionEquality().hash(sell));
+
+  @override
+  String toString() {
+    return 'OrderGroup(buy: $buy, sell: $sell)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $OrderGroupCopyWith<$Res> {
+  factory $OrderGroupCopyWith(
+          OrderGroup value, $Res Function(OrderGroup) _then) =
+      _$OrderGroupCopyWithImpl;
+  @useResult
+  $Res call({List<Order> buy, List<Order> sell});
+}
+
+/// @nodoc
+class _$OrderGroupCopyWithImpl<$Res> implements $OrderGroupCopyWith<$Res> {
+  _$OrderGroupCopyWithImpl(this._self, this._then);
+
+  final OrderGroup _self;
+  final $Res Function(OrderGroup) _then;
+
+  /// Create a copy of OrderGroup
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? buy = null,
+    Object? sell = null,
+  }) {
+    return _then(_self.copyWith(
+      buy: null == buy
+          ? _self.buy
+          : buy // ignore: cast_nullable_to_non_nullable
+              as List<Order>,
+      sell: null == sell
+          ? _self.sell
+          : sell // ignore: cast_nullable_to_non_nullable
+              as List<Order>,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _OrderGroup implements OrderGroup {
+  const _OrderGroup(
+      {required final List<Order> buy, required final List<Order> sell})
+      : _buy = buy,
+        _sell = sell;
+  factory _OrderGroup.fromJson(Map<String, dynamic> json) =>
+      _$OrderGroupFromJson(json);
+
+  /// `buy` orders should be sorted in descending order by price.
+  final List<Order> _buy;
+
+  /// `buy` orders should be sorted in descending order by price.
+  @override
+  List<Order> get buy {
+    if (_buy is EqualUnmodifiableListView) return _buy;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_buy);
+  }
+
+  /// `sell` orders should be sorted in ascending order by price.
+  final List<Order> _sell;
+
+  /// `sell` orders should be sorted in ascending order by price.
+  @override
+  List<Order> get sell {
+    if (_sell is EqualUnmodifiableListView) return _sell;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_sell);
+  }
+
+  /// Create a copy of OrderGroup
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$OrderGroupCopyWith<_OrderGroup> get copyWith =>
+      __$OrderGroupCopyWithImpl<_OrderGroup>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$OrderGroupToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _OrderGroup &&
+            const DeepCollectionEquality().equals(other._buy, _buy) &&
+            const DeepCollectionEquality().equals(other._sell, _sell));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      const DeepCollectionEquality().hash(_buy),
+      const DeepCollectionEquality().hash(_sell));
+
+  @override
+  String toString() {
+    return 'OrderGroup(buy: $buy, sell: $sell)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$OrderGroupCopyWith<$Res>
+    implements $OrderGroupCopyWith<$Res> {
+  factory _$OrderGroupCopyWith(
+          _OrderGroup value, $Res Function(_OrderGroup) _then) =
+      __$OrderGroupCopyWithImpl;
+  @override
+  @useResult
+  $Res call({List<Order> buy, List<Order> sell});
+}
+
+/// @nodoc
+class __$OrderGroupCopyWithImpl<$Res> implements _$OrderGroupCopyWith<$Res> {
+  __$OrderGroupCopyWithImpl(this._self, this._then);
+
+  final _OrderGroup _self;
+  final $Res Function(_OrderGroup) _then;
+
+  /// Create a copy of OrderGroup
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? buy = null,
+    Object? sell = null,
+  }) {
+    return _then(_OrderGroup(
+      buy: null == buy
+          ? _self._buy
+          : buy // ignore: cast_nullable_to_non_nullable
+              as List<Order>,
+      sell: null == sell
+          ? _self._sell
+          : sell // ignore: cast_nullable_to_non_nullable
+              as List<Order>,
+    ));
+  }
+}
+
+/// @nodoc
+mixin _$Order {
+  int get volumeRemain;
+  int get volumeTotal;
+  double get price;
+
+  /// Create a copy of Order
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $OrderCopyWith<Order> get copyWith =>
+      _$OrderCopyWithImpl<Order>(this as Order, _$identity);
+
+  /// Serializes this Order to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is Order &&
+            (identical(other.volumeRemain, volumeRemain) ||
+                other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) ||
+                other.volumeTotal == volumeTotal) &&
+            (identical(other.price, price) || other.price == price));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, volumeRemain, volumeTotal, price);
+
+  @override
+  String toString() {
+    return 'Order(volumeRemain: $volumeRemain, volumeTotal: $volumeTotal, price: $price)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $OrderCopyWith<$Res> {
+  factory $OrderCopyWith(Order value, $Res Function(Order) _then) =
+      _$OrderCopyWithImpl;
+  @useResult
+  $Res call({int volumeRemain, int volumeTotal, double price});
+}
+
+/// @nodoc
+class _$OrderCopyWithImpl<$Res> implements $OrderCopyWith<$Res> {
+  _$OrderCopyWithImpl(this._self, this._then);
+
+  final Order _self;
+  final $Res Function(Order) _then;
+
+  /// Create a copy of Order
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? volumeRemain = null,
+    Object? volumeTotal = null,
+    Object? price = null,
+  }) {
+    return _then(_self.copyWith(
+      volumeRemain: null == volumeRemain
+          ? _self.volumeRemain
+          : volumeRemain // ignore: cast_nullable_to_non_nullable
+              as int,
+      volumeTotal: null == volumeTotal
+          ? _self.volumeTotal
+          : volumeTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      price: null == price
+          ? _self.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as double,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _Order implements Order {
+  const _Order(
+      {required this.volumeRemain,
+      required this.volumeTotal,
+      required this.price});
+  factory _Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
+
+  @override
+  final int volumeRemain;
+  @override
+  final int volumeTotal;
+  @override
+  final double price;
+
+  /// Create a copy of Order
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$OrderCopyWith<_Order> get copyWith =>
+      __$OrderCopyWithImpl<_Order>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$OrderToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _Order &&
+            (identical(other.volumeRemain, volumeRemain) ||
+                other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) ||
+                other.volumeTotal == volumeTotal) &&
+            (identical(other.price, price) || other.price == price));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, volumeRemain, volumeTotal, price);
+
+  @override
+  String toString() {
+    return 'Order(volumeRemain: $volumeRemain, volumeTotal: $volumeTotal, price: $price)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$OrderCopyWith<$Res> implements $OrderCopyWith<$Res> {
+  factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) =
+      __$OrderCopyWithImpl;
+  @override
+  @useResult
+  $Res call({int volumeRemain, int volumeTotal, double price});
+}
+
+/// @nodoc
+class __$OrderCopyWithImpl<$Res> implements _$OrderCopyWith<$Res> {
+  __$OrderCopyWithImpl(this._self, this._then);
+
+  final _Order _self;
+  final $Res Function(_Order) _then;
+
+  /// Create a copy of Order
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? volumeRemain = null,
+    Object? volumeTotal = null,
+    Object? price = null,
+  }) {
+    return _then(_Order(
+      volumeRemain: null == volumeRemain
+          ? _self.volumeRemain
+          : volumeRemain // ignore: cast_nullable_to_non_nullable
+              as int,
+      volumeTotal: null == volumeTotal
+          ? _self.volumeTotal
+          : volumeTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      price: null == price
+          ? _self.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as double,
     ));
   }
 }
@@ -700,6 +1269,261 @@ class __$CEveMarketResponseCopyWithImpl<$Res>
     return $PriceCopyWith<$Res>(_self.sell, (value) {
       return _then(_self.copyWith(sell: value));
     });
+  }
+}
+
+/// @nodoc
+mixin _$ESIMarketResponse {
+// ignore: invalid_annotation_target
+  @JsonKey(name: 'type_id')
+  int get typeID;
+  int get volumeRemain;
+  int get volumeTotal;
+  double get price;
+  bool get isBuyOrder; // ignore: invalid_annotation_target
+  @JsonKey(name: 'location_id')
+  int get locationID;
+
+  /// Create a copy of ESIMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $ESIMarketResponseCopyWith<ESIMarketResponse> get copyWith =>
+      _$ESIMarketResponseCopyWithImpl<ESIMarketResponse>(
+          this as ESIMarketResponse, _$identity);
+
+  /// Serializes this ESIMarketResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is ESIMarketResponse &&
+            (identical(other.typeID, typeID) || other.typeID == typeID) &&
+            (identical(other.volumeRemain, volumeRemain) ||
+                other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) ||
+                other.volumeTotal == volumeTotal) &&
+            (identical(other.price, price) || other.price == price) &&
+            (identical(other.isBuyOrder, isBuyOrder) ||
+                other.isBuyOrder == isBuyOrder) &&
+            (identical(other.locationID, locationID) ||
+                other.locationID == locationID));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, typeID, volumeRemain,
+      volumeTotal, price, isBuyOrder, locationID);
+
+  @override
+  String toString() {
+    return 'ESIMarketResponse(typeID: $typeID, volumeRemain: $volumeRemain, volumeTotal: $volumeTotal, price: $price, isBuyOrder: $isBuyOrder, locationID: $locationID)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $ESIMarketResponseCopyWith<$Res> {
+  factory $ESIMarketResponseCopyWith(
+          ESIMarketResponse value, $Res Function(ESIMarketResponse) _then) =
+      _$ESIMarketResponseCopyWithImpl;
+  @useResult
+  $Res call(
+      {@JsonKey(name: 'type_id') int typeID,
+      int volumeRemain,
+      int volumeTotal,
+      double price,
+      bool isBuyOrder,
+      @JsonKey(name: 'location_id') int locationID});
+}
+
+/// @nodoc
+class _$ESIMarketResponseCopyWithImpl<$Res>
+    implements $ESIMarketResponseCopyWith<$Res> {
+  _$ESIMarketResponseCopyWithImpl(this._self, this._then);
+
+  final ESIMarketResponse _self;
+  final $Res Function(ESIMarketResponse) _then;
+
+  /// Create a copy of ESIMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? typeID = null,
+    Object? volumeRemain = null,
+    Object? volumeTotal = null,
+    Object? price = null,
+    Object? isBuyOrder = null,
+    Object? locationID = null,
+  }) {
+    return _then(_self.copyWith(
+      typeID: null == typeID
+          ? _self.typeID
+          : typeID // ignore: cast_nullable_to_non_nullable
+              as int,
+      volumeRemain: null == volumeRemain
+          ? _self.volumeRemain
+          : volumeRemain // ignore: cast_nullable_to_non_nullable
+              as int,
+      volumeTotal: null == volumeTotal
+          ? _self.volumeTotal
+          : volumeTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      price: null == price
+          ? _self.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as double,
+      isBuyOrder: null == isBuyOrder
+          ? _self.isBuyOrder
+          : isBuyOrder // ignore: cast_nullable_to_non_nullable
+              as bool,
+      locationID: null == locationID
+          ? _self.locationID
+          : locationID // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class _ESIMarketResponse implements ESIMarketResponse {
+  const _ESIMarketResponse(
+      {@JsonKey(name: 'type_id') required this.typeID,
+      required this.volumeRemain,
+      required this.volumeTotal,
+      required this.price,
+      required this.isBuyOrder,
+      @JsonKey(name: 'location_id') required this.locationID});
+  factory _ESIMarketResponse.fromJson(Map<String, dynamic> json) =>
+      _$ESIMarketResponseFromJson(json);
+
+// ignore: invalid_annotation_target
+  @override
+  @JsonKey(name: 'type_id')
+  final int typeID;
+  @override
+  final int volumeRemain;
+  @override
+  final int volumeTotal;
+  @override
+  final double price;
+  @override
+  final bool isBuyOrder;
+// ignore: invalid_annotation_target
+  @override
+  @JsonKey(name: 'location_id')
+  final int locationID;
+
+  /// Create a copy of ESIMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$ESIMarketResponseCopyWith<_ESIMarketResponse> get copyWith =>
+      __$ESIMarketResponseCopyWithImpl<_ESIMarketResponse>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$ESIMarketResponseToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _ESIMarketResponse &&
+            (identical(other.typeID, typeID) || other.typeID == typeID) &&
+            (identical(other.volumeRemain, volumeRemain) ||
+                other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) ||
+                other.volumeTotal == volumeTotal) &&
+            (identical(other.price, price) || other.price == price) &&
+            (identical(other.isBuyOrder, isBuyOrder) ||
+                other.isBuyOrder == isBuyOrder) &&
+            (identical(other.locationID, locationID) ||
+                other.locationID == locationID));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, typeID, volumeRemain,
+      volumeTotal, price, isBuyOrder, locationID);
+
+  @override
+  String toString() {
+    return 'ESIMarketResponse(typeID: $typeID, volumeRemain: $volumeRemain, volumeTotal: $volumeTotal, price: $price, isBuyOrder: $isBuyOrder, locationID: $locationID)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$ESIMarketResponseCopyWith<$Res>
+    implements $ESIMarketResponseCopyWith<$Res> {
+  factory _$ESIMarketResponseCopyWith(
+          _ESIMarketResponse value, $Res Function(_ESIMarketResponse) _then) =
+      __$ESIMarketResponseCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {@JsonKey(name: 'type_id') int typeID,
+      int volumeRemain,
+      int volumeTotal,
+      double price,
+      bool isBuyOrder,
+      @JsonKey(name: 'location_id') int locationID});
+}
+
+/// @nodoc
+class __$ESIMarketResponseCopyWithImpl<$Res>
+    implements _$ESIMarketResponseCopyWith<$Res> {
+  __$ESIMarketResponseCopyWithImpl(this._self, this._then);
+
+  final _ESIMarketResponse _self;
+  final $Res Function(_ESIMarketResponse) _then;
+
+  /// Create a copy of ESIMarketResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? typeID = null,
+    Object? volumeRemain = null,
+    Object? volumeTotal = null,
+    Object? price = null,
+    Object? isBuyOrder = null,
+    Object? locationID = null,
+  }) {
+    return _then(_ESIMarketResponse(
+      typeID: null == typeID
+          ? _self.typeID
+          : typeID // ignore: cast_nullable_to_non_nullable
+              as int,
+      volumeRemain: null == volumeRemain
+          ? _self.volumeRemain
+          : volumeRemain // ignore: cast_nullable_to_non_nullable
+              as int,
+      volumeTotal: null == volumeTotal
+          ? _self.volumeTotal
+          : volumeTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      price: null == price
+          ? _self.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as double,
+      isBuyOrder: null == isBuyOrder
+          ? _self.isBuyOrder
+          : isBuyOrder // ignore: cast_nullable_to_non_nullable
+              as bool,
+      locationID: null == locationID
+          ? _self.locationID
+          : locationID // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
