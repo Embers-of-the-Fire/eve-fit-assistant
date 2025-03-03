@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 part './preference/item_list_behavior.dart';
 part './preference/market_api.dart';
+part './preference/debug.dart';
 
 class PreferencePage extends StatelessWidget {
   const PreferencePage({super.key});
@@ -34,6 +35,16 @@ class PreferencePage extends StatelessWidget {
                   ))),
           Divider(height: 0),
           MarketApiTile(),
+          Divider(height: 0),
+          ListTile(
+              minTileHeight: 0,
+              title: Text('开发者',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ))),
+          Divider(height: 0),
+          DebugTile(),
         ]),
       );
 }
