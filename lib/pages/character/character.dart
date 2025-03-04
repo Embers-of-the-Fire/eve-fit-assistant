@@ -33,6 +33,7 @@ class _CharacterPageState extends State<CharacterPage> {
           children: [
             ListTile(
                 shape: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+                leading: const SizedBox.shrink(),
                 title: const Text('默认角色')),
             ...[GlobalStorage().character.predefinedAll5, GlobalStorage().character.predefinedAll0]
                 .map((el) => _CharacterListTile(
@@ -42,6 +43,16 @@ class _CharacterPageState extends State<CharacterPage> {
             ListTile(
                 shape:
                     Border.symmetric(horizontal: BorderSide(color: Theme.of(context).dividerColor)),
+                leading: Ink(
+                    decoration:
+                        const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(20))),
+                    child: InkWell(
+                      onTap: () => _onCopy(
+                          name: GlobalStorage().character.predefinedAll5.name,
+                          id: GlobalStorage().character.predefinedAll5.id),
+                      borderRadius: const BorderRadius.all(Radius.circular(20)),
+                      child: const Icon(Icons.add_circle_outline),
+                    )),
                 title: const Text('自定义角色')),
             Expanded(
                 child: ListView(
