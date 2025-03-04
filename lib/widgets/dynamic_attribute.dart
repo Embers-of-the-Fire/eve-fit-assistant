@@ -2,6 +2,7 @@ import 'dart:math' show Random;
 
 import 'package:eve_fit_assistant/native/glue/unit.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
+import 'package:eve_fit_assistant/storage/static/attribute.dart';
 import 'package:eve_fit_assistant/storage/static/dynamic_item.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
@@ -28,8 +29,12 @@ class DynamicAttributeTab extends ConsumerStatefulWidget {
   ConsumerState<ConsumerStatefulWidget> createState() => DynamicAttributeTabState();
 }
 
-class DynamicAttributeTabState extends ConsumerState<DynamicAttributeTab> {
+class DynamicAttributeTabState extends ConsumerState<DynamicAttributeTab>
+    with AutomaticKeepAliveClientMixin {
   Map<int, ValueNotifier<double>> attributeNotifier = {};
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -47,6 +52,7 @@ class DynamicAttributeTabState extends ConsumerState<DynamicAttributeTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final fitNotifier = ref.read(fitRecordNotifierProvider(widget.fitID).notifier);
 
     final typeAttr = GlobalStorage().fitEngine.getTypeAttr(widget.typeID);
@@ -134,14 +140,22 @@ class _DynamicAttributeRow extends StatefulWidget {
 class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  late final AttributeItem attributeItem;
   late final DynamicItem dyn;
+
+  void _setControllerToDefault([double? def]) {
+    _controller.text =
+        (attributeItem.unitID?.displayNum(widget.value * (def ?? widget.factorNotifier.value)) ?? 0)
+            .toStringAsFixed(2);
+  }
 
   @override
   void initState() {
     dyn = GlobalStorage().static.dynamicItems[widget.mutaplasmidID]!;
-    _controller.text = (widget.value * widget.factorNotifier.value).toStringAsFixed(2);
+    attributeItem = GlobalStorage().static.attributes[widget.attributeID]!;
+    _setControllerToDefault();
     widget.factorNotifier.addListener(() {
-      _controller.text = (widget.value * widget.factorNotifier.value).toStringAsFixed(2);
+      _setControllerToDefault();
     });
     _focusNode.addListener(() {
       if (!_focusNode.hasFocus) {
@@ -157,7 +171,7 @@ class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
   void setFactor(double value) {
     setState(() {
       widget.factorNotifier.value = value;
-      _controller.text = (widget.value * value).toStringAsFixed(2);
+      _setControllerToDefault(value);
     });
   }
 
@@ -167,13 +181,13 @@ class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
 
     final num = double.tryParse(_controller.text);
     if (num == null) {
-      _controller.text = (widget.value * widget.factorNotifier.value).toStringAsFixed(2);
+      _setControllerToDefault();
       return widget.value * widget.factorNotifier.value;
     } else if (num < widget.value * min) {
-      _controller.text = (widget.value * min).toStringAsFixed(2);
+      _setControllerToDefault(min);
       return widget.value * min;
     } else if (num > widget.value * max) {
-      _controller.text = (widget.value * max).toStringAsFixed(2);
+      _setControllerToDefault(max);
       return widget.value * max;
     }
     return num;
@@ -186,8 +200,10 @@ class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
         final attr = GlobalStorage().static.attributes[widget.attributeID]!;
         final min = dyn.data.attributes[widget.attributeID]!.min;
         final max = dyn.data.attributes[widget.attributeID]!.max;
-        final minValue = attr.highIsGood ? widget.value * min : widget.value * max;
-        final maxValue = attr.highIsGood ? widget.value * max : widget.value * min;
+        final minValue =
+            (widget.value.isNegative != attr.highIsGood) ? widget.value * min : widget.value * max;
+        final maxValue =
+            (widget.value.isNegative != attr.highIsGood) ? widget.value * max : widget.value * min;
         final currentValue = widget.value * factor;
 
         return Column(children: [
@@ -212,7 +228,8 @@ class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
                     .map((u) => u.format(currentValue))
                     .unwrapOr(currentValue.toStringAsFixed(2)),
                 style: TextStyle(
-                    color: switch (factor.compareTo(1) * attr.highIsGood.asSign) {
+                    color: switch (
+                        currentValue.sign * factor.compareTo(1) * attr.highIsGood.asSign) {
                   < 0 => Colors.red,
                   > 0 => Colors.green,
                   _ => Colors.white,
@@ -223,6 +240,7 @@ class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
           const SizedBox(height: 5),
           _RatioBar(
             value: factor,
+            isPositive: !currentValue.isNegative,
             highIsGood: GlobalStorage().static.attributes[widget.attributeID]!.highIsGood,
             min: min,
             max: max,
@@ -236,10 +254,12 @@ class _RatioBar extends StatelessWidget {
   final double min;
   final double max;
 
+  final bool isPositive;
   final bool highIsGood;
 
   const _RatioBar({
     required this.value,
+    required this.isPositive,
     required this.highIsGood,
     required this.min,
     required this.max,
@@ -269,7 +289,7 @@ class _RatioBar extends StatelessWidget {
               decoration: const BoxDecoration(
             border: Border(left: BorderSide(color: Colors.white)),
           ))));
-    } else if (highIsGood && factor > 0 || !highIsGood && factor < 0) {
+    } else if ((isPositive == highIsGood) && factor > 0 || isPositive != highIsGood && factor < 0) {
       children.add(Flexible(
           flex: 100,
           child: Container(

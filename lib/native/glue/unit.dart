@@ -8,9 +8,7 @@ extension UnitExt on UnitType {
 
   String format(double value) => switch (this) {
         UnitType.massFraction => '${(value).toStringAsMaxDecimals(2)} kg/kg',
-        UnitType.milliseconds => value > 1000
-            ? '${(value / 1000).toStringAsMaxDecimals(2)} s'
-            : '${value.toStringAsMaxDecimals(0)} ms',
+        UnitType.milliseconds => '${(value / 1000).toStringAsMaxDecimals(2)} s',
         UnitType.millimeters => '${(value).toStringAsFixed(0)} mm',
         UnitType.megaPascals => '${(value).toStringAsMaxDecimals(2)} MPa',
         UnitType.inverseAbsolutePercent ||
@@ -51,5 +49,21 @@ extension UnitExt on UnitType {
         UnitType.modifierRealPercent =>
           '${value >= 0 ? '+' : ''}${value.toStringAsMaxDecimals(2)} %',
         _ => '${value.toStringAsMaxDecimals(2)} ${unitItem.displayName}',
+      };
+
+  double displayNum(double value) => switch (this) {
+        UnitType.milliseconds => value / 1000,
+        UnitType.inverseAbsolutePercent || UnitType.inversedModifierPercent => (1 - value) * 100,
+        UnitType.modifierPercent => (value - 1) * 100,
+        UnitType.absolutePercent => value * 100,
+        _ => value,
+      };
+
+  double fromDisplayNum(double value) => switch (this) {
+        UnitType.milliseconds => value * 1000,
+        UnitType.inverseAbsolutePercent || UnitType.inversedModifierPercent => 1 - value / 100,
+        UnitType.modifierPercent => 1 + value / 100,
+        UnitType.absolutePercent => value / 100,
+        _ => value,
       };
 }

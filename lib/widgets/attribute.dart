@@ -85,7 +85,7 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
       final title = data.displayNameZH;
       final valueString = data.unitID?.format(value) ?? value.toStringAsMaxDecimals(2);
       final originalValue = original[id];
-      final color = originalValue.map((orig) => data.highIsGood
+      final color = originalValue.map((orig) => (value.isNegative != data.highIsGood)
           ? (orig > value ? Colors.red : (orig < value ? Colors.green : null))
           : (orig > value ? Colors.green : (orig < value ? Colors.red : null)));
       final (titleW, subtitleW) = title.isEmpty
