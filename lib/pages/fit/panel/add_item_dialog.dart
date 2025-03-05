@@ -4,9 +4,12 @@ import 'package:eve_fit_assistant/constant/eve/groups.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
+import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class _DialogMetadata {
   final String title;
@@ -190,16 +193,58 @@ class _AddItemDialog extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => ItemList(
-        breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-        breadcrumbDecoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.grey)),
+  Widget build(BuildContext context) => Column(children: [
+        TypeAheadField<(int, TypeItem)>(
+          onSelected: (data) => onSelect?.call(data.$1),
+          builder: (context, controller, focusNode) => Padding(
+              padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
+              child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  autofocus: false,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: '装备',
+                  ))),
+          itemBuilder: (context, data) {
+            final id = data.$1;
+            final item = data.$2;
+            return ListTile(
+              leading: GlobalStorage().static.icons.getTypeIconSync(id),
+              title: Text(item.nameZH),
+              subtitle: GlobalStorage().static.groups[item.groupID]?.nameZH.text(),
+            );
+          },
+          suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()
+              .static
+              .types
+              .tupleEntries
+              .filter((data) =>
+                  data.$2.published &&
+                  data.$2.nameZH.contains(search) &&
+                  filter.map((u) => u(data.$1)).unwrapOr(true))
+              .toList()),
+          emptyBuilder: (context) => Padding(
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              '未找到相关装备',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
         ),
-        fallbackGroupID: fallbackGroupID,
-        baseGroup: baseBreadcrumbName,
-        breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
-        filter: filter,
-        onSelect: onSelect,
-        onLongPress: (id) => showTypeInfoPage(context, typeID: id),
-      );
+        Expanded(
+            child: ItemList(
+          breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+          breadcrumbDecoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Colors.grey)),
+          ),
+          fallbackGroupID: fallbackGroupID,
+          baseGroup: baseBreadcrumbName,
+          breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+          filter: filter,
+          onSelect: onSelect,
+          onLongPress: (id) => showTypeInfoPage(context, typeID: id),
+        ))
+      ]);
 }
