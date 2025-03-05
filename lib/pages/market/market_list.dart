@@ -154,6 +154,7 @@ class _MarketListState extends State<MarketList> {
                 leading: GlobalStorage().static.icons.getTypeIconSync(id),
                 title: Text(ship.nameZH),
                 subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
+                onLongPress: () => showTypeInfoPage(context, typeID: id),
               );
             },
             suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()
@@ -165,7 +166,7 @@ class _MarketListState extends State<MarketList> {
             emptyBuilder: (context) => Padding(
               padding: const EdgeInsets.all(8),
               child: Text(
-                '未找到相关舰船',
+                '未找到相关物品',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium,
               ),

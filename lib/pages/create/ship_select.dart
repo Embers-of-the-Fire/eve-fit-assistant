@@ -55,6 +55,7 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
                 leading: GlobalStorage().static.icons.getTypeIconSync(id),
                 title: Text(ship.nameZH),
                 subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
+                onLongPress: () => showTypeInfoPage(context, typeID: id),
               );
             },
             suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()

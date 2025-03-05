@@ -213,6 +213,7 @@ class _AddItemDialog extends StatelessWidget {
               leading: GlobalStorage().static.icons.getTypeIconSync(id),
               title: Text(item.nameZH),
               subtitle: GlobalStorage().static.groups[item.groupID]?.nameZH.text(),
+              onLongPress: () => showTypeInfoPage(context, typeID: id),
             );
           },
           suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()
