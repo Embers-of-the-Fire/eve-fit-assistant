@@ -179,11 +179,15 @@ class _DynamicAttributeRowState extends State<_DynamicAttributeRow> {
     final min = dyn.data.attributes[widget.attributeID]!.min;
     final max = dyn.data.attributes[widget.attributeID]!.max;
 
-    final num = double.tryParse(_controller.text);
-    if (num == null) {
+    final numRaw = double.tryParse(_controller.text);
+    if (numRaw == null) {
       _setControllerToDefault();
       return widget.value * widget.factorNotifier.value;
-    } else if (num < widget.value * min) {
+    }
+    final num =
+        GlobalStorage().static.attributes[widget.attributeID]?.unitID?.fromDisplayNum(numRaw) ??
+            numRaw;
+    if (num < widget.value * min) {
       _setControllerToDefault(min);
       return widget.value * min;
     } else if (num > widget.value * max) {
