@@ -141,9 +141,9 @@ extension ItertoolInt on Iterable<int> {
     return sum;
   }
 
-  int? get max => (this as Iterable<num>).max as int?;
+  int? get max => (this as Iterable<num>).maxOrNull as int?;
 
-  int? get min => (this as Iterable<num>).min as int?;
+  int? get min => (this as Iterable<num>).minOrNull as int?;
 
   int get nextPossible {
     int i = 0;
@@ -167,9 +167,9 @@ extension ItertoolDouble on Iterable<double> {
     return sum;
   }
 
-  double? get max => (this as Iterable<num>).max as double?;
+  double? get max => (this as Iterable<num>).maxOrNull as double?;
 
-  double? get min => (this as Iterable<num>).min as double?;
+  double? get min => (this as Iterable<num>).minOrNull as double?;
 }
 
 extension ItertoolFlatten<T> on Iterable<Iterable<T>> {

@@ -44,3 +44,22 @@ extension MapExt<K, V> on Map<K, V> {
 
   Iterable<(K, V)> get tupleEntries => entries.map((e) => (e.key, e.value));
 }
+
+class MapEqual<K, V> {
+  final Map<K, V> _map;
+
+  Map<K, V> get map => _map;
+
+  const MapEqual(this._map);
+
+  @override
+  bool operator ==(Object other) {
+    if (other is MapEqual<K, V>) {
+      return const MapEquality().equals(_map, other._map);
+    }
+    return false;
+  }
+
+  @override
+  int get hashCode => const MapEquality().hash(_map);
+}

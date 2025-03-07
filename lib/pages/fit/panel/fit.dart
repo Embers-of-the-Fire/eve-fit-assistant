@@ -1,6 +1,6 @@
 library;
 
-import 'dart:math';
+import 'dart:math' show Random;
 
 import 'package:eve_fit_assistant/assets/icon.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
@@ -28,17 +28,11 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
-
 part 'config.dart';
-
 part 'drone.dart';
-
 part 'equipment.dart';
-
 part 'fighter.dart';
-
 part 'fit.g.dart';
-
 part 'info.dart';
 
 Future<void> intoFitPage(BuildContext context, String fitID) async {

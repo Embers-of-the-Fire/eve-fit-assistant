@@ -3,6 +3,7 @@ library;
 import 'dart:developer' show log;
 import 'dart:math' show Random;
 
+import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
