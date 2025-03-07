@@ -154,6 +154,7 @@ class _MarketListState extends State<MarketList> {
                 leading: GlobalStorage().static.icons.getTypeIconSync(id),
                 title: Text(ship.nameZH),
                 subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
+                onTap: () => _onTapItem(id),
                 onLongPress: () => showTypeInfoPage(context, typeID: id),
               );
             },
