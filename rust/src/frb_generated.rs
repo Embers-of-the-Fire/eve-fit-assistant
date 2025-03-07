@@ -442,6 +442,7 @@ fn wire__crate__api__data__EveDatabase_init_impl(
             let api_dogma_effect_buffer = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_type_dogma_buffer = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_types_buffer = <Vec<u8>>::sse_decode(&mut deserializer);
+            let api_buff_collections_buffer = <Vec<u8>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -451,6 +452,7 @@ fn wire__crate__api__data__EveDatabase_init_impl(
                             &api_dogma_effect_buffer,
                             &api_type_dogma_buffer,
                             &api_types_buffer,
+                            &api_buff_collections_buffer,
                         )?;
                         Ok(output_ok)
                     })(),

@@ -11,12 +11,14 @@ impl EveDatabase {
         dogma_effect_buffer: &[u8],
         type_dogma_buffer: &[u8],
         types_buffer: &[u8],
+        buff_collections_buffer: &[u8],
     ) -> anyhow::Result<Self> {
         let inner = eve_fit_os::protobuf::Database::init_from_bytes(
             dogma_attr_buffer,
             dogma_effect_buffer,
             type_dogma_buffer,
             types_buffer,
+            buff_collections_buffer,
         )?;
 
         Ok(Self { inner })

@@ -17,8 +17,7 @@ T _$identity<T>(T value) => value;
 mixin _$ErrorKey {
   @override
   bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is ErrorKey);
+    return identical(this, other) || (other.runtimeType == runtimeType && other is ErrorKey);
   }
 
   @override
@@ -38,9 +37,7 @@ class $ErrorKeyCopyWith<$Res> {
 /// @nodoc
 
 class ErrorKey_IncompatibleChargeSize extends ErrorKey {
-  const ErrorKey_IncompatibleChargeSize(
-      {required this.expected, required this.actual})
-      : super._();
+  const ErrorKey_IncompatibleChargeSize({required this.expected, required this.actual}) : super._();
 
   final int expected;
   final int actual;
@@ -49,17 +46,16 @@ class ErrorKey_IncompatibleChargeSize extends ErrorKey {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $ErrorKey_IncompatibleChargeSizeCopyWith<ErrorKey_IncompatibleChargeSize>
-      get copyWith => _$ErrorKey_IncompatibleChargeSizeCopyWithImpl<
-          ErrorKey_IncompatibleChargeSize>(this, _$identity);
+  $ErrorKey_IncompatibleChargeSizeCopyWith<ErrorKey_IncompatibleChargeSize> get copyWith =>
+      _$ErrorKey_IncompatibleChargeSizeCopyWithImpl<ErrorKey_IncompatibleChargeSize>(
+          this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is ErrorKey_IncompatibleChargeSize &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -75,10 +71,10 @@ class ErrorKey_IncompatibleChargeSize extends ErrorKey {
 /// @nodoc
 abstract mixin class $ErrorKey_IncompatibleChargeSizeCopyWith<$Res>
     implements $ErrorKeyCopyWith<$Res> {
-  factory $ErrorKey_IncompatibleChargeSizeCopyWith(
-          ErrorKey_IncompatibleChargeSize value,
+  factory $ErrorKey_IncompatibleChargeSizeCopyWith(ErrorKey_IncompatibleChargeSize value,
           $Res Function(ErrorKey_IncompatibleChargeSize) _then) =
       _$ErrorKey_IncompatibleChargeSizeCopyWithImpl;
+
   @useResult
   $Res call({int expected, int actual});
 }
@@ -114,9 +110,7 @@ class _$ErrorKey_IncompatibleChargeSizeCopyWithImpl<$Res>
 /// @nodoc
 
 class ErrorKey_IncompatibleChargeCapacity extends ErrorKey {
-  const ErrorKey_IncompatibleChargeCapacity(
-      {required this.max, required this.actual})
-      : super._();
+  const ErrorKey_IncompatibleChargeCapacity({required this.max, required this.actual}) : super._();
 
   final double max;
   final double actual;
@@ -125,10 +119,9 @@ class ErrorKey_IncompatibleChargeCapacity extends ErrorKey {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $ErrorKey_IncompatibleChargeCapacityCopyWith<
-          ErrorKey_IncompatibleChargeCapacity>
-      get copyWith => _$ErrorKey_IncompatibleChargeCapacityCopyWithImpl<
-          ErrorKey_IncompatibleChargeCapacity>(this, _$identity);
+  $ErrorKey_IncompatibleChargeCapacityCopyWith<ErrorKey_IncompatibleChargeCapacity> get copyWith =>
+      _$ErrorKey_IncompatibleChargeCapacityCopyWithImpl<ErrorKey_IncompatibleChargeCapacity>(
+          this, _$identity);
 
   @override
   bool operator ==(Object other) {
@@ -151,10 +144,10 @@ class ErrorKey_IncompatibleChargeCapacity extends ErrorKey {
 /// @nodoc
 abstract mixin class $ErrorKey_IncompatibleChargeCapacityCopyWith<$Res>
     implements $ErrorKeyCopyWith<$Res> {
-  factory $ErrorKey_IncompatibleChargeCapacityCopyWith(
-          ErrorKey_IncompatibleChargeCapacity value,
+  factory $ErrorKey_IncompatibleChargeCapacityCopyWith(ErrorKey_IncompatibleChargeCapacity value,
           $Res Function(ErrorKey_IncompatibleChargeCapacity) _then) =
       _$ErrorKey_IncompatibleChargeCapacityCopyWithImpl;
+
   @useResult
   $Res call({double max, double actual});
 }
@@ -190,8 +183,7 @@ class _$ErrorKey_IncompatibleChargeCapacityCopyWithImpl<$Res>
 /// @nodoc
 
 class ErrorKey_TooMuchTurret extends ErrorKey {
-  const ErrorKey_TooMuchTurret({required this.expected, required this.actual})
-      : super._();
+  const ErrorKey_TooMuchTurret({required this.expected, required this.actual}) : super._();
 
   final int expected;
   final int actual;
@@ -201,16 +193,14 @@ class ErrorKey_TooMuchTurret extends ErrorKey {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ErrorKey_TooMuchTurretCopyWith<ErrorKey_TooMuchTurret> get copyWith =>
-      _$ErrorKey_TooMuchTurretCopyWithImpl<ErrorKey_TooMuchTurret>(
-          this, _$identity);
+      _$ErrorKey_TooMuchTurretCopyWithImpl<ErrorKey_TooMuchTurret>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is ErrorKey_TooMuchTurret &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -224,18 +214,17 @@ class ErrorKey_TooMuchTurret extends ErrorKey {
 }
 
 /// @nodoc
-abstract mixin class $ErrorKey_TooMuchTurretCopyWith<$Res>
-    implements $ErrorKeyCopyWith<$Res> {
-  factory $ErrorKey_TooMuchTurretCopyWith(ErrorKey_TooMuchTurret value,
-          $Res Function(ErrorKey_TooMuchTurret) _then) =
+abstract mixin class $ErrorKey_TooMuchTurretCopyWith<$Res> implements $ErrorKeyCopyWith<$Res> {
+  factory $ErrorKey_TooMuchTurretCopyWith(
+          ErrorKey_TooMuchTurret value, $Res Function(ErrorKey_TooMuchTurret) _then) =
       _$ErrorKey_TooMuchTurretCopyWithImpl;
+
   @useResult
   $Res call({int expected, int actual});
 }
 
 /// @nodoc
-class _$ErrorKey_TooMuchTurretCopyWithImpl<$Res>
-    implements $ErrorKey_TooMuchTurretCopyWith<$Res> {
+class _$ErrorKey_TooMuchTurretCopyWithImpl<$Res> implements $ErrorKey_TooMuchTurretCopyWith<$Res> {
   _$ErrorKey_TooMuchTurretCopyWithImpl(this._self, this._then);
 
   final ErrorKey_TooMuchTurret _self;
@@ -264,8 +253,7 @@ class _$ErrorKey_TooMuchTurretCopyWithImpl<$Res>
 /// @nodoc
 
 class ErrorKey_TooMuchLauncher extends ErrorKey {
-  const ErrorKey_TooMuchLauncher({required this.expected, required this.actual})
-      : super._();
+  const ErrorKey_TooMuchLauncher({required this.expected, required this.actual}) : super._();
 
   final int expected;
   final int actual;
@@ -275,16 +263,14 @@ class ErrorKey_TooMuchLauncher extends ErrorKey {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ErrorKey_TooMuchLauncherCopyWith<ErrorKey_TooMuchLauncher> get copyWith =>
-      _$ErrorKey_TooMuchLauncherCopyWithImpl<ErrorKey_TooMuchLauncher>(
-          this, _$identity);
+      _$ErrorKey_TooMuchLauncherCopyWithImpl<ErrorKey_TooMuchLauncher>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is ErrorKey_TooMuchLauncher &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -298,11 +284,11 @@ class ErrorKey_TooMuchLauncher extends ErrorKey {
 }
 
 /// @nodoc
-abstract mixin class $ErrorKey_TooMuchLauncherCopyWith<$Res>
-    implements $ErrorKeyCopyWith<$Res> {
-  factory $ErrorKey_TooMuchLauncherCopyWith(ErrorKey_TooMuchLauncher value,
-          $Res Function(ErrorKey_TooMuchLauncher) _then) =
+abstract mixin class $ErrorKey_TooMuchLauncherCopyWith<$Res> implements $ErrorKeyCopyWith<$Res> {
+  factory $ErrorKey_TooMuchLauncherCopyWith(
+          ErrorKey_TooMuchLauncher value, $Res Function(ErrorKey_TooMuchLauncher) _then) =
       _$ErrorKey_TooMuchLauncherCopyWithImpl;
+
   @useResult
   $Res call({int expected, int actual});
 }
@@ -347,8 +333,7 @@ class ErrorKey_ConflictItem extends ErrorKey {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ErrorKey_ConflictItemCopyWith<ErrorKey_ConflictItem> get copyWith =>
-      _$ErrorKey_ConflictItemCopyWithImpl<ErrorKey_ConflictItem>(
-          this, _$identity);
+      _$ErrorKey_ConflictItemCopyWithImpl<ErrorKey_ConflictItem>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
@@ -368,18 +353,17 @@ class ErrorKey_ConflictItem extends ErrorKey {
 }
 
 /// @nodoc
-abstract mixin class $ErrorKey_ConflictItemCopyWith<$Res>
-    implements $ErrorKeyCopyWith<$Res> {
-  factory $ErrorKey_ConflictItemCopyWith(ErrorKey_ConflictItem value,
-          $Res Function(ErrorKey_ConflictItem) _then) =
+abstract mixin class $ErrorKey_ConflictItemCopyWith<$Res> implements $ErrorKeyCopyWith<$Res> {
+  factory $ErrorKey_ConflictItemCopyWith(
+          ErrorKey_ConflictItem value, $Res Function(ErrorKey_ConflictItem) _then) =
       _$ErrorKey_ConflictItemCopyWithImpl;
+
   @useResult
   $Res call({int groupId});
 }
 
 /// @nodoc
-class _$ErrorKey_ConflictItemCopyWithImpl<$Res>
-    implements $ErrorKey_ConflictItemCopyWith<$Res> {
+class _$ErrorKey_ConflictItemCopyWithImpl<$Res> implements $ErrorKey_ConflictItemCopyWith<$Res> {
   _$ErrorKey_ConflictItemCopyWithImpl(this._self, this._then);
 
   final ErrorKey_ConflictItem _self;
@@ -411,9 +395,9 @@ class ErrorKey_IncompatibleShipGroup extends ErrorKey {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $ErrorKey_IncompatibleShipGroupCopyWith<ErrorKey_IncompatibleShipGroup>
-      get copyWith => _$ErrorKey_IncompatibleShipGroupCopyWithImpl<
-          ErrorKey_IncompatibleShipGroup>(this, _$identity);
+  $ErrorKey_IncompatibleShipGroupCopyWith<ErrorKey_IncompatibleShipGroup> get copyWith =>
+      _$ErrorKey_IncompatibleShipGroupCopyWithImpl<ErrorKey_IncompatibleShipGroup>(
+          this, _$identity);
 
   @override
   bool operator ==(Object other) {
@@ -424,8 +408,7 @@ class ErrorKey_IncompatibleShipGroup extends ErrorKey {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
+  int get hashCode => Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
 
   @override
   String toString() {
@@ -436,10 +419,10 @@ class ErrorKey_IncompatibleShipGroup extends ErrorKey {
 /// @nodoc
 abstract mixin class $ErrorKey_IncompatibleShipGroupCopyWith<$Res>
     implements $ErrorKeyCopyWith<$Res> {
-  factory $ErrorKey_IncompatibleShipGroupCopyWith(
-          ErrorKey_IncompatibleShipGroup value,
+  factory $ErrorKey_IncompatibleShipGroupCopyWith(ErrorKey_IncompatibleShipGroup value,
           $Res Function(ErrorKey_IncompatibleShipGroup) _then) =
       _$ErrorKey_IncompatibleShipGroupCopyWithImpl;
+
   @useResult
   $Res call({Int32List expected});
 }
@@ -478,9 +461,8 @@ class ErrorKey_IncompatibleShipType extends ErrorKey {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $ErrorKey_IncompatibleShipTypeCopyWith<ErrorKey_IncompatibleShipType>
-      get copyWith => _$ErrorKey_IncompatibleShipTypeCopyWithImpl<
-          ErrorKey_IncompatibleShipType>(this, _$identity);
+  $ErrorKey_IncompatibleShipTypeCopyWith<ErrorKey_IncompatibleShipType> get copyWith =>
+      _$ErrorKey_IncompatibleShipTypeCopyWithImpl<ErrorKey_IncompatibleShipType>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
@@ -491,8 +473,7 @@ class ErrorKey_IncompatibleShipType extends ErrorKey {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
+  int get hashCode => Object.hash(runtimeType, const DeepCollectionEquality().hash(expected));
 
   @override
   String toString() {
@@ -504,9 +485,9 @@ class ErrorKey_IncompatibleShipType extends ErrorKey {
 abstract mixin class $ErrorKey_IncompatibleShipTypeCopyWith<$Res>
     implements $ErrorKeyCopyWith<$Res> {
   factory $ErrorKey_IncompatibleShipTypeCopyWith(
-          ErrorKey_IncompatibleShipType value,
-          $Res Function(ErrorKey_IncompatibleShipType) _then) =
+          ErrorKey_IncompatibleShipType value, $Res Function(ErrorKey_IncompatibleShipType) _then) =
       _$ErrorKey_IncompatibleShipTypeCopyWithImpl;
+
   @useResult
   $Res call({Int32List expected});
 }
@@ -537,9 +518,7 @@ class _$ErrorKey_IncompatibleShipTypeCopyWithImpl<$Res>
 /// @nodoc
 
 class ErrorKey_IncompatibleRigSize extends ErrorKey {
-  const ErrorKey_IncompatibleRigSize(
-      {required this.expected, required this.actual})
-      : super._();
+  const ErrorKey_IncompatibleRigSize({required this.expected, required this.actual}) : super._();
 
   final int expected;
   final int actual;
@@ -548,17 +527,15 @@ class ErrorKey_IncompatibleRigSize extends ErrorKey {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $ErrorKey_IncompatibleRigSizeCopyWith<ErrorKey_IncompatibleRigSize>
-      get copyWith => _$ErrorKey_IncompatibleRigSizeCopyWithImpl<
-          ErrorKey_IncompatibleRigSize>(this, _$identity);
+  $ErrorKey_IncompatibleRigSizeCopyWith<ErrorKey_IncompatibleRigSize> get copyWith =>
+      _$ErrorKey_IncompatibleRigSizeCopyWithImpl<ErrorKey_IncompatibleRigSize>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is ErrorKey_IncompatibleRigSize &&
-            (identical(other.expected, expected) ||
-                other.expected == expected) &&
+            (identical(other.expected, expected) || other.expected == expected) &&
             (identical(other.actual, actual) || other.actual == actual));
   }
 
@@ -575,9 +552,9 @@ class ErrorKey_IncompatibleRigSize extends ErrorKey {
 abstract mixin class $ErrorKey_IncompatibleRigSizeCopyWith<$Res>
     implements $ErrorKeyCopyWith<$Res> {
   factory $ErrorKey_IncompatibleRigSizeCopyWith(
-          ErrorKey_IncompatibleRigSize value,
-          $Res Function(ErrorKey_IncompatibleRigSize) _then) =
+          ErrorKey_IncompatibleRigSize value, $Res Function(ErrorKey_IncompatibleRigSize) _then) =
       _$ErrorKey_IncompatibleRigSizeCopyWithImpl;
+
   @useResult
   $Res call({int expected, int actual});
 }
@@ -613,6 +590,7 @@ class _$ErrorKey_IncompatibleRigSizeCopyWithImpl<$Res>
 /// @nodoc
 mixin _$SlotInfo {
   SlotType get slot;
+
   int? get index;
 
   /// Create a copy of SlotInfo
@@ -642,8 +620,8 @@ mixin _$SlotInfo {
 
 /// @nodoc
 abstract mixin class $SlotInfoCopyWith<$Res> {
-  factory $SlotInfoCopyWith(SlotInfo value, $Res Function(SlotInfo) _then) =
-      _$SlotInfoCopyWithImpl;
+  factory $SlotInfoCopyWith(SlotInfo value, $Res Function(SlotInfo) _then) = _$SlotInfoCopyWithImpl;
+
   @useResult
   $Res call({SlotType slot, int? index});
 }
@@ -679,8 +657,7 @@ class _$SlotInfoCopyWithImpl<$Res> implements $SlotInfoCopyWith<$Res> {
 /// @nodoc
 
 class SlotInfo_Error extends SlotInfo {
-  const SlotInfo_Error({required this.slot, this.index, required this.errorKey})
-      : super._();
+  const SlotInfo_Error({required this.slot, this.index, required this.errorKey}) : super._();
 
   @override
   final SlotType slot;
@@ -703,8 +680,7 @@ class SlotInfo_Error extends SlotInfo {
             other is SlotInfo_Error &&
             (identical(other.slot, slot) || other.slot == slot) &&
             (identical(other.index, index) || other.index == index) &&
-            (identical(other.errorKey, errorKey) ||
-                other.errorKey == errorKey));
+            (identical(other.errorKey, errorKey) || other.errorKey == errorKey));
   }
 
   @override
@@ -717,11 +693,10 @@ class SlotInfo_Error extends SlotInfo {
 }
 
 /// @nodoc
-abstract mixin class $SlotInfo_ErrorCopyWith<$Res>
-    implements $SlotInfoCopyWith<$Res> {
-  factory $SlotInfo_ErrorCopyWith(
-          SlotInfo_Error value, $Res Function(SlotInfo_Error) _then) =
+abstract mixin class $SlotInfo_ErrorCopyWith<$Res> implements $SlotInfoCopyWith<$Res> {
+  factory $SlotInfo_ErrorCopyWith(SlotInfo_Error value, $Res Function(SlotInfo_Error) _then) =
       _$SlotInfo_ErrorCopyWithImpl;
+
   @override
   @useResult
   $Res call({SlotType slot, int? index, ErrorKey errorKey});
@@ -730,8 +705,7 @@ abstract mixin class $SlotInfo_ErrorCopyWith<$Res>
 }
 
 /// @nodoc
-class _$SlotInfo_ErrorCopyWithImpl<$Res>
-    implements $SlotInfo_ErrorCopyWith<$Res> {
+class _$SlotInfo_ErrorCopyWithImpl<$Res> implements $SlotInfo_ErrorCopyWith<$Res> {
   _$SlotInfo_ErrorCopyWithImpl(this._self, this._then);
 
   final SlotInfo_Error _self;
@@ -776,9 +750,7 @@ class _$SlotInfo_ErrorCopyWithImpl<$Res>
 /// @nodoc
 
 class SlotInfo_Warning extends SlotInfo {
-  const SlotInfo_Warning(
-      {required this.slot, this.index, required this.warningKey})
-      : super._();
+  const SlotInfo_Warning({required this.slot, this.index, required this.warningKey}) : super._();
 
   @override
   final SlotType slot;
@@ -801,8 +773,7 @@ class SlotInfo_Warning extends SlotInfo {
             other is SlotInfo_Warning &&
             (identical(other.slot, slot) || other.slot == slot) &&
             (identical(other.index, index) || other.index == index) &&
-            (identical(other.warningKey, warningKey) ||
-                other.warningKey == warningKey));
+            (identical(other.warningKey, warningKey) || other.warningKey == warningKey));
   }
 
   @override
@@ -815,11 +786,10 @@ class SlotInfo_Warning extends SlotInfo {
 }
 
 /// @nodoc
-abstract mixin class $SlotInfo_WarningCopyWith<$Res>
-    implements $SlotInfoCopyWith<$Res> {
-  factory $SlotInfo_WarningCopyWith(
-          SlotInfo_Warning value, $Res Function(SlotInfo_Warning) _then) =
+abstract mixin class $SlotInfo_WarningCopyWith<$Res> implements $SlotInfoCopyWith<$Res> {
+  factory $SlotInfo_WarningCopyWith(SlotInfo_Warning value, $Res Function(SlotInfo_Warning) _then) =
       _$SlotInfo_WarningCopyWithImpl;
+
   @override
   @useResult
   $Res call({SlotType slot, int? index, WarningKey warningKey});
@@ -828,8 +798,7 @@ abstract mixin class $SlotInfo_WarningCopyWith<$Res>
 }
 
 /// @nodoc
-class _$SlotInfo_WarningCopyWithImpl<$Res>
-    implements $SlotInfo_WarningCopyWith<$Res> {
+class _$SlotInfo_WarningCopyWithImpl<$Res> implements $SlotInfo_WarningCopyWith<$Res> {
   _$SlotInfo_WarningCopyWithImpl(this._self, this._then);
 
   final SlotInfo_Warning _self;
@@ -875,8 +844,7 @@ class _$SlotInfo_WarningCopyWithImpl<$Res>
 mixin _$WarningKey {
   @override
   bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is WarningKey);
+    return identical(this, other) || (other.runtimeType == runtimeType && other is WarningKey);
   }
 
   @override
@@ -925,8 +893,7 @@ class WarningKey_Placeholder extends WarningKey {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $WarningKey_PlaceholderCopyWith<WarningKey_Placeholder> get copyWith =>
-      _$WarningKey_PlaceholderCopyWithImpl<WarningKey_Placeholder>(
-          this, _$identity);
+      _$WarningKey_PlaceholderCopyWithImpl<WarningKey_Placeholder>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
@@ -946,18 +913,17 @@ class WarningKey_Placeholder extends WarningKey {
 }
 
 /// @nodoc
-abstract mixin class $WarningKey_PlaceholderCopyWith<$Res>
-    implements $WarningKeyCopyWith<$Res> {
-  factory $WarningKey_PlaceholderCopyWith(WarningKey_Placeholder value,
-          $Res Function(WarningKey_Placeholder) _then) =
+abstract mixin class $WarningKey_PlaceholderCopyWith<$Res> implements $WarningKeyCopyWith<$Res> {
+  factory $WarningKey_PlaceholderCopyWith(
+          WarningKey_Placeholder value, $Res Function(WarningKey_Placeholder) _then) =
       _$WarningKey_PlaceholderCopyWithImpl;
+
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class _$WarningKey_PlaceholderCopyWithImpl<$Res>
-    implements $WarningKey_PlaceholderCopyWith<$Res> {
+class _$WarningKey_PlaceholderCopyWithImpl<$Res> implements $WarningKey_PlaceholderCopyWith<$Res> {
   _$WarningKey_PlaceholderCopyWithImpl(this._self, this._then);
 
   final WarningKey_Placeholder _self;

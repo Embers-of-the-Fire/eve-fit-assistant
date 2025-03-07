@@ -40,7 +40,8 @@ try {
     $eve_fit_os_dir = (Get-Location).Path
     $fit_os_out_dir = Join-Path $eve_fit_os_dir "data" "out"
     $patch_dir = Join-Path $eve_fit_os_dir "data" "patches"
-    & $uv run -m data.convert $fsd_dir $patch_dir $fit_os_out_dir
+    $fsd_patch_dir = Join-Path $eve_fit_os_dir "data" "fsd-patches"
+    & $uv run -m data.convert $fsd_dir $fsd_patch_dir $patch_dir $fit_os_out_dir
 }
 finally {
     Set-Location $original

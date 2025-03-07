@@ -330,6 +330,10 @@ const int thousand = -83;
 /// - High is good: True
 const int upgradeUsed = -84;
 
+/// - Name: warpSpeed
+/// - High is good: True
+const int warpSpeed = -85;
+
 /// - Name: capacitorDepletesIn
 /// - High is good: True
 const int capacitorDepletesIn = -9;

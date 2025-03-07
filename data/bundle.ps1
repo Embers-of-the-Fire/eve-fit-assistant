@@ -43,6 +43,7 @@ Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dogmaAttributes.pb2") -Destinati
 Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dogmaEffects.pb2") -Destination $native_cache_dir -Recurse -Force
 Copy-Item -Path (Join-Path $eve_fit_os_out_dir "typeDogma.pb2") -Destination $native_cache_dir -Recurse -Force
 Copy-Item -Path (Join-Path $eve_fit_os_out_dir "types.pb2") -Destination $native_cache_dir -Recurse -Force
+Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dbuffcollections.pb2") -Destination $native_cache_dir -Recurse -Force
 
 Write-Host "Creating tarball ..."
 $tarball = Join-Path $current "storage.tar.gz"

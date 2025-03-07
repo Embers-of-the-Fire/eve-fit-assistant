@@ -38,11 +38,9 @@ List<TableRow> _getExtraTableContent(ItemProxy hull) {
 
     children.add(const SizedBox.shrink());
 
-    final warpSpeedBase = hull.attributes[baseWarpSpeed] ?? 0.0;
-    final warpSpeedFactor = hull.attributes[warpSpeedMultiplier] ?? 0.0;
-    final warpSpeed = warpSpeedBase * warpSpeedFactor;
+    final warpSpeedValue = hull.attributes[warpSpeed] ?? 0.0;
     children.add(const Image(image: warpSpeedImage));
-    children.add(Text('${warpSpeed.toStringAsMaxDecimals(1)} AU/s'));
+    children.add(Text('${warpSpeedValue.toStringAsMaxDecimals(1)} AU/s'));
     rows.add(TableRow(children: children));
   }
 

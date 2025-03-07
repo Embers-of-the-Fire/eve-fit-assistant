@@ -34,7 +34,7 @@ extension NumDoubleExt on double {
 
 extension NumExt on num {
   String toStringAsMaxDecimals(int maxDecimals) {
-    final str = toString();
+    final str = toStringAsFixed(maxDecimals);
     final dotIndex = str.indexOf('.');
     if (dotIndex == -1) return str;
     final decimals = str.substring(dotIndex + 1);

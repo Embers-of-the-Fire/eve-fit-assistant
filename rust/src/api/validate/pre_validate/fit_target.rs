@@ -20,7 +20,7 @@ pub(crate) fn validate_fit_target(
 ) {
     fn validate_item(
         ship_id: i32,
-        ship_type: Type,
+        ship_type: &Type,
         item: &Item,
         slot: SlotType,
         index: i32,

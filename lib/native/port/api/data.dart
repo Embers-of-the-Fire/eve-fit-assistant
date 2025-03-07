@@ -15,10 +15,12 @@ abstract class EveDatabase implements RustOpaqueInterface {
           {required List<int> dogmaAttrBuffer,
           required List<int> dogmaEffectBuffer,
           required List<int> typeDogmaBuffer,
-          required List<int> typesBuffer}) =>
+          required List<int> typesBuffer,
+          required List<int> buffCollectionsBuffer}) =>
       RustLib.instance.api.crateApiDataEveDatabaseInit(
           dogmaAttrBuffer: dogmaAttrBuffer,
           dogmaEffectBuffer: dogmaEffectBuffer,
           typeDogmaBuffer: typeDogmaBuffer,
-          typesBuffer: typesBuffer);
+          typesBuffer: typesBuffer,
+          buffCollectionsBuffer: buffCollectionsBuffer);
 }

@@ -16,12 +16,14 @@ class NativeDatabase {
     final dogmaEffect = await File('${storage.path}/dogmaEffects.pb2').readAsBytes();
     final typeDogma = await File('${storage.path}/typeDogma.pb2').readAsBytes();
     final types = await File('${storage.path}/types.pb2').readAsBytes();
+    final buffs = await File('${storage.path}/dbuffcollections.pb2').readAsBytes();
 
     final db = await EveDatabase.init(
         dogmaAttrBuffer: dogmaAttr,
         dogmaEffectBuffer: dogmaEffect,
         typeDogmaBuffer: typeDogma,
-        typesBuffer: types);
+        typesBuffer: types,
+        buffCollectionsBuffer: buffs);
 
     return NativeDatabase._private(db);
   }

@@ -88,6 +88,10 @@ const int baseWarpSpeed = 1281;
 /// - High is good: True
 const int warpSpeedMultiplier = 600;
 
+/// - Name: WarpSBonus
+/// - High is good: True
+const int warpSBonus = 624;
+
 /// - Name: maxTargetRange
 /// - High is good: True
 const int maxTargetRange = 76;

@@ -116,7 +116,8 @@ abstract class RustLibApi extends BaseApi {
       {required List<int> dogmaAttrBuffer,
       required List<int> dogmaEffectBuffer,
       required List<int> typeDogmaBuffer,
-      required List<int> typesBuffer});
+      required List<int> typesBuffer,
+      required List<int> buffCollectionsBuffer});
 
   int crateApiValidatePostValidateMaxActivateMaxActivateAttrId();
 
@@ -423,7 +424,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       {required List<int> dogmaAttrBuffer,
       required List<int> dogmaEffectBuffer,
       required List<int> typeDogmaBuffer,
-      required List<int> typesBuffer}) {
+      required List<int> typesBuffer,
+      required List<int> buffCollectionsBuffer}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -431,6 +433,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_list_prim_u_8_loose(dogmaEffectBuffer, serializer);
         sse_encode_list_prim_u_8_loose(typeDogmaBuffer, serializer);
         sse_encode_list_prim_u_8_loose(typesBuffer, serializer);
+        sse_encode_list_prim_u_8_loose(buffCollectionsBuffer, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13, port: port_);
       },
       codec: SseCodec(
@@ -439,14 +442,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeErrorData: sse_decode_AnyhowException,
       ),
       constMeta: kCrateApiDataEveDatabaseInitConstMeta,
-      argValues: [dogmaAttrBuffer, dogmaEffectBuffer, typeDogmaBuffer, typesBuffer],
+      argValues: [
+        dogmaAttrBuffer,
+        dogmaEffectBuffer,
+        typeDogmaBuffer,
+        typesBuffer,
+        buffCollectionsBuffer
+      ],
       apiImpl: this,
     ));
   }
 
   TaskConstMeta get kCrateApiDataEveDatabaseInitConstMeta => const TaskConstMeta(
         debugName: "EveDatabase_init",
-        argNames: ["dogmaAttrBuffer", "dogmaEffectBuffer", "typeDogmaBuffer", "typesBuffer"],
+        argNames: [
+          "dogmaAttrBuffer",
+          "dogmaEffectBuffer",
+          "typeDogmaBuffer",
+          "typesBuffer",
+          "buffCollectionsBuffer"
+        ],
       );
 
   @override
