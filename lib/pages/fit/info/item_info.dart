@@ -109,7 +109,7 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('物品信息'),
+        title: Text('物品信息 - ${GlobalStorage().static.types[widget.typeID]?.nameZH ?? '未知'}'),
         bottom: TabBar(
           isScrollable: true,
           controller: _controller,
