@@ -6,7 +6,7 @@ part of 'info_component.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$getMarketPricesHash() => r'5d536ca97cfc1c4b6d9639938d922c286feddc8c';
+String _$getMarketPricesHash() => r'6aca6c6e41399fb25e30497a81bfa0a5acc06c41';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -34,7 +34,8 @@ class _SystemHash {
 const getMarketPricesProvider = GetMarketPricesFamily();
 
 /// See also [getMarketPrices].
-class GetMarketPricesFamily extends Family<AsyncValue<(double, double)>> {
+class GetMarketPricesFamily
+    extends Family<AsyncValue<(double, Iterable<int>, double, Iterable<int>)>> {
   /// See also [getMarketPrices].
   const GetMarketPricesFamily();
 
@@ -72,8 +73,8 @@ class GetMarketPricesFamily extends Family<AsyncValue<(double, double)>> {
 }
 
 /// See also [getMarketPrices].
-class GetMarketPricesProvider
-    extends AutoDisposeFutureProvider<(double, double)> {
+class GetMarketPricesProvider extends AutoDisposeFutureProvider<
+    (double, Iterable<int>, double, Iterable<int>)> {
   /// See also [getMarketPrices].
   GetMarketPricesProvider(
     MapEqual<int, int> types,
@@ -108,7 +109,9 @@ class GetMarketPricesProvider
 
   @override
   Override overrideWith(
-    FutureOr<(double, double)> Function(GetMarketPricesRef provider) create,
+    FutureOr<(double, Iterable<int>, double, Iterable<int>)> Function(
+            GetMarketPricesRef provider)
+        create,
   ) {
     return ProviderOverride(
       origin: this,
@@ -125,7 +128,8 @@ class GetMarketPricesProvider
   }
 
   @override
-  AutoDisposeFutureProviderElement<(double, double)> createElement() {
+  AutoDisposeFutureProviderElement<
+      (double, Iterable<int>, double, Iterable<int>)> createElement() {
     return _GetMarketPricesProviderElement(this);
   }
 
@@ -145,14 +149,14 @@ class GetMarketPricesProvider
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin GetMarketPricesRef on AutoDisposeFutureProviderRef<(double, double)> {
+mixin GetMarketPricesRef on AutoDisposeFutureProviderRef<
+    (double, Iterable<int>, double, Iterable<int>)> {
   /// The parameter `types` of this provider.
   MapEqual<int, int> get types;
 }
 
-class _GetMarketPricesProviderElement
-    extends AutoDisposeFutureProviderElement<(double, double)>
-    with GetMarketPricesRef {
+class _GetMarketPricesProviderElement extends AutoDisposeFutureProviderElement<
+    (double, Iterable<int>, double, Iterable<int>)> with GetMarketPricesRef {
   _GetMarketPricesProviderElement(super.provider);
 
   @override
