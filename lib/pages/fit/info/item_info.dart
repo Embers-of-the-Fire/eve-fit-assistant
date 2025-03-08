@@ -68,6 +68,7 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
   @override
   void initState() {
     final int pageCount = (widget.item?.charge == null ? 3 : 5) +
+        ((GlobalStorage().static.typeSkills[widget.typeID]?.skills.isEmpty ?? true) ? 0 : 1) +
         (GlobalStorage().static.types[widget.typeID]?.traits != null ? 1 : 0) +
         (widget.item?.isDynamic ?? false ? 1 : 0);
     _controller = TabController(length: pageCount, vsync: this);
@@ -93,17 +94,26 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
         attributes: widget.dynamicItem!.dynamicAttributes,
       ));
     }
-    tabLabels.addAll(['描述', '属性', '技能']);
+    tabLabels.addAll(['描述', '属性']);
     tabs.addAll([
       DescriptionTab(typeID: widget.typeID),
       AttributeTab(typeID: widget.typeID, attr: widget.item?.attributes),
-      SkillTree(rootID: widget.typeID),
     ]);
+    if (GlobalStorage().static.typeSkills[widget.typeID]?.skills.isNotEmpty ?? false) {
+      tabLabels.add('技能');
+      tabs.add(SkillTree(rootID: widget.typeID));
+    }
     if (widget.item?.charge != null) {
-      tabLabels.addAll(['弹药属性', '弹药技能']);
-      tabs.add(
-          AttributeTab(typeID: widget.item!.charge!.itemId, attr: widget.item!.charge!.attributes));
-      tabs.add(SkillTree(rootID: widget.item!.charge!.itemId));
+      tabLabels.add('弹药属性');
+      tabs.add(AttributeTab(
+        typeID: widget.item!.charge!.itemId,
+        attr: widget.item!.charge!.attributes,
+      ));
+      if (GlobalStorage().static.typeSkills[widget.item!.charge!.itemId]?.skills.isNotEmpty ??
+          false) {
+        tabLabels.add('弹药技能');
+        tabs.add(SkillTree(rootID: widget.item!.charge!.itemId));
+      }
     }
 
     return Scaffold(
