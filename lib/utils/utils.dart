@@ -17,3 +17,4 @@ part 'random.dart';
 part 'sort.dart';
 part 'string.dart';
 part 'time.dart';
+part 'lambda.dart';

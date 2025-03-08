@@ -6,7 +6,7 @@ part of 'info_component.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$getMarketPricesHash() => r'6aca6c6e41399fb25e30497a81bfa0a5acc06c41';
+String _$getMarketPricesHash() => r'ff158335399bf52f83e0095c57a6a3408e277b5f';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -161,6 +161,138 @@ class _GetMarketPricesProviderElement extends AutoDisposeFutureProviderElement<
 
   @override
   MapEqual<int, int> get types => (origin as GetMarketPricesProvider).types;
+}
+
+String _$getMarketPriceHash() => r'66a011a76e23a64fa7158ebad1b72ce4f5917528';
+
+/// See also [getMarketPrice].
+@ProviderFor(getMarketPrice)
+const getMarketPriceProvider = GetMarketPriceFamily();
+
+/// See also [getMarketPrice].
+class GetMarketPriceFamily extends Family<AsyncValue<MarketPriceGroup>> {
+  /// See also [getMarketPrice].
+  const GetMarketPriceFamily();
+
+  /// See also [getMarketPrice].
+  GetMarketPriceProvider call(
+    int typeID,
+  ) {
+    return GetMarketPriceProvider(
+      typeID,
+    );
+  }
+
+  @override
+  GetMarketPriceProvider getProviderOverride(
+    covariant GetMarketPriceProvider provider,
+  ) {
+    return call(
+      provider.typeID,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'getMarketPriceProvider';
+}
+
+/// See also [getMarketPrice].
+class GetMarketPriceProvider
+    extends AutoDisposeFutureProvider<MarketPriceGroup> {
+  /// See also [getMarketPrice].
+  GetMarketPriceProvider(
+    int typeID,
+  ) : this._internal(
+          (ref) => getMarketPrice(
+            ref as GetMarketPriceRef,
+            typeID,
+          ),
+          from: getMarketPriceProvider,
+          name: r'getMarketPriceProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$getMarketPriceHash,
+          dependencies: GetMarketPriceFamily._dependencies,
+          allTransitiveDependencies:
+              GetMarketPriceFamily._allTransitiveDependencies,
+          typeID: typeID,
+        );
+
+  GetMarketPriceProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.typeID,
+  }) : super.internal();
+
+  final int typeID;
+
+  @override
+  Override overrideWith(
+    FutureOr<MarketPriceGroup> Function(GetMarketPriceRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: GetMarketPriceProvider._internal(
+        (ref) => create(ref as GetMarketPriceRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        typeID: typeID,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<MarketPriceGroup> createElement() {
+    return _GetMarketPriceProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is GetMarketPriceProvider && other.typeID == typeID;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, typeID.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin GetMarketPriceRef on AutoDisposeFutureProviderRef<MarketPriceGroup> {
+  /// The parameter `typeID` of this provider.
+  int get typeID;
+}
+
+class _GetMarketPriceProviderElement
+    extends AutoDisposeFutureProviderElement<MarketPriceGroup>
+    with GetMarketPriceRef {
+  _GetMarketPriceProviderElement(super.provider);
+
+  @override
+  int get typeID => (origin as GetMarketPriceProvider).typeID;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

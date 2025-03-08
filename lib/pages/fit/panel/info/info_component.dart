@@ -9,6 +9,7 @@ import 'package:eve_fit_assistant/native/port/api/schema.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/damage_profile_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
+import 'package:eve_fit_assistant/pages/market/market_list.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/market/market.dart';
