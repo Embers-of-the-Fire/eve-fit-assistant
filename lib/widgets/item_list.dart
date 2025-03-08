@@ -147,7 +147,8 @@ class _ItemListState extends State<ItemList> {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
+            child: Scrollbar(
+                child: SingleChildScrollView(
               scrollDirection: Axis.vertical,
               controller: _shipListController,
               child: Column(
@@ -168,7 +169,7 @@ class _ItemListState extends State<ItemList> {
                       .unwrapOr([])
                 ],
               ),
-            ),
+            )),
           )
         ],
       ));

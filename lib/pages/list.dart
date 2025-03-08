@@ -31,7 +31,8 @@ class _ListPageState extends State<ListPage> {
       onRefresh: () async {
         setState(() {});
       },
-      child: ListView(
+      child: Scrollbar(
+          child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 20),
         children: GlobalStorage()
@@ -106,5 +107,5 @@ class _ListPageState extends State<ListPage> {
             ),
           );
         }).toList(),
-      ));
+      )));
 }

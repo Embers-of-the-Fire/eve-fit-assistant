@@ -16,7 +16,8 @@ class _MainPageState extends State<MainPage> {
   final _scrollController = ScrollController();
 
   @override
-  Widget build(BuildContext context) => ListView(
+  Widget build(BuildContext context) => Scrollbar(
+          child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 20),
         scrollDirection: Axis.vertical,
         controller: _scrollController,
@@ -64,7 +65,7 @@ class _MainPageState extends State<MainPage> {
             height: 150,
           ),
         ],
-      );
+      ));
 }
 
 class MainPageCard extends StatelessWidget {

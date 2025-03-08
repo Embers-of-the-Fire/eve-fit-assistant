@@ -48,8 +48,10 @@ class ImportViewDialog extends StatelessWidget {
             ),
             const Divider(height: 0, color: Colors.white54),
             Expanded(
-                child: Column(
-                    children: typeMap.entries.sortedByKey<num>((u) => u.key).map((entry) {
+                child: Scrollbar(
+                    child: SingleChildScrollView(
+                        child: Column(
+                            children: typeMap.entries.sortedByKey<num>((u) => u.key).map((entry) {
               final type = GlobalStorage().static.types[entry.key];
               if (type == null) {
                 return ListTile(
@@ -65,7 +67,7 @@ class ImportViewDialog extends StatelessWidget {
                 title: Text(type.nameZH),
                 trailing: Text('× ${entry.value}', style: const TextStyle(fontSize: 16)),
               );
-            }).toList())),
+            }).toList())))),
           ],
         ),
         actions: [

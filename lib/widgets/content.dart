@@ -10,8 +10,10 @@ class ContentList extends StatelessWidget {
   const ContentList({super.key, required this.contents});
 
   @override
-  Widget build(BuildContext context) => ListView(
-        children: contents.map((content) => ContentListTile(content: content)).toList(),
+  Widget build(BuildContext context) => Scrollbar(
+        child: ListView(
+          children: contents.map((content) => ContentListTile(content: content)).toList(),
+        ),
       );
 }
 
@@ -57,7 +59,8 @@ class ContentDetailPage extends ConsumerWidget {
               Text('发布于：${formatDate(content.time, [yyyy, '-', mm, '-', dd, ' ', HH, ':', nn])}'),
               const Divider(),
               Expanded(
-                child: SingleChildScrollView(
+                child: Scrollbar(
+                    child: SingleChildScrollView(
                   child: Container(
                     padding: const EdgeInsets.only(top: 4, bottom: 10, left: 20, right: 20),
                     child: MarkdownBlock(
@@ -65,7 +68,7 @@ class ContentDetailPage extends ConsumerWidget {
                       config: MarkdownConfig.darkConfig,
                     ),
                   ),
-                ),
+                )),
               )
             ],
           ),

@@ -213,10 +213,11 @@ class _MarketListState extends State<MarketList> {
               GlobalStorage().market.clearCache();
               timestamp = DateTime.now().millisecondsSinceEpoch;
             }),
-            child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                controller: _shipListController,
-                children: [
+            child: Scrollbar(
+                child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    controller: _shipListController,
+                    children: [
                   ..._filterMarketGroups(_breadcrumbs.lastOrNull)
                       .filterMap(
                           (id) => GlobalStorage().static.marketGroups[id].map((v) => (id, v)))
@@ -227,7 +228,7 @@ class _MarketListState extends State<MarketList> {
                       .map((group) =>
                           _itemListTile(context, group, timestamp: timestamp, onTap: _onTapItem))
                       .unwrapOr([])
-                ]),
+                ])),
           ))
         ],
       ));
