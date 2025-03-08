@@ -1,6 +1,7 @@
 import 'package:eve_fit_assistant/export/schema.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:flutter/material.dart';
 
 Future<bool> showImportDialog(BuildContext context, FitExport fit) =>
@@ -32,59 +33,53 @@ class ImportViewDialog extends StatelessWidget {
       typeMap[dyn.value.outType] = (typeMap[dyn.value.outType] ?? 0) + 1;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 120),
-      child: AlertDialog(
-        title: const Text('导入配置'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: GlobalStorage().static.icons.getTypeIconSync(fit.shipID),
-              title: Text('[$shipName] ${fit.name}'),
-            ),
-            const Divider(height: 0, color: Colors.white54),
-            Expanded(
-                child: Scrollbar(
-                    child: SingleChildScrollView(
-                        child: Column(
-                            children: typeMap.entries.sortedByKey<num>((u) => u.key).map((entry) {
-              final type = GlobalStorage().static.types[entry.key];
-              if (type == null) {
-                return ListTile(
-                  leading: GlobalStorage().static.icons.getTypeIconSync(entry.key) ??
-                      const Icon(Icons.question_mark),
-                  title: Text('未知物品 ${entry.key}'),
-                  trailing: Text('× ${entry.value}', style: const TextStyle(fontSize: 16)),
-                );
-              }
+    return AppDialog(
+      title: '导入配置',
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            leading: GlobalStorage().static.icons.getTypeIconSync(fit.shipID),
+            title: Text('[$shipName] ${fit.name}'),
+          ),
+          const Divider(height: 0, color: Colors.white54),
+          Expanded(
+              child: Scrollbar(
+                  child: SingleChildScrollView(
+                      child: Column(
+                          children: typeMap.entries.sortedByKey<num>((u) => u.key).map((entry) {
+            final type = GlobalStorage().static.types[entry.key];
+            if (type == null) {
               return ListTile(
                 leading: GlobalStorage().static.icons.getTypeIconSync(entry.key) ??
                     const Icon(Icons.question_mark),
-                title: Text(type.nameZH),
+                title: Text('未知物品 ${entry.key}'),
                 trailing: Text('× ${entry.value}', style: const TextStyle(fontSize: 16)),
               );
-            }).toList())))),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              style: ButtonStyle(
-                  shape: WidgetStateProperty.all(const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(5))))),
-              child: const Text('取消')),
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ButtonStyle(
-                  shape: WidgetStateProperty.all(const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(5))))),
-              child: const Text('导入'))
+            }
+            return ListTile(
+              leading: GlobalStorage().static.icons.getTypeIconSync(entry.key) ??
+                  const Icon(Icons.question_mark),
+              title: Text(type.nameZH),
+              trailing: Text('× ${entry.value}', style: const TextStyle(fontSize: 16)),
+            );
+          }).toList())))),
         ],
       ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            style: ButtonStyle(
+                shape: WidgetStateProperty.all(const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(5))))),
+            child: const Text('取消')),
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ButtonStyle(
+                shape: WidgetStateProperty.all(const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(5))))),
+            child: const Text('导入'))
+      ],
     );
   }
 }

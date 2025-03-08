@@ -101,17 +101,12 @@ class _SelectCharacterDialogState extends State<_SelectCharacterDialog> {
           title: Text(el.name),
         ));
 
-    return Container(
-        padding: const EdgeInsets.symmetric(vertical: 120),
-        child: AlertDialog(
-            title: const Text('修改角色'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            contentTextStyle: const TextStyle(fontSize: 16),
-            content: SingleChildScrollView(
-              child: Column(
-                children: characterList.toList(),
-              ),
-            )));
+    return AppDialog(
+        title: '修改角色',
+        contentTextStyle: const TextStyle(fontSize: 16),
+        content: SingleChildScrollView(
+          child: Column(children: characterList.toList()),
+        ));
   }
 }
 
@@ -168,32 +163,28 @@ class _AddImplantGroupDialogState extends State<_AddImplantGroupDialog> {
           )));
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 120),
-      child: AlertDialog(
-        title: const Text('添加植入体组'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        contentTextStyle: const TextStyle(fontSize: 16),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                decoration:
-                    const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey))),
-                child: BreadCrumb(
-                    divider: const Icon(Icons.chevron_right),
-                    overflow: ScrollableOverflow(direction: Axis.horizontal, keepLastDivider: true),
-                    items: breadcrumbs)),
-            Expanded(
-                child: SingleChildScrollView(
-              child: Column(
-                children: list.toList(),
-              ),
-            ))
-          ],
-        ),
+    return AppDialog(
+      title: '添加植入体组',
+      contentTextStyle: const TextStyle(fontSize: 16),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration:
+                  const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey))),
+              child: BreadCrumb(
+                  divider: const Icon(Icons.chevron_right),
+                  overflow: ScrollableOverflow(direction: Axis.horizontal, keepLastDivider: true),
+                  items: breadcrumbs)),
+          Expanded(
+              child: SingleChildScrollView(
+            child: Column(
+              children: list.toList(),
+            ),
+          ))
+        ],
       ),
     );
   }

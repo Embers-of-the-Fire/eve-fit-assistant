@@ -12,6 +12,7 @@ import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:eve_fit_assistant/widgets/state_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -198,17 +199,14 @@ class SlotRow extends ConsumerWidget {
         onPressed: (_) async {
           final dynamicTypeID = await showDialog<int>(
               context: context,
-              builder: (context) => Container(
-                  padding: const EdgeInsets.symmetric(vertical: 120),
-                  child: AlertDialog(
-                    title: const Text('选择深渊物质'),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              builder: (context) => AppDialog(
+                    title: '选择深渊物质',
                     contentTextStyle: const TextStyle(fontSize: 16),
                     content: _AddDynamicItemDialog(
                       onSelect: (id) => Navigator.pop(context, id),
                       items: GlobalStorage().static.dynamicTypes[typeID] ?? [],
                     ),
-                  )));
+                  ));
           if (dynamicTypeID == null) return;
           await fit.modify((record) {
             final dyn = record.createDynamicItem(itemID, dynamicTypeID);

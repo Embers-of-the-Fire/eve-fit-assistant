@@ -1,5 +1,6 @@
 import 'package:eve_fit_assistant/storage/static/bundle.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:eve_fit_assistant/widgets/external_icon_icons.dart';
 import 'package:flutter/material.dart';
 
@@ -29,8 +30,8 @@ class AssetPage extends StatelessWidget {
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
                         context: context,
-                        builder: (context) => AlertDialog(
-                              title: const Text('清除本地存储'),
+                        builder: (context) => AppDialog(
+                              title: '清除本地存储',
                               content: const Text('确定要清除本地存储吗？\n这将会初始化所有本地存储数据。'),
                               actions: [
                                 TextButton(
@@ -72,8 +73,8 @@ class AssetPage extends StatelessWidget {
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
                         context: context,
-                        builder: (context) => AlertDialog(
-                              title: const Text('重置静态资产'),
+                        builder: (context) => AppDialog(
+                              title: '重置静态资产',
                               content: const Text('确定要重置静态资产吗？'),
                               actions: [
                                 TextButton(

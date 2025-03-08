@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:flutter/material.dart';
 
 Future<String?> showShipCreateDialog(BuildContext context) {
@@ -6,8 +7,8 @@ Future<String?> showShipCreateDialog(BuildContext context) {
 
   return showDialog<String>(
     context: context,
-    builder: (BuildContext context) => AlertDialog(
-      title: const Text('创建舰船'),
+    builder: (context) => AppDialog(
+      title: '创建舰船',
       content: Form(
           key: form,
           child: TextFormField(

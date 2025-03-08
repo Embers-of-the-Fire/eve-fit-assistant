@@ -138,28 +138,22 @@ class _MarketPriceNotFoundDialog extends StatelessWidget {
   const _MarketPriceNotFoundDialog({required this.items});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: AlertDialog(
-          title: const Text('无市场价格的装备'),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
-          contentTextStyle: const TextStyle(fontSize: 18),
-          content: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 300),
-              child: SingleChildScrollView(
-                  child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: items
-                    .map((id) => ListTile(
-                          leading: GlobalStorage().static.icons.getTypeIconSync(id),
-                          title: Text(GlobalStorage().static.types[id]!.nameZH),
-                          onLongPress: () => showTypeInfoPage(context, typeID: id),
-                        ))
-                    .toList(),
-              ))),
-        ),
+  Widget build(BuildContext context) => AppDialog(
+        title: '无市场价格的装备',
+        contentTextStyle: const TextStyle(fontSize: 18),
+        content: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 300),
+            child: SingleChildScrollView(
+                child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: items
+                  .map((id) => ListTile(
+                        leading: GlobalStorage().static.icons.getTypeIconSync(id),
+                        title: Text(GlobalStorage().static.types[id]!.nameZH),
+                        onLongPress: () => showTypeInfoPage(context, typeID: id),
+                      ))
+                  .toList(),
+            ))),
       );
 }
 

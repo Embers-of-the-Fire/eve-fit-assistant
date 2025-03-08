@@ -1,5 +1,6 @@
 import 'package:eve_fit_assistant/storage/static/damage_profile.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 
@@ -60,32 +61,28 @@ class _SetDamageProfileDialogState extends State<_SetDamageProfileDialog> {
           )));
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 120),
-      child: AlertDialog(
-        title: const Text('修改伤害类型'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        contentTextStyle: const TextStyle(fontSize: 16),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                decoration:
-                    const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey))),
-                child: BreadCrumb(
-                    divider: const Icon(Icons.chevron_right),
-                    overflow: ScrollableOverflow(direction: Axis.horizontal, keepLastDivider: true),
-                    items: breadcrumbs)),
-            Expanded(
-                child: SingleChildScrollView(
-              child: Column(
-                children: list.toList(),
-              ),
-            ))
-          ],
-        ),
+    return AppDialog(
+      title: '修改伤害类型',
+      contentTextStyle: const TextStyle(fontSize: 16),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration:
+                  const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey))),
+              child: BreadCrumb(
+                  divider: const Icon(Icons.chevron_right),
+                  overflow: ScrollableOverflow(direction: Axis.horizontal, keepLastDivider: true),
+                  items: breadcrumbs)),
+          Expanded(
+              child: SingleChildScrollView(
+            child: Column(
+              children: list.toList(),
+            ),
+          ))
+        ],
       ),
     );
   }

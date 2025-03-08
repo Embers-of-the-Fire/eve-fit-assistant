@@ -13,6 +13,7 @@ import 'package:eve_fit_assistant/pages/market/market_list.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/market/market.dart';
+import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:eve_fit_assistant/widgets/resonance_box.dart';
 import 'package:eve_fit_assistant/widgets/resource_compare.dart';
 import 'package:flutter/material.dart';

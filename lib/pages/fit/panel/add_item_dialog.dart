@@ -7,6 +7,7 @@ import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
@@ -160,19 +161,13 @@ Future<int?> showAddFighterDialog(
 Future<int?> _showAddItemDialogImpl(BuildContext context, _DialogMetadata metadata) async {
   final out = await showDialog<int>(
       context: context,
-      builder: (context) => Container(
-            padding: const EdgeInsets.symmetric(vertical: 120),
-            child: AlertDialog(
-              title: Text(metadata.title),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-              content: _AddItemDialog(
-                fallbackGroupID: metadata.fallbackGroupID,
-                baseBreadcrumbName: metadata.baseName,
-                filter: metadata.predicate,
-                onSelect: (id) => Navigator.pop(context, id),
-              ),
+      builder: (context) => AppDialog(
+            title: metadata.title,
+            content: _AddItemDialog(
+              fallbackGroupID: metadata.fallbackGroupID,
+              baseBreadcrumbName: metadata.baseName,
+              filter: metadata.predicate,
+              onSelect: (id) => Navigator.pop(context, id),
             ),
           ));
 
