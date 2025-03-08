@@ -6,7 +6,7 @@ final List<Content> changelogContents = Content.of([
       icon: Icons.update,
       title: '更新日志 EFA v0.16.0',
       path: 'content/changelog/v0.16.0.md',
-      time: DateTime(2025, 3, 8, 10, 48)),
+      time: DateTime(2025, 3, 8, 22, 10)),
   Content(
       icon: Icons.update,
       title: '更新日志 EFA v0.15.0',
