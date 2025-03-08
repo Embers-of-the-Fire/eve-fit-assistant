@@ -31,6 +31,7 @@ class TacticalModeSlotRow extends ConsumerWidget {
         record.changeTacticalMode();
         return record;
       }),
+      onLongPress: () => showTypeInfoPage(context, typeID: modeID),
     );
   }
 }
