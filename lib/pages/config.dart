@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/pages/config/account.dart';
 import 'package:eve_fit_assistant/pages/config/asset.dart';
 import 'package:eve_fit_assistant/pages/config/info.dart';
 import 'package:eve_fit_assistant/pages/config/preference.dart';
@@ -13,12 +14,15 @@ class ConfigPage extends StatelessWidget {
         scrollDirection: Axis.vertical,
         children: [
           ListTile(
-            leading: const Icon(Icons.info_outline_rounded),
-            title: const Text('关于'),
+            leading: const Icon(Icons.account_circle_outlined),
+            title: const Text('账户'),
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const InfoPage()),
+              MaterialPageRoute(builder: (context) => const AccountPage()),
             ),
           ),
+          const Divider(height: 0),
+          const SizedBox(height: 20),
+          const Divider(height: 0),
           ListTile(
             leading: const Icon(ExternalIcon.cubes),
             title: const Text('资产管理'),
@@ -33,6 +37,9 @@ class ConfigPage extends StatelessWidget {
               MaterialPageRoute(builder: (context) => const PreferencePage()),
             ),
           ),
+          const Divider(height: 0),
+          const SizedBox(height: 20),
+          const Divider(height: 0),
           ListTile(
             leading: const Icon(Icons.update),
             title: const Text('版本'),
@@ -45,6 +52,14 @@ class ConfigPage extends StatelessWidget {
             title: const Text('版权'),
             onTap: () => showLicensePage(context: context),
           ),
+          ListTile(
+            leading: const Icon(Icons.info_outline_rounded),
+            title: const Text('关于'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const InfoPage()),
+            ),
+          ),
+          const Divider(height: 0),
         ],
       );
 }
