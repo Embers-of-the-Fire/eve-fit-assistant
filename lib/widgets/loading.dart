@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+
+final loadingKey = GlobalKey();
 
 class GlobalLoading {
   static final GlobalLoading _instance = GlobalLoading._internal();
@@ -7,13 +10,19 @@ class GlobalLoading {
 
   GlobalLoading._internal();
 
-  void init() => _configEasyLoading();
+  void init() {
+    EasyLoading.instance
+      ..dismissOnTap = false
+      ..userInteractions = false;
+  }
 
   /// List of loading messages
   ///
   /// - `String.$1`: Key, to identify the loading message
   /// - `String.$2`: Value, the loading message
   final List<(String, String)> _loadingList = [];
+
+  bool _isLoading = false;
 
   void add(String key, String value) {
     _loadingList.add((key, value));
@@ -26,16 +35,14 @@ class GlobalLoading {
   }
 
   void _update() {
-    if (_loadingList.isEmpty) {
+    if (_loadingList.isEmpty && _isLoading) {
       EasyLoading.dismiss();
-    } else {
-      EasyLoading.show(status: _loadingList.first.$2);
+      _isLoading = false;
+    } else if (_loadingList.isNotEmpty && !_isLoading) {
+      EasyLoading.show(status: _loadingList.last.$2);
+      _isLoading = true;
+    } else if (_loadingList.isNotEmpty && _isLoading) {
+      EasyLoading.instance.key?.currentState?.updateStatus(_loadingList.last.$2);
     }
   }
-}
-
-void _configEasyLoading() {
-  EasyLoading.instance
-    ..dismissOnTap = false
-    ..userInteractions = false;
 }
