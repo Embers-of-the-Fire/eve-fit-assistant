@@ -31,38 +31,31 @@ class _AccountPageState extends ConsumerState<AccountPage> {
 
     final char = ref.watch(getCharacterProvider);
 
-    return char.when(
-      data: (data) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('账户管理'),
-          centerTitle: true,
-        ),
-        body: SizedBox(
-            width: double.infinity,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              const SizedBox(height: 50),
-              if (data != null) ...[
-                getCharacterImage(Preference().esiAuthServer, data.characterID),
-                const SizedBox(height: 20),
-                Text(
-                  data.characterName ?? '<未知>',
-                  style: const TextStyle(fontSize: 20),
-                ),
-                Text(
-                  data.characterID.toString(),
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                    onPressed: () async {
-                      await EsiDataStorage().clearAuthorize();
-                      final _ = ref.refresh(getCharacterProvider);
-                    },
-                    child: const Text('退出登录'))
-              ]
-            ])),
-      ),
+    final inner = char.when(
+      data: (data) => SizedBox(
+          width: double.infinity,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            const SizedBox(height: 50),
+            if (data != null) ...[
+              getCharacterImage(Preference().esiAuthServer, data.characterID),
+              const SizedBox(height: 20),
+              Text(
+                data.characterName ?? '<未知>',
+                style: const TextStyle(fontSize: 20),
+              ),
+              Text(
+                data.characterID.toString(),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                  onPressed: () async {
+                    await EsiDataStorage().clearAuthorize();
+                    final _ = ref.refresh(getCharacterProvider);
+                  },
+                  child: const Text('退出登录'))
+            ]
+          ])),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stackTrace) => Center(
           child: Padding(
@@ -75,6 +68,14 @@ class _AccountPageState extends ConsumerState<AccountPage> {
                   child: const Text('重试'),
                 )
               ]))),
+    );
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('账户管理'),
+        centerTitle: true,
+      ),
+      body: inner,
     );
   }
 }
