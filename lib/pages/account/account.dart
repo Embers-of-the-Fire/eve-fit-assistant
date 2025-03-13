@@ -9,33 +9,15 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'account.g.dart';
 
 @riverpod
-Future<Character?> getCharacter(Ref ref, int timestamp) async =>
-    await EsiDataStorage().getCharacter();
+Future<Character?> getCharacter(Ref ref) async => await EsiDataStorage().getCharacter();
 
-class AccountPage extends ConsumerStatefulWidget {
+class AccountPage extends ConsumerWidget {
   const AccountPage({super.key});
 
   @override
-  ConsumerState<AccountPage> createState() => _AccountPageState();
-}
-
-class _AccountPageState extends ConsumerState<AccountPage> {
-  int _timestamp = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _timestamp = DateTime.now().millisecondsSinceEpoch;
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(esiDataProvider).authorized) {
-      return _AccountPanel(
-          timestamp: _timestamp,
-          onRefresh: () => setState(() {
-                // _timestamp = DateTime.now().millisecondsSinceEpoch;
-              }));
+      return _AccountPanel(onRefresh: () => ref.refresh(getCharacterProvider));
     } else {
       return const _AccountNotAuthorized();
     }
@@ -43,14 +25,13 @@ class _AccountPageState extends ConsumerState<AccountPage> {
 }
 
 class _AccountPanel extends ConsumerWidget {
-  final int timestamp;
   final void Function() onRefresh;
 
-  const _AccountPanel({required this.timestamp, required this.onRefresh});
+  const _AccountPanel({required this.onRefresh});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final character = ref.watch(getCharacterProvider(timestamp));
+    final character = ref.watch(getCharacterProvider);
 
     return character.when(
       data: (character) => RefreshIndicator(

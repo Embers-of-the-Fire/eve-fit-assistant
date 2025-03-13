@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/pages/account/account.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/image.dart';
@@ -13,20 +14,25 @@ class AccountPage extends ConsumerStatefulWidget {
 }
 
 class _AccountPageState extends ConsumerState<AccountPage> {
-  Character? _resp;
-
   @override
-  void initState() {
-    (ref.read(esiDataProvider).authorized ? Future(() => null) : showAuthPage(context))
-        .then((_) async => await EsiDataStorage().getCharacter())
-        .then((u) => setState(() {
-              _resp = u;
-            }));
-    super.initState();
-  }
+  Widget build(BuildContext context) {
+    final data = ref.watch(esiDataProvider);
+    if (!data.authorized) {
+      return Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('你还没有登录', style: TextStyle(fontSize: 20)),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () => EsiAuth().autoAuth(context),
+          child: const Text('登录并授权'),
+        )
+      ]));
+    }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
+    final char = ref.watch(getCharacterProvider);
+
+    return char.when(
+      data: (data) => Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('账户管理'),
@@ -36,27 +42,39 @@ class _AccountPageState extends ConsumerState<AccountPage> {
             width: double.infinity,
             child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
               const SizedBox(height: 50),
-              if (_resp != null) ...[
-                getCharacterImage(Preference().esiAuthServer, _resp!.characterID),
+              if (data != null) ...[
+                getCharacterImage(Preference().esiAuthServer, data.characterID),
                 const SizedBox(height: 20),
                 Text(
-                  _resp!.characterName ?? '<未知>',
+                  data.characterName ?? '<未知>',
                   style: const TextStyle(fontSize: 20),
                 ),
                 Text(
-                  _resp!.characterID.toString(),
+                  data.characterID.toString(),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                     onPressed: () async {
                       await EsiDataStorage().clearAuthorize();
-                      setState(() {
-                        _resp = null;
-                      });
+                      final _ = ref.refresh(getCharacterProvider);
                     },
                     child: const Text('退出登录'))
               ]
             ])),
-      );
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => Center(
+          child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('加载角色信息失败', style: TextStyle(fontSize: 20)),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => ref.refresh(getCharacterProvider),
+                  child: const Text('重试'),
+                )
+              ]))),
+    );
+  }
 }
