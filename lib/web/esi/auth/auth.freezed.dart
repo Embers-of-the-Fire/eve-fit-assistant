@@ -216,6 +216,7 @@ mixin _$EsiAuthTokens {
   String get accessToken;
   int get expiresTimestamp;
   String get refreshToken;
+  EsiAuthServer get server;
 
   /// Create a copy of EsiAuthTokens
   /// with the given fields replaced by the non-null parameter values.
@@ -238,17 +239,18 @@ mixin _$EsiAuthTokens {
             (identical(other.expiresTimestamp, expiresTimestamp) ||
                 other.expiresTimestamp == expiresTimestamp) &&
             (identical(other.refreshToken, refreshToken) ||
-                other.refreshToken == refreshToken));
+                other.refreshToken == refreshToken) &&
+            (identical(other.server, server) || other.server == server));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, accessToken, expiresTimestamp, refreshToken);
+  int get hashCode => Object.hash(
+      runtimeType, accessToken, expiresTimestamp, refreshToken, server);
 
   @override
   String toString() {
-    return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken)';
+    return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken, server: $server)';
   }
 }
 
@@ -258,7 +260,11 @@ abstract mixin class $EsiAuthTokensCopyWith<$Res> {
           EsiAuthTokens value, $Res Function(EsiAuthTokens) _then) =
       _$EsiAuthTokensCopyWithImpl;
   @useResult
-  $Res call({String accessToken, int expiresTimestamp, String refreshToken});
+  $Res call(
+      {String accessToken,
+      int expiresTimestamp,
+      String refreshToken,
+      EsiAuthServer server});
 }
 
 /// @nodoc
@@ -277,6 +283,7 @@ class _$EsiAuthTokensCopyWithImpl<$Res>
     Object? accessToken = null,
     Object? expiresTimestamp = null,
     Object? refreshToken = null,
+    Object? server = null,
   }) {
     return _then(_self.copyWith(
       accessToken: null == accessToken
@@ -291,6 +298,10 @@ class _$EsiAuthTokensCopyWithImpl<$Res>
           ? _self.refreshToken
           : refreshToken // ignore: cast_nullable_to_non_nullable
               as String,
+      server: null == server
+          ? _self.server
+          : server // ignore: cast_nullable_to_non_nullable
+              as EsiAuthServer,
     ));
   }
 }
@@ -301,7 +312,8 @@ class _EsiAuthTokens extends EsiAuthTokens {
   const _EsiAuthTokens(
       {required this.accessToken,
       required this.expiresTimestamp,
-      required this.refreshToken})
+      required this.refreshToken,
+      required this.server})
       : super._();
   factory _EsiAuthTokens.fromJson(Map<String, dynamic> json) =>
       _$EsiAuthTokensFromJson(json);
@@ -312,6 +324,8 @@ class _EsiAuthTokens extends EsiAuthTokens {
   final int expiresTimestamp;
   @override
   final String refreshToken;
+  @override
+  final EsiAuthServer server;
 
   /// Create a copy of EsiAuthTokens
   /// with the given fields replaced by the non-null parameter values.
@@ -338,17 +352,18 @@ class _EsiAuthTokens extends EsiAuthTokens {
             (identical(other.expiresTimestamp, expiresTimestamp) ||
                 other.expiresTimestamp == expiresTimestamp) &&
             (identical(other.refreshToken, refreshToken) ||
-                other.refreshToken == refreshToken));
+                other.refreshToken == refreshToken) &&
+            (identical(other.server, server) || other.server == server));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, accessToken, expiresTimestamp, refreshToken);
+  int get hashCode => Object.hash(
+      runtimeType, accessToken, expiresTimestamp, refreshToken, server);
 
   @override
   String toString() {
-    return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken)';
+    return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken, server: $server)';
   }
 }
 
@@ -360,7 +375,11 @@ abstract mixin class _$EsiAuthTokensCopyWith<$Res>
       __$EsiAuthTokensCopyWithImpl;
   @override
   @useResult
-  $Res call({String accessToken, int expiresTimestamp, String refreshToken});
+  $Res call(
+      {String accessToken,
+      int expiresTimestamp,
+      String refreshToken,
+      EsiAuthServer server});
 }
 
 /// @nodoc
@@ -379,6 +398,7 @@ class __$EsiAuthTokensCopyWithImpl<$Res>
     Object? accessToken = null,
     Object? expiresTimestamp = null,
     Object? refreshToken = null,
+    Object? server = null,
   }) {
     return _then(_EsiAuthTokens(
       accessToken: null == accessToken
@@ -393,6 +413,10 @@ class __$EsiAuthTokensCopyWithImpl<$Res>
           ? _self.refreshToken
           : refreshToken // ignore: cast_nullable_to_non_nullable
               as String,
+      server: null == server
+          ? _self.server
+          : server // ignore: cast_nullable_to_non_nullable
+              as EsiAuthServer,
     ));
   }
 }

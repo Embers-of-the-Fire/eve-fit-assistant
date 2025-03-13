@@ -2,11 +2,13 @@ library;
 
 import 'dart:developer' as dev;
 
+import 'package:eve_fit_assistant/pages/account/account.dart' as account_page;
 import 'package:eve_fit_assistant/pages/config.dart' as config_page;
 import 'package:eve_fit_assistant/pages/create.dart';
 import 'package:eve_fit_assistant/pages/list.dart' as list_page;
 import 'package:eve_fit_assistant/pages/main.dart' as main_page;
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loading_indicator/loading_indicator.dart';
@@ -18,11 +20,12 @@ class FrontendPage extends StatefulWidget {
   State<FrontendPage> createState() => _FrontendPageState();
 }
 
+const _pageTitle = ['工作台', '列表', '角色', '设置'];
+const _noFloatingActionButton = [2, 3];
+
 class _FrontendPageState extends State<FrontendPage> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
-
-  final _pageTitle = const ['工作台', '列表', '设置'];
 
   @override
   void dispose() {
@@ -35,6 +38,7 @@ class _FrontendPageState extends State<FrontendPage> {
     const pages = <Widget>[
       main_page.MainPage(),
       list_page.ListPage(),
+      account_page.AccountPage(),
       config_page.ConfigPage(),
     ];
 
@@ -51,11 +55,12 @@ class _FrontendPageState extends State<FrontendPage> {
         }),
         children: pages,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => startFitCreation(context),
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton:
+          (!_noFloatingActionButton.contains(_currentIndex)).then(() => FloatingActionButton(
+                onPressed: () => startFitCreation(context),
+                shape: const CircleBorder(),
+                child: const Icon(Icons.add),
+              )),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -72,12 +77,10 @@ class _FrontendPageState extends State<FrontendPage> {
         showUnselectedLabels: false,
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_rounded), label: '工作台', backgroundColor: Colors.red),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.list_alt_rounded), label: '列表', backgroundColor: Colors.blue),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings_rounded), label: '设置', backgroundColor: Colors.yellow),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: '工作台'),
+          BottomNavigationBarItem(icon: Icon(Icons.list_alt_rounded), label: '列表'),
+          BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: '角色'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: '设置'),
         ],
       ),
     );

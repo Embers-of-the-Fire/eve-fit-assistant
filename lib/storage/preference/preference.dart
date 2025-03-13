@@ -1,38 +1,78 @@
+import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'debug.dart';
+
 part 'esi_auth_behavior.dart';
+
 part 'item_list_behavior.dart';
+
 part 'market_api.dart';
 
-class GlobalPreference {
-  static late final SharedPreferences _instance;
+part 'preference.g.dart';
 
-  const GlobalPreference._();
+@riverpod
+class GlobalPreference extends _$GlobalPreference {
+  @override
+  PreferenceState build() => PreferenceState(Preference(), 0);
 
-  static Future<void> init() async {
-    _instance = await SharedPreferences.getInstance();
+  void modify(void Function(Preference) modifier) {
+    modifier(state.preference);
+    state = PreferenceState(state.preference, state.stats + 1);
+  }
+}
 
-    itemListPopBehavior.setDefault(_instance);
-    marketApi.setDefault(_instance);
-    debug.setDefault(_instance);
+class PreferenceState {
+  final Preference preference;
+  int stats;
+
+  PreferenceState(this.preference, this.stats);
+}
+
+class Preference {
+  late final SharedPreferences _preference;
+  static final Preference _instance = Preference._();
+
+  Preference._();
+
+  factory Preference() => _instance;
+
+  Future<void> init() async {
+    _preference = await SharedPreferences.getInstance();
+
+    itemListPopBehavior.setDefault(_preference);
+    marketApi.setDefault(_preference);
+    debug.setDefault(_preference);
+    esiAuthBehavior.setDefault(_preference);
+    esiAuthServer.setDefault(_preference);
   }
 
-  static SharedPreferences get instance => _instance;
+  SharedPreferences get instance => _preference;
 
-  static ItemListPopBehavior get itemListPopBehavior => ItemListPopBehavior.get(_instance);
+  ItemListPopBehavior get itemListPopBehavior => ItemListPopBehavior.get(_preference);
 
-  static MarketApi get marketApi => MarketApi.get(_instance);
+  MarketApi get marketApi => MarketApi.get(_preference);
 
-  static Debug get debug => Debug.get(_instance);
+  Debug get debug => Debug.get(_preference);
 
-  static EsiAuthBehavior get esiAuthBehavior => EsiAuthBehavior.get(_instance);
+  EsiAuthBehavior get esiAuthBehavior => EsiAuthBehavior.get(_preference);
 
-  static set itemListPopBehavior(ItemListPopBehavior value) => value.set(_instance);
+  EsiAuthServer get esiAuthServer => EsiAuthServer.get(_preference);
 
-  static set marketApi(MarketApi value) => value.set(_instance);
+  set itemListPopBehavior(ItemListPopBehavior value) => value.set(_preference);
 
-  static set debug(Debug value) => value.set(_instance);
+  set marketApi(MarketApi value) => value.set(_preference);
 
-  static set esiAuthBehavior(EsiAuthBehavior value) => value.set(_instance);
+  set debug(Debug value) => value.set(_preference);
+
+  set esiAuthBehavior(EsiAuthBehavior value) => value.set(_preference);
+
+  set esiAuthServer(EsiAuthServer value) {
+    if (value != esiAuthServer) {
+      EsiDataStorage().clearAuthorize();
+      value.set(_preference);
+    }
+  }
 }

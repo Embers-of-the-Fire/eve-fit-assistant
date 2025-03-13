@@ -29,7 +29,7 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
   }
 
   Iterable<ListTile> renderNoAttr(context) {
-    final debug = GlobalPreference.debug == Debug.enable;
+    final debug = Preference().debug == Debug.enable;
     final original = GlobalStorage().fitEngine.getTypeAttr(widget.typeID);
     final out = original.entries
         .filterMap((e) => GlobalStorage().static.attributes[e.key].map((a) => (e, a)))
@@ -67,7 +67,7 @@ class _AttributeTabState extends State<AttributeTab> with AutomaticKeepAliveClie
   }
 
   Iterable<ListTile> renderAttr(BuildContext context, Map<int, double> attr) {
-    final debug = GlobalPreference.debug == Debug.enable;
+    final debug = Preference().debug == Debug.enable;
     final original = GlobalStorage().fitEngine.getTypeAttr(widget.typeID);
     final out = attr.entries
         .filterMap((e) => GlobalStorage().static.attributes[e.key].map((a) => (e, a)))

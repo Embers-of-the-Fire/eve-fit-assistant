@@ -1,21 +1,27 @@
+import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
+import 'package:eve_fit_assistant/web/esi/image.dart';
+import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AccountPage extends StatefulWidget {
+class AccountPage extends ConsumerStatefulWidget {
   const AccountPage({super.key});
 
   @override
-  State<AccountPage> createState() => _AccountPageState();
+  ConsumerState<AccountPage> createState() => _AccountPageState();
 }
 
-class _AccountPageState extends State<AccountPage> {
-  EsiAuthData? _resp;
+class _AccountPageState extends ConsumerState<AccountPage> {
+  Character? _resp;
 
   @override
   void initState() {
-    EsiAuth().getStorage(context).then((u) => setState(() {
-          _resp = u;
-        }));
+    (ref.read(esiDataProvider).authorized ? Future(() => null) : showAuthPage(context))
+        .then((_) async => await EsiDataStorage().getCharacter())
+        .then((u) => setState(() {
+              _resp = u;
+            }));
     super.initState();
   }
 
@@ -31,10 +37,7 @@ class _AccountPageState extends State<AccountPage> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
               const SizedBox(height: 50),
               if (_resp != null) ...[
-                Image.network(
-                  'https://image.eveonline.com/Character/${_resp!.characterID}_128.jpg',
-                  width: 128,
-                ),
+                getCharacterImage(Preference().esiAuthServer, _resp!.characterID),
                 const SizedBox(height: 20),
                 Text(
                   _resp!.characterName ?? '<未知>',
@@ -44,6 +47,15 @@ class _AccountPageState extends State<AccountPage> {
                   _resp!.characterID.toString(),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                    onPressed: () async {
+                      await EsiDataStorage().clearAuthorize();
+                      setState(() {
+                        _resp = null;
+                      });
+                    },
+                    child: const Text('退出登录'))
               ]
             ])),
       );

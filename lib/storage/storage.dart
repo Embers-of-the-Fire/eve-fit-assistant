@@ -9,6 +9,7 @@ import 'package:eve_fit_assistant/storage/path.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/storage.dart';
 import 'package:eve_fit_assistant/storage/version.dart';
+import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
 import 'package:eve_fit_assistant/widgets/loading.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,7 +70,8 @@ class GlobalStorage {
 
     // await EasyLoading.show(status: '初始化');
     GlobalLoading().add(_storageLoadingKey, '初始化');
-    await GlobalPreference.init();
+    await Preference().init();
+    await EsiDataStorage().init();
     final version = await getVersionInfo();
     _version = await executeMigrate(version) ?? VersionInfo.currentVersion;
     _packageInfo = await PackageInfo.fromPlatform();

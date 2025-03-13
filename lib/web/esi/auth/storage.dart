@@ -2,13 +2,37 @@
 
 part of 'auth.dart';
 
-const _esiAuthScope = 'esi-skills.read_skills.v1';
+const _esiAuthScope='esi-skills.read_skills.v1';
 
-final Uri _esiAuthEndpoint = Uri.parse(r'https://login.eveonline.com/v2/oauth/authorize');
-final Uri _esiTokenEndpoint = Uri.parse(r'https://login.eveonline.com/v2/oauth/token');
+final Uri _esiAuthEndpointTq = Uri.parse(r'https://login.eveonline.com/v2/oauth/authorize');
+final Uri _esiAuthEndpointSe = Uri.parse(r'https://login.evepc.163.com/v2/oauth/authorize');
+final Uri _esiTokenEndpointTq = Uri.parse(r'https://login.eveonline.com/v2/oauth/token');
+final Uri _esiTokenEndpointSe = Uri.parse(r'https://login.evepc.163.com/v2/oauth/token');
 
-const _esiAppID = '683084ab5f8848d4b187462ac3b97677';
-final Uri _esiRedirectURI = Uri.parse('https://esi.evetech.net/ui/oauth2-redirect.html');
+const _esiAppIDTq = '683084ab5f8848d4b187462ac3b97677';
+const _esiAppIDSe = 'bc90aa496a404724a93f41b4f4e97761';
+final Uri _esiRedirectURITq = Uri.parse('https://esi.evetech.net/ui/oauth2-redirect.html');
+final Uri _esiRedirectURISe = Uri.parse('https://ali-esi.evepc.163.com/ui/oauth2-redirect.html');
+
+Uri _esiAuthEndpoint(EsiAuthServer server) => switch (server) {
+      EsiAuthServer.tranquility => _esiAuthEndpointTq,
+      EsiAuthServer.serenity => _esiAuthEndpointSe,
+    };
+
+Uri _esiTokenEndpoint(EsiAuthServer server) => switch (server) {
+      EsiAuthServer.tranquility => _esiTokenEndpointTq,
+      EsiAuthServer.serenity => _esiTokenEndpointSe,
+    };
+
+String _esiAppID(EsiAuthServer server) => switch (server) {
+      EsiAuthServer.tranquility => _esiAppIDTq,
+      EsiAuthServer.serenity => _esiAppIDSe,
+    };
+
+Uri _esiRedirectURI(EsiAuthServer server) => switch (server) {
+      EsiAuthServer.tranquility => _esiRedirectURITq,
+      EsiAuthServer.serenity => _esiRedirectURISe,
+    };
 
 @freezed
 abstract class EsiAuthResponse with _$EsiAuthResponse {
@@ -28,14 +52,17 @@ abstract class EsiAuthTokens with _$EsiAuthTokens {
     required String accessToken,
     required int expiresTimestamp,
     required String refreshToken,
+    required EsiAuthServer server,
   }) = _EsiAuthTokens;
 
   const EsiAuthTokens._();
 
-  factory EsiAuthTokens.fromResponse(EsiAuthResponse response) => EsiAuthTokens(
+  factory EsiAuthTokens.fromResponse(EsiAuthServer server, EsiAuthResponse response) =>
+      EsiAuthTokens(
         accessToken: response.accessToken,
         expiresTimestamp: DateTime.now().millisecondsSinceEpoch + response.expiresIn * 1000,
         refreshToken: response.refreshToken,
+        server: server,
       );
 
   factory EsiAuthTokens.fromJson(Map<String, dynamic> json) => _$EsiAuthTokensFromJson(json);
@@ -45,87 +72,71 @@ abstract class EsiAuthTokens with _$EsiAuthTokens {
   bool get isNotExpired => !isExpired;
 }
 
-class EsiAuthData {
-  final EsiAuthTokens tokens;
-  final String? characterName;
-  final int characterID;
-
-  const EsiAuthData({
-    required this.tokens,
-    required this.characterName,
-    required this.characterID,
-  });
-
-  bool get isExpired => tokens.isExpired;
-
-  bool get isNotExpired => !isExpired;
-
-  static Future<EsiAuthData> init(EsiAuthTokens tokens) async {
-    final verifyResponse = await verify(tokens.accessToken);
-    return EsiAuthData(
-      tokens: tokens,
-      characterName: verifyResponse.characterName,
-      characterID: verifyResponse.characterID,
-    );
-  }
-}
-
 class EsiAuth {
   static const _esiAccessTokenKey = 'esi_access_token';
   static const _esiExpiresTimestampKey = 'esi_expires_timestamp';
   static const _esiRefreshTokenKey = 'esi_refresh_token';
+  static const _esiServerKey = 'esi_server';
 
   static final EsiAuth _instance = EsiAuth._();
 
-  EsiAuthData? _storage;
+  EsiAuthTokens? _tokens;
 
-  EsiAuthData? get storage => _storage;
-
-  Future<EsiAuthData?> getStorage(BuildContext context) async {
-    await setStorage(await _read());
-    if (_storage?.isNotExpired ?? false) {
-      return _storage;
-    } else if (_storage?.isExpired ?? false) {
+  Future<EsiAuthTokens?> getTokensAuthorized() async {
+    await setTokens(await _read());
+    if (_tokens?.isExpired ?? false) {
       await _refreshToken();
-      return _storage;
     }
-    log('here', name: 'EsiAuth.getStorage');
+    return _tokens;
+  }
+
+  Future<EsiAuthTokens?> getTokens(BuildContext context) async {
+    await setTokens(await _read());
+    if (_tokens?.isNotExpired ?? false) {
+      return _tokens;
+    } else if (_tokens?.isExpired ?? false) {
+      await _refreshToken();
+      return _tokens;
+    }
     if (!context.mounted) return null;
     await autoAuth(context);
-    return _storage;
+    return _tokens;
   }
 
   Future<void> _refreshToken() async {
+    final server = _tokens!.server;
     final raw = await http.post(
-      _esiTokenEndpoint,
+      _esiTokenEndpoint(server),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: {
         'grant_type': 'refresh_token',
-        'refresh_token': _storage!.tokens.refreshToken,
-        'client_id': _esiAppID,
+        'refresh_token': _tokens!.refreshToken,
+        'client_id': _esiAppID(server),
       },
     );
     final response = EsiAuthResponse.fromJson(jsonDecode(raw.body));
-    final storage = EsiAuthTokens.fromResponse(response);
-    await setStorage(storage);
+    final storage = EsiAuthTokens.fromResponse(server, response);
+    await setTokens(storage);
   }
 
-  Future<void> setStorage(EsiAuthTokens? storage) async {
-    _storage = await storage.map<Future<EsiAuthData>>((u) async => await EsiAuthData.init(u));
+  Future<void> setTokens(EsiAuthTokens? storage) async {
+    _tokens = storage;
     if (storage != null) {
       const sec = FlutterSecureStorage();
       await sec.write(key: _esiAccessTokenKey, value: storage.accessToken);
       await sec.write(key: _esiExpiresTimestampKey, value: storage.expiresTimestamp.toString());
       await sec.write(key: _esiRefreshTokenKey, value: storage.refreshToken);
+      await sec.write(key: _esiServerKey, value: storage.server.value.toString());
     }
   }
 
-  Future<void> clearStorage() async {
-    _storage = null;
+  Future<void> clearTokens() async {
+    _tokens = null;
     const sec = FlutterSecureStorage();
     await sec.delete(key: _esiAccessTokenKey);
     await sec.delete(key: _esiExpiresTimestampKey);
     await sec.delete(key: _esiRefreshTokenKey);
+    await sec.delete(key: _esiServerKey);
   }
 
   EsiAuth._();
@@ -133,11 +144,15 @@ class EsiAuth {
   factory EsiAuth() => _instance;
 
   Future<void> autoAuth(BuildContext context) async {
-    await setStorage(await _read());
+    final server = Preference().esiAuthServer;
+
+    await setTokens(await _read());
 
     if (!context.mounted) return;
 
-    if (_storage == null || (_storage != null && _storage!.isExpired)) {
+    if (_tokens == null ||
+        (_tokens != null && _tokens!.isExpired) ||
+        (_tokens != null && _tokens!.server != server)) {
       await showAuthPage(context);
     }
   }
@@ -148,8 +163,11 @@ class EsiAuth {
     final expiresTimestamp =
         (await storage.read(key: _esiExpiresTimestampKey)).andThen(int.tryParse);
     final refreshToken = await storage.read(key: _esiRefreshTokenKey);
-    if (accessToken != null && expiresTimestamp != null && refreshToken != null) {
+    final server =
+        (await storage.read(key: _esiServerKey)).andThen(int.tryParse).map((u) => EsiAuthServer(u));
+    if (accessToken != null && expiresTimestamp != null && refreshToken != null && server != null) {
       return EsiAuthTokens(
+        server: server,
         accessToken: accessToken,
         expiresTimestamp: expiresTimestamp,
         refreshToken: refreshToken,
@@ -163,13 +181,13 @@ class EsiAuth {
 class OAuthWebView extends StatefulWidget {
   final String authUrl;
   final String state;
-  final String redirectUri;
+  final EsiAuthServer server;
 
   const OAuthWebView({
     super.key,
     required this.authUrl,
     required this.state,
-    required this.redirectUri,
+    required this.server,
   });
 
   @override
@@ -182,18 +200,18 @@ class _OAuthWebViewState extends State<OAuthWebView> {
 
   Future<EsiAuthTokens> _exchangeCodeForToken(String code) async {
     final raw = await http.post(
-      _esiTokenEndpoint,
+      _esiTokenEndpoint(widget.server),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: {
         'grant_type': 'authorization_code',
         'code': code,
-        'redirect_uri': _esiRedirectURI.toString(),
+        'redirect_uri': _esiRedirectURI(widget.server).toString(),
         'state': widget.state,
-        'client_id': _esiAppID,
+        'client_id': _esiAppID(widget.server),
       },
     );
     final response = EsiAuthResponse.fromJson(jsonDecode(raw.body));
-    final storage = EsiAuthTokens.fromResponse(response);
+    final storage = EsiAuthTokens.fromResponse(widget.server, response);
     return storage;
   }
 
@@ -206,14 +224,14 @@ class _OAuthWebViewState extends State<OAuthWebView> {
         onPageStarted: (url) => setState(() => _isLoading = true),
         onPageFinished: (url) => setState(() => _isLoading = false),
         onNavigationRequest: (request) async {
-          if (request.url.startsWith(widget.redirectUri)) {
+          if (request.url.startsWith(_esiRedirectURI(widget.server).toString())) {
             final uri = Uri.parse(request.url);
             final code = uri.queryParameters['code'];
             final state = uri.queryParameters['state'];
 
             if (code != null && state == widget.state) {
               final token = await _exchangeCodeForToken(code);
-              await EsiAuth().setStorage(token);
+              await EsiDataStorage().setAuthorized(token);
               _finishAuth(token);
             }
             return NavigationDecision.prevent;
@@ -232,10 +250,6 @@ class _OAuthWebViewState extends State<OAuthWebView> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: const Text('认证中...'),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
         body: Stack(
           children: [

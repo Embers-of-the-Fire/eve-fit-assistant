@@ -94,7 +94,7 @@ class _MarketListState extends State<MarketList> {
   }
 
   void _onTapItem(int id) {
-    if (GlobalPreference.marketApi == MarketApi.cEveMarket) {
+    if (Preference().marketApi == MarketApi.cEveMarket) {
       fToast.showToast(
           gravity: ToastGravity.CENTER,
           child: Container(
@@ -120,8 +120,8 @@ class _MarketListState extends State<MarketList> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-      canPop: GlobalPreference.itemListPopBehavior != ItemListPopBehavior.prevPage,
-      onPopInvokedWithResult: (GlobalPreference.itemListPopBehavior == ItemListPopBehavior.prevPage)
+      canPop: Preference().itemListPopBehavior != ItemListPopBehavior.prevPage,
+      onPopInvokedWithResult: (Preference().itemListPopBehavior == ItemListPopBehavior.prevPage)
           .thenSome((pop, _) async {
         if (pop) return;
         if (_breadcrumbs.isEmpty) {

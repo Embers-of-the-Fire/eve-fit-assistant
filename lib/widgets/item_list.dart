@@ -99,8 +99,8 @@ class _ItemListState extends State<ItemList> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-      canPop: GlobalPreference.itemListPopBehavior != ItemListPopBehavior.prevPage,
-      onPopInvokedWithResult: (GlobalPreference.itemListPopBehavior == ItemListPopBehavior.prevPage)
+      canPop: Preference().itemListPopBehavior != ItemListPopBehavior.prevPage,
+      onPopInvokedWithResult: (Preference().itemListPopBehavior == ItemListPopBehavior.prevPage)
           .thenSome((pop, _) async {
         if (pop) return;
         if (_breadcrumbs.isEmpty) {

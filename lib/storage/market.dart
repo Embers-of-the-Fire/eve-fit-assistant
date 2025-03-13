@@ -40,7 +40,7 @@ class MarketStorage {
         return price.price;
       }
     }
-    final price = await switch (GlobalPreference.marketApi) {
+    final price = await switch (Preference().marketApi) {
       MarketApi.cEveMarket => CEveMarketResponse.request(typeID, server),
       MarketApi.esi => ESIMarketResponse.request(typeID, server),
     };

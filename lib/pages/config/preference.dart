@@ -1,5 +1,6 @@
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 part './preference/debug.dart';
 part './preference/item_list_behavior.dart';
@@ -46,6 +47,7 @@ class PreferencePage extends StatelessWidget {
                   ))),
           Divider(height: 0),
           EsiAuthBehaviorTile(),
+          EsiAuthServerTile(),
           Divider(height: 0),
           ListTile(
               minTileHeight: 0,

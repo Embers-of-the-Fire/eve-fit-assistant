@@ -1,16 +1,12 @@
-import 'package:eve_fit_assistant/constant/eve/categories.dart';
 import 'package:eve_fit_assistant/storage/character/character.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/utils.dart';
-import 'package:eve_fit_assistant/widgets/skill_tree.dart';
+import 'package:eve_fit_assistant/widgets/skill_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'char_edit.g.dart';
-
 part 'char_profile.dart';
-
 part 'char_skill_list.dart';
 
 @riverpod
@@ -130,6 +126,10 @@ class _CharacterEditPageContentState extends ConsumerState<CharacterEditPageCont
   Widget build(BuildContext context) {
     final char = ref.watch(characterNotifierProvider(widget.id));
 
+    if (!char.initialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -147,8 +147,7 @@ class _CharacterEditPageContentState extends ConsumerState<CharacterEditPageCont
         ),
         // body: CharacterSkillList(id: id),
         body: TabBarView(controller: _controller, children: [
-          CharacterSkillList(id: widget.id),
-          // CharacterInfoPage(id: widget.id),
+          CharacterSkillListPage(id: widget.id),
           CharacterProfileTab(
             charID: widget.id,
             name: char.character.name,
