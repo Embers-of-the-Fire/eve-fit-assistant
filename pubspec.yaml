@@ -102,7 +102,7 @@ flutter:
     - logo/logo.png
     - logo/logo-android12.png
     # static data
-    - data/storage.tar.gz
+    - data/storage.tar.xz
     # icons
     - assets/icon/
     # text content

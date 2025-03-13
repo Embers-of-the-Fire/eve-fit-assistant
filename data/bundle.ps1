@@ -46,6 +46,6 @@ Copy-Item -Path (Join-Path $eve_fit_os_out_dir "types.pb2") -Destination $native
 Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dbuffcollections.pb2") -Destination $native_cache_dir -Recurse -Force
 
 Write-Host "Creating tarball ..."
-$tarball = Join-Path $current "storage.tar.gz"
-& $tar -czf $tarball -C $cache_dir .
+$tarball = Join-Path $current "storage.tar.xz"
+& $tar -cJf $tarball -C $cache_dir .
 Write-Host "Tarball created at $tarball"

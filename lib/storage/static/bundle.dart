@@ -18,9 +18,9 @@ Future<void> unpackBundledStorage() async {
   );
 
   final storageDir = await getStaticStorageDir(create: true);
-  final storageBundle = await getStorageBundle();
-  final gz = const GZipDecoder().decodeBytes(storageBundle.buffer.asUint8List());
-  final tar = TarDecoder().decodeBytes(gz);
+  final storageBundle = await rootBundle.load('data/storage.tar.xz');
+  final xz = XZDecoder().decodeBytes(storageBundle.buffer.asUint8List());
+  final tar = TarDecoder().decodeBytes(xz);
   await extractArchiveToDisk(tar, storageDir.path);
 
   final end = DateTime.now();
@@ -31,11 +31,6 @@ Future<void> unpackBundledStorage() async {
   );
 
   GlobalLoading().dismiss(_bundleLoadingKey);
-}
-
-Future<ByteData> getStorageBundle() async {
-  final bundle = rootBundle.load('data/storage.tar.gz');
-  return bundle;
 }
 
 const String _clearStorageLoadingKey = 'clear';

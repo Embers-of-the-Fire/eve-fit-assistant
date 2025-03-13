@@ -6,6 +6,6 @@
 /index-cache
 
 resfileindex.txt
-*.tar.gz
+*.tar.xz
 
 version
