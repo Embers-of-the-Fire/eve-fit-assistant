@@ -69,6 +69,24 @@ class MyApp extends ConsumerWidget {
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         )),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: neonHighlight,
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          ),
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: deepSpace,
+          titleTextStyle: TextStyle(
+            color: neonHighlight,
+            fontSize: 20,
+          ),
+          contentTextStyle: TextStyle(
+            color: terminalText,
+            fontSize: 16,
+          ),
+        ),
         canvasColor: deepSpace,
         dividerColor: cyberTeal.withAlpha(76),
         iconTheme: const IconThemeData(color: neonHighlight),

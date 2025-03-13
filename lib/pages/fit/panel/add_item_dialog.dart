@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
+import 'package:eve_fit_assistant/main.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
@@ -191,6 +192,14 @@ class _AddItemDialog extends StatelessWidget {
   Widget build(BuildContext context) => Column(children: [
         TypeAheadField<(int, TypeItem)>(
           onSelected: (data) => onSelect?.call(data.$1),
+          decorationBuilder: (context, child) => Container(
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: cyberTeal,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: child,
+          ),
           builder: (context, controller, focusNode) => Padding(
               padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
               child: TextField(
@@ -222,13 +231,12 @@ class _AddItemDialog extends StatelessWidget {
                   filter.map((u) => u(data.$1)).unwrapOr(true))
               .toList()),
           emptyBuilder: (context) => Padding(
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              '未找到相关装备',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                  '未找到相关装备',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium
+              )),
         ),
         Expanded(
             child: ItemList(

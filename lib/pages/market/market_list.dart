@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/main.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/market/market_order.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
@@ -137,6 +138,14 @@ class _MarketListState extends State<MarketList> {
         children: [
           TypeAheadField<(int, TypeItem)>(
             onSelected: (data) => _onTapItem(data.$1),
+            decorationBuilder: (context, child) => Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: cyberTeal,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: child,
+            ),
             builder: (context, controller, focusNode) => Padding(
                 padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
                 child: TextField(
@@ -165,13 +174,12 @@ class _MarketListState extends State<MarketList> {
                 .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
                 .toList()),
             emptyBuilder: (context) => Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                '未找到相关物品',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                    '未找到相关物品',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium
+                )),
           ),
           Container(
             width: double.infinity,

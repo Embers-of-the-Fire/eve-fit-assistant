@@ -1,6 +1,7 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
 import 'package:eve_fit_assistant/export/import_view.dart';
 import 'package:eve_fit_assistant/export/schema.dart';
+import 'package:eve_fit_assistant/main.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
@@ -34,6 +35,14 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
         appBar: AppBar(title: const Text('选择船只')),
         body: Column(children: [
           TypeAheadField<(int, Ship)>(
+            decorationBuilder: (context, child) => Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: cyberTeal,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: child,
+            ),
             onSelected: (data) => _onShipSelect(data.$1, context),
             builder: (context, controller, focusNode) => Padding(
                 padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
@@ -62,13 +71,12 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
                 .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
                 .toList()),
             emptyBuilder: (context) => Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                '未找到相关舰船',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
+              padding: const EdgeInsets.all(12),
+                child: Text(
+              '未找到相关舰船',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium
+            )),
           ),
           Expanded(
               child: ItemList(
