@@ -31,10 +31,7 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('选择船只'),
-        ),
+        appBar: AppBar(title: const Text('选择船只')),
         body: Column(children: [
           TypeAheadField<(int, Ship)>(
             onSelected: (data) => _onShipSelect(data.$1, context),

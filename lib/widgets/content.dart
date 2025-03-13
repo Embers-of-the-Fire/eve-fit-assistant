@@ -48,10 +48,7 @@ class ContentDetailPage extends ConsumerWidget {
     final text = ref.watch(markdownContentProvider(content.path));
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(content.title),
-      ),
+      appBar: AppBar(title: Text(content.title)),
       body: switch (text) {
         AsyncData(:final value) => Column(
             children: [

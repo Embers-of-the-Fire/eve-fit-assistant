@@ -7,10 +7,7 @@ class AnnouncementPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('公告'),
-        ),
+        appBar: AppBar(title: const Text('公告')),
         body: ContentList(contents: announcementContents),
       );
 }

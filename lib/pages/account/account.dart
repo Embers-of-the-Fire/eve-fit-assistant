@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/pages/account/account_panel.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/image.dart';
@@ -34,22 +35,23 @@ class _AccountPanel extends ConsumerWidget {
     final character = ref.watch(getCharacterProvider);
 
     return character.when(
-      data: (character) => RefreshIndicator(
-          onRefresh: () async => onRefresh(),
-          child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                children: [
-                  ListTile(
-                    contentPadding: const EdgeInsets.all(20),
-                    leading: getCharacterImage(Preference().esiAuthServer, character!.characterID),
-                    title: SelectableText(character.characterName ?? '<未知>',
-                        style: const TextStyle(fontSize: 20)),
-                    trailing: SelectableText(character.characterID.toString()),
-                  ),
-                  const Divider(height: 0, color: Colors.grey),
-                ],
-              ))),
+      data: (character) => Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.all(20),
+            leading: getCharacterImage(Preference().esiAuthServer, character!.characterID),
+            title: SelectableText(character.characterName ?? '<未知>',
+                style: const TextStyle(fontSize: 20)),
+            trailing: SelectableText(character.characterID.toString()),
+          ),
+          const Divider(height: 0, color: Colors.grey),
+          const Expanded(
+              child: SizedBox(
+            width: double.infinity,
+            child: AccountPanel(),
+          ))
+        ],
+      ),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stackTrace) => Center(
           child: Padding(

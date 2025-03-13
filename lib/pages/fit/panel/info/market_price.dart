@@ -173,7 +173,6 @@ class _MarketPriceDetail extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('市场价格详情'),
           bottom: const TabBar(
             indicatorSize: TabBarIndicatorSize.tab,

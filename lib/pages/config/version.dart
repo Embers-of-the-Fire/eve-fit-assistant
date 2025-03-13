@@ -8,7 +8,6 @@ class VersionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('版本信息'),
           centerTitle: true,
         ),

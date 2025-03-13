@@ -93,10 +93,7 @@ class CharacterEditPagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('加载中...'),
-        ),
+        appBar: AppBar(title: const Text('加载中...')),
         body: const Center(
           child: CircularProgressIndicator(),
         ),
@@ -132,7 +129,6 @@ class _CharacterEditPageContentState extends ConsumerState<CharacterEditPageCont
 
     return Scaffold(
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('角色配置'),
           actions: [
             Container(

@@ -13,7 +13,6 @@ class PreferencePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('偏好设置'),
           centerTitle: true,
         ),

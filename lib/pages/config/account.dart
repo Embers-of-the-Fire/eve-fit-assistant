@@ -71,7 +71,6 @@ class _AccountPageState extends ConsumerState<AccountPage> {
     );
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('账户管理'),
         centerTitle: true,
       ),

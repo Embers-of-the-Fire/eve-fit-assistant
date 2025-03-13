@@ -90,7 +90,6 @@ class _MarketOrderPageState extends ConsumerState<MarketOrderPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('市场 - ${GlobalStorage().static.types[widget.typeID]?.nameZH ?? '未知物品'}'),
         centerTitle: true,
       ),

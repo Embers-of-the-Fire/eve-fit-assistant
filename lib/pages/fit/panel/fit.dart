@@ -133,10 +133,7 @@ class FitPagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('加载中...'),
-        ),
+        appBar: AppBar(title: const Text('加载中...')),
         body: const Center(
           child: CircularProgressIndicator(),
         ),
@@ -180,7 +177,6 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('[${ship.nameZH}] ${fitRef.fit.brief.name}'),
         bottom: TabBar(
           controller: _tabController,
@@ -225,7 +221,6 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('[${ship.nameZH}] ${fitRef.fit.brief.name}'),
         bottom: TabBar(
           controller: _tabController,

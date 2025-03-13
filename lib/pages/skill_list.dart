@@ -45,10 +45,7 @@ class _SkillListPageState extends State<SkillListPage> {
         .filter((u) => _selectedGroup == null || u.value.groupID == _selectedGroup);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('技能列表'),
-      ),
+      appBar: AppBar(title: const Text('技能列表')),
       body: Stack(children: [
         GestureDetector(
             onTap: () => _controller.collapse(),

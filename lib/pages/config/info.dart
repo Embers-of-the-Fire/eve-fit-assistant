@@ -9,7 +9,6 @@ class InfoPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: logoBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('关于'),
           centerTitle: true,
         ),

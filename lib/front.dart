@@ -44,9 +44,9 @@ class _FrontendPageState extends State<FrontendPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: const _LoadingStatusIcon(),
         title: Text(_pageTitle[_currentIndex]),
+        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
       ),
       body: PageView(
         controller: _pageController,
@@ -61,28 +61,43 @@ class _FrontendPageState extends State<FrontendPage> {
                 shape: const CircleBorder(),
                 child: const Icon(Icons.add),
               )),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        },
-        showSelectedLabels: true,
-        showUnselectedLabels: false,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: '工作台'),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt_rounded), label: '列表'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: '角色'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: '设置'),
-        ],
-      ),
+      bottomNavigationBar: mediaQuerySetPadding(
+          context: context,
+          bottom: 14,
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+              _pageController.animateToPage(
+                index,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            showSelectedLabels: true,
+            showUnselectedLabels: false,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                  icon: Padding(
+                      padding: EdgeInsets.only(top: 5), child: Icon(Icons.dashboard_rounded)),
+                  label: '工作台'),
+              BottomNavigationBarItem(
+                  icon: Padding(
+                      padding: EdgeInsets.only(top: 5), child: Icon(Icons.list_alt_rounded)),
+                  label: '列表'),
+              BottomNavigationBarItem(
+                  icon:
+                      Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.account_circle)),
+                  label: '角色'),
+              BottomNavigationBarItem(
+                  icon: Padding(
+                      padding: EdgeInsets.only(top: 5), child: Icon(Icons.settings_rounded)),
+                  label: '设置'),
+            ],
+          )),
     );
   }
 }
