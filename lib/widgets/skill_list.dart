@@ -80,7 +80,7 @@ class _CharacterSkillListState extends State<CharacterSkillList> {
                   style: const TextStyle(fontSize: 16),
                   child: Table(
                     children: skillGroups
-                        .chunkNullPad(4)
+                        .chunkPadNull(4)
                         .map((chunk) => TableRow(
                             children: chunk
                                 .map((item) => item

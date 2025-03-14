@@ -76,7 +76,7 @@ extension Itertools<T> on Iterable<T> {
     }
   }
 
-  Iterable<Iterable<T?>> chunkNullPad(int size) sync* {
+  Iterable<Iterable<T?>> chunkPadNull(int size) sync* {
     final list = toList();
     for (var i = 0; i < list.length; i += size) {
       yield list.skip(i).take(size).padNull(size);

@@ -83,7 +83,7 @@ class _SkillListPageState extends State<SkillListPage> {
                     style: const TextStyle(fontSize: 16),
                     child: Table(
                       children: skillGroups
-                          .chunkNullPad(4)
+                          .chunkPadNull(4)
                           .map((chunk) => TableRow(
                               children: chunk
                                   .map((item) => item
