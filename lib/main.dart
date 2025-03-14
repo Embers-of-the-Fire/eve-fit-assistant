@@ -85,6 +85,7 @@ class MyApp extends ConsumerWidget {
           indent: 10,
           endIndent: 10,
         ),
+        dividerColor: cyberTeal,
         iconTheme: const IconThemeData(color: neonHighlight),
       ),
       home: const front.FrontendPage(),

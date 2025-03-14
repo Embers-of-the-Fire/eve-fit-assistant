@@ -36,7 +36,7 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
         body: Column(children: [
           TypeAheadField<(int, Ship)>(
             decorationBuilder: (context, child) => Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
+              margin: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
                 color: cyberTeal,
                 borderRadius: BorderRadius.circular(5),
@@ -45,13 +45,20 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
             ),
             onSelected: (data) => _onShipSelect(data.$1, context),
             builder: (context, controller, focusNode) => Padding(
-                padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
+                padding: const EdgeInsets.only(top: 10, left: 8, right: 8),
                 child: TextField(
                     controller: controller,
                     focusNode: focusNode,
                     autofocus: false,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                          borderRadius: const BorderRadius.all(Radius.circular(2))),
+                      focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                          borderRadius: const BorderRadius.all(Radius.circular(2))),
+                      border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(2))),
                       labelText: '舰船',
                     ))),
             itemBuilder: (context, data) {

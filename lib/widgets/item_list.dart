@@ -116,8 +116,7 @@ class _ItemListState extends State<ItemList> {
             width: double.infinity,
             padding: widget.breadcrumbPadding,
             decoration: BoxDecoration(
-              border: Border(
-                  bottom: BorderSide(color: Theme.of(context).dividerTheme.color ?? Colors.grey)),
+              border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
             ),
             child: BreadCrumb(
               items: [

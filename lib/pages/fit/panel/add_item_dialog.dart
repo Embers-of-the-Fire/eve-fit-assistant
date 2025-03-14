@@ -206,8 +206,15 @@ class _AddItemDialog extends StatelessWidget {
                   controller: controller,
                   focusNode: focusNode,
                   autofocus: false,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                        borderRadius: const BorderRadius.all(Radius.circular(2))),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                        borderRadius: const BorderRadius.all(Radius.circular(2))),
+                    border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(2))),
                     labelText: '装备',
                   ))),
           itemBuilder: (context, data) {

@@ -20,6 +20,8 @@ class ReadonlyMap<K, V> {
   int get length => _map.length;
 
   Map<String, dynamic> toJson() => _map as Map<String, dynamic>;
+
+  Map<RK, RV> map<RK, RV>(MapEntry<RK, RV> Function(K, V) f) => _map.map(f);
 }
 
 class MapView<K, V> {

@@ -24,8 +24,8 @@ class ContentListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.grey)),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
         ),
         child: ListTile(
           leading: Icon(content.icon),
@@ -60,10 +60,16 @@ class ContentDetailPage extends ConsumerWidget {
                     child: SingleChildScrollView(
                   child: Container(
                     padding: const EdgeInsets.only(top: 4, bottom: 10, left: 20, right: 20),
-                    child: MarkdownBlock(
-                      data: value,
-                      config: MarkdownConfig.darkConfig,
-                    ),
+                    child: Theme(
+                        data: Theme.of(context).copyWith(
+                            dividerTheme: const DividerThemeData(
+                          indent: 0,
+                          endIndent: 0,
+                        )),
+                        child: MarkdownBlock(
+                          data: value,
+                          config: MarkdownConfig.darkConfig,
+                        )),
                   ),
                 )),
               )

@@ -117,13 +117,12 @@ class _SkillGroupCard extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: selected ? 3 : 4, vertical: selected ? 3 : 4),
       child: InkWell(
           onTap: onTap,
-          // onTap: () {},
           borderRadius: BorderRadius.circular(8),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 4),
             decoration: BoxDecoration(
               border: Border.all(
-                color: selected ? Colors.blueAccent : Theme.of(context).dividerColor,
+                color: selected ? Theme.of(context).primaryColor : Theme.of(context).dividerColor,
                 width: selected ? 2 : 1,
               ),
               borderRadius: BorderRadius.circular(8),

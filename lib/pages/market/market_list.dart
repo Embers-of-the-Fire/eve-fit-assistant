@@ -152,8 +152,15 @@ class _MarketListState extends State<MarketList> {
                     controller: controller,
                     focusNode: focusNode,
                     autofocus: false,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                          borderRadius: const BorderRadius.all(Radius.circular(2))),
+                      focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                          borderRadius: const BorderRadius.all(Radius.circular(2))),
+                      border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(2))),
                       labelText: '物品',
                     ))),
             itemBuilder: (context, data) {
@@ -181,8 +188,8 @@ class _MarketListState extends State<MarketList> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
             ),
             child: BreadCrumb(
               items: [

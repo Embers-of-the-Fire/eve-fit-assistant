@@ -1,9 +1,19 @@
-import 'package:eve_fit_assistant/constant/eve/categories.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
-import 'package:eve_fit_assistant/utils/utils.dart';
-import 'package:eve_fit_assistant/widgets/skill_tree.dart';
+import 'package:eve_fit_assistant/widgets/skill_list.dart';
 import 'package:flutter/material.dart';
 
+class SkillListPage extends StatelessWidget {
+  const SkillListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+      appBar: AppBar(title: const Text('技能列表')),
+      body: CharacterSkillList(
+        skills: GlobalStorage().static.skills.map((key, _) => MapEntry(key, 5)),
+      ));
+}
+
+/*
 class SkillListPage extends StatefulWidget {
   const SkillListPage({super.key});
 
@@ -136,3 +146,4 @@ class _SkillGroupCard extends StatelessWidget {
             child: Text(name),
           )));
 }
+*/
