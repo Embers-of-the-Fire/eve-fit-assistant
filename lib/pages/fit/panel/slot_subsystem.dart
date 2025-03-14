@@ -84,16 +84,12 @@ class SubsystemSlotRowPlaceholder extends ConsumerWidget {
     return ListTile(
       leading: StateIcon(
           state: ItemState.online,
-          child: Image(
-            image: switch (type) {
-              SubsystemType.offensive => subsystemOffensivePlaceholderImage,
-              SubsystemType.defensive => subsystemDefensivePlaceholderImage,
-              SubsystemType.core => subsystemCorePlaceholderImage,
-              SubsystemType.propulsion => subsystemPropulsionPlaceholderImage,
-            },
-            width: 30,
-            height: 30,
-          )),
+          foregroundImage: switch (type) {
+            SubsystemType.offensive => subsystemOffensivePlaceholderImage,
+            SubsystemType.defensive => subsystemDefensivePlaceholderImage,
+            SubsystemType.core => subsystemCorePlaceholderImage,
+            SubsystemType.propulsion => subsystemPropulsionPlaceholderImage,
+          }),
       title: const Text('子系统'),
       onTap: () async {
         final subID = await showAddSubsystemDialog(

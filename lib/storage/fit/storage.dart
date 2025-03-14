@@ -68,8 +68,6 @@ class FitStorage {
   }
 }
 
-
-
 Future<Directory> getFitDir({bool create = false}) async {
   final storageDir = await getStorageDir();
   final shipBriefRecordDir = Directory('${storageDir.path}/fit');

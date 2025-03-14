@@ -7,7 +7,6 @@ import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 
 class ItemList extends StatefulWidget {
   final EdgeInsets? breadcrumbPadding;
-  final Decoration? breadcrumbDecoration;
   final EdgeInsets? breadcrumbItemPadding;
   final String? baseGroup;
 
@@ -20,7 +19,6 @@ class ItemList extends StatefulWidget {
   const ItemList({
     super.key,
     this.breadcrumbPadding,
-    this.breadcrumbDecoration,
     this.breadcrumbItemPadding,
     this.baseGroup,
     this.fallbackGroupID,
@@ -117,7 +115,10 @@ class _ItemListState extends State<ItemList> {
           Container(
             width: double.infinity,
             padding: widget.breadcrumbPadding,
-            decoration: widget.breadcrumbDecoration,
+            decoration: BoxDecoration(
+              border: Border(
+                  bottom: BorderSide(color: Theme.of(context).dividerTheme.color ?? Colors.grey)),
+            ),
             child: BreadCrumb(
               items: [
                 BreadCrumbItem(

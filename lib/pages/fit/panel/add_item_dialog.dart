@@ -1,12 +1,12 @@
 import 'dart:developer';
 
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
-import 'package:eve_fit_assistant/main.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/theme/color.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
@@ -232,18 +232,12 @@ class _AddItemDialog extends StatelessWidget {
               .toList()),
           emptyBuilder: (context) => Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(
-                  '未找到相关装备',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium
-              )),
+              child: Text('未找到相关装备',
+                  textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium)),
         ),
         Expanded(
             child: ItemList(
           breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-          breadcrumbDecoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.grey)),
-          ),
           fallbackGroupID: fallbackGroupID,
           baseGroup: baseBreadcrumbName,
           breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),

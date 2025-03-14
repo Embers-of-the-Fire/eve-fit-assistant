@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:eve_fit_assistant/assets/icon.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
@@ -11,7 +11,9 @@ import 'package:eve_fit_assistant/pages/fit/panel/native_error.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/theme/color.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/widgets/avatar.dart';
 import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:eve_fit_assistant/widgets/state_icon.dart';
 import 'package:flutter/material.dart';
@@ -378,14 +380,12 @@ class _SlotRowDisplay extends ConsumerWidget {
             item: i,
             fitID: fitID,
             dynamicItem: i.isDynamic.thenWith(() => fit.fit.body.dynamicItems[i.itemId]),
-            // onDynamicAttributeChanged: (id, value) => ,
-            // onDynamicAttributeReset: () => ,
             onDynamicAttributeRandom: () => fitNotifier.modify((record) {
                   final dynamicItem = record.body.dynamicItems[i.itemId]!;
                   final data = GlobalStorage().static.dynamicItems[dynamicItem.mutaplasmidID]!;
                   record.body.dynamicItems[i.itemId] = dynamicItem.copyWith(
                       dynamicAttributes: data.data.attributes.map((key, data) =>
-                          MapEntry(key, Random().nextDoubleRange(data.min, data.max))));
+                          MapEntry(key, math.Random().nextDoubleRange(data.min, data.max))));
                   return record;
                 })),
       ),
@@ -436,14 +436,20 @@ class SlotRowPlaceholder extends ConsumerWidget {
         .toList();
 
     return ListTile(
-      leading: CircleAvatar(
-        radius: 20,
-        child: switch (type) {
-          FitItemType.high => const Image(image: highPlaceholderImage, width: 30, height: 30),
-          FitItemType.med => const Image(image: mediumPlaceholderImage, width: 30, height: 30),
-          FitItemType.low => const Image(image: lowPlaceholderImage, width: 30, height: 30),
-          FitItemType.rig => const Image(image: rigPlaceholderImage, width: 30, height: 30),
-          _ => const Icon(Icons.add_circle_outline)
+      leading: BorderedCircleAvatar(
+        size: 35,
+        backgroundColor: colorStatusPassive,
+        borderColor: colorStatusPassive,
+        image: switch (type) {
+          FitItemType.high => highPlaceholderImage,
+          FitItemType.med => mediumPlaceholderImage,
+          FitItemType.low => lowPlaceholderImage,
+          FitItemType.rig => rigPlaceholderImage,
+          _ => null
+        },
+        icon: switch (type) {
+          FitItemType.implant => Icons.add_circle_outline,
+          _ => null,
         },
       ),
       title: const Text('无装备'),

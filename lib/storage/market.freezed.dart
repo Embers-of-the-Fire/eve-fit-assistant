@@ -23,8 +23,7 @@ mixin _$MarketPriceCache {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $MarketPriceCacheCopyWith<MarketPriceCache> get copyWith =>
-      _$MarketPriceCacheCopyWithImpl<MarketPriceCache>(
-          this as MarketPriceCache, _$identity);
+      _$MarketPriceCacheCopyWithImpl<MarketPriceCache>(this as MarketPriceCache, _$identity);
 
   @override
   bool operator ==(Object other) {
@@ -32,8 +31,7 @@ mixin _$MarketPriceCache {
         (other.runtimeType == runtimeType &&
             other is MarketPriceCache &&
             (identical(other.price, price) || other.price == price) &&
-            (identical(other.timestamp, timestamp) ||
-                other.timestamp == timestamp));
+            (identical(other.timestamp, timestamp) || other.timestamp == timestamp));
   }
 
   @override
@@ -47,8 +45,7 @@ mixin _$MarketPriceCache {
 
 /// @nodoc
 abstract mixin class $MarketPriceCacheCopyWith<$Res> {
-  factory $MarketPriceCacheCopyWith(
-          MarketPriceCache value, $Res Function(MarketPriceCache) _then) =
+  factory $MarketPriceCacheCopyWith(MarketPriceCache value, $Res Function(MarketPriceCache) _then) =
       _$MarketPriceCacheCopyWithImpl;
   @useResult
   $Res call({MarketPrice price, DateTime timestamp});
@@ -57,8 +54,7 @@ abstract mixin class $MarketPriceCacheCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$MarketPriceCacheCopyWithImpl<$Res>
-    implements $MarketPriceCacheCopyWith<$Res> {
+class _$MarketPriceCacheCopyWithImpl<$Res> implements $MarketPriceCacheCopyWith<$Res> {
   _$MarketPriceCacheCopyWithImpl(this._self, this._then);
 
   final MarketPriceCache _self;
@@ -98,8 +94,7 @@ class _$MarketPriceCacheCopyWithImpl<$Res>
 /// @nodoc
 
 class _MarketPriceCache extends MarketPriceCache {
-  const _MarketPriceCache({required this.price, required this.timestamp})
-      : super._();
+  const _MarketPriceCache({required this.price, required this.timestamp}) : super._();
 
   @override
   final MarketPrice price;
@@ -120,8 +115,7 @@ class _MarketPriceCache extends MarketPriceCache {
         (other.runtimeType == runtimeType &&
             other is _MarketPriceCache &&
             (identical(other.price, price) || other.price == price) &&
-            (identical(other.timestamp, timestamp) ||
-                other.timestamp == timestamp));
+            (identical(other.timestamp, timestamp) || other.timestamp == timestamp));
   }
 
   @override
@@ -134,8 +128,7 @@ class _MarketPriceCache extends MarketPriceCache {
 }
 
 /// @nodoc
-abstract mixin class _$MarketPriceCacheCopyWith<$Res>
-    implements $MarketPriceCacheCopyWith<$Res> {
+abstract mixin class _$MarketPriceCacheCopyWith<$Res> implements $MarketPriceCacheCopyWith<$Res> {
   factory _$MarketPriceCacheCopyWith(
           _MarketPriceCache value, $Res Function(_MarketPriceCache) _then) =
       __$MarketPriceCacheCopyWithImpl;
@@ -148,8 +141,7 @@ abstract mixin class _$MarketPriceCacheCopyWith<$Res>
 }
 
 /// @nodoc
-class __$MarketPriceCacheCopyWithImpl<$Res>
-    implements _$MarketPriceCacheCopyWith<$Res> {
+class __$MarketPriceCacheCopyWithImpl<$Res> implements _$MarketPriceCacheCopyWith<$Res> {
   __$MarketPriceCacheCopyWithImpl(this._self, this._then);
 
   final _MarketPriceCache _self;

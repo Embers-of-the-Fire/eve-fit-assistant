@@ -17,7 +17,14 @@ import 'dart:typed_data' as $typed_data;
 const DamageProfiles$json = {
   '1': 'DamageProfiles',
   '2': [
-    {'1': 'groups', '3': 1, '4': 3, '5': 11, '6': '.damage_profile.DamageProfiles.DamageProfileGroup', '10': 'groups'},
+    {
+      '1': 'groups',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.damage_profile.DamageProfiles.DamageProfileGroup',
+      '10': 'groups'
+    },
   ],
   '3': [DamageProfiles_DamageProfile$json, DamageProfiles_DamageProfileGroup$json],
 };
@@ -39,17 +46,23 @@ const DamageProfiles_DamageProfileGroup$json = {
   '1': 'DamageProfileGroup',
   '2': [
     {'1': 'name', '3': 1, '4': 2, '5': 9, '10': 'name'},
-    {'1': 'profiles', '3': 2, '4': 3, '5': 11, '6': '.damage_profile.DamageProfiles.DamageProfile', '10': 'profiles'},
+    {
+      '1': 'profiles',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.damage_profile.DamageProfiles.DamageProfile',
+      '10': 'profiles'
+    },
   ],
 };
 
 /// Descriptor for `DamageProfiles`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List damageProfilesDescriptor = $convert.base64Decode(
-    'Cg5EYW1hZ2VQcm9maWxlcxJJCgZncm91cHMYASADKAsyMS5kYW1hZ2VfcHJvZmlsZS5EYW1hZ2'
-    'VQcm9maWxlcy5EYW1hZ2VQcm9maWxlR3JvdXBSBmdyb3VwcxqFAQoNRGFtYWdlUHJvZmlsZRIS'
-    'CgRuYW1lGAEgAigJUgRuYW1lEg4KAmVtGAIgAigBUgJlbRIcCglleHBsb3NpdmUYAyACKAFSCW'
-    'V4cGxvc2l2ZRIYCgdraW5ldGljGAQgAigBUgdraW5ldGljEhgKB3RoZXJtYWwYBSACKAFSB3Ro'
-    'ZXJtYWwacgoSRGFtYWdlUHJvZmlsZUdyb3VwEhIKBG5hbWUYASACKAlSBG5hbWUSSAoIcHJvZm'
-    'lsZXMYAiADKAsyLC5kYW1hZ2VfcHJvZmlsZS5EYW1hZ2VQcm9maWxlcy5EYW1hZ2VQcm9maWxl'
-    'Ughwcm9maWxlcw==');
-
+final $typed_data.Uint8List damageProfilesDescriptor = $convert
+    .base64Decode('Cg5EYW1hZ2VQcm9maWxlcxJJCgZncm91cHMYASADKAsyMS5kYW1hZ2VfcHJvZmlsZS5EYW1hZ2'
+        'VQcm9maWxlcy5EYW1hZ2VQcm9maWxlR3JvdXBSBmdyb3VwcxqFAQoNRGFtYWdlUHJvZmlsZRIS'
+        'CgRuYW1lGAEgAigJUgRuYW1lEg4KAmVtGAIgAigBUgJlbRIcCglleHBsb3NpdmUYAyACKAFSCW'
+        'V4cGxvc2l2ZRIYCgdraW5ldGljGAQgAigBUgdraW5ldGljEhgKB3RoZXJtYWwYBSACKAFSB3Ro'
+        'ZXJtYWwacgoSRGFtYWdlUHJvZmlsZUdyb3VwEhIKBG5hbWUYASACKAlSBG5hbWUSSAoIcHJvZm'
+        'lsZXMYAiADKAsyLC5kYW1hZ2VfcHJvZmlsZS5EYW1hZ2VQcm9maWxlcy5EYW1hZ2VQcm9maWxl'
+        'Ughwcm9maWxlcw==');

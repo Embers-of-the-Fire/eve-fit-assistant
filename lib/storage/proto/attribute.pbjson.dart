@@ -17,7 +17,14 @@ import 'dart:typed_data' as $typed_data;
 const Attributes$json = {
   '1': 'Attributes',
   '2': [
-    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.attribute.Attributes.EntriesEntry', '10': 'entries'},
+    {
+      '1': 'entries',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.attribute.Attributes.EntriesEntry',
+      '10': 'entries'
+    },
   ],
   '3': [Attributes_Attribute$json, Attributes_EntriesEntry$json],
 };
@@ -49,14 +56,13 @@ const Attributes_EntriesEntry$json = {
 };
 
 /// Descriptor for `Attributes`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List attributesDescriptor = $convert.base64Decode(
-    'CgpBdHRyaWJ1dGVzEjwKB2VudHJpZXMYASADKAsyIi5hdHRyaWJ1dGUuQXR0cmlidXRlcy5Fbn'
-    'RyaWVzRW50cnlSB2VudHJpZXMaoQIKCUF0dHJpYnV0ZRISCgRuYW1lGAEgAigJUgRuYW1lEiIK'
-    'DGRlZmF1bHRWYWx1ZRgCIAEoAVIMZGVmYXVsdFZhbHVlEh4KCmNhdGVnb3J5SUQYAyABKAVSCm'
-    'NhdGVnb3J5SUQSIAoLZGVzY3JpcHRpb24YBCABKAlSC2Rlc2NyaXB0aW9uEiwKC2Rpc3BsYXlO'
-    'YW1lGAUgASgLMgouaTE4bi5JMThOUgtkaXNwbGF5TmFtZRIeCgpoaWdoSXNHb29kGAYgAigIUg'
-    'poaWdoSXNHb29kEhYKBmljb25JRBgHIAEoBVIGaWNvbklEEhwKCXB1Ymxpc2hlZBgIIAIoCFIJ'
-    'cHVibGlzaGVkEhYKBnVuaXRJRBgJIAEoBVIGdW5pdElEGlsKDEVudHJpZXNFbnRyeRIQCgNrZX'
-    'kYASABKAVSA2tleRI1CgV2YWx1ZRgCIAEoCzIfLmF0dHJpYnV0ZS5BdHRyaWJ1dGVzLkF0dHJp'
-    'YnV0ZVIFdmFsdWU6AjgB');
-
+final $typed_data.Uint8List attributesDescriptor = $convert
+    .base64Decode('CgpBdHRyaWJ1dGVzEjwKB2VudHJpZXMYASADKAsyIi5hdHRyaWJ1dGUuQXR0cmlidXRlcy5Fbn'
+        'RyaWVzRW50cnlSB2VudHJpZXMaoQIKCUF0dHJpYnV0ZRISCgRuYW1lGAEgAigJUgRuYW1lEiIK'
+        'DGRlZmF1bHRWYWx1ZRgCIAEoAVIMZGVmYXVsdFZhbHVlEh4KCmNhdGVnb3J5SUQYAyABKAVSCm'
+        'NhdGVnb3J5SUQSIAoLZGVzY3JpcHRpb24YBCABKAlSC2Rlc2NyaXB0aW9uEiwKC2Rpc3BsYXlO'
+        'YW1lGAUgASgLMgouaTE4bi5JMThOUgtkaXNwbGF5TmFtZRIeCgpoaWdoSXNHb29kGAYgAigIUg'
+        'poaWdoSXNHb29kEhYKBmljb25JRBgHIAEoBVIGaWNvbklEEhwKCXB1Ymxpc2hlZBgIIAIoCFIJ'
+        'cHVibGlzaGVkEhYKBnVuaXRJRBgJIAEoBVIGdW5pdElEGlsKDEVudHJpZXNFbnRyeRIQCgNrZX'
+        'kYASABKAVSA2tleRI1CgV2YWx1ZRgCIAEoCzIfLmF0dHJpYnV0ZS5BdHRyaWJ1dGVzLkF0dHJp'
+        'YnV0ZVIFdmFsdWU6AjgB');

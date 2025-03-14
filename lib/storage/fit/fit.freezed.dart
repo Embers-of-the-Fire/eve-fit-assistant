@@ -36,17 +36,14 @@ mixin _$SlotItem {
         (other.runtimeType == runtimeType &&
             other is SlotItem &&
             (identical(other.itemID, itemID) || other.itemID == itemID) &&
-            (identical(other.isDynamic, isDynamic) ||
-                other.isDynamic == isDynamic) &&
-            (identical(other.chargeID, chargeID) ||
-                other.chargeID == chargeID) &&
+            (identical(other.isDynamic, isDynamic) || other.isDynamic == isDynamic) &&
+            (identical(other.chargeID, chargeID) || other.chargeID == chargeID) &&
             (identical(other.state, state) || other.state == state));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, itemID, isDynamic, chargeID, state);
+  int get hashCode => Object.hash(runtimeType, itemID, isDynamic, chargeID, state);
 
   @override
   String toString() {
@@ -56,8 +53,7 @@ mixin _$SlotItem {
 
 /// @nodoc
 abstract mixin class $SlotItemCopyWith<$Res> {
-  factory $SlotItemCopyWith(SlotItem value, $Res Function(SlotItem) _then) =
-      _$SlotItemCopyWithImpl;
+  factory $SlotItemCopyWith(SlotItem value, $Res Function(SlotItem) _then) = _$SlotItemCopyWithImpl;
   @useResult
   $Res call({int itemID, bool isDynamic, int? chargeID, SlotState state});
 }
@@ -104,12 +100,8 @@ class _$SlotItemCopyWithImpl<$Res> implements $SlotItemCopyWith<$Res> {
 @JsonSerializable()
 class _SlotItem implements SlotItem {
   const _SlotItem(
-      {required this.itemID,
-      this.isDynamic = false,
-      required this.chargeID,
-      required this.state});
-  factory _SlotItem.fromJson(Map<String, dynamic> json) =>
-      _$SlotItemFromJson(json);
+      {required this.itemID, this.isDynamic = false, required this.chargeID, required this.state});
+  factory _SlotItem.fromJson(Map<String, dynamic> json) => _$SlotItemFromJson(json);
 
   @override
   final int itemID;
@@ -142,17 +134,14 @@ class _SlotItem implements SlotItem {
         (other.runtimeType == runtimeType &&
             other is _SlotItem &&
             (identical(other.itemID, itemID) || other.itemID == itemID) &&
-            (identical(other.isDynamic, isDynamic) ||
-                other.isDynamic == isDynamic) &&
-            (identical(other.chargeID, chargeID) ||
-                other.chargeID == chargeID) &&
+            (identical(other.isDynamic, isDynamic) || other.isDynamic == isDynamic) &&
+            (identical(other.chargeID, chargeID) || other.chargeID == chargeID) &&
             (identical(other.state, state) || other.state == state));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, itemID, isDynamic, chargeID, state);
+  int get hashCode => Object.hash(runtimeType, itemID, isDynamic, chargeID, state);
 
   @override
   String toString() {
@@ -161,8 +150,7 @@ class _SlotItem implements SlotItem {
 }
 
 /// @nodoc
-abstract mixin class _$SlotItemCopyWith<$Res>
-    implements $SlotItemCopyWith<$Res> {
+abstract mixin class _$SlotItemCopyWith<$Res> implements $SlotItemCopyWith<$Res> {
   factory _$SlotItemCopyWith(_SlotItem value, $Res Function(_SlotItem) _then) =
       __$SlotItemCopyWithImpl;
   @override
@@ -288,10 +276,8 @@ class _$DroneItemCopyWithImpl<$Res> implements $DroneItemCopyWith<$Res> {
 /// @nodoc
 @JsonSerializable()
 class _DroneItem implements DroneItem {
-  const _DroneItem(
-      {required this.itemID, required this.amount, required this.state});
-  factory _DroneItem.fromJson(Map<String, dynamic> json) =>
-      _$DroneItemFromJson(json);
+  const _DroneItem({required this.itemID, required this.amount, required this.state});
+  factory _DroneItem.fromJson(Map<String, dynamic> json) => _$DroneItemFromJson(json);
 
   @override
   final int itemID;
@@ -336,10 +322,8 @@ class _DroneItem implements DroneItem {
 }
 
 /// @nodoc
-abstract mixin class _$DroneItemCopyWith<$Res>
-    implements $DroneItemCopyWith<$Res> {
-  factory _$DroneItemCopyWith(
-          _DroneItem value, $Res Function(_DroneItem) _then) =
+abstract mixin class _$DroneItemCopyWith<$Res> implements $DroneItemCopyWith<$Res> {
+  factory _$DroneItemCopyWith(_DroneItem value, $Res Function(_DroneItem) _then) =
       __$DroneItemCopyWithImpl;
   @override
   @useResult
@@ -419,8 +403,7 @@ mixin _$FighterItem {
 
 /// @nodoc
 abstract mixin class $FighterItemCopyWith<$Res> {
-  factory $FighterItemCopyWith(
-          FighterItem value, $Res Function(FighterItem) _then) =
+  factory $FighterItemCopyWith(FighterItem value, $Res Function(FighterItem) _then) =
       _$FighterItemCopyWithImpl;
   @useResult
   $Res call({int itemID, int amount, int ability, DroneState state});
@@ -468,12 +451,8 @@ class _$FighterItemCopyWithImpl<$Res> implements $FighterItemCopyWith<$Res> {
 @JsonSerializable()
 class _FighterItem implements FighterItem {
   const _FighterItem(
-      {required this.itemID,
-      required this.amount,
-      required this.ability,
-      required this.state});
-  factory _FighterItem.fromJson(Map<String, dynamic> json) =>
-      _$FighterItemFromJson(json);
+      {required this.itemID, required this.amount, required this.ability, required this.state});
+  factory _FighterItem.fromJson(Map<String, dynamic> json) => _$FighterItemFromJson(json);
 
   @override
   final int itemID;
@@ -521,10 +500,8 @@ class _FighterItem implements FighterItem {
 }
 
 /// @nodoc
-abstract mixin class _$FighterItemCopyWith<$Res>
-    implements $FighterItemCopyWith<$Res> {
-  factory _$FighterItemCopyWith(
-          _FighterItem value, $Res Function(_FighterItem) _then) =
+abstract mixin class _$FighterItemCopyWith<$Res> implements $FighterItemCopyWith<$Res> {
+  factory _$FighterItemCopyWith(_FighterItem value, $Res Function(_FighterItem) _then) =
       __$FighterItemCopyWithImpl;
   @override
   @useResult
@@ -593,11 +570,9 @@ mixin _$DynamicItem {
             other is DynamicItem &&
             (identical(other.mutaplasmidID, mutaplasmidID) ||
                 other.mutaplasmidID == mutaplasmidID) &&
-            (identical(other.baseType, baseType) ||
-                other.baseType == baseType) &&
+            (identical(other.baseType, baseType) || other.baseType == baseType) &&
             (identical(other.outType, outType) || other.outType == outType) &&
-            const DeepCollectionEquality()
-                .equals(other.dynamicAttributes, dynamicAttributes));
+            const DeepCollectionEquality().equals(other.dynamicAttributes, dynamicAttributes));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -613,15 +588,10 @@ mixin _$DynamicItem {
 
 /// @nodoc
 abstract mixin class $DynamicItemCopyWith<$Res> {
-  factory $DynamicItemCopyWith(
-          DynamicItem value, $Res Function(DynamicItem) _then) =
+  factory $DynamicItemCopyWith(DynamicItem value, $Res Function(DynamicItem) _then) =
       _$DynamicItemCopyWithImpl;
   @useResult
-  $Res call(
-      {int mutaplasmidID,
-      int baseType,
-      int outType,
-      Map<int, double> dynamicAttributes});
+  $Res call({int mutaplasmidID, int baseType, int outType, Map<int, double> dynamicAttributes});
 }
 
 /// @nodoc
@@ -671,8 +641,7 @@ class _DynamicItem implements DynamicItem {
       required this.outType,
       required final Map<int, double> dynamicAttributes})
       : _dynamicAttributes = dynamicAttributes;
-  factory _DynamicItem.fromJson(Map<String, dynamic> json) =>
-      _$DynamicItemFromJson(json);
+  factory _DynamicItem.fromJson(Map<String, dynamic> json) => _$DynamicItemFromJson(json);
 
   @override
   final int mutaplasmidID;
@@ -683,8 +652,7 @@ class _DynamicItem implements DynamicItem {
   final Map<int, double> _dynamicAttributes;
   @override
   Map<int, double> get dynamicAttributes {
-    if (_dynamicAttributes is EqualUnmodifiableMapView)
-      return _dynamicAttributes;
+    if (_dynamicAttributes is EqualUnmodifiableMapView) return _dynamicAttributes;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableMapView(_dynamicAttributes);
   }
@@ -711,11 +679,9 @@ class _DynamicItem implements DynamicItem {
             other is _DynamicItem &&
             (identical(other.mutaplasmidID, mutaplasmidID) ||
                 other.mutaplasmidID == mutaplasmidID) &&
-            (identical(other.baseType, baseType) ||
-                other.baseType == baseType) &&
+            (identical(other.baseType, baseType) || other.baseType == baseType) &&
             (identical(other.outType, outType) || other.outType == outType) &&
-            const DeepCollectionEquality()
-                .equals(other._dynamicAttributes, _dynamicAttributes));
+            const DeepCollectionEquality().equals(other._dynamicAttributes, _dynamicAttributes));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -730,18 +696,12 @@ class _DynamicItem implements DynamicItem {
 }
 
 /// @nodoc
-abstract mixin class _$DynamicItemCopyWith<$Res>
-    implements $DynamicItemCopyWith<$Res> {
-  factory _$DynamicItemCopyWith(
-          _DynamicItem value, $Res Function(_DynamicItem) _then) =
+abstract mixin class _$DynamicItemCopyWith<$Res> implements $DynamicItemCopyWith<$Res> {
+  factory _$DynamicItemCopyWith(_DynamicItem value, $Res Function(_DynamicItem) _then) =
       __$DynamicItemCopyWithImpl;
   @override
   @useResult
-  $Res call(
-      {int mutaplasmidID,
-      int baseType,
-      int outType,
-      Map<int, double> dynamicAttributes});
+  $Res call({int mutaplasmidID, int baseType, int outType, Map<int, double> dynamicAttributes});
 }
 
 /// @nodoc

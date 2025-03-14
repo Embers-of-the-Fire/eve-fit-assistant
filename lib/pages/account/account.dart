@@ -44,7 +44,7 @@ class _AccountPanel extends ConsumerWidget {
                 style: const TextStyle(fontSize: 20)),
             trailing: SelectableText(character.characterID.toString()),
           ),
-          const Divider(height: 0, color: Colors.grey),
+          const Divider(height: 0),
           const Expanded(
               child: SizedBox(
             width: double.infinity,

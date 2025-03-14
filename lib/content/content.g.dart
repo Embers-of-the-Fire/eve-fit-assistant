@@ -64,8 +64,7 @@ class MarkdownContentFamily extends Family<AsyncValue<String>> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
 
   @override
   String? get name => r'markdownContentProvider';
@@ -84,12 +83,9 @@ class MarkdownContentProvider extends AutoDisposeFutureProvider<String> {
           from: markdownContentProvider,
           name: r'markdownContentProvider',
           debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$markdownContentHash,
+              const bool.fromEnvironment('dart.vm.product') ? null : _$markdownContentHash,
           dependencies: MarkdownContentFamily._dependencies,
-          allTransitiveDependencies:
-              MarkdownContentFamily._allTransitiveDependencies,
+          allTransitiveDependencies: MarkdownContentFamily._allTransitiveDependencies,
           contentKey: contentKey,
         );
 
@@ -149,8 +145,8 @@ mixin MarkdownContentRef on AutoDisposeFutureProviderRef<String> {
   String get contentKey;
 }
 
-class _MarkdownContentProviderElement
-    extends AutoDisposeFutureProviderElement<String> with MarkdownContentRef {
+class _MarkdownContentProviderElement extends AutoDisposeFutureProviderElement<String>
+    with MarkdownContentRef {
   _MarkdownContentProviderElement(super.provider);
 
   @override

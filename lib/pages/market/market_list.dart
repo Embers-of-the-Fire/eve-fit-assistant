@@ -1,10 +1,10 @@
-import 'package:eve_fit_assistant/main.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/market/market_order.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/market.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/theme/color.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/market/market.dart';
 import 'package:flutter/material.dart';
@@ -175,11 +175,8 @@ class _MarketListState extends State<MarketList> {
                 .toList()),
             emptyBuilder: (context) => Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text(
-                    '未找到相关物品',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium
-                )),
+                child: Text('未找到相关物品',
+                    textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium)),
           ),
           Container(
             width: double.infinity,

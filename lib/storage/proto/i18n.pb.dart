@@ -28,24 +28,26 @@ class I18N extends $pb.GeneratedMessage {
     return $result;
   }
   I18N._() : super();
-  factory I18N.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
-  factory I18N.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+  factory I18N.fromBuffer($core.List<$core.int> i,
+          [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(i, r);
+  factory I18N.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(i, r);
 
-  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'I18N', package: const $pb.PackageName(_omitMessageNames ? '' : 'i18n'), createEmptyInstance: create)
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'I18N',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'i18n'), createEmptyInstance: create)
     ..aQS(1, _omitFieldNames ? '' : 'en')
-    ..aOS(2, _omitFieldNames ? '' : 'zh')
-  ;
+    ..aOS(2, _omitFieldNames ? '' : 'zh');
 
-  @$core.Deprecated(
-  'Using this can add significant overhead to your binary. '
-  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
-  'Will be removed in next major version')
+  @$core.Deprecated('Using this can add significant overhead to your binary. '
+      'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+      'Will be removed in next major version')
   I18N clone() => I18N()..mergeFromMessage(this);
-  @$core.Deprecated(
-  'Using this can add significant overhead to your binary. '
-  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
-  'Will be removed in next major version')
-  I18N copyWith(void Function(I18N) updates) => super.copyWith((message) => updates(message as I18N)) as I18N;
+  @$core.Deprecated('Using this can add significant overhead to your binary. '
+      'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+      'Will be removed in next major version')
+  I18N copyWith(void Function(I18N) updates) =>
+      super.copyWith((message) => updates(message as I18N)) as I18N;
 
   $pb.BuilderInfo get info_ => _i;
 
@@ -60,7 +62,10 @@ class I18N extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   $core.String get en => $_getSZ(0);
   @$pb.TagNumber(1)
-  set en($core.String v) { $_setString(0, v); }
+  set en($core.String v) {
+    $_setString(0, v);
+  }
+
   @$pb.TagNumber(1)
   $core.bool hasEn() => $_has(0);
   @$pb.TagNumber(1)
@@ -69,13 +74,15 @@ class I18N extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   $core.String get zh => $_getSZ(1);
   @$pb.TagNumber(2)
-  set zh($core.String v) { $_setString(1, v); }
+  set zh($core.String v) {
+    $_setString(1, v);
+  }
+
   @$pb.TagNumber(2)
   $core.bool hasZh() => $_has(1);
   @$pb.TagNumber(2)
   void clearZh() => clearField(2);
 }
-
 
 const _omitFieldNames = $core.bool.fromEnvironment('protobuf.omit_field_names');
 const _omitMessageNames = $core.bool.fromEnvironment('protobuf.omit_message_names');

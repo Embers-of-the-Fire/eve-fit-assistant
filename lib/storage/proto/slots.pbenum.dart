@@ -19,18 +19,18 @@ class Slots_SlotState extends $pb.ProtobufEnum {
   static const Slots_SlotState ACTIVE = Slots_SlotState._(2, _omitEnumNames ? '' : 'ACTIVE');
   static const Slots_SlotState OVERLOAD = Slots_SlotState._(3, _omitEnumNames ? '' : 'OVERLOAD');
 
-  static const $core.List<Slots_SlotState> values = <Slots_SlotState> [
+  static const $core.List<Slots_SlotState> values = <Slots_SlotState>[
     PASSIVE,
     ONLINE,
     ACTIVE,
     OVERLOAD,
   ];
 
-  static final $core.Map<$core.int, Slots_SlotState> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static final $core.Map<$core.int, Slots_SlotState> _byValue =
+      $pb.ProtobufEnum.initByValue(values);
   static Slots_SlotState? valueOf($core.int value) => _byValue[value];
 
   const Slots_SlotState._($core.int v, $core.String n) : super(v, n);
 }
-
 
 const _omitEnumNames = $core.bool.fromEnvironment('protobuf.omit_enum_names');

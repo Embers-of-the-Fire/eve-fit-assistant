@@ -45,11 +45,10 @@ const Types_EntriesEntry$json = {
 };
 
 /// Descriptor for `Types`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List typesDescriptor = $convert.base64Decode(
-    'CgVUeXBlcxIzCgdlbnRyaWVzGAEgAygLMhkudHlwZXMuVHlwZXMuRW50cmllc0VudHJ5Ugdlbn'
-    'RyaWVzGpgBCgRUeXBlEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSGAoHZ3JvdXBJ'
-    'RBgCIAIoBVIHZ3JvdXBJRBIcCglwdWJsaXNoZWQYAyACKAhSCXB1Ymxpc2hlZBIgCgtkZXNjcm'
-    'lwdGlvbhgEIAIoCVILZGVzY3JpcHRpb24SFgoGdHJhaXRzGAUgAigJUgZ0cmFpdHMaTQoMRW50'
-    'cmllc0VudHJ5EhAKA2tleRgBIAEoBVIDa2V5EicKBXZhbHVlGAIgASgLMhEudHlwZXMuVHlwZX'
-    'MuVHlwZVIFdmFsdWU6AjgB');
-
+final $typed_data.Uint8List typesDescriptor = $convert
+    .base64Decode('CgVUeXBlcxIzCgdlbnRyaWVzGAEgAygLMhkudHlwZXMuVHlwZXMuRW50cmllc0VudHJ5Ugdlbn'
+        'RyaWVzGpgBCgRUeXBlEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSGAoHZ3JvdXBJ'
+        'RBgCIAIoBVIHZ3JvdXBJRBIcCglwdWJsaXNoZWQYAyACKAhSCXB1Ymxpc2hlZBIgCgtkZXNjcm'
+        'lwdGlvbhgEIAIoCVILZGVzY3JpcHRpb24SFgoGdHJhaXRzGAUgAigJUgZ0cmFpdHMaTQoMRW50'
+        'cmllc0VudHJ5EhAKA2tleRgBIAEoBVIDa2V5EicKBXZhbHVlGAIgASgLMhEudHlwZXMuVHlwZX'
+        'MuVHlwZVIFdmFsdWU6AjgB');

@@ -25,8 +25,7 @@ mixin _$DamageProfile {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $DamageProfileCopyWith<DamageProfile> get copyWith =>
-      _$DamageProfileCopyWithImpl<DamageProfile>(
-          this as DamageProfile, _$identity);
+      _$DamageProfileCopyWithImpl<DamageProfile>(this as DamageProfile, _$identity);
 
   /// Serializes this DamageProfile to a JSON map.
   Map<String, dynamic> toJson();
@@ -39,8 +38,7 @@ mixin _$DamageProfile {
             (identical(other.em, em) || other.em == em) &&
             (identical(other.thermal, thermal) || other.thermal == thermal) &&
             (identical(other.kinetic, kinetic) || other.kinetic == kinetic) &&
-            (identical(other.explosive, explosive) ||
-                other.explosive == explosive));
+            (identical(other.explosive, explosive) || other.explosive == explosive));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -55,16 +53,14 @@ mixin _$DamageProfile {
 
 /// @nodoc
 abstract mixin class $DamageProfileCopyWith<$Res> {
-  factory $DamageProfileCopyWith(
-          DamageProfile value, $Res Function(DamageProfile) _then) =
+  factory $DamageProfileCopyWith(DamageProfile value, $Res Function(DamageProfile) _then) =
       _$DamageProfileCopyWithImpl;
   @useResult
   $Res call({double em, double thermal, double kinetic, double explosive});
 }
 
 /// @nodoc
-class _$DamageProfileCopyWithImpl<$Res>
-    implements $DamageProfileCopyWith<$Res> {
+class _$DamageProfileCopyWithImpl<$Res> implements $DamageProfileCopyWith<$Res> {
   _$DamageProfileCopyWithImpl(this._self, this._then);
 
   final DamageProfile _self;
@@ -105,12 +101,8 @@ class _$DamageProfileCopyWithImpl<$Res>
 @JsonSerializable()
 class _DamageProfile implements DamageProfile {
   const _DamageProfile(
-      {required this.em,
-      required this.thermal,
-      required this.kinetic,
-      required this.explosive});
-  factory _DamageProfile.fromJson(Map<String, dynamic> json) =>
-      _$DamageProfileFromJson(json);
+      {required this.em, required this.thermal, required this.kinetic, required this.explosive});
+  factory _DamageProfile.fromJson(Map<String, dynamic> json) => _$DamageProfileFromJson(json);
 
   @override
   final double em;
@@ -144,8 +136,7 @@ class _DamageProfile implements DamageProfile {
             (identical(other.em, em) || other.em == em) &&
             (identical(other.thermal, thermal) || other.thermal == thermal) &&
             (identical(other.kinetic, kinetic) || other.kinetic == kinetic) &&
-            (identical(other.explosive, explosive) ||
-                other.explosive == explosive));
+            (identical(other.explosive, explosive) || other.explosive == explosive));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -159,10 +150,8 @@ class _DamageProfile implements DamageProfile {
 }
 
 /// @nodoc
-abstract mixin class _$DamageProfileCopyWith<$Res>
-    implements $DamageProfileCopyWith<$Res> {
-  factory _$DamageProfileCopyWith(
-          _DamageProfile value, $Res Function(_DamageProfile) _then) =
+abstract mixin class _$DamageProfileCopyWith<$Res> implements $DamageProfileCopyWith<$Res> {
+  factory _$DamageProfileCopyWith(_DamageProfile value, $Res Function(_DamageProfile) _then) =
       __$DamageProfileCopyWithImpl;
   @override
   @useResult
@@ -170,8 +159,7 @@ abstract mixin class _$DamageProfileCopyWith<$Res>
 }
 
 /// @nodoc
-class __$DamageProfileCopyWithImpl<$Res>
-    implements _$DamageProfileCopyWith<$Res> {
+class __$DamageProfileCopyWithImpl<$Res> implements _$DamageProfileCopyWith<$Res> {
   __$DamageProfileCopyWithImpl(this._self, this._then);
 
   final _DamageProfile _self;

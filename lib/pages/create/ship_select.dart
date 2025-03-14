@@ -1,12 +1,12 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
 import 'package:eve_fit_assistant/export/import_view.dart';
 import 'package:eve_fit_assistant/export/schema.dart';
-import 'package:eve_fit_assistant/main.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/theme/color.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
@@ -71,19 +71,13 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
                 .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
                 .toList()),
             emptyBuilder: (context) => Padding(
-              padding: const EdgeInsets.all(12),
-                child: Text(
-              '未找到相关舰船',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium
-            )),
+                padding: const EdgeInsets.all(12),
+                child: Text('未找到相关舰船',
+                    textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium)),
           ),
           Expanded(
               child: ItemList(
             breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-            breadcrumbDecoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey)),
-            ),
             breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
             fallbackGroupID: shipGroupID,
             baseGroup: '舰船',

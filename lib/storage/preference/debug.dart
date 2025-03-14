@@ -18,6 +18,5 @@ enum Debug {
     await prefs.setInt(_debugKey, index);
   }
 
-  static Debug get(SharedPreferences prefs) =>
-      Debug.values[prefs.getInt(_debugKey) ?? 0];
+  static Debug get(SharedPreferences prefs) => Debug.values[prefs.getInt(_debugKey) ?? 0];
 }

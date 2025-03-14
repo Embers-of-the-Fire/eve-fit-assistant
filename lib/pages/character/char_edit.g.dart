@@ -29,8 +29,7 @@ class _SystemHash {
   }
 }
 
-abstract class _$CharacterNotifier
-    extends BuildlessAutoDisposeNotifier<CharacterState> {
+abstract class _$CharacterNotifier extends BuildlessAutoDisposeNotifier<CharacterState> {
   late final String id;
 
   CharacterState build(
@@ -73,8 +72,7 @@ class CharacterNotifierFamily extends Family<CharacterState> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
 
   @override
   String? get name => r'characterNotifierProvider';
@@ -91,12 +89,9 @@ class CharacterNotifierProvider
           from: characterNotifierProvider,
           name: r'characterNotifierProvider',
           debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$characterNotifierHash,
+              const bool.fromEnvironment('dart.vm.product') ? null : _$characterNotifierHash,
           dependencies: CharacterNotifierFamily._dependencies,
-          allTransitiveDependencies:
-              CharacterNotifierFamily._allTransitiveDependencies,
+          allTransitiveDependencies: CharacterNotifierFamily._allTransitiveDependencies,
           id: id,
         );
 
@@ -138,8 +133,7 @@ class CharacterNotifierProvider
   }
 
   @override
-  AutoDisposeNotifierProviderElement<CharacterNotifier, CharacterState>
-      createElement() {
+  AutoDisposeNotifierProviderElement<CharacterNotifier, CharacterState> createElement() {
     return _CharacterNotifierProviderElement(this);
   }
 
@@ -165,8 +159,8 @@ mixin CharacterNotifierRef on AutoDisposeNotifierProviderRef<CharacterState> {
 }
 
 class _CharacterNotifierProviderElement
-    extends AutoDisposeNotifierProviderElement<CharacterNotifier,
-        CharacterState> with CharacterNotifierRef {
+    extends AutoDisposeNotifierProviderElement<CharacterNotifier, CharacterState>
+    with CharacterNotifierRef {
   _CharacterNotifierProviderElement(super.provider);
 
   @override

@@ -13,8 +13,7 @@ _MarketPrice _$MarketPriceFromJson(Map<String, dynamic> json) => _MarketPrice(
       orders: OrderGroup.fromJson(json['orders'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$MarketPriceToJson(_MarketPrice instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$MarketPriceToJson(_MarketPrice instance) => <String, dynamic>{
       'typeID': instance.typeID,
       'server': _$ServerEnumMap[instance.server]!,
       'summary': instance.summary,
@@ -26,15 +25,13 @@ const _$ServerEnumMap = {
   Server.serenity: 'serenity',
 };
 
-_PriceSummary _$PriceSummaryFromJson(Map<String, dynamic> json) =>
-    _PriceSummary(
+_PriceSummary _$PriceSummaryFromJson(Map<String, dynamic> json) => _PriceSummary(
       all: Price.fromJson(json['all'] as Map<String, dynamic>),
       buy: Price.fromJson(json['buy'] as Map<String, dynamic>),
       sell: Price.fromJson(json['sell'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$PriceSummaryToJson(_PriceSummary instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$PriceSummaryToJson(_PriceSummary instance) => <String, dynamic>{
       'all': instance.all,
       'buy': instance.buy,
       'sell': instance.sell,
@@ -61,8 +58,7 @@ _OrderGroup _$OrderGroupFromJson(Map<String, dynamic> json) => _OrderGroup(
           .toList(),
     );
 
-Map<String, dynamic> _$OrderGroupToJson(_OrderGroup instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$OrderGroupToJson(_OrderGroup instance) => <String, dynamic>{
       'buy': instance.buy,
       'sell': instance.sell,
     };
@@ -79,22 +75,19 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
       'price': instance.price,
     };
 
-_CEveMarketResponse _$CEveMarketResponseFromJson(Map<String, dynamic> json) =>
-    _CEveMarketResponse(
+_CEveMarketResponse _$CEveMarketResponseFromJson(Map<String, dynamic> json) => _CEveMarketResponse(
       all: Price.fromJson(json['all'] as Map<String, dynamic>),
       buy: Price.fromJson(json['buy'] as Map<String, dynamic>),
       sell: Price.fromJson(json['sell'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$CEveMarketResponseToJson(_CEveMarketResponse instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$CEveMarketResponseToJson(_CEveMarketResponse instance) => <String, dynamic>{
       'all': instance.all,
       'buy': instance.buy,
       'sell': instance.sell,
     };
 
-_ESIMarketResponse _$ESIMarketResponseFromJson(Map<String, dynamic> json) =>
-    _ESIMarketResponse(
+_ESIMarketResponse _$ESIMarketResponseFromJson(Map<String, dynamic> json) => _ESIMarketResponse(
       typeID: (json['type_id'] as num).toInt(),
       volumeRemain: (json['volume_remain'] as num).toInt(),
       volumeTotal: (json['volume_total'] as num).toInt(),
@@ -103,8 +96,7 @@ _ESIMarketResponse _$ESIMarketResponseFromJson(Map<String, dynamic> json) =>
       locationID: (json['location_id'] as num).toInt(),
     );
 
-Map<String, dynamic> _$ESIMarketResponseToJson(_ESIMarketResponse instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$ESIMarketResponseToJson(_ESIMarketResponse instance) => <String, dynamic>{
       'type_id': instance.typeID,
       'volume_remain': instance.volumeRemain,
       'volume_total': instance.volumeTotal,

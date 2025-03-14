@@ -54,6 +54,7 @@ abstract class OrderGroup with _$OrderGroup {
   const factory OrderGroup({
     /// `buy` orders should be sorted in descending order by price.
     required List<Order> buy,
+
     /// `sell` orders should be sorted in ascending order by price.
     required List<Order> sell,
   }) = _OrderGroup;

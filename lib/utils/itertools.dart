@@ -114,6 +114,44 @@ extension Itertools<T> on Iterable<T> {
     return (left, right);
   }
 
+  bool all(bool Function(T) predicate) {
+    for (final e in this) {
+      if (!predicate(e)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool any(bool Function(T) predicate) {
+    for (final e in this) {
+      if (predicate(e)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  int countNull() {
+    var count = 0;
+    for (final e in this) {
+      if (e == null) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  int countNonNull() {
+    var count = 0;
+    for (final e in this) {
+      if (e != null) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   int count() {
     var count = 0;
     for (final _ in this) {

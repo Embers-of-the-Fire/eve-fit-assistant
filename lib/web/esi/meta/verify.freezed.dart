@@ -25,8 +25,7 @@ mixin _$VerifyResponse {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $VerifyResponseCopyWith<VerifyResponse> get copyWith =>
-      _$VerifyResponseCopyWithImpl<VerifyResponse>(
-          this as VerifyResponse, _$identity);
+      _$VerifyResponseCopyWithImpl<VerifyResponse>(this as VerifyResponse, _$identity);
 
   /// Serializes this VerifyResponse to a JSON map.
   Map<String, dynamic> toJson();
@@ -36,8 +35,7 @@ mixin _$VerifyResponse {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is VerifyResponse &&
-            (identical(other.characterID, characterID) ||
-                other.characterID == characterID) &&
+            (identical(other.characterID, characterID) || other.characterID == characterID) &&
             (identical(other.characterName, characterName) ||
                 other.characterName == characterName));
   }
@@ -54,8 +52,7 @@ mixin _$VerifyResponse {
 
 /// @nodoc
 abstract mixin class $VerifyResponseCopyWith<$Res> {
-  factory $VerifyResponseCopyWith(
-          VerifyResponse value, $Res Function(VerifyResponse) _then) =
+  factory $VerifyResponseCopyWith(VerifyResponse value, $Res Function(VerifyResponse) _then) =
       _$VerifyResponseCopyWithImpl;
   @useResult
   $Res call(
@@ -64,8 +61,7 @@ abstract mixin class $VerifyResponseCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$VerifyResponseCopyWithImpl<$Res>
-    implements $VerifyResponseCopyWith<$Res> {
+class _$VerifyResponseCopyWithImpl<$Res> implements $VerifyResponseCopyWith<$Res> {
   _$VerifyResponseCopyWithImpl(this._self, this._then);
 
   final VerifyResponse _self;
@@ -99,8 +95,7 @@ class _VerifyResponse implements VerifyResponse {
   const _VerifyResponse(
       {@JsonKey(name: 'CharacterID') required this.characterID,
       @JsonKey(name: 'CharacterName') this.characterName});
-  factory _VerifyResponse.fromJson(Map<String, dynamic> json) =>
-      _$VerifyResponseFromJson(json);
+  factory _VerifyResponse.fromJson(Map<String, dynamic> json) => _$VerifyResponseFromJson(json);
 
   @override
   @JsonKey(name: 'CharacterID')
@@ -129,8 +124,7 @@ class _VerifyResponse implements VerifyResponse {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _VerifyResponse &&
-            (identical(other.characterID, characterID) ||
-                other.characterID == characterID) &&
+            (identical(other.characterID, characterID) || other.characterID == characterID) &&
             (identical(other.characterName, characterName) ||
                 other.characterName == characterName));
   }
@@ -146,10 +140,8 @@ class _VerifyResponse implements VerifyResponse {
 }
 
 /// @nodoc
-abstract mixin class _$VerifyResponseCopyWith<$Res>
-    implements $VerifyResponseCopyWith<$Res> {
-  factory _$VerifyResponseCopyWith(
-          _VerifyResponse value, $Res Function(_VerifyResponse) _then) =
+abstract mixin class _$VerifyResponseCopyWith<$Res> implements $VerifyResponseCopyWith<$Res> {
+  factory _$VerifyResponseCopyWith(_VerifyResponse value, $Res Function(_VerifyResponse) _then) =
       __$VerifyResponseCopyWithImpl;
   @override
   @useResult
@@ -159,8 +151,7 @@ abstract mixin class _$VerifyResponseCopyWith<$Res>
 }
 
 /// @nodoc
-class __$VerifyResponseCopyWithImpl<$Res>
-    implements _$VerifyResponseCopyWith<$Res> {
+class __$VerifyResponseCopyWithImpl<$Res> implements _$VerifyResponseCopyWith<$Res> {
   __$VerifyResponseCopyWithImpl(this._self, this._then);
 
   final _VerifyResponse _self;

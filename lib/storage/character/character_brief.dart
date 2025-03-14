@@ -35,13 +35,13 @@ class CharacterBrief {
   }
 
   factory CharacterBrief.fromCharacter(Character character) => CharacterBrief(
-      id: character.id,
-      // `fromCharacter` should be only called when initializing
-      // pre-defined characters, so we can safely set `lastModifyTime` to 0.
-      lastModifyTime: 0,
-      name: character.name,
-      description: character.description,
-    );
+        id: character.id,
+        // `fromCharacter` should be only called when initializing
+        // pre-defined characters, so we can safely set `lastModifyTime` to 0.
+        lastModifyTime: 0,
+        name: character.name,
+        description: character.description,
+      );
 
   static Future<Map<String, CharacterBrief>> read() async {
     final briefRecord = await getCharacterBriefFile();

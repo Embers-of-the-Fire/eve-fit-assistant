@@ -20,7 +20,6 @@ Future<(double, Iterable<int>, double, Iterable<int>)> getMarketPrices(
 }
 
 const _defaultTextStyle = TextStyle(
-  color: Colors.white,
   fontSize: 16,
   fontWeight: FontWeight.normal,
 );
@@ -219,7 +218,7 @@ class _MarketPriceDetailList extends ConsumerWidget {
               '未知 ${fit.fit.body.shipID}'),
           trailing: trailing,
         ),
-        const Divider(height: 4, color: Colors.white),
+        Divider(height: 4, color: Theme.of(context).primaryColor),
       ]);
       allPriceLoaded = allPriceLoaded && gotPrice != null;
       allPrice += gotPrice ?? 0.0;
@@ -252,19 +251,19 @@ class _MarketPriceDetailList extends ConsumerWidget {
         equipmentPriceLoaded = equipmentPriceLoaded && gotPrice != null;
         equipmentPrice += (gotPrice ?? 0.0) * entry.value;
       }
-      children.addAll([
-        ListTile(
-            title: const Text('装备总价'),
-            trailing: equipmentPriceLoaded
-                ? Text(
-                    '${equipmentPrice.moneyFormat} ISK',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
-                  )
-                : _loadingIndicator),
-        const Divider(height: 4)
-      ]);
+      children.add(ListTile(
+          title: const Text('装备总价'),
+          trailing: equipmentPriceLoaded
+              ? Text(
+                  '${equipmentPrice.moneyFormat} ISK',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+                )
+              : _loadingIndicator));
+      if (equipment.isNotEmpty) {
+        children.add(const Divider(height: 4));
+      }
       children.addAll(equipment);
-      children.add(const Divider(height: 4, color: Colors.white));
+      children.add(Divider(height: 4, color: Theme.of(context).primaryColor));
       allPriceLoaded = allPriceLoaded && equipmentPriceLoaded;
       allPrice += equipmentPrice;
     }
@@ -291,19 +290,19 @@ class _MarketPriceDetailList extends ConsumerWidget {
         dronePriceLoaded = dronePriceLoaded && gotPrice != null;
         dronePrice += (gotPrice ?? 0.0) * entry.value;
       }
-      children.addAll([
-        ListTile(
-            title: const Text('无人机和舰载机总价'),
-            trailing: dronePriceLoaded
-                ? Text(
-                    '${dronePrice.moneyFormat} ISK',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
-                  )
-                : _loadingIndicator),
-        const Divider(height: 4)
-      ]);
+      children.add(ListTile(
+          title: const Text('无人机和舰载机总价'),
+          trailing: dronePriceLoaded
+              ? Text(
+                  '${dronePrice.moneyFormat} ISK',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+                )
+              : _loadingIndicator));
+      if (drone.isNotEmpty) {
+        children.add(const Divider(height: 4));
+      }
       children.addAll(drone);
-      children.add(const Divider(height: 4, color: Colors.white));
+      children.add(Divider(height: 4, color: Theme.of(context).primaryColor));
       allPriceLoaded = allPriceLoaded && dronePriceLoaded;
       allPrice += dronePrice;
     }
@@ -329,19 +328,19 @@ class _MarketPriceDetailList extends ConsumerWidget {
         implantPriceLoaded = implantPriceLoaded && gotPrice != null;
         implantPrice += (gotPrice ?? 0.0) * entry.value;
       }
-      children.addAll([
-        ListTile(
-            title: const Text('植入体总价'),
-            trailing: implantPriceLoaded
-                ? Text(
-                    '${implantPrice.moneyFormat} ISK',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
-                  )
-                : _loadingIndicator),
-        const Divider(height: 4)
-      ]);
+      children.add(ListTile(
+          title: const Text('植入体总价'),
+          trailing: implantPriceLoaded
+              ? Text(
+                  '${implantPrice.moneyFormat} ISK',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+                )
+              : _loadingIndicator));
+      if (implant.isNotEmpty) {
+        children.add(const Divider(height: 4));
+      }
       children.addAll(implant);
-      children.add(const Divider(height: 4, color: Colors.white));
+      children.add(Divider(height: 4, color: Theme.of(context).primaryColor));
       allPriceLoaded = allPriceLoaded && implantPriceLoaded;
       allPrice += implantPrice;
     }
@@ -355,7 +354,7 @@ class _MarketPriceDetailList extends ConsumerWidget {
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
                 )
               : _loadingIndicator),
-      const Divider(height: 4, color: Colors.white)
+      Divider(height: 4, color: Theme.of(context).primaryColor)
     ]);
 
     return Scrollbar(child: ListView(children: children));

@@ -10,7 +10,7 @@ enum ItemListPopBehavior {
 
   void setDefault(SharedPreferences prefs) {
     if (!prefs.containsKey(_itemListPopBehaviorKey)) {
-    prefs.setInt(_itemListPopBehaviorKey, defaultValue.index);
+      prefs.setInt(_itemListPopBehaviorKey, defaultValue.index);
     }
   }
 

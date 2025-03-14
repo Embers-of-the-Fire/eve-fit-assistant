@@ -2,7 +2,7 @@
 
 part of 'auth.dart';
 
-const _esiAuthScope='esi-skills.read_skills.v1';
+const _esiAuthScope = 'esi-skills.read_skills.v1';
 
 final Uri _esiAuthEndpointTq = Uri.parse(r'https://login.eveonline.com/v2/oauth/authorize');
 final Uri _esiAuthEndpointSe = Uri.parse(r'https://login.evepc.163.com/v2/oauth/authorize');

@@ -1,6 +1,7 @@
 import 'package:eve_fit_assistant/front.dart' as front;
 import 'package:eve_fit_assistant/native/port/frb_generated.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/theme/color.dart';
 import 'package:eve_fit_assistant/widgets/loading.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -14,15 +15,6 @@ Future main() async {
 }
 
 final globalNavigatorKey = GlobalKey<NavigatorState>();
-
-const Color primaryBlue = Color(0xFF30B2E6);
-const Color deepSpace = Color(0xFF0A1A2A);
-const Color cyberTeal = Color(0xFF2A7B9C);
-const Color neonHighlight = Color(0xFF4ED4FF);
-const Color terminalText = Color(0xFFE0F4FF);
-
-const Color neonGreen = Color(0xFF4DFFDF);
-const Color neonPurple = Color(0xFF9B6DFF);
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -88,7 +80,11 @@ class MyApp extends ConsumerWidget {
           ),
         ),
         canvasColor: deepSpace,
-        dividerColor: cyberTeal.withAlpha(76),
+        dividerTheme: const DividerThemeData(
+          color: cyberTeal,
+          indent: 10,
+          endIndent: 10,
+        ),
         iconTheme: const IconThemeData(color: neonHighlight),
       ),
       home: const front.FrontendPage(),

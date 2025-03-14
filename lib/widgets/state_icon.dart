@@ -1,3 +1,5 @@
+import 'package:eve_fit_assistant/theme/color.dart';
+import 'package:eve_fit_assistant/widgets/avatar.dart';
 import 'package:flutter/material.dart';
 
 enum ItemState {
@@ -16,7 +18,6 @@ enum ItemState {
 }
 
 class StateIcon extends StatelessWidget {
-  final Widget? child;
   final ImageProvider<Object>? foregroundImage;
   final ItemState state;
 
@@ -25,30 +26,21 @@ class StateIcon extends StatelessWidget {
   const StateIcon({
     super.key,
     required this.state,
-    this.child,
     this.foregroundImage,
     this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => Ink(
-      decoration: const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(20))),
-      child: InkWell(
-          borderRadius: const BorderRadius.all(Radius.circular(20)),
-          onTap: onTap,
-          child: CircleAvatar(
-            radius: 20,
-            backgroundColor: switch (state) {
-              ItemState.active => Colors.green.shade800,
-              ItemState.online => Colors.grey.shade400,
-              ItemState.overload => Colors.red.shade400,
-              ItemState.passive => Theme.of(context).scaffoldBackgroundColor
-            },
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.grey.shade800,
-              foregroundImage: foregroundImage,
-              child: child,
-            ),
-          )));
+  Widget build(BuildContext context) => BorderedCircleAvatar(
+        size: 35,
+        onPressed: onTap,
+        borderColor: switch (state) {
+          ItemState.active => colorStatusActive,
+          ItemState.online => colorStatusOnline,
+          ItemState.overload => colorStatusOverload,
+          ItemState.passive => colorStatusPassive,
+        },
+        backgroundColor: colorStatusPassive,
+        image: foregroundImage,
+      );
 }

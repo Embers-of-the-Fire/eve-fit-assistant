@@ -14,21 +14,24 @@ import 'dart:core' as $core;
 import 'package:protobuf/protobuf.dart' as $pb;
 
 class Fighters_FighterType extends $pb.ProtobufEnum {
-  static const Fighters_FighterType LIGHT = Fighters_FighterType._(1, _omitEnumNames ? '' : 'LIGHT');
-  static const Fighters_FighterType SUPPORT = Fighters_FighterType._(2, _omitEnumNames ? '' : 'SUPPORT');
-  static const Fighters_FighterType HEAVY = Fighters_FighterType._(3, _omitEnumNames ? '' : 'HEAVY');
+  static const Fighters_FighterType LIGHT =
+      Fighters_FighterType._(1, _omitEnumNames ? '' : 'LIGHT');
+  static const Fighters_FighterType SUPPORT =
+      Fighters_FighterType._(2, _omitEnumNames ? '' : 'SUPPORT');
+  static const Fighters_FighterType HEAVY =
+      Fighters_FighterType._(3, _omitEnumNames ? '' : 'HEAVY');
 
-  static const $core.List<Fighters_FighterType> values = <Fighters_FighterType> [
+  static const $core.List<Fighters_FighterType> values = <Fighters_FighterType>[
     LIGHT,
     SUPPORT,
     HEAVY,
   ];
 
-  static final $core.Map<$core.int, Fighters_FighterType> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static final $core.Map<$core.int, Fighters_FighterType> _byValue =
+      $pb.ProtobufEnum.initByValue(values);
   static Fighters_FighterType? valueOf($core.int value) => _byValue[value];
 
   const Fighters_FighterType._($core.int v, $core.String n) : super(v, n);
 }
-
 
 const _omitEnumNames = $core.bool.fromEnvironment('protobuf.omit_enum_names');

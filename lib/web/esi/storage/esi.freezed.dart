@@ -30,8 +30,7 @@ mixin _$Character {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is Character &&
-            (identical(other.characterID, characterID) ||
-                other.characterID == characterID) &&
+            (identical(other.characterID, characterID) || other.characterID == characterID) &&
             (identical(other.characterName, characterName) ||
                 other.characterName == characterName));
   }
@@ -84,8 +83,7 @@ class _$CharacterCopyWithImpl<$Res> implements $CharacterCopyWith<$Res> {
 /// @nodoc
 
 class _Character extends Character {
-  const _Character({required this.characterID, required this.characterName})
-      : super._();
+  const _Character({required this.characterID, required this.characterName}) : super._();
 
   @override
   final int characterID;
@@ -105,8 +103,7 @@ class _Character extends Character {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _Character &&
-            (identical(other.characterID, characterID) ||
-                other.characterID == characterID) &&
+            (identical(other.characterID, characterID) || other.characterID == characterID) &&
             (identical(other.characterName, characterName) ||
                 other.characterName == characterName));
   }
@@ -121,10 +118,8 @@ class _Character extends Character {
 }
 
 /// @nodoc
-abstract mixin class _$CharacterCopyWith<$Res>
-    implements $CharacterCopyWith<$Res> {
-  factory _$CharacterCopyWith(
-          _Character value, $Res Function(_Character) _then) =
+abstract mixin class _$CharacterCopyWith<$Res> implements $CharacterCopyWith<$Res> {
+  factory _$CharacterCopyWith(_Character value, $Res Function(_Character) _then) =
       __$CharacterCopyWithImpl;
   @override
   @useResult

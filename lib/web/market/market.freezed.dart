@@ -53,12 +53,10 @@ mixin _$MarketPrice {
 
 /// @nodoc
 abstract mixin class $MarketPriceCopyWith<$Res> {
-  factory $MarketPriceCopyWith(
-          MarketPrice value, $Res Function(MarketPrice) _then) =
+  factory $MarketPriceCopyWith(MarketPrice value, $Res Function(MarketPrice) _then) =
       _$MarketPriceCopyWithImpl;
   @useResult
-  $Res call(
-      {int typeID, Server server, PriceSummary summary, OrderGroup orders});
+  $Res call({int typeID, Server server, PriceSummary summary, OrderGroup orders});
 
   $PriceSummaryCopyWith<$Res> get summary;
   $OrderGroupCopyWith<$Res> get orders;
@@ -126,12 +124,8 @@ class _$MarketPriceCopyWithImpl<$Res> implements $MarketPriceCopyWith<$Res> {
 @JsonSerializable()
 class _MarketPrice implements MarketPrice {
   const _MarketPrice(
-      {required this.typeID,
-      required this.server,
-      required this.summary,
-      required this.orders});
-  factory _MarketPrice.fromJson(Map<String, dynamic> json) =>
-      _$MarketPriceFromJson(json);
+      {required this.typeID, required this.server, required this.summary, required this.orders});
+  factory _MarketPrice.fromJson(Map<String, dynamic> json) => _$MarketPriceFromJson(json);
 
   @override
   final int typeID;
@@ -179,15 +173,12 @@ class _MarketPrice implements MarketPrice {
 }
 
 /// @nodoc
-abstract mixin class _$MarketPriceCopyWith<$Res>
-    implements $MarketPriceCopyWith<$Res> {
-  factory _$MarketPriceCopyWith(
-          _MarketPrice value, $Res Function(_MarketPrice) _then) =
+abstract mixin class _$MarketPriceCopyWith<$Res> implements $MarketPriceCopyWith<$Res> {
+  factory _$MarketPriceCopyWith(_MarketPrice value, $Res Function(_MarketPrice) _then) =
       __$MarketPriceCopyWithImpl;
   @override
   @useResult
-  $Res call(
-      {int typeID, Server server, PriceSummary summary, OrderGroup orders});
+  $Res call({int typeID, Server server, PriceSummary summary, OrderGroup orders});
 
   @override
   $PriceSummaryCopyWith<$Res> get summary;
@@ -264,8 +255,7 @@ mixin _$PriceSummary {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $PriceSummaryCopyWith<PriceSummary> get copyWith =>
-      _$PriceSummaryCopyWithImpl<PriceSummary>(
-          this as PriceSummary, _$identity);
+      _$PriceSummaryCopyWithImpl<PriceSummary>(this as PriceSummary, _$identity);
 
   /// Serializes this PriceSummary to a JSON map.
   Map<String, dynamic> toJson();
@@ -292,8 +282,7 @@ mixin _$PriceSummary {
 
 /// @nodoc
 abstract mixin class $PriceSummaryCopyWith<$Res> {
-  factory $PriceSummaryCopyWith(
-          PriceSummary value, $Res Function(PriceSummary) _then) =
+  factory $PriceSummaryCopyWith(PriceSummary value, $Res Function(PriceSummary) _then) =
       _$PriceSummaryCopyWithImpl;
   @useResult
   $Res call({Price all, Price buy, Price sell});
@@ -369,10 +358,8 @@ class _$PriceSummaryCopyWithImpl<$Res> implements $PriceSummaryCopyWith<$Res> {
 /// @nodoc
 @JsonSerializable()
 class _PriceSummary implements PriceSummary {
-  const _PriceSummary(
-      {required this.all, required this.buy, required this.sell});
-  factory _PriceSummary.fromJson(Map<String, dynamic> json) =>
-      _$PriceSummaryFromJson(json);
+  const _PriceSummary({required this.all, required this.buy, required this.sell});
+  factory _PriceSummary.fromJson(Map<String, dynamic> json) => _$PriceSummaryFromJson(json);
 
   @override
   final Price all;
@@ -417,10 +404,8 @@ class _PriceSummary implements PriceSummary {
 }
 
 /// @nodoc
-abstract mixin class _$PriceSummaryCopyWith<$Res>
-    implements $PriceSummaryCopyWith<$Res> {
-  factory _$PriceSummaryCopyWith(
-          _PriceSummary value, $Res Function(_PriceSummary) _then) =
+abstract mixin class _$PriceSummaryCopyWith<$Res> implements $PriceSummaryCopyWith<$Res> {
+  factory _$PriceSummaryCopyWith(_PriceSummary value, $Res Function(_PriceSummary) _then) =
       __$PriceSummaryCopyWithImpl;
   @override
   @useResult
@@ -435,8 +420,7 @@ abstract mixin class _$PriceSummaryCopyWith<$Res>
 }
 
 /// @nodoc
-class __$PriceSummaryCopyWithImpl<$Res>
-    implements _$PriceSummaryCopyWith<$Res> {
+class __$PriceSummaryCopyWithImpl<$Res> implements _$PriceSummaryCopyWith<$Res> {
   __$PriceSummaryCopyWithImpl(this._self, this._then);
 
   final _PriceSummary _self;
@@ -508,8 +492,7 @@ mixin _$Price {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $PriceCopyWith<Price> get copyWith =>
-      _$PriceCopyWithImpl<Price>(this as Price, _$identity);
+  $PriceCopyWith<Price> get copyWith => _$PriceCopyWithImpl<Price>(this as Price, _$identity);
 
   /// Serializes this Price to a JSON map.
   Map<String, dynamic> toJson();
@@ -536,8 +519,7 @@ mixin _$Price {
 
 /// @nodoc
 abstract mixin class $PriceCopyWith<$Res> {
-  factory $PriceCopyWith(Price value, $Res Function(Price) _then) =
-      _$PriceCopyWithImpl;
+  factory $PriceCopyWith(Price value, $Res Function(Price) _then) = _$PriceCopyWithImpl;
   @useResult
   $Res call({double min, double max, int volume});
 }
@@ -593,8 +575,7 @@ class _Price implements Price {
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  _$PriceCopyWith<_Price> get copyWith =>
-      __$PriceCopyWithImpl<_Price>(this, _$identity);
+  _$PriceCopyWith<_Price> get copyWith => __$PriceCopyWithImpl<_Price>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -625,8 +606,7 @@ class _Price implements Price {
 
 /// @nodoc
 abstract mixin class _$PriceCopyWith<$Res> implements $PriceCopyWith<$Res> {
-  factory _$PriceCopyWith(_Price value, $Res Function(_Price) _then) =
-      __$PriceCopyWithImpl;
+  factory _$PriceCopyWith(_Price value, $Res Function(_Price) _then) = __$PriceCopyWithImpl;
   @override
   @useResult
   $Res call({double min, double max, int volume});
@@ -694,9 +674,7 @@ mixin _$OrderGroup {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      const DeepCollectionEquality().hash(buy),
+  int get hashCode => Object.hash(runtimeType, const DeepCollectionEquality().hash(buy),
       const DeepCollectionEquality().hash(sell));
 
   @override
@@ -707,8 +685,7 @@ mixin _$OrderGroup {
 
 /// @nodoc
 abstract mixin class $OrderGroupCopyWith<$Res> {
-  factory $OrderGroupCopyWith(
-          OrderGroup value, $Res Function(OrderGroup) _then) =
+  factory $OrderGroupCopyWith(OrderGroup value, $Res Function(OrderGroup) _then) =
       _$OrderGroupCopyWithImpl;
   @useResult
   $Res call({List<Order> buy, List<Order> sell});
@@ -745,12 +722,10 @@ class _$OrderGroupCopyWithImpl<$Res> implements $OrderGroupCopyWith<$Res> {
 /// @nodoc
 @JsonSerializable()
 class _OrderGroup implements OrderGroup {
-  const _OrderGroup(
-      {required final List<Order> buy, required final List<Order> sell})
+  const _OrderGroup({required final List<Order> buy, required final List<Order> sell})
       : _buy = buy,
         _sell = sell;
-  factory _OrderGroup.fromJson(Map<String, dynamic> json) =>
-      _$OrderGroupFromJson(json);
+  factory _OrderGroup.fromJson(Map<String, dynamic> json) => _$OrderGroupFromJson(json);
 
   /// `buy` orders should be sorted in descending order by price.
   final List<Order> _buy;
@@ -800,9 +775,7 @@ class _OrderGroup implements OrderGroup {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      const DeepCollectionEquality().hash(_buy),
+  int get hashCode => Object.hash(runtimeType, const DeepCollectionEquality().hash(_buy),
       const DeepCollectionEquality().hash(_sell));
 
   @override
@@ -812,10 +785,8 @@ class _OrderGroup implements OrderGroup {
 }
 
 /// @nodoc
-abstract mixin class _$OrderGroupCopyWith<$Res>
-    implements $OrderGroupCopyWith<$Res> {
-  factory _$OrderGroupCopyWith(
-          _OrderGroup value, $Res Function(_OrderGroup) _then) =
+abstract mixin class _$OrderGroupCopyWith<$Res> implements $OrderGroupCopyWith<$Res> {
+  factory _$OrderGroupCopyWith(_OrderGroup value, $Res Function(_OrderGroup) _then) =
       __$OrderGroupCopyWithImpl;
   @override
   @useResult
@@ -860,8 +831,7 @@ mixin _$Order {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $OrderCopyWith<Order> get copyWith =>
-      _$OrderCopyWithImpl<Order>(this as Order, _$identity);
+  $OrderCopyWith<Order> get copyWith => _$OrderCopyWithImpl<Order>(this as Order, _$identity);
 
   /// Serializes this Order to a JSON map.
   Map<String, dynamic> toJson();
@@ -871,17 +841,14 @@ mixin _$Order {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is Order &&
-            (identical(other.volumeRemain, volumeRemain) ||
-                other.volumeRemain == volumeRemain) &&
-            (identical(other.volumeTotal, volumeTotal) ||
-                other.volumeTotal == volumeTotal) &&
+            (identical(other.volumeRemain, volumeRemain) || other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) || other.volumeTotal == volumeTotal) &&
             (identical(other.price, price) || other.price == price));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, volumeRemain, volumeTotal, price);
+  int get hashCode => Object.hash(runtimeType, volumeRemain, volumeTotal, price);
 
   @override
   String toString() {
@@ -891,8 +858,7 @@ mixin _$Order {
 
 /// @nodoc
 abstract mixin class $OrderCopyWith<$Res> {
-  factory $OrderCopyWith(Order value, $Res Function(Order) _then) =
-      _$OrderCopyWithImpl;
+  factory $OrderCopyWith(Order value, $Res Function(Order) _then) = _$OrderCopyWithImpl;
   @useResult
   $Res call({int volumeRemain, int volumeTotal, double price});
 }
@@ -933,10 +899,7 @@ class _$OrderCopyWithImpl<$Res> implements $OrderCopyWith<$Res> {
 /// @nodoc
 @JsonSerializable()
 class _Order implements Order {
-  const _Order(
-      {required this.volumeRemain,
-      required this.volumeTotal,
-      required this.price});
+  const _Order({required this.volumeRemain, required this.volumeTotal, required this.price});
   factory _Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
   @override
@@ -951,8 +914,7 @@ class _Order implements Order {
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  _$OrderCopyWith<_Order> get copyWith =>
-      __$OrderCopyWithImpl<_Order>(this, _$identity);
+  _$OrderCopyWith<_Order> get copyWith => __$OrderCopyWithImpl<_Order>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -966,17 +928,14 @@ class _Order implements Order {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _Order &&
-            (identical(other.volumeRemain, volumeRemain) ||
-                other.volumeRemain == volumeRemain) &&
-            (identical(other.volumeTotal, volumeTotal) ||
-                other.volumeTotal == volumeTotal) &&
+            (identical(other.volumeRemain, volumeRemain) || other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) || other.volumeTotal == volumeTotal) &&
             (identical(other.price, price) || other.price == price));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, volumeRemain, volumeTotal, price);
+  int get hashCode => Object.hash(runtimeType, volumeRemain, volumeTotal, price);
 
   @override
   String toString() {
@@ -986,8 +945,7 @@ class _Order implements Order {
 
 /// @nodoc
 abstract mixin class _$OrderCopyWith<$Res> implements $OrderCopyWith<$Res> {
-  factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) =
-      __$OrderCopyWithImpl;
+  factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) = __$OrderCopyWithImpl;
   @override
   @useResult
   $Res call({int volumeRemain, int volumeTotal, double price});
@@ -1037,8 +995,7 @@ mixin _$CEveMarketResponse {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $CEveMarketResponseCopyWith<CEveMarketResponse> get copyWith =>
-      _$CEveMarketResponseCopyWithImpl<CEveMarketResponse>(
-          this as CEveMarketResponse, _$identity);
+      _$CEveMarketResponseCopyWithImpl<CEveMarketResponse>(this as CEveMarketResponse, _$identity);
 
   /// Serializes this CEveMarketResponse to a JSON map.
   Map<String, dynamic> toJson();
@@ -1077,8 +1034,7 @@ abstract mixin class $CEveMarketResponseCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$CEveMarketResponseCopyWithImpl<$Res>
-    implements $CEveMarketResponseCopyWith<$Res> {
+class _$CEveMarketResponseCopyWithImpl<$Res> implements $CEveMarketResponseCopyWith<$Res> {
   _$CEveMarketResponseCopyWithImpl(this._self, this._then);
 
   final CEveMarketResponse _self;
@@ -1143,8 +1099,7 @@ class _$CEveMarketResponseCopyWithImpl<$Res>
 /// @nodoc
 @JsonSerializable()
 class _CEveMarketResponse implements CEveMarketResponse {
-  const _CEveMarketResponse(
-      {required this.all, required this.buy, required this.sell});
+  const _CEveMarketResponse({required this.all, required this.buy, required this.sell});
   factory _CEveMarketResponse.fromJson(Map<String, dynamic> json) =>
       _$CEveMarketResponseFromJson(json);
 
@@ -1209,8 +1164,7 @@ abstract mixin class _$CEveMarketResponseCopyWith<$Res>
 }
 
 /// @nodoc
-class __$CEveMarketResponseCopyWithImpl<$Res>
-    implements _$CEveMarketResponseCopyWith<$Res> {
+class __$CEveMarketResponseCopyWithImpl<$Res> implements _$CEveMarketResponseCopyWith<$Res> {
   __$CEveMarketResponseCopyWithImpl(this._self, this._then);
 
   final _CEveMarketResponse _self;
@@ -1289,8 +1243,7 @@ mixin _$ESIMarketResponse {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ESIMarketResponseCopyWith<ESIMarketResponse> get copyWith =>
-      _$ESIMarketResponseCopyWithImpl<ESIMarketResponse>(
-          this as ESIMarketResponse, _$identity);
+      _$ESIMarketResponseCopyWithImpl<ESIMarketResponse>(this as ESIMarketResponse, _$identity);
 
   /// Serializes this ESIMarketResponse to a JSON map.
   Map<String, dynamic> toJson();
@@ -1301,21 +1254,17 @@ mixin _$ESIMarketResponse {
         (other.runtimeType == runtimeType &&
             other is ESIMarketResponse &&
             (identical(other.typeID, typeID) || other.typeID == typeID) &&
-            (identical(other.volumeRemain, volumeRemain) ||
-                other.volumeRemain == volumeRemain) &&
-            (identical(other.volumeTotal, volumeTotal) ||
-                other.volumeTotal == volumeTotal) &&
+            (identical(other.volumeRemain, volumeRemain) || other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) || other.volumeTotal == volumeTotal) &&
             (identical(other.price, price) || other.price == price) &&
-            (identical(other.isBuyOrder, isBuyOrder) ||
-                other.isBuyOrder == isBuyOrder) &&
-            (identical(other.locationID, locationID) ||
-                other.locationID == locationID));
+            (identical(other.isBuyOrder, isBuyOrder) || other.isBuyOrder == isBuyOrder) &&
+            (identical(other.locationID, locationID) || other.locationID == locationID));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, typeID, volumeRemain,
-      volumeTotal, price, isBuyOrder, locationID);
+  int get hashCode =>
+      Object.hash(runtimeType, typeID, volumeRemain, volumeTotal, price, isBuyOrder, locationID);
 
   @override
   String toString() {
@@ -1339,8 +1288,7 @@ abstract mixin class $ESIMarketResponseCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ESIMarketResponseCopyWithImpl<$Res>
-    implements $ESIMarketResponseCopyWith<$Res> {
+class _$ESIMarketResponseCopyWithImpl<$Res> implements $ESIMarketResponseCopyWith<$Res> {
   _$ESIMarketResponseCopyWithImpl(this._self, this._then);
 
   final ESIMarketResponse _self;
@@ -1439,21 +1387,17 @@ class _ESIMarketResponse implements ESIMarketResponse {
         (other.runtimeType == runtimeType &&
             other is _ESIMarketResponse &&
             (identical(other.typeID, typeID) || other.typeID == typeID) &&
-            (identical(other.volumeRemain, volumeRemain) ||
-                other.volumeRemain == volumeRemain) &&
-            (identical(other.volumeTotal, volumeTotal) ||
-                other.volumeTotal == volumeTotal) &&
+            (identical(other.volumeRemain, volumeRemain) || other.volumeRemain == volumeRemain) &&
+            (identical(other.volumeTotal, volumeTotal) || other.volumeTotal == volumeTotal) &&
             (identical(other.price, price) || other.price == price) &&
-            (identical(other.isBuyOrder, isBuyOrder) ||
-                other.isBuyOrder == isBuyOrder) &&
-            (identical(other.locationID, locationID) ||
-                other.locationID == locationID));
+            (identical(other.isBuyOrder, isBuyOrder) || other.isBuyOrder == isBuyOrder) &&
+            (identical(other.locationID, locationID) || other.locationID == locationID));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, typeID, volumeRemain,
-      volumeTotal, price, isBuyOrder, locationID);
+  int get hashCode =>
+      Object.hash(runtimeType, typeID, volumeRemain, volumeTotal, price, isBuyOrder, locationID);
 
   @override
   String toString() {
@@ -1462,8 +1406,7 @@ class _ESIMarketResponse implements ESIMarketResponse {
 }
 
 /// @nodoc
-abstract mixin class _$ESIMarketResponseCopyWith<$Res>
-    implements $ESIMarketResponseCopyWith<$Res> {
+abstract mixin class _$ESIMarketResponseCopyWith<$Res> implements $ESIMarketResponseCopyWith<$Res> {
   factory _$ESIMarketResponseCopyWith(
           _ESIMarketResponse value, $Res Function(_ESIMarketResponse) _then) =
       __$ESIMarketResponseCopyWithImpl;
@@ -1479,8 +1422,7 @@ abstract mixin class _$ESIMarketResponseCopyWith<$Res>
 }
 
 /// @nodoc
-class __$ESIMarketResponseCopyWithImpl<$Res>
-    implements _$ESIMarketResponseCopyWith<$Res> {
+class __$ESIMarketResponseCopyWithImpl<$Res> implements _$ESIMarketResponseCopyWith<$Res> {
   __$ESIMarketResponseCopyWithImpl(this._self, this._then);
 
   final _ESIMarketResponse _self;

@@ -6,8 +6,7 @@ part of 'storage.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$globalStorageNotifierHash() =>
-    r'e96196a1ddcfeb94a3f180bd3d67ad942d45db2d';
+String _$globalStorageNotifierHash() => r'e96196a1ddcfeb94a3f180bd3d67ad942d45db2d';
 
 /// See also [GlobalStorageNotifier].
 @ProviderFor(GlobalStorageNotifier)
@@ -15,9 +14,8 @@ final globalStorageNotifierProvider =
     AutoDisposeNotifierProvider<GlobalStorageNotifier, bool>.internal(
   GlobalStorageNotifier.new,
   name: r'globalStorageNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$globalStorageNotifierHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$globalStorageNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
