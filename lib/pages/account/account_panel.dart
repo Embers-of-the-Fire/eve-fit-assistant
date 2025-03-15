@@ -1,4 +1,5 @@
 import 'package:eve_fit_assistant/pages/account/fittings.dart';
+import 'package:eve_fit_assistant/pages/account/skills.dart';
 import 'package:eve_fit_assistant/widgets/card.dart';
 import 'package:eve_fit_assistant/widgets/grid.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,8 @@ class AccountPanel extends StatelessWidget {
         childHeight: 160,
         children: [
           FunctionCard(
-              onTap: () {},
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (context) => const SkillsPage())),
               icon: Icons.account_tree_outlined,
               title: '技能',
               color: const Color(0xFF9A4DFF)),

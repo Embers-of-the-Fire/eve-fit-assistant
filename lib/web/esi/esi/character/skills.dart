@@ -3,6 +3,8 @@
 import 'dart:convert';
 
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
+import 'package:eve_fit_assistant/storage/storage.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -20,7 +22,13 @@ abstract class CharacterSkills with _$CharacterSkills {
     required List<CharacterSkillItem> skills,
   }) = _CharacterSkills;
 
+  const CharacterSkills._();
+
   factory CharacterSkills.fromJson(Map<String, dynamic> json) => _$CharacterSkillsFromJson(json);
+
+  Map<int, int> toSkillMap() =>
+      Map.fromEntries(skills.map((e) => MapEntry(e.skillID, e.trainedSkillLevel)))
+          .let((u) => GlobalStorage().static.skills.map((k, _) => MapEntry(k, u[k] ?? 0)));
 }
 
 @freezed

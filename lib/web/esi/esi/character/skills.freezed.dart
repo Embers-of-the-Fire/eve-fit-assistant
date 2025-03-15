@@ -103,12 +103,13 @@ class _$CharacterSkillsCopyWithImpl<$Res>
 /// @nodoc
 
 @JsonSerializable(fieldRename: FieldRename.snake)
-class _CharacterSkills implements CharacterSkills {
+class _CharacterSkills extends CharacterSkills {
   const _CharacterSkills(
       {@JsonKey(name: 'total_sp') required this.totalSP,
       @JsonKey(name: 'unallocated_sp') required this.unallocatedSP,
       required final List<CharacterSkillItem> skills})
-      : _skills = skills;
+      : _skills = skills,
+        super._();
   factory _CharacterSkills.fromJson(Map<String, dynamic> json) =>
       _$CharacterSkillsFromJson(json);
 
