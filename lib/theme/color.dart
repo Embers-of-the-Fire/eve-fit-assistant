@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 const Color primaryBlue = Color(0xFF30B2E6);
+const Color deepBlue = Color(0xFF0C1213);
 const Color deepSpace = Color(0xFF0A1A2A);
 const Color cyberTeal = Color(0xFF2A7B9C);
 const Color neonHighlight = Color(0xFF4ED4FF);

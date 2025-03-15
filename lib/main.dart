@@ -32,6 +32,7 @@ class MyApp extends ConsumerWidget {
         scaffoldBackgroundColor: deepSpace,
         cardColor: neonGreen,
         appBarTheme: const AppBarTheme(
+          color: deepBlue,
           titleTextStyle: TextStyle(
             color: neonHighlight,
             fontSize: 20,
@@ -87,6 +88,9 @@ class MyApp extends ConsumerWidget {
         ),
         dividerColor: cyberTeal,
         iconTheme: const IconThemeData(color: neonHighlight),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: deepBlue,
+        ),
       ),
       home: const front.FrontendPage(),
       builder: (context, child) {
