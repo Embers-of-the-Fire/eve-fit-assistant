@@ -26,7 +26,8 @@ mixin _$CharacterSkills {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $CharacterSkillsCopyWith<CharacterSkills> get copyWith =>
-      _$CharacterSkillsCopyWithImpl<CharacterSkills>(this as CharacterSkills, _$identity);
+      _$CharacterSkillsCopyWithImpl<CharacterSkills>(
+          this as CharacterSkills, _$identity);
 
   /// Serializes this CharacterSkills to a JSON map.
   Map<String, dynamic> toJson();
@@ -44,8 +45,8 @@ mixin _$CharacterSkills {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, totalSP, unallocatedSP, const DeepCollectionEquality().hash(skills));
+  int get hashCode => Object.hash(runtimeType, totalSP, unallocatedSP,
+      const DeepCollectionEquality().hash(skills));
 
   @override
   String toString() {
@@ -55,7 +56,8 @@ mixin _$CharacterSkills {
 
 /// @nodoc
 abstract mixin class $CharacterSkillsCopyWith<$Res> {
-  factory $CharacterSkillsCopyWith(CharacterSkills value, $Res Function(CharacterSkills) _then) =
+  factory $CharacterSkillsCopyWith(
+          CharacterSkills value, $Res Function(CharacterSkills) _then) =
       _$CharacterSkillsCopyWithImpl;
   @useResult
   $Res call(
@@ -65,7 +67,8 @@ abstract mixin class $CharacterSkillsCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$CharacterSkillsCopyWithImpl<$Res> implements $CharacterSkillsCopyWith<$Res> {
+class _$CharacterSkillsCopyWithImpl<$Res>
+    implements $CharacterSkillsCopyWith<$Res> {
   _$CharacterSkillsCopyWithImpl(this._self, this._then);
 
   final CharacterSkills _self;
@@ -106,7 +109,8 @@ class _CharacterSkills implements CharacterSkills {
       @JsonKey(name: 'unallocated_sp') required this.unallocatedSP,
       required final List<CharacterSkillItem> skills})
       : _skills = skills;
-  factory _CharacterSkills.fromJson(Map<String, dynamic> json) => _$CharacterSkillsFromJson(json);
+  factory _CharacterSkills.fromJson(Map<String, dynamic> json) =>
+      _$CharacterSkillsFromJson(json);
 
   @override
   @JsonKey(name: 'total_sp')
@@ -150,8 +154,8 @@ class _CharacterSkills implements CharacterSkills {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType, totalSP, unallocatedSP, const DeepCollectionEquality().hash(_skills));
+  int get hashCode => Object.hash(runtimeType, totalSP, unallocatedSP,
+      const DeepCollectionEquality().hash(_skills));
 
   @override
   String toString() {
@@ -160,8 +164,10 @@ class _CharacterSkills implements CharacterSkills {
 }
 
 /// @nodoc
-abstract mixin class _$CharacterSkillsCopyWith<$Res> implements $CharacterSkillsCopyWith<$Res> {
-  factory _$CharacterSkillsCopyWith(_CharacterSkills value, $Res Function(_CharacterSkills) _then) =
+abstract mixin class _$CharacterSkillsCopyWith<$Res>
+    implements $CharacterSkillsCopyWith<$Res> {
+  factory _$CharacterSkillsCopyWith(
+          _CharacterSkills value, $Res Function(_CharacterSkills) _then) =
       __$CharacterSkillsCopyWithImpl;
   @override
   @useResult
@@ -172,7 +178,8 @@ abstract mixin class _$CharacterSkillsCopyWith<$Res> implements $CharacterSkills
 }
 
 /// @nodoc
-class __$CharacterSkillsCopyWithImpl<$Res> implements _$CharacterSkillsCopyWith<$Res> {
+class __$CharacterSkillsCopyWithImpl<$Res>
+    implements _$CharacterSkillsCopyWith<$Res> {
   __$CharacterSkillsCopyWithImpl(this._self, this._then);
 
   final _CharacterSkills _self;
@@ -217,7 +224,8 @@ mixin _$CharacterSkillItem {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $CharacterSkillItemCopyWith<CharacterSkillItem> get copyWith =>
-      _$CharacterSkillItemCopyWithImpl<CharacterSkillItem>(this as CharacterSkillItem, _$identity);
+      _$CharacterSkillItemCopyWithImpl<CharacterSkillItem>(
+          this as CharacterSkillItem, _$identity);
 
   /// Serializes this CharacterSkillItem to a JSON map.
   Map<String, dynamic> toJson();
@@ -238,8 +246,8 @@ mixin _$CharacterSkillItem {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, activeSkillLevel, skillID, skillpointsInSkill, trainedSkillLevel);
+  int get hashCode => Object.hash(runtimeType, activeSkillLevel, skillID,
+      skillpointsInSkill, trainedSkillLevel);
 
   @override
   String toString() {
@@ -261,7 +269,8 @@ abstract mixin class $CharacterSkillItemCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$CharacterSkillItemCopyWithImpl<$Res> implements $CharacterSkillItemCopyWith<$Res> {
+class _$CharacterSkillItemCopyWithImpl<$Res>
+    implements $CharacterSkillItemCopyWith<$Res> {
   _$CharacterSkillItemCopyWithImpl(this._self, this._then);
 
   final CharacterSkillItem _self;
@@ -351,8 +360,8 @@ class _CharacterSkillItem implements CharacterSkillItem {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, activeSkillLevel, skillID, skillpointsInSkill, trainedSkillLevel);
+  int get hashCode => Object.hash(runtimeType, activeSkillLevel, skillID,
+      skillpointsInSkill, trainedSkillLevel);
 
   @override
   String toString() {
@@ -376,7 +385,8 @@ abstract mixin class _$CharacterSkillItemCopyWith<$Res>
 }
 
 /// @nodoc
-class __$CharacterSkillItemCopyWithImpl<$Res> implements _$CharacterSkillItemCopyWith<$Res> {
+class __$CharacterSkillItemCopyWithImpl<$Res>
+    implements _$CharacterSkillItemCopyWith<$Res> {
   __$CharacterSkillItemCopyWithImpl(this._self, this._then);
 
   final _CharacterSkillItem _self;

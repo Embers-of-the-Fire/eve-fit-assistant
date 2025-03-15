@@ -28,43 +28,38 @@ class _MainPageState extends State<MainPage> {
         childHeight: 160,
         children: [
           FunctionCard(
-            onTap: () => startFitCreation(context),
-            icon: Icons.add,
-            title: '创建新配置',
-            color: const Color(0xFF00F7FF),
-          ),
+              onTap: () => startFitCreation(context),
+              icon: Icons.add,
+              title: '创建新配置',
+              color: const Color(0xFF00F7FF)),
           FunctionCard(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const CharacterPage()),
-            ),
-            icon: Icons.account_circle_outlined,
-            title: '角色配置',
-            color: const Color(0xFF00F7FF),
-          ),
+              onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const CharacterPage()),
+                  ),
+              icon: Icons.account_circle_outlined,
+              title: '角色配置',
+              color: const Color(0xFF00F7FF)),
           FunctionCard(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const AnnouncementPage()),
-            ),
-            icon: Icons.list,
-            title: '公告',
-            color: const Color(0xFFFFD600),
-          ),
+              onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const AnnouncementPage()),
+                  ),
+              icon: Icons.list,
+              title: '公告',
+              color: const Color(0xFFFFD600)),
           FunctionCard(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const MarketPage()),
-            ),
-            title: '物品市场',
-            icon: Icons.shopping_cart_outlined,
-            color: const Color(0xFF9A4DFF),
-          ),
+              onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const MarketPage()),
+                  ),
+              title: '物品市场',
+              icon: Icons.shopping_cart_outlined,
+              color: const Color(0xFF9A4DFF)),
           FunctionCard(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const SkillListPage()),
-            ),
-            icon: Icons.account_tree_outlined,
-            title: '技能列表',
-            color: const Color(0xFF9A4DFF),
-          ),
+              onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const SkillListPage()),
+                  ),
+              icon: Icons.account_tree_outlined,
+              title: '技能列表',
+              color: const Color(0xFF9A4DFF)),
         ],
       ));
 }

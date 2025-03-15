@@ -18,15 +18,21 @@ class _AccountPageState extends ConsumerState<AccountPage> {
   Widget build(BuildContext context) {
     final data = ref.watch(esiDataProvider);
     if (!data.authorized) {
-      return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('你还没有登录', style: TextStyle(fontSize: 20)),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () => EsiAuth().autoAuth(context),
-          child: const Text('登录并授权'),
-        )
-      ]));
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('账户管理'),
+          centerTitle: true,
+        ),
+        body: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('你还没有登录', style: TextStyle(fontSize: 20)),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () => EsiAuth().autoAuth(context),
+            child: const Text('登录并授权'),
+          )
+        ])),
+      );
     }
 
     final char = ref.watch(getCharacterProvider);

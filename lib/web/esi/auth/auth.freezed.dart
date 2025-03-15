@@ -27,7 +27,8 @@ mixin _$EsiAuthResponse {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $EsiAuthResponseCopyWith<EsiAuthResponse> get copyWith =>
-      _$EsiAuthResponseCopyWithImpl<EsiAuthResponse>(this as EsiAuthResponse, _$identity);
+      _$EsiAuthResponseCopyWithImpl<EsiAuthResponse>(
+          this as EsiAuthResponse, _$identity);
 
   /// Serializes this EsiAuthResponse to a JSON map.
   Map<String, dynamic> toJson();
@@ -37,14 +38,18 @@ mixin _$EsiAuthResponse {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is EsiAuthResponse &&
-            (identical(other.accessToken, accessToken) || other.accessToken == accessToken) &&
-            (identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn) &&
-            (identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken));
+            (identical(other.accessToken, accessToken) ||
+                other.accessToken == accessToken) &&
+            (identical(other.expiresIn, expiresIn) ||
+                other.expiresIn == expiresIn) &&
+            (identical(other.refreshToken, refreshToken) ||
+                other.refreshToken == refreshToken));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, accessToken, expiresIn, refreshToken);
+  int get hashCode =>
+      Object.hash(runtimeType, accessToken, expiresIn, refreshToken);
 
   @override
   String toString() {
@@ -54,7 +59,8 @@ mixin _$EsiAuthResponse {
 
 /// @nodoc
 abstract mixin class $EsiAuthResponseCopyWith<$Res> {
-  factory $EsiAuthResponseCopyWith(EsiAuthResponse value, $Res Function(EsiAuthResponse) _then) =
+  factory $EsiAuthResponseCopyWith(
+          EsiAuthResponse value, $Res Function(EsiAuthResponse) _then) =
       _$EsiAuthResponseCopyWithImpl;
   @useResult
   $Res call(
@@ -64,7 +70,8 @@ abstract mixin class $EsiAuthResponseCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$EsiAuthResponseCopyWithImpl<$Res> implements $EsiAuthResponseCopyWith<$Res> {
+class _$EsiAuthResponseCopyWithImpl<$Res>
+    implements $EsiAuthResponseCopyWith<$Res> {
   _$EsiAuthResponseCopyWithImpl(this._self, this._then);
 
   final EsiAuthResponse _self;
@@ -104,7 +111,8 @@ class _EsiAuthResponse implements EsiAuthResponse {
       {@JsonKey(name: 'access_token') required this.accessToken,
       @JsonKey(name: 'expires_in') required this.expiresIn,
       @JsonKey(name: 'refresh_token') required this.refreshToken});
-  factory _EsiAuthResponse.fromJson(Map<String, dynamic> json) => _$EsiAuthResponseFromJson(json);
+  factory _EsiAuthResponse.fromJson(Map<String, dynamic> json) =>
+      _$EsiAuthResponseFromJson(json);
 
   @override
   @JsonKey(name: 'access_token')
@@ -136,14 +144,18 @@ class _EsiAuthResponse implements EsiAuthResponse {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _EsiAuthResponse &&
-            (identical(other.accessToken, accessToken) || other.accessToken == accessToken) &&
-            (identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn) &&
-            (identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken));
+            (identical(other.accessToken, accessToken) ||
+                other.accessToken == accessToken) &&
+            (identical(other.expiresIn, expiresIn) ||
+                other.expiresIn == expiresIn) &&
+            (identical(other.refreshToken, refreshToken) ||
+                other.refreshToken == refreshToken));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, accessToken, expiresIn, refreshToken);
+  int get hashCode =>
+      Object.hash(runtimeType, accessToken, expiresIn, refreshToken);
 
   @override
   String toString() {
@@ -152,8 +164,10 @@ class _EsiAuthResponse implements EsiAuthResponse {
 }
 
 /// @nodoc
-abstract mixin class _$EsiAuthResponseCopyWith<$Res> implements $EsiAuthResponseCopyWith<$Res> {
-  factory _$EsiAuthResponseCopyWith(_EsiAuthResponse value, $Res Function(_EsiAuthResponse) _then) =
+abstract mixin class _$EsiAuthResponseCopyWith<$Res>
+    implements $EsiAuthResponseCopyWith<$Res> {
+  factory _$EsiAuthResponseCopyWith(
+          _EsiAuthResponse value, $Res Function(_EsiAuthResponse) _then) =
       __$EsiAuthResponseCopyWithImpl;
   @override
   @useResult
@@ -164,7 +178,8 @@ abstract mixin class _$EsiAuthResponseCopyWith<$Res> implements $EsiAuthResponse
 }
 
 /// @nodoc
-class __$EsiAuthResponseCopyWithImpl<$Res> implements _$EsiAuthResponseCopyWith<$Res> {
+class __$EsiAuthResponseCopyWithImpl<$Res>
+    implements _$EsiAuthResponseCopyWith<$Res> {
   __$EsiAuthResponseCopyWithImpl(this._self, this._then);
 
   final _EsiAuthResponse _self;
@@ -208,7 +223,8 @@ mixin _$EsiAuthTokens {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $EsiAuthTokensCopyWith<EsiAuthTokens> get copyWith =>
-      _$EsiAuthTokensCopyWithImpl<EsiAuthTokens>(this as EsiAuthTokens, _$identity);
+      _$EsiAuthTokensCopyWithImpl<EsiAuthTokens>(
+          this as EsiAuthTokens, _$identity);
 
   /// Serializes this EsiAuthTokens to a JSON map.
   Map<String, dynamic> toJson();
@@ -218,16 +234,19 @@ mixin _$EsiAuthTokens {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is EsiAuthTokens &&
-            (identical(other.accessToken, accessToken) || other.accessToken == accessToken) &&
+            (identical(other.accessToken, accessToken) ||
+                other.accessToken == accessToken) &&
             (identical(other.expiresTimestamp, expiresTimestamp) ||
                 other.expiresTimestamp == expiresTimestamp) &&
-            (identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken) &&
+            (identical(other.refreshToken, refreshToken) ||
+                other.refreshToken == refreshToken) &&
             (identical(other.server, server) || other.server == server));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, accessToken, expiresTimestamp, refreshToken, server);
+  int get hashCode => Object.hash(
+      runtimeType, accessToken, expiresTimestamp, refreshToken, server);
 
   @override
   String toString() {
@@ -237,14 +256,20 @@ mixin _$EsiAuthTokens {
 
 /// @nodoc
 abstract mixin class $EsiAuthTokensCopyWith<$Res> {
-  factory $EsiAuthTokensCopyWith(EsiAuthTokens value, $Res Function(EsiAuthTokens) _then) =
+  factory $EsiAuthTokensCopyWith(
+          EsiAuthTokens value, $Res Function(EsiAuthTokens) _then) =
       _$EsiAuthTokensCopyWithImpl;
   @useResult
-  $Res call({String accessToken, int expiresTimestamp, String refreshToken, EsiAuthServer server});
+  $Res call(
+      {String accessToken,
+      int expiresTimestamp,
+      String refreshToken,
+      EsiAuthServer server});
 }
 
 /// @nodoc
-class _$EsiAuthTokensCopyWithImpl<$Res> implements $EsiAuthTokensCopyWith<$Res> {
+class _$EsiAuthTokensCopyWithImpl<$Res>
+    implements $EsiAuthTokensCopyWith<$Res> {
   _$EsiAuthTokensCopyWithImpl(this._self, this._then);
 
   final EsiAuthTokens _self;
@@ -290,7 +315,8 @@ class _EsiAuthTokens extends EsiAuthTokens {
       required this.refreshToken,
       required this.server})
       : super._();
-  factory _EsiAuthTokens.fromJson(Map<String, dynamic> json) => _$EsiAuthTokensFromJson(json);
+  factory _EsiAuthTokens.fromJson(Map<String, dynamic> json) =>
+      _$EsiAuthTokensFromJson(json);
 
   @override
   final String accessToken;
@@ -321,16 +347,19 @@ class _EsiAuthTokens extends EsiAuthTokens {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _EsiAuthTokens &&
-            (identical(other.accessToken, accessToken) || other.accessToken == accessToken) &&
+            (identical(other.accessToken, accessToken) ||
+                other.accessToken == accessToken) &&
             (identical(other.expiresTimestamp, expiresTimestamp) ||
                 other.expiresTimestamp == expiresTimestamp) &&
-            (identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken) &&
+            (identical(other.refreshToken, refreshToken) ||
+                other.refreshToken == refreshToken) &&
             (identical(other.server, server) || other.server == server));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, accessToken, expiresTimestamp, refreshToken, server);
+  int get hashCode => Object.hash(
+      runtimeType, accessToken, expiresTimestamp, refreshToken, server);
 
   @override
   String toString() {
@@ -339,16 +368,23 @@ class _EsiAuthTokens extends EsiAuthTokens {
 }
 
 /// @nodoc
-abstract mixin class _$EsiAuthTokensCopyWith<$Res> implements $EsiAuthTokensCopyWith<$Res> {
-  factory _$EsiAuthTokensCopyWith(_EsiAuthTokens value, $Res Function(_EsiAuthTokens) _then) =
+abstract mixin class _$EsiAuthTokensCopyWith<$Res>
+    implements $EsiAuthTokensCopyWith<$Res> {
+  factory _$EsiAuthTokensCopyWith(
+          _EsiAuthTokens value, $Res Function(_EsiAuthTokens) _then) =
       __$EsiAuthTokensCopyWithImpl;
   @override
   @useResult
-  $Res call({String accessToken, int expiresTimestamp, String refreshToken, EsiAuthServer server});
+  $Res call(
+      {String accessToken,
+      int expiresTimestamp,
+      String refreshToken,
+      EsiAuthServer server});
 }
 
 /// @nodoc
-class __$EsiAuthTokensCopyWithImpl<$Res> implements _$EsiAuthTokensCopyWith<$Res> {
+class __$EsiAuthTokensCopyWithImpl<$Res>
+    implements _$EsiAuthTokensCopyWith<$Res> {
   __$EsiAuthTokensCopyWithImpl(this._self, this._then);
 
   final _EsiAuthTokens _self;

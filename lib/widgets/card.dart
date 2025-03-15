@@ -5,12 +5,12 @@ class FunctionCard extends StatelessWidget {
   final IconData icon;
   final double? height;
   final EdgeInsets? margin;
-  final void Function() onTap;
+  final void Function()? onTap;
   final Color color;
 
   const FunctionCard({
     super.key,
-    required this.onTap,
+    this.onTap,
     required this.icon,
     required this.title,
     this.margin,

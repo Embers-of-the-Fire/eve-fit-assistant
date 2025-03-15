@@ -1,17 +1,29 @@
+import 'package:eve_fit_assistant/widgets/card.dart';
+import 'package:eve_fit_assistant/widgets/grid.dart';
 import 'package:flutter/material.dart';
 
 class AccountPanel extends StatelessWidget {
   const AccountPanel({super.key});
 
   @override
-  Widget build(BuildContext context) => GridView.count(
+  Widget build(BuildContext context) => Scrollbar(
+          child: FixedHeightGridView(
+        padding: const EdgeInsets.all(20),
         crossAxisCount: 2,
-        scrollDirection: Axis.vertical,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 20,
+        childHeight: 160,
         children: [
-          SizedBox(
-              height: 100, child: InkWell(onTap: () {}, child: const Center(child: Text('abc')))),
-          SizedBox(
-              height: 100, child: InkWell(onTap: () {}, child: const Center(child: Text('def')))),
+          FunctionCard(
+              onTap: () {},
+              icon: Icons.account_tree_outlined,
+              title: '技能',
+              color: const Color(0xFF9A4DFF)),
+          FunctionCard(
+              onTap: () {},
+              icon: Icons.memory,
+              title: '装配',
+              color: const Color(0xFF00F7FF)),
         ],
-      );
+      ));
 }

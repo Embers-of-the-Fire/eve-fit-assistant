@@ -65,15 +65,16 @@ class GetMarketPricesFamily
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'getMarketPricesProvider';
 }
 
 /// See also [getMarketPrices].
-class GetMarketPricesProvider
-    extends AutoDisposeFutureProvider<(double, Iterable<int>, double, Iterable<int>)> {
+class GetMarketPricesProvider extends AutoDisposeFutureProvider<
+    (double, Iterable<int>, double, Iterable<int>)> {
   /// See also [getMarketPrices].
   GetMarketPricesProvider(
     MapEqual<int, int> types,
@@ -85,9 +86,12 @@ class GetMarketPricesProvider
           from: getMarketPricesProvider,
           name: r'getMarketPricesProvider',
           debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product') ? null : _$getMarketPricesHash,
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$getMarketPricesHash,
           dependencies: GetMarketPricesFamily._dependencies,
-          allTransitiveDependencies: GetMarketPricesFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              GetMarketPricesFamily._allTransitiveDependencies,
           types: types,
         );
 
@@ -105,7 +109,8 @@ class GetMarketPricesProvider
 
   @override
   Override overrideWith(
-    FutureOr<(double, Iterable<int>, double, Iterable<int>)> Function(GetMarketPricesRef provider)
+    FutureOr<(double, Iterable<int>, double, Iterable<int>)> Function(
+            GetMarketPricesRef provider)
         create,
   ) {
     return ProviderOverride(
@@ -123,7 +128,8 @@ class GetMarketPricesProvider
   }
 
   @override
-  AutoDisposeFutureProviderElement<(double, Iterable<int>, double, Iterable<int>)> createElement() {
+  AutoDisposeFutureProviderElement<
+      (double, Iterable<int>, double, Iterable<int>)> createElement() {
     return _GetMarketPricesProviderElement(this);
   }
 
@@ -143,15 +149,14 @@ class GetMarketPricesProvider
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin GetMarketPricesRef
-    on AutoDisposeFutureProviderRef<(double, Iterable<int>, double, Iterable<int>)> {
+mixin GetMarketPricesRef on AutoDisposeFutureProviderRef<
+    (double, Iterable<int>, double, Iterable<int>)> {
   /// The parameter `types` of this provider.
   MapEqual<int, int> get types;
 }
 
-class _GetMarketPricesProviderElement
-    extends AutoDisposeFutureProviderElement<(double, Iterable<int>, double, Iterable<int>)>
-    with GetMarketPricesRef {
+class _GetMarketPricesProviderElement extends AutoDisposeFutureProviderElement<
+    (double, Iterable<int>, double, Iterable<int>)> with GetMarketPricesRef {
   _GetMarketPricesProviderElement(super.provider);
 
   @override
@@ -195,14 +200,16 @@ class GetMarketPriceFamily extends Family<AsyncValue<MarketPriceGroup>> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'getMarketPriceProvider';
 }
 
 /// See also [getMarketPrice].
-class GetMarketPriceProvider extends AutoDisposeFutureProvider<MarketPriceGroup> {
+class GetMarketPriceProvider
+    extends AutoDisposeFutureProvider<MarketPriceGroup> {
   /// See also [getMarketPrice].
   GetMarketPriceProvider(
     int typeID,
@@ -214,9 +221,12 @@ class GetMarketPriceProvider extends AutoDisposeFutureProvider<MarketPriceGroup>
           from: getMarketPriceProvider,
           name: r'getMarketPriceProvider',
           debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product') ? null : _$getMarketPriceHash,
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$getMarketPriceHash,
           dependencies: GetMarketPriceFamily._dependencies,
-          allTransitiveDependencies: GetMarketPriceFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              GetMarketPriceFamily._allTransitiveDependencies,
           typeID: typeID,
         );
 
@@ -276,7 +286,8 @@ mixin GetMarketPriceRef on AutoDisposeFutureProviderRef<MarketPriceGroup> {
   int get typeID;
 }
 
-class _GetMarketPriceProviderElement extends AutoDisposeFutureProviderElement<MarketPriceGroup>
+class _GetMarketPriceProviderElement
+    extends AutoDisposeFutureProviderElement<MarketPriceGroup>
     with GetMarketPriceRef {
   _GetMarketPriceProviderElement(super.provider);
 

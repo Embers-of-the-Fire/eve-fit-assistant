@@ -1,5 +1,6 @@
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
+import 'package:eve_fit_assistant/web/esi/esi/character/fittings.dart';
 import 'package:eve_fit_assistant/web/esi/esi/character/skills.dart';
 import 'package:eve_fit_assistant/web/esi/meta/verify.dart';
 import 'package:flutter/material.dart';
@@ -50,6 +51,14 @@ class EsiDataStorage extends ChangeNotifier {
     return _characterSkills;
   }
 
+  List<Fitting>? _fittings;
+
+  Future<List<Fitting>?> getFittings() async {
+    if (!_authorized) return null;
+    _fittings ??= await characterFittings();
+    return _fittings;
+  }
+
   Future<void> setAuthorized(EsiAuthTokens? storage) async {
     _authorized = true;
     await EsiAuth().setTokens(storage);
@@ -62,6 +71,13 @@ class EsiDataStorage extends ChangeNotifier {
     _characterSkills = null;
     await WebViewCookieManager().clearCookies();
     await EsiAuth().clearTokens();
+    notifyListeners();
+  }
+
+  void clearCache() async {
+    _character = null;
+    _characterSkills = null;
+    _fittings = null;
     notifyListeners();
   }
 }

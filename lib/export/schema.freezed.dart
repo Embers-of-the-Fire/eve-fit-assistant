@@ -46,7 +46,8 @@ mixin _$FitExport {
         (other.runtimeType == runtimeType &&
             other is FitExport &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.description, description) || other.description == description) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
             (identical(other.shipID, shipID) || other.shipID == shipID) &&
             (identical(other.damageProfile, damageProfile) ||
                 other.damageProfile == damageProfile) &&
@@ -58,7 +59,8 @@ mixin _$FitExport {
             const DeepCollectionEquality().equals(other.drone, drone) &&
             const DeepCollectionEquality().equals(other.fighter, fighter) &&
             const DeepCollectionEquality().equals(other.implant, implant) &&
-            const DeepCollectionEquality().equals(other.dynamicItems, dynamicItems) &&
+            const DeepCollectionEquality()
+                .equals(other.dynamicItems, dynamicItems) &&
             (identical(other.tacticalModeID, tacticalModeID) ||
                 other.tacticalModeID == tacticalModeID));
   }
@@ -238,7 +240,8 @@ class _FitExport extends FitExport {
         _implant = implant,
         _dynamicItems = dynamicItems,
         super._();
-  factory _FitExport.fromJson(Map<String, dynamic> json) => _$FitExportFromJson(json);
+  factory _FitExport.fromJson(Map<String, dynamic> json) =>
+      _$FitExportFromJson(json);
 
   @override
   final String name;
@@ -344,7 +347,8 @@ class _FitExport extends FitExport {
         (other.runtimeType == runtimeType &&
             other is _FitExport &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.description, description) || other.description == description) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
             (identical(other.shipID, shipID) || other.shipID == shipID) &&
             (identical(other.damageProfile, damageProfile) ||
                 other.damageProfile == damageProfile) &&
@@ -352,11 +356,13 @@ class _FitExport extends FitExport {
             const DeepCollectionEquality().equals(other._med, _med) &&
             const DeepCollectionEquality().equals(other._low, _low) &&
             const DeepCollectionEquality().equals(other._rig, _rig) &&
-            const DeepCollectionEquality().equals(other._subSystem, _subSystem) &&
+            const DeepCollectionEquality()
+                .equals(other._subSystem, _subSystem) &&
             const DeepCollectionEquality().equals(other._drone, _drone) &&
             const DeepCollectionEquality().equals(other._fighter, _fighter) &&
             const DeepCollectionEquality().equals(other._implant, _implant) &&
-            const DeepCollectionEquality().equals(other._dynamicItems, _dynamicItems) &&
+            const DeepCollectionEquality()
+                .equals(other._dynamicItems, _dynamicItems) &&
             (identical(other.tacticalModeID, tacticalModeID) ||
                 other.tacticalModeID == tacticalModeID));
   }
@@ -387,8 +393,10 @@ class _FitExport extends FitExport {
 }
 
 /// @nodoc
-abstract mixin class _$FitExportCopyWith<$Res> implements $FitExportCopyWith<$Res> {
-  factory _$FitExportCopyWith(_FitExport value, $Res Function(_FitExport) _then) =
+abstract mixin class _$FitExportCopyWith<$Res>
+    implements $FitExportCopyWith<$Res> {
+  factory _$FitExportCopyWith(
+          _FitExport value, $Res Function(_FitExport) _then) =
       __$FitExportCopyWithImpl;
   @override
   @useResult

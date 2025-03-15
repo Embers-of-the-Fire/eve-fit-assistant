@@ -14,8 +14,9 @@ final globalPreferenceProvider =
     AutoDisposeNotifierProvider<GlobalPreference, PreferenceState>.internal(
   GlobalPreference.new,
   name: r'globalPreferenceProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$globalPreferenceHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$globalPreferenceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

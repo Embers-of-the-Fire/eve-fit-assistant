@@ -6,7 +6,8 @@ part of 'fit_record.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-FitRecordBrief _$FitRecordBriefFromJson(Map<String, dynamic> json) => FitRecordBrief(
+FitRecordBrief _$FitRecordBriefFromJson(Map<String, dynamic> json) =>
+    FitRecordBrief(
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
@@ -15,7 +16,8 @@ FitRecordBrief _$FitRecordBriefFromJson(Map<String, dynamic> json) => FitRecordB
       lastModifyTime: (json['lastModifyTime'] as num).toInt(),
     );
 
-Map<String, dynamic> _$FitRecordBriefToJson(FitRecordBrief instance) => <String, dynamic>{
+Map<String, dynamic> _$FitRecordBriefToJson(FitRecordBrief instance) =>
+    <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
       'description': instance.description,

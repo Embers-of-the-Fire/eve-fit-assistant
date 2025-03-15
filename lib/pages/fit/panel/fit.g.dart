@@ -29,7 +29,8 @@ class _SystemHash {
   }
 }
 
-abstract class _$FitRecordNotifier extends BuildlessAutoDisposeNotifier<FitRecordState> {
+abstract class _$FitRecordNotifier
+    extends BuildlessAutoDisposeNotifier<FitRecordState> {
   late final String id;
 
   FitRecordState build(
@@ -72,7 +73,8 @@ class FitRecordNotifierFamily extends Family<FitRecordState> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'fitRecordNotifierProvider';
@@ -89,9 +91,12 @@ class FitRecordNotifierProvider
           from: fitRecordNotifierProvider,
           name: r'fitRecordNotifierProvider',
           debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product') ? null : _$fitRecordNotifierHash,
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$fitRecordNotifierHash,
           dependencies: FitRecordNotifierFamily._dependencies,
-          allTransitiveDependencies: FitRecordNotifierFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              FitRecordNotifierFamily._allTransitiveDependencies,
           id: id,
         );
 
@@ -133,7 +138,8 @@ class FitRecordNotifierProvider
   }
 
   @override
-  AutoDisposeNotifierProviderElement<FitRecordNotifier, FitRecordState> createElement() {
+  AutoDisposeNotifierProviderElement<FitRecordNotifier, FitRecordState>
+      createElement() {
     return _FitRecordNotifierProviderElement(this);
   }
 
@@ -159,8 +165,8 @@ mixin FitRecordNotifierRef on AutoDisposeNotifierProviderRef<FitRecordState> {
 }
 
 class _FitRecordNotifierProviderElement
-    extends AutoDisposeNotifierProviderElement<FitRecordNotifier, FitRecordState>
-    with FitRecordNotifierRef {
+    extends AutoDisposeNotifierProviderElement<FitRecordNotifier,
+        FitRecordState> with FitRecordNotifierRef {
   _FitRecordNotifierProviderElement(super.provider);
 
   @override
