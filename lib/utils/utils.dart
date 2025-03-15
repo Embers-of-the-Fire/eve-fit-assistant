@@ -15,6 +15,7 @@ part 'map.dart';
 part 'media_query.dart';
 part 'num.dart';
 part 'optional.dart';
+part 'placeholder.dart';
 part 'random.dart';
 part 'sort.dart';
 part 'string.dart';

@@ -71,7 +71,7 @@ class Preference {
 
   set esiAuthServer(EsiAuthServer value) {
     if (value != esiAuthServer) {
-      EsiDataStorage().clearAuthorize();
+      EsiDataStorage.instance.clearAuthorize();
       value.set(_preference);
     }
   }

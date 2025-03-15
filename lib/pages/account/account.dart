@@ -10,14 +10,15 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'account.g.dart';
 
 @riverpod
-Future<Character?> getCharacter(Ref ref) async => await EsiDataStorage().getCharacter();
+Future<Character?> getCharacter(Ref ref) async =>
+    await ref.watch(esiDataStorageProvider).getCharacter();
 
 class AccountPage extends ConsumerWidget {
   const AccountPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(esiDataProvider).authorized) {
+    if (ref.read(esiDataStorageProvider.select((it) => it.authorized))) {
       return _AccountPanel(onRefresh: () => ref.refresh(getCharacterProvider));
     } else {
       return const _AccountNotAuthorized();
@@ -45,11 +46,7 @@ class _AccountPanel extends ConsumerWidget {
             trailing: SelectableText(character.characterID.toString()),
           ),
           const Divider(height: 0),
-          const Expanded(
-              child: SizedBox(
-            width: double.infinity,
-            child: AccountPanel(),
-          ))
+          const Expanded(child: SizedBox(width: double.infinity, child: AccountPanel()))
         ],
       ),
       loading: () => const Center(child: CircularProgressIndicator()),

@@ -3,6 +3,8 @@
 import 'dart:convert';
 
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
+import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
+import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
@@ -24,6 +26,8 @@ abstract class Fitting with _$Fitting {
   }) = _Fitting;
 
   factory Fitting.fromJson(Map<String, dynamic> json) => _$FittingFromJson(json);
+
+  const Fitting._();
 
   Fit toFit() {
     final fit = Fit.init(shipTypeID);
@@ -255,7 +259,7 @@ enum FittingItemFlag {
 }
 
 Future<List<Fitting>> characterFittings() async {
-  final characterID = (await EsiDataStorage().getCharacter())!.characterID;
+  final characterID = (await EsiDataStorage.instance.getCharacter())!.characterID;
   final url =
       Uri.parse('${esiUrl(Preference().esiAuthServer)}/latest/characters/$characterID/fittings')
           .replace(
@@ -268,4 +272,23 @@ Future<List<Fitting>> characterFittings() async {
   return (jsonDecode(response.body) as List)
       .map((e) => Fitting.fromJson(e as Map<String, dynamic>))
       .toList();
+}
+
+extension ImportEsiFit on FitStorage {
+  Future<FitRecord> importEsiFit(Fitting fit) async {
+    final newRecord = await createFit(fit.name, fit.shipTypeID);
+    final newBrief = newRecord.brief;
+    final copiedRecord = FitRecord(
+        brief: FitRecordBrief(
+            id: newBrief.id,
+            name: fit.name,
+            description: fit.description,
+            shipID: fit.shipTypeID,
+            createTime: newBrief.createTime,
+            lastModifyTime: newBrief.lastModifyTime),
+        body: fit.toFit());
+    await copiedRecord.save();
+    await save();
+    return copiedRecord;
+  }
 }

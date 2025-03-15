@@ -1,5 +1,4 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
-import 'package:eve_fit_assistant/export/import_view.dart';
 import 'package:eve_fit_assistant/export/schema.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
@@ -8,6 +7,7 @@ import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/theme/color.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/widgets/import_view.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -117,12 +117,7 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
                     ]),
                   ));
                 } else {
-                  final status = await showImportDialog(context, data);
-                  if (status == false || !context.mounted) return;
-                  Navigator.pop(context);
-                  final fit = await GlobalStorage().ship.importFit(data);
-                  if (!context.mounted) return;
-                  await intoFitPage(context, fit.brief.id);
+                  await _intoImportDialog(context, data);
                 }
               },
               shape: const CircleBorder(),
@@ -139,4 +134,29 @@ Future<void> _onShipSelect(int id, BuildContext context) async {
   if (context.mounted) {
     await intoFitPage(context, fit.brief.id);
   }
+}
+
+Future<void> _intoImportDialog(BuildContext context, FitExport fit) async {
+  final Map<int, int> typeMap = {};
+  for (final slot in [fit.high, fit.med, fit.low, fit.rig, fit.subSystem, fit.implant]
+      .flatMap((u) => u.nonNulls)
+      .filter((u) => !u.isDynamic)) {
+    typeMap[slot.itemID] = (typeMap[slot.itemID] ?? 0) + 1;
+  }
+  for (final drone in fit.drone) {
+    typeMap[drone.itemID] = (typeMap[drone.itemID] ?? 0) + drone.amount;
+  }
+  for (final fighter in fit.fighter) {
+    typeMap[fighter.itemID] = (typeMap[fighter.itemID] ?? 0) + fighter.amount;
+  }
+  for (final dyn in fit.dynamicItems.entries) {
+    typeMap[dyn.value.outType] = (typeMap[dyn.value.outType] ?? 0) + 1;
+  }
+  final status =
+      await showImportDialog(context, shipID: fit.shipID, types: typeMap, name: fit.name);
+  if (status == false || !context.mounted) return;
+  Navigator.pop(context);
+  final output = await GlobalStorage().ship.importFit(fit);
+  if (!context.mounted) return;
+  await intoFitPage(context, output.brief.id);
 }

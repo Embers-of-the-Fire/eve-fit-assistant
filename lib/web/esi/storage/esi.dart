@@ -3,36 +3,45 @@ import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/esi/character/fittings.dart';
 import 'package:eve_fit_assistant/web/esi/esi/character/skills.dart';
 import 'package:eve_fit_assistant/web/esi/meta/verify.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 part 'character.dart';
 part 'esi.freezed.dart';
+part 'esi.g.dart';
 
 String esiUrl(EsiAuthServer server) => switch (server) {
       EsiAuthServer.tranquility => 'https://esi.evetech.net',
       EsiAuthServer.serenity => 'https://ali-esi.evepc.163.com',
     };
 
-final esiDataProvider = ChangeNotifierProvider((ref) => EsiDataStorage());
-
-class EsiDataStorage extends ChangeNotifier {
+@Riverpod(keepAlive: true)
+class EsiDataStorage extends _$EsiDataStorage {
   static final EsiDataStorage _instance = EsiDataStorage._();
 
+  /// This is a private constructor, use [EsiDataStorage.instance] to get the instance.
+  /// Do not use `EsiDataStorage()` to get the storage instance.
+  /// That constructor is used to create a riverpod provider.
   EsiDataStorage._();
 
-  factory EsiDataStorage() => _instance;
+  /// This constructor is only used to create the riverpod provider.
+  /// To access the inner state, use [EsiDataStorage.instance].
+  EsiDataStorage();
+
+  static EsiDataStorage get instance => _instance;
 
   bool _authorized = false;
 
+  // ignore: avoid_public_notifier_properties
   bool get authorized => _authorized;
+
+  @override
+  EsiDataStorage build() => _instance;
 
   Future<void> init() async {
     final token = await EsiAuth().getTokensAuthorized();
     _authorized = token != null && token.server == Preference().esiAuthServer;
-    notifyListeners();
   }
 
   Character? _character;
@@ -62,7 +71,7 @@ class EsiDataStorage extends ChangeNotifier {
   Future<void> setAuthorized(EsiAuthTokens? storage) async {
     _authorized = true;
     await EsiAuth().setTokens(storage);
-    notifyListeners();
+    ref.notifyListeners();
   }
 
   Future<void> clearAuthorize() async {
@@ -71,13 +80,13 @@ class EsiDataStorage extends ChangeNotifier {
     _characterSkills = null;
     await WebViewCookieManager().clearCookies();
     await EsiAuth().clearTokens();
-    notifyListeners();
+    ref.notifyListeners();
   }
 
   void clearCache() async {
     _character = null;
     _characterSkills = null;
     _fittings = null;
-    notifyListeners();
+    ref.notifyListeners();
   }
 }

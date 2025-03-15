@@ -22,6 +22,12 @@ class FrontendPage extends StatefulWidget {
 
 const _pageTitle = ['工作台', '列表', '角色', '设置'];
 const _noFloatingActionButton = [2, 3];
+const _pages = <Widget>[
+  main_page.MainPage(),
+  list_page.ListPage(),
+  account_page.AccountPage(),
+  config_page.ConfigPage(),
+];
 
 class _FrontendPageState extends State<FrontendPage> {
   int _currentIndex = 0;
@@ -34,15 +40,7 @@ class _FrontendPageState extends State<FrontendPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    const pages = <Widget>[
-      main_page.MainPage(),
-      list_page.ListPage(),
-      account_page.AccountPage(),
-      config_page.ConfigPage(),
-    ];
-
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         leading: const _LoadingStatusIcon(),
         title: Text(_pageTitle[_currentIndex]),
@@ -53,7 +51,7 @@ class _FrontendPageState extends State<FrontendPage> {
         onPageChanged: (index) => setState(() {
           _currentIndex = index;
         }),
-        children: pages,
+        children: _pages,
       ),
       floatingActionButton:
           (!_noFloatingActionButton.contains(_currentIndex)).then(() => FloatingActionButton(
@@ -99,7 +97,6 @@ class _FrontendPageState extends State<FrontendPage> {
             ],
           )),
     );
-  }
 }
 
 class _LoadingStatusIcon extends ConsumerWidget {

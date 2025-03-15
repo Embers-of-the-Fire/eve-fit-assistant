@@ -118,14 +118,15 @@ class _$FittingCopyWithImpl<$Res> implements $FittingCopyWith<$Res> {
 /// @nodoc
 
 @JsonSerializable()
-class _Fitting implements Fitting {
+class _Fitting extends Fitting {
   const _Fitting(
       {@JsonKey(name: 'fitting_id') required this.fittingID,
       @JsonKey(name: 'ship_type_id') required this.shipTypeID,
       required this.name,
       required this.description,
       required final List<FittingItem> items})
-      : _items = items;
+      : _items = items,
+        super._();
   factory _Fitting.fromJson(Map<String, dynamic> json) =>
       _$FittingFromJson(json);
 

@@ -233,7 +233,7 @@ class _OAuthWebViewState extends State<OAuthWebView> {
 
             if (code != null && state == widget.state) {
               final token = await _exchangeCodeForToken(code);
-              await EsiDataStorage().setAuthorized(token);
+              await EsiDataStorage.instance.setAuthorized(token);
               _finishAuth(token);
             }
             return NavigationDecision.prevent;

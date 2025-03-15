@@ -1,26 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'account.dart';
+part of 'fittings.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$getCharacterHash() => r'9d2ee2ae0aeb858ff448041e75abe421b5d1bb6b';
+String _$getFittingsHash() => r'15dd3be6e2da58f22f481b89bc4d9eb20e6cdc6b';
 
-/// See also [getCharacter].
-@ProviderFor(getCharacter)
-final getCharacterProvider = AutoDisposeFutureProvider<Character?>.internal(
-  getCharacter,
-  name: r'getCharacterProvider',
+/// See also [getFittings].
+@ProviderFor(getFittings)
+final getFittingsProvider = AutoDisposeFutureProvider<List<Fitting>?>.internal(
+  getFittings,
+  name: r'getFittingsProvider',
   debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$getCharacterHash,
+      const bool.fromEnvironment('dart.vm.product') ? null : _$getFittingsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef GetCharacterRef = AutoDisposeFutureProviderRef<Character?>;
+typedef GetFittingsRef = AutoDisposeFutureProviderRef<List<Fitting>?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

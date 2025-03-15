@@ -16,7 +16,7 @@ class AccountPage extends ConsumerStatefulWidget {
 class _AccountPageState extends ConsumerState<AccountPage> {
   @override
   Widget build(BuildContext context) {
-    final data = ref.watch(esiDataProvider);
+    final data = ref.watch(esiDataStorageProvider);
     if (!data.authorized) {
       return Scaffold(
         appBar: AppBar(
@@ -56,7 +56,7 @@ class _AccountPageState extends ConsumerState<AccountPage> {
               const SizedBox(height: 20),
               ElevatedButton(
                   onPressed: () async {
-                    await EsiDataStorage().clearAuthorize();
+                    await EsiDataStorage.instance.clearAuthorize();
                     final _ = ref.refresh(getCharacterProvider);
                   },
                   child: const Text('退出登录'))

@@ -38,7 +38,7 @@ abstract class CharacterSkillItem with _$CharacterSkillItem {
 }
 
 Future<CharacterSkills> characterSkills() async {
-  final characterID = (await EsiDataStorage().getCharacter())!.characterID;
+  final characterID = (await EsiDataStorage.instance.getCharacter())!.characterID;
   final url =
       Uri.parse('${esiUrl(Preference().esiAuthServer)}/latest/characters/$characterID/skills')
           .replace(

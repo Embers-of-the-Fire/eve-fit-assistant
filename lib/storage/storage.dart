@@ -71,7 +71,7 @@ class GlobalStorage {
     // await EasyLoading.show(status: '初始化');
     GlobalLoading().add(_storageLoadingKey, '初始化');
     await Preference().init();
-    await EsiDataStorage().init();
+    await EsiDataStorage.instance.init();
     final version = await getVersionInfo();
     _version = await executeMigrate(version) ?? VersionInfo.currentVersion;
     _packageInfo = await PackageInfo.fromPlatform();
