@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/dialog.dart';
@@ -59,6 +60,7 @@ class ImportViewDialog extends StatelessWidget {
                   const Icon(Icons.question_mark),
               title: Text(type.nameZH),
               trailing: Text('× ${entry.value}', style: const TextStyle(fontSize: 16)),
+              onLongPress: () => showTypeInfoPage(context, typeID: entry.key),
             );
           }).toList())))),
         ],
