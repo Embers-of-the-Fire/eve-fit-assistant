@@ -60,6 +60,12 @@ class EsiDataStorage extends _$EsiDataStorage {
     return _characterSkills;
   }
 
+  Future<void> refreshCharacterSkills() async {
+    if (!_authorized) return;
+    _characterSkills = await characterSkills();
+    ref.notifyListeners();
+  }
+
   List<Fitting>? _fittings;
 
   Future<List<Fitting>?> getFittings() async {

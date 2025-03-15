@@ -129,7 +129,7 @@ class _CharacterEditPageContentState extends ConsumerState<CharacterEditPageCont
 
     return Scaffold(
         appBar: AppBar(
-          title: const Text('角色配置'),
+          title: Text('角色配置 - ${char.character.name}'),
           actions: [
             Container(
               padding: const EdgeInsets.only(right: 10),

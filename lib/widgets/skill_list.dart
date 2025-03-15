@@ -21,7 +21,6 @@ class _CharacterSkillListState extends State<CharacterSkillList> {
 
   @override
   Widget build(BuildContext context) {
-    final shape = Border(bottom: BorderSide(color: Theme.of(context).dividerColor));
     final color = Theme.of(context).scaffoldBackgroundColor;
 
     final title = _selectedGroup
@@ -71,8 +70,8 @@ class _CharacterSkillListState extends State<CharacterSkillList> {
         backgroundColor: color,
         collapsedBackgroundColor: color,
         title: Text(title),
-        shape: shape,
-        collapsedShape: shape,
+        shape: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+        collapsedShape: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
         children: [
           Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

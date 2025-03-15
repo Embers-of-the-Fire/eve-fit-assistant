@@ -72,6 +72,13 @@ class CharacterStorage {
     return character;
   }
 
+  Future<Character> createFromSkills(String name, Map<int, int> skills) async {
+    final brief = await _createBrief(name);
+    final character = Character.newFromSkills(brief, skills: skills);
+    await character.save();
+    return character;
+  }
+
   Future<Character> read(String id) async {
     if (id == _predefinedAll0.id) return _predefinedAll0;
     if (id == _predefinedAll5.id) return _predefinedAll5;

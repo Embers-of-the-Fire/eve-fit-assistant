@@ -27,12 +27,15 @@ class Character {
 
   const Character._private(this._raw);
 
-  factory Character.newBlank(CharacterBrief brief, {required Character base}) {
+  factory Character.newBlank(CharacterBrief brief, {required Character base}) =>
+      Character.newFromSkills(brief, skills: base.skills);
+
+  factory Character.newFromSkills(CharacterBrief brief, {required Map<int, int> skills}) {
     final raw = proto.Character(
       id: brief.id,
       name: brief.name,
       description: brief.description,
-      skills: base.skills,
+      skills: skills,
     );
     return Character._private(raw);
   }

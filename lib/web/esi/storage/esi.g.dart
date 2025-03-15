@@ -6,7 +6,7 @@ part of 'esi.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$esiDataStorageHash() => r'b3149ad97295572a604f664e9ffccaa565be8c82';
+String _$esiDataStorageHash() => r'f3e18ed65ef70bf66fe451ac78fc85ce7a168a36';
 
 /// See also [EsiDataStorage].
 @ProviderFor(EsiDataStorage)
