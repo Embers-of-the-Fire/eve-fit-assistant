@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:eve_fit_assistant/pages/account/account.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
@@ -36,6 +38,7 @@ class _AccountPageState extends ConsumerState<AccountPage> {
     }
 
     final char = ref.watch(getCharacterProvider);
+    final dataNotifier = ref.watch(esiDataStorageProvider.notifier);
 
     final inner = char.when(
       data: (data) => SizedBox(
@@ -56,24 +59,27 @@ class _AccountPageState extends ConsumerState<AccountPage> {
               const SizedBox(height: 20),
               ElevatedButton(
                   onPressed: () async {
-                    await EsiDataStorage.instance.clearAuthorize();
+                    await dataNotifier.clearAuthorize();
                     final _ = ref.refresh(getCharacterProvider);
                   },
                   child: const Text('退出登录'))
             ]
           ])),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => Center(
-          child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('加载角色信息失败', style: TextStyle(fontSize: 20)),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => ref.refresh(getCharacterProvider),
-                  child: const Text('重试'),
-                )
-              ]))),
+      error: (error, stackTrace) {
+        log('$error\n$stackTrace', name: 'AccountPage');
+        return Center(
+            child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('加载角色信息失败', style: TextStyle(fontSize: 20)),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => ref.refresh(getCharacterProvider),
+                    child: const Text('重试'),
+                  )
+                ])));
+      },
     );
     return Scaffold(
       appBar: AppBar(

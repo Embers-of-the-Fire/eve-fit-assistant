@@ -54,6 +54,7 @@ class _EsiAuthServerTileState extends ConsumerState<EsiAuthServerTile> {
   Widget build(BuildContext context) {
     final preference = ref.watch(globalPreferenceProvider).preference;
     final notifier = ref.read(globalPreferenceProvider.notifier);
+    final dataNotifier = ref.read(esiDataStorageProvider.notifier);
 
     return ListTile(
       title: const Text('ESI 服务器'),
@@ -69,6 +70,7 @@ class _EsiAuthServerTileState extends ConsumerState<EsiAuthServerTile> {
                     if (value == null) return;
                     notifier.modify((preference) => preference.esiAuthServer = value);
                     this.value = value;
+                    if (preference.esiAuthServer != value) dataNotifier.clearAuthorize();
                   })
               : null),
     );

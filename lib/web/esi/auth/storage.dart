@@ -180,7 +180,7 @@ class EsiAuth {
   }
 }
 
-class OAuthWebView extends StatefulWidget {
+class OAuthWebView extends ConsumerStatefulWidget {
   final String authUrl;
   final String state;
   final EsiAuthServer server;
@@ -193,10 +193,10 @@ class OAuthWebView extends StatefulWidget {
   });
 
   @override
-  State<OAuthWebView> createState() => _OAuthWebViewState();
+  ConsumerState<OAuthWebView> createState() => _OAuthWebViewState();
 }
 
-class _OAuthWebViewState extends State<OAuthWebView> {
+class _OAuthWebViewState extends ConsumerState<OAuthWebView> {
   late WebViewController _controller;
   bool _isLoading = true;
 
@@ -220,6 +220,9 @@ class _OAuthWebViewState extends State<OAuthWebView> {
   @override
   void initState() {
     super.initState();
+
+    final dataNotifier = ref.read(esiDataStorageProvider.notifier);
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
@@ -233,7 +236,7 @@ class _OAuthWebViewState extends State<OAuthWebView> {
 
             if (code != null && state == widget.state) {
               final token = await _exchangeCodeForToken(code);
-              await EsiDataStorage.instance.setAuthorized(token);
+              await dataNotifier.setAuthorized(token);
               _finishAuth(token);
             }
             return NavigationDecision.prevent;

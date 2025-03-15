@@ -1,16 +1,11 @@
-import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'debug.dart';
-
 part 'esi_auth_behavior.dart';
-
 part 'item_list_behavior.dart';
-
 part 'market_api.dart';
-
 part 'preference.g.dart';
 
 @riverpod
@@ -69,10 +64,5 @@ class Preference {
 
   set esiAuthBehavior(EsiAuthBehavior value) => value.set(_preference);
 
-  set esiAuthServer(EsiAuthServer value) {
-    if (value != esiAuthServer) {
-      EsiDataStorage.instance.clearAuthorize();
-      value.set(_preference);
-    }
-  }
+  set esiAuthServer(EsiAuthServer value) => value.set(_preference);
 }

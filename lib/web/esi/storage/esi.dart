@@ -41,58 +41,58 @@ class EsiDataStorage extends _$EsiDataStorage {
 
   Future<void> init() async {
     final token = await EsiAuth().getTokensAuthorized();
-    _authorized = token != null && token.server == Preference().esiAuthServer;
+    _instance._authorized = token != null && token.server == Preference().esiAuthServer;
   }
 
   Character? _character;
 
   Future<Character?> getCharacter() async {
-    if (!_authorized) return null;
-    _character ??= await Character.init();
-    return _character;
+    if (!_instance._authorized) return null;
+    _instance._character ??= await Character.init();
+    return _instance._character;
   }
 
   CharacterSkills? _characterSkills;
 
   Future<CharacterSkills?> getCharacterSkills() async {
-    if (!_authorized) return null;
-    _characterSkills ??= await characterSkills();
-    return _characterSkills;
+    if (!_instance._authorized) return null;
+    _instance._characterSkills ??= await characterSkills();
+    return _instance._characterSkills;
   }
 
   Future<void> refreshCharacterSkills() async {
-    if (!_authorized) return;
-    _characterSkills = await characterSkills();
+    if (!_instance._authorized) return;
+    _instance._characterSkills = await characterSkills();
     ref.notifyListeners();
   }
 
   List<Fitting>? _fittings;
 
   Future<List<Fitting>?> getFittings() async {
-    if (!_authorized) return null;
-    _fittings ??= await characterFittings();
-    return _fittings;
+    if (!_instance._authorized) return null;
+    _instance._fittings ??= await characterFittings();
+    return _instance._fittings;
   }
 
   Future<void> setAuthorized(EsiAuthTokens? storage) async {
-    _authorized = true;
+    _instance._authorized = true;
     await EsiAuth().setTokens(storage);
     ref.notifyListeners();
   }
 
   Future<void> clearAuthorize() async {
-    _authorized = false;
-    _character = null;
-    _characterSkills = null;
+    _instance._authorized = false;
+    _instance._character = null;
+    _instance._characterSkills = null;
     await WebViewCookieManager().clearCookies();
     await EsiAuth().clearTokens();
     ref.notifyListeners();
   }
 
   void clearCache() async {
-    _character = null;
-    _characterSkills = null;
-    _fittings = null;
+    _instance._character = null;
+    _instance._characterSkills = null;
+    _instance._fittings = null;
     ref.notifyListeners();
   }
 }
