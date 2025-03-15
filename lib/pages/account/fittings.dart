@@ -6,6 +6,7 @@ import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
 import 'package:eve_fit_assistant/widgets/import_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'fittings.g.dart';
@@ -58,16 +59,27 @@ class _FittingsPanel extends ConsumerWidget {
                     subtitle: fitting.description.isNotEmpty.thenSome(Text(fitting.description)),
                   );
                 }
-                return ListTile(
-                  leading: GlobalStorage()
-                      .static
-                      .icons
-                      .getTypeIconSync(fitting.shipTypeID)
-                      .orBox(width: 32),
-                  title: Text('[${ship.nameZH}] - ${fitting.name}'),
-                  subtitle: fitting.description.isNotEmpty.thenSome(Text(fitting.description)),
-                  onLongPress: () => _intoImportDialog(context, fitting),
-                );
+                return Slidable(
+                    startActionPane:
+                        ActionPane(motion: const StretchMotion(), extentRatio: 0.15, children: [
+                      SlidableAction(
+                        backgroundColor: Colors.green,
+                        padding: EdgeInsets.zero,
+                        label: '导入',
+                        icon: Icons.input_outlined,
+                        onPressed: (_) => _intoImportDialog(context, fitting),
+                      ),
+                    ]),
+                    child: ListTile(
+                      leading: GlobalStorage()
+                          .static
+                          .icons
+                          .getTypeIconSync(fitting.shipTypeID)
+                          .orBox(width: 32),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      title: Text('[${ship.nameZH}] - ${fitting.name}'),
+                      subtitle: fitting.description.isNotEmpty.thenSome(Text(fitting.description)),
+                    ));
               })),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stackTrace) => Center(
