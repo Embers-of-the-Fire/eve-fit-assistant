@@ -41,62 +41,59 @@ class _FrontendPageState extends State<FrontendPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(
-        leading: const _LoadingStatusIcon(),
-        title: Text(_pageTitle[_currentIndex]),
-        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
-      ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) => setState(() {
-          _currentIndex = index;
-        }),
-        children: _pages,
-      ),
-      floatingActionButton:
-          (!_noFloatingActionButton.contains(_currentIndex)).then(() => FloatingActionButton(
-                onPressed: () => startFitCreation(context),
-                shape: const CircleBorder(),
-                child: const Icon(Icons.add),
-              )),
-      bottomNavigationBar: mediaQuerySetPadding(
-          context: context,
-          bottom: 14,
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-              _pageController.animateToPage(
-                index,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
-            showSelectedLabels: true,
-            showUnselectedLabels: false,
-            type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(
-                  icon: Padding(
-                      padding: EdgeInsets.only(top: 5), child: Icon(Icons.dashboard_rounded)),
-                  label: '工作台'),
-              BottomNavigationBarItem(
-                  icon: Padding(
-                      padding: EdgeInsets.only(top: 5), child: Icon(Icons.list_alt_rounded)),
-                  label: '列表'),
-              BottomNavigationBarItem(
-                  icon:
-                      Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.account_circle)),
-                  label: '角色'),
-              BottomNavigationBarItem(
-                  icon: Padding(
-                      padding: EdgeInsets.only(top: 5), child: Icon(Icons.settings_rounded)),
-                  label: '设置'),
-            ],
-          )),
-    );
+        appBar: AppBar(
+          leading: const _LoadingStatusIcon(),
+          title: Text(_pageTitle[_currentIndex]),
+          titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
+        ),
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: (index) => setState(() {
+            _currentIndex = index;
+          }),
+          children: _pages,
+        ),
+        floatingActionButton:
+            (!_noFloatingActionButton.contains(_currentIndex)).then(() => FloatingActionButton(
+                  onPressed: () => startFitCreation(context),
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.add),
+                )),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+            _pageController.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          },
+          showSelectedLabels: true,
+          showUnselectedLabels: false,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.dashboard_rounded)),
+              label: '工作台',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.list_alt_rounded)),
+              label: '列表',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.account_circle)),
+              label: '角色',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.settings_rounded)),
+              label: '设置',
+            ),
+          ],
+        ),
+      );
 }
 
 class _LoadingStatusIcon extends ConsumerWidget {
