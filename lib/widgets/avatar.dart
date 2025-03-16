@@ -23,7 +23,7 @@ class BorderedCircleAvatar extends StatelessWidget {
     this.borderWidth = 2.0,
     this.borderColor = Colors.white,
     this.onPressed,
-  }) : assert([image, icon, child].countNonNull() == 1,
+  }) : assert([image, icon, child].countNonNull() <= 1,
             'Only one of `image`, `icon` or `child` should be provided.');
 
   @override

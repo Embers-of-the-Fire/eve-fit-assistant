@@ -17,14 +17,7 @@ import 'dart:typed_data' as $typed_data;
 const Fighters$json = {
   '1': 'Fighters',
   '2': [
-    {
-      '1': 'entries',
-      '3': 1,
-      '4': 3,
-      '5': 11,
-      '6': '.fighter.Fighters.EntriesEntry',
-      '10': 'entries'
-    },
+    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.fighter.Fighters.EntriesEntry', '10': 'entries'},
   ],
   '3': [Fighters_Fighter$json, Fighters_EntriesEntry$json],
   '4': [Fighters_FighterType$json],
@@ -61,10 +54,11 @@ const Fighters_FighterType$json = {
 };
 
 /// Descriptor for `Fighters`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List fightersDescriptor = $convert
-    .base64Decode('CghGaWdodGVycxI4CgdlbnRyaWVzGAEgAygLMh4uZmlnaHRlci5GaWdodGVycy5FbnRyaWVzRW'
-        '50cnlSB2VudHJpZXMabgoHRmlnaHRlchIxCgR0eXBlGAEgAigOMh0uZmlnaHRlci5GaWdodGVy'
-        'cy5GaWdodGVyVHlwZVIEdHlwZRIWCgZhbW91bnQYAiACKAVSBmFtb3VudBIYCgdhYmlsaXR5GA'
-        'MgAigFUgdhYmlsaXR5GlUKDEVudHJpZXNFbnRyeRIQCgNrZXkYASABKAVSA2tleRIvCgV2YWx1'
-        'ZRgCIAEoCzIZLmZpZ2h0ZXIuRmlnaHRlcnMuRmlnaHRlclIFdmFsdWU6AjgBIjAKC0ZpZ2h0ZX'
-        'JUeXBlEgkKBUxJR0hUEAESCwoHU1VQUE9SVBACEgkKBUhFQVZZEAM=');
+final $typed_data.Uint8List fightersDescriptor = $convert.base64Decode(
+    'CghGaWdodGVycxI4CgdlbnRyaWVzGAEgAygLMh4uZmlnaHRlci5GaWdodGVycy5FbnRyaWVzRW'
+    '50cnlSB2VudHJpZXMabgoHRmlnaHRlchIxCgR0eXBlGAEgAigOMh0uZmlnaHRlci5GaWdodGVy'
+    'cy5GaWdodGVyVHlwZVIEdHlwZRIWCgZhbW91bnQYAiACKAVSBmFtb3VudBIYCgdhYmlsaXR5GA'
+    'MgAigFUgdhYmlsaXR5GlUKDEVudHJpZXNFbnRyeRIQCgNrZXkYASABKAVSA2tleRIvCgV2YWx1'
+    'ZRgCIAEoCzIZLmZpZ2h0ZXIuRmlnaHRlcnMuRmlnaHRlclIFdmFsdWU6AjgBIjAKC0ZpZ2h0ZX'
+    'JUeXBlEgkKBUxJR0hUEAESCwoHU1VQUE9SVBACEgkKBUhFQVZZEAM=');
+

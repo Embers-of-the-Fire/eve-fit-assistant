@@ -44,26 +44,19 @@ const Skills_EntriesEntry$json = {
 };
 
 /// Descriptor for `Skills`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List skillsDescriptor = $convert
-    .base64Decode('CgZTa2lsbHMSNQoHZW50cmllcxgBIAMoCzIbLnNraWxscy5Ta2lsbHMuRW50cmllc0VudHJ5Ug'
-        'dlbnRyaWVzGoUBCgVTa2lsbBIeCgRuYW1lGAEgAigLMgouaTE4bi5JMThOUgRuYW1lEhgKB2dy'
-        'b3VwSUQYAiACKAVSB2dyb3VwSUQSHAoJcHVibGlzaGVkGAMgAigIUglwdWJsaXNoZWQSJAoNYW'
-        'xwaGFNYXhMZXZlbBgEIAEoBVINYWxwaGFNYXhMZXZlbBpQCgxFbnRyaWVzRW50cnkSEAoDa2V5'
-        'GAEgASgFUgNrZXkSKgoFdmFsdWUYAiABKAsyFC5za2lsbHMuU2tpbGxzLlNraWxsUgV2YWx1ZT'
-        'oCOAE=');
+final $typed_data.Uint8List skillsDescriptor = $convert.base64Decode(
+    'CgZTa2lsbHMSNQoHZW50cmllcxgBIAMoCzIbLnNraWxscy5Ta2lsbHMuRW50cmllc0VudHJ5Ug'
+    'dlbnRyaWVzGoUBCgVTa2lsbBIeCgRuYW1lGAEgAigLMgouaTE4bi5JMThOUgRuYW1lEhgKB2dy'
+    'b3VwSUQYAiACKAVSB2dyb3VwSUQSHAoJcHVibGlzaGVkGAMgAigIUglwdWJsaXNoZWQSJAoNYW'
+    'xwaGFNYXhMZXZlbBgEIAEoBVINYWxwaGFNYXhMZXZlbBpQCgxFbnRyaWVzRW50cnkSEAoDa2V5'
+    'GAEgASgFUgNrZXkSKgoFdmFsdWUYAiABKAsyFC5za2lsbHMuU2tpbGxzLlNraWxsUgV2YWx1ZT'
+    'oCOAE=');
 
 @$core.Deprecated('Use typeSkillsDescriptor instead')
 const TypeSkills$json = {
   '1': 'TypeSkills',
   '2': [
-    {
-      '1': 'entries',
-      '3': 1,
-      '4': 3,
-      '5': 11,
-      '6': '.skills.TypeSkills.EntriesEntry',
-      '10': 'entries'
-    },
+    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.skills.TypeSkills.EntriesEntry', '10': 'entries'},
   ],
   '3': [TypeSkills_Skill$json, TypeSkills_TypeSkill$json, TypeSkills_EntriesEntry$json],
 };
@@ -96,9 +89,10 @@ const TypeSkills_EntriesEntry$json = {
 };
 
 /// Descriptor for `TypeSkills`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List typeSkillsDescriptor = $convert
-    .base64Decode('CgpUeXBlU2tpbGxzEjkKB2VudHJpZXMYASADKAsyHy5za2lsbHMuVHlwZVNraWxscy5FbnRyaW'
-        'VzRW50cnlSB2VudHJpZXMaLQoFU2tpbGwSDgoCaWQYASACKAVSAmlkEhQKBWxldmVsGAIgAigF'
-        'UgVsZXZlbBo9CglUeXBlU2tpbGwSMAoGc2tpbGxzGAEgAygLMhguc2tpbGxzLlR5cGVTa2lsbH'
-        'MuU2tpbGxSBnNraWxscxpYCgxFbnRyaWVzRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSMgoFdmFs'
-        'dWUYAiABKAsyHC5za2lsbHMuVHlwZVNraWxscy5UeXBlU2tpbGxSBXZhbHVlOgI4AQ==');
+final $typed_data.Uint8List typeSkillsDescriptor = $convert.base64Decode(
+    'CgpUeXBlU2tpbGxzEjkKB2VudHJpZXMYASADKAsyHy5za2lsbHMuVHlwZVNraWxscy5FbnRyaW'
+    'VzRW50cnlSB2VudHJpZXMaLQoFU2tpbGwSDgoCaWQYASACKAVSAmlkEhQKBWxldmVsGAIgAigF'
+    'UgVsZXZlbBo9CglUeXBlU2tpbGwSMAoGc2tpbGxzGAEgAygLMhguc2tpbGxzLlR5cGVTa2lsbH'
+    'MuU2tpbGxSBnNraWxscxpYCgxFbnRyaWVzRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSMgoFdmFs'
+    'dWUYAiABKAsyHC5za2lsbHMuVHlwZVNraWxscy5UeXBlU2tpbGxSBXZhbHVlOgI4AQ==');
+

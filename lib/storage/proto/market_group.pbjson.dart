@@ -17,14 +17,7 @@ import 'dart:typed_data' as $typed_data;
 const MarketGroups$json = {
   '1': 'MarketGroups',
   '2': [
-    {
-      '1': 'entries',
-      '3': 1,
-      '4': 3,
-      '5': 11,
-      '6': '.market_group.MarketGroups.EntriesEntry',
-      '10': 'entries'
-    },
+    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.market_group.MarketGroups.EntriesEntry', '10': 'entries'},
   ],
   '3': [MarketGroups_MarketGroup$json, MarketGroups_EntriesEntry$json],
 };
@@ -46,24 +39,18 @@ const MarketGroups_EntriesEntry$json = {
   '1': 'EntriesEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {
-      '1': 'value',
-      '3': 2,
-      '4': 1,
-      '5': 11,
-      '6': '.market_group.MarketGroups.MarketGroup',
-      '10': 'value'
-    },
+    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.market_group.MarketGroups.MarketGroup', '10': 'value'},
   ],
   '7': {'7': true},
 };
 
 /// Descriptor for `MarketGroups`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List marketGroupsDescriptor = $convert
-    .base64Decode('CgxNYXJrZXRHcm91cHMSQQoHZW50cmllcxgBIAMoCzInLm1hcmtldF9ncm91cC5NYXJrZXRHcm'
-        '91cHMuRW50cmllc0VudHJ5UgdlbnRyaWVzGp8BCgtNYXJrZXRHcm91cBIeCgRuYW1lGAEgAigL'
-        'MgouaTE4bi5JMThOUgRuYW1lEiAKC3BhcmVudEdyb3VwGAIgASgFUgtwYXJlbnRHcm91cBIWCg'
-        'ZpY29uSUQYAyABKAVSBmljb25JRBIUCgV0eXBlcxgEIAMoBVIFdHlwZXMSIAoLY2hpbGRHcm91'
-        'cHMYBSADKAVSC2NoaWxkR3JvdXBzGmIKDEVudHJpZXNFbnRyeRIQCgNrZXkYASABKAVSA2tleR'
-        'I8CgV2YWx1ZRgCIAEoCzImLm1hcmtldF9ncm91cC5NYXJrZXRHcm91cHMuTWFya2V0R3JvdXBS'
-        'BXZhbHVlOgI4AQ==');
+final $typed_data.Uint8List marketGroupsDescriptor = $convert.base64Decode(
+    'CgxNYXJrZXRHcm91cHMSQQoHZW50cmllcxgBIAMoCzInLm1hcmtldF9ncm91cC5NYXJrZXRHcm'
+    '91cHMuRW50cmllc0VudHJ5UgdlbnRyaWVzGp8BCgtNYXJrZXRHcm91cBIeCgRuYW1lGAEgAigL'
+    'MgouaTE4bi5JMThOUgRuYW1lEiAKC3BhcmVudEdyb3VwGAIgASgFUgtwYXJlbnRHcm91cBIWCg'
+    'ZpY29uSUQYAyABKAVSBmljb25JRBIUCgV0eXBlcxgEIAMoBVIFdHlwZXMSIAoLY2hpbGRHcm91'
+    'cHMYBSADKAVSC2NoaWxkR3JvdXBzGmIKDEVudHJpZXNFbnRyeRIQCgNrZXkYASABKAVSA2tleR'
+    'I8CgV2YWx1ZRgCIAEoCzImLm1hcmtldF9ncm91cC5NYXJrZXRHcm91cHMuTWFya2V0R3JvdXBS'
+    'BXZhbHVlOgI4AQ==');
+

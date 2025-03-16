@@ -73,6 +73,8 @@ class ResfileIndexCache:
         key_dir_path.parent.mkdir(parents=True, exist_ok=True)
         if key in self.cached:
             return key_dir
+        if key_dir_path.exists():
+            return key_dir
         url = self.resfileindex[key]
         try:
             req = requests.get(f"https://resources.eveonline.com/{url}")
