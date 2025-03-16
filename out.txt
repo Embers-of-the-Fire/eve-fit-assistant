@@ -1,0 +1,10 @@
+res:/ui/texture/classes/industry/groups/groupcomponents.png,51/5135352b0063e6ac_bac660d4356bd828fc594f1697a6dfeb,bac660d4356bd828fc594f1697a6dfeb,1315,1028
+res:/ui/texture/classes/industry/groups/groupdatacores.png,31/318937090e38a092_a4dfca29d34c23e6df37aaad94128d93,a4dfca29d34c23e6df37aaad94128d93,1814,1557
+res:/ui/texture/classes/industry/groups/groupdatainterfaces.png,b2/b28fbf3cb34e8b2c_a4f241c61779e5e3d887c73e8f51fefe,a4f241c61779e5e3d887c73e8f51fefe,1513,1245
+res:/ui/texture/classes/industry/groups/groupdecryptors.png,5a/5a6f99e8ea92a87b_fd3164d0e44f40236f1ebc8678b85a13,fd3164d0e44f40236f1ebc8678b85a13,1966,1721
+res:/ui/texture/classes/industry/groups/groupitems.png,a2/a2029d03254254ca_119d1528510c88a4283cf22da6eb66b4,119d1528510c88a4283cf22da6eb66b4,1024,1097
+res:/ui/texture/classes/industry/groups/groupmineral.png,e2/e27d8426ff27a894_5df3fd87d1de50f97d47ad7e4203af33,5df3fd87d1de50f97d47ad7e4203af33,1709,1450
+res:/ui/texture/classes/industry/groups/groupplantarymaterials.png,07/0790c3b8818b1abd_047f7ff456a87c11a69f59243edd1f94,047f7ff456a87c11a69f59243edd1f94,1708,1449
+res:/ui/texture/classes/industry/groups/groupreactionmaterials.png,ff/ff42bed176deb5b3_2029941edbed2f3a4209abff7b114301,2029941edbed2f3a4209abff7b114301,1892,1634
+res:/ui/texture/classes/industry/groups/grouprefinedmaterials.png,bf/bf32ed09b42c85a1_522f6f79aebd49ec33486ad17cccd6ef,522f6f79aebd49ec33486ad17cccd6ef,1810,1557
+res:/ui/texture/classes/industry/groups/groupsalavagematerials.png,c3/c37a7450f56db762_6c256b6f77318021f869da246849ffb2,6c256b6f77318021f869da246849ffb2,1711,1455

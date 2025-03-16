@@ -1,7 +1,7 @@
 library;
 
 import 'package:animated_tree_view/helpers/collection_utils.dart';
-import 'package:eve_fit_assistant/assets/icon.dart';
+import 'package:eve_fit_assistant/assets/assets.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
 import 'package:eve_fit_assistant/native/algo/capacitor.dart';
 import 'package:eve_fit_assistant/native/port/api/proxy.dart';

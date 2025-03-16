@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:eve_fit_assistant/assets/icon.dart';
+import 'package:eve_fit_assistant/assets/assets.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
 import 'package:eve_fit_assistant/native/glue/native_slot.dart';
 import 'package:eve_fit_assistant/native/port/api/proxy.dart';

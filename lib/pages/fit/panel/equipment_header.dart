@@ -1,4 +1,4 @@
-import 'package:eve_fit_assistant/assets/icon.dart';
+import 'package:eve_fit_assistant/assets/assets.dart';
 import 'package:eve_fit_assistant/native/glue/native_slot.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/native_error.dart';

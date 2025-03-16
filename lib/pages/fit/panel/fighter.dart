@@ -283,7 +283,7 @@ List<StateIcon> _getAbilityIcon(int ability, int enabledAbility,
       state: enabledAbility.flagContains(fighterAbilityAttackMissile)
           ? ItemState.active
           : ItemState.online,
-      foregroundImage: laserImage,
+      foregroundImage: typeLaserImage,
     ));
   }
 
@@ -298,7 +298,7 @@ List<StateIcon> _getAbilityIcon(int ability, int enabledAbility,
       }),
       state:
           enabledAbility.flagContains(fighterAbilityMissiles) ? ItemState.active : ItemState.online,
-      foregroundImage: torpedoImage,
+      foregroundImage: typeTorpedoImage,
     ));
   }
 

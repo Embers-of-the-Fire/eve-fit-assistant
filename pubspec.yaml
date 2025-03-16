@@ -104,7 +104,10 @@ flutter:
     # static data
     - data/storage.tar.xz
     # icons
-    - assets/icon/
+    - assets/activity/
+    - assets/cargo/
+    - assets/info/
+    - assets/slot/
     # text content
     - content/announcement/
     - content/changelog/

@@ -38,7 +38,7 @@ class ImportViewDialog extends StatelessWidget {
         children: [
           ListTile(
             leading: GlobalStorage().static.icons.getTypeIconSync(shipID),
-            title: Text('[$shipName] ${name}'),
+            title: Text('[$shipName] $name'),
           ),
           const Divider(height: 0, color: Colors.white54),
           Expanded(
