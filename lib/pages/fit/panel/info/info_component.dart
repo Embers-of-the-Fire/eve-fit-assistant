@@ -29,3 +29,4 @@ part 'market_price.dart';
 part 'resource.dart';
 part 'ship.dart';
 part 'weapon.dart';
+part 'cargo.dart';

@@ -30,6 +30,7 @@ class _InfoTabState extends ConsumerState<InfoTab> with AutomaticKeepAliveClient
             Resource(ship: out),
             Hp(fitID: widget.fitID, ship: out),
             Extra(ship: out),
+            Cargo(ship: out),
             MarketPriceInfo(fitID: widget.fitID),
           ],
         ),

@@ -258,81 +258,85 @@ const int fighterDamageAttackTurretSum = -67;
 /// - High is good: True
 const int fighterDamageAttackMissileSum = -68;
 
-/// - Name: velocityBoost
+/// - Name: totalMass
 /// - High is good: True
-const int velocityBoost = -69;
+const int totalMass = -69;
 
 /// - Name: capacitorBoost
 /// - High is good: True
 const int capacitorBoost = -7;
 
+/// - Name: velocityBoost
+/// - High is good: True
+const int velocityBoost = -70;
+
 /// - Name: armorRepairRate
 /// - High is good: True
-const int armorRepairRate = -70;
+const int armorRepairRate = -71;
 
 /// - Name: armorEffectiveRepairRate
 /// - High is good: True
-const int armorEffectiveRepairRate = -71;
+const int armorEffectiveRepairRate = -72;
 
 /// - Name: armorRemoteRepairRate
 /// - High is good: True
-const int armorRemoteRepairRate = -72;
+const int armorRemoteRepairRate = -73;
 
 /// - Name: hullRepairRate
 /// - High is good: True
-const int hullRepairRate = -73;
+const int hullRepairRate = -74;
 
 /// - Name: hullEffectiveRepairRate
 /// - High is good: True
-const int hullEffectiveRepairRate = -74;
+const int hullEffectiveRepairRate = -75;
 
 /// - Name: hullRemoteRepairRate
 /// - High is good: True
-const int hullRemoteRepairRate = -75;
+const int hullRemoteRepairRate = -76;
 
 /// - Name: shieldBoostRate
 /// - High is good: True
-const int shieldBoostRate = -76;
+const int shieldBoostRate = -77;
 
 /// - Name: shieldEffectiveBoostRate
 /// - High is good: True
-const int shieldEffectiveBoostRate = -77;
+const int shieldEffectiveBoostRate = -78;
 
 /// - Name: passiveShieldRechargeRate
 /// - High is good: True
-const int passiveShieldRechargeRate = -78;
-
-/// - Name: passiveShieldEffectiveRechargeRate
-/// - High is good: True
-const int passiveShieldEffectiveRechargeRate = -79;
+const int passiveShieldRechargeRate = -79;
 
 /// - Name: capacitorPeakLoadWithBoost
 /// - High is good: True
 const int capacitorPeakLoadWithBoost = -8;
 
+/// - Name: passiveShieldEffectiveRechargeRate
+/// - High is good: True
+const int passiveShieldEffectiveRechargeRate = -80;
+
 /// - Name: shieldRemoteBoostRate
 /// - High is good: True
-const int shieldRemoteBoostRate = -80;
+const int shieldRemoteBoostRate = -81;
 
 /// - Name: remoteCapacitorTransmitterRate
 /// - High is good: True
-const int remoteCapacitorTransmitterRate = -81;
+const int remoteCapacitorTransmitterRate = -82;
 
 /// - Name: scanStrength
 /// - High is good: True
-const int scanStrength = -82;
+const int scanStrength = -83;
 
 /// - Name: thousand
 /// - High is good: True
-const int thousand = -83;
+const int thousand = -84;
 
 /// - Name: upgradeUsed
 /// - High is good: True
-const int upgradeUsed = -84;
+const int upgradeUsed = -85;
 
 /// - Name: warpSpeed
 /// - High is good: True
-const int warpSpeed = -85;
+const int warpSpeed = -86;
 
 /// - Name: capacitorDepletesIn
 /// - High is good: True

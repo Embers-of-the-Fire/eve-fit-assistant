@@ -75,7 +75,6 @@ abstract class ESIMarketResponse with _$ESIMarketResponse {
         volume: sell.map((u) => u.volumeTotal).sum(),
       ),
     );
-    log('$typeID, $server');
     final orders = OrderGroup(buy: buy, sell: sell);
     return MarketPrice(
       typeID: typeID,

@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:eve_fit_assistant/pages/account/account.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
@@ -66,20 +64,17 @@ class _AccountPageState extends ConsumerState<AccountPage> {
             ]
           ])),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) {
-        log('$error\n$stackTrace', name: 'AccountPage');
-        return Center(
-            child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('加载角色信息失败', style: TextStyle(fontSize: 20)),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => ref.refresh(getCharacterProvider),
-                    child: const Text('重试'),
-                  )
-                ])));
-      },
+      error: (error, stackTrace) => Center(
+          child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('加载角色信息失败', style: TextStyle(fontSize: 20)),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => ref.refresh(getCharacterProvider),
+                  child: const Text('重试'),
+                )
+              ]))),
     );
     return Scaffold(
       appBar: AppBar(

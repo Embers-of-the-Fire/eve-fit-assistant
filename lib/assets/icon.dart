@@ -104,3 +104,5 @@ const AssetImage charSmallImage = AssetImage('assets/icon/char-small.png');
 const AssetImage torpedoImage = AssetImage('assets/icon/type-torpedo.png');
 
 const AssetImage laserImage = AssetImage('assets/icon/type-laser.png');
+
+const AssetImage massImage = AssetImage('assets/icon/mass.png');

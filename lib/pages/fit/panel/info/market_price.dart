@@ -20,6 +20,7 @@ Future<(double, Iterable<int>, double, Iterable<int>)> getMarketPrices(
 }
 
 const _defaultTextStyle = TextStyle(
+  color: Colors.white,
   fontSize: 16,
   fontWeight: FontWeight.normal,
 );
@@ -64,7 +65,7 @@ class MarketPriceInfo extends ConsumerWidget {
               .push(MaterialPageRoute(builder: (context) => _MarketPriceDetail(fitID: fitID))),
           child: Column(children: [
             Padding(
-                padding: const EdgeInsets.only(left: 18, right: 22, top: 6),
+                padding: const EdgeInsets.only(left: 18, right: 22, top: 12),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Row(
                     mainAxisSize: MainAxisSize.min,

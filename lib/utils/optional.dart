@@ -57,9 +57,11 @@ extension Optional<T> on T? {
     }
   }
 
-  T? mInspect([String? name]) {
+  T? mInspect([String name = '']) {
     if (this != null) {
-      log('$name: $this');
+      log('$this', name: name);
+    } else {
+      log('<null>', name: name);
     }
     return this;
   }
@@ -68,8 +70,8 @@ extension Optional<T> on T? {
 }
 
 extension Inspect<T> on T {
-  T inspect([String? name]) {
-    log('$name: $this');
+  T inspect([String name = '']) {
+    log('$this', name: name);
     return this;
   }
 }
