@@ -57,6 +57,18 @@ extension NumExt on num {
     return '${integerList.reversed.join()}.$decimal';
   }
 
+  String get commaSeparated {
+    final str = round().toString();
+    final integerList = <String>[];
+    for (int i = str.length - 1; i >= 0; i--) {
+      integerList.add(str[i]);
+      if ((str.length - i) % 3 == 0 && i != 0) {
+        integerList.add(',');
+      }
+    }
+    return integerList.reversed.join();
+  }
+
   R when<R>({
     required R Function() zero,
     required R Function() positive,

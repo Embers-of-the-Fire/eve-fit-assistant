@@ -175,3 +175,47 @@ const int fighterHeavySlots = 2219;
 /// - Name: fighterSquadronMaxSize
 /// - High is good: True
 const int fighterSquadronMaxSize = 2215;
+
+/// - Name: capacity
+/// - High is good: True
+const int capacity = 38;
+
+/// - Name: shipMaintenanceBayCapacity
+/// - High is good: True
+const int shipMaintenanceBayCapacity = 908;
+
+/// - Name: fleetHangarCapacity
+/// - High is good: True
+const int fleetHangarCapacity = 912;
+
+/// - Name: specialFuelBayCapacity
+/// - High is good: True
+const int specialFuelBayCapacity = 910;
+
+/// - Name: generalMiningHoldCapacity
+/// - High is good: True
+const int generalMiningHoldCapacity = 1556;
+
+/// - Name: specialGasHoldCapacity
+/// - High is good: True
+const int specialGasHoldCapacity = 1557;
+
+/// - Name: specialMineralHoldCapacity
+/// - High is good: True
+const int specialMineralHoldCapacity = 1558;
+
+/// - Name: specialIceHoldCapacity
+/// - High is good: True
+const int specialIceHoldCapacity = 3136;
+
+/// - Name: specialCommandCenterHoldCapacity
+/// - High is good: True
+const int specialCommandCenterHoldCapacity = 1646;
+
+/// - Name: specialPlanetaryCommoditiesHoldCapacity
+/// - High is good: True
+const int specialPlanetaryCommoditiesHoldCapacity = 1653;
+
+/// - Name: specialColonyResourcesHoldCapacity
+/// - High is good: True
+const int specialColonyResourcesHoldCapacity = 5646;

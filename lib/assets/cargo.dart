@@ -6,6 +6,8 @@ const AssetImage fleetImage = AssetImage('assets/cargo/fleet.png');
 
 const AssetImage fuelImage = AssetImage('assets/cargo/fuel.png');
 
+const AssetImage gasImage = AssetImage('assets/cargo/gas.png');
+
 const AssetImage iceImage = AssetImage('assets/cargo/ice.png');
 
 const AssetImage infrastructureImage = AssetImage('assets/cargo/infrastructure.png');
