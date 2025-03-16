@@ -1,13 +1,15 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:http/http.dart' as http;
 
 part 'market.freezed.dart';
+
 part 'market.g.dart';
+
 part 'market_backend_ceve.dart';
+
 part 'market_backend_esi.dart';
 
 enum Server {
