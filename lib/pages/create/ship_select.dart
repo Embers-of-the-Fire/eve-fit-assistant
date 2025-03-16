@@ -68,6 +68,7 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
                 leading: GlobalStorage().static.icons.getTypeIconSync(id),
                 title: Text(ship.nameZH),
                 subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
+                onTap: () => _onShipSelect(id, context),
                 onLongPress: () => showTypeInfoPage(context, typeID: id),
               );
             },
