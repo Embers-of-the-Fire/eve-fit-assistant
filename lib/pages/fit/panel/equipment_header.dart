@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/assets/icon.dart';
 import 'package:eve_fit_assistant/native/glue/native_slot.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/native_error.dart';
@@ -58,11 +59,43 @@ class EquipmentHeader extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                '炮塔 $sumTurret/$allTurret'
-                ' | 发射器 $sumLauncher/$allLauncher',
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text.rich(TextSpan(
+                children: [
+                  const WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Image(image: weaponTurretNumImage, height: 22)),
+                  TextSpan(
+                    text: ' $sumTurret/$allTurret',
+                    style: TextStyle(
+                      color: allTurret == 0
+                          ? Colors.white
+                          : sumTurret.compareTo(allTurret).when(
+                                zero: () => Colors.green,
+                                positive: () => Colors.red,
+                                negative: () => Colors.orange,
+                              ),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const WidgetSpan(child: SizedBox(width: 15)),
+                  const WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Image(image: weaponLauncherNumImage, height: 22)),
+                  TextSpan(
+                    text: ' $sumLauncher/$allLauncher',
+                    style: TextStyle(
+                      color: allLauncher == 0
+                          ? Colors.white
+                          : sumLauncher.compareTo(allLauncher).when(
+                                zero: () => Colors.green,
+                                positive: () => Colors.red,
+                                negative: () => Colors.orange,
+                              ),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              )),
               ...errors.isNotEmpty
                   ? [const SizedBox(width: 10), NativeErrorTrigger(errors: errors)]
                   : [],

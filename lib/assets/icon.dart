@@ -106,3 +106,7 @@ const AssetImage torpedoImage = AssetImage('assets/icon/type-torpedo.png');
 const AssetImage laserImage = AssetImage('assets/icon/type-laser.png');
 
 const AssetImage massImage = AssetImage('assets/icon/mass.png');
+
+const AssetImage weaponTurretNumImage = AssetImage('assets/icon/weapon-turret-num.png');
+
+const AssetImage weaponLauncherNumImage = AssetImage('assets/icon/weapon-launcher-num.png');

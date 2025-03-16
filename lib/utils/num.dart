@@ -56,4 +56,10 @@ extension NumExt on num {
     }
     return '${integerList.reversed.join()}.$decimal';
   }
+
+  R when<R>({
+    required R Function() zero,
+    required R Function() positive,
+    required R Function() negative,
+  }) => this == 0 ? zero() : this > 0 ? positive() : negative();
 }
