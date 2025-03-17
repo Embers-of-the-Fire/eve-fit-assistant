@@ -116,10 +116,8 @@ def _find_max_state(effect_view: list[dict[str, str | bool]], effects: dict):
         return slots_pb2.Slots.SlotState.OVERLOAD
     elif any(x in categories for x in [1, 2, 3, 6, 7]):
         return slots_pb2.Slots.SlotState.ACTIVE
-    elif 4 in categories:
-        return slots_pb2.Slots.SlotState.ONLINE
     else:
-        return slots_pb2.Slots.SlotState.PASSIVE
+        return slots_pb2.Slots.SlotState.ONLINE
 
 
 def _find_slot_charge_groups(slot_def, attr_view: list[dict[str, str | int]]) -> None:
