@@ -12,3 +12,5 @@ extension DurationExt on Duration {
 }
 
 DateTime fromSecondsSinceEpoch(int seconds) => DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+
+DateTime fromDaysSinceEpoch(int days) => DateTime.fromMillisecondsSinceEpoch(days * 86400000);
