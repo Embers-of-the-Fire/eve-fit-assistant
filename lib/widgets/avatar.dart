@@ -41,9 +41,8 @@ class BorderedCircleAvatar extends StatelessWidget {
       child: CircleAvatar(
         radius: size / 2,
         backgroundColor: backgroundColor,
-        // backgroundImage: image,
         child: child ??
-            image.map((u) => Image(image: u)) ??
+            image.map((u) => ClipOval(child: Image(image: u))) ??
             icon.map((icon) => Icon(icon, size: size * 0.6, color: iconColor)),
       ),
     );
