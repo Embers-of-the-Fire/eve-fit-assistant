@@ -429,11 +429,6 @@ class SlotRowPlaceholder extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fit = ref.read(fitRecordNotifierProvider(fitID).notifier);
-    final fitData = ref.watch(fitRecordNotifierProvider(fitID));
-
-    final errors = fitData.output.errors
-        .filter((err) => err.slot.fitItemType == type && err.index == index)
-        .toList();
 
     return ListTile(
       leading: BorderedCircleAvatar(
@@ -474,7 +469,7 @@ class SlotRowPlaceholder extends ConsumerWidget {
           ),
         );
       },
-      trailing: errors.isNotEmpty ? NativeErrorTrigger(errors: errors) : null,
+      trailing: Text('${index + 1}'),
     );
   }
 }
