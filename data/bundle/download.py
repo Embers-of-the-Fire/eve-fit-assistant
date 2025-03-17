@@ -12,18 +12,14 @@ semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
 
 
 class DownloadItem(NamedTuple):
-    res_id: str | None
-    url: str | None
+    res_id: str
     dir: str
     file_name: str
 
 
 async def download(session: aiohttp.ClientSession, item: DownloadItem, index: dict[str, str]):
     async with semaphore:
-        if item.url is not None:
-            url = item.url
-        else:
-            url = f"https://resources.eveonline.com/{index[item.res_id.lower()]}"
+        url = f"https://resources.eveonline.com/{index[item.res_id.lower()]}"
 
         print(f"Downloading {url} to {item.dir}/{item.file_name}")
         async with session.get(url) as response:

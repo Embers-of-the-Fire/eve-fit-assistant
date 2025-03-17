@@ -32,7 +32,7 @@ def bundle(fsd_path, image_path, cache_dir) -> list[DownloadItem]:
             shutil.copyfile(icon_path, icon_out_path)
         else:
             to_download.append(
-                DownloadItem(dir=target_dir, file_name=f"{icon}.png", res_id=path, url=None)
+                DownloadItem(dir=target_dir, file_name=f"{icon}.png", res_id=path)
             )
 
     return to_download

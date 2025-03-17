@@ -31,8 +31,16 @@ $image_dir = Join-Path $current "images"
 $index_file = Join-Path $current "resfileindex.txt"
 if ($Download) {
     & $uv run $bundle_python $fsd_dir $image_dir $index_file $cache_dir --download
-} else {
+}
+else {
     & $uv run $bundle_python $fsd_dir $image_dir $index_file $cache_dir
+}
+
+if ($Download) {
+    $render_python = Join-Path $current "render" "render.py"
+    & $uv run $render_python $fsd_dir $image_dir $cache_dir $index_file
+} else {
+    Write-Host "Skipping render step..."
 }
 
 Write-Host 'Copying `eve-fit-os` native data...'
