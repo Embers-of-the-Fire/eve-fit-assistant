@@ -33,3 +33,41 @@ class _ItemListPopBehaviorTileState extends ConsumerState<ItemListPopBehaviorTil
     );
   }
 }
+
+class ItemListDisplayStyleTile extends ConsumerStatefulWidget {
+  const ItemListDisplayStyleTile({super.key});
+
+  @override
+  ConsumerState<ItemListDisplayStyleTile> createState() => _ItemListDisplayStyleTileState();
+}
+
+class _ItemListDisplayStyleTileState extends ConsumerState<ItemListDisplayStyleTile> {
+  ItemListDisplayStyle value = ItemListDisplayStyle.marketGroup;
+
+  @override
+  void initState() {
+    super.initState();
+    value = ref.read(globalPreferenceProvider).preference.itemListDisplayStyle;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = ref.read(globalPreferenceProvider.notifier);
+
+    return ListTile(
+      title: const Text('舰船列表显示方式'),
+      subtitle: const Text('如何显示舰船列表。\n市场：根据市场分类显示\n物品组：根据物品组显示'),
+      trailing: DropdownButton(
+          value: value,
+          items: const <DropdownMenuItem<ItemListDisplayStyle>>[
+            DropdownMenuItem(value: ItemListDisplayStyle.marketGroup, child: Text('市场')),
+            DropdownMenuItem(value: ItemListDisplayStyle.group, child: Text('物品组')),
+          ],
+          onChanged: (value) => setState(() {
+                if (value == null) return;
+                notifier.modify((preference) => preference.itemListDisplayStyle = value);
+                this.value = value;
+              })),
+    );
+  }
+}

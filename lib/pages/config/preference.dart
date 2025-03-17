@@ -27,6 +27,7 @@ class PreferencePage extends StatelessWidget {
                   ))),
           Divider(height: 0),
           ItemListPopBehaviorTile(),
+          ItemListDisplayStyleTile(),
           Divider(height: 0),
           ListTile(
               minTileHeight: 0,

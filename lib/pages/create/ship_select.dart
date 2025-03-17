@@ -1,13 +1,16 @@
 import 'package:eve_fit_assistant/constant/constant.dart';
+import 'package:eve_fit_assistant/constant/eve/categories.dart';
 import 'package:eve_fit_assistant/export/schema.dart';
 import 'package:eve_fit_assistant/pages/create/create_dialog.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
+import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/theme/color.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/import_view.dart';
+import 'package:eve_fit_assistant/widgets/item_group_list.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -84,14 +87,24 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
                     textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium)),
           ),
           Expanded(
-              child: ItemList(
-            breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-            breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
-            fallbackGroupID: shipGroupID,
-            baseGroup: '舰船',
-            onSelect: (id) => _onShipSelect(id, context),
-            onLongPress: (id) => showTypeInfoPage(context, typeID: id),
-          ))
+              child: switch (Preference().itemListDisplayStyle) {
+            ItemListDisplayStyle.marketGroup => ItemList(
+                breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+                breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+                fallbackGroupID: shipGroupID,
+                baseGroup: '舰船',
+                onSelect: (id) => _onShipSelect(id, context),
+                onLongPress: (id) => showTypeInfoPage(context, typeID: id),
+              ),
+            ItemListDisplayStyle.group => ItemGroupList(
+                breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+                breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+                categoryID: categoryShip,
+                baseGroup: '舰船',
+                onSelect: (id) => _onShipSelect(id, context),
+                onLongPress: (id) => showTypeInfoPage(context, typeID: id),
+              ),
+          })
         ]),
         floatingActionButton: Container(
             margin: const EdgeInsets.only(bottom: 55),

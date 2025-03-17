@@ -48,6 +48,8 @@ class Preference {
 
   ItemListPopBehavior get itemListPopBehavior => ItemListPopBehavior.get(_preference);
 
+  ItemListDisplayStyle get itemListDisplayStyle => ItemListDisplayStyle.get(_preference);
+
   MarketApi get marketApi => MarketApi.get(_preference);
 
   Debug get debug => Debug.get(_preference);
@@ -57,6 +59,8 @@ class Preference {
   EsiAuthServer get esiAuthServer => EsiAuthServer.get(_preference);
 
   set itemListPopBehavior(ItemListPopBehavior value) => value.set(_preference);
+
+  set itemListDisplayStyle(ItemListDisplayStyle value) => value.set(_preference);
 
   set marketApi(MarketApi value) => value.set(_preference);
 

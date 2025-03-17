@@ -21,3 +21,25 @@ enum ItemListPopBehavior {
   static ItemListPopBehavior get(SharedPreferences prefs) =>
       ItemListPopBehavior.values[prefs.getInt(_itemListPopBehaviorKey) ?? 0];
 }
+
+const _itemListDisplayStyle = 'item_list_display_style';
+
+enum ItemListDisplayStyle {
+  marketGroup,
+  group;
+
+  static const defaultValue = marketGroup;
+
+  void setDefault(SharedPreferences prefs) {
+    if (!prefs.containsKey(_itemListDisplayStyle)) {
+      prefs.setInt(_itemListDisplayStyle, defaultValue.index);
+    }
+  }
+
+  Future<void> set(SharedPreferences prefs) async {
+    await prefs.setInt(_itemListDisplayStyle, index);
+  }
+
+  static ItemListDisplayStyle get(SharedPreferences prefs) =>
+      ItemListDisplayStyle.values[prefs.getInt(_itemListDisplayStyle) ?? 0];
+}
