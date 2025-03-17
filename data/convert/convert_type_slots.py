@@ -24,7 +24,9 @@ def convert(cache: ConvertCache, external: dict):
         if entry is not None:
             i18n.into_i18n(entry.name, **typedef["name"])
             entry.published = typedef["published"]
-            entry.maxState = _find_max_state(dogma["dogmaEffects"], effects)
+            entry.maxState = _find_max_state(
+                dogma["dogmaAttributes"], dogma["dogmaEffects"], effects
+            )
             _find_slot_charge_groups(entry, dogma["dogmaAttributes"])
             continue
 
@@ -104,20 +106,28 @@ def _find_implant_slot(attr_view: list[dict[str, str | int]]) -> int | None:
     return None
 
 
-def _find_max_state(effect_view: list[dict[str, str | bool]], effects: dict):
-    categories = set(
-        filter(
-            lambda x: x is not None,
-            map(lambda x: effects[x["effectID"]].get("effectCategory"), effect_view),
-        )
-    )
+def _find_max_state(
+    attr_view: list[dict[str, str | int]], effect_view: list[dict[str, str | bool]], effects: dict
+):
+    max_state = slots_pb2.Slots.SlotState.ONLINE
 
-    if 5 in categories:
-        return slots_pb2.Slots.SlotState.OVERLOAD
-    elif any(x in categories for x in [1, 2, 3, 6, 7]):
-        return slots_pb2.Slots.SlotState.ACTIVE
-    else:
-        return slots_pb2.Slots.SlotState.ONLINE
+    for attr in attr_view:
+        if attr["attributeID"] == 6 and attr["value"] > 0:  # energy need
+            max_state = slots_pb2.Slots.SlotState.ACTIVE
+        if attr["attributeID"] == 73 and attr["value"] > 0:  # duration
+            max_state = slots_pb2.Slots.SlotState.ACTIVE
+        if attr["attributeID"] == 51 and attr["value"] > 0:  # speed
+            max_state = slots_pb2.Slots.SlotState.ACTIVE
+        if attr["attributeID"] == 1211 and attr["value"] > 0:  # overload damage
+            max_state = slots_pb2.Slots.SlotState.OVERLOAD
+            break
+
+    for effect in effect_view:
+        if effects[effect["effectID"]]["effectCategory"] == 5:
+            max_state = slots_pb2.Slots.SlotState.OVERLOAD
+            break
+
+    return max_state
 
 
 def _find_slot_charge_groups(slot_def, attr_view: list[dict[str, str | int]]) -> None:
