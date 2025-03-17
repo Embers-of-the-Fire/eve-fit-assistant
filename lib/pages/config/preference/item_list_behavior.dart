@@ -71,3 +71,36 @@ class _ItemListDisplayStyleTileState extends ConsumerState<ItemListDisplayStyleT
     );
   }
 }
+
+class ItemListShowUnpublishedTile extends ConsumerStatefulWidget {
+  const ItemListShowUnpublishedTile({super.key});
+
+  @override
+  ConsumerState createState() => _ItemListShowUnpublishedTileState();
+}
+
+class _ItemListShowUnpublishedTileState extends ConsumerState<ItemListShowUnpublishedTile> {
+  bool value = false;
+
+  @override
+  void initState() {
+    super.initState();
+    value = ref.read(globalPreferenceProvider).preference.itemListShowUnpublished ==
+        ItemListShowUnpublished.show;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = ref.read(globalPreferenceProvider.notifier);
+
+    return SwitchListTile(
+        value: value,
+        onChanged: (v) async {
+          setState(() => value = v);
+          notifier.modify((preference) => preference.itemListShowUnpublished =
+              v ? ItemListShowUnpublished.show : ItemListShowUnpublished.hide);
+        },
+        title: const Text('显示未发布物品'),
+        subtitle: const Text('是否显示未发布的物品'));
+  }
+}

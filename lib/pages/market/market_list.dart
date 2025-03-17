@@ -18,14 +18,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'market_list.g.dart';
 part 'market_tile.dart';
 
-class MarketList extends StatefulWidget {
+class MarketList extends ConsumerStatefulWidget {
   const MarketList({super.key});
 
   @override
-  State<MarketList> createState() => _MarketListState();
+  ConsumerState<MarketList> createState() => _MarketListState();
 }
 
-class _MarketListState extends State<MarketList> {
+class _MarketListState extends ConsumerState<MarketList> {
   final ScrollController _breadcrumbController = ScrollController();
   final ScrollController _shipListController = ScrollController();
   final FToast fToast = FToast();
@@ -60,7 +60,7 @@ class _MarketListState extends State<MarketList> {
     if (type == null) {
       return false;
     }
-    if (GlobalStorage().static.types[id]?.published == true) {
+    if (ref.watch(showUnpublishedProvider) || GlobalStorage().static.types[id]?.published == true) {
       _cachedValidTypes.add(id);
       return true;
     }
@@ -178,7 +178,9 @@ class _MarketListState extends State<MarketList> {
                 .static
                 .types
                 .tupleEntries
-                .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
+                .filter((data) =>
+                    (ref.watch(showUnpublishedProvider) || data.$2.published) &&
+                    data.$2.nameZH.contains(search))
                 .toList()),
             emptyBuilder: (context) => Padding(
                 padding: const EdgeInsets.all(12),
@@ -238,7 +240,7 @@ class _MarketListState extends State<MarketList> {
                   ..._breadcrumbs.lastOrNull
                       .andThen((id) => GlobalStorage().static.marketGroups[id])
                       .map((group) =>
-                          _itemListTile(context, group, timestamp: timestamp, onTap: _onTapItem))
+                          _itemListTile(ref, group, timestamp: timestamp, onTap: _onTapItem))
                       .unwrapOr([])
                 ])),
           ))
@@ -264,19 +266,20 @@ ListTile _groupListTile(MarketGroup group, {void Function()? onTap}) {
 }
 
 Iterable<Widget> _itemListTile(
-  BuildContext context,
+  WidgetRef ref,
   MarketGroup group, {
   required void Function(int id) onTap,
   required int timestamp,
 }) {
   late Iterable<int> types;
-  types = group.types.filter((id) => GlobalStorage().static.types[id]?.published == true);
+  types = group.types.filter((id) =>
+      (ref.watch(showUnpublishedProvider) || GlobalStorage().static.types[id]?.published == true));
   return types.filterMap((id) => GlobalStorage().static.types[id].map((u) => (id, u))).map((val) =>
       MarketListTile(
           name: val.$2.nameZH,
           typeID: val.$1,
           timestamp: timestamp,
-          onLongPress: () => showTypeInfoPage(context, typeID: val.$1),
+          onLongPress: () => showTypeInfoPage(ref.context, typeID: val.$1),
           onTap: () => onTap(val.$1)));
 }
 

@@ -1,6 +1,7 @@
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
+import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/storage/static/ship_subsystems.dart';
 import 'package:eve_fit_assistant/storage/static/types.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
@@ -9,6 +10,7 @@ import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/widgets/dialog.dart';
 import 'package:eve_fit_assistant/widgets/item_list.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class _DialogMetadata {
@@ -172,7 +174,7 @@ Future<int?> _showAddItemDialogImpl(BuildContext context, _DialogMetadata metada
   return out;
 }
 
-class _AddItemDialog extends StatelessWidget {
+class _AddItemDialog extends ConsumerWidget {
   final int? fallbackGroupID;
   final String? baseBreadcrumbName;
   final bool Function(int)? filter;
@@ -186,7 +188,7 @@ class _AddItemDialog extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Column(children: [
+  Widget build(BuildContext context, WidgetRef ref) => Column(children: [
         TypeAheadField<(int, TypeItem)>(
           onSelected: (data) => onSelect?.call(data.$1),
           decorationBuilder: (context, child) => Container(
@@ -230,7 +232,7 @@ class _AddItemDialog extends StatelessWidget {
               .types
               .tupleEntries
               .filter((data) =>
-                  data.$2.published &&
+                  (ref.watch(showUnpublishedProvider) || data.$2.published) &&
                   data.$2.nameZH.contains(search) &&
                   filter.map((u) => u(data.$1)).unwrapOr(true))
               .toList()),

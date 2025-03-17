@@ -6,6 +6,23 @@ part of 'preference.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$showUnpublishedHash() => r'1a8ece47bb8dd5f7520596604a3c4d74bd3b894c';
+
+/// See also [showUnpublished].
+@ProviderFor(showUnpublished)
+final showUnpublishedProvider = AutoDisposeProvider<bool>.internal(
+  showUnpublished,
+  name: r'showUnpublishedProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$showUnpublishedHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ShowUnpublishedRef = AutoDisposeProviderRef<bool>;
 String _$globalPreferenceHash() => r'd919719e6810be462851e532bfc1bfb66a7ad1a2';
 
 /// See also [GlobalPreference].

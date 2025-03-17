@@ -43,3 +43,25 @@ enum ItemListDisplayStyle {
   static ItemListDisplayStyle get(SharedPreferences prefs) =>
       ItemListDisplayStyle.values[prefs.getInt(_itemListDisplayStyle) ?? 0];
 }
+
+const _itemListShowUnpublished = 'item_list_show_unpublished';
+
+enum ItemListShowUnpublished {
+  show,
+  hide;
+
+  static const defaultValue = hide;
+
+  void setDefault(SharedPreferences prefs) {
+    if (!prefs.containsKey(_itemListShowUnpublished)) {
+      prefs.setInt(_itemListShowUnpublished, defaultValue.index);
+    }
+  }
+
+  Future<void> set(SharedPreferences prefs) async {
+    await prefs.setInt(_itemListShowUnpublished, index);
+  }
+
+  static ItemListShowUnpublished get(SharedPreferences prefs) =>
+      ItemListShowUnpublished.values[prefs.getInt(_itemListShowUnpublished) ?? 0];
+}

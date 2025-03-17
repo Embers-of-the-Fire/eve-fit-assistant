@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +8,11 @@ part 'esi_auth_behavior.dart';
 part 'item_list_behavior.dart';
 part 'market_api.dart';
 part 'preference.g.dart';
+
+@riverpod
+bool showUnpublished(Ref ref) =>
+    ref.watch(globalPreferenceProvider.select((u) => u.preference.itemListShowUnpublished)) ==
+    ItemListShowUnpublished.show;
 
 @riverpod
 class GlobalPreference extends _$GlobalPreference {
@@ -50,6 +56,8 @@ class Preference {
 
   ItemListDisplayStyle get itemListDisplayStyle => ItemListDisplayStyle.get(_preference);
 
+  ItemListShowUnpublished get itemListShowUnpublished => ItemListShowUnpublished.get(_preference);
+
   MarketApi get marketApi => MarketApi.get(_preference);
 
   Debug get debug => Debug.get(_preference);
@@ -61,6 +69,8 @@ class Preference {
   set itemListPopBehavior(ItemListPopBehavior value) => value.set(_preference);
 
   set itemListDisplayStyle(ItemListDisplayStyle value) => value.set(_preference);
+
+  set itemListShowUnpublished(ItemListShowUnpublished value) => value.set(_preference);
 
   set marketApi(MarketApi value) => value.set(_preference);
 

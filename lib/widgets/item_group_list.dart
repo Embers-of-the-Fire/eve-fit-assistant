@@ -3,8 +3,9 @@ import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ItemGroupList extends StatefulWidget {
+class ItemGroupList extends ConsumerStatefulWidget {
   final EdgeInsets? breadcrumbPadding;
   final EdgeInsets? breadcrumbItemPadding;
   final String? baseGroup;
@@ -24,10 +25,10 @@ class ItemGroupList extends StatefulWidget {
       this.onLongPress});
 
   @override
-  State<ItemGroupList> createState() => _ItemGroupListState();
+  ConsumerState<ItemGroupList> createState() => _ItemGroupListState();
 }
 
-class _ItemGroupListState extends State<ItemGroupList> {
+class _ItemGroupListState extends ConsumerState<ItemGroupList> {
   final ScrollController _breadcrumbController = ScrollController();
   final ScrollController _shipListController = ScrollController();
 
@@ -115,7 +116,8 @@ class _ItemGroupListState extends State<ItemGroupList> {
                               ),
                         if (groupID != null)
                           for (final entry in GlobalStorage().static.types.entries)
-                            if (entry.value.groupID == groupID && entry.value.published)
+                            if (entry.value.groupID == groupID &&
+                                (ref.watch(showUnpublishedProvider) || entry.value.published))
                               ListTile(
                                 leading: GlobalStorage().static.icons.getTypeIconSync(entry.key),
                                 title: Text(entry.value.nameZH),
