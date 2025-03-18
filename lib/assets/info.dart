@@ -18,6 +18,8 @@ const AssetImage dmgKineticResistanceImage = AssetImage('assets/info/dmg-kinetic
 
 const AssetImage dmgThermalResistanceImage = AssetImage('assets/info/dmg-thermal-resistance.png');
 
+const AssetImage droneRangeImage = AssetImage('assets/info/drone-range.png');
+
 const AssetImage droneImage = AssetImage('assets/info/drone.png');
 
 const AssetImage hpArmorImage = AssetImage('assets/info/hp-armor.png');

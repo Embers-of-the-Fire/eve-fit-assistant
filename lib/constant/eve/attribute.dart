@@ -223,3 +223,11 @@ const int specialPlanetaryCommoditiesHoldCapacity = 1653;
 /// - Name: specialColonyResourcesHoldCapacity
 /// - High is good: True
 const int specialColonyResourcesHoldCapacity = 5646;
+
+/// - Name: maxActiveDrones
+/// - High is good: True
+const int maxActiveDrones = 352;
+
+/// - Name: droneControlDistance
+/// - High is good: True
+const int droneControlDistance = 458;

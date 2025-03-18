@@ -20,14 +20,16 @@ class Extra extends StatelessWidget {
               4: FlexColumnWidth(),
             },
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: _getExtraTableContent(ship.hull),
+            children: _getExtraTableContent(ship),
           ),
         ),
       );
 }
 
-List<TableRow> _getExtraTableContent(ItemProxy hull) {
+List<TableRow> _getExtraTableContent(ShipProxy ship) {
   final List<TableRow> rows = [];
+  final hull = ship.hull;
+  final char = ship.character;
 
   {
     // speed & warp speed
@@ -84,6 +86,20 @@ List<TableRow> _getExtraTableContent(ItemProxy hull) {
     final sigRadius = hull.attributes[signatureRadius] ?? 0.0;
     children.add(const Image(image: signatureRadiusImage));
     children.add(Text('${sigRadius.toStringAsMaxDecimals(0)} m'));
+    rows.add(TableRow(children: children));
+  }
+
+  {
+    // max drone & drone range
+    final List<Widget> children = [];
+    final maxDrone = char.attributes[maxActiveDrones] ?? 0;
+    children.add(const Image(image: droneImage));
+    children.add(Text('${maxDrone.round()}'));
+
+    children.add(const SizedBox.shrink());
+    final droneRange = char.attributes[droneControlDistance] ?? 0.0;
+    children.add(const Image(image: droneRangeImage));
+    children.add(Text('${(droneRange / 1000).toStringAsMaxDecimals(1)} km'));
     rows.add(TableRow(children: children));
   }
 
