@@ -1,6 +1,5 @@
 library;
 
-import 'dart:developer' show log;
 import 'dart:math' show Random;
 
 import 'package:eve_fit_assistant/assets/assets.dart';
