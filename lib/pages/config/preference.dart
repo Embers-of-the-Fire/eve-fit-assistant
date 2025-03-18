@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 part './preference/debug.dart';
+part './preference/esi_auth_behavior.dart';
+part './preference/esi_fit_list_sort.dart';
 part './preference/item_list_behavior.dart';
 part './preference/market_api.dart';
-part './preference/esi_auth_behavior.dart';
 
 class PreferencePage extends StatelessWidget {
   const PreferencePage({super.key});
@@ -42,7 +43,7 @@ class PreferencePage extends StatelessWidget {
           Divider(height: 0),
           ListTile(
               minTileHeight: 0,
-              title: Text('授权',
+              title: Text('ESI',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -50,6 +51,7 @@ class PreferencePage extends StatelessWidget {
           Divider(height: 0),
           EsiAuthBehaviorTile(),
           EsiAuthServerTile(),
+          EsiFitListSortTile(),
           Divider(height: 0),
           ListTile(
               minTileHeight: 0,
