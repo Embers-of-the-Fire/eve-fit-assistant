@@ -32,20 +32,29 @@ _FitExport _$FitExportFromJson(Map<String, dynamic> json) => _FitExport(
           .map((e) =>
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
           .toList(),
-      drone: (json['drone'] as List<dynamic>)
-          .map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      fighter: (json['fighter'] as List<dynamic>)
-          .map((e) => FighterItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      implant: (json['implant'] as List<dynamic>)
-          .map((e) =>
-              e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      dynamicItems: (json['dynamicItems'] as Map<String, dynamic>).map(
-        (k, e) => MapEntry(
-            int.parse(k), DynamicItem.fromJson(e as Map<String, dynamic>)),
-      ),
+      drone: (json['drone'] as List<dynamic>?)
+              ?.map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      fighter: (json['fighter'] as List<dynamic>?)
+              ?.map((e) => FighterItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      implant: (json['implant'] as List<dynamic>?)
+              ?.map((e) => e == null
+                  ? null
+                  : SlotItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      booster: (json['booster'] as List<dynamic>?)
+              ?.map((e) => SlotItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      dynamicItems: (json['dynamicItems'] as Map<String, dynamic>?)?.map(
+            (k, e) => MapEntry(
+                int.parse(k), DynamicItem.fromJson(e as Map<String, dynamic>)),
+          ) ??
+          {},
       tacticalModeID: (json['tacticalModeID'] as num?)?.toInt(),
     );
 
@@ -63,6 +72,7 @@ Map<String, dynamic> _$FitExportToJson(_FitExport instance) =>
       'drone': instance.drone,
       'fighter': instance.fighter,
       'implant': instance.implant,
+      'booster': instance.booster,
       'dynamicItems':
           instance.dynamicItems.map((k, e) => MapEntry(k.toString(), e)),
       'tacticalModeID': instance.tacticalModeID,

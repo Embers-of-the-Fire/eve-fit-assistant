@@ -13,7 +13,8 @@ schema.Fit intoNativeFit({required local.Fit fit, required Map<int, int> skills}
       modules: _intoNativeModules(fit),
       drones: _intoNativeDrones(fit.drone),
       fighters: _intoNativeFighters(fit.fighter),
-      implant: _intoNativeImplants(fit.implant),
+      implants: _intoNativeImplants(fit.implant),
+      boosters: _intoNativeBoosters(fit.booster),
       skills: skills,
       dynamicItems: fit.dynamicItems.map((key, value) => MapEntry(
           key,
@@ -50,41 +51,41 @@ schema.Item _intoNativeItem({required local.SlotItem item, required int index}) 
 List<schema.DroneGroup> _intoNativeDrones(List<local.DroneItem> items) =>
     items.enumerate().filterMap((e) {
       if (e.$2.state == local.DroneState.passive) return null;
-      return _intoNativeDrone(item: e.$2, index: e.$1);
+      return schema.DroneGroup(
+        itemId: e.$2.itemID,
+        amount: e.$2.amount,
+        index: e.$1,
+      );
     }).toList();
-
-schema.DroneGroup _intoNativeDrone({required local.DroneItem item, required int index}) =>
-    schema.DroneGroup(
-      itemId: item.itemID,
-      amount: item.amount,
-      index: index,
-    );
 
 List<schema.FighterGroup> _intoNativeFighters(List<local.FighterItem> items) =>
     items.enumerate().filterMap((e) {
       if (e.$2.state == local.DroneState.passive) return null;
-      return _intoNativeFighter(item: e.$2, index: e.$1);
+      return schema.FighterGroup(
+        itemId: e.$2.itemID,
+        amount: e.$2.amount,
+        index: e.$1,
+        ability: e.$2.ability,
+      );
     }).toList();
-
-schema.FighterGroup _intoNativeFighter({required local.FighterItem item, required int index}) =>
-    schema.FighterGroup(
-      itemId: item.itemID,
-      amount: item.amount,
-      index: index,
-      ability: item.ability,
-    );
 
 List<schema.Implant> _intoNativeImplants(List<local.SlotItem?> items) =>
     items.enumerate().filterMap((e) {
-      if (e.$2 == null) return null;
-      return _intoNativeImplant(item: e.$2!, index: e.$1);
+      if (e.$2 == null || e.$2!.state == local.SlotState.passive) return null;
+      return schema.Implant(
+        itemId: e.$2!.itemID,
+        index: e.$1,
+      );
     }).toList();
 
-schema.Implant _intoNativeImplant({required local.SlotItem item, required int index}) =>
-    schema.Implant(
-      itemId: item.itemID,
-      index: index,
-    );
+List<schema.Booster> _intoNativeBoosters(List<local.SlotItem?> items) =>
+    items.enumerate().filterMap((e) {
+      if (e.$2 == null || e.$2!.state == local.SlotState.passive) return null;
+      return schema.Booster(
+        itemId: e.$2!.itemID,
+        index: e.$1,
+      );
+    }).toList();
 
 schema.ItemState _intoNativeState(local.SlotState state) {
   switch (state) {

@@ -2,7 +2,7 @@ use std::{collections::HashMap, iter};
 
 use eve_fit_os::{
     calculate::item::{FighterAbility, ItemID},
-    fit::ItemFighter,
+    fit::{ItemBooster, ItemFighter},
 };
 
 #[flutter_rust_bridge::frb(unignore, non_opaque)]
@@ -12,7 +12,8 @@ pub struct Fit {
     pub modules: Module,
     pub drones: Vec<DroneGroup>,
     pub fighters: Vec<FighterGroup>,
-    pub implant: Vec<Implant>,
+    pub implants: Vec<Implant>,
+    pub boosters: Vec<Booster>,
     pub skills: HashMap<i32, u8>,
     pub damage_profile: DamageProfile,
     pub dynamic_items: HashMap<i32, DynamicItem>,
@@ -93,11 +94,20 @@ impl Fit {
                 })
                 .collect(),
             implants: self
-                .implant
+                .implants
                 .into_iter()
                 .enumerate()
                 .map(|(idx, imp)| ItemImplant {
                     type_id: imp.item_id,
+                    index: idx as i32,
+                })
+                .collect(),
+            boosters: self
+                .boosters
+                .into_iter()
+                .enumerate()
+                .map(|(idx, booster)| ItemBooster {
+                    type_id: booster.item_id,
                     index: idx as i32,
                 })
                 .collect(),
@@ -191,6 +201,13 @@ pub struct FighterGroup {
 #[flutter_rust_bridge::frb(non_opaque)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Implant {
+    pub item_id: i32,
+    pub index: i32,
+}
+
+#[flutter_rust_bridge::frb(non_opaque)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Booster {
     pub item_id: i32,
     pub index: i32,
 }

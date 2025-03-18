@@ -88,6 +88,29 @@ class TypeImplantSlot with TypeSlotLike {
   const TypeImplantSlot._private(this._raw);
 }
 
+class TypeBoosterSlot with TypeSlotLike {
+  final Slots_BoosterSlot _raw;
+
+  @override
+  String get nameEN => _raw.name.en;
+
+  @override
+  String get nameZH => _raw.name.zh;
+
+  @override
+  bool get published => _raw.published;
+
+  int get slot => _raw.slot;
+
+  @override
+  SlotState get maxState => SlotState.online;
+
+  @override
+  List<int> get chargeGroups => [];
+
+  const TypeBoosterSlot._private(this._raw);
+}
+
 class TypeSlotStorage {
   final ReadonlyMap<int, TypeHighSlot> _high;
   final ReadonlyMap<int, TypeSlot> _med;
@@ -96,6 +119,8 @@ class TypeSlotStorage {
   final ReadonlyMap<int, TypeSlot> _subsystem;
 
   final ReadonlyMap<int, TypeImplantSlot> _implant;
+
+  final ReadonlyMap<int, TypeBoosterSlot> _booster;
 
   ReadonlyMap<int, TypeHighSlot> get high => _high;
 
@@ -108,6 +133,8 @@ class TypeSlotStorage {
   ReadonlyMap<int, TypeSlot> get subsystem => _subsystem;
 
   ReadonlyMap<int, TypeImplantSlot> get implant => _implant;
+
+  ReadonlyMap<int, TypeBoosterSlot> get booster => _booster;
 
   ReadonlyMap<int, TypeSlotLike> operator [](FitItemType type) {
     switch (type) {
@@ -123,7 +150,9 @@ class TypeSlotStorage {
         return _subsystem;
       case FitItemType.implant:
         return _implant;
-      case FitItemType.drone:
+      case FitItemType.booster:
+        return _booster;
+      case FitItemType.drone || FitItemType.fighter:
         return const ReadonlyMap({});
     }
   }
@@ -135,12 +164,14 @@ class TypeSlotStorage {
     required rig,
     required subsystem,
     required implant,
+    required booster,
   })  : _high = high,
         _med = med,
         _low = low,
         _rig = rig,
         _subsystem = subsystem,
-        _implant = implant;
+        _implant = implant,
+        _booster = booster;
 
   static TypeSlotStorage _fromBuffer(Uint8List buffer) {
     final slots = Slots.fromBuffer(buffer);
@@ -154,6 +185,8 @@ class TypeSlotStorage {
           ReadonlyMap(slots.subsystem.map((key, value) => MapEntry(key, TypeSlot._private(value)))),
       implant: ReadonlyMap(
           slots.implant.map((key, value) => MapEntry(key, TypeImplantSlot._private(value)))),
+      booster: ReadonlyMap(
+          slots.booster.map((key, value) => MapEntry(key, TypeBoosterSlot._private(value)))),
     );
   }
 

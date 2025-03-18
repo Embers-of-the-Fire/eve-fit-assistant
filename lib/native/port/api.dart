@@ -3,13 +3,12 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-
 import 'api/data.dart';
 import 'api/error.dart';
 import 'api/proxy.dart';
 import 'api/schema.dart';
 import 'frb_generated.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 CalculateOutput calculate({required EveDatabase db, required Fit fit}) =>
     RustLib.instance.api.crateApiCalculate(db: db, fit: fit);

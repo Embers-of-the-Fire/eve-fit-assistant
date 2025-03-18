@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -23,10 +25,11 @@ abstract class FitExport with _$FitExport {
     required List<SlotItem?> low,
     required List<SlotItem?> rig,
     required List<SlotItem?> subSystem,
-    required List<DroneItem> drone,
-    required List<FighterItem> fighter,
-    required List<SlotItem?> implant,
-    required Map<int, DynamicItem> dynamicItems,
+    @JsonKey(defaultValue: []) required List<DroneItem> drone,
+    @JsonKey(defaultValue: []) required List<FighterItem> fighter,
+    @JsonKey(defaultValue: []) required List<SlotItem?> implant,
+    @JsonKey(defaultValue: []) required List<SlotItem> booster,
+    @JsonKey(defaultValue: {}) required Map<int, DynamicItem> dynamicItems,
     int? tacticalModeID,
   }) = _FitExport;
 
@@ -47,6 +50,7 @@ abstract class FitExport with _$FitExport {
       drone: fit.body.drone,
       fighter: fit.body.fighter,
       implant: fit.body.implant,
+      booster: fit.body.booster,
       dynamicItems: fit.body.dynamicItems);
 
   String get encoded {
@@ -93,6 +97,7 @@ extension ImportFit on FitStorage {
             drone: fit.drone,
             fighter: fit.fighter,
             implant: fit.implant,
+            booster: fit.booster,
             tacticalModeID: fit.tacticalModeID,
             dynamicItems: fit.dynamicItems));
     await copiedRecord.save();

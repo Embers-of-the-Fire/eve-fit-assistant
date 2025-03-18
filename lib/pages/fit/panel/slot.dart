@@ -447,7 +447,7 @@ class SlotRowPlaceholder extends ConsumerWidget {
           _ => null,
         },
       ),
-      title: const Text('无装备'),
+      title: Text(switch (type) { FitItemType.implant => '无植入体', _ => '无装备' }),
       onTap: () async {
         final newItemID = await showAddItemDialog(
           context,

@@ -23,7 +23,9 @@ enum FitItemType {
   rig,
   subsystem,
   drone,
-  implant;
+  fighter,
+  implant,
+  booster;
 
   factory FitItemType.fromNative(SlotType type) {
     switch (type) {
@@ -39,6 +41,10 @@ enum FitItemType {
         return FitItemType.subsystem;
       case SlotType.drone:
         return FitItemType.drone;
+      case SlotType.fighter:
+        return FitItemType.fighter;
+      case SlotType.booster:
+        return FitItemType.booster;
       case SlotType.implant:
         return FitItemType.implant;
     }
@@ -88,6 +94,24 @@ class FitRecord {
 
   void clearImplant() {
     body.implant.fillAll(null);
+  }
+
+  int addBooster(int itemID) {
+    final index = body.booster.length;
+    body.booster.add(SlotItem(itemID: itemID, chargeID: null, state: SlotState.online));
+    return index;
+  }
+
+  void modifyBooster(int index, SlotItem Function(SlotItem) map) {
+    body.booster[index] = map(body.booster[index]);
+  }
+
+  void removeBooster(int index) {
+    body.booster.removeAt(index);
+  }
+
+  void clearBooster() {
+    body.booster.clear();
   }
 
   void modifyDrone(int index, DroneItem Function(DroneItem) map) {
@@ -262,10 +286,15 @@ class Fit {
 
   final List<SlotItem?> subsystem;
 
+  @JsonKey(defaultValue: [])
   final List<DroneItem> drone;
+  @JsonKey(defaultValue: [])
   final List<FighterItem> fighter;
   final List<SlotItem?> implant;
+  @JsonKey(defaultValue: [])
+  final List<SlotItem> booster;
 
+  @JsonKey(defaultValue: {})
   final Map<int, DynamicItem> dynamicItems;
 
   int? tacticalModeID;
@@ -283,6 +312,7 @@ class Fit {
     List<DroneItem>? drone,
     List<FighterItem>? fighter,
     required this.implant,
+    required this.booster,
     this.tacticalModeID,
     Map<int, DynamicItem>? dynamicItems,
   })  : drone = drone ?? List.empty(growable: true),
@@ -303,6 +333,7 @@ class Fit {
       drone: List.empty(growable: true),
       fighter: List.empty(growable: true),
       implant: List.filled(10, null),
+      booster: List.empty(growable: true),
       tacticalModeID: ship?.hasTacticalMode.unwrapOr(false).thenWith(() => shipID.andThen(
           (id) => GlobalStorage().static.tacticalModes[id]?.tacticalModes.keys.firstOrNull)),
       dynamicItems: {},

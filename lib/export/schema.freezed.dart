@@ -24,9 +24,15 @@ mixin _$FitExport {
   List<SlotItem?> get low;
   List<SlotItem?> get rig;
   List<SlotItem?> get subSystem;
+  @JsonKey(defaultValue: [])
   List<DroneItem> get drone;
+  @JsonKey(defaultValue: [])
   List<FighterItem> get fighter;
+  @JsonKey(defaultValue: [])
   List<SlotItem?> get implant;
+  @JsonKey(defaultValue: [])
+  List<SlotItem> get booster;
+  @JsonKey(defaultValue: {})
   Map<int, DynamicItem> get dynamicItems;
   int? get tacticalModeID;
 
@@ -59,6 +65,7 @@ mixin _$FitExport {
             const DeepCollectionEquality().equals(other.drone, drone) &&
             const DeepCollectionEquality().equals(other.fighter, fighter) &&
             const DeepCollectionEquality().equals(other.implant, implant) &&
+            const DeepCollectionEquality().equals(other.booster, booster) &&
             const DeepCollectionEquality()
                 .equals(other.dynamicItems, dynamicItems) &&
             (identical(other.tacticalModeID, tacticalModeID) ||
@@ -81,12 +88,13 @@ mixin _$FitExport {
       const DeepCollectionEquality().hash(drone),
       const DeepCollectionEquality().hash(fighter),
       const DeepCollectionEquality().hash(implant),
+      const DeepCollectionEquality().hash(booster),
       const DeepCollectionEquality().hash(dynamicItems),
       tacticalModeID);
 
   @override
   String toString() {
-    return 'FitExport(name: $name, description: $description, shipID: $shipID, damageProfile: $damageProfile, high: $high, med: $med, low: $low, rig: $rig, subSystem: $subSystem, drone: $drone, fighter: $fighter, implant: $implant, dynamicItems: $dynamicItems, tacticalModeID: $tacticalModeID)';
+    return 'FitExport(name: $name, description: $description, shipID: $shipID, damageProfile: $damageProfile, high: $high, med: $med, low: $low, rig: $rig, subSystem: $subSystem, drone: $drone, fighter: $fighter, implant: $implant, booster: $booster, dynamicItems: $dynamicItems, tacticalModeID: $tacticalModeID)';
   }
 }
 
@@ -105,10 +113,11 @@ abstract mixin class $FitExportCopyWith<$Res> {
       List<SlotItem?> low,
       List<SlotItem?> rig,
       List<SlotItem?> subSystem,
-      List<DroneItem> drone,
-      List<FighterItem> fighter,
-      List<SlotItem?> implant,
-      Map<int, DynamicItem> dynamicItems,
+      @JsonKey(defaultValue: []) List<DroneItem> drone,
+      @JsonKey(defaultValue: []) List<FighterItem> fighter,
+      @JsonKey(defaultValue: []) List<SlotItem?> implant,
+      @JsonKey(defaultValue: []) List<SlotItem> booster,
+      @JsonKey(defaultValue: {}) Map<int, DynamicItem> dynamicItems,
       int? tacticalModeID});
 
   $DamageProfileCopyWith<$Res> get damageProfile;
@@ -138,6 +147,7 @@ class _$FitExportCopyWithImpl<$Res> implements $FitExportCopyWith<$Res> {
     Object? drone = null,
     Object? fighter = null,
     Object? implant = null,
+    Object? booster = null,
     Object? dynamicItems = null,
     Object? tacticalModeID = freezed,
   }) {
@@ -190,6 +200,10 @@ class _$FitExportCopyWithImpl<$Res> implements $FitExportCopyWith<$Res> {
           ? _self.implant
           : implant // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
+      booster: null == booster
+          ? _self.booster
+          : booster // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem>,
       dynamicItems: null == dynamicItems
           ? _self.dynamicItems
           : dynamicItems // ignore: cast_nullable_to_non_nullable
@@ -225,9 +239,11 @@ class _FitExport extends FitExport {
       required final List<SlotItem?> low,
       required final List<SlotItem?> rig,
       required final List<SlotItem?> subSystem,
-      required final List<DroneItem> drone,
-      required final List<FighterItem> fighter,
-      required final List<SlotItem?> implant,
+      @JsonKey(defaultValue: []) required final List<DroneItem> drone,
+      @JsonKey(defaultValue: []) required final List<FighterItem> fighter,
+      @JsonKey(defaultValue: []) required final List<SlotItem?> implant,
+      @JsonKey(defaultValue: []) required final List<SlotItem> booster,
+      @JsonKey(defaultValue: {})
       required final Map<int, DynamicItem> dynamicItems,
       this.tacticalModeID})
       : _high = high,
@@ -238,6 +254,7 @@ class _FitExport extends FitExport {
         _drone = drone,
         _fighter = fighter,
         _implant = implant,
+        _booster = booster,
         _dynamicItems = dynamicItems,
         super._();
   factory _FitExport.fromJson(Map<String, dynamic> json) =>
@@ -293,6 +310,7 @@ class _FitExport extends FitExport {
 
   final List<DroneItem> _drone;
   @override
+  @JsonKey(defaultValue: [])
   List<DroneItem> get drone {
     if (_drone is EqualUnmodifiableListView) return _drone;
     // ignore: implicit_dynamic_type
@@ -301,6 +319,7 @@ class _FitExport extends FitExport {
 
   final List<FighterItem> _fighter;
   @override
+  @JsonKey(defaultValue: [])
   List<FighterItem> get fighter {
     if (_fighter is EqualUnmodifiableListView) return _fighter;
     // ignore: implicit_dynamic_type
@@ -309,14 +328,25 @@ class _FitExport extends FitExport {
 
   final List<SlotItem?> _implant;
   @override
+  @JsonKey(defaultValue: [])
   List<SlotItem?> get implant {
     if (_implant is EqualUnmodifiableListView) return _implant;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_implant);
   }
 
+  final List<SlotItem> _booster;
+  @override
+  @JsonKey(defaultValue: [])
+  List<SlotItem> get booster {
+    if (_booster is EqualUnmodifiableListView) return _booster;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_booster);
+  }
+
   final Map<int, DynamicItem> _dynamicItems;
   @override
+  @JsonKey(defaultValue: {})
   Map<int, DynamicItem> get dynamicItems {
     if (_dynamicItems is EqualUnmodifiableMapView) return _dynamicItems;
     // ignore: implicit_dynamic_type
@@ -361,6 +391,7 @@ class _FitExport extends FitExport {
             const DeepCollectionEquality().equals(other._drone, _drone) &&
             const DeepCollectionEquality().equals(other._fighter, _fighter) &&
             const DeepCollectionEquality().equals(other._implant, _implant) &&
+            const DeepCollectionEquality().equals(other._booster, _booster) &&
             const DeepCollectionEquality()
                 .equals(other._dynamicItems, _dynamicItems) &&
             (identical(other.tacticalModeID, tacticalModeID) ||
@@ -383,12 +414,13 @@ class _FitExport extends FitExport {
       const DeepCollectionEquality().hash(_drone),
       const DeepCollectionEquality().hash(_fighter),
       const DeepCollectionEquality().hash(_implant),
+      const DeepCollectionEquality().hash(_booster),
       const DeepCollectionEquality().hash(_dynamicItems),
       tacticalModeID);
 
   @override
   String toString() {
-    return 'FitExport(name: $name, description: $description, shipID: $shipID, damageProfile: $damageProfile, high: $high, med: $med, low: $low, rig: $rig, subSystem: $subSystem, drone: $drone, fighter: $fighter, implant: $implant, dynamicItems: $dynamicItems, tacticalModeID: $tacticalModeID)';
+    return 'FitExport(name: $name, description: $description, shipID: $shipID, damageProfile: $damageProfile, high: $high, med: $med, low: $low, rig: $rig, subSystem: $subSystem, drone: $drone, fighter: $fighter, implant: $implant, booster: $booster, dynamicItems: $dynamicItems, tacticalModeID: $tacticalModeID)';
   }
 }
 
@@ -410,10 +442,11 @@ abstract mixin class _$FitExportCopyWith<$Res>
       List<SlotItem?> low,
       List<SlotItem?> rig,
       List<SlotItem?> subSystem,
-      List<DroneItem> drone,
-      List<FighterItem> fighter,
-      List<SlotItem?> implant,
-      Map<int, DynamicItem> dynamicItems,
+      @JsonKey(defaultValue: []) List<DroneItem> drone,
+      @JsonKey(defaultValue: []) List<FighterItem> fighter,
+      @JsonKey(defaultValue: []) List<SlotItem?> implant,
+      @JsonKey(defaultValue: []) List<SlotItem> booster,
+      @JsonKey(defaultValue: {}) Map<int, DynamicItem> dynamicItems,
       int? tacticalModeID});
 
   @override
@@ -444,6 +477,7 @@ class __$FitExportCopyWithImpl<$Res> implements _$FitExportCopyWith<$Res> {
     Object? drone = null,
     Object? fighter = null,
     Object? implant = null,
+    Object? booster = null,
     Object? dynamicItems = null,
     Object? tacticalModeID = freezed,
   }) {
@@ -496,6 +530,10 @@ class __$FitExportCopyWithImpl<$Res> implements _$FitExportCopyWith<$Res> {
           ? _self._implant
           : implant // ignore: cast_nullable_to_non_nullable
               as List<SlotItem?>,
+      booster: null == booster
+          ? _self._booster
+          : booster // ignore: cast_nullable_to_non_nullable
+              as List<SlotItem>,
       dynamicItems: null == dynamicItems
           ? _self._dynamicItems
           : dynamicItems // ignore: cast_nullable_to_non_nullable

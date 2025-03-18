@@ -6,7 +6,9 @@ pub enum SlotType {
     Rig,
     Subsystem,
     Implant,
+    Booster,
     Drone,
+    Fighter,
 }
 
 #[flutter_rust_bridge::frb(unignore)]

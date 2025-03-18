@@ -3,9 +3,8 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-
 import '../frb_generated.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'schema.dart';
 
 // These functions are ignored because they are not marked as `pub`: `from_native_grouped`, `from_native_grouped`, `from_native`, `from_native`, `from_native`, `from_native`, `from_native`
@@ -113,7 +112,8 @@ class ModulesProxy {
     required this.fighters,
   });
 
-  static Future<ModulesProxy> default_() => RustLib.instance.api.crateApiProxyModulesProxyDefault();
+  static Future<ModulesProxy> default_() =>
+      RustLib.instance.api.crateApiProxyModulesProxyDefault();
 
   @override
   int get hashCode =>
@@ -145,6 +145,7 @@ class ShipProxy {
   final ItemProxy hull;
   final ModulesProxy modules;
   final List<ItemProxy> implants;
+  final List<ItemProxy> boosters;
   final ItemProxy character;
   final DamageProfile damageProfile;
 
@@ -152,6 +153,7 @@ class ShipProxy {
     required this.hull,
     required this.modules,
     required this.implants,
+    required this.boosters,
     required this.character,
     required this.damageProfile,
   });
@@ -161,6 +163,7 @@ class ShipProxy {
       hull.hashCode ^
       modules.hashCode ^
       implants.hashCode ^
+      boosters.hashCode ^
       character.hashCode ^
       damageProfile.hashCode;
 
@@ -172,6 +175,7 @@ class ShipProxy {
           hull == other.hull &&
           modules == other.modules &&
           implants == other.implants &&
+          boosters == other.boosters &&
           character == other.character &&
           damageProfile == other.damageProfile;
 }

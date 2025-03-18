@@ -44,20 +44,27 @@ Fit _$FitFromJson(Map<String, dynamic> json) => Fit(
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       drone: (json['drone'] as List<dynamic>?)
-          ?.map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+              ?.map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       fighter: (json['fighter'] as List<dynamic>?)
-          ?.map((e) => FighterItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+              ?.map((e) => FighterItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       implant: (json['implant'] as List<dynamic>)
           .map((e) =>
               e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      booster: (json['booster'] as List<dynamic>?)
+              ?.map((e) => SlotItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       tacticalModeID: (json['tacticalModeID'] as num?)?.toInt(),
       dynamicItems: (json['dynamicItems'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(
-            int.parse(k), DynamicItem.fromJson(e as Map<String, dynamic>)),
-      ),
+            (k, e) => MapEntry(
+                int.parse(k), DynamicItem.fromJson(e as Map<String, dynamic>)),
+          ) ??
+          {},
     );
 
 Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
@@ -72,6 +79,7 @@ Map<String, dynamic> _$FitToJson(Fit instance) => <String, dynamic>{
       'drone': instance.drone.map((e) => e.toJson()).toList(),
       'fighter': instance.fighter.map((e) => e.toJson()).toList(),
       'implant': instance.implant.map((e) => e?.toJson()).toList(),
+      'booster': instance.booster.map((e) => e.toJson()).toList(),
       'dynamicItems': instance.dynamicItems
           .map((k, e) => MapEntry(k.toString(), e.toJson())),
       'tacticalModeID': instance.tacticalModeID,

@@ -1,4 +1,5 @@
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
+import 'package:eve_fit_assistant/constant/eve/market_groups.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
@@ -75,6 +76,12 @@ Future<int?> showAddItemDialog(
       fallbackGroupID: 27,
       predicate: (int itemID) =>
           (GlobalStorage().static.typeSlot.implant[itemID]?.slot ?? -1) == (slotIndex ?? -2),
+    ),
+    FitItemType.booster: _DialogMetadata(
+      title: '添加增效剂',
+      baseName: '增效剂',
+      fallbackGroupID: boosterMarketGroupID,
+      predicate: (int itemID) => GlobalStorage().static.typeSlot.booster[itemID] != null,
     ),
   };
 
@@ -156,6 +163,28 @@ Future<int?> showAddFighterDialog(
   );
 
   return await _showAddItemDialogImpl(context, metadata);
+}
+
+Future<int?> showAddItemDialogWithGroup(
+  BuildContext context, {
+  required String title,
+  required String baseName,
+  required int fallbackGroupID,
+  required bool Function(int) predicate,
+}) async {
+  final out = await showDialog<int>(
+      context: context,
+      builder: (context) => AppDialog(
+            title: title,
+            content: _AddItemDialog(
+              fallbackGroupID: fallbackGroupID,
+              baseBreadcrumbName: baseName,
+              filter: predicate,
+              onSelect: (id) => Navigator.pop(context, id),
+            ),
+          ));
+
+  return out;
 }
 
 Future<int?> _showAddItemDialogImpl(BuildContext context, _DialogMetadata metadata) async {

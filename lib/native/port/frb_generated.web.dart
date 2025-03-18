@@ -6,11 +6,6 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
-
 import 'api.dart';
 import 'api/data.dart';
 import 'api/error.dart';
@@ -22,7 +17,10 @@ import 'api/validate/post_validate/max_activate.dart';
 import 'api/validate/pre_validate/fit_target.dart';
 import 'api/validate/pre_validate/rig_size.dart';
 import 'api/validate/pre_validate/slot_num.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'frb_generated.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -32,8 +30,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_EveDatabasePtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_EveDatabasePtr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase;
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
@@ -58,14 +57,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Map<int, int> dco_decode_Map_i_32_u_8(dynamic raw);
 
   @protected
-  EveDatabase dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-      dynamic raw);
+  EveDatabase
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
+          dynamic raw);
 
   @protected
   String dco_decode_String(dynamic raw);
 
   @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  Booster dco_decode_booster(dynamic raw);
 
   @protected
   ErrorKey dco_decode_box_autoadd_error_key(dynamic raw);
@@ -143,6 +146,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ItemState dco_decode_item_state(dynamic raw);
 
   @protected
+  List<Booster> dco_decode_list_booster(dynamic raw);
+
+  @protected
   List<DroneGroup> dco_decode_list_drone_group(dynamic raw);
 
   @protected
@@ -173,7 +179,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
-  List<(int, DynamicItem)> dco_decode_list_record_i_32_dynamic_item(dynamic raw);
+  List<(int, DynamicItem)> dco_decode_list_record_i_32_dynamic_item(
+      dynamic raw);
 
   @protected
   List<(int, double)> dco_decode_list_record_i_32_f_64(dynamic raw);
@@ -246,7 +253,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  Map<int, DynamicItem> sse_decode_Map_i_32_dynamic_item(SseDeserializer deserializer);
+  Map<int, DynamicItem> sse_decode_Map_i_32_dynamic_item(
+      SseDeserializer deserializer);
 
   @protected
   Map<int, double> sse_decode_Map_i_32_f_64(SseDeserializer deserializer);
@@ -255,14 +263,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Map<int, int> sse_decode_Map_i_32_u_8(SseDeserializer deserializer);
 
   @protected
-  EveDatabase sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-      SseDeserializer deserializer);
+  EveDatabase
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
+          SseDeserializer deserializer);
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  Booster sse_decode_booster(SseDeserializer deserializer);
 
   @protected
   ErrorKey sse_decode_box_autoadd_error_key(SseDeserializer deserializer);
@@ -340,16 +352,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ItemState sse_decode_item_state(SseDeserializer deserializer);
 
   @protected
+  List<Booster> sse_decode_list_booster(SseDeserializer deserializer);
+
+  @protected
   List<DroneGroup> sse_decode_list_drone_group(SseDeserializer deserializer);
 
   @protected
   List<DroneProxy> sse_decode_list_drone_proxy(SseDeserializer deserializer);
 
   @protected
-  List<FighterGroup> sse_decode_list_fighter_group(SseDeserializer deserializer);
+  List<FighterGroup> sse_decode_list_fighter_group(
+      SseDeserializer deserializer);
 
   @protected
-  List<FighterProxy> sse_decode_list_fighter_proxy(SseDeserializer deserializer);
+  List<FighterProxy> sse_decode_list_fighter_proxy(
+      SseDeserializer deserializer);
 
   @protected
   List<Implant> sse_decode_list_implant(SseDeserializer deserializer);
@@ -370,13 +387,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
-  List<(int, DynamicItem)> sse_decode_list_record_i_32_dynamic_item(SseDeserializer deserializer);
+  List<(int, DynamicItem)> sse_decode_list_record_i_32_dynamic_item(
+      SseDeserializer deserializer);
 
   @protected
-  List<(int, double)> sse_decode_list_record_i_32_f_64(SseDeserializer deserializer);
+  List<(int, double)> sse_decode_list_record_i_32_f_64(
+      SseDeserializer deserializer);
 
   @protected
-  List<(int, int)> sse_decode_list_record_i_32_u_8(SseDeserializer deserializer);
+  List<(int, int)> sse_decode_list_record_i_32_u_8(
+      SseDeserializer deserializer);
 
   @protected
   List<SlotInfo> sse_decode_list_slot_info(SseDeserializer deserializer);
@@ -394,13 +414,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Item? sse_decode_opt_box_autoadd_item(SseDeserializer deserializer);
 
   @protected
-  ItemProxy? sse_decode_opt_box_autoadd_item_proxy(SseDeserializer deserializer);
+  ItemProxy? sse_decode_opt_box_autoadd_item_proxy(
+      SseDeserializer deserializer);
 
   @protected
   ItemProxy? sse_decode_opt_box_item_proxy(SseDeserializer deserializer);
 
   @protected
-  (int, DynamicItem) sse_decode_record_i_32_dynamic_item(SseDeserializer deserializer);
+  (int, DynamicItem) sse_decode_record_i_32_dynamic_item(
+      SseDeserializer deserializer);
 
   @protected
   (int, double) sse_decode_record_i_32_f_64(SseDeserializer deserializer);
@@ -430,7 +452,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WarningKey sse_decode_warning_key(SseDeserializer deserializer);
 
   @protected
-  void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer);
+  void sse_encode_AnyhowException(
+      AnyhowException self, SseSerializer serializer);
 
   @protected
   void
@@ -443,17 +466,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           EveDatabase self, SseSerializer serializer);
 
   @protected
-  void sse_encode_Map_i_32_dynamic_item(Map<int, DynamicItem> self, SseSerializer serializer);
+  void sse_encode_Map_i_32_dynamic_item(
+      Map<int, DynamicItem> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_Map_i_32_f_64(Map<int, double> self, SseSerializer serializer);
+  void sse_encode_Map_i_32_f_64(
+      Map<int, double> self, SseSerializer serializer);
 
   @protected
   void sse_encode_Map_i_32_u_8(Map<int, int> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
-      EveDatabase self, SseSerializer serializer);
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEveDatabase(
+          EveDatabase self, SseSerializer serializer);
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
@@ -462,7 +488,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
-  void sse_encode_box_autoadd_error_key(ErrorKey self, SseSerializer serializer);
+  void sse_encode_booster(Booster self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_error_key(
+      ErrorKey self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_fit(Fit self, SseSerializer serializer);
@@ -474,16 +504,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_item(Item self, SseSerializer serializer);
 
   @protected
-  void sse_encode_box_autoadd_item_proxy(ItemProxy self, SseSerializer serializer);
+  void sse_encode_box_autoadd_item_proxy(
+      ItemProxy self, SseSerializer serializer);
 
   @protected
-  void sse_encode_box_autoadd_warning_key(WarningKey self, SseSerializer serializer);
+  void sse_encode_box_autoadd_warning_key(
+      WarningKey self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_item_proxy(ItemProxy self, SseSerializer serializer);
 
   @protected
-  void sse_encode_calculate_output(CalculateOutput self, SseSerializer serializer);
+  void sse_encode_calculate_output(
+      CalculateOutput self, SseSerializer serializer);
 
   @protected
   void sse_encode_damage_profile(DamageProfile self, SseSerializer serializer);
@@ -537,16 +570,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_item_state(ItemState self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_drone_group(List<DroneGroup> self, SseSerializer serializer);
+  void sse_encode_list_booster(List<Booster> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_drone_proxy(List<DroneProxy> self, SseSerializer serializer);
+  void sse_encode_list_drone_group(
+      List<DroneGroup> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_fighter_group(List<FighterGroup> self, SseSerializer serializer);
+  void sse_encode_list_drone_proxy(
+      List<DroneProxy> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_fighter_proxy(List<FighterProxy> self, SseSerializer serializer);
+  void sse_encode_list_fighter_group(
+      List<FighterGroup> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fighter_proxy(
+      List<FighterProxy> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_implant(List<Implant> self, SseSerializer serializer);
@@ -555,26 +595,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_item(List<Item> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_item_proxy(List<ItemProxy> self, SseSerializer serializer);
+  void sse_encode_list_item_proxy(
+      List<ItemProxy> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_prim_i_32_strict(Int32List self, SseSerializer serializer);
+  void sse_encode_list_prim_i_32_strict(
+      Int32List self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
+  void sse_encode_list_prim_u_8_strict(
+      Uint8List self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_record_i_32_dynamic_item(
       List<(int, DynamicItem)> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_record_i_32_f_64(List<(int, double)> self, SseSerializer serializer);
+  void sse_encode_list_record_i_32_f_64(
+      List<(int, double)> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_record_i_32_u_8(List<(int, int)> self, SseSerializer serializer);
+  void sse_encode_list_record_i_32_u_8(
+      List<(int, int)> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_slot_info(List<SlotInfo> self, SseSerializer serializer);
@@ -592,16 +637,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_item(Item? self, SseSerializer serializer);
 
   @protected
-  void sse_encode_opt_box_autoadd_item_proxy(ItemProxy? self, SseSerializer serializer);
+  void sse_encode_opt_box_autoadd_item_proxy(
+      ItemProxy? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_item_proxy(ItemProxy? self, SseSerializer serializer);
 
   @protected
-  void sse_encode_record_i_32_dynamic_item((int, DynamicItem) self, SseSerializer serializer);
+  void sse_encode_record_i_32_dynamic_item(
+      (int, DynamicItem) self, SseSerializer serializer);
 
   @protected
-  void sse_encode_record_i_32_f_64((int, double) self, SseSerializer serializer);
+  void sse_encode_record_i_32_f_64(
+      (int, double) self, SseSerializer serializer);
 
   @protected
   void sse_encode_record_i_32_u_8((int, int) self, SseSerializer serializer);

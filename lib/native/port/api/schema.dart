@@ -3,13 +3,33 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-import '../frb_generated.dart';
-
 // These functions are ignored because they are not marked as `pub`: `into_native`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `from`, `into_native`
+
+class Booster {
+  final int itemId;
+  final int index;
+
+  const Booster({
+    required this.itemId,
+    required this.index,
+  });
+
+  @override
+  int get hashCode => itemId.hashCode ^ index.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Booster &&
+          runtimeType == other.runtimeType &&
+          itemId == other.itemId &&
+          index == other.index;
+}
 
 class DamageProfile {
   final double em;
@@ -25,7 +45,8 @@ class DamageProfile {
   });
 
   @override
-  int get hashCode => em.hashCode ^ explosive.hashCode ^ kinetic.hashCode ^ thermal.hashCode;
+  int get hashCode =>
+      em.hashCode ^ explosive.hashCode ^ kinetic.hashCode ^ thermal.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -97,7 +118,8 @@ class FighterGroup {
   });
 
   @override
-  int get hashCode => itemId.hashCode ^ amount.hashCode ^ index.hashCode ^ ability.hashCode;
+  int get hashCode =>
+      itemId.hashCode ^ amount.hashCode ^ index.hashCode ^ ability.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -115,7 +137,8 @@ class Fit {
   final Module modules;
   final List<DroneGroup> drones;
   final List<FighterGroup> fighters;
-  final List<Implant> implant;
+  final List<Implant> implants;
+  final List<Booster> boosters;
   final Map<int, int> skills;
   final DamageProfile damageProfile;
   final Map<int, DynamicItem> dynamicItems;
@@ -125,7 +148,8 @@ class Fit {
     required this.modules,
     required this.drones,
     required this.fighters,
-    required this.implant,
+    required this.implants,
+    required this.boosters,
     required this.skills,
     required this.damageProfile,
     required this.dynamicItems,
@@ -137,7 +161,8 @@ class Fit {
       modules.hashCode ^
       drones.hashCode ^
       fighters.hashCode ^
-      implant.hashCode ^
+      implants.hashCode ^
+      boosters.hashCode ^
       skills.hashCode ^
       damageProfile.hashCode ^
       dynamicItems.hashCode;
@@ -151,7 +176,8 @@ class Fit {
           modules == other.modules &&
           drones == other.drones &&
           fighters == other.fighters &&
-          implant == other.implant &&
+          implants == other.implants &&
+          boosters == other.boosters &&
           skills == other.skills &&
           damageProfile == other.damageProfile &&
           dynamicItems == other.dynamicItems;
@@ -195,7 +221,11 @@ class Item {
 
   @override
   int get hashCode =>
-      itemId.hashCode ^ isDynamic.hashCode ^ charge.hashCode ^ state.hashCode ^ index.hashCode;
+      itemId.hashCode ^
+      isDynamic.hashCode ^
+      charge.hashCode ^
+      state.hashCode ^
+      index.hashCode;
 
   @override
   bool operator ==(Object other) =>

@@ -10,6 +10,7 @@ pub struct ShipProxy {
     pub hull: ItemProxy,
     pub modules: ModulesProxy,
     pub implants: Vec<ItemProxy>,
+    pub boosters: Vec<ItemProxy>,
     pub character: ItemProxy,
     pub damage_profile: DamageProfile,
 }
@@ -22,6 +23,11 @@ impl ShipProxy {
             modules: ModulesProxy::from_native(native.modules),
             implants: native
                 .implants
+                .into_iter()
+                .map(ItemProxy::from_native)
+                .collect(),
+            boosters: native
+                .boosters
                 .into_iter()
                 .map(ItemProxy::from_native)
                 .collect(),
@@ -50,7 +56,6 @@ pub struct ModulesProxy {
 }
 
 impl ModulesProxy {
-    // #[flutter_rust_bridge::frb(ignore)]
     pub(crate) fn from_native(native: Vec<calculate::item::Item>) -> Self {
         use calculate::item::SlotType::*;
 

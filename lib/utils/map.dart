@@ -19,6 +19,9 @@ class ReadonlyMap<K, V> {
 
   int get length => _map.length;
 
+  @override
+  String toString() => 'ReadonlyMap($_map)';
+
   Map<String, dynamic> toJson() => _map as Map<String, dynamic>;
 
   Map<RK, RV> map<RK, RV>(MapEntry<RK, RV> Function(K, V) f) => _map.map(f);
@@ -37,6 +40,9 @@ class MapView<K, V> {
   Iterable<(K, V)> get tupleEntries => entries.map((e) => (e.key, e.value));
 
   MapView(this._map) : _read = ReadonlyMap(_map);
+
+  @override
+  String toString() => 'MapView($_map)';
 }
 
 extension MapExt<K, V> on Map<K, V> {

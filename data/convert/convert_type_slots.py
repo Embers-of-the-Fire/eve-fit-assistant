@@ -30,12 +30,18 @@ def convert(cache: ConvertCache, external: dict):
             _find_slot_charge_groups(entry, dogma["dogmaAttributes"])
             continue
 
-        slot_id = _find_implant_slot(dogma["dogmaAttributes"])
-        if slot_id is not None:
+        implant_slot_id = _find_implant_slot(dogma["dogmaAttributes"])
+        if implant_slot_id is not None:
             i18n.into_i18n(data.implant[id].name, **typedef["name"])
             data.implant[id].published = typedef["published"]
-            data.implant[id].slot = slot_id - 1  # eve uses 1-based index
+            data.implant[id].slot = implant_slot_id - 1  # eve uses 1-based index
             continue
+
+        booster_slot_id = _find_booster_slot(dogma["dogmaAttributes"])
+        if booster_slot_id is not None:
+            i18n.into_i18n(data.booster[id].name, **typedef["name"])
+            data.booster[id].published = typedef["published"]
+            data.booster[id].slot = booster_slot_id
 
     external["slots"] = data
 
@@ -99,6 +105,16 @@ def _find_high_slot_req(effect_view: list[dict[str, str | bool]]):
 def _find_implant_slot(attr_view: list[dict[str, str | int]]) -> int | None:
     for attr in attr_view:
         if attr["attributeID"] != 331:
+            continue
+
+        return int(attr["value"])
+
+    return None
+
+
+def _find_booster_slot(attr_view: list[dict[str, str | int]]) -> int | None:
+    for attr in attr_view:
+        if attr["attributeID"] != 1087:
             continue
 
         return int(attr["value"])

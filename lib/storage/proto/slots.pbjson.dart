@@ -23,8 +23,9 @@ const Slots$json = {
     {'1': 'rig', '3': 4, '4': 3, '5': 11, '6': '.slots.Slots.RigEntry', '10': 'rig'},
     {'1': 'subsystem', '3': 5, '4': 3, '5': 11, '6': '.slots.Slots.SubsystemEntry', '10': 'subsystem'},
     {'1': 'implant', '3': 6, '4': 3, '5': 11, '6': '.slots.Slots.ImplantEntry', '10': 'implant'},
+    {'1': 'booster', '3': 7, '4': 3, '5': 11, '6': '.slots.Slots.BoosterEntry', '10': 'booster'},
   ],
-  '3': [Slots_HighSlot$json, Slots_Slot$json, Slots_ImplantSlot$json, Slots_HighEntry$json, Slots_MedEntry$json, Slots_LowEntry$json, Slots_RigEntry$json, Slots_SubsystemEntry$json, Slots_ImplantEntry$json],
+  '3': [Slots_HighSlot$json, Slots_Slot$json, Slots_ImplantSlot$json, Slots_BoosterSlot$json, Slots_HighEntry$json, Slots_MedEntry$json, Slots_LowEntry$json, Slots_RigEntry$json, Slots_SubsystemEntry$json, Slots_ImplantEntry$json, Slots_BoosterEntry$json],
   '4': [Slots_SlotState$json],
 };
 
@@ -55,6 +56,16 @@ const Slots_Slot$json = {
 @$core.Deprecated('Use slotsDescriptor instead')
 const Slots_ImplantSlot$json = {
   '1': 'ImplantSlot',
+  '2': [
+    {'1': 'name', '3': 1, '4': 2, '5': 11, '6': '.i18n.I18N', '10': 'name'},
+    {'1': 'published', '3': 2, '4': 2, '5': 8, '10': 'published'},
+    {'1': 'slot', '3': 3, '4': 2, '5': 5, '10': 'slot'},
+  ],
+};
+
+@$core.Deprecated('Use slotsDescriptor instead')
+const Slots_BoosterSlot$json = {
+  '1': 'BoosterSlot',
   '2': [
     {'1': 'name', '3': 1, '4': 2, '5': 11, '6': '.i18n.I18N', '10': 'name'},
     {'1': 'published', '3': 2, '4': 2, '5': 8, '10': 'published'},
@@ -123,6 +134,16 @@ const Slots_ImplantEntry$json = {
 };
 
 @$core.Deprecated('Use slotsDescriptor instead')
+const Slots_BoosterEntry$json = {
+  '1': 'BoosterEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.BoosterSlot', '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+@$core.Deprecated('Use slotsDescriptor instead')
 const Slots_SlotState$json = {
   '1': 'SlotState',
   '2': [
@@ -140,23 +161,27 @@ final $typed_data.Uint8List slotsDescriptor = $convert.base64Decode(
     'dHMuU2xvdHMuTG93RW50cnlSA2xvdxInCgNyaWcYBCADKAsyFS5zbG90cy5TbG90cy5SaWdFbn'
     'RyeVIDcmlnEjkKCXN1YnN5c3RlbRgFIAMoCzIbLnNsb3RzLlNsb3RzLlN1YnN5c3RlbUVudHJ5'
     'UglzdWJzeXN0ZW0SMwoHaW1wbGFudBgGIAMoCzIZLnNsb3RzLlNsb3RzLkltcGxhbnRFbnRyeV'
-    'IHaW1wbGFudBrcAQoISGlnaFNsb3QSHgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRIa'
-    'Cghpc1R1cnJldBgCIAIoCFIIaXNUdXJyZXQSHgoKaXNMYXVuY2hlchgDIAIoCFIKaXNMYXVuY2'
-    'hlchIcCglwdWJsaXNoZWQYBCACKAhSCXB1Ymxpc2hlZBIyCghtYXhTdGF0ZRgFIAIoDjIWLnNs'
-    'b3RzLlNsb3RzLlNsb3RTdGF0ZVIIbWF4U3RhdGUSIgoMY2hhcmdlR3JvdXBzGAYgAygFUgxjaG'
-    'FyZ2VHcm91cHManAEKBFNsb3QSHgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRIcCglw'
-    'dWJsaXNoZWQYAiACKAhSCXB1Ymxpc2hlZBIyCghtYXhTdGF0ZRgDIAIoDjIWLnNsb3RzLlNsb3'
-    'RzLlNsb3RTdGF0ZVIIbWF4U3RhdGUSIgoMY2hhcmdlR3JvdXBzGAQgAygFUgxjaGFyZ2VHcm91'
-    'cHMaXwoLSW1wbGFudFNsb3QSHgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRIcCglwdW'
-    'JsaXNoZWQYAiACKAhSCXB1Ymxpc2hlZBISCgRzbG90GAMgAigFUgRzbG90Gk4KCUhpZ2hFbnRy'
-    'eRIQCgNrZXkYASABKAVSA2tleRIrCgV2YWx1ZRgCIAEoCzIVLnNsb3RzLlNsb3RzLkhpZ2hTbG'
-    '90UgV2YWx1ZToCOAEaSQoITWVkRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoFdmFsdWUYAiAB'
-    'KAsyES5zbG90cy5TbG90cy5TbG90UgV2YWx1ZToCOAEaSQoITG93RW50cnkSEAoDa2V5GAEgAS'
-    'gFUgNrZXkSJwoFdmFsdWUYAiABKAsyES5zbG90cy5TbG90cy5TbG90UgV2YWx1ZToCOAEaSQoI'
-    'UmlnRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoFdmFsdWUYAiABKAsyES5zbG90cy5TbG90cy'
-    '5TbG90UgV2YWx1ZToCOAEaTwoOU3Vic3lzdGVtRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoF'
-    'dmFsdWUYAiABKAsyES5zbG90cy5TbG90cy5TbG90UgV2YWx1ZToCOAEaVAoMSW1wbGFudEVudH'
-    'J5EhAKA2tleRgBIAEoBVIDa2V5Ei4KBXZhbHVlGAIgASgLMhguc2xvdHMuU2xvdHMuSW1wbGFu'
-    'dFNsb3RSBXZhbHVlOgI4ASI+CglTbG90U3RhdGUSCwoHUEFTU0lWRRAAEgoKBk9OTElORRABEg'
-    'oKBkFDVElWRRACEgwKCE9WRVJMT0FEEAM=');
+    'IHaW1wbGFudBIzCgdib29zdGVyGAcgAygLMhkuc2xvdHMuU2xvdHMuQm9vc3RlckVudHJ5Ugdi'
+    'b29zdGVyGtwBCghIaWdoU2xvdBIeCgRuYW1lGAEgAigLMgouaTE4bi5JMThOUgRuYW1lEhoKCG'
+    'lzVHVycmV0GAIgAigIUghpc1R1cnJldBIeCgppc0xhdW5jaGVyGAMgAigIUgppc0xhdW5jaGVy'
+    'EhwKCXB1Ymxpc2hlZBgEIAIoCFIJcHVibGlzaGVkEjIKCG1heFN0YXRlGAUgAigOMhYuc2xvdH'
+    'MuU2xvdHMuU2xvdFN0YXRlUghtYXhTdGF0ZRIiCgxjaGFyZ2VHcm91cHMYBiADKAVSDGNoYXJn'
+    'ZUdyb3VwcxqcAQoEU2xvdBIeCgRuYW1lGAEgAigLMgouaTE4bi5JMThOUgRuYW1lEhwKCXB1Ym'
+    'xpc2hlZBgCIAIoCFIJcHVibGlzaGVkEjIKCG1heFN0YXRlGAMgAigOMhYuc2xvdHMuU2xvdHMu'
+    'U2xvdFN0YXRlUghtYXhTdGF0ZRIiCgxjaGFyZ2VHcm91cHMYBCADKAVSDGNoYXJnZUdyb3Vwcx'
+    'pfCgtJbXBsYW50U2xvdBIeCgRuYW1lGAEgAigLMgouaTE4bi5JMThOUgRuYW1lEhwKCXB1Ymxp'
+    'c2hlZBgCIAIoCFIJcHVibGlzaGVkEhIKBHNsb3QYAyACKAVSBHNsb3QaXwoLQm9vc3RlclNsb3'
+    'QSHgoEbmFtZRgBIAIoCzIKLmkxOG4uSTE4TlIEbmFtZRIcCglwdWJsaXNoZWQYAiACKAhSCXB1'
+    'Ymxpc2hlZBISCgRzbG90GAMgAigFUgRzbG90Gk4KCUhpZ2hFbnRyeRIQCgNrZXkYASABKAVSA2'
+    'tleRIrCgV2YWx1ZRgCIAEoCzIVLnNsb3RzLlNsb3RzLkhpZ2hTbG90UgV2YWx1ZToCOAEaSQoI'
+    'TWVkRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoFdmFsdWUYAiABKAsyES5zbG90cy5TbG90cy'
+    '5TbG90UgV2YWx1ZToCOAEaSQoITG93RW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoFdmFsdWUY'
+    'AiABKAsyES5zbG90cy5TbG90cy5TbG90UgV2YWx1ZToCOAEaSQoIUmlnRW50cnkSEAoDa2V5GA'
+    'EgASgFUgNrZXkSJwoFdmFsdWUYAiABKAsyES5zbG90cy5TbG90cy5TbG90UgV2YWx1ZToCOAEa'
+    'TwoOU3Vic3lzdGVtRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSJwoFdmFsdWUYAiABKAsyES5zbG'
+    '90cy5TbG90cy5TbG90UgV2YWx1ZToCOAEaVAoMSW1wbGFudEVudHJ5EhAKA2tleRgBIAEoBVID'
+    'a2V5Ei4KBXZhbHVlGAIgASgLMhguc2xvdHMuU2xvdHMuSW1wbGFudFNsb3RSBXZhbHVlOgI4AR'
+    'pUCgxCb29zdGVyRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSLgoFdmFsdWUYAiABKAsyGC5zbG90'
+    'cy5TbG90cy5Cb29zdGVyU2xvdFIFdmFsdWU6AjgBIj4KCVNsb3RTdGF0ZRILCgdQQVNTSVZFEA'
+    'ASCgoGT05MSU5FEAESCgoGQUNUSVZFEAISDAoIT1ZFUkxPQUQQAw==');
 

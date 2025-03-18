@@ -3,18 +3,17 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import '../../../frb_generated.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-import '../../../frb_generated.dart';
-
 // These functions are ignored because they are not marked as `pub`: `validate_fit_target`
 
-I32Array20 get canFitGroupAttrIds =>
-    RustLib.instance.api.crateApiValidatePreValidateFitTargetCanFitGroupAttrIds();
+I32Array20 get canFitGroupAttrIds => RustLib.instance.api
+    .crateApiValidatePreValidateFitTargetCanFitGroupAttrIds();
 
-I32Array11 get canFitTypeAttrIds =>
-    RustLib.instance.api.crateApiValidatePreValidateFitTargetCanFitTypeAttrIds();
+I32Array11 get canFitTypeAttrIds => RustLib.instance.api
+    .crateApiValidatePreValidateFitTargetCanFitTypeAttrIds();
 
 class I32Array11 extends NonGrowableListView<int> {
   static const arraySize = 11;

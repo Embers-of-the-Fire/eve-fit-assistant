@@ -28,6 +28,12 @@ message Slots {
         required int32 slot = 3;
     }
 
+    message BoosterSlot {
+        required i18n.I18N name = 1;
+        required bool published = 2;
+        required int32 slot = 3;
+    }
+
     enum SlotState {
         PASSIVE = 0;
         ONLINE = 1;
@@ -41,4 +47,5 @@ message Slots {
     map<int32, Slot> rig = 4;
     map<int32, Slot> subsystem = 5;
     map<int32, ImplantSlot> implant = 6;
+    map<int32, BoosterSlot> booster = 7;
 }

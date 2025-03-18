@@ -299,6 +299,85 @@ class Slots_ImplantSlot extends $pb.GeneratedMessage {
   void clearSlot() => clearField(3);
 }
 
+class Slots_BoosterSlot extends $pb.GeneratedMessage {
+  factory Slots_BoosterSlot({
+    $0.I18N? name,
+    $core.bool? published,
+    $core.int? slot,
+  }) {
+    final $result = create();
+    if (name != null) {
+      $result.name = name;
+    }
+    if (published != null) {
+      $result.published = published;
+    }
+    if (slot != null) {
+      $result.slot = slot;
+    }
+    return $result;
+  }
+  Slots_BoosterSlot._() : super();
+  factory Slots_BoosterSlot.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory Slots_BoosterSlot.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Slots.BoosterSlot', package: const $pb.PackageName(_omitMessageNames ? '' : 'slots'), createEmptyInstance: create)
+    ..aQM<$0.I18N>(1, _omitFieldNames ? '' : 'name', subBuilder: $0.I18N.create)
+    ..a<$core.bool>(2, _omitFieldNames ? '' : 'published', $pb.PbFieldType.QB)
+    ..a<$core.int>(3, _omitFieldNames ? '' : 'slot', $pb.PbFieldType.Q3)
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  Slots_BoosterSlot clone() => Slots_BoosterSlot()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  Slots_BoosterSlot copyWith(void Function(Slots_BoosterSlot) updates) => super.copyWith((message) => updates(message as Slots_BoosterSlot)) as Slots_BoosterSlot;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Slots_BoosterSlot create() => Slots_BoosterSlot._();
+  Slots_BoosterSlot createEmptyInstance() => create();
+  static $pb.PbList<Slots_BoosterSlot> createRepeated() => $pb.PbList<Slots_BoosterSlot>();
+  @$core.pragma('dart2js:noInline')
+  static Slots_BoosterSlot getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Slots_BoosterSlot>(create);
+  static Slots_BoosterSlot? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.I18N get name => $_getN(0);
+  @$pb.TagNumber(1)
+  set name($0.I18N v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => clearField(1);
+  @$pb.TagNumber(1)
+  $0.I18N ensureName() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get published => $_getBF(1);
+  @$pb.TagNumber(2)
+  set published($core.bool v) { $_setBool(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasPublished() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPublished() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get slot => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set slot($core.int v) { $_setSignedInt32(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSlot() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSlot() => clearField(3);
+}
+
 class Slots extends $pb.GeneratedMessage {
   factory Slots({
     $core.Map<$core.int, Slots_HighSlot>? high,
@@ -307,6 +386,7 @@ class Slots extends $pb.GeneratedMessage {
     $core.Map<$core.int, Slots_Slot>? rig,
     $core.Map<$core.int, Slots_Slot>? subsystem,
     $core.Map<$core.int, Slots_ImplantSlot>? implant,
+    $core.Map<$core.int, Slots_BoosterSlot>? booster,
   }) {
     final $result = create();
     if (high != null) {
@@ -327,6 +407,9 @@ class Slots extends $pb.GeneratedMessage {
     if (implant != null) {
       $result.implant.addAll(implant);
     }
+    if (booster != null) {
+      $result.booster.addAll(booster);
+    }
     return $result;
   }
   Slots._() : super();
@@ -340,6 +423,7 @@ class Slots extends $pb.GeneratedMessage {
     ..m<$core.int, Slots_Slot>(4, _omitFieldNames ? '' : 'rig', entryClassName: 'Slots.RigEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.OM, valueCreator: Slots_Slot.create, valueDefaultOrMaker: Slots_Slot.getDefault, packageName: const $pb.PackageName('slots'))
     ..m<$core.int, Slots_Slot>(5, _omitFieldNames ? '' : 'subsystem', entryClassName: 'Slots.SubsystemEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.OM, valueCreator: Slots_Slot.create, valueDefaultOrMaker: Slots_Slot.getDefault, packageName: const $pb.PackageName('slots'))
     ..m<$core.int, Slots_ImplantSlot>(6, _omitFieldNames ? '' : 'implant', entryClassName: 'Slots.ImplantEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.OM, valueCreator: Slots_ImplantSlot.create, valueDefaultOrMaker: Slots_ImplantSlot.getDefault, packageName: const $pb.PackageName('slots'))
+    ..m<$core.int, Slots_BoosterSlot>(7, _omitFieldNames ? '' : 'booster', entryClassName: 'Slots.BoosterEntry', keyFieldType: $pb.PbFieldType.O3, valueFieldType: $pb.PbFieldType.OM, valueCreator: Slots_BoosterSlot.create, valueDefaultOrMaker: Slots_BoosterSlot.getDefault, packageName: const $pb.PackageName('slots'))
   ;
 
   @$core.Deprecated(
@@ -380,6 +464,9 @@ class Slots extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(6)
   $core.Map<$core.int, Slots_ImplantSlot> get implant => $_getMap(5);
+
+  @$pb.TagNumber(7)
+  $core.Map<$core.int, Slots_BoosterSlot> get booster => $_getMap(6);
 }
 
 

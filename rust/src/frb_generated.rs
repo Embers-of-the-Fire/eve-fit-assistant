@@ -792,6 +792,18 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for crate::api::schema::Booster {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_itemId = <i32>::sse_decode(deserializer);
+        let mut var_index = <i32>::sse_decode(deserializer);
+        return crate::api::schema::Booster {
+            item_id: var_itemId,
+            index: var_index,
+        };
+    }
+}
+
 impl SseDecode for Box<crate::api::proxy::ItemProxy> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -978,7 +990,8 @@ impl SseDecode for crate::api::schema::Fit {
         let mut var_modules = <crate::api::schema::Module>::sse_decode(deserializer);
         let mut var_drones = <Vec<crate::api::schema::DroneGroup>>::sse_decode(deserializer);
         let mut var_fighters = <Vec<crate::api::schema::FighterGroup>>::sse_decode(deserializer);
-        let mut var_implant = <Vec<crate::api::schema::Implant>>::sse_decode(deserializer);
+        let mut var_implants = <Vec<crate::api::schema::Implant>>::sse_decode(deserializer);
+        let mut var_boosters = <Vec<crate::api::schema::Booster>>::sse_decode(deserializer);
         let mut var_skills = <std::collections::HashMap<i32, u8>>::sse_decode(deserializer);
         let mut var_damageProfile = <crate::api::schema::DamageProfile>::sse_decode(deserializer);
         let mut var_dynamicItems =
@@ -990,7 +1003,8 @@ impl SseDecode for crate::api::schema::Fit {
             modules: var_modules,
             drones: var_drones,
             fighters: var_fighters,
-            implant: var_implant,
+            implants: var_implants,
+            boosters: var_boosters,
             skills: var_skills,
             damage_profile: var_damageProfile,
             dynamic_items: var_dynamicItems,
@@ -1090,6 +1104,18 @@ impl SseDecode for crate::api::schema::ItemState {
             3 => crate::api::schema::ItemState::Overload,
             _ => unreachable!("Invalid variant for ItemState: {}", inner),
         };
+    }
+}
+
+impl SseDecode for Vec<crate::api::schema::Booster> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::schema::Booster>::sse_decode(deserializer));
+        }
+        return ans_;
     }
 }
 
@@ -1374,12 +1400,14 @@ impl SseDecode for crate::api::proxy::ShipProxy {
         let mut var_hull = <crate::api::proxy::ItemProxy>::sse_decode(deserializer);
         let mut var_modules = <crate::api::proxy::ModulesProxy>::sse_decode(deserializer);
         let mut var_implants = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
+        let mut var_boosters = <Vec<crate::api::proxy::ItemProxy>>::sse_decode(deserializer);
         let mut var_character = <crate::api::proxy::ItemProxy>::sse_decode(deserializer);
         let mut var_damageProfile = <crate::api::schema::DamageProfile>::sse_decode(deserializer);
         return crate::api::proxy::ShipProxy {
             hull: var_hull,
             modules: var_modules,
             implants: var_implants,
+            boosters: var_boosters,
             character: var_character,
             damage_profile: var_damageProfile,
         };
@@ -1429,7 +1457,9 @@ impl SseDecode for crate::api::error::SlotType {
             3 => crate::api::error::SlotType::Rig,
             4 => crate::api::error::SlotType::Subsystem,
             5 => crate::api::error::SlotType::Implant,
-            6 => crate::api::error::SlotType::Drone,
+            6 => crate::api::error::SlotType::Booster,
+            7 => crate::api::error::SlotType::Drone,
+            8 => crate::api::error::SlotType::Fighter,
             _ => unreachable!("Invalid variant for SlotType: {}", inner),
         };
     }
@@ -1593,6 +1623,24 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<EveDatabase>> for EveDatabase 
     }
 }
 
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::schema::Booster {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.item_id.into_into_dart().into_dart(),
+            self.index.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::schema::Booster {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::schema::Booster>
+    for crate::api::schema::Booster
+{
+    fn into_into_dart(self) -> crate::api::schema::Booster {
+        self
+    }
+}
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::CalculateOutput {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
@@ -1804,7 +1852,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::schema::Fit {
             self.modules.into_into_dart().into_dart(),
             self.drones.into_into_dart().into_dart(),
             self.fighters.into_into_dart().into_dart(),
-            self.implant.into_into_dart().into_dart(),
+            self.implants.into_into_dart().into_dart(),
+            self.boosters.into_into_dart().into_dart(),
             self.skills.into_into_dart().into_dart(),
             self.damage_profile.into_into_dart().into_dart(),
             self.dynamic_items.into_into_dart().into_dart(),
@@ -1951,6 +2000,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::proxy::ShipProxy {
             self.hull.into_into_dart().into_dart(),
             self.modules.into_into_dart().into_dart(),
             self.implants.into_into_dart().into_dart(),
+            self.boosters.into_into_dart().into_dart(),
             self.character.into_into_dart().into_dart(),
             self.damage_profile.into_into_dart().into_dart(),
         ]
@@ -2015,7 +2065,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::error::SlotType {
             Self::Rig => 3.into_dart(),
             Self::Subsystem => 4.into_dart(),
             Self::Implant => 5.into_dart(),
-            Self::Drone => 6.into_dart(),
+            Self::Booster => 6.into_dart(),
+            Self::Drone => 7.into_dart(),
+            Self::Fighter => 8.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -2111,6 +2163,14 @@ impl SseEncode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u8(self as _).unwrap();
+    }
+}
+
+impl SseEncode for crate::api::schema::Booster {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.item_id, serializer);
+        <i32>::sse_encode(self.index, serializer);
     }
 }
 
@@ -2244,7 +2304,8 @@ impl SseEncode for crate::api::schema::Fit {
         <crate::api::schema::Module>::sse_encode(self.modules, serializer);
         <Vec<crate::api::schema::DroneGroup>>::sse_encode(self.drones, serializer);
         <Vec<crate::api::schema::FighterGroup>>::sse_encode(self.fighters, serializer);
-        <Vec<crate::api::schema::Implant>>::sse_encode(self.implant, serializer);
+        <Vec<crate::api::schema::Implant>>::sse_encode(self.implants, serializer);
+        <Vec<crate::api::schema::Booster>>::sse_encode(self.boosters, serializer);
         <std::collections::HashMap<i32, u8>>::sse_encode(self.skills, serializer);
         <crate::api::schema::DamageProfile>::sse_encode(self.damage_profile, serializer);
         <std::collections::HashMap<i32, crate::api::schema::DynamicItem>>::sse_encode(
@@ -2346,6 +2407,16 @@ impl SseEncode for crate::api::schema::ItemState {
             },
             serializer,
         );
+    }
+}
+
+impl SseEncode for Vec<crate::api::schema::Booster> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::schema::Booster>::sse_encode(item, serializer);
+        }
     }
 }
 
@@ -2575,6 +2646,7 @@ impl SseEncode for crate::api::proxy::ShipProxy {
         <crate::api::proxy::ItemProxy>::sse_encode(self.hull, serializer);
         <crate::api::proxy::ModulesProxy>::sse_encode(self.modules, serializer);
         <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.implants, serializer);
+        <Vec<crate::api::proxy::ItemProxy>>::sse_encode(self.boosters, serializer);
         <crate::api::proxy::ItemProxy>::sse_encode(self.character, serializer);
         <crate::api::schema::DamageProfile>::sse_encode(self.damage_profile, serializer);
     }
@@ -2622,7 +2694,9 @@ impl SseEncode for crate::api::error::SlotType {
                 crate::api::error::SlotType::Rig => 3,
                 crate::api::error::SlotType::Subsystem => 4,
                 crate::api::error::SlotType::Implant => 5,
-                crate::api::error::SlotType::Drone => 6,
+                crate::api::error::SlotType::Booster => 6,
+                crate::api::error::SlotType::Drone => 7,
+                crate::api::error::SlotType::Fighter => 8,
                 _ => {
                     unimplemented!("");
                 }

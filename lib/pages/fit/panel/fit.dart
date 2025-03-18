@@ -1,10 +1,12 @@
 library;
 
+import 'dart:developer' show log;
 import 'dart:math' show Random;
 
 import 'package:eve_fit_assistant/assets/assets.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
 import 'package:eve_fit_assistant/constant/eve/groups.dart';
+import 'package:eve_fit_assistant/constant/eve/market_groups.dart';
 import 'package:eve_fit_assistant/native/algo/fighter.dart';
 import 'package:eve_fit_assistant/native/glue/fit.dart';
 import 'package:eve_fit_assistant/native/port/api.dart';
