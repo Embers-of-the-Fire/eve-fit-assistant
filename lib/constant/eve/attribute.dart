@@ -136,6 +136,10 @@ const int upgradeLoad = 1152;
 /// - High is good: True
 const int droneBandwidth = 1271;
 
+/// - Name: droneBandwidthLoad
+/// - High is good: True
+const int droneBandwidthLoad = 1273;
+
 /// - Name: maxRange
 /// - High is good: True
 const int maxRange = 54;

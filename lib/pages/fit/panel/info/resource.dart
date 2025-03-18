@@ -60,7 +60,7 @@ class Resource extends StatelessWidget {
                   // const SizedBox.shrink(),
                   ResourceCompare(
                     align: TextAlign.end,
-                    used: ship.hull.attributes[droneCapacityLoad] ?? 0,
+                    used: ship.hull.attributes[droneBandwidthLoad] ?? 0,
                     all: ship.hull.attributes[droneBandwidth] ?? 0,
                     unit: 'mb/s',
                     warning: false,
