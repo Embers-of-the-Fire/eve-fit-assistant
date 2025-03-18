@@ -247,6 +247,220 @@ class __$FittingCopyWithImpl<$Res> implements _$FittingCopyWith<$Res> {
 }
 
 /// @nodoc
+mixin _$FittingPost {
+  @JsonKey(name: 'ship_type_id')
+  int get shipTypeID;
+  String get name;
+  String get description;
+  List<FittingItem> get items;
+
+  /// Create a copy of FittingPost
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $FittingPostCopyWith<FittingPost> get copyWith =>
+      _$FittingPostCopyWithImpl<FittingPost>(this as FittingPost, _$identity);
+
+  /// Serializes this FittingPost to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is FittingPost &&
+            (identical(other.shipTypeID, shipTypeID) ||
+                other.shipTypeID == shipTypeID) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
+            const DeepCollectionEquality().equals(other.items, items));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, shipTypeID, name, description,
+      const DeepCollectionEquality().hash(items));
+
+  @override
+  String toString() {
+    return 'FittingPost(shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $FittingPostCopyWith<$Res> {
+  factory $FittingPostCopyWith(
+          FittingPost value, $Res Function(FittingPost) _then) =
+      _$FittingPostCopyWithImpl;
+  @useResult
+  $Res call(
+      {@JsonKey(name: 'ship_type_id') int shipTypeID,
+      String name,
+      String description,
+      List<FittingItem> items});
+}
+
+/// @nodoc
+class _$FittingPostCopyWithImpl<$Res> implements $FittingPostCopyWith<$Res> {
+  _$FittingPostCopyWithImpl(this._self, this._then);
+
+  final FittingPost _self;
+  final $Res Function(FittingPost) _then;
+
+  /// Create a copy of FittingPost
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? shipTypeID = null,
+    Object? name = null,
+    Object? description = null,
+    Object? items = null,
+  }) {
+    return _then(_self.copyWith(
+      shipTypeID: null == shipTypeID
+          ? _self.shipTypeID
+          : shipTypeID // ignore: cast_nullable_to_non_nullable
+              as int,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      description: null == description
+          ? _self.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String,
+      items: null == items
+          ? _self.items
+          : items // ignore: cast_nullable_to_non_nullable
+              as List<FittingItem>,
+    ));
+  }
+}
+
+/// @nodoc
+
+@JsonSerializable()
+class _FittingPost extends FittingPost {
+  const _FittingPost(
+      {@JsonKey(name: 'ship_type_id') required this.shipTypeID,
+      required this.name,
+      required this.description,
+      required final List<FittingItem> items})
+      : _items = items,
+        super._();
+  factory _FittingPost.fromJson(Map<String, dynamic> json) =>
+      _$FittingPostFromJson(json);
+
+  @override
+  @JsonKey(name: 'ship_type_id')
+  final int shipTypeID;
+  @override
+  final String name;
+  @override
+  final String description;
+  final List<FittingItem> _items;
+  @override
+  List<FittingItem> get items {
+    if (_items is EqualUnmodifiableListView) return _items;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_items);
+  }
+
+  /// Create a copy of FittingPost
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$FittingPostCopyWith<_FittingPost> get copyWith =>
+      __$FittingPostCopyWithImpl<_FittingPost>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$FittingPostToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _FittingPost &&
+            (identical(other.shipTypeID, shipTypeID) ||
+                other.shipTypeID == shipTypeID) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
+            const DeepCollectionEquality().equals(other._items, _items));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, shipTypeID, name, description,
+      const DeepCollectionEquality().hash(_items));
+
+  @override
+  String toString() {
+    return 'FittingPost(shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$FittingPostCopyWith<$Res>
+    implements $FittingPostCopyWith<$Res> {
+  factory _$FittingPostCopyWith(
+          _FittingPost value, $Res Function(_FittingPost) _then) =
+      __$FittingPostCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {@JsonKey(name: 'ship_type_id') int shipTypeID,
+      String name,
+      String description,
+      List<FittingItem> items});
+}
+
+/// @nodoc
+class __$FittingPostCopyWithImpl<$Res> implements _$FittingPostCopyWith<$Res> {
+  __$FittingPostCopyWithImpl(this._self, this._then);
+
+  final _FittingPost _self;
+  final $Res Function(_FittingPost) _then;
+
+  /// Create a copy of FittingPost
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? shipTypeID = null,
+    Object? name = null,
+    Object? description = null,
+    Object? items = null,
+  }) {
+    return _then(_FittingPost(
+      shipTypeID: null == shipTypeID
+          ? _self.shipTypeID
+          : shipTypeID // ignore: cast_nullable_to_non_nullable
+              as int,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      description: null == description
+          ? _self.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String,
+      items: null == items
+          ? _self._items
+          : items // ignore: cast_nullable_to_non_nullable
+              as List<FittingItem>,
+    ));
+  }
+}
+
+/// @nodoc
 mixin _$FittingItem {
   @JsonKey(name: 'type_id')
   int get typeID;

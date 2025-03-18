@@ -1,11 +1,14 @@
 // ignore_for_file: invalid_annotation_target
 
 import 'dart:convert';
+import 'dart:developer';
 
+import 'package:animated_tree_view/helpers/collection_utils.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
+import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -46,6 +49,83 @@ abstract class Fitting with _$Fitting {
       }
     }
     return fit;
+  }
+}
+
+@freezed
+abstract class FittingPost with _$FittingPost {
+  @JsonSerializable()
+  const factory FittingPost({
+    @JsonKey(name: 'ship_type_id') required int shipTypeID,
+    required String name,
+    required String description,
+    required List<FittingItem> items,
+  }) = _FittingPost;
+
+  factory FittingPost.fromJson(Map<String, dynamic> json) => _$FittingPostFromJson(json);
+
+  const FittingPost._();
+
+  factory FittingPost.fromFit(FitRecord record) {
+    final items = <FittingItem>[];
+    final fit = record.body;
+    for (final (type, slot) in [
+      (FitItemType.high, fit.high),
+      (FitItemType.med, fit.med),
+      (FitItemType.low, fit.low),
+      (FitItemType.rig, fit.rig),
+      (FitItemType.subsystem, fit.subsystem)
+    ]) {
+      for (final (index, item) in slot.filterNotNull().enumerate()) {
+        items.add(FittingItem(
+          typeID: item.isDynamic ? fit.dynamicItems[item.itemID]!.outType : item.itemID,
+          quantity: 1,
+          flag: FittingItemFlag.fromSlotInfo(type, index),
+        ));
+        if (item.chargeID != null) {
+          items.add(FittingItem(
+            typeID: item.chargeID!,
+            quantity: 1,
+            flag: FittingItemFlag.cargo,
+          ));
+        }
+      }
+    }
+    for (final drone in fit.drone) {
+      items.add(FittingItem(
+        typeID: drone.itemID,
+        quantity: drone.amount,
+        flag: FittingItemFlag.droneBay,
+      ));
+    }
+    for (final fighter in fit.fighter) {
+      items.add(FittingItem(
+        typeID: fighter.itemID,
+        quantity: fighter.amount,
+        flag: FittingItemFlag.fighterBay,
+      ));
+    }
+    for (final implant in fit.implant) {
+      if (implant == null) continue;
+      items.add(FittingItem(
+        typeID: implant.itemID,
+        quantity: 1,
+        flag: FittingItemFlag.cargo,
+      ));
+    }
+    for (final booster in fit.booster) {
+      items.add(FittingItem(
+        typeID: booster.itemID,
+        quantity: 1,
+        flag: FittingItemFlag.cargo,
+      ));
+    }
+    return FittingPost(
+      shipTypeID: fit.shipID,
+      name: record.brief.name,
+      description: record.brief.description,
+      items: items,
+    );
   }
 }
 
@@ -153,7 +233,7 @@ enum FittingItemFlag {
         subSystemSlot3 => 'SubSystemSlot3',
       };
 
-  static FittingItemFlag fromJson(String json) => switch (json) {
+  factory FittingItemFlag.fromJson(String json) => switch (json) {
         'Cargo' => cargo,
         'DroneBay' => droneBay,
         'FighterBay' => fighterBay,
@@ -256,6 +336,43 @@ enum FittingItemFlag {
         subSystemSlot2 => (FitItemType.subsystem, 2),
         subSystemSlot3 => (FitItemType.subsystem, 3),
       };
+
+  factory FittingItemFlag.fromSlotInfo(FitItemType type, int index) => switch ((type, index)) {
+        (FitItemType.high, 0) => hiSlot0,
+        (FitItemType.high, 1) => hiSlot1,
+        (FitItemType.high, 2) => hiSlot2,
+        (FitItemType.high, 3) => hiSlot3,
+        (FitItemType.high, 4) => hiSlot4,
+        (FitItemType.high, 5) => hiSlot5,
+        (FitItemType.high, 6) => hiSlot6,
+        (FitItemType.high, 7) => hiSlot7,
+        (FitItemType.med, 0) => medSlot0,
+        (FitItemType.med, 1) => medSlot1,
+        (FitItemType.med, 2) => medSlot2,
+        (FitItemType.med, 3) => medSlot3,
+        (FitItemType.med, 4) => medSlot4,
+        (FitItemType.med, 5) => medSlot5,
+        (FitItemType.med, 6) => medSlot6,
+        (FitItemType.med, 7) => medSlot7,
+        (FitItemType.low, 0) => loSlot0,
+        (FitItemType.low, 1) => loSlot1,
+        (FitItemType.low, 2) => loSlot2,
+        (FitItemType.low, 3) => loSlot3,
+        (FitItemType.low, 4) => loSlot4,
+        (FitItemType.low, 5) => loSlot5,
+        (FitItemType.low, 6) => loSlot6,
+        (FitItemType.low, 7) => loSlot7,
+        (FitItemType.rig, 0) => rigSlot0,
+        (FitItemType.rig, 1) => rigSlot1,
+        (FitItemType.rig, 2) => rigSlot2,
+        (FitItemType.subsystem, 0) => subSystemSlot0,
+        (FitItemType.subsystem, 1) => subSystemSlot1,
+        (FitItemType.subsystem, 2) => subSystemSlot2,
+        (FitItemType.subsystem, 3) => subSystemSlot3,
+        (FitItemType.drone, _) => droneBay,
+        (FitItemType.fighter, _) => fighterBay,
+        _ => cargo,
+      };
 }
 
 Future<List<Fitting>> characterFittings() async {
@@ -291,4 +408,37 @@ extension ImportEsiFit on FitStorage {
     await save();
     return copiedRecord;
   }
+}
+
+Future<int> exportToCharacterFittings(FitRecord fit) async {
+  final data = FittingPost.fromFit(fit);
+  final characterID = (await EsiDataStorage.instance.getCharacter())!.characterID;
+  final url =
+      Uri.parse('${esiUrl(Preference().esiAuthServer)}/latest/characters/$characterID/fittings/')
+          .replace(
+    queryParameters: {
+      'token': (await EsiAuth().getTokensAuthorized())!.accessToken,
+      'datasource': Preference().esiAuthServer.datasourceText,
+    },
+  );
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode(data.toJson()),
+  );
+  log(response.body, name: 'exportToCharacterFittings');
+  return jsonDecode(response.body)['fitting_id'] as int;
+}
+
+Future<void> deleteCharacterFitting(int fittingID) async {
+  final characterID = (await EsiDataStorage.instance.getCharacter())!.characterID;
+  final url = Uri.parse(
+          '${esiUrl(Preference().esiAuthServer)}/latest/characters/$characterID/fittings/$fittingID/')
+      .replace(
+    queryParameters: {
+      'token': (await EsiAuth().getTokensAuthorized())!.accessToken,
+      'datasource': Preference().esiAuthServer.datasourceText,
+    },
+  );
+  await http.delete(url);
 }

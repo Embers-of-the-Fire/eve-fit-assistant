@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/esi/character/fittings.dart';
@@ -72,6 +73,21 @@ class EsiDataStorage extends _$EsiDataStorage {
     if (!_instance._authorized) return null;
     _instance._fittings ??= await characterFittings();
     return _instance._fittings;
+  }
+
+  Future<int?> exportFittings(FitRecord fit) async {
+    if (!_instance._authorized) return null;
+    final id = await exportToCharacterFittings(fit);
+    _instance._fittings = null;
+    ref.notifyListeners();
+    return id;
+  }
+
+  Future<void> deleteFitting(int fittingID) async {
+    if (!_instance._authorized) return;
+    await deleteCharacterFitting(fittingID);
+    _instance._fittings = null;
+    ref.notifyListeners();
   }
 
   Future<void> setAuthorized(EsiAuthTokens? storage) async {

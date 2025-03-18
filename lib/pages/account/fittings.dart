@@ -3,6 +3,7 @@ import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/esi/esi/character/fittings.dart';
 import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
+import 'package:eve_fit_assistant/widgets/confirm_dialog.dart';
 import 'package:eve_fit_assistant/widgets/import_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,10 @@ part 'fittings.g.dart';
 Future<List<Fitting>?> getFittings(Ref ref) async =>
     await ref.watch(esiDataStorageProvider).getFittings();
 
+@riverpod
+Future<void> deleteFitting(Ref ref, int fittingID) async =>
+    await ref.watch(esiDataStorageProvider.notifier).deleteFitting(fittingID);
+
 class FittingsPage extends ConsumerWidget {
   const FittingsPage({super.key});
 
@@ -23,7 +28,10 @@ class FittingsPage extends ConsumerWidget {
     final data = ref.watch(esiDataStorageProvider);
 
     final content = switch (data.authorized) {
-      true => _FittingsPanel(onRefresh: () => ref.refresh(getFittingsProvider)),
+      true => _FittingsPanel(onRefresh: () {
+          final _ = ref.refresh(getFittingsProvider);
+          ref.read(esiDataStorageProvider.notifier).clearCache();
+        }),
       false => const _FittingsNotAuthorized(),
     };
 
@@ -68,6 +76,26 @@ class _FittingsPanel extends ConsumerWidget {
                         label: '导入',
                         icon: Icons.input_outlined,
                         onPressed: (_) => _intoImportDialog(context, fitting),
+                      ),
+                    ]),
+                    endActionPane:
+                        ActionPane(motion: const StretchMotion(), extentRatio: 0.15, children: [
+                      SlidableAction(
+                        backgroundColor: Colors.red,
+                        padding: EdgeInsets.zero,
+                        label: '删除',
+                        icon: Icons.delete_outline,
+                        onPressed: (_) => showConfirmDialog(
+                          context,
+                          title: '删除装配',
+                          description: '确定要删除这个装配吗？',
+                          warning: '该行为会将此配置从你的账号中删除，无法撤回。\n\n'
+                              '受 ESI 系统限制，装配数值的查询每 300 秒刷新一次。因此删除行为不会立刻生效。',
+                          onConfirm: () async {
+                            await ref.read(deleteFittingProvider(fitting.fittingID).future);
+                            onRefresh();
+                          },
+                        ),
                       ),
                     ]),
                     child: ListTile(

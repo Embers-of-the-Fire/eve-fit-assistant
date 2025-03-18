@@ -5,19 +5,31 @@ import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
+import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
+import 'package:eve_fit_assistant/widgets/confirm_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-class ListPage extends StatefulWidget {
+part 'list.g.dart';
+
+@riverpod
+Future<int?> exportFitToGame(Ref ref, String fitID) async => await GlobalStorage()
+    .ship
+    .readFit(fitID)
+    .then((fit) async => await ref.watch(esiDataStorageProvider.notifier).exportFittings(fit));
+
+class ListPage extends ConsumerStatefulWidget {
   const ListPage({super.key});
 
   @override
-  State<ListPage> createState() => _ListPageState();
+  ConsumerState<ListPage> createState() => _ListPageState();
 }
 
-class _ListPageState extends State<ListPage> {
+class _ListPageState extends ConsumerState<ListPage> {
   final FToast fToast = FToast();
 
   @override
@@ -44,7 +56,8 @@ class _ListPageState extends State<ListPage> {
           final icon = GlobalStorage().static.icons.getTypeIconSync(entry.value.shipID);
           final typeName = GlobalStorage().static.types[entry.value.shipID]?.nameZH ?? '未知';
           return Slidable(
-            startActionPane: ActionPane(extentRatio: 0.3, motion: const StretchMotion(), children: [
+            startActionPane:
+                ActionPane(extentRatio: 0.45, motion: const StretchMotion(), children: [
               SlidableAction(
                 onPressed: (_) async {
                   final fit = await GlobalStorage().ship.copyFit(entry.value.id);
@@ -54,7 +67,7 @@ class _ListPageState extends State<ListPage> {
                 },
                 padding: EdgeInsets.zero,
                 icon: Icons.copy,
-                label: '复制',
+                label: '导出',
                 backgroundColor: Colors.green,
               ),
               SlidableAction(
@@ -84,7 +97,18 @@ class _ListPageState extends State<ListPage> {
                 icon: Icons.share,
                 label: '分享',
                 backgroundColor: Colors.white,
-              )
+              ),
+              SlidableAction(
+                onPressed: (_) => showConfirmDialog(context,
+                    title: '导出配置',
+                    description: '这将会将配置导出到游戏中。',
+                    warning: '受 ESI 系统限制，装配数值的查询每 300 秒刷新一次。因此导出行为不会立刻生效。',
+                    onConfirm: () => ref.read(exportFitToGameProvider(entry.key))),
+                padding: EdgeInsets.zero,
+                icon: Icons.output_outlined,
+                label: '导出',
+                backgroundColor: Colors.greenAccent,
+              ),
             ]),
             endActionPane: ActionPane(extentRatio: 0.15, motion: const StretchMotion(), children: [
               SlidableAction(
