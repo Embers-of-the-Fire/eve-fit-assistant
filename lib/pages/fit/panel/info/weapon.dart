@@ -25,7 +25,7 @@ class Weapon extends StatelessWidget {
             )),
         ListTile(
             minTileHeight: 0,
-            leading: const Image(image: droneImage, height: 28),
+            leading: const Image(image: weaponDroneImage, height: 28),
             title: DefaultTextStyle(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,

@@ -74,4 +74,6 @@ const AssetImage targetRangeImage = AssetImage('assets/info/target-range.png');
 
 const AssetImage warpSpeedImage = AssetImage('assets/info/warp-speed.png');
 
+const AssetImage weaponDroneImage = AssetImage('assets/info/weapon-drone.png');
+
 const AssetImage weaponTurretImage = AssetImage('assets/info/weapon-turret.png');

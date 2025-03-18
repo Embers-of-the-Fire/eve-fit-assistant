@@ -56,7 +56,7 @@ class Resource extends StatelessWidget {
                     warning: false,
                   ),
                   const SizedBox.shrink(),
-                  const Image(image: droneImage, height: 28),
+                  const Image(image: weaponDroneImage, height: 28),
                   // const SizedBox.shrink(),
                   ResourceCompare(
                     align: TextAlign.end,
