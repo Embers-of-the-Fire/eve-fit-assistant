@@ -17,6 +17,7 @@ class AssetPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 20),
             child: ListView(
               children: [
+                const Divider(),
                 ListTile(
                   leading: const Icon(Icons.info_outline),
                   title: const Text('本地存储版本'),
@@ -60,6 +61,7 @@ class AssetPage extends StatelessWidget {
                     ),
                   ),
                 ),
+                const Divider(),
                 ListTile(
                   leading: const Icon(ExternalIcon.cubes),
                   title: const Text('静态资产版本'),
@@ -104,7 +106,8 @@ class AssetPage extends StatelessWidget {
                       decorationColor: Colors.red.shade600,
                     ),
                   ),
-                )
+                ),
+                const Divider(height: 8),
               ],
             )),
       );
