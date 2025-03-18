@@ -51,7 +51,7 @@ class Preference {
     debug.setDefault(_preference);
     esiAuthBehavior.setDefault(_preference);
     esiAuthServer.setDefault(_preference);
-    esiFitListSort.setDefault(_preference);
+    esiFitListSortMethod.setDefault(_preference);
   }
 
   SharedPreferences get instance => _preference;
@@ -70,7 +70,9 @@ class Preference {
 
   EsiAuthServer get esiAuthServer => EsiAuthServer.get(_preference);
 
-  EsiFitListSort get esiFitListSort => EsiFitListSort.get(_preference);
+  EsiFitListSortMethod get esiFitListSortMethod => EsiFitListSortMethod.get(_preference);
+
+  EsiFitListSortSequence get esiFitListSortSequence => EsiFitListSortSequence.get(_preference);
 
   set itemListPopBehavior(ItemListPopBehavior value) => value.set(_preference);
 
@@ -86,5 +88,7 @@ class Preference {
 
   set esiAuthServer(EsiAuthServer value) => value.set(_preference);
 
-  set esiFitListSort(EsiFitListSort value) => value.set(_preference);
+  set esiFitListSortMethod(EsiFitListSortMethod value) => value.set(_preference);
+
+  set esiFitListSortSequence(EsiFitListSortSequence value) => value.set(_preference);
 }

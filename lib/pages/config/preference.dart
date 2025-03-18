@@ -51,7 +51,8 @@ class PreferencePage extends StatelessWidget {
           Divider(height: 0),
           EsiAuthBehaviorTile(),
           EsiAuthServerTile(),
-          EsiFitListSortTile(),
+          EsiFitListSortMethodTile(),
+          EsiFitListSortSequenceTile(),
           Divider(height: 0),
           ListTile(
               minTileHeight: 0,

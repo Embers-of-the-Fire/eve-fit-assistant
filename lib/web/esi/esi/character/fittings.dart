@@ -389,16 +389,18 @@ Future<List<Fitting>> characterFittings() async {
   final list = (jsonDecode(response.body) as List)
       .map((e) => Fitting.fromJson(e as Map<String, dynamic>))
       .toList();
-  final sort = Preference().esiFitListSort;
-  switch (sort) {
-    case EsiFitListSort.internalID:
+  switch (Preference().esiFitListSortMethod) {
+    case EsiFitListSortMethod.internalID:
       list.sort((a, b) => a.fittingID.compareTo(b.fittingID));
       break;
-    case EsiFitListSort.ship:
+    case EsiFitListSortMethod.ship:
       list.sort((a, b) => a.shipTypeID.compareTo(b.shipTypeID));
       break;
-    case EsiFitListSort.preserve:
+    case EsiFitListSortMethod.preserve:
       break;
+  }
+  if (Preference().esiFitListSortSequence == EsiFitListSortSequence.descending) {
+    return list.reversed.toList();
   }
   return list;
 }

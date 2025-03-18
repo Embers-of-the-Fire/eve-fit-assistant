@@ -1,8 +1,8 @@
 part of 'preference.dart';
 
-const _esiFitListSortKey = 'esi_fit_list_sort';
+const _esiFitListSortMethodKey = 'esi_fit_list_sort_method';
 
-enum EsiFitListSort {
+enum EsiFitListSortMethod {
   preserve,
   ship,
   internalID;
@@ -10,15 +10,37 @@ enum EsiFitListSort {
   static const defaultValue = preserve;
 
   void setDefault(SharedPreferences prefs) {
-    if (!prefs.containsKey(_esiFitListSortKey)) {
-      prefs.setInt(_esiFitListSortKey, defaultValue.index);
+    if (!prefs.containsKey(_esiFitListSortMethodKey)) {
+      prefs.setInt(_esiFitListSortMethodKey, defaultValue.index);
     }
   }
 
   Future<void> set(SharedPreferences prefs) async {
-    await prefs.setInt(_esiFitListSortKey, index);
+    await prefs.setInt(_esiFitListSortMethodKey, index);
   }
 
-  static EsiFitListSort get(SharedPreferences prefs) =>
-      EsiFitListSort.values[prefs.getInt(_esiFitListSortKey) ?? 0];
+  static EsiFitListSortMethod get(SharedPreferences prefs) =>
+      EsiFitListSortMethod.values[prefs.getInt(_esiFitListSortMethodKey) ?? 0];
+}
+
+const _esiFitListSortSequence = 'esi_fit_list_sort_sequence';
+
+enum EsiFitListSortSequence {
+  ascending,
+  descending;
+
+  static const defaultValue = ascending;
+
+  void setDefault(SharedPreferences prefs) {
+    if (!prefs.containsKey(_esiFitListSortSequence)) {
+      prefs.setInt(_esiFitListSortSequence, defaultValue.index);
+    }
+  }
+
+  Future<void> set(SharedPreferences prefs) async {
+    await prefs.setInt(_esiFitListSortSequence, index);
+  }
+
+  static EsiFitListSortSequence get(SharedPreferences prefs) =>
+      EsiFitListSortSequence.values[prefs.getInt(_esiFitListSortSequence) ?? 0];
 }
