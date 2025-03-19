@@ -9,16 +9,95 @@ import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class EquipmentHeader extends ConsumerWidget {
+List<Widget> getEquipmentHeader({
+  required String fitID,
+  required Ship ship,
+  required FitItemType type,
+}) =>
+    [
+      EquipmentHeaderText(
+        fitID: fitID,
+        ship: ship,
+        type: type,
+        padding: const EdgeInsets.only(top: 10, left: 16, right: 16, bottom: 4),
+      ),
+      const Divider(height: 8),
+      EquipmentHeaderOperation(fitID: fitID, ship: ship, type: type),
+      const Divider(height: 4),
+    ];
+
+class EquipmentHeaderOperation extends ConsumerWidget {
   final String fitID;
   final Ship ship;
   final FitItemType type;
 
-  const EquipmentHeader({
+  const EquipmentHeaderOperation({
     super.key,
     required this.fitID,
     required this.type,
     required this.ship,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fitNotifier = ref.watch(fitRecordNotifierProvider(fitID).notifier);
+
+    final List<InkWell> ops = [];
+
+    final Function(FitRecord)? clearSlot = switch (type) {
+      FitItemType.high => (r) => r.clearHigh(),
+      FitItemType.med => (r) => r.clearMed(),
+      FitItemType.low => (r) => r.clearLow(),
+      FitItemType.rig => (r) => r.clearRig(),
+      FitItemType.subsystem => (r) => r.clearSubsystem(),
+      _ => null,
+    };
+    if (clearSlot != null) {
+      ops.add(InkWell(
+        onTap: () => fitNotifier.modify((record) {
+          final _ = clearSlot(record);
+          return record;
+        }),
+        child: const Icon(Icons.clear_all),
+      ));
+    }
+
+    final Function(FitRecord)? clearCharge = switch (type) {
+      FitItemType.high => (r) => r.clearHighCharge(),
+      FitItemType.med => (r) => r.clearMedCharge(),
+      FitItemType.low => (r) => r.clearLowCharge(),
+      FitItemType.rig => (r) => r.clearRigCharge(),
+      _ => null,
+    };
+
+    if (clearCharge != null) {
+      ops.add(InkWell(
+        onTap: () => fitNotifier.modify((record) {
+          final _ = clearCharge(record);
+          return record;
+        }),
+        child: const Icon(Icons.battery_alert_outlined),
+      ));
+    }
+
+    return Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 2),
+        child: Row(spacing: 10, children: ops));
+  }
+}
+
+class EquipmentHeaderText extends ConsumerWidget {
+  final String fitID;
+  final Ship ship;
+  final FitItemType type;
+  final EdgeInsets? padding;
+
+  const EquipmentHeaderText({
+    super.key,
+    required this.fitID,
+    required this.type,
+    required this.ship,
+    this.padding,
   });
 
   @override
@@ -30,30 +109,34 @@ class EquipmentHeader extends ConsumerWidget {
         .filter((e) => e.slot.fitItemType == type && e.index == null)
         .toList(growable: false);
 
-    final sumTurret = fitBody.high
-        .filterMap((item) => item)
-        .filterMap((item) => GlobalStorage().static.typeSlot.high[item.itemID])
-        .filter((item) => item.isTurret)
-        .count();
-    final sumLauncher = fitBody.high
-        .filterMap((item) => item)
-        .filterMap((item) => GlobalStorage().static.typeSlot.high[item.itemID])
-        .filter((item) => item.isLauncher)
-        .count();
+    switch (type) {
+      case FitItemType.high:
+        final sumTurret = fitBody.high
+            .filterMap((item) => item)
+            .filterMap((item) => GlobalStorage().static.typeSlot.high[item.itemID])
+            .filter((item) => item.isTurret)
+            .count();
+        final sumLauncher = fitBody.high
+            .filterMap((item) => item)
+            .filterMap((item) => GlobalStorage().static.typeSlot.high[item.itemID])
+            .filter((item) => item.isLauncher)
+            .count();
 
-    final allTurret = ship.turretSlotNum +
-        fitBody.subsystem
-            .filterMap((u) => u?.itemID)
-            .filterMap((item) => GlobalStorage().static.subsystems.items[item]?.turret)
-            .sum();
-    final allLauncher = ship.launcherSlotNum +
-        fitBody.subsystem
-            .filterMap((u) => u?.itemID)
-            .filterMap((item) => GlobalStorage().static.subsystems.items[item]?.launcher)
-            .sum();
+        final allTurret = ship.turretSlotNum +
+            fitBody.subsystem
+                .filterMap((u) => u?.itemID)
+                .filterMap((item) => GlobalStorage().static.subsystems.items[item]?.turret)
+                .sum();
+        final allLauncher = ship.launcherSlotNum +
+            fitBody.subsystem
+                .filterMap((u) => u?.itemID)
+                .filterMap((item) => GlobalStorage().static.subsystems.items[item]?.launcher)
+                .sum();
 
-    return switch (type) {
-      FitItemType.high => ListTile(
+        return ListTile(
+          minVerticalPadding: 0,
+          minTileHeight: 0,
+          contentPadding: padding,
           title: const Text('高能量槽'),
           trailing: Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -101,12 +184,16 @@ class EquipmentHeader extends ConsumerWidget {
                   : [],
             ],
           ),
-        ),
-      _ => ListTile(
+        );
+      case _:
+        return ListTile(
+          minVerticalPadding: 0,
+          minTileHeight: 0,
+          contentPadding: padding,
           title: Text(_getSlotName(type)),
           trailing: errors.isNotEmpty ? NativeErrorTrigger(errors: errors) : null,
-        ),
-    };
+        );
+    }
   }
 }
 

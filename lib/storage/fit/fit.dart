@@ -76,16 +76,64 @@ class FitRecord {
     body.high[index] = map(body.high[index]);
   }
 
+  void clearHigh() {
+    body.high.fillAll(null);
+  }
+
+  void clearHighCharge() {
+    for (final (index, slot) in body.high.enumerate()) {
+      if (slot != null) {
+        body.high[index] = slot.copyWith(chargeID: null);
+      }
+    }
+  }
+
   void modifyMed(int index, SlotItem? Function(SlotItem?) map) {
     body.med[index] = map(body.med[index]);
+  }
+
+  void clearMed() {
+    body.med.fillAll(null);
+  }
+
+  void clearMedCharge() {
+    for (final (index, slot) in body.med.enumerate()) {
+      if (slot != null) {
+        body.med[index] = slot.copyWith(chargeID: null);
+      }
+    }
   }
 
   void modifyLow(int index, SlotItem? Function(SlotItem?) map) {
     body.low[index] = map(body.low[index]);
   }
 
+  void clearLow() {
+    body.low.fillAll(null);
+  }
+
+  void clearLowCharge() {
+    for (final (index, slot) in body.low.enumerate()) {
+      if (slot != null) {
+        body.low[index] = slot.copyWith(chargeID: null);
+      }
+    }
+  }
+
   void modifyRig(int index, SlotItem? Function(SlotItem?) map) {
     body.rig[index] = map(body.rig[index]);
+  }
+
+  void clearRig() {
+    body.rig.fillAll(null);
+  }
+
+  void clearRigCharge() {
+    for (final (index, slot) in body.rig.enumerate()) {
+      if (slot != null) {
+        body.rig[index] = slot.copyWith(chargeID: null);
+      }
+    }
   }
 
   void modifyImplant(int index, SlotItem? Function(SlotItem?) map) {
@@ -169,6 +217,11 @@ class FitRecord {
 
   void removeSubsystem(SubsystemType type) {
     body.subsystem[type.value] = null;
+    _postSubsystemModify();
+  }
+
+  void clearSubsystem() {
+    body.subsystem.fillAll(null);
     _postSubsystemModify();
   }
 

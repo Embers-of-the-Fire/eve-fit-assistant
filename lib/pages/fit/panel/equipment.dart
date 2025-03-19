@@ -37,27 +37,28 @@ class _EquipmentTabState extends ConsumerState<EquipmentTab> with AutomaticKeepA
                   modeID: fitBody.tacticalModeID!,
                 )
               ],
-        EquipmentHeader(fitID: widget.fitID, type: FitItemType.high, ship: widget.ship),
+        ...getEquipmentHeader(fitID: widget.fitID, type: FitItemType.high, ship: widget.ship),
         ...fitBody.high
             .enumerate()
             .map((t) => getSlotRow(widget.fitID, t.$2, type: FitItemType.high, index: t.$1)),
-        EquipmentHeader(fitID: widget.fitID, type: FitItemType.med, ship: widget.ship),
+        ...getEquipmentHeader(fitID: widget.fitID, type: FitItemType.med, ship: widget.ship),
         ...fitBody.med
             .enumerate()
             .map((t) => getSlotRow(widget.fitID, t.$2, type: FitItemType.med, index: t.$1)),
-        EquipmentHeader(fitID: widget.fitID, type: FitItemType.low, ship: widget.ship),
+        ...getEquipmentHeader(fitID: widget.fitID, type: FitItemType.low, ship: widget.ship),
         ...fitBody.low
             .enumerate()
             .map((t) => getSlotRow(widget.fitID, t.$2, type: FitItemType.low, index: t.$1)),
-        EquipmentHeader(fitID: widget.fitID, type: FitItemType.rig, ship: widget.ship),
+        ...getEquipmentHeader(fitID: widget.fitID, type: FitItemType.rig, ship: widget.ship),
         ...fitBody.rig
             .enumerate()
             .map((t) => getSlotRow(widget.fitID, t.$2, type: FitItemType.rig, index: t.$1)),
         ...fitBody.subsystem.isNotEmpty
-            .then(() => [
-                  EquipmentHeader(
-                      fitID: widget.fitID, type: FitItemType.subsystem, ship: widget.ship)
-                ])
+            .then(() => getEquipmentHeader(
+                  fitID: widget.fitID,
+                  type: FitItemType.subsystem,
+                  ship: widget.ship,
+                ))
             .unwrapOr([]),
         ...fitBody.subsystem.enumerate().map((t) => getSlotRow(
               widget.fitID,
