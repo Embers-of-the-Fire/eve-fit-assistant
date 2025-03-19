@@ -46,3 +46,16 @@ class ConflictItem extends StatelessWidget {
         subtitle: Text('超出物品组 ${GlobalStorage().static.groups[groupID]?.nameZH ?? groupID} 的数量限制'),
       );
 }
+
+class DuplicateBooster extends StatelessWidget {
+  final int slot;
+
+  const DuplicateBooster({super.key, required this.slot});
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: _errorIcon,
+        title: const Text('冲突的增效剂'),
+        subtitle: Text('位于 $slot 号槽位的增效剂已经存在'),
+      );
+}

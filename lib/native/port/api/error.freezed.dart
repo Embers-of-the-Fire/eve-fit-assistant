@@ -402,6 +402,71 @@ class _$ErrorKey_ConflictItemCopyWithImpl<$Res>
 
 /// @nodoc
 
+class ErrorKey_DuplicateBooster extends ErrorKey {
+  const ErrorKey_DuplicateBooster({required this.slot}) : super._();
+
+  final int slot;
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $ErrorKey_DuplicateBoosterCopyWith<ErrorKey_DuplicateBooster> get copyWith =>
+      _$ErrorKey_DuplicateBoosterCopyWithImpl<ErrorKey_DuplicateBooster>(
+          this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is ErrorKey_DuplicateBooster &&
+            (identical(other.slot, slot) || other.slot == slot));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, slot);
+
+  @override
+  String toString() {
+    return 'ErrorKey.duplicateBooster(slot: $slot)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $ErrorKey_DuplicateBoosterCopyWith<$Res>
+    implements $ErrorKeyCopyWith<$Res> {
+  factory $ErrorKey_DuplicateBoosterCopyWith(ErrorKey_DuplicateBooster value,
+          $Res Function(ErrorKey_DuplicateBooster) _then) =
+      _$ErrorKey_DuplicateBoosterCopyWithImpl;
+  @useResult
+  $Res call({int slot});
+}
+
+/// @nodoc
+class _$ErrorKey_DuplicateBoosterCopyWithImpl<$Res>
+    implements $ErrorKey_DuplicateBoosterCopyWith<$Res> {
+  _$ErrorKey_DuplicateBoosterCopyWithImpl(this._self, this._then);
+
+  final ErrorKey_DuplicateBooster _self;
+  final $Res Function(ErrorKey_DuplicateBooster) _then;
+
+  /// Create a copy of ErrorKey
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? slot = null,
+  }) {
+    return _then(ErrorKey_DuplicateBooster(
+      slot: null == slot
+          ? _self.slot
+          : slot // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
 class ErrorKey_IncompatibleShipGroup extends ErrorKey {
   const ErrorKey_IncompatibleShipGroup({required this.expected}) : super._();
 

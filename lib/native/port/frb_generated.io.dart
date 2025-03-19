@@ -11,6 +11,7 @@ import 'api/schema.dart';
 import 'api/simple.dart';
 import 'api/validate/post_validate/charge.dart';
 import 'api/validate/post_validate/max_activate.dart';
+import 'api/validate/pre_validate/booster_slot.dart';
 import 'api/validate/pre_validate/fit_target.dart';
 import 'api/validate/pre_validate/rig_size.dart';
 import 'api/validate/pre_validate/slot_num.dart';

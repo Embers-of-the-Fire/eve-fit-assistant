@@ -33,6 +33,9 @@ sealed class ErrorKey with _$ErrorKey {
   const factory ErrorKey.conflictItem({
     required int groupId,
   }) = ErrorKey_ConflictItem;
+  const factory ErrorKey.duplicateBooster({
+    required int slot,
+  }) = ErrorKey_DuplicateBooster;
   const factory ErrorKey.incompatibleShipGroup({
     required Int32List expected,
   }) = ErrorKey_IncompatibleShipGroup;

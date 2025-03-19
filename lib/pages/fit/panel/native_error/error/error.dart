@@ -24,6 +24,7 @@ Widget renderError(ErrorKey errorKey) => switch (errorKey) {
       ErrorKey_IncompatibleRigSize(:final expected, :final actual) =>
         IncompatibleRigSize(expected: expected, actual: actual),
       ErrorKey_ConflictItem(:final groupId) => ConflictItem(groupID: groupId),
+      ErrorKey_DuplicateBooster(:final slot) => DuplicateBooster(slot: slot),
       // ignore: unreachable_switch_case
       _ => const Text('error'),
     };

@@ -35,6 +35,7 @@ pub enum ErrorKey {
     TooMuchTurret { expected: u8, actual: u8 },
     TooMuchLauncher { expected: u8, actual: u8 },
     ConflictItem { group_id: i32 },
+    DuplicateBooster { slot: i32 },
     // slot fit target
     IncompatibleShipGroup { expected: Vec<i32> },
     IncompatibleShipType { expected: Vec<i32> },

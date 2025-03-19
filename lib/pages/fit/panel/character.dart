@@ -183,6 +183,20 @@ class BoosterSlot extends ConsumerWidget {
     final fit = ref.watch(fitRecordNotifierProvider(fitID));
 
     final item = fit.fit.body.booster[index];
+
+    final errors = fit.output.errors
+        .filter((err) => err.slot.fitItemType == FitItemType.booster && err.index == index)
+        .toList();
+
+    final trailingText =
+        GlobalStorage().static.typeSlot.booster[item.itemID]!.slot.toString().text();
+    final trailing = errors.isEmpty
+        ? trailingText
+        : Row(mainAxisSize: MainAxisSize.min, children: [
+            NativeErrorTrigger(errors: errors),
+            trailingText,
+          ]);
+
     return Slidable(
         startActionPane: ActionPane(extentRatio: 0.15, motion: const StretchMotion(), children: [
           SlidableAction(
@@ -238,7 +252,7 @@ class BoosterSlot extends ConsumerWidget {
               state: ItemState.fromInt(item.state.state),
               foregroundImage: GlobalStorage().static.icons.getTypeIconFileImageSync(item.itemID)),
           title: Text(GlobalStorage().static.types[item.itemID]?.nameZH ?? '未知增效剂 ${item.itemID}'),
-          trailing: GlobalStorage().static.typeSlot.booster[item.itemID]?.slot.toString().text(),
+          trailing: trailing,
         ));
   }
 }
