@@ -67,7 +67,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                 },
                 padding: EdgeInsets.zero,
                 icon: Icons.copy,
-                label: '导出',
+                label: '复制',
                 backgroundColor: Colors.green,
               ),
               SlidableAction(
