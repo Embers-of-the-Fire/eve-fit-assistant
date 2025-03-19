@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 final List<Content> changelogContents = Content.of([
   Content(
       icon: Icons.update,
+      title: '更新日志 EFA v0.20.0',
+      path: 'content/changelog/v0.20.0.md',
+      time: DateTime(2025, 3, 19, 14, 58)),
+  Content(
+      icon: Icons.update,
       title: '更新日志 EFA v0.19.0',
       path: 'content/changelog/v0.19.0.md',
       time: DateTime(2025, 3, 18, 21, 16)),
