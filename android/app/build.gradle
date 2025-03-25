@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "org.efa.eve_fit_assistant"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "29.0.13113456"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
