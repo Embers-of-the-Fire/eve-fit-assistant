@@ -41,5 +41,6 @@ def convert(cache: ConvertCache, external: dict):
         data.entries[id].launcherSlotNum = int(dogma_map.get(101, 0))
         data.entries[id].droneBandwidth = int(dogma_map.get(1271, 0))
         data.entries[id].hasTacticalMode = id in tactical.keys()
+        data.entries[id].hasFighter = dogma_map.get(2216, 0) > 0
 
     external["ships"] = data

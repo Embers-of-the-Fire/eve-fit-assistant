@@ -4,7 +4,6 @@ import 'dart:math' show Random;
 
 import 'package:eve_fit_assistant/assets/assets.dart';
 import 'package:eve_fit_assistant/constant/eve/attribute.dart';
-import 'package:eve_fit_assistant/constant/eve/groups.dart';
 import 'package:eve_fit_assistant/constant/eve/market_groups.dart';
 import 'package:eve_fit_assistant/native/algo/fighter.dart';
 import 'package:eve_fit_assistant/native/glue/fit.dart';
@@ -167,7 +166,7 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
     final fitRef = ref.read(fitRecordNotifierProvider(widget.fitID));
     final ship = GlobalStorage().static.ships[fitRef.fit.brief.shipID]!;
 
-    if (carrierGroupIDs.contains(ship.groupID)) {
+    if (ship.hasFighter) {
       return _buildFighter(context);
     } else {
       return _buildDrone(context);

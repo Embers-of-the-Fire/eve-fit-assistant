@@ -21,6 +21,7 @@ message Ships {
         required int32 droneBandwidth = 11;
 
         required bool hasTacticalMode = 12;
+        required bool hasFighter = 13;
     }
 
     map<int32, Ship> entries = 1;

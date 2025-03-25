@@ -29,6 +29,7 @@ class Ships_Ship extends $pb.GeneratedMessage {
     $core.int? launcherSlotNum,
     $core.int? droneBandwidth,
     $core.bool? hasTacticalMode,
+    $core.bool? hasFighter,
   }) {
     final $result = create();
     if (name != null) {
@@ -67,6 +68,9 @@ class Ships_Ship extends $pb.GeneratedMessage {
     if (hasTacticalMode != null) {
       $result.hasTacticalMode = hasTacticalMode;
     }
+    if (hasFighter != null) {
+      $result.hasFighter = hasFighter;
+    }
     return $result;
   }
   Ships_Ship._() : super();
@@ -86,6 +90,7 @@ class Ships_Ship extends $pb.GeneratedMessage {
     ..a<$core.int>(10, _omitFieldNames ? '' : 'launcherSlotNum', $pb.PbFieldType.Q3, protoName: 'launcherSlotNum')
     ..a<$core.int>(11, _omitFieldNames ? '' : 'droneBandwidth', $pb.PbFieldType.Q3, protoName: 'droneBandwidth')
     ..a<$core.bool>(12, _omitFieldNames ? '' : 'hasTacticalMode', $pb.PbFieldType.QB, protoName: 'hasTacticalMode')
+    ..a<$core.bool>(13, _omitFieldNames ? '' : 'hasFighter', $pb.PbFieldType.QB, protoName: 'hasFighter')
   ;
 
   @$core.Deprecated(
@@ -218,6 +223,15 @@ class Ships_Ship extends $pb.GeneratedMessage {
   $core.bool hasHasTacticalMode() => $_has(11);
   @$pb.TagNumber(12)
   void clearHasTacticalMode() => clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.bool get hasFighter => $_getBF(12);
+  @$pb.TagNumber(13)
+  set hasFighter($core.bool v) { $_setBool(12, v); }
+  @$pb.TagNumber(13)
+  $core.bool hasHasFighter() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearHasFighter() => clearField(13);
 }
 
 class Ships extends $pb.GeneratedMessage {

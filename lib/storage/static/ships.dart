@@ -33,6 +33,8 @@ class Ship {
 
   bool get hasTacticalMode => _raw.hasTacticalMode;
 
+  bool get hasFighter => _raw.hasFighter;
+
   const Ship._private(this._raw);
 
   static Map<int, Ship> _fromBuffer(Uint8List buffer) {

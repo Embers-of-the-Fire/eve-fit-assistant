@@ -1,4 +1,4 @@
 import 'package:eve_fit_assistant/storage/static/storage.dart';
 
 /// Bundled static data version
-const StaticVersionInfo bundledStaticVersion = StaticVersionInfo(createTime: 1742302540);
+const StaticVersionInfo bundledStaticVersion = StaticVersionInfo(createTime: 1742889294);
