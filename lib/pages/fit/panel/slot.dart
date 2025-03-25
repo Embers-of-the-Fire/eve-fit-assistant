@@ -303,6 +303,11 @@ class _SlotRowDisplay extends ConsumerWidget {
       final List<Widget> row = [];
 
       if (chargeID != null) {
+        final chargeNum = item?.attributes[chargeAmount]?.toInt();
+        if (chargeNum != null) {
+          row.add(Text('$chargeNum× ', style: const TextStyle(fontSize: 14)));
+          row.add(const SizedBox(width: 4));
+        }
         final icon = GlobalStorage().static.icons.getTypeIconSync(chargeID!, width: 18, height: 18);
         if (icon != null) {
           row.add(icon);
