@@ -179,10 +179,10 @@ class _MarketPriceDetail extends StatelessWidget {
             tabs: [Tab(text: '欧服'), Tab(text: '国服')],
           ),
         ),
-        body: TabBarView(children: [
+        body: SafeArea(bottom: true, child: TabBarView(children: [
           _MarketPriceDetailList(fitID: fitID, server: Server.tranquility),
           _MarketPriceDetailList(fitID: fitID, server: Server.serenity)
-        ]),
+        ])),
       ));
 }
 

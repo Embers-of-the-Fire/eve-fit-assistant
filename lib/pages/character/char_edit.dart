@@ -142,13 +142,15 @@ class _CharacterEditPageContentState extends ConsumerState<CharacterEditPageCont
           ),
         ),
         // body: CharacterSkillList(id: id),
-        body: TabBarView(controller: _controller, children: [
-          CharacterSkillListPage(id: widget.id),
-          CharacterProfileTab(
-            charID: widget.id,
-            name: char.character.name,
-            description: char.character.description,
-          ),
-        ]));
+        body: SafeArea(
+            bottom: true,
+            child: TabBarView(controller: _controller, children: [
+              CharacterSkillListPage(id: widget.id),
+              CharacterProfileTab(
+                charID: widget.id,
+                name: char.character.name,
+                description: char.character.description,
+              ),
+            ])));
   }
 }

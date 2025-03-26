@@ -8,9 +8,9 @@ class SkillListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('技能列表')),
-      body: CharacterSkillList(
+      body: SafeArea(bottom: true, child: CharacterSkillList(
         skills: GlobalStorage().static.skills.map((key, _) => MapEntry(key, 5)),
-      ));
+      )));
 }
 
 /*

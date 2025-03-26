@@ -7,6 +7,6 @@ class MarketPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('市场')),
-        body: const MarketList(),
+        body: SafeArea(bottom: true, child: const MarketList()),
       );
 }

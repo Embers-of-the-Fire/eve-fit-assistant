@@ -93,7 +93,7 @@ class _MarketOrderPageState extends ConsumerState<MarketOrderPage> {
         title: Text('市场 - ${GlobalStorage().static.types[widget.typeID]?.nameZH ?? '未知物品'}'),
         centerTitle: true,
       ),
-      body: content,
+      body: SafeArea(bottom: true, child: content),
     );
   }
 }

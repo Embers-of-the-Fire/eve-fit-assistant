@@ -37,7 +37,7 @@ class FittingsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('装配')),
-      body: content,
+      body: SafeArea(bottom: true, child: content),
     );
   }
 }

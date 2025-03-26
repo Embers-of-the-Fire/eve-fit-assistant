@@ -30,7 +30,7 @@ class SkillsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('技能')),
-      body: content,
+      body: SafeArea(bottom: true, child: content),
     );
   }
 }

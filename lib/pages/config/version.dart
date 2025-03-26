@@ -11,6 +11,6 @@ class VersionPage extends StatelessWidget {
           title: const Text('版本信息'),
           centerTitle: true,
         ),
-        body: ContentList(contents: changelogContents),
+        body: SafeArea(bottom: true, child: ContentList(contents: changelogContents)),
       );
 }
