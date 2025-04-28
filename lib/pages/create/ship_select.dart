@@ -36,76 +36,80 @@ class _ShipSelectPageState extends State<ShipSelectPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('选择船只')),
-        body: Column(children: [
-          TypeAheadField<(int, Ship)>(
-            decorationBuilder: (context, child) => Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: cyberTeal,
-                borderRadius: BorderRadius.circular(5),
+        body: SafeArea(
+            bottom: true,
+            child: Column(children: [
+              TypeAheadField<(int, Ship)>(
+                decorationBuilder: (context, child) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: cyberTeal,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: child,
+                ),
+                onSelected: (data) => _onShipSelect(data.$1, context),
+                builder: (context, controller, focusNode) => Padding(
+                    padding: const EdgeInsets.only(top: 10, left: 8, right: 8),
+                    child: TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        autofocus: false,
+                        decoration: InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                              borderRadius: const BorderRadius.all(Radius.circular(2))),
+                          focusedBorder: OutlineInputBorder(
+                              borderSide:
+                                  BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                              borderRadius: const BorderRadius.all(Radius.circular(2))),
+                          border: const OutlineInputBorder(
+                              borderRadius: BorderRadius.all(Radius.circular(2))),
+                          labelText: '舰船',
+                        ))),
+                itemBuilder: (context, data) {
+                  final id = data.$1;
+                  final ship = data.$2;
+                  return ListTile(
+                    leading: GlobalStorage().static.icons.getTypeIconSync(id),
+                    title: Text(ship.nameZH),
+                    subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
+                    onTap: () => _onShipSelect(id, context),
+                    onLongPress: () => showTypeInfoPage(context, typeID: id),
+                  );
+                },
+                suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()
+                    .static
+                    .ships
+                    .tupleEntries
+                    .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
+                    .toList()),
+                emptyBuilder: (context) => Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('未找到相关舰船',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium)),
               ),
-              child: child,
-            ),
-            onSelected: (data) => _onShipSelect(data.$1, context),
-            builder: (context, controller, focusNode) => Padding(
-                padding: const EdgeInsets.only(top: 10, left: 8, right: 8),
-                child: TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    autofocus: false,
-                    decoration: InputDecoration(
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Theme.of(context).dividerColor),
-                          borderRadius: const BorderRadius.all(Radius.circular(2))),
-                      focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                          borderRadius: const BorderRadius.all(Radius.circular(2))),
-                      border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(2))),
-                      labelText: '舰船',
-                    ))),
-            itemBuilder: (context, data) {
-              final id = data.$1;
-              final ship = data.$2;
-              return ListTile(
-                leading: GlobalStorage().static.icons.getTypeIconSync(id),
-                title: Text(ship.nameZH),
-                subtitle: GlobalStorage().static.groups[ship.groupID]?.nameZH.text(),
-                onTap: () => _onShipSelect(id, context),
-                onLongPress: () => showTypeInfoPage(context, typeID: id),
-              );
-            },
-            suggestionsCallback: (search) => search.isNotEmpty.then(() => GlobalStorage()
-                .static
-                .ships
-                .tupleEntries
-                .filter((data) => data.$2.published && data.$2.nameZH.contains(search))
-                .toList()),
-            emptyBuilder: (context) => Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text('未找到相关舰船',
-                    textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium)),
-          ),
-          Expanded(
-              child: switch (Preference().itemListDisplayStyle) {
-            ItemListDisplayStyle.marketGroup => ItemList(
-                breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-                breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
-                fallbackGroupID: shipGroupID,
-                baseGroup: '舰船',
-                onSelect: (id) => _onShipSelect(id, context),
-                onLongPress: (id) => showTypeInfoPage(context, typeID: id),
-              ),
-            ItemListDisplayStyle.group => ItemGroupList(
-                breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
-                breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
-                categoryID: categoryShip,
-                baseGroup: '舰船',
-                onSelect: (id) => _onShipSelect(id, context),
-                onLongPress: (id) => showTypeInfoPage(context, typeID: id),
-              ),
-          })
-        ]),
+              Expanded(
+                  child: switch (Preference().itemListDisplayStyle) {
+                ItemListDisplayStyle.marketGroup => ItemList(
+                    breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+                    fallbackGroupID: shipGroupID,
+                    baseGroup: '舰船',
+                    onSelect: (id) => _onShipSelect(id, context),
+                    onLongPress: (id) => showTypeInfoPage(context, typeID: id),
+                  ),
+                ItemListDisplayStyle.group => ItemGroupList(
+                    breadcrumbPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    breadcrumbItemPadding: const EdgeInsets.symmetric(vertical: 10),
+                    categoryID: categoryShip,
+                    baseGroup: '舰船',
+                    onSelect: (id) => _onShipSelect(id, context),
+                    onLongPress: (id) => showTypeInfoPage(context, typeID: id),
+                  ),
+              })
+            ])),
         floatingActionButton: Container(
             margin: const EdgeInsets.only(bottom: 55),
             child: FloatingActionButton(
