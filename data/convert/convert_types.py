@@ -14,16 +14,14 @@ def convert(cache: ConvertCache, external: dict):
     for id, entry in types.items():
         # if not entry["published"]: # filter out unpublished types, at least currently
         #     continue
-        i18n.into_i18n(data.entries[id].name, **entry["name"])
+        i18n.into_i18n(data.entries[id].name, **cache.loc.get_all(entry["typeNameID"]))
         data.entries[id].groupID = entry["groupID"]
         data.entries[id].published = entry["published"]
-        description = entry.get("description", {})
-        if "zh" in description:
-            data.entries[id].description = description["zh"]
-        elif "en" in description:
-            data.entries[id].description = description["en"]
-        else:
+        description = entry.get("descriptionID", None)
+        if description is None:
             data.entries[id].description = ""
+        else:
+            data.entries[id].description = cache.loc.get(description, 'zh')
         data.entries[id].traits = build_trait(id, cache, external)
 
     external["types"] = data
@@ -41,7 +39,7 @@ def build_trait(type_id: int, cache: ConvertCache, external: dict) -> str:
 
     types_buffer = ""
     for id, entry in traits.get("types", {}).items():
-        skill_name = types[id].get("name", {}).get("zh", "")
+        skill_name = cache.loc.get(types[id]["typeNameID"], "zh")
         skill_buffer = ""
         for bonus in sorted(entry, key=lambda t: t["importance"]):
             text = bonus["bonusText"]["zh"]

@@ -58,7 +58,7 @@ def _process_subsystem(data, id: int, cache: ConvertCache) -> subsystem_pb2.Subs
     item_data = types[id]
     item_dogma = dogma[id]
 
-    i18n.into_i18n(data.name, **item_data["name"])
+    i18n.into_i18n(data.name, **cache.loc.get_all(item_data["typeNameID"]))
     for dgm in item_dogma["dogmaAttributes"]:
         value = int(dgm['value'])
         match (dgm['attributeID']):

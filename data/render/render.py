@@ -1,12 +1,13 @@
 import asyncio
 from io import BytesIO
+import json
+import os
 import sys
 from PIL import Image
 import shutil
 import pathlib
 
 import aiohttp
-import yaml
 import csv
 
 
@@ -35,16 +36,17 @@ def run(
     if not target_dir.exists():
         target_dir.mkdir(parents=True)
 
-    with open(fsd_path / "types.yaml", "r", encoding="utf-8") as f:
-        types = yaml.load(f, yaml.CSafeLoader)
-    with open(fsd_path / "graphicIDs.yaml", "r", encoding="utf-8") as f:
-        graphics = yaml.load(f, yaml.CSafeLoader)
+    with open(fsd_path / "types.json", "r", encoding="utf-8") as f:
+        types = json.load(f)
+    with open(fsd_path / "graphicids.json", "r", encoding="utf-8") as f:
+        graphics = json.load(f)
     index = read_resfile_index(resfile_index_file)
 
     need_render = []
     need_download = []
     print("Started copying type icons...")
     for type_id, type_item in types.items():
+        type_id = int(type_id)
         if type_item.get("marketGroupID") is None and type_item.get("metaGroupID") != 15:
             continue
         if type_item["published"] is False:
@@ -85,22 +87,26 @@ async def render(
     async def download(session: aiohttp.ClientSession, type_id):
         nonlocal types, graphics, index, semaphore
         async with semaphore:
-            graphic_id = types[type_id].get("graphicID")
+            graphic_id = types[str(type_id)].get("graphicID")
             if graphic_id is None:
                 print(f"Unknown graphic ID for {type_id=}")
                 return
             try:
                 graphic_index = (
-                    graphics[graphic_id]["iconInfo"]["folder"].removesuffix("/")
+                    graphics[str(graphic_id)]["iconInfo"]["folder"].removesuffix("/")
                     + f"/{graphic_id}_128.png"
                 ).lower()
                 graphic_url = index[graphic_index]
             except KeyError:
                 on_non_graphic_id(type_id)
                 return
-            async with session.get(f"https://resources.eveonline.com/{graphic_url}") as response:
+            if os.environ["SERVER"] == "tq":
+                url = f"https://resources.eveonline.com/{graphic_url}"
+            elif os.environ["SERVER"] == "se":
+                url = f"https://ma79.gdl.netease.com/eve/resources/{graphic_url}"
+            async with session.get(url) as response:
                 if response.status == 200:
-                    process_type_icons(type_id, types[type_id], await response.read(), target_dir)
+                    process_type_icons(type_id, types[str(type_id)], await response.read(), target_dir)
                 else:
                     print(
                         f"Failed to download icon for type {type_id} [{response.url}]: {await response.read()}"

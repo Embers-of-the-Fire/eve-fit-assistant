@@ -8,11 +8,10 @@ def convert(cache: ConvertCache, external: dict):
     data = dynamic_item_pb2.DynamicItems()
 
     print("Converting dynamic items...")
-    dyns = cache.get_patch("dynamic_items", "json")
+    dyns = cache.get("dynamicItemAttributes")
 
     maybe_dynamic = set()
     for dyn_id, dyn_entry in dyns.items():
-        dyn_id = int(dyn_id)
         mapping = dyn_entry["inputOutputMapping"][0]
         data.entries[dyn_id].inputOutputMapping.resultingType = mapping["resultingType"]
         data.entries[dyn_id].inputOutputMapping.applicableTypes.extend(

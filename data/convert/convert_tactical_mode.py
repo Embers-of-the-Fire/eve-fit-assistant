@@ -16,7 +16,7 @@ def convert(cache: ConvertCache, external: dict):
     for ship_id, dataset in tactical.items():
         for mode_id in dataset["modes"]:
             ty = types[mode_id]
-            i18n.into_i18n(data.ships[ship_id].tacticalModes[mode_id].name, **ty["name"])
+            i18n.into_i18n(data.ships[ship_id].tacticalModes[mode_id].name, **cache.loc.get_all(ty["typeNameID"]))
             data.ships[ship_id].tacticalModes[mode_id].iconID = ty["iconID"]
     
     external['tactical_mode'] = data

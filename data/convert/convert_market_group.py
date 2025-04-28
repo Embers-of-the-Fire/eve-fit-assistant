@@ -32,7 +32,7 @@ def convert(cache: ConvertCache, external: dict):
     data = market_group_pb2.MarketGroups()
 
     for id, entry in market_groups.items():
-        i18n.into_i18n(data.entries[id].name, **entry["nameID"])
+        i18n.into_i18n(data.entries[id].name, **cache.loc.get_all(entry["nameID"]))
         if "parentGroupID" in entry.keys():
             data.entries[id].parentGroup = entry["parentGroupID"]
         data.entries[id].types.extend(mgid.get(id, []))

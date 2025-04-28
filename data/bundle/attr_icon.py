@@ -1,6 +1,6 @@
+import json
 import os
 import shutil
-import yaml
 
 from download import DownloadItem
 
@@ -12,10 +12,10 @@ def bundle(fsd_path, image_path, cache_dir) -> list[DownloadItem]:
 
     item_icon_dir = f"{image_path}/Icons/items/"
 
-    with open(f"{fsd_path}/dogmaAttributes.yaml", "r", encoding="utf-8") as f:
-        attrs = yaml.load(f, yaml.CSafeLoader)
-    with open(f"{fsd_path}/iconIDs.yaml", "r", encoding="utf-8") as f:
-        icons = yaml.load(f, yaml.CSafeLoader)
+    with open(f"{fsd_path}/dogmaattributes.json", "r", encoding="utf-8") as f:
+        attrs = json.load(f)
+    with open(f"{fsd_path}/iconids.json", "r", encoding="utf-8") as f:
+        icons = json.load(f)
 
     used_icon = {
         x["iconID"] for x in attrs.values() if "iconID" in x.keys() and x.get("published", False)
@@ -24,7 +24,7 @@ def bundle(fsd_path, image_path, cache_dir) -> list[DownloadItem]:
     to_download: list[DownloadItem] = []
 
     for icon in used_icon:
-        path: str = icons[icon]["iconFile"]
+        path: str = icons[str(icon)]["iconFile"]
         name = path.split("/").pop()
         icon_path = f"{item_icon_dir}/{name}"
         icon_out_path = f"{target_dir}/{icon}.png"

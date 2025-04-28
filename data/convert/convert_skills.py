@@ -31,7 +31,7 @@ def convert(cache: ConvertCache, external: dict):
     for id, entry in types.items():
         if entry.get("groupID") not in skill_group:
             continue
-        i18n.into_i18n(data.entries[id].name, **entry["name"])
+        i18n.into_i18n(data.entries[id].name, **cache.loc.get_all(entry["typeNameID"]))
         data.entries[id].groupID = entry["groupID"]
         data.entries[id].alphaMaxLevel = mapping.get(id, 0)
         data.entries[id].published = entry["published"]

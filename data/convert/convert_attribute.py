@@ -20,7 +20,7 @@ def convert(cache: ConvertCache, external: dict):
         if "description" in entry.keys():
             data.entries[id].description = entry["description"]
         if "displayNameID" in entry.keys():
-            i18n.into_i18n(data.entries[id].displayName, **entry["displayNameID"])
+            i18n.into_i18n(data.entries[id].displayName, **cache.loc.get_all(entry["displayNameID"]))
         data.entries[id].highIsGood = entry["highIsGood"]
         if "iconID" in entry.keys():
             data.entries[id].iconID = entry["iconID"]

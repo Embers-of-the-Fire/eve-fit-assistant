@@ -14,6 +14,7 @@ try {
         Write-Output 'Cannot find `fsd` directory'
         Exit-PSSession
     }
+    $fsd_loc_dir = Join-Path $current "fsd-localization"
     $out_dir = Join-Path $current "out"
 
     if (!$Native) {
@@ -41,7 +42,8 @@ try {
     $fit_os_out_dir = Join-Path $eve_fit_os_dir "data" "out"
     $patch_dir = Join-Path $eve_fit_os_dir "data" "patches"
     $fsd_patch_dir = Join-Path $eve_fit_os_dir "data" "fsd-patches"
-    & $uv run -m data.convert $fsd_dir $fsd_patch_dir $patch_dir $fit_os_out_dir
+    $fsd_loc_en = Join-Path $fsd_loc_dir "localization_en-us.pickle"
+    & $uv run -m data.convert $fsd_dir $fsd_loc_en $fsd_patch_dir $patch_dir $fit_os_out_dir
 }
 finally {
     Set-Location $original

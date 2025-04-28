@@ -1,5 +1,11 @@
 # Data for EVE Fit Assistant
 
+## Environment variable
+
+### Server
+
+`SERVER`: Possible value: `tq` or `se`.
+
 ## External dataset
 
 ### Officially exported game static data

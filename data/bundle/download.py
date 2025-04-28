@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import NamedTuple
 
 import aiofiles
@@ -18,8 +19,15 @@ class DownloadItem(NamedTuple):
 
 
 async def download(session: aiohttp.ClientSession, item: DownloadItem, index: dict[str, str]):
+    u = index.get(item.res_id.lower())
+    if u is None:
+        print(f"Failed to download {item.res_id.lower()}")
+        return
     async with semaphore:
-        url = f"https://resources.eveonline.com/{index[item.res_id.lower()]}"
+        if os.environ["SERVER"] == "tq":
+            url = f"https://resources.eveonline.com/{index[item.res_id.lower()]}"
+        elif os.environ["SERVER"] == "se":
+            url = f"https://ma79.gdl.netease.com/eve/resources/{index[item.res_id.lower()]}"
 
         print(f"Downloading {url} to {item.dir}/{item.file_name}")
         async with session.get(url) as response:

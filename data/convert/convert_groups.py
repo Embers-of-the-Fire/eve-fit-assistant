@@ -19,7 +19,7 @@ def convert(cache: ConvertCache, external: dict):
     types = cache.get("types")
 
     for id, entry in groups.items():
-        i18n.into_i18n(data.entries[id].name, **entry["name"])
+        i18n.into_i18n(data.entries[id].name, **cache.loc.get_all(entry["groupNameID"]))
         data.entries[id].categoryID = entry["categoryID"]
         data.entries[id].published = entry["published"]
 

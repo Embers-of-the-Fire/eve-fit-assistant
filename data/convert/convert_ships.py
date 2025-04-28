@@ -24,7 +24,7 @@ def convert(cache: ConvertCache, external: dict):
             ships.append((id, entry))
 
     for id, entry in ships:
-        i18n.into_i18n(data.entries[id].name, **entry["name"])
+        i18n.into_i18n(data.entries[id].name, **cache.loc.get_all(entry["typeNameID"]))
         data.entries[id].groupID = entry["groupID"]
         data.entries[id].published = entry["published"]
 
