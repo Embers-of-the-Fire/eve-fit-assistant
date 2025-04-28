@@ -22,7 +22,7 @@ def convert(cache: ConvertCache, external: dict):
 
         entry = _find_slot_type(data, id, dogma["dogmaEffects"])
         if entry is not None:
-            i18n.into_i18n(entry.name, **typedef["name"])
+            i18n.into_i18n(entry.name, **cache.loc.get_all(typedef["typeNameID"]))
             entry.published = typedef["published"]
             entry.maxState = _find_max_state(
                 dogma["dogmaAttributes"], dogma["dogmaEffects"], effects
@@ -32,14 +32,14 @@ def convert(cache: ConvertCache, external: dict):
 
         implant_slot_id = _find_implant_slot(dogma["dogmaAttributes"])
         if implant_slot_id is not None:
-            i18n.into_i18n(data.implant[id].name, **typedef["name"])
+            i18n.into_i18n(data.implant[id].name, **cache.loc.get_all(typedef["typeNameID"]))
             data.implant[id].published = typedef["published"]
             data.implant[id].slot = implant_slot_id - 1  # eve uses 1-based index
             continue
 
         booster_slot_id = _find_booster_slot(dogma["dogmaAttributes"])
         if booster_slot_id is not None:
-            i18n.into_i18n(data.booster[id].name, **typedef["name"])
+            i18n.into_i18n(data.booster[id].name, **cache.loc.get_all(typedef["typeNameID"]))
             data.booster[id].published = typedef["published"]
             data.booster[id].slot = booster_slot_id
 

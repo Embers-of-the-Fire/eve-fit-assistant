@@ -32,7 +32,7 @@ class ConvertCache:
         self.patches = PatchesCache(patch_dir)
 
     def get(self, key: str, no_int_key = False) -> dict:
-        return self.fsd.get((key, no_int_key))
+        return self.fsd.get(key, no_int_key)
 
     def download_cached(self, key: str) -> str:
         return self.resfileindex.download_cached(key)
@@ -117,18 +117,16 @@ class LocCache:
         self._res = resfile_index
         
         zh = self._res.download_cached("res:/localizationfsd/localization_fsd_zh.pickle")
-        self.cache['zh'] = {k: v[0] for k, v in pickle.loads(zh)[0].items()}
+        with open(zh, "rb") as f:
+            self.cache['zh'] = {k: v[0] for k, v in pickle.load(f)[1].items()}
         en = self._res.download_cached("res:/localizationfsd/localization_fsd_en-us.pickle")
-        self.cache['en'] = {k: v[0] for k, v in pickle.loads(en)[0].items()}
+        with open(en, "rb") as f:
+            self.cache['en'] = {k: v[0] for k, v in pickle.load(f)[1].items()}
     
     def get(self, key: str, lang: Literal['zh', 'en']) -> str:
-        key = key.lower()
         if lang not in self.cache:
             raise ValueError(f"Unsupported language: {lang}")
-        if key in self.cache[lang]:
-            return self.cache[lang][key]
-        else:
-            return key
+        return self.cache[lang].get(key, "")
     
     def get_all(self, key: str) -> dict[Literal['zh', 'en'], str]:
         return {lang: self.get(key, lang) for lang in self.cache.keys()}

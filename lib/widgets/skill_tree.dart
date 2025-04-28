@@ -86,7 +86,7 @@ class SkillListTile extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(item.name),
+            Expanded(child: Text(item.name)),
             _SkillLevelIndicator(
               level: item.level,
               alphaMaxLevel: item.alphaMaxLevel,

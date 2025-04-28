@@ -106,7 +106,9 @@ async def render(
                 url = f"https://ma79.gdl.netease.com/eve/resources/{graphic_url}"
             async with session.get(url) as response:
                 if response.status == 200:
-                    process_type_icons(type_id, types[str(type_id)], await response.read(), target_dir)
+                    process_type_icons(
+                        type_id, types[str(type_id)], await response.read(), target_dir
+                    )
                 else:
                     print(
                         f"Failed to download icon for type {type_id} [{response.url}]: {await response.read()}"
@@ -123,9 +125,12 @@ async def download(need_download: list[int], target_dir: pathlib.Path):
     async def download(session: aiohttp.ClientSession, type_id):
         nonlocal semaphore
         async with semaphore:
-            async with session.get(
-                f"https://image.eveonline.com/Type/{type_id}_32.png"
-            ) as response:
+            if os.environ["SERVER"] == "tq":
+                url = f"https://resources.eveonline.com/Type/{type_id}_32.png"
+            elif os.environ["SERVER"] == "se":
+                url = f"https://image.evepc.163.com/Type/{type_id}_32.png"
+            print(f"Downloading icon for type {type_id} from {url}")
+            async with session.get(url) as response:
                 if response.status == 200:
                     with open(target_dir / f"{type_id}.png", "wb") as f:
                         f.write(await response.read())

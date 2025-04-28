@@ -21,7 +21,7 @@ def convert(cache: ConvertCache, external: dict):
         if description is None:
             data.entries[id].description = ""
         else:
-            data.entries[id].description = cache.loc.get(description, 'zh')
+            data.entries[id].description = cache.loc.get(description, "zh")
         data.entries[id].traits = build_trait(id, cache, external)
 
     external["types"] = data

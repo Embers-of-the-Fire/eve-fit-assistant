@@ -10,12 +10,15 @@ def convert(cache: ConvertCache, external: dict):
     units = cache.get("dogmaUnits")
 
     for unit_id, entry in units.items():
-        data.entries[id].name = entry["name"]
-        data.entries[id].id = id
-        data.entries[id].displayName = cache.loc.get(entry["displayNameID"], "zh")
-        if "descriptionID" in entry.keys():
-            data.entries[id].description = cache.loc.get(entry["descriptionID"], "zh")
+        data.entries[unit_id].name = entry["name"]
+        data.entries[unit_id].id = unit_id
+        if "displayNameID" in entry.keys():
+            data.entries[unit_id].displayName = cache.loc.get(entry["displayNameID"], "zh")
         else:
-            data.entries[id].description = ""
+            data.entries[unit_id].displayName = ""
+        if "descriptionID" in entry.keys():
+            data.entries[unit_id].description = cache.loc.get(entry["descriptionID"], "zh")
+        else:
+            data.entries[unit_id].description = ""
 
     external["units"] = data
