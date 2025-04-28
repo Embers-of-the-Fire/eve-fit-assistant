@@ -311,7 +311,7 @@ class _SlotRowDisplay extends ConsumerWidget {
         final icon = GlobalStorage().static.icons.getTypeIconSync(chargeID!, width: 18, height: 18);
         if (icon != null) {
           row.add(icon);
-          row.add(const SizedBox(width: 10));
+          row.add(const SizedBox(width: 4));
         }
         final chargeName = GlobalStorage().static.types[chargeID!]?.nameZH ?? '未知';
         row.add(Text(chargeName, style: const TextStyle(fontSize: 14)));
@@ -322,50 +322,65 @@ class _SlotRowDisplay extends ConsumerWidget {
       }
     }
 
-    {
-      // fire range
+    if (item != null) {
       final List<Widget> row = [];
-      if (item != null) {
-        final range = item.attributes[maxRange];
-        if (range != null && range > 0) {
-          // turret
+
+      // fire range
+      final range = item.attributes[maxRange];
+      if (range != null && range > 0) {
+        // turret
+        row.add(const Image(image: targetRangeImage, width: 18, height: 18));
+        row.add(const SizedBox(width: 4));
+        String text = '${(range / 1000).toStringAsMaxDecimals(1)} km';
+
+        final extraRange = item.attributes[falloff];
+        if (extraRange != null && extraRange > 0) {
+          text += ' + ${(extraRange / 1000).toStringAsMaxDecimals(1)} km';
+        }
+
+        final extraEffectRange = item.attributes[falloffEffectiveness];
+        if (extraEffectRange != null && extraEffectRange > 0) {
+          text += ' + ${(extraEffectRange / 1000).toStringAsMaxDecimals(1)} km';
+        }
+
+        row.add(Text(text, style: const TextStyle(fontSize: 14)));
+      } else if (item.charge != null) {
+        // missile launcher
+        final charge = item.charge!;
+        final speed = charge.attributes[maxVelocity] ?? 0.0;
+        final time = charge.attributes[explosionDelay] ?? 0.0;
+        final range = speed * time / 1000_000;
+        if (range > 0) {
           row.add(const Image(image: targetRangeImage, width: 18, height: 18));
-          row.add(const SizedBox(width: 10));
-          String text = '${(range / 1000).toStringAsMaxDecimals(1)} km';
+          row.add(const SizedBox(width: 4));
+          row.add(
+              Text('${range.toStringAsMaxDecimals(1)} km', style: const TextStyle(fontSize: 14)));
+        }
+      } else {
+        final effectRange = item.attributes[empFieldRange];
+        if (effectRange != null) {
+          row.add(const Image(image: targetRangeImage, width: 18, height: 18));
+          row.add(const SizedBox(width: 4));
+          row.add(Text(
+            '${(effectRange / 1000).toStringAsMaxDecimals(1)} km',
+            style: const TextStyle(fontSize: 14),
+          ));
+        }
+      }
 
-          final extraRange = item.attributes[falloff];
-          if (extraRange != null && extraRange > 0) {
-            text += ' + ${(extraRange / 1000).toStringAsMaxDecimals(1)} km';
-          }
-
-          final extraEffectRange = item.attributes[falloffEffectiveness];
-          if (extraEffectRange != null && extraEffectRange > 0) {
-            text += ' + ${(extraEffectRange / 1000).toStringAsMaxDecimals(1)} km';
-          }
-
-          row.add(Text(text, style: const TextStyle(fontSize: 14)));
-        } else if (item.charge != null) {
-          // missile launcher
-          final charge = item.charge!;
-          final speed = charge.attributes[maxVelocity] ?? 0.0;
-          final time = charge.attributes[explosionDelay] ?? 0.0;
-          final range = speed * time / 1000_000;
-          if (range > 0) {
-            row.add(const Image(image: targetRangeImage, width: 18, height: 18));
-            row.add(const SizedBox(width: 10));
-            row.add(
-                Text('${range.toStringAsMaxDecimals(1)} km', style: const TextStyle(fontSize: 14)));
-          }
-        } else {
-          final effectRange = item.attributes[empFieldRange];
-          if (effectRange != null) {
-            row.add(const Image(image: targetRangeImage, width: 18, height: 18));
-            row.add(const SizedBox(width: 10));
-            row.add(Text(
-              '${(effectRange / 1000).toStringAsMaxDecimals(1)} km',
-              style: const TextStyle(fontSize: 14),
-            ));
-          }
+      // capacity
+      final time = item.attributes[cycleTime];
+      if (time != null && time > 0) {
+        final capNeed = item.attributes[capacitorNeed] ?? 0;
+        final capPerSecond = capNeed / time * 1000;
+        if (capPerSecond > 0.001) {
+          if (row.isNotEmpty) row.add(const SizedBox(width: 10));
+          row.add(const Image(image: capacitorChargeImage, width: 18, height: 18));
+          row.add(const SizedBox(width: 4));
+          row.add(Text(
+            '${capPerSecond.toStringAsMaxDecimals(1)} GJ/s',
+            style: const TextStyle(fontSize: 14),
+          ));
         }
       }
 

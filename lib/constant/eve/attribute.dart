@@ -4,6 +4,10 @@ export 'package:eve_fit_assistant/native/codegen/constant/attribute.dart';
 /// - High is good: True
 const int capacitorCapacity = 482;
 
+/// - Name: capacitorNeed
+/// - High is good: True
+const int capacitorNeed = 6;
+
 /// - Name: rechargeRate
 /// - High is good: True
 const int rechargeRate = 55;
