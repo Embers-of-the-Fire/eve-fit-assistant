@@ -8,6 +8,7 @@ import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/fit/fit_record.dart';
 import 'package:eve_fit_assistant/storage/fit/storage.dart';
 import 'package:eve_fit_assistant/storage/preference/preference.dart';
+import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/esi/auth/auth.dart';
 import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
@@ -34,6 +35,32 @@ abstract class Fitting with _$Fitting {
 
   Fit toFit() {
     final fit = Fit.init(shipTypeID);
+
+    int high = 0;
+    int med = 0;
+    int low = 0;
+    for (final item in items) {
+      if (item.flag.slotInfo?.$1 != FitItemType.subsystem) continue;
+
+      final type = GlobalStorage().static.subsystems.items[item.typeID];
+      if (type == null) continue;
+      high += type.high;
+      med += type.medium;
+      low += type.low;
+    }
+
+    void modifySlot(List<SlotItem?> slot, int targetLength) {
+      if (slot.length < targetLength) {
+        slot.addAll(List.filled(targetLength - slot.length, null));
+      } else if (slot.length > targetLength) {
+        slot.removeRange(targetLength, slot.length);
+      }
+    }
+
+    modifySlot(fit.high, high);
+    modifySlot(fit.med, med);
+    modifySlot(fit.low, low);
+
     for (final item in items) {
       if (item.flag.isDrone) {
         fit.drone
