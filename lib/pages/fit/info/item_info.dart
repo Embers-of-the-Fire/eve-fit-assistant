@@ -67,21 +67,26 @@ class _ItemInfoPageState extends State<ItemInfoPage> with SingleTickerProviderSt
 
   @override
   void initState() {
-    final pageCount = 2 +
-        (GlobalStorage().static.types[widget.typeID]?.traits != null ? 1 : 0) +
-        ((widget.item?.isDynamic ?? false) ? 1 : 0) +
-        (GlobalStorage().static.typeSkills[widget.typeID]?.skills.isNotEmpty ?? false ? 1 : 0) +
-        ((widget.item?.charge != null)
-            ? 2 +
-                (GlobalStorage()
-                            .static
-                            .typeSkills[widget.item!.charge!.itemId]
-                            ?.skills
-                            .isNotEmpty ??
-                        false
-                    ? 1
-                    : 0)
-            : 0);
+    int pageCount = 0;
+
+    if (GlobalStorage().static.types[widget.typeID]?.traits != null) {
+      pageCount += 1;
+    }
+    if (widget.item?.isDynamic ?? false) {
+      pageCount += 1;
+    }
+    pageCount += 2;
+    if (GlobalStorage().static.typeSkills[widget.typeID]?.skills.isNotEmpty ?? false) {
+      pageCount += 1;
+    }
+    if (widget.item?.charge != null) {
+      pageCount += 1;
+      if (GlobalStorage().static.typeSkills[widget.item!.charge!.itemId]?.skills.isNotEmpty ??
+          false) {
+        pageCount += 1;
+      }
+    }
+
     _controller = TabController(length: pageCount, vsync: this);
     super.initState();
   }

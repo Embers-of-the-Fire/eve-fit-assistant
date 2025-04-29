@@ -1,5 +1,7 @@
 from __future__ import annotations
 from decimal import ROUND_DOWN, Decimal
+import json
+import sqlite3
 from cache import ConvertCache
 import i18n
 import types_pb2
@@ -10,6 +12,16 @@ def convert(cache: ConvertCache, external: dict):
 
     print("Converting types...")
     types = cache.get("types")
+
+    traits_path = cache.download_cached("res:/staticdata/infobubbles.static")
+    traits_db = sqlite3.connect(traits_path)
+    traits_cursor = traits_db.cursor()
+    traits = traits_cursor.execute(
+        "SELECT value FROM cache WHERE key = 'infoBubbleTypeBonuses'"
+    ).fetchone()
+    if traits is None:
+        raise RuntimeError("Failed to load infoBubbleTypeBonuses from traits database")
+    traits = {int(k): v for k, v in json.loads(traits[0]).items()}
 
     for id, entry in types.items():
         # if not entry["published"]: # filter out unpublished types, at least currently
@@ -22,27 +34,26 @@ def convert(cache: ConvertCache, external: dict):
             data.entries[id].description = ""
         else:
             data.entries[id].description = cache.loc.get(description, "zh")
-        data.entries[id].traits = build_trait(id, cache, external)
+        data.entries[id].traits = build_trait(traits.get(id), cache, external)
 
     external["types"] = data
 
 
-def build_trait(type_id: int, cache: ConvertCache, external: dict) -> str:
+def build_trait(traits: dict | None, cache: ConvertCache, external: dict) -> str:
+    if traits is None:
+        return ""
     buffer = ""
 
     types = cache.get("types")
     unit_map = external["units"]
 
-    traits = types[type_id].get("traits")
-    if traits is None:
-        return ""
-
     types_buffer = ""
     for id, entry in traits.get("types", {}).items():
+        id = int(id)
         skill_name = cache.loc.get(types[id]["typeNameID"], "zh")
         skill_buffer = ""
         for bonus in sorted(entry, key=lambda t: t["importance"]):
-            text = bonus["bonusText"]["zh"]
+            text = cache.loc.get(bonus["nameID"], "zh")
             if "bonus" in bonus.keys():
                 bonus_val = normalize_float(bonus["bonus"])
                 unit = unit_map.entries[bonus["unitID"]].displayName
@@ -57,7 +68,7 @@ def build_trait(type_id: int, cache: ConvertCache, external: dict) -> str:
 
     role_buffer = ""
     for bonus in sorted(traits.get("roleBonuses", []), key=lambda t: t["importance"]):
-        text = bonus["bonusText"]["zh"]
+        text = cache.loc.get(bonus["nameID"], "zh")
         if "bonus" in bonus.keys():
             bonus_val = normalize_float(bonus["bonus"])
             unit = unit_map.entries[bonus["unitID"]].displayName
@@ -69,7 +80,7 @@ def build_trait(type_id: int, cache: ConvertCache, external: dict) -> str:
 
     misc_buffer = ""
     for bonus in sorted(traits.get("miscBonuses", []), key=lambda t: t["importance"]):
-        text = bonus["bonusText"]["zh"]
+        text = cache.loc.get(bonus["nameID"], "zh")
         if "bonus" in bonus.keys():
             bonus_val = normalize_float(bonus["bonus"])
             unit = unit_map.entries[bonus["unitID"]].displayName
