@@ -71,24 +71,24 @@ class FunctionCard extends StatelessWidget {
                       ),
 
                       // 状态指示器
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: color.withAlpha(204),
-                                  spreadRadius: 2,
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            )),
-                      )
+                      // Positioned(
+                      //   top: 12,
+                      //   right: 12,
+                      //   child: Container(
+                      //       width: 8,
+                      //       height: 8,
+                      //       decoration: BoxDecoration(
+                      //         color: color,
+                      //         shape: BoxShape.circle,
+                      //         boxShadow: [
+                      //           BoxShadow(
+                      //             color: color.withAlpha(204),
+                      //             spreadRadius: 2,
+                      //             blurRadius: 8,
+                      //           ),
+                      //         ],
+                      //       )),
+                      // )
                     ],
                   )))));
 }
