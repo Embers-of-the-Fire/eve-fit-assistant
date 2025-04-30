@@ -4,12 +4,14 @@ class ConfigTab extends ConsumerStatefulWidget {
   final String fitID;
   final String name;
   final String description;
+  final void Function() onScreenShot;
 
   const ConfigTab({
     super.key,
     required this.fitID,
     required this.name,
     required this.description,
+    required this.onScreenShot,
   });
 
   @override
@@ -93,43 +95,49 @@ class _ConfigTabState extends ConsumerState<ConfigTab> {
       ));
     }
 
-    return Form(
-      key: form,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-        child: Column(
-          children: [
-            TextFormField(
-              readOnly: !editable,
-              controller: nameController,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '请输入装配名称';
-                }
-                return null;
-              },
-              decoration: const InputDecoration(
-                label: Text('装配名称'),
-              ),
-            ),
-            TextFormField(
-              readOnly: !editable,
-              controller: descController,
-              maxLines: 10,
-              decoration: const InputDecoration(
-                label: Text('装配备注'),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: bottomAction,
-              ),
-            ),
-          ],
-        ),
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.only(top: 20),
+        child: ElevatedButton(onPressed: widget.onScreenShot, child: const Text('导出图片')),
       ),
-    );
+      Form(
+        key: form,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          child: Column(
+            children: [
+              TextFormField(
+                readOnly: !editable,
+                controller: nameController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '请输入装配名称';
+                  }
+                  return null;
+                },
+                decoration: const InputDecoration(
+                  label: Text('装配名称'),
+                ),
+              ),
+              TextFormField(
+                readOnly: !editable,
+                controller: descController,
+                maxLines: 10,
+                decoration: const InputDecoration(
+                  label: Text('装配备注'),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: bottomAction,
+                ),
+              ),
+            ],
+          ),
+        ),
+      )
+    ]);
   }
 }

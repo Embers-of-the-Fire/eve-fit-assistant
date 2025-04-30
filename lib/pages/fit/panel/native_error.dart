@@ -44,3 +44,30 @@ class NativeErrorTrigger extends StatelessWidget {
     );
   }
 }
+
+class NativeErrorStaticIndicator extends StatelessWidget {
+  final List<SlotInfo> errors;
+
+  const NativeErrorStaticIndicator({super.key, required this.errors});
+
+  @override
+  Widget build(BuildContext context) {
+    ErrorLevel errState = ErrorLevel.warning;
+    for (final err in errors) {
+      if (err.isError) {
+        errState = ErrorLevel.error;
+        break;
+      }
+    }
+
+    final errorIcon = switch (errState) {
+      ErrorLevel.error => const Icon(Icons.error_outline, color: Colors.red),
+      ErrorLevel.warning => const Icon(Icons.error_outline, color: Colors.orange),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(5),
+      child: errorIcon,
+    );
+  }
+}

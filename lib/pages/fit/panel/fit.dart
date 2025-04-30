@@ -17,6 +17,7 @@ import 'package:eve_fit_assistant/pages/fit/panel/equipment_header.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/info/info_component.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/native_error.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/slot.dart';
+import 'package:eve_fit_assistant/pages/fit/screenshot/display.dart';
 import 'package:eve_fit_assistant/storage/character/character.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
 import 'package:eve_fit_assistant/storage/static/ships.dart';
@@ -31,17 +32,11 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'character.dart';
-
 part 'config.dart';
-
 part 'drone.dart';
-
 part 'equipment.dart';
-
 part 'fighter.dart';
-
 part 'fit.g.dart';
-
 part 'info.dart';
 
 Future<void> intoFitPage(BuildContext context, String fitID) async {
@@ -108,11 +103,11 @@ class FitRecordState {
     s.character = await GlobalStorage().character.get(fit.body.characterID);
     s.output = GlobalStorage()
         .fitEngine
-    // .calculate(fit: fit.body, character: GlobalStorage().character.predefinedAll5);
+        // .calculate(fit: fit.body, character: GlobalStorage().character.predefinedAll5);
         .calculate(
-      fit: fit.body,
-      character: s.character,
-    );
+          fit: fit.body,
+          character: s.character,
+        );
     s.initialized = true;
     s.saved = true;
     return s;
@@ -140,8 +135,7 @@ class FitPagePlaceholder extends StatelessWidget {
   const FitPagePlaceholder({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      Scaffold(
+  Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('加载中...')),
         body: const Center(
           child: CircularProgressIndicator(),
@@ -195,7 +189,7 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             Tab(text: '装备'),
             Tab(text: '属性'),
             Tab(text: '无人机'),
-            Tab(text: '设置'),
+            Tab(text: '杂项'),
           ],
         ),
         centerTitle: true,
@@ -206,20 +200,28 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
           )
         ],
       ),
-      body: SafeArea(bottom: true, child: TabBarView(
-        controller: _tabController,
-        children: [
-          CharacterTab(fitID: widget.fitID),
-          EquipmentTab(fitID: widget.fitID, ship: ship),
-          InfoTab(fitID: widget.fitID),
-          DroneTab(fitID: widget.fitID),
-          ConfigTab(
-            fitID: widget.fitID,
-            name: fitRef.fit.brief.name,
-            description: fitRef.fit.brief.description,
-          ),
-        ],
-      )),
+      body: SafeArea(
+          bottom: true,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              CharacterTab(fitID: widget.fitID),
+              EquipmentTab(fitID: widget.fitID, ship: ship),
+              InfoTab(fitID: widget.fitID),
+              DroneTab(fitID: widget.fitID),
+              ConfigTab(
+                fitID: widget.fitID,
+                name: fitRef.fit.brief.name,
+                description: fitRef.fit.brief.description,
+                onScreenShot: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => FitStaticDisplay(
+                          displayEhp: false,
+                          ship: ship,
+                          fit: fitRef,
+                        ))),
+              ),
+            ],
+          )),
     );
   }
 
@@ -260,6 +262,12 @@ class _FitPageContentState extends ConsumerState<FitPageContent>
             fitID: widget.fitID,
             name: fitRef.fit.brief.name,
             description: fitRef.fit.brief.description,
+            onScreenShot: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => FitStaticDisplay(
+                  displayEhp: false,
+                  ship: ship,
+                  fit: fitRef,
+                ))),
           ),
         ],
       ),
