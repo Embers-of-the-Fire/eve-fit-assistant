@@ -39,9 +39,9 @@ try {
     $eve_fit_os_dir = Join-Path $current "..\rust\lib\eve-fit-os"
     Set-Location $eve_fit_os_dir
     $eve_fit_os_dir = (Get-Location).Path
-    $fit_os_out_dir = Join-Path $eve_fit_os_dir "data" "out"
-    $patch_dir = Join-Path $eve_fit_os_dir "data" "patches"
-    $fsd_patch_dir = Join-Path $eve_fit_os_dir "data" "fsd-patches"
+    $fit_os_out_dir = Join-Path $eve_fit_os_dir "data\out"
+    $patch_dir = Join-Path $eve_fit_os_dir "data\patches"
+    $fsd_patch_dir = Join-Path $eve_fit_os_dir "data\fsd-patches"
     $fsd_loc_en = Join-Path $fsd_loc_dir "localization_fsd_en-us.pickle"
     & $uv run -m data.convert $fsd_dir $fsd_loc_en $fsd_patch_dir $patch_dir $fit_os_out_dir
 }

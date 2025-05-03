@@ -12,6 +12,7 @@ import 'package:eve_fit_assistant/utils/utils.dart';
 class CharacterStorage {
   late final Character _predefinedAll5;
   late final Character _predefinedAll0;
+  late final Character _predefinedAlphaMax;
   final MapView<String, CharacterBrief> _briefRecords = MapView({});
   final MapView<String, Character> _characters = MapView({});
 
@@ -21,17 +22,22 @@ class CharacterStorage {
 
   Character get predefinedAll0 => _predefinedAll0;
 
+  Character get predefinedAlphaMax => _predefinedAlphaMax;
+
   CharacterStorage();
 
   Future<void> init() async {
     final staticDir = await getStaticCharacterDir();
     final all5File = File('${staticDir.path}/max.pb');
     final all0File = File('${staticDir.path}/min.pb');
+    final alphaFile = File('${staticDir.path}/alpha.pb');
     _predefinedAll5 = await Character.readFromFile(all5File);
     _predefinedAll0 = await Character.readFromFile(all0File);
+    _predefinedAlphaMax = await Character.readFromFile(alphaFile);
 
     _characters.write[_predefinedAll5.id] = _predefinedAll5;
     _characters.write[_predefinedAll0.id] = _predefinedAll0;
+    _characters.write[_predefinedAlphaMax.id] = _predefinedAlphaMax;
 
     await _loadBrief();
   }
@@ -41,6 +47,7 @@ class CharacterStorage {
     if (!await file.exists()) {
       _briefRecords.write[_predefinedAll5.id] = CharacterBrief.fromCharacter(_predefinedAll5);
       _briefRecords.write[_predefinedAll0.id] = CharacterBrief.fromCharacter(_predefinedAll0);
+      _briefRecords.write[_predefinedAlphaMax.id] = CharacterBrief.fromCharacter(_predefinedAlphaMax);
       await _saveBrief();
       return;
     }
@@ -82,13 +89,14 @@ class CharacterStorage {
   Future<Character> read(String id) async {
     if (id == _predefinedAll0.id) return _predefinedAll0;
     if (id == _predefinedAll5.id) return _predefinedAll5;
+    if (id == _predefinedAlphaMax.id) return _predefinedAlphaMax;
 
     final character = await Character.read(id);
     return character;
   }
 
   Future<void> delete(String id) async {
-    if (id == _predefinedAll0.id || id == _predefinedAll5.id) return;
+    if (id == _predefinedAll0.id || id == _predefinedAll5.id || id == _predefinedAlphaMax.id) return;
 
     await Character.delete(id);
     _briefRecords.write.remove(id);

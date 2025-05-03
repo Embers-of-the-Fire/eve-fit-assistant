@@ -38,7 +38,8 @@ class _CharacterPageState extends State<CharacterPage> {
                     title: const Text('默认角色')),
                 ...[
                   GlobalStorage().character.predefinedAll5,
-                  GlobalStorage().character.predefinedAll0
+                  GlobalStorage().character.predefinedAlphaMax,
+                  GlobalStorage().character.predefinedAll0,
                 ].map((el) => _CharacterListTile(
                       characterID: el.id,
                       onCopy: () => _onCopy(name: el.name, id: el.id),
@@ -63,7 +64,10 @@ class _CharacterPageState extends State<CharacterPage> {
                       .character
                       .brief
                       .values
-                      .filter((t) => t.id != predefinedLevelAll0 && t.id != predefinedLevelAll5)
+                      .filter((t) =>
+                          t.id != predefinedLevelAll0 &&
+                          t.id != predefinedLevelAll5 &&
+                          t.id != predefinedLevelAlphaMax)
                       .sortedByKey<Reversed<num>>((el) => Reversed(el.lastModifyTime))
                       .map((el) => _CharacterListTile(
                             characterID: el.id,

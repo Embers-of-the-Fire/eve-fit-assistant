@@ -4,7 +4,7 @@ param (
 )
 
 $current = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$pb2_dir = Join-Path $current "out" "pb2"
+$pb2_dir = Join-Path $current "out/pb2"
 $tar = Get-Command -Name "tar.exe" -ErrorAction Stop
 
 $cache_dir = Join-Path $current "cache"
@@ -18,14 +18,14 @@ $version_file = Join-Path $cache_dir "version"
 New-Item -ItemType Directory -Force -Path $cache_dir | Out-Null
 Copy-Item -Path (Join-Path $pb2_dir "*") -Destination $cache_dir -Recurse -Force
 New-Item -ItemType File -Force -Path $version_file | Out-Null
-$time = Get-Date -UFormat %s
+$time = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 Write-Host "Creating version timestamp at $time"
 Set-Content -Path $version_file -Value $time -Force
 Copy-Item -Path $version_file -Destination $current
 
 Write-Host "Executing extra python commands"
 $uv = Get-Command -Name "uv.exe" -ErrorAction Stop
-$bundle_python = Join-Path $current "bundle" "extra.py"
+$bundle_python = Join-Path $current "bundle\extra.py"
 $fsd_dir = Join-Path $current "fsd"
 $image_dir = Join-Path $current "images"
 $index_file = Join-Path $current "resfileindex.txt"
@@ -37,7 +37,7 @@ else {
 }
 
 if ($Download) {
-    $render_python = Join-Path $current "render" "render.py"
+    $render_python = Join-Path $current "render\render.py"
     & $uv run $render_python $fsd_dir $image_dir $cache_dir $index_file
 } else {
     Write-Host "Skipping render step..."

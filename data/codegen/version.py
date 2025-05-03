@@ -5,7 +5,7 @@ def codegen(_1, _2, version_file: Path, out_dir: Path):
     print("Generating bundle version timestamp constant...")
 
     with open(version_file, "r", encoding="utf-8") as f:
-        timestamp = version_file.read_text()
+        timestamp = version_file.read_text().replace("\n", "")
 
     time = int(timestamp)
 
@@ -14,4 +14,6 @@ def codegen(_1, _2, version_file: Path, out_dir: Path):
     with open(out_file, "w+", encoding="utf-8") as f:
         f.write("import 'package:eve_fit_assistant/storage/static/storage.dart';\n\n")
         f.write("/// Bundled static data version\n")
-        f.write(f"const StaticVersionInfo bundledStaticVersion = StaticVersionInfo(createTime: {time});\n")
+        f.write(
+            f"const StaticVersionInfo bundledStaticVersion = StaticVersionInfo(createTime: {time});\n"
+        )

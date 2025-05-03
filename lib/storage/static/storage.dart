@@ -148,7 +148,8 @@ class StaticVersionInfo {
 
   const StaticVersionInfo({required this.createTime});
 
-  factory StaticVersionInfo.fromText(String text) => StaticVersionInfo(createTime: int.parse(text));
+  factory StaticVersionInfo.fromText(String text) =>
+      StaticVersionInfo(createTime: int.parse(text.replaceAll('\n', '')));
 
   String toText() => createTime.toString();
 
