@@ -1,14 +1,11 @@
-import 'dart:developer';
-
-import 'package:eve_fit_assistant/export/schema.dart';
 import 'package:eve_fit_assistant/pages/fit/info/item_info.dart';
 import 'package:eve_fit_assistant/pages/fit/panel/fit.dart';
 import 'package:eve_fit_assistant/storage/storage.dart';
 import 'package:eve_fit_assistant/utils/utils.dart';
 import 'package:eve_fit_assistant/web/esi/storage/esi.dart';
 import 'package:eve_fit_assistant/widgets/confirm_dialog.dart';
+import 'package:eve_fit_assistant/widgets/export_format.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -73,25 +70,25 @@ class _ListPageState extends ConsumerState<ListPage> {
               SlidableAction(
                 onPressed: (_) async {
                   final fit = await GlobalStorage().ship.readFit(entry.value.id);
-                  final export = FitExport.fromRecord(fit);
-                  final text = export.encoded;
-                  log(text, name: 'exportToBase64');
-                  await Clipboard.setData(ClipboardData(text: text));
-                  if (!context.mounted) return;
-                  fToast.showToast(
-                      child: Container(
-                    margin: const EdgeInsets.only(bottom: 20.0),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(25.0),
-                      color: Theme.of(context).colorScheme.inversePrimary,
-                    ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.check),
-                      SizedBox(width: 12.0),
-                      Text('已复制到剪贴板'),
-                    ]),
-                  ));
+                  if (context.mounted) {
+                    final flag = await showExportFormatDialog(context, fit: fit);
+                    if (flag == true && context.mounted) {
+                      fToast.showToast(
+                          child: Container(
+                        margin: const EdgeInsets.only(bottom: 20.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(25.0),
+                          color: Theme.of(context).colorScheme.inversePrimary,
+                        ),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.check),
+                          SizedBox(width: 12.0),
+                          Text('已复制到剪贴板'),
+                        ]),
+                      ));
+                    }
+                  }
                 },
                 padding: EdgeInsets.zero,
                 icon: Icons.share,
