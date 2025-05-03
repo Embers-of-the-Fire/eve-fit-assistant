@@ -1,3 +1,4 @@
+import 'package:eve_fit_assistant/export/eft.dart';
 import 'package:eve_fit_assistant/export/game_url.dart';
 import 'package:eve_fit_assistant/export/schema.dart';
 import 'package:eve_fit_assistant/storage/fit/fit.dart';
@@ -6,20 +7,22 @@ import 'package:eve_fit_assistant/widgets/radio_button_group.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-Future<bool?> showExportFormatDialog(BuildContext context, {required FitRecord fit}) async =>
-    await showDialog<bool?>(
+Future<void> showExportFormatDialog(BuildContext context,
+        {required FitRecord fit, required void Function() onFinished}) async =>
+    await showDialog<void>(
       context: context,
-      builder: (context) => ExportFormatDialog(fit: fit),
+      builder: (context) => ExportFormatDialog(
+        fit: fit,
+        onFinished: onFinished,
+      ),
     );
 
 enum _ExportFormat {
   efa,
-  gameLink;
+  gameLink,
+  eft;
 
-  String get name => switch (this) {
-        efa => 'EFA 编码',
-        gameLink => '游戏内链',
-      };
+  String get name => switch (this) { efa => 'EFA 编码', gameLink => '游戏内链', eft => 'EFT 格式' };
 
   SelectableText get desc => switch (this) {
         efa => const SelectableText('导出为 EFA 的专有格式，只能在 EFA 中使用，但是可以保存更多具体信息，包括深渊装备等。'),
@@ -32,13 +35,18 @@ enum _ExportFormat {
                 text: '提醒：游戏内装配链接无法包含深渊装备数值、植入体、增效剂和启用状况等信息。\n\n',
                 style: TextStyle(color: Colors.red))
           ])),
+        eft => const SelectableText.rich(TextSpan(children: [
+            TextSpan(text: '导出为 EFT 格式，该格式可以导入 Pyfa 等其他第三方装配软件，或导入到游戏中。\n\n'),
+            TextSpan(text: '注意：该格式无法重新导入到 EFA 中。\n\n', style: TextStyle(color: Colors.yellow)),
+          ])),
       };
 }
 
 class ExportFormatDialog extends StatefulWidget {
   final FitRecord fit;
+  final void Function() onFinished;
 
-  const ExportFormatDialog({super.key, required this.fit});
+  const ExportFormatDialog({super.key, required this.fit, required this.onFinished});
 
   @override
   State<ExportFormatDialog> createState() => _ExportFormatDialogState();
@@ -57,6 +65,7 @@ class _ExportFormatDialogState extends State<ExportFormatDialog> {
                 choices: const [
                   _ExportFormat.efa,
                   _ExportFormat.gameLink,
+                  _ExportFormat.eft,
                 ],
                 builder: (context, choice) => Text(choice.name, textAlign: TextAlign.center),
                 groupBuilder: (context, children) => Row(
@@ -74,7 +83,7 @@ class _ExportFormatDialogState extends State<ExportFormatDialog> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
           TextButton(
               onPressed: () async {
                 switch (_exportFormat) {
@@ -87,9 +96,14 @@ class _ExportFormatDialogState extends State<ExportFormatDialog> {
                     final text = exportToGameUrl(widget.fit);
                     await Clipboard.setData(ClipboardData(text: text));
                     break;
+                  case _ExportFormat.eft:
+                    final text = exportToEft(widget.fit);
+                    await Clipboard.setData(ClipboardData(text: text));
+                    break;
                 }
                 if (context.mounted) {
-                  Navigator.of(context).pop(true);
+                  Navigator.of(context).pop();
+                  widget.onFinished();
                 }
               },
               child: const Text('导出')),

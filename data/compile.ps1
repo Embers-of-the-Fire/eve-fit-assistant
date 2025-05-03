@@ -3,7 +3,7 @@ $schema_dir = Join-Path $current "schema"
 $protoc = Get-Command -Name "protoc.exe" -ErrorAction Stop
 
 $python_convert_dir = Join-Path $current "convert"
-$dart_convert_dir = Join-Path (Split-Path -Parent $current) "lib" "storage" "proto"
+$dart_convert_dir = Join-Path (Split-Path -Parent $current) "lib\storage\proto"
 
 Write-Host "Clearing previous generated files ..."
 $files_to_delete = Get-ChildItem -Path (Join-Path $current "convert") -Filter "*_pb2.py" -Recurse -File

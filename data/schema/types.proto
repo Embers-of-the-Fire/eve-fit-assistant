@@ -8,10 +8,11 @@ message Types {
     message Type {
         required i18n.I18N name = 1;
         required int32 groupID = 2;
-        required bool published = 3;
+        optional int32 marketGroupID = 3;
+        required bool published = 4;
         // this might be i18n.I18N in the future, but not now.
-        required string description = 4;
-        required string traits = 5;
+        required string description = 5;
+        required string traits = 6;
     }
 
     map<int32, Type> entries = 1;

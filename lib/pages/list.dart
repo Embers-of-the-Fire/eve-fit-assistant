@@ -71,8 +71,8 @@ class _ListPageState extends ConsumerState<ListPage> {
                 onPressed: (_) async {
                   final fit = await GlobalStorage().ship.readFit(entry.value.id);
                   if (context.mounted) {
-                    final flag = await showExportFormatDialog(context, fit: fit);
-                    if (flag == true && context.mounted) {
+                    await showExportFormatDialog(context, fit: fit, onFinished: () {
+                      if (!context.mounted) return;
                       fToast.showToast(
                           child: Container(
                         margin: const EdgeInsets.only(bottom: 20.0),
@@ -87,7 +87,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                           Text('已复制到剪贴板'),
                         ]),
                       ));
-                    }
+                    });
                   }
                 },
                 padding: EdgeInsets.zero,

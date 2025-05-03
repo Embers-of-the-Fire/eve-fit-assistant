@@ -35,6 +35,8 @@ def convert(cache: ConvertCache, external: dict):
         else:
             data.entries[id].description = cache.loc.get(description, "zh")
         data.entries[id].traits = build_trait(traits.get(id), cache, external)
+        if "marketGroupID" in entry.keys():
+            data.entries[id].marketGroupID = entry["marketGroupID"]
 
     external["types"] = data
 

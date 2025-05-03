@@ -13,6 +13,8 @@ class TypeItem {
 
   int get groupID => _raw.groupID;
 
+  int? get marketGroupID => _raw.marketGroupID.optional;
+
   bool get published => _raw.published;
 
   String get description => _raw.description;

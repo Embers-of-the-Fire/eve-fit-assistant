@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 import i18n_pb2 as i18n__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btypes.proto\x12\x05types\x1a\ni18n.proto\"\xe1\x01\n\x05Types\x12*\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x19.types.Types.EntriesEntry\x1ai\n\x04Type\x12\x18\n\x04name\x18\x01 \x02(\x0b\x32\n.i18n.I18N\x12\x0f\n\x07groupID\x18\x02 \x02(\x05\x12\x11\n\tpublished\x18\x03 \x02(\x08\x12\x13\n\x0b\x64\x65scription\x18\x04 \x02(\t\x12\x0e\n\x06traits\x18\x05 \x02(\t\x1a\x41\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.types.Types.Type:\x02\x38\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btypes.proto\x12\x05types\x1a\ni18n.proto\"\xf9\x01\n\x05Types\x12*\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x19.types.Types.EntriesEntry\x1a\x80\x01\n\x04Type\x12\x18\n\x04name\x18\x01 \x02(\x0b\x32\n.i18n.I18N\x12\x0f\n\x07groupID\x18\x02 \x02(\x05\x12\x15\n\rmarketGroupID\x18\x03 \x01(\x05\x12\x11\n\tpublished\x18\x04 \x02(\x08\x12\x13\n\x0b\x64\x65scription\x18\x05 \x02(\t\x12\x0e\n\x06traits\x18\x06 \x02(\t\x1a\x41\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.types.Types.Type:\x02\x38\x01')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'types_pb2', globals())
@@ -24,9 +24,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _TYPES_ENTRIESENTRY._options = None
   _TYPES_ENTRIESENTRY._serialized_options = b'8\001'
   _TYPES._serialized_start=35
-  _TYPES._serialized_end=260
-  _TYPES_TYPE._serialized_start=88
-  _TYPES_TYPE._serialized_end=193
-  _TYPES_ENTRIESENTRY._serialized_start=195
-  _TYPES_ENTRIESENTRY._serialized_end=260
+  _TYPES._serialized_end=284
+  _TYPES_TYPE._serialized_start=89
+  _TYPES_TYPE._serialized_end=217
+  _TYPES_ENTRIESENTRY._serialized_start=219
+  _TYPES_ENTRIESENTRY._serialized_end=284
 # @@protoc_insertion_point(module_scope)

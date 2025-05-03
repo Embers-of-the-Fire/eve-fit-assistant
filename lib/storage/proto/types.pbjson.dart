@@ -28,9 +28,10 @@ const Types_Type$json = {
   '2': [
     {'1': 'name', '3': 1, '4': 2, '5': 11, '6': '.i18n.I18N', '10': 'name'},
     {'1': 'groupID', '3': 2, '4': 2, '5': 5, '10': 'groupID'},
-    {'1': 'published', '3': 3, '4': 2, '5': 8, '10': 'published'},
-    {'1': 'description', '3': 4, '4': 2, '5': 9, '10': 'description'},
-    {'1': 'traits', '3': 5, '4': 2, '5': 9, '10': 'traits'},
+    {'1': 'marketGroupID', '3': 3, '4': 1, '5': 5, '10': 'marketGroupID'},
+    {'1': 'published', '3': 4, '4': 2, '5': 8, '10': 'published'},
+    {'1': 'description', '3': 5, '4': 2, '5': 9, '10': 'description'},
+    {'1': 'traits', '3': 6, '4': 2, '5': 9, '10': 'traits'},
   ],
 };
 
@@ -47,9 +48,9 @@ const Types_EntriesEntry$json = {
 /// Descriptor for `Types`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List typesDescriptor = $convert.base64Decode(
     'CgVUeXBlcxIzCgdlbnRyaWVzGAEgAygLMhkudHlwZXMuVHlwZXMuRW50cmllc0VudHJ5Ugdlbn'
-    'RyaWVzGpgBCgRUeXBlEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSGAoHZ3JvdXBJ'
-    'RBgCIAIoBVIHZ3JvdXBJRBIcCglwdWJsaXNoZWQYAyACKAhSCXB1Ymxpc2hlZBIgCgtkZXNjcm'
-    'lwdGlvbhgEIAIoCVILZGVzY3JpcHRpb24SFgoGdHJhaXRzGAUgAigJUgZ0cmFpdHMaTQoMRW50'
-    'cmllc0VudHJ5EhAKA2tleRgBIAEoBVIDa2V5EicKBXZhbHVlGAIgASgLMhEudHlwZXMuVHlwZX'
-    'MuVHlwZVIFdmFsdWU6AjgB');
+    'RyaWVzGr4BCgRUeXBlEh4KBG5hbWUYASACKAsyCi5pMThuLkkxOE5SBG5hbWUSGAoHZ3JvdXBJ'
+    'RBgCIAIoBVIHZ3JvdXBJRBIkCg1tYXJrZXRHcm91cElEGAMgASgFUg1tYXJrZXRHcm91cElEEh'
+    'wKCXB1Ymxpc2hlZBgEIAIoCFIJcHVibGlzaGVkEiAKC2Rlc2NyaXB0aW9uGAUgAigJUgtkZXNj'
+    'cmlwdGlvbhIWCgZ0cmFpdHMYBiACKAlSBnRyYWl0cxpNCgxFbnRyaWVzRW50cnkSEAoDa2V5GA'
+    'EgASgFUgNrZXkSJwoFdmFsdWUYAiABKAsyES50eXBlcy5UeXBlcy5UeXBlUgV2YWx1ZToCOAE=');
 

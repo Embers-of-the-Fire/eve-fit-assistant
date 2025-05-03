@@ -19,6 +19,7 @@ class Types_Type extends $pb.GeneratedMessage {
   factory Types_Type({
     $0.I18N? name,
     $core.int? groupID,
+    $core.int? marketGroupID,
     $core.bool? published,
     $core.String? description,
     $core.String? traits,
@@ -29,6 +30,9 @@ class Types_Type extends $pb.GeneratedMessage {
     }
     if (groupID != null) {
       $result.groupID = groupID;
+    }
+    if (marketGroupID != null) {
+      $result.marketGroupID = marketGroupID;
     }
     if (published != null) {
       $result.published = published;
@@ -48,9 +52,10 @@ class Types_Type extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Types.Type', package: const $pb.PackageName(_omitMessageNames ? '' : 'types'), createEmptyInstance: create)
     ..aQM<$0.I18N>(1, _omitFieldNames ? '' : 'name', subBuilder: $0.I18N.create)
     ..a<$core.int>(2, _omitFieldNames ? '' : 'groupID', $pb.PbFieldType.Q3, protoName: 'groupID')
-    ..a<$core.bool>(3, _omitFieldNames ? '' : 'published', $pb.PbFieldType.QB)
-    ..aQS(4, _omitFieldNames ? '' : 'description')
-    ..aQS(5, _omitFieldNames ? '' : 'traits')
+    ..a<$core.int>(3, _omitFieldNames ? '' : 'marketGroupID', $pb.PbFieldType.O3, protoName: 'marketGroupID')
+    ..a<$core.bool>(4, _omitFieldNames ? '' : 'published', $pb.PbFieldType.QB)
+    ..aQS(5, _omitFieldNames ? '' : 'description')
+    ..aQS(6, _omitFieldNames ? '' : 'traits')
   ;
 
   @$core.Deprecated(
@@ -95,32 +100,41 @@ class Types_Type extends $pb.GeneratedMessage {
   void clearGroupID() => clearField(2);
 
   @$pb.TagNumber(3)
-  $core.bool get published => $_getBF(2);
+  $core.int get marketGroupID => $_getIZ(2);
   @$pb.TagNumber(3)
-  set published($core.bool v) { $_setBool(2, v); }
+  set marketGroupID($core.int v) { $_setSignedInt32(2, v); }
   @$pb.TagNumber(3)
-  $core.bool hasPublished() => $_has(2);
+  $core.bool hasMarketGroupID() => $_has(2);
   @$pb.TagNumber(3)
-  void clearPublished() => clearField(3);
+  void clearMarketGroupID() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get published => $_getBF(3);
+  @$pb.TagNumber(4)
+  set published($core.bool v) { $_setBool(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasPublished() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPublished() => clearField(4);
 
   /// this might be i18n.I18N in the future, but not now.
-  @$pb.TagNumber(4)
-  $core.String get description => $_getSZ(3);
-  @$pb.TagNumber(4)
-  set description($core.String v) { $_setString(3, v); }
-  @$pb.TagNumber(4)
-  $core.bool hasDescription() => $_has(3);
-  @$pb.TagNumber(4)
-  void clearDescription() => clearField(4);
+  @$pb.TagNumber(5)
+  $core.String get description => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set description($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasDescription() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDescription() => clearField(5);
 
-  @$pb.TagNumber(5)
-  $core.String get traits => $_getSZ(4);
-  @$pb.TagNumber(5)
-  set traits($core.String v) { $_setString(4, v); }
-  @$pb.TagNumber(5)
-  $core.bool hasTraits() => $_has(4);
-  @$pb.TagNumber(5)
-  void clearTraits() => clearField(5);
+  @$pb.TagNumber(6)
+  $core.String get traits => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set traits($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasTraits() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTraits() => clearField(6);
 }
 
 class Types extends $pb.GeneratedMessage {
