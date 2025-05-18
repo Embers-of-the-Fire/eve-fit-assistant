@@ -40,10 +40,13 @@ def run(
         types = json.load(f)
     with open(fsd_path / "graphicids.json", "r", encoding="utf-8") as f:
         graphics = json.load(f)
+    with open(fsd_path / "iconids.json", "r", encoding="utf-8") as f:
+        icons = json.load(f)
     index = read_resfile_index(resfile_index_file)
 
-    need_render = []
+    need_render_graphic = []
     need_download = []
+    need_render_icon = []
     print("Started copying type icons...")
     for type_id, type_item in types.items():
         type_id = int(type_id)
@@ -52,34 +55,38 @@ def run(
         if type_item["published"] is False:
             continue
 
-        if (image_path / "Types" / f"{type_id}_32.png").exists():
+        if "iconID" in type_item.keys():
+            path: str = icons[str(type_item["iconID"])]["iconFile"]
+            need_render_icon.append((type_id, index[path.lower()]))
+        elif "graphicID" in type_item.keys():
+            need_render_graphic.append(type_id)
+        elif (image_path / "Types" / f"{type_id}_32.png").exists():
             shutil.copyfile(
                 image_path / "Types" / f"{type_id}_32.png", target_dir / f"{type_id}.png"
             )
-        elif "graphicID" in type_item:
-            need_render.append(type_id)
         else:
             need_download.append(type_id)
     print("Finished copying type icons.")
 
-    print("Start rendering type icons...")
-    asyncio.run(
-        render(need_render, types, graphics, index, target_dir, lambda t: need_download.append(t))
-    )
-    print("Finished rendering type icons.")
+    print(f"Need to render {len(need_render_graphic)} type icons by graphic.")
 
     print("Start downloading type icons...")
     asyncio.run(download(need_download, target_dir))
     print("Finished downloading type icons.")
 
+    print("Start rendering type icons by graphic...")
+    asyncio.run(render_graphic(need_render_graphic, types, graphics, index, target_dir))
+    print("Start rendering type icons by icon...")
+    asyncio.run(render_icon(need_render_icon, types, target_dir))
+    print("Finished rendering type icons.")
 
-async def render(
+
+async def render_graphic(
     need_render: list[int],
     types: dict,
     graphics: dict,
     index: dict,
     target_dir: pathlib.Path,
-    on_non_graphic_id,
 ):
     MAX_CONNECTIONS = 10
     semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
@@ -98,7 +105,6 @@ async def render(
                 ).lower()
                 graphic_url = index[graphic_index]
             except KeyError:
-                on_non_graphic_id(type_id)
                 return
             if os.environ["SERVER"] == "tq":
                 url = f"https://resources.eveonline.com/{graphic_url}"
@@ -124,6 +130,8 @@ async def download(need_download: list[int], target_dir: pathlib.Path):
 
     async def download(session: aiohttp.ClientSession, type_id):
         nonlocal semaphore
+        if (target_dir / f"{type_id}.png").exists():
+            return
         async with semaphore:
             if os.environ["SERVER"] == "tq":
                 url = f"https://resources.eveonline.com/Type/{type_id}_32.png"
@@ -141,6 +149,32 @@ async def download(need_download: list[int], target_dir: pathlib.Path):
 
     async with aiohttp.ClientSession() as session:
         await asyncio.gather(*[download(session, type_id) for type_id in need_download])
+
+
+async def render_icon(
+    need_download: list[tuple[int, str]],
+    types: dict,
+    target_dir: pathlib.Path,
+):
+    MAX_CONNECTIONS = 10
+    semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
+
+    async def download(session: aiohttp.ClientSession, item: tuple[int, str]):
+        nonlocal semaphore
+        async with semaphore:
+            if os.environ["SERVER"] == "tq":
+                url = f"https://resources.eveonline.com/{item[1]}"
+            elif os.environ["SERVER"] == "se":
+                url = f"https://ma79.gdl.netease.com/eve/resources/{item[1]}"
+            print(f"Downloading icon from {url}")
+            async with session.get(url) as response:
+                if response.status == 200:
+                    process_type_icons(item[0], types[str(item[0])], await response.read(), target_dir)
+                else:
+                    print(f"Failed to download icon [{response.url}]: {await response.read()}")
+
+    async with aiohttp.ClientSession() as session:
+        await asyncio.gather(*[download(session, item) for item in need_download])
 
 
 def process_type_icons(type_id: int, type_info: dict, image: bytes, target_dir: pathlib.Path):
