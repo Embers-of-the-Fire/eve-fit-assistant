@@ -89,6 +89,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.1.0"
+  build_cli_annotations:
+    dependency: transitive
+    description:
+      name: build_cli_annotations
+      sha256: e563c2e01de8974566a1998410d3f6f03521788160a02503b0b1f1a46c7b3d95
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.1.1"
   build_config:
     dependency: transitive
     description:
@@ -438,6 +446,11 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "5.0.0"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_native_splash:
     dependency: "direct main"
     description:
@@ -454,6 +467,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.0.0"
+  flutter_rust_bridge:
+    dependency: "direct main"
+    description:
+      name: flutter_rust_bridge
+      sha256: "37ef40bc6f863652e865f0b2563ea07f0d3c58d8efad803cc01933a4b2ee067e"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.11.1"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -624,6 +645,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.5.4"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.20.2"
   io:
     dependency: transitive
     description:
@@ -968,6 +997,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.0.0"
+  rust_lib_eve_fit_assistant:
+    dependency: "direct main"
+    description:
+      path: rust_builder
+      relative: true
+    source: path
+    version: "0.0.1"
   rxdart:
     dependency: transitive
     description:

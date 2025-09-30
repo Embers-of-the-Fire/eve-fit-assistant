@@ -1,10 +1,13 @@
 import 'package:eve_fit_assistant/constant/colors.dart';
+import 'package:eve_fit_assistant/l10n/app_localizations.dart';
+import 'package:eve_fit_assistant/native/frb_generated.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-void main() {
+void main() async {
+  await RustLib.init();
   runApp(ProviderScope(child: const MyApp()));
 }
 
@@ -76,6 +79,8 @@ class MyApp extends StatelessWidget {
           backgroundColor: deepBlue,
         ),
       ),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
       builder: (context, child) {
         child = EasyLoading.init()(context, child);
