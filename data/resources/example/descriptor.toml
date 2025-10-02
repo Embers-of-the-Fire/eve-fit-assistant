@@ -1,0 +1,41 @@
+# This is an example for resource descriptor.
+# You can copy this file to create your own resource descriptor.
+# For more information, please refer to the documentation.
+#
+# This workspace just provides a sample resource descriptor.
+
+# Whether to ignore this resource descriptor.
+# Some resource might be temporarily unavailable or not needed.
+# Set `ignore` to `true` will make the bundler skip this resource.
+# Default: `false`
+ignore = true
+
+[paths]
+# The `paths` section defines the file paths for the resource.
+# You can use absolute paths or paths relative to the **resource directory**.
+
+# The directory to store pre-loaded FSD files.
+# For more information, see the `fsd` section in `<project>/data/README.md`.
+fsd = "fsd"
+
+[metadata]
+# The `metadata` section contains additional information about the resource.
+# This information is required and will be used by the bundler and the application.
+
+# The start configuration file for the resource.
+# See data/README.md for more details.
+start_cfg = "start.ini"
+
+# The name of the resource.
+# You should provide at least one language version.
+name = {en = "Example Resource", zh = "示例资源"}
+
+[resources]
+# The `resources` section lists all the files included in this resource.
+# For each file, see data/README.md for more details.
+
+# The index file listing all resource files.
+resource_index = "resfileindex.txt"
+
+# The application (binary) file for the resource.
+application_index = "index_example.txt"

@@ -1,0 +1,22 @@
+# EFA development configuration example
+# All fields hold no default value, so do not omit any field.
+
+[paths]
+# `paths` section defines some global paths used to store resources or outputs
+# Most of the paths are suggested not to change.
+#
+# Its generally not encouraged to use an absolute path for the paths.
+# Paths recognized as relative paths are resolved against the project's root.
+
+# Python log dir
+log = "data/log"
+
+[resources.example]
+# The `resources` section offers support for multi-datasource generation.
+# the `example` is an identifier for the resource.
+#
+# Resources are recommended to store in the `data/resources/<resource-name>` folder.
+
+# The descriptor is a metadata file for a specific resource,
+# defining extra paths, urls and resources.
+descriptor = "data/resources/example/descriptor.toml"

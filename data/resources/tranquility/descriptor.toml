@@ -1,0 +1,10 @@
+[paths]
+fsd = "fsd"
+
+[metadata]
+start_cfg = "start.ini"
+name = {en = "Tranqulity", zh = "宁静"}
+
+[resources]
+resource_index = "resfileindex.txt"
+application_index = "index_tranquility.txt"

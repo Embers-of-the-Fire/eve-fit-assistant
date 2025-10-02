@@ -21,10 +21,7 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          brightness: Brightness.dark,
-          seedColor: primaryBlue,
-        ),
+        colorScheme: ColorScheme.fromSeed(brightness: Brightness.dark, seedColor: primaryBlue),
         primaryColor: primaryBlue,
         scaffoldBackgroundColor: deepSpace,
         cardColor: neonGreen,
@@ -36,10 +33,7 @@ class MyApp extends StatelessWidget {
         ),
         textTheme: TextTheme(
           titleLarge: const TextStyle(color: terminalText, fontSize: 24),
-          bodyMedium: TextStyle(
-            color: terminalText.withAlpha(204),
-            fontSize: 14,
-          ),
+          bodyMedium: TextStyle(color: terminalText.withAlpha(204), fontSize: 14),
           labelSmall: const TextStyle(color: neonHighlight, letterSpacing: 1.5),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
@@ -47,18 +41,14 @@ class MyApp extends StatelessWidget {
             backgroundColor: primaryBlue.withAlpha(51),
             foregroundColor: neonHighlight,
             side: const BorderSide(color: primaryBlue, width: 1.5),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
-            ),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: neonHighlight,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
-            ),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           ),
         ),
@@ -68,16 +58,10 @@ class MyApp extends StatelessWidget {
           contentTextStyle: TextStyle(color: terminalText, fontSize: 16),
         ),
         canvasColor: deepSpace,
-        dividerTheme: const DividerThemeData(
-          color: cyberTeal,
-          indent: 10,
-          endIndent: 10,
-        ),
+        dividerTheme: const DividerThemeData(color: cyberTeal, indent: 10, endIndent: 10),
         dividerColor: cyberTeal,
         iconTheme: const IconThemeData(color: neonHighlight),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: deepBlue,
-        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(backgroundColor: deepBlue),
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -161,10 +145,7 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            Text('$_counter', style: Theme.of(context).textTheme.headlineMedium),
           ],
         ),
       ),

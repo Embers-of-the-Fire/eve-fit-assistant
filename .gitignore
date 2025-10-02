@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# dev-specific configurations
+.env
+efa.config.toml
+.efa.cache
+
+# rust
+/target

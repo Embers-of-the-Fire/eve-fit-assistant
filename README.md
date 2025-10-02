@@ -77,16 +77,77 @@ uv sync          # init python
 > You may want to ignore the lock files
 > (`pubspec.lock`, `uv.lock`, `Cargo.lock`, etc.).
 
+### Configure
+
+Before building the app, you need to do some configuration.
+
+The app uses multiple configurations files to manage the build.
+There're mainly two types of configuration files:
+- Toml files, which are checked in the repo.
+  These files are used to configure the build process regardless
+  of the environment.
+- Env files, which are not checked in the repo.
+  These files are used to configure the build process,
+  but vary in different environments.
+
+Any configuration file comes with a template file:
+- `.env` -> `.env.example`
+- `efa.config.toml` -> `efa.config.example.toml`
+- `data/resources/*/descriptor.toml` -> `data/resources/example/descriptor.toml`.
+
+**Important**:
+The backend engine, `eve-fit-os` uses `.env` files to generate
+data and compile the rust code.
+However, that project is not configured to support multi-datasource.
+To solve this problem, the build CI/CD will internally write some
+variables to the environment when building the backend.
+But, as the LSP and linter need to build the backend too,
+you need to manually write mock variables to your local `.env` file.
+For this project, we suggest you to use the `tranquility` datasource
+for local development, which means the `rust/lib/eve-fit-os/.env` file
+should look like this:
+
+```env
+FSD_BINARY_DIR=/home/admin/develop/eve-fit-assistant/data/resources/tranquility/fsd
+FSD_FORMAT=msgpack
+FSD_LOC_EN_DIR=/home/admin/develop/data/bundle-cache/tq/index-cache/resources/localizationfsd/localization_fsd_en-us.pickle
+OUTPUT_DIR=/home/admin/develop/eve-fit-assistant/data/resources/tranquility/out
+```
+
 ### Build
 
 1.  Generate localization (if you've edited them).
     ```bash
     flutter gen-l10n
     ```
-2.  Generate backend data. TODO: write doc for data generator.
+2.  Generate backend data. For more information, see [data readme](./data/README.md).
 3.  - Build APK (for Android)
       ```bash
       flutter build apk
       ```
     - Build IPA (for iOS)  
       Go to the official flutter documentation for more information.
+
+### Management
+
+The project uses a builtin Python script, [`x.py`](./x.py) to manage the workspace.
+
+You can run `uv run x.py`, `./x` (bash environment) or `./x.ps1` (powershell environment)
+to run the script.
+
+> Hint: running `./x` within powershell sometimes works thanks to bash-like aliases,
+> but sometimes it doesn't. If you encounter any problem,
+> please use `./x.ps1` instead.
+
+Note that it's not recommended to run the script using the global python interpreter,
+as the script may depend on some packages only installed in the uv environment.
+
+For more information about the manager, run `./x --help` to see the help message,
+or just read the source code of `x.py`.
+
+The X manager is designed to replace any specific command line operations
+you may want to do during development.
+For example, you can run `./x lint` to lint the whole project.
+
+If you want to or have to use a new cmdline operation,
+you can add a new subcommand to the manager instead.

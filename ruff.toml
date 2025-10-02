@@ -1,0 +1,54 @@
+target-version = "py313"
+line-length = 100
+indent-width = 4
+
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "**/*_pb2.py",
+    "rust/lib/",
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[lint]
+extend-select = [
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "ERA", # flake8-eradicate/eradicate
+    "I",   # isort
+    "N",   # pep8-naming
+    "PIE", # flake8-pie
+    "PGH", # pygrep
+    "RUF", # ruff checks
+    "SIM", # flake8-simplify
+    "T20", # flake8-print
+    "TCH", # flake8-type-checking
+    #    "TID", # flake8-tidy-imports
+    "UP", # pyupgrade
+]
+extend-safe-fixes = [
+    "TCH", # move import from and to TYPE_CHECKING blocks
+]
+# fixable = ["ALL"]
+unfixable = [
+    "ERA", # do not autoremove commented out code
+]
+ignore = [
+    "UP015", # unnecessary open mode
+    "T201",  # print found
+    "N815",  # mixed case variable in class
+]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.isort]
+force-single-line = true
+lines-between-types = 1
+lines-after-imports = 2
+required-imports = ["from __future__ import annotations"]

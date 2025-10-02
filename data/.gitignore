@@ -1,0 +1,5 @@
+log
+resources/*
+!resources/*/
+resources/*/*
+!resources/*/descriptor.toml

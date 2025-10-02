@@ -1,0 +1,8 @@
+syntax = "proto2";
+package types;
+
+import "utils.proto";
+
+message Type {
+  required utils.ItemID type_id = 1;
+}

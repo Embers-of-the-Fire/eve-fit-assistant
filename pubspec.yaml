@@ -61,7 +61,7 @@ dependencies:
   flutter_riverpod: ^3.0.0
   rust_lib_eve_fit_assistant:
     path: rust_builder
-  flutter_rust_bridge: 2.11.1
+  flutter_rust_bridge: 2.8.0
   intl: ^0.20.2
 
 dev_dependencies:

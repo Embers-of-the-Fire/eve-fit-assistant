@@ -1,14 +1,14 @@
 [package]
 name = "rust_lib_eve_fit_assistant"
 version = "0.1.0"
-edition = "2024"
+edition = "2021" # not 2024 because of flutter_rust_bridge
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-flutter_rust_bridge = "=2.11.1"
-eve-fit-os = { path = "../lib/eve-fit-os" }
+flutter_rust_bridge = "=2.8.0"
+eve-fit-os = { path = "lib/eve-fit-os" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
