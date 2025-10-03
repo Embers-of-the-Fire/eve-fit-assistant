@@ -51,6 +51,7 @@ import data.lib.config
 from data.lib.color import styled
 from data.lib.config import ProjectConfiguration
 from data.lib.config import WorkspaceCache
+from data.lib.log import debug
 from data.lib.log import error
 from data.lib.log import info
 from data.lib.utils import get_command
@@ -74,9 +75,47 @@ ProjectConfiguration.load_from_global()
 WorkspaceCache.load_from_global()
 
 
-@click.group(cls=ClickAliasedGroup)
-def cli():
+DRY_RUN = False
+
+
+def __execute_command(cmd: list, title: str):
+    global DRY_RUN
+
+    if DRY_RUN:
+        info(f"[Dry-Run] {title}: " + " ".join(cmd))
+        return
+
+    line_width = 30
+    title = title.strip()
+    if len(title) < line_width:
+        left = int((line_width - len(title) - 2) / 2)
+        right = line_width - len(title) - 2 - left
+        title = ("-" * left) + f" {title} " + ("-" * right)
+
+    debug("Executing command: " + " ".join(cmd))
+    info(title)
+    out = subprocess.run(cmd, capture_output=True, text=True)
+    for line in out.stdout.splitlines():
+        info(line)
+    if out.returncode != 0:
+        error(f"Failed to execute command [{out.returncode}]:")
+        for line in out.stderr.splitlines():
+            error(line)
+        exit(out.returncode)
+    info("-" * line_width)
+
+
+@click.group(
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+    },
+    cls=ClickAliasedGroup,
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Show the command without executing.")
+def cli(dry_run):
     """EFA Workspace Manager."""
+    global DRY_RUN
+    DRY_RUN = dry_run
 
 
 @cli.command()
@@ -90,102 +129,35 @@ def lint(no_check: bool):
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run ruff check --fix"
         )
-        out = subprocess.run([uv, "run", "ruff", "check", "--fix"], capture_output=True, text=True)
-        info("------ RUFF CHECK OUTPUT ------")
-        for line in out.stdout.splitlines():
-            info(line)
-        if out.returncode != 0:
-            error(f"Failed to execute ruff [{out.returncode}]:")
-            for line in out.stderr.splitlines():
-                error(line)
-            exit(out.returncode)
-        info("-------------------------------")
+        __execute_command([uv, "run", "ruff", "check", "--fix"], "RUFF CHECK OUTPUT")
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run ruff format")
-    out = subprocess.run([uv, "run", "ruff", "format"], capture_output=True, text=True)
-    info("----- RUFF FORMAT OUTPUT ------")
-    for line in out.stdout.splitlines():
-        info(line)
-    if out.returncode != 0:
-        error(f"Failed to execute ruff [{out.returncode}]:")
-        for line in out.stderr.splitlines():
-            error(line)
-        exit(out.returncode)
-    info("-------------------------------")
-
+    __execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT")
     dart = get_command("dart")
 
     if not no_check:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart fix --apply")
-        out = subprocess.run([dart, "fix", "--apply"], capture_output=True, text=True)
-        info("------- DART FIX OUTPUT -------")
-        for line in out.stdout.splitlines():
-            info(line)
-        if out.returncode != 0:
-            error(f"Failed to execute dart fix [{out.returncode}]:")
-            for line in out.stderr.splitlines():
-                error(line)
-            exit(out.returncode)
-        info("-------------------------------")
+        __execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT")
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart format lib/")
-    out = subprocess.run([dart, "format", "lib/"], capture_output=True, text=True)
-    info("----- DART FORMAT OUTPUT ------")
-    for line in out.stdout.splitlines():
-        info(line)
-    if out.returncode != 0:
-        error(f"Failed to execute dart format [{out.returncode}]:")
-        for line in out.stderr.splitlines():
-            error(line)
-        exit(out.returncode)
-    info("-------------------------------")
+    __execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT")
 
     cargo = get_command("cargo")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
         + "cargo fmt --package rust_lib_eve_fit_assistant"
     )
-    out = subprocess.run(
-        [cargo, "fmt", "--package", "rust_lib_eve_fit_assistant"],
-        capture_output=True,
-        text=True,
-    )
-    info("------ CARGO FMT OUTPUT -------")
-    for line in out.stdout.splitlines():
-        info(line)
-    if out.returncode != 0:
-        error(f"Failed to execute cargo fmt [{out.returncode}]:")
-        for line in out.stderr.splitlines():
-            error(line)
-        exit(out.returncode)
-    info("-------------------------------")
+    __execute_command([cargo, "fmt", "--package", "rust_lib_eve_fit_assistant"], "CARGO FMT OUTPUT")
 
     if not no_check:
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
             + "cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant"
         )
-        out = subprocess.run(
-            [
-                cargo,
-                "clippy",
-                "--fix",
-                "--allow-dirty",
-                "--package",
-                "rust_lib_eve_fit_assistant",
-            ],
-            capture_output=True,
-            text=True,
+        __execute_command(
+            [cargo, "clippy", "--fix", "--allow-dirty", "--package", "rust_lib_eve_fit_assistant"],
+            "CARGO CLIPPY OUTPUT",
         )
-        info("----- CARGO CLIPPY OUTPUT -----")
-        for line in out.stdout.splitlines():
-            info(line)
-        if out.returncode != 0:
-            error(f"Failed to execute cargo clippy [{out.returncode}]:")
-            for line in out.stderr.splitlines():
-                error(line)
-            exit(out.returncode)
-        info("-------------------------------")
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Linting completed successfully."))
 
@@ -397,7 +369,7 @@ def generate():
 def all_cmd(ctx: click.Context):
     """Generate all code."""
     ctx.invoke(protobuf)
-    ctx.invoke(rust)
+    ctx.invoke(rust_cmd)
     ctx.invoke(dart_build_runner)
 
 
@@ -449,31 +421,15 @@ def protobuf():
         )
 
 
-@generate.command(aliases=["rs"])
-def rust():
+@generate.command("rust", aliases=["rs"])
+def rust_cmd():
     """Generate flutter-rust-bridge glue code."""
     flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
         + "flutter_rust_bridge_codegen generate"
     )
-    out = subprocess.run(
-        [
-            flutter_rust_bridge_codegen,
-            "generate",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    info("----- FRB CODEGEN OUTPUT ------")
-    for line in out.stdout.splitlines():
-        info(line)
-    if out.returncode != 0:
-        error(f"Failed to execute flutter_rust_bridge_codegen [{out.returncode}]:")
-        for line in out.stderr.splitlines():
-            error(line)
-        exit(out.returncode)
-    info("-------------------------------")
+    __execute_command([flutter_rust_bridge_codegen, "generate"], "FRB CODEGEN OUTPUT")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Rust bridge code generation completed successfully.")
     )
@@ -487,27 +443,286 @@ def dart_build_runner():
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
         + "dart run build_runner build --delete-conflicting-outputs"
     )
-    out = subprocess.run(
-        [
-            dart,
-            "run",
-            "build_runner",
-            "build",
-            "--delete-conflicting-outputs",
-        ],
-        capture_output=True,
-        text=True,
+    __execute_command(
+        [dart, "run", "build_runner", "build", "--delete-conflicting-outputs"],
+        "DART BUILDRUNNER OUTPUT",
     )
-    info("--- DART BUILDRUNNER OUTPUT ---")
-    for line in out.stdout.splitlines():
-        info(line)
-    if out.returncode != 0:
-        error(f"Failed to execute dart build_runner [{out.returncode}]:")
-        for line in out.stderr.splitlines():
-            error(line)
-        exit(out.returncode)
-    info("-------------------------------")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
+
+
+@cli.group(aliases=["env"], cls=ClickAliasedGroup)
+def environment():
+    """Environment related commands."""
+
+
+@environment.command(
+    context_settings={
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    }
+)
+@click.option(
+    "--python",
+    "--py",
+    is_flag=True,
+    default=False,
+    help="Treat all arguments as python packages.\nThis will forward the command to `uv add`.",
+)
+@click.option(
+    "--rust",
+    "--rs",
+    is_flag=True,
+    default=False,
+    help="Treat all arguments as python packages.\nThis will forward the command to `uv add`.",
+)
+@click.option(
+    "--dart",
+    "--flutter",
+    "--fl",
+    is_flag=True,
+    default=False,
+    help="Treat all arguments as python packages.\nThis will forward the command to `uv add`.",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Show the command without executing.")
+@click.pass_context
+def add(ctx: click.Context, python, rust, dart, dry_run):
+    """Add new tool to the current environment.
+
+    This command accept the following syntax:
+
+    \b
+    If `--python`, `-p` is specified, then all arguments after it are treated as python packages to install.
+        The command will be directly passed to `uv add`.
+    If `--dart`, `-d`, `--flutter`, `-f` is specified, then all arguments after it are treated as dart packages to install.
+        The command will be directly passed to `flutter pub add`.
+    If `--rust`, `-r` is specified, then all arguments after it are treated as rust packages to install.
+        The command will be directly passed to `cargo add`.
+    If none of the above is specified, then:
+        If the package starts with `py:` or `python:`, it is treated as a python package to install.
+            If the package starts with `dev:`, it is treated as a development dependency.
+        If the package starts with `dart:`, `flutter:` or `fl:`, it is treated as a dart package to install.
+            all package literals will be forwarded to `flutter pub add`.
+        If the package starts with `rs:` or `rust:` it is treated as a rust package to install.
+            If the package starts with `dev:`, it is treated as a development dependency.
+            If the package starts with `build:`, it is treated as a build dependency.
+        If not specified, the package won't be installed.
+    """
+
+    if len(list(filter(None, [python, rust, dart]))) > 1:
+        click.echo(
+            styled([Style.BRIGHT, Fore.RED], "Invalid usage: ")
+            + "Only one of --python, --dart/--flutter, --rust can be specified."
+        )
+        exit(1)
+
+    argv = list(ctx.args)
+    if python:
+        if len(argv) == 0:
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], "Invalid usage: ") + "No package specified to add."
+            )
+            exit(1)
+        uv = get_command("uv")
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + f"uv add {' '.join(argv)}"
+        )
+        __execute_command([uv, "add", *argv], "UV ADD OUTPUT")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Python package(s) added successfully."))
+        return
+    elif dart:
+        if len(argv) == 0:
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], "Invalid usage: ") + "No package specified to add."
+            )
+            exit(1)
+        flutter = get_command("flutter")
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + f"flutter pub add {' '.join(argv)}"
+        )
+        __execute_command([flutter, "pub", "add", *argv], "FLUTTER PUB ADD OUTPUT")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart package(s) added successfully."))
+        return
+    elif rust:
+        if len(argv) == 0:
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], "Invalid usage: ") + "No package specified to add."
+            )
+            exit(1)
+        cargo = get_command("cargo")
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + f"cargo add {' '.join(argv)}"
+        )
+        __execute_command([cargo, "add", *argv], "CARGO ADD OUTPUT")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Rust package(s) added successfully."))
+        return
+
+    # parse arguments
+    pkgs = {
+        "python": {
+            "norm": [],
+            "dev": [],
+        },
+        "dart": [],
+        "rust": {
+            "norm": [],
+            "dev": [],
+            "build": [],
+        },
+        "unknown": [],
+    }
+    for arg in argv:
+        if arg.startswith(("py:", "python:")):
+            inner = arg.split(":", 1)[1].strip()
+            if len(inner) == 0:
+                pkgs["unknown"].append(arg)
+            elif inner.startswith("dev:"):
+                pkg = inner.split(":", 1)[1].strip()
+                if len(pkg) == 0:
+                    pkgs["unknown"].append(arg)
+                else:
+                    pkgs["python"]["dev"].append(pkg)
+            else:
+                pkgs["python"]["norm"].append(inner)
+        elif arg.startswith(("dart:", "flutter:", "fl:")):
+            inner = arg.split(":", 1)[1].strip()
+            if len(inner) == 0:
+                pkgs["unknown"].append(arg)
+            else:
+                pkgs["dart"].append(inner)
+        elif arg.startswith(("rs:", "rust:")):
+            inner = arg.split(":", 1)[1].strip()
+            if len(inner) == 0:
+                pkgs["unknown"].append(arg)
+            elif inner.startswith("dev:"):
+                pkg = inner.split(":", 1)[1].strip()
+                if len(pkg) == 0:
+                    pkgs["unknown"].append(arg)
+                else:
+                    pkgs["rust"]["dev"].append(pkg)
+            elif inner.startswith("build:"):
+                pkg = inner.split(":", 1)[1].strip()
+                if len(pkg) == 0:
+                    pkgs["unknown"].append(arg)
+                else:
+                    pkgs["rust"]["build"].append(pkg)
+            else:
+                pkgs["rust"]["norm"].append(inner)
+        else:
+            pkgs["unknown"].append(arg)
+
+    if (x := sum(map(len, pkgs["python"].values()))) > 0:
+        click.echo(
+            styled(Fore.GREEN, "Adding ")
+            + styled([Style.BRIGHT, Fore.GREEN], f"{x}")
+            + styled(Fore.GREEN, f" python package{'s' if x > 1 else ''}.")
+        )
+        uv = get_command("uv")
+        norm = pkgs["python"]["norm"]
+        if len(norm) > 0:
+            click.echo(
+                f"  · Adding normal package{'s' if len(norm) > 1 else ''}: " + ", ".join(norm)
+            )
+            __execute_command(
+                [uv, "add", *norm],
+                "UV ADD OUTPUT (NORMAL)",
+            )
+
+        dev = pkgs["python"]["dev"]
+        if len(dev) > 0:
+            click.echo(f"  · Adding dev package{'s' if len(dev) > 1 else ''}: " + ", ".join(dev))
+            __execute_command(
+                [uv, "add", "--dev", *dev],
+                "UV ADD OUTPUT (DEV)",
+            )
+
+    if (x := len(pkgs["dart"])) > 0:
+        click.echo(
+            styled(Fore.GREEN, "Adding ")
+            + styled([Style.BRIGHT, Fore.GREEN], f"{x}")
+            + styled(Fore.GREEN, f" dart package{'s' if x > 1 else ''}.")
+        )
+        flutter = get_command("flutter")
+        click.echo(f"  · Adding package{'s' if x > 1 else ''}: " + ", ".join(pkgs["dart"]))
+        __execute_command(
+            [flutter, "pub", "add", *pkgs["dart"]],
+            "FLUTTER PUB ADD OUTPUT",
+        )
+
+    if (x := sum(map(len, pkgs["rust"].values()))) > 0:
+        click.echo(
+            styled(Fore.GREEN, "Adding ")
+            + styled([Style.BRIGHT, Fore.GREEN], f"{x}")
+            + styled(Fore.GREEN, f" rust package{'s' if x > 1 else ''}.")
+        )
+        cargo = get_command("cargo")
+        norm = pkgs["rust"]["norm"]
+        if len(norm) > 0:
+            click.echo(
+                f"  · Adding normal package{'s' if len(norm) > 1 else ''}: " + ", ".join(norm)
+            )
+            __execute_command(
+                [cargo, "add", *norm],
+                "CARGO ADD OUTPUT (NORMAL)",
+            )
+
+        dev = pkgs["rust"]["dev"]
+        if len(dev) > 0:
+            click.echo(f"  · Adding dev package{'s' if len(dev) > 1 else ''}: " + ", ".join(dev))
+            __execute_command(
+                [cargo, "add", "--dev", *dev],
+                "CARGO ADD OUTPUT (DEV)",
+            )
+
+        build = pkgs["rust"]["build"]
+        if len(build) > 0:
+            click.echo(f"  · Adding build package{'s' if len(build) > 1 else ''}: " + ", ".join(build))
+            __execute_command(
+                [cargo, "add", "--build", *build],
+                "CARGO ADD OUTPUT (BUILD)",
+            )
+
+    if (x := len(pkgs["unknown"])) > 0:
+        click.echo(
+            styled([Style.BRIGHT, Fore.YELLOW], "Warning: ")
+            + f"{x} unknown argument{'s' if x > 1 else ''} ignored: "
+            + ", ".join(pkgs["unknown"])
+        )
+
+
+@environment.command()
+def install():
+    """Install all tools in the current environment."""
+
+    uv = get_command("uv")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync")
+    __execute_command([uv, "sync"], "UV SYNC OUTPUT")
+
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub get")
+    __execute_command([flutter, "pub", "get"], "FLUTTER PUB GET OUTPUT")
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment setup completed successfully."))
+
+
+@environment.command(aliases=["update"])
+def upgrade():
+    """Upgrade all tools in the current environment."""
+
+    uv = get_command("uv")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync --upgrade")
+    __execute_command([uv, "sync", "--upgrade"], "UV UPGRADE OUTPUT")
+
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub upgrade")
+    __execute_command([flutter, "pub", "upgrade"], "FLUTTER PUB UPGRADE OUTPUT")
+
+    cargo = get_command("cargo")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "cargo update")
+    __execute_command([cargo, "update"], "CARGO UPDATE OUTPUT")
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment upgrade completed successfully."))
 
 
 cli()
