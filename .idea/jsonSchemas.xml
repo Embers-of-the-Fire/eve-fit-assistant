@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JsonSchemaMappingsProjectConfiguration">
+    <state>
+      <map>
+        <entry key="cargo">
+          <value>
+            <SchemaInfo>
+              <option name="generatedName" value="新架构" />
+              <option name="name" value="cargo" />
+              <option name="relativePathToSchema" value="https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/cargo.json" />
+              <option name="schemaVersion" value="JSON 架构版本 7" />
+              <option name="patterns">
+                <list>
+                  <Item>
+                    <option name="pattern" value="true" />
+                    <option name="path" value="Cargo.toml" />
+                    <option name="mappingKind" value="Pattern" />
+                  </Item>
+                </list>
+              </option>
+            </SchemaInfo>
+          </value>
+        </entry>
+        <entry key="rustfmt">
+          <value>
+            <SchemaInfo>
+              <option name="generatedName" value="新架构" />
+              <option name="name" value="rustfmt" />
+              <option name="relativePathToSchema" value="https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/rustfmt.json" />
+              <option name="schemaVersion" value="JSON 架构版本 7" />
+              <option name="patterns">
+                <list>
+                  <Item>
+                    <option name="path" value="rustfmt.toml" />
+                  </Item>
+                </list>
+              </option>
+            </SchemaInfo>
+          </value>
+        </entry>
+      </map>
+    </state>
+  </component>
+</project>

@@ -16,7 +16,13 @@ migrate_working_dir/
 *.iml
 *.ipr
 *.iws
-.idea/
+.idea/*
+!.idea/eve-fit-assistant.iml
+!.idea/jsonSchemas.xml
+!.idea/vcs.xml
+!.idea/modules.xml
+!.idea/dictionaries/project.xml
+!.idea/protoeditor.xml
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
