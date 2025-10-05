@@ -1,0 +1,11 @@
+syntax = "proto2";
+package categories;
+
+import "utils.proto";
+
+message Category {
+  required uint32 category_id = 1;
+  required utils.LocalizationID category_name = 2;
+  required utils.Icon icon = 3;
+  required bool published = 4;
+}

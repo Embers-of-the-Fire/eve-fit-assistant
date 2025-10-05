@@ -51,6 +51,13 @@ including interactions with the backend.
 
 ## Development
 
+### Development Tools
+
+It's recommended to use [Android Studio](https://developer.android.com/studio),
+but you can also try [Visual Studio Code](https://code.visualstudio.com/).
+
+The repository contains some configurations for Android Studio for easier development.
+
 ### Prerequisites
 
 - A flutter sdk &ge; 3.35 (with dart sdk &ge; 3.9 of course).  

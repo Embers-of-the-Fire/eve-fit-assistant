@@ -4,5 +4,17 @@ package types;
 import "utils.proto";
 
 message Type {
-  required utils.ItemID type_id = 1;
+  required uint32 type_id = 1;
+
+  required utils.Icon icon = 2;
+
+  required uint32 group_id = 3;
+  optional uint32 market_group_id = 4;
+  optional uint32 meta_group_id = 5;
+
+  required bool is_dynamic_type = 6;
+  required bool published = 7;
+
+  required utils.LocalizationID type_name = 8;
+  optional utils.LocalizationID description = 9;
 }

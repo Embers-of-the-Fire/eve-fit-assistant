@@ -10,6 +10,14 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  exclude:
+    - build/**
+    - ios/**
+    - android/**
+    - web/**
+    - test/**
+    - rust_builder/**
+    - target/**
   plugins:
     - custom_lint
 

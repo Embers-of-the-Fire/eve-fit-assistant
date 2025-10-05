@@ -1,0 +1,22 @@
+syntax = "proto2";
+package collections;
+
+import "categories.proto";
+import "dogma_attributes.proto";
+import "dogma_units.proto";
+import "groups.proto";
+import "market_groups.proto";
+import "meta_groups.proto";
+import "type_materials.proto";
+import "types.proto";
+
+message Collection {
+  repeated types.Type types = 1;
+  repeated type_materials.TypeMaterial type_materials = 2;
+  repeated categories.Category categories = 3;
+  repeated groups.Group groups = 4;
+  repeated market_groups.MarketGroup market_groups = 5;
+  repeated meta_groups.MetaGroup meta_groups = 6;
+  repeated dogma_units.DogmaUnit dogma_units = 7;
+  repeated dogma_attributes.DogmaAttribute dogma_attributes = 8;
+}

@@ -1,0 +1,15 @@
+syntax = "proto2";
+package groups;
+
+import "utils.proto";
+
+message Group {
+  required uint32 group_id = 1;
+  required uint32 category_id = 2;
+
+  required utils.LocalizationID group_name = 3;
+
+  required utils.Icon icon = 4;
+
+  required bool published = 5;
+}

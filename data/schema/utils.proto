@@ -1,6 +1,11 @@
 syntax = "proto2";
 package utils;
 
-message ItemID {
+message LocalizationID {
   required uint32 id = 1;
+}
+
+message Icon {
+  optional uint32 graphic_id = 1;
+  optional uint32 icon_id = 2;
 }

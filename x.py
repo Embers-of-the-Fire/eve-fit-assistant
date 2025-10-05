@@ -20,7 +20,9 @@ Please use the configuration files to configure the tool, or pass parameters dir
 
 from __future__ import annotations
 
+import asyncio
 import subprocess
+import sys
 
 from typing import TYPE_CHECKING
 
@@ -32,16 +34,10 @@ from colorama import Style
 from colorama import init
 
 from data.lib.constant import PROJECT_ROOT
-from data.lib.constant import PROTOBUF_DART_OUT_PATH
-from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
-from data.lib.constant import PROTOBUF_SCHEMA_PATH
-from data.lib.constant import WORKSPACE_NAME_ENV_VAR
 
 
 def __fix_env():
-    import sys
-
-    sys.path.insert(0, PROJECT_ROOT / "data" / "lib" / "schema")
+    sys.path.insert(0, str((PROJECT_ROOT / "data" / "lib" / "schema").resolve()))
 
 
 __fix_env()
@@ -51,11 +47,15 @@ import data.lib.config
 from data.lib.color import styled
 from data.lib.config import ProjectConfiguration
 from data.lib.config import WorkspaceCache
-from data.lib.log import debug
+from data.lib.constant import PROTOBUF_DART_OUT_PATH
+from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
+from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import error
 from data.lib.log import info
+from data.lib.utils import execute_command
 from data.lib.utils import get_command
 from data.lib.workspace.config import WorkspaceConfig
+from data.lib.workspace.generate import run_generator
 
 
 if TYPE_CHECKING:
@@ -81,28 +81,7 @@ DRY_RUN = False
 def __execute_command(cmd: list, title: str):
     global DRY_RUN
 
-    if DRY_RUN:
-        info(f"[Dry-Run] {title}: " + " ".join(cmd))
-        return
-
-    line_width = 30
-    title = title.strip()
-    if len(title) < line_width:
-        left = int((line_width - len(title) - 2) / 2)
-        right = line_width - len(title) - 2 - left
-        title = ("-" * left) + f" {title} " + ("-" * right)
-
-    debug("Executing command: " + " ".join(cmd))
-    info(title)
-    out = subprocess.run(cmd, capture_output=True, text=True)
-    for line in out.stdout.splitlines():
-        info(line)
-    if out.returncode != 0:
-        error(f"Failed to execute command [{out.returncode}]:")
-        for line in out.stderr.splitlines():
-            error(line)
-        exit(out.returncode)
-    info("-" * line_width)
+    execute_command(cmd, title, DRY_RUN)
 
 
 @click.group(
@@ -112,10 +91,14 @@ def __execute_command(cmd: list, title: str):
     cls=ClickAliasedGroup,
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show the command without executing.")
-def cli(dry_run):
+@click.option("--workspace", "--ws", "ws_name", default=None, help="Set current workspace.")
+def cli(dry_run, ws_name):
     """EFA Workspace Manager."""
     global DRY_RUN
     DRY_RUN = dry_run
+
+    if ws_name:
+        WorkspaceCache.select_workspace(ws_name)
 
 
 @cli.command()
@@ -208,10 +191,10 @@ def list_cmd():
                 has_warning.add(ws_key)
                 continue
 
-            if not descriptor.paths.fsd.exists() or not descriptor.paths.fsd.is_dir():
+            if not descriptor.resources.fsd.exists() or not descriptor.resources.fsd.is_dir():
                 click.echo(
                     styled([Style.BRIGHT, Fore.RED], "  [!] Error: ")
-                    + f"FSD path '{descriptor.paths.fsd}' does not exist or is not a directory.",
+                    + f"FSD path '{descriptor.resources.fsd}' does not exist or is not a directory.",
                 )
                 has_error.add(ws_key)
 
@@ -329,23 +312,26 @@ def default(name: str):
 
 
 @workspace.command()
-@click.argument(
-    "name",
-    default=data.lib.config.WORKSPACE_CACHE.default_workspace,
-    envvar=WORKSPACE_NAME_ENV_VAR,
-)
-def inspect_json(name: str | None):
+@click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
+def inspect_json(pretty: bool):
     """Resolve the workspace configurations and print in JSON format."""
+    name = data.lib.config.WORKSPACE_CACHE.current_workspace
+    if not name:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
+        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
+        exit(1)
+
     ws = __get_workspace(name)
     info(f"Resolving workspace: {name} ({ws})")
     descriptor = WorkspaceConfig.load_from_descriptor(ws)
-    click.echo(descriptor.model_dump_json())
+    click.echo(descriptor.model_dump_json(indent=4 if pretty else None))
 
 
 @workspace.command()
-def cache():
+@click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
+def cache(pretty: bool):
     """Print current workspace cache in JSON format."""
-    click.echo(data.lib.config.WORKSPACE_CACHE.model_dump_json(indent=4))
+    click.echo(data.lib.config.WORKSPACE_CACHE.model_dump_json(indent=4 if pretty else None))
 
 
 @cli.group()
@@ -360,8 +346,19 @@ def display():
 
 
 @cli.group(aliases=["gen"], cls=ClickAliasedGroup)
-def generate():
+@click.option(
+    "--format",
+    "-f",
+    "format_source",
+    is_flag=True,
+    default=False,
+    help="Run formatter after generation.",
+)
+@click.pass_context
+def generate(ctx: click.Context, format_source: bool):
     """Code generation related commands."""
+    ctx.ensure_object(dict)
+    ctx.obj["format_source"] = format_source
 
 
 @generate.command("all")
@@ -371,10 +368,15 @@ def all_cmd(ctx: click.Context):
     ctx.invoke(protobuf)
     ctx.invoke(rust_cmd)
     ctx.invoke(dart_build_runner)
+    ctx.invoke(gen_l10n)
+
+    if ctx.obj.get("format_source", False):
+        ctx.invoke(format_cmd)
 
 
 @generate.command(aliases=["proto", "pb"])
-def protobuf():
+@click.pass_context
+def protobuf(ctx: click.Context):
     """Generate protobuf code for all supported languages."""
     protoc = get_command("protoc")
 
@@ -420,9 +422,13 @@ def protobuf():
             + "."
         )
 
+    if ctx.obj.get("format_source", False):
+        ctx.invoke(format_cmd)
+
 
 @generate.command("rust", aliases=["rs"])
-def rust_cmd():
+@click.pass_context
+def rust_cmd(ctx: click.Context):
     """Generate flutter-rust-bridge glue code."""
     flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
     click.echo(
@@ -434,9 +440,13 @@ def rust_cmd():
         styled([Style.BRIGHT, Fore.GREEN], "Rust bridge code generation completed successfully.")
     )
 
+    if ctx.obj.get("format_source", False):
+        ctx.invoke(format_cmd)
+
 
 @generate.command("dart")
-def dart_build_runner():
+@click.pass_context
+def dart_build_runner(ctx: click.Context):
     """Run `dart run build_runner build`."""
     dart = get_command("dart")
     click.echo(
@@ -448,6 +458,27 @@ def dart_build_runner():
         "DART BUILDRUNNER OUTPUT",
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
+
+    if ctx.obj.get("format_source", False):
+        ctx.invoke(format_cmd)
+
+
+@generate.command("l10n")
+@click.pass_context
+def gen_l10n(ctx: click.Context):
+    """Generate localization files."""
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter gen-l10n")
+    __execute_command(
+        [flutter, "gen-l10n"],
+        "FLUTTER GEN-L10N OUTPUT",
+    )
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Localization generation completed successfully.")
+    )
+
+    if ctx.obj.get("format_source", False):
+        ctx.invoke(format_cmd)
 
 
 @cli.group(aliases=["env"], cls=ClickAliasedGroup)
@@ -677,7 +708,9 @@ def add(ctx: click.Context, python, rust, dart, dry_run):
 
         build = pkgs["rust"]["build"]
         if len(build) > 0:
-            click.echo(f"  · Adding build package{'s' if len(build) > 1 else ''}: " + ", ".join(build))
+            click.echo(
+                f"  · Adding build package{'s' if len(build) > 1 else ''}: " + ", ".join(build)
+            )
             __execute_command(
                 [cargo, "add", "--build", *build],
                 "CARGO ADD OUTPUT (BUILD)",
@@ -723,6 +756,42 @@ def upgrade():
     __execute_command([cargo, "update"], "CARGO UPDATE OUTPUT")
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment upgrade completed successfully."))
+
+
+@cli.group()
+def build():
+    """Build related commands."""
+
+
+@build.command("data")
+@click.option("--skip", "-s", multiple=True, help="Skip specified data generators.")
+def data_cmd(skip: list[str], *args, **kwargs):
+    """Build data files."""
+
+    generator_type = {"static", "native", "localization", "images"}
+    to_skip = set()
+    for it in skip:
+        for i in it.split(","):
+            to_skip.add(i.strip().lower())
+
+    if len(x := to_skip.difference(generator_type)) > 0:
+        click.echo(
+            styled([Style.BRIGHT, Fore.RED], "Invalid generator type to skip: ") + ", ".join(x)
+        )
+        click.echo("Valid types are: " + ", ".join(generator_type))
+        exit(1)
+
+    name = data.lib.config.WORKSPACE_CACHE.current_workspace
+    if not name:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
+        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
+        exit(1)
+
+    ws = __get_workspace(name)
+    info(f"Resolving workspace: {name} ({ws})")
+    descriptor = WorkspaceConfig.load_from_descriptor(ws)
+
+    asyncio.run(run_generator(descriptor, to_skip))
 
 
 cli()

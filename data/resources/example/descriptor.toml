@@ -14,13 +14,22 @@ ignore = true
 # The `paths` section defines the file paths for the resource.
 # You can use absolute paths or paths relative to the **resource directory**.
 
-# The directory to store pre-loaded FSD files.
-# For more information, see the `fsd` section in `<project>/data/README.md`.
-fsd = "fsd"
+# The directory to store downloaded files.
+cache = "cache"
+
+# The directory to store generated files.
+generated = "generated"
+
+# The directory to store final bundled files.
+output = "output"
 
 [metadata]
 # The `metadata` section contains additional information about the resource.
 # This information is required and will be used by the bundler and the application.
+
+# The identifier used internally to identify the resource.
+# This is also used as the output archive file name.
+identifier = "example"
 
 # The start configuration file for the resource.
 # See data/README.md for more details.
@@ -39,3 +48,16 @@ resource_index = "resfileindex.txt"
 
 # The application (binary) file for the resource.
 application_index = "index_example.txt"
+
+# The directory to store pre-loaded FSD files.
+# For more information, see the `fsd` section in `<project>/data/README.md`.
+fsd = "fsd"
+
+[services]
+# The `services` section lists all the remote service required by this resource.
+
+# The URL to download resources
+# Must be a template with placeholder:
+# - `resource_type`: The type of the resource, e.g., `res`, `app`, etc.
+# - `resource_url`: The URL of the resource file.
+resource_url = "https://{resource_type}.eveonline.com/{resource_url}"

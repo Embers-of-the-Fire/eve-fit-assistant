@@ -11,8 +11,10 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "convert",
     "pydantic>=2.11.9",
+    "aiohttp>=3.12.15",
+    "aiofiles>=24.1.0",
+    "tenacity>=9.1.2",
 ]
-packages = [{include = "data"}]
 
 [dependency-groups]
 dev = [

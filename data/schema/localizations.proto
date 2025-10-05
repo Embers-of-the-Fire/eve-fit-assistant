@@ -1,0 +1,13 @@
+syntax = "proto2";
+package localizations;
+
+enum LocalizationLanguage {
+  EN = 1;
+  ZH = 2;
+}
+
+message Localization {
+  required LocalizationLanguage language = 1;
+
+  map<uint32, string> localized_strings = 2;
+}

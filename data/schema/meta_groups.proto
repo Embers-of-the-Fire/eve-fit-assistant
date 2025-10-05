@@ -1,0 +1,10 @@
+syntax = "proto2";
+package meta_groups;
+
+import "utils.proto";
+
+message MetaGroup {
+  required uint32 meta_group_id = 1;
+  required utils.LocalizationID meta_group_name = 2;
+  required utils.Icon icon = 3;
+}

@@ -1,5 +1,13 @@
 # EFA development configuration example
 # All fields hold no default value, so do not omit any field.
+[localizations]
+# The `localizations` section defines localization settings for the application.
+
+# `default` is the default localization to use.
+default = "en"
+
+# `supported` is a list of supported localizations.
+supported = ["en", "zh"]
 
 [paths]
 # `paths` section defines some global paths used to store resources or outputs

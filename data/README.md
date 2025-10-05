@@ -45,3 +45,55 @@ The dependencies is generally recommended to be placed like this:
   - fsd/
     - xxx.msgpack # the extracted FSD files
 ```
+
+## Resource Format
+
+The resource files are generally in protobuf format.
+The protobuf definitions are included in the `schema` folder.
+
+Basically, all static data are stored collectively in a single protobuf message,
+see [`collections.proto`](./schema/collections.proto) for details.
+
+And, the localizations are stored in separate protobuf messages per language,
+see [`localizations.proto`](./schema/localizations.proto) for details.
+
+The converted output shall be a zip archive containing:
+```text
+- /
+  - descriptor.json             # metadata about the generation
+  - static/
+    - native/                   # native data, used by eve-fit-os
+      - *.pb2                   # native static data collection
+    - collections.pb2           # static data collection
+    - images/
+      - icons/                  # icon images
+        - <icon_id>.png         # icon image file
+      - graphics/               # other graphics
+        - <graphic_id>.png      # graphic image file
+        - <graphic_id>_bp.png   # blueprint image file
+        - <graphic_id>_bpc.png  # high quality image file
+  - localization/
+    - localization_<lang>.pb2   # for each supported language
+```
+
+## Generate Routine
+
+The data generation process contains the following steps:
+1. **Preparation**:  
+   Load the resource index, application index, and start configuration.  
+   Verify the existence of the extracted FSD files.  
+   Create necessary output directories.  
+   Generate descriptor file.
+2. **Static Data Extraction**:  
+   Extract the static data files from the extracted FSD files and/or the resource files.  
+   Parse the files and merge them into a single protobuf message.
+3. **Native Data Conversion**:  
+   Convert the native static data used by `eve-fit-os`.
+4. **Localization Extraction**:  
+   Extract the localization files from the extracted FSD files and/or the resource files.  
+   Parse the files and merge them into separate protobuf messages per language.
+5. **Image Extraction**:  
+   Extract the icon and graphic images from the extracted FSD files and/or the resource files.  
+   Save them into the output directory.
+6. **Packaging**:  
+   Save all generated files into a zip archive.

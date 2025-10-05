@@ -1,0 +1,25 @@
+syntax = "proto2";
+package dogma_attributes;
+
+import "utils.proto";
+
+message DogmaAttribute {
+  required uint32 dogma_attribute_id = 1;
+  required string name = 2;
+  required string description = 3;
+  required utils.Icon icon = 4;
+
+  optional utils.LocalizationID display_name = 5;
+  optional utils.LocalizationID tooltip_description = 6;
+
+  required bool published = 7;
+  required bool high_is_good = 8;
+  required bool display_when_zero = 9;
+
+  optional uint32 unit_id = 10;
+  required uint32 stackable = 11;
+
+  optional double default_value = 12;
+
+  optional uint32 category_id = 13;
+}

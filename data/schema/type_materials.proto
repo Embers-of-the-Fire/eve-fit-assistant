@@ -1,0 +1,13 @@
+syntax = "proto2";
+package type_materials;
+
+import "utils.proto";
+
+message TypeMaterial {
+  message Material {
+    required uint32 material_type_id = 1;
+    required uint32 quantity = 2;
+  }
+  required uint32 type_id = 1;
+  repeated Material materials = 2;
+}

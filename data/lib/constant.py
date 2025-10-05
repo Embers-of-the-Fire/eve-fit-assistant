@@ -12,3 +12,5 @@ WORKSPACE_NAME_ENV_VAR = "EFA_WORKSPACE_NAME"
 PROTOBUF_SCHEMA_PATH = PROJECT_ROOT / "data" / "schema"
 PROTOBUF_PYTHON_OUT_PATH = PROJECT_ROOT / "data" / "lib" / "schema"
 PROTOBUF_DART_OUT_PATH = PROJECT_ROOT / "lib" / "data" / "proto"
+
+NATIVE_LIB_ROOT = PROJECT_ROOT / "rust" / "lib" / "eve-fit-os"

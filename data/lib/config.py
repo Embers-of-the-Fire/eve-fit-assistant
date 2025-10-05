@@ -13,17 +13,25 @@ from __future__ import annotations
 import json
 import tomllib
 
+from typing import Any
+
 from pydantic import BaseModel
 from pydantic import Field
 from pydantic import ValidationError
 
 from data.lib.constant import CACHE_CONFIG_PATH
 from data.lib.constant import CONFIG_PATH
+from data.lib.localization import LocalizationModel  # noqa:TC001
 from data.lib.validator import ProjectPath  # noqa:TC001
 
 
 CONFIGURATION: ProjectConfiguration | None = None
 WORKSPACE_CACHE: WorkspaceCache | None = None
+
+
+class ProjectLocalizations(BaseModel):
+    default: LocalizationModel
+    supported: list[LocalizationModel]
 
 
 class ProjectPaths(BaseModel):
@@ -35,6 +43,7 @@ class ProjectResource(BaseModel):
 
 
 class ProjectConfiguration(BaseModel):
+    localizations: ProjectLocalizations
     paths: ProjectPaths
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 
@@ -64,6 +73,11 @@ class ProjectConfiguration(BaseModel):
 class WorkspaceCache(BaseModel):
     default_workspace: str | None = Field(default=None)
 
+    current_workspace: str | None = Field(default=None)
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.current_workspace = self.default_workspace
+
     @staticmethod
     def load_from_global():
         cache = {}
@@ -81,6 +95,12 @@ class WorkspaceCache(BaseModel):
             print(f"Invalid cache format: {e!r}")
             raise
 
+    @staticmethod
+    def select_workspace(name: str):
+        global WORKSPACE_CACHE
+        assert WORKSPACE_CACHE is not None
+        WORKSPACE_CACHE.current_workspace = name
+
     def synchronize(self):
         with open(CACHE_CONFIG_PATH, "w+") as f:
-            f.write(self.model_dump_json())
+            f.write(self.model_dump_json(exclude={"current_workspace"}))
