@@ -621,6 +621,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.7.0"
+  hive_ce:
+    dependency: "direct main"
+    description:
+      name: hive_ce
+      sha256: d678b1b2e315c18cd7ed8fd79eda25d70a1f3852d6988bfe5461cffe260c60aa
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.14.0"
   hotreloader:
     dependency: transitive
     description:
@@ -677,6 +685,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.5"
+  isolate_channel:
+    dependency: transitive
+    description:
+      name: isolate_channel
+      sha256: f3d36f783b301e6b312c3450eeb2656b0e7d1db81331af2a151d9083a3f6b18d
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.2.2+1"
   js:
     dependency: transitive
     description:
@@ -953,10 +969,10 @@ packages:
     dependency: "direct main"
     description:
       name: protobuf
-      sha256: de9c9eb2c33f8e933a42932fe1dc504800ca45ebc3d673e6ed7f39754ee4053e
+      sha256: "826d6a306be26f29e5cd9faeb0c97aad5897270341dab6dbd7b8acd675937006"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "4.2.0"
+    version: "5.0.0"
   pub_semver:
     dependency: transitive
     description:

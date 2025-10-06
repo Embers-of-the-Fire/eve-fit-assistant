@@ -37,7 +37,7 @@ dependencies:
   freezed: ^3.2.3
   json_annotation: ^4.9.0
   path_provider: ^2.1.5
-  protobuf: ^4.2.0
+  protobuf: ^5.0.0
   uuid: ^4.5.1
   archive: ^4.0.7
   flutter_breadcrumb: ^1.0.1
@@ -65,6 +65,7 @@ dependencies:
   intl: ^0.20.2
   fpdart: ^1.1.1
   fast_immutable_collections: ^11.0.4
+  hive_ce: ^2.14.0
 
 dev_dependencies:
   flutter_test:
