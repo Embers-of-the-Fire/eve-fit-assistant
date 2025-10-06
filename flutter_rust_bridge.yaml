@@ -1,3 +1,4 @@
 rust_input: crate::api
 rust_root: rust/
+enable_lifetime: true
 dart_output: lib/native

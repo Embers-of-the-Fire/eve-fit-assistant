@@ -21,6 +21,7 @@ Please use the configuration files to configure the tool, or pass parameters dir
 from __future__ import annotations
 
 import asyncio
+import shutil
 import subprocess
 import sys
 
@@ -430,6 +431,10 @@ def protobuf(ctx: click.Context):
 @click.pass_context
 def rust_cmd(ctx: click.Context):
     """Generate flutter-rust-bridge glue code."""
+    native_output_dir = PROJECT_ROOT / "lib" / "native"
+    if native_output_dir.exists():
+        info(f"Removing existing native output directory: {native_output_dir}")
+        shutil.rmtree(native_output_dir)
     flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")

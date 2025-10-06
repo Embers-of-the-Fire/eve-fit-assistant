@@ -7,8 +7,9 @@ edition = "2021" # not 2024 because of flutter_rust_bridge
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-flutter_rust_bridge = "=2.8.0"
+flutter_rust_bridge = "=2.11.1"
 eve-fit-os = { path = "lib/eve-fit-os" }
+anyhow = "1.0.100"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
