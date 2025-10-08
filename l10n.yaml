@@ -1,6 +1,6 @@
 arb-dir: l10n
 template-arb-file: app_zh.arb
-output-dir: lib/l10n
+output-dir: lib/data/l10n
 output-localization-file: app_localizations.dart
 preferred-supported-locales: zh
 nullable-getter: false
