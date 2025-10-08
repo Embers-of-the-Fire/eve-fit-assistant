@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import asyncio
 import shutil
-import subprocess
 import sys
 
 from typing import TYPE_CHECKING
@@ -51,8 +50,8 @@ from data.lib.config import WorkspaceCache
 from data.lib.constant import PROTOBUF_DART_OUT_PATH
 from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
 from data.lib.constant import PROTOBUF_SCHEMA_PATH
-from data.lib.log import error
 from data.lib.log import info
+from data.lib.log import warning
 from data.lib.utils import execute_command
 from data.lib.utils import get_command
 from data.lib.workspace.config import WorkspaceConfig
@@ -382,9 +381,17 @@ def protobuf(ctx: click.Context):
 
     total = 0
     failed = set()
+
+    if not PROTOBUF_PYTHON_OUT_PATH.exists():
+        warning("Python protobuf output path not found, creating it.")
+        PROTOBUF_PYTHON_OUT_PATH.mkdir(parents=True, exist_ok=True)
+    if not PROTOBUF_DART_OUT_PATH.exists():
+        warning("Dart protobuf output path not found, creating it.")
+        PROTOBUF_DART_OUT_PATH.mkdir(parents=True, exist_ok=True)
+
     for file in PROTOBUF_SCHEMA_PATH.glob("*.proto"):
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Generating protobuf code for: ") + f"{file}")
-        out = subprocess.run(
+        __execute_command(
             [
                 protoc,
                 f"--proto_path={PROTOBUF_SCHEMA_PATH}",
@@ -392,14 +399,8 @@ def protobuf(ctx: click.Context):
                 f"--dart_out={PROTOBUF_DART_OUT_PATH}",
                 file.name,
             ],
-            capture_output=True,
-            text=True,
+            "PROTOBUF CODEGEN OUTPUT",
         )
-        if out.returncode != 0:
-            error(f"Failed to execute protoc [{out.returncode}]:")
-            for line in out.stderr.splitlines():
-                error(line)
-            failed.add(file.name)
         total += 1
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Protobuf code generation completed."))

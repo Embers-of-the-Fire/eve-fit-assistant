@@ -1,13 +1,11 @@
 import 'package:eve_fit_assistant/constant/colors.dart';
-import 'package:eve_fit_assistant/l10n/app_localizations.dart';
-import 'package:eve_fit_assistant/native/frb_generated.dart';
+import 'package:eve_fit_assistant/data/l10n/app_localizations.dart';
+import 'package:eve_fit_assistant/init.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 void main() async {
-  await RustLib.init();
+  await initSingletons();
   runApp(ProviderScope(child: const MyApp()));
 }
 
@@ -66,11 +64,7 @@ class MyApp extends StatelessWidget {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
-      builder: (context, child) {
-        child = EasyLoading.init()(context, child);
-        child = FToastBuilder()(context, child);
-        return child;
-      },
+      builder: initBuilder,
     );
   }
 }

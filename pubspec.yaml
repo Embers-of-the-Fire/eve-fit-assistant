@@ -65,6 +65,8 @@ dependencies:
   fpdart: ^1.1.1
   fast_immutable_collections: ^11.0.4
   hive_ce: ^2.14.0
+  path: ^1.9.1
+  logger: ^2.6.2
 
 dev_dependencies:
   flutter_test:

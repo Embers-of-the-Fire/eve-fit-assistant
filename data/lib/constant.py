@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 CONFIG_PATH = PROJECT_ROOT / "efa.config.toml"
 CACHE_CONFIG_PATH = PROJECT_ROOT / ".efa.cache"
 
