@@ -56,7 +56,6 @@ from data.lib.log import info
 from data.lib.utils import execute_command
 from data.lib.utils import get_command
 from data.lib.workspace.config import WorkspaceConfig
-from data.lib.workspace.generate import run_generator
 
 
 if TYPE_CHECKING:
@@ -733,6 +732,16 @@ def add(ctx: click.Context, python, rust, dart, dry_run):
 def install():
     """Install all tools in the current environment."""
 
+    protoc_gen_dart = get_command("protoc-gen-dart")
+    if protoc_gen_dart is None:
+        click.echo(
+            styled([Style.BRIGHT, Fore.RED], "Warning: ") + "protoc-gen-dart not found, installing"
+        )
+        dart = get_command("dart")
+        __execute_command(
+            [dart, "pub", "global", "activate", "protoc_plugin"], "DART ACTIVATE OUTPUT"
+        )
+
     uv = get_command("uv")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync")
     __execute_command([uv, "sync"], "UV SYNC OUTPUT")
@@ -772,6 +781,7 @@ def build():
 @click.option("--skip", "-s", multiple=True, help="Skip specified data generators.")
 def data_cmd(skip: list[str], *args, **kwargs):
     """Build data files."""
+    from data.lib.workspace.generate import run_generator
 
     generator_type = {"static", "native", "localization", "images"}
     to_skip = set()
