@@ -1,0 +1,12 @@
+[localizations]
+default = "en"
+supported = ["en", "zh"]
+
+[paths]
+log = "data/log"
+
+[resources.example]
+descriptor = "data/resources/example/descriptor.toml"
+
+[resources.tranquility]
+descriptor = "data/resources/tranquility/descriptor.toml"

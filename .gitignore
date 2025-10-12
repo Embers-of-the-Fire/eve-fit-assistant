@@ -52,7 +52,6 @@ app.*.map.json
 
 # dev-specific configurations
 .env
-efa.config.toml
 .efa.cache
 
 # rust

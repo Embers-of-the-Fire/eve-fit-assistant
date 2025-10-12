@@ -102,6 +102,10 @@ Any configuration file comes with a template file:
 - `efa.config.toml` -> `efa.config.example.toml`
 - `data/resources/*/descriptor.toml` -> `data/resources/example/descriptor.toml`.
 
+**Version Control**:
+The `efa.config.toml` is checked in, which means changing server
+support is also viewed as a breaking change.
+
 **Important**:
 The backend engine, `eve-fit-os` uses `.env` files to generate
 data and compile the rust code.
