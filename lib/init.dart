@@ -1,5 +1,7 @@
 // Init helpers for the package
 
+import 'dart:ui';
+
 import 'package:eve_fit_assistant/config/loading.dart';
 import 'package:eve_fit_assistant/config/logger.dart';
 import 'package:eve_fit_assistant/config/paths.dart';
@@ -23,4 +25,15 @@ Widget initBuilder(BuildContext context, Widget? child) {
   child = EasyLoading.init()(context, child);
   child = FToastBuilder()(context, child);
   return child;
+}
+
+void initErrorBoundary() {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    fatal('Found Flutter error ${details.exceptionAsString()}', stackTrace: details.stack);
+  };
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    fatal('Uncaught platform error: $error', stackTrace: stack);
+    return true;
+  };
 }
