@@ -22,4 +22,6 @@ class PathProvider {
 
     cachesPath = (await getApplicationCacheDirectory()).path;
   }
+
+  const PathProvider._();
 }

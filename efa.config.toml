@@ -2,6 +2,10 @@
 default = "en"
 supported = ["en", "zh"]
 
+[localizations.translation]
+en = "English"
+zh = "简体中文"
+
 [paths]
 log = "data/log"
 

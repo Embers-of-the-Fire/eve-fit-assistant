@@ -32,7 +32,10 @@ from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 from colorama import init
+from watchfiles import awatch
 
+from data.lib.codegen import CODEGEN_DART
+from data.lib.constant import I18N_ROOT
 from data.lib.constant import PROJECT_ROOT
 
 
@@ -450,16 +453,30 @@ def rust_cmd(ctx: click.Context):
 
 
 @generate.command("dart")
+@click.option("--watch", "-w", is_flag=True, default=False, help="Run in watch mode.")
 @click.pass_context
-def dart_build_runner(ctx: click.Context):
+def dart_build_runner(ctx: click.Context, watch: bool):
     """Run `dart run build_runner build`."""
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing codegen: "),
+    )
+    for codegen in CODEGEN_DART:
+        for file in codegen():
+            click.echo(f"  Modified {file}")
+
     dart = get_command("dart")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-        + "dart run build_runner build --delete-conflicting-outputs"
+        + f"dart run build_runner {'watch' if watch else 'build'} --delete-conflicting-outputs"
     )
     __execute_command(
-        [dart, "run", "build_runner", "build", "--delete-conflicting-outputs"],
+        [
+            dart,
+            "run",
+            "build_runner",
+            "watch" if watch else "build",
+            "--delete-conflicting-outputs",
+        ],
         "DART BUILDRUNNER OUTPUT",
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
@@ -469,9 +486,37 @@ def dart_build_runner(ctx: click.Context):
 
 
 @generate.command("l10n")
+@click.option("--watch", "-w", is_flag=True, default=False, help="Run in watch mode.")
 @click.pass_context
-def gen_l10n(ctx: click.Context):
+def gen_l10n(ctx: click.Context, watch: bool):
     """Generate localization files."""
+    if watch:
+
+        async def watch_l10n():
+            flutter = get_command("flutter")
+
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter gen-l10n"
+            )
+            __execute_command(
+                [flutter, "gen-l10n"],
+                "FLUTTER GEN-L10N OUTPUT",
+            )
+            async for _ in awatch(str(I18N_ROOT)):
+                click.echo(
+                    styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter gen-l10n"
+                )
+                __execute_command(
+                    [flutter, "gen-l10n"],
+                    "FLUTTER GEN-L10N OUTPUT",
+                )
+
+        try:
+            asyncio.run(watch_l10n())
+        except KeyboardInterrupt:
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "\nWatch mode interrupted by user."))
+            return
+
     flutter = get_command("flutter")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter gen-l10n")
     __execute_command(

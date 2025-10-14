@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 class Descriptor(BaseModel):
     generateTimestamp: int
+    bundleId: str
     appVersion: str
 
     gameVersion: str
@@ -44,6 +45,7 @@ class Descriptor(BaseModel):
         descriptor = Descriptor(
             generateTimestamp=int(timestamp),
             appVersion=app_version,
+            bundleId=datasource.config.metadata.identifier,
             gameVersion=start_config.get("main", "version"),
             gameBuild=start_config.get("main", "build"),
             gameRegion=start_config.get("main", "region"),

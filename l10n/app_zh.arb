@@ -1,3 +1,9 @@
 {
-  "hello": "你好"
+  "hello": "你好",
+  "@_PAGE_TEXT": {},
+  "@@_FRONT_PAGE_VIEW": {},
+  "frontPageTitleWorkspace": "工作台",
+  "frontPageTitleFitList": "配置",
+  "frontPageTitleCharacter": "角色",
+  "frontPageTitleSetting": "设置"
 }

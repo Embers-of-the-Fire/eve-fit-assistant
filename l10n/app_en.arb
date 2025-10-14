@@ -1,3 +1,9 @@
 {
-  "hello": "Hello"
+  "hello": "Hello",
+  "@_PAGE_TEXT": {},
+  "@@_FRONT_PAGE_VIEW": {},
+  "frontPageTitleWorkspace": "Workspaces",
+  "frontPageTitleFitList": "Fits",
+  "frontPageTitleCharacter": "Character",
+  "frontPageTitleSetting": "Settings"
 }

@@ -14,3 +14,7 @@ PROTOBUF_PYTHON_OUT_PATH = PROJECT_ROOT / "data" / "lib" / "schema"
 PROTOBUF_DART_OUT_PATH = PROJECT_ROOT / "lib" / "data" / "proto"
 
 NATIVE_LIB_ROOT = PROJECT_ROOT / "rust" / "lib" / "eve-fit-os"
+
+I18N_ROOT = PROJECT_ROOT / "l10n"
+
+DART_ROOT = PROJECT_ROOT / "lib"

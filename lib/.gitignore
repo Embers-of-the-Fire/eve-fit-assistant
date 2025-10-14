@@ -1,3 +1,9 @@
+# Dart build output
 *.g.dart
 *.freezed.dart
+
+# `flutter_rust_bridge` output
 /native
+
+# Project codegen output
+/config/locale.dart

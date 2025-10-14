@@ -9,6 +9,11 @@ default = "en"
 # `supported` is a list of supported localizations.
 supported = ["en", "zh"]
 
+# `translation` is a map for localizing "locale"s
+[localizations.translation]
+en = "English"
+zh = "简体中文"
+
 [paths]
 # `paths` section defines some global paths used to store resources or outputs
 # Most of the paths are suggested not to change.

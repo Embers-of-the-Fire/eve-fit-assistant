@@ -32,6 +32,7 @@ WORKSPACE_CACHE: WorkspaceCache | None = None
 class ProjectLocalizations(BaseModel):
     default: LocalizationModel
     supported: list[LocalizationModel]
+    translation: dict[str, str]
 
 
 class ProjectPaths(BaseModel):

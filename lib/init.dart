@@ -4,6 +4,7 @@ import 'package:eve_fit_assistant/config/loading.dart';
 import 'package:eve_fit_assistant/config/logger.dart';
 import 'package:eve_fit_assistant/config/paths.dart';
 import 'package:eve_fit_assistant/native/frb_generated.dart';
+import 'package:eve_fit_assistant/storage/setting/setting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -13,7 +14,8 @@ Future<void> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   await PathProvider.init();
-  GlobalLogger.init(PathProvider.logsPath);
+  AppSettingService.init();
+  GlobalLogger.init(PathProvider.logsPath, AppSettingService.appSetting.enableDebugLog);
   GlobalLoading.init();
 }
 
