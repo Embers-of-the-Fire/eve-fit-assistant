@@ -31,6 +31,9 @@ class MyApp extends ConsumerWidget {
       dividerColor: colorScheme.onSurface.withAlpha(30),
       applyElevationOverlayColor: true,
       appBarTheme: AppBarThemeData(elevation: 2),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: colorScheme.surfaceContainer,
+      ),
       dialogTheme: DialogThemeData(backgroundColor: colorScheme.surface),
       tabBarTheme: TabBarThemeData(indicatorColor: colorScheme.primary),
     );
