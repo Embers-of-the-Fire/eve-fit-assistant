@@ -1,9 +1,20 @@
 {
   "hello": "Hello",
+  "@_COMMON": {},
+  "@@_NO_FORMAT_PLAIN_TEXT": {},
   "@_PAGE_TEXT": {},
-  "@@_FRONT_PAGE_VIEW": {},
+  "@@_FRONT_PAGE": {},
   "frontPageTitleWorkspace": "Workspaces",
   "frontPageTitleFitList": "Fits",
   "frontPageTitleCharacter": "Character",
-  "frontPageTitleSetting": "Settings"
+  "frontPageTitleSetting": "Settings",
+  "@@_SETTING_TAB": {},
+  "settingTileAppSettingsTitle": "App Settings",
+  "@@@_APP_SETTINGS_PAGE": {},
+  "appSettingsPageTitle": "App Settings",
+  "appSettingsPageSectionGeneral": "General",
+  "appSettingsPageLocaleTitle": "Locale",
+  "appSettingsPageLocaleSubtitle": "Select Locale",
+  "appSettingsPageSectionDeveloper": "Developer",
+  "appSettingsPageDebugLogTitle": "Enable Debug Log"
 }

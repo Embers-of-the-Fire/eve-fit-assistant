@@ -1,9 +1,20 @@
 {
   "hello": "你好",
+  "@_COMMON": {},
+  "@@_NO_FORMAT_PLAIN_TEXT": {},
   "@_PAGE_TEXT": {},
-  "@@_FRONT_PAGE_VIEW": {},
+  "@@_FRONT_PAGE": {},
   "frontPageTitleWorkspace": "工作台",
   "frontPageTitleFitList": "配置",
   "frontPageTitleCharacter": "角色",
-  "frontPageTitleSetting": "设置"
+  "frontPageTitleSetting": "设置",
+  "@@_SETTING_TAB": {},
+  "settingTileAppSettingsTitle": "设置",
+  "@@@_APP_SETTINGS_PAGE": {},
+  "appSettingsPageTitle": "应用设置",
+  "appSettingsPageSectionGeneral": "常规",
+  "appSettingsPageLocaleTitle": "语言",
+  "appSettingsPageLocaleSubtitle": "选择应用语言",
+  "appSettingsPageSectionDeveloper": "开发者选项",
+  "appSettingsPageDebugLogTitle": "启用调试日志"
 }

@@ -1,6 +1,7 @@
 # Dart build output
 *.g.dart
 *.freezed.dart
+*.gr.dart
 
 # `flutter_rust_bridge` output
 /native

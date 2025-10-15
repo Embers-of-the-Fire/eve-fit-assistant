@@ -19,3 +19,25 @@ extension FilterNull<T> on Iterable<T?> {
     }
   }
 }
+
+Iterable<int> range(int start, int end) sync* {
+  for (int i = start; i < end; i++) {
+    yield i;
+  }
+}
+
+extension Windowed<T> on Iterable<T> {
+  Iterable<(T, T?)> window2() sync* {
+    final buffer = <T?>[];
+    for (final element in this) {
+      buffer.add(element);
+      if (buffer.length == 2) {
+        yield (buffer[0]!, buffer[1]);
+        buffer.removeAt(0);
+      }
+    }
+    if (buffer.isNotEmpty) {
+      yield (buffer[0]!, null);
+    }
+  }
+}

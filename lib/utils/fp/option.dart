@@ -27,3 +27,24 @@ extension Unwrap<T> on Option<T> {
     }, (value) => value);
   }
 }
+
+extension Then on bool {
+  T? then<T>(T Function() value) => this ? value() : null;
+}
+
+extension Optional<T> on T? {
+  Option<T> get optional => Option.fromNullable(this);
+}
+
+extension Nullable<T> on Option<T> {
+  T? get nullable => toNullable();
+}
+
+extension MapMonad<T> on T? {
+  R? map<R>(R Function(T value) f) {
+    if (this == null) {
+      return null;
+    }
+    return f(this as T);
+  }
+}

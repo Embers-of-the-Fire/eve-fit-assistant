@@ -35,6 +35,7 @@ class AppSettingService extends _$AppSettingService {
 
   static void init() {
     _readFromDisk();
+    _syncToDisk();
   }
 
   @override
@@ -42,8 +43,14 @@ class AppSettingService extends _$AppSettingService {
     return _appSetting;
   }
 
-  void _syncToDisk() {
-    final text = jsonEncode(state.toJson());
+  void update(AppSetting Function(AppSetting) updater) {
+    _appSetting = updater(_appSetting);
+    _syncToDisk();
+    state = _appSetting;
+  }
+
+  static void _syncToDisk() {
+    final text = jsonEncode(_appSetting.toJson());
     if (!settingFile.existsSync()) {
       settingFile.createSync(recursive: true);
     }
