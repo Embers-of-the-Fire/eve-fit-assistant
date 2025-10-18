@@ -111,6 +111,8 @@ class BundleManager extends _$BundleManager {
 
   @override
   Future<DateTime> build() async {
+    ref.read(bundleRegistryManagerProvider);
+    ref.read(bundleServiceProvider);
     return DateTime.now();
   }
 

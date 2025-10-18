@@ -9,6 +9,7 @@ import "market_groups.proto";
 import "meta_groups.proto";
 import "type_materials.proto";
 import "types.proto";
+import "fit.proto";
 
 message Collection {
   repeated types.Type types = 1;
@@ -19,4 +20,7 @@ message Collection {
   repeated meta_groups.MetaGroup meta_groups = 6;
   repeated dogma_units.DogmaUnit dogma_units = 7;
   repeated dogma_attributes.DogmaAttribute dogma_attributes = 8;
+
+  repeated fit.Ship ships = 9;
+  repeated fit.Subsystem subsystems = 10;
 }

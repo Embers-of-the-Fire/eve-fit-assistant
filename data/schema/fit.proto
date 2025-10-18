@@ -1,0 +1,31 @@
+syntax = "proto2";
+package fit;
+
+import "utils.proto";
+
+/// The "ship" also contains structures.
+message Ship {
+  required uint32 type_id = 1;
+
+  required uint32 high_slots = 2;
+  required uint32 medium_slots = 3;
+  required uint32 low_slots = 4;
+
+  required uint32 rig_slots = 5;
+  required uint32 subsystem_slots = 6;
+  required uint32 service_slots = 7;
+
+  required uint32 turret_slots = 8;
+  required uint32 launcher_slots = 9;
+}
+
+message Subsystem {
+  required uint32 type_id = 1;
+
+  required uint32 high_slots = 2;
+  required uint32 medium_slots = 3;
+  required uint32 low_slots = 4;
+
+  required uint32 turret_slots = 5;
+  required uint32 launcher_slots = 6;
+}

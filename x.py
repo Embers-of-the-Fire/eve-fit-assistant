@@ -823,23 +823,30 @@ def build():
     """Build related commands."""
 
 
+_GENERATOR_TYPES = {"static", "native", "localization", "images"}
+
+
 @build.command("data")
-@click.option("--skip", "-s", multiple=True, help="Skip specified data generators.")
+@click.option(
+    "--skip",
+    "-s",
+    multiple=True,
+    help=f"Skip specified data generators.Values: {', '.join(_GENERATOR_TYPES)}",
+)
 def data_cmd(skip: list[str], *args, **kwargs):
     """Build data files."""
     from data.lib.workspace.generate import run_generator
 
-    generator_type = {"static", "native", "localization", "images"}
     to_skip = set()
     for it in skip:
         for i in it.split(","):
             to_skip.add(i.strip().lower())
 
-    if len(x := to_skip.difference(generator_type)) > 0:
+    if len(x := to_skip.difference(_GENERATOR_TYPES)) > 0:
         click.echo(
             styled([Style.BRIGHT, Fore.RED], "Invalid generator type to skip: ") + ", ".join(x)
         )
-        click.echo("Valid types are: " + ", ".join(generator_type))
+        click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
         exit(1)
 
     name = data.lib.config.WORKSPACE_CACHE.current_workspace

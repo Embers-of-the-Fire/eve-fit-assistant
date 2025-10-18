@@ -6,10 +6,14 @@ import 'package:eve_fit_assistant/config/loading.dart';
 import 'package:eve_fit_assistant/config/logger.dart';
 import 'package:eve_fit_assistant/config/paths.dart';
 import 'package:eve_fit_assistant/native/frb_generated.dart';
+import 'package:eve_fit_assistant/storage/bundle/manager.dart';
+import 'package:eve_fit_assistant/storage/bundle/service/collection.dart';
+import 'package:eve_fit_assistant/storage/fit/manager.dart';
 import 'package:eve_fit_assistant/storage/setting/setting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 Future<void> initSingletons() async {
@@ -36,4 +40,10 @@ void initErrorBoundary() {
     fatal('Uncaught platform error: $error', stackTrace: stack);
     return true;
   };
+}
+
+void initWithRef(WidgetRef ref) {
+  ref.read(fitManagerProvider);
+  ref.read(bundleManagerProvider);
+  ref.read(bundleCollectionProvider);
 }

@@ -11,6 +11,7 @@ class PathProvider {
 
   static String get resourcesPath => p.join(documentsPath, "resources");
   static String get settingsPath => p.join(documentsPath, "settings");
+  static String get fittingsPath => p.join(documentsPath, "fittings");
   static String get logsPath => p.join(documentsPath, "logs");
   static String get cacheResourcesPath => p.join(cachesPath, "resources");
 

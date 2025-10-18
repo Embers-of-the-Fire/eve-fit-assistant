@@ -5,14 +5,14 @@ The app uses [`riverpod`](https://riverpod.dev) to manage data.
 ## Concept, Choice and Suggestion
 
 There're four layers of data storage:
-- Global state, including [settings (`AppSettingService`)](../../lib/storage/setting/setting.dart).
+- [Global state](#global-state), including [settings (`AppSettingService`)](../../lib/storage/setting/setting.dart).
   The global state is used across the app, and should be loaded at the app start.
   Any error in global state is considered critical,
   and should be immediately available once the splash screen is dismissed.
-- Global data, including [bundle manager (`BundleManager`)](../../lib/storage/bundle/manager.dart).
+- [Global data](#global-data), including [bundle manager (`BundleManager`)](../../lib/storage/bundle/manager.dart).
   This layer is also error-critical, but can be loaded after the app start.
   The app should show a loading indicator when the user tries to access this data.
-- Bundle data, loaded by the `BundleManager`, is offered as a global provider (in riverpod).
+- [Service data](#service-data), loaded by managers, is offered as a global provider (in riverpod).
   Error is permitted and the source might change during the app lifetime.
   The app should show a loading indicator when the user tries to access this data,
   and should not let any error break the app.
@@ -56,8 +56,13 @@ To properly handle and manage states, the application follows these principles:
   The registry is stored in `<settingsPath>/registry.json`.
   This provider offers the bundle registry data interface.
   The interface to operate on the registry is limited to the `BundleManager`.
+- `FitManager`: The overall fit data manager. This provider offers no direct data interface.
+- `FitRegistryManager` > `FitRegistry`: The fit registry manager.
+  The registry is stored in `<documents>/fittings/registry.json`.
+  This provider offers the fit registry data interface.
+  The access to operate on the registry is limited to the `FitManager`.
 
-### Bundle Data
+### Service Data
 
 - `BundleService` > `CurrentBundleStatus` > `BundleMetadata`: The current bundle service.
   This provider offers the current bundle metadata data interface.
@@ -67,3 +72,6 @@ To properly handle and manage states, the application follows these principles:
     See [this file](../../lib/storage/bundle/service/paths.dart) for details.
   - `BundleLocalization`: Exposed through `bundleLocalization (riverpod)`.
   Use `localization (riverpod)` to access the localized strings.
+- `FitService` > `FitServiceStatus`: The fit service.
+  This provider offers the fit service status data interface.
+  The value might be changed by the `FitManager`.

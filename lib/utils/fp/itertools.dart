@@ -41,3 +41,11 @@ extension Windowed<T> on Iterable<T> {
     }
   }
 }
+
+extension RepeatElement<T> on T {
+  Iterable<T> repeat(int count) sync* {
+    for (int i = 0; i < count; i++) {
+      yield this;
+    }
+  }
+}
