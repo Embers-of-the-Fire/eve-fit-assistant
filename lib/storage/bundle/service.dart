@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:eve_fit_assistant/config/paths.dart';
+import 'package:eve_fit_assistant/storage/bundle/manager.dart';
 import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
 import 'package:eve_fit_assistant/utils/fp.dart';
 import 'package:eve_fit_assistant/utils/riverpod.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:path/path.dart' as p;
@@ -90,6 +92,9 @@ BundleMetadata currentBundle(Ref ref) =>
 class BundleService extends _$BundleService {
   @override
   CurrentBundleStatus build() {
+    if (ref.read(bundleRegistryManagerProvider.select((value) => value.selectedBundleId)) != null) {
+      loadBundle(ref.read(bundleRegistryManagerProvider).selectedBundleId!);
+    }
     return CurrentBundleStatus.notSelected();
   }
 

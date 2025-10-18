@@ -7,6 +7,7 @@ import 'package:eve_fit_assistant/storage/bundle/service.dart';
 import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
 import 'package:eve_fit_assistant/utils/extract.dart';
 import 'package:eve_fit_assistant/utils/riverpod.dart';
+import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -26,17 +27,15 @@ abstract class BundleInfo with _$BundleInfo {
   factory BundleInfo.fromJson(Map<String, dynamic> json) => _$BundleInfoFromJson(json);
 }
 
-@JsonSerializable()
-class BundleRegistry {
-  @JsonKey(defaultValue: {})
-  Map<String, BundleInfo> bundles;
-
-  BundleRegistry({required this.bundles});
-  BundleRegistry.empty() : bundles = {};
+@freezed
+abstract class BundleRegistry with _$BundleRegistry {
+  const factory BundleRegistry({
+    // ignore: invalid_annotation_target
+    @JsonKey(defaultValue: IMap.empty) required IMap<String, BundleInfo> bundles,
+    String? selectedBundleId,
+  }) = _BundleRegistry;
 
   factory BundleRegistry.fromJson(Map<String, dynamic> json) => _$BundleRegistryFromJson(json);
-
-  Map<String, dynamic> toJson() => _$BundleRegistryToJson(this);
 }
 
 @riverpodSingleton
@@ -72,7 +71,6 @@ class BundleRegistryManager extends _$BundleRegistryManager {
     final registryFile = File(_bundleRegistryPath);
     final registryJson = registry.toJson();
     final registryContent = const JsonEncoder.withIndent("  ").convert(registryJson);
-    debug("Syncing bundle registry data: $registryContent");
     if (!registryFile.existsSync()) {
       registryFile.createSync(recursive: true);
     }
@@ -80,25 +78,19 @@ class BundleRegistryManager extends _$BundleRegistryManager {
   }
 
   void _addBundle(BundleInfo bundle) {
-    final currentRegistry = state;
-    final updatedBundles = Map<String, BundleInfo>.from(currentRegistry.bundles);
-    updatedBundles[bundle.bundleId] = bundle;
-    final updatedRegistry = BundleRegistry(bundles: updatedBundles);
+    final updatedRegistry = state.copyWith(bundles: state.bundles.add(bundle.bundleId, bundle));
     _syncToDisk(updatedRegistry);
     state = updatedRegistry;
   }
 
   void _removeBundle(String bundleId) {
-    final currentRegistry = state;
-    final updatedBundles = Map<String, BundleInfo>.from(currentRegistry.bundles);
-    updatedBundles.remove(bundleId);
-    final updatedRegistry = BundleRegistry(bundles: updatedBundles);
+    final updatedRegistry = state.copyWith(bundles: state.bundles.remove(bundleId));
     _syncToDisk(updatedRegistry);
     state = updatedRegistry;
   }
 
-  void _clearBundles() {
-    final updatedRegistry = BundleRegistry.empty();
+  void _selectBundle(String bundleId) {
+    final updatedRegistry = state.copyWith(selectedBundleId: bundleId);
     _syncToDisk(updatedRegistry);
     state = updatedRegistry;
   }
@@ -173,21 +165,15 @@ class BundleManager extends _$BundleManager {
     });
   }
 
-  Future<void> clearBundles() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      ref.read(bundleRegistryManagerProvider.notifier)._clearBundles();
-      return DateTime.now();
-    });
-  }
-
-  Future<void> selectBundle(String bundleId) async {
+  Future<void> selectBundle(String bundleId, {bool updateRegistry = true}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       if (!(ref.read(bundleRegistryManagerProvider)).bundles.containsKey(bundleId)) {
         error("Invalid bundle $bundleId", stackTrace: StackTrace.current);
         throw Exception("Invalid bundle $bundleId");
       }
+      if (updateRegistry) ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
+      ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
       return DateTime.now();
     });
   }

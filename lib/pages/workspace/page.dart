@@ -38,7 +38,7 @@ class WorkspacePage extends ConsumerWidget {
                 await ref.read(bundleManagerProvider.notifier).addBundle(selected.path);
                 final bundleRegistry = ref.read(bundleRegistryManagerProvider);
                 final bundleId = bundleRegistry.bundles.keys.first;
-                await ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
+                await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
               }
             },
             child: child,
