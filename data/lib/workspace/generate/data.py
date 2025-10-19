@@ -26,7 +26,7 @@ class GeneratorDatasource:
             raw_download_url=config.services.resource_url,
         )
         self.__path_manager = PathManager(
-            base_generate_out_path=self.__workspace_config.paths.generated,
+            full_generate_out_path=self.__workspace_config.paths.generated,
             base_output_path=self.__workspace_config.paths.output,
         )
         self.__is_incremental = is_incremental

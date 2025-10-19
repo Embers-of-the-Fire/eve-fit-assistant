@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import hashlib
 import shutil
 import subprocess
 import sys
 
+from typing import TYPE_CHECKING
+
 from data.lib.log import debug
 from data.lib.log import error
 from data.lib.log import info
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def get_command(name: str) -> str:
@@ -56,11 +63,22 @@ def execute_command(cmd: list, title: str, dry_run: bool = False, *args, **kwarg
     debug("Executing command: " + " ".join(cmd))
     debug(title)
     out = subprocess.run(cmd, *args, capture_output=True, text=True, **kwargs)
-    for line in out.stdout.splitlines():
-        debug(line)
     if out.returncode != 0:
+        for line in out.stdout.splitlines():
+            error(line)
         error(f"Failed to execute command [{out.returncode}]:")
         for line in out.stderr.splitlines():
             error(line)
         exit(out.returncode)
+    else:
+        for line in out.stdout.splitlines():
+            debug(line)
     debug("-" * line_width)
+
+
+def get_file_sha256(file: Path) -> str:
+    with file.open("rb") as f:
+        hasher = hashlib.sha256()
+        for chunk in iter(lambda: f.read(8192), b""):
+            hasher.update(chunk)
+        return hasher.hexdigest()

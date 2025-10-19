@@ -162,3 +162,16 @@ For example, you can run `./x lint` to lint the whole project.
 
 If you want to or have to use a new cmdline operation,
 you can add a new subcommand to the manager instead.
+
+### Dev-Only Environment
+
+You can set some environment variables to simplify the development process.
+It's strongly not recommended to use these variables in production builds.
+
+See [`.env.example`](./.env.example) for more information.
+
+- `EFA_SKIP_FULL_HASHLIST_UPDATE`: A shortcut env-var for `x build data --no-hash`.
+  This disables the hash list generator so you do not to rebuild the full bundle when developing.
+- `EFA_DEFAULT_WORKSPACE_HASHLIST`: A shortcut env-var for `x build inc <HASH_LIST>`.
+  This sets the default hash list used when building the app,
+  making it easier to build increment bundles.

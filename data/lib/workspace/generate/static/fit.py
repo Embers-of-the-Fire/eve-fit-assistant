@@ -5,21 +5,19 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic import Field
 
-from data.lib.constant import (
-    HIGH_SLOT_ATTR,
-    MEDIUM_SLOT_ATTR,
-    LOW_SLOT_ATTR,
-    SERVICE_SLOT_ATTR,
-    HIGH_SLOT_MODIFIER_ATTR,
-    MEDIUM_SLOT_MODIFIER_ATTR,
-    LOW_SLOT_MODIFIER_ATTR,
-    TURRET_SLOT_MODIFIER_ATTR,
-    LAUNCHER_SLOT_MODIFIER_ATTR,
-    TURRET_SLOT_ATTR,
-    LAUNCHER_SLOT_ATTR,
-    RIG_SLOT_ATTR,
-    SUBSYSTEM_SLOT_ATTR,
-)
+from data.lib.constant import HIGH_SLOT_ATTR
+from data.lib.constant import HIGH_SLOT_MODIFIER_ATTR
+from data.lib.constant import LAUNCHER_SLOT_ATTR
+from data.lib.constant import LAUNCHER_SLOT_MODIFIER_ATTR
+from data.lib.constant import LOW_SLOT_ATTR
+from data.lib.constant import LOW_SLOT_MODIFIER_ATTR
+from data.lib.constant import MEDIUM_SLOT_ATTR
+from data.lib.constant import MEDIUM_SLOT_MODIFIER_ATTR
+from data.lib.constant import RIG_SLOT_ATTR
+from data.lib.constant import SERVICE_SLOT_ATTR
+from data.lib.constant import SUBSYSTEM_SLOT_ATTR
+from data.lib.constant import TURRET_SLOT_ATTR
+from data.lib.constant import TURRET_SLOT_MODIFIER_ATTR
 from data.lib.log import error
 from data.lib.log import info
 from data.lib.schema import fit_pb2

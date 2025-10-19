@@ -1,11 +1,18 @@
-import hashlib
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from data.lib.log import info
-from data.lib.workspace.generate import GeneratorDatasource, Descriptor
+from data.lib.utils import get_file_sha256
+
+
+if TYPE_CHECKING:
+    from data.lib.workspace.generate import Descriptor
+    from data.lib.workspace.generate import GeneratorDatasource
 
 
 def generate_hash_list(datasource: GeneratorDatasource, descriptor: Descriptor):
-    generated_dir = datasource.paths.base_generate_out_path
+    generated_dir = datasource.paths.full_generate_out_path
     output_dir = datasource.config.paths.output
     hash_list_file = output_dir / "hash_list.txt"
 
@@ -14,11 +21,7 @@ def generate_hash_list(datasource: GeneratorDatasource, descriptor: Descriptor):
             if file_path.is_file():
                 relative_path = file_path.relative_to(generated_dir)
                 file_size = file_path.stat().st_size
-                with file_path.open("rb") as file:
-                    hasher = hashlib.sha256()
-                    for chunk in iter(lambda: file.read(8192), b""):
-                        hasher.update(chunk)
-                    file_hash = hasher.hexdigest()
+                file_hash = get_file_sha256(file_path)
                 f.write(f"{relative_path.as_posix()},{file_size},{file_hash}\n")
 
     info(f"Generated hash list at {hash_list_file}.")

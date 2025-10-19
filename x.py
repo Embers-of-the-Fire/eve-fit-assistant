@@ -24,7 +24,7 @@ import asyncio
 import shutil
 import sys
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import click
 
@@ -33,14 +33,17 @@ from colorama import Fore
 from colorama import Style
 from colorama import init
 from watchfiles import awatch
+from dotenv import load_dotenv
 
 from data.lib.codegen import CODEGEN_DART
-from data.lib.constant import I18N_ROOT
+from data.lib.constant import I18N_ROOT, SKIP_FULL_HASHLIST_UPDATE_ENV_VAR, \
+    DEFAULT_WORKSPACE_HASHLIST_ENV_VAR
 from data.lib.constant import PROJECT_ROOT
 
 
 def __fix_env():
     sys.path.insert(0, str((PROJECT_ROOT / "data" / "lib" / "schema").resolve()))
+    load_dotenv()
 
 
 __fix_env()
@@ -57,11 +60,8 @@ from data.lib.log import info
 from data.lib.log import warning
 from data.lib.utils import execute_command
 from data.lib.utils import get_command
+from data.lib.workspace.build_increment import build_increment_bundle
 from data.lib.workspace.config import WorkspaceConfig
-
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 init(autoreset=True)
@@ -818,7 +818,7 @@ def upgrade():
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment upgrade completed successfully."))
 
 
-@cli.group()
+@cli.group(cls=ClickAliasedGroup)
 def build():
     """Build related commands."""
 
@@ -833,7 +833,14 @@ _GENERATOR_TYPES = {"static", "native", "localization", "images"}
     multiple=True,
     help=f"Skip specified data generators.Values: {', '.join(_GENERATOR_TYPES)}",
 )
-def data_cmd(skip: list[str], *args, **kwargs):
+@click.option(
+    "--no-hash",
+    envvar=SKIP_FULL_HASHLIST_UPDATE_ENV_VAR,
+    is_flag=True,
+    default=False,
+    help="Do not generate hash files for the data bundle.",
+)
+def data_cmd(skip: list[str], no_hash: bool):
     """Build data files."""
     from data.lib.workspace.generate import run_generator
 
@@ -859,7 +866,25 @@ def data_cmd(skip: list[str], *args, **kwargs):
     info(f"Resolving workspace: {name} ({ws})")
     descriptor = WorkspaceConfig.load_from_descriptor(ws)
 
-    asyncio.run(run_generator(descriptor, to_skip))
+    asyncio.run(run_generator(descriptor, to_skip, not no_hash))
+
+
+@build.command("increment", aliases=["inc", "incremental"])
+@click.argument("hash_list", envvar=DEFAULT_WORKSPACE_HASHLIST_ENV_VAR)
+def build_increment_cmd(hash_list: str):
+    """Build increment data bundle."""
+    name = data.lib.config.WORKSPACE_CACHE.current_workspace
+    if not name:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
+        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
+        exit(1)
+
+    ws = __get_workspace(name)
+    info(f"Resolving workspace: {name} ({ws})")
+    descriptor = WorkspaceConfig.load_from_descriptor(ws)
+
+    hash_list = Path(hash_list)
+    build_increment_bundle(descriptor, hash_list)
 
 
 cli()

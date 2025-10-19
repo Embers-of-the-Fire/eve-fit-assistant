@@ -57,9 +57,4 @@ class Descriptor(BaseModel):
             gameServer=start_config.get("main", "server"),
         )
 
-        with open(datasource.paths.descriptor_path, "w", encoding="utf-8") as f:
-            f.write(descriptor.model_dump_json(indent=4))
-
-        info(f"Generated descriptor at {datasource.paths.descriptor_path}.")
-
         return descriptor

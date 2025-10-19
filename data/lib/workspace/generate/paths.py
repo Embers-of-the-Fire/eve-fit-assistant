@@ -20,10 +20,12 @@ class PathManager:
     __base_generate_out_path: Path
     __base_output_path: Path
 
-    def __init__(self, base_generate_out_path: Path, base_output_path: Path):
-        self.__base_generate_out_path = base_generate_out_path
+    def __init__(self, full_generate_out_path: Path, base_output_path: Path):
+        self.__base_generate_out_path = full_generate_out_path
         self.__base_output_path = base_output_path
 
+        self.full_generate_out_path.mkdir(parents=True, exist_ok=True)
+        self.increment_generate_out_path.mkdir(parents=True, exist_ok=True)
         self.native_root_path.mkdir(parents=True, exist_ok=True)
         self.static_root_path.mkdir(parents=True, exist_ok=True)
         self.localization_root_path.mkdir(parents=True, exist_ok=True)
@@ -32,8 +34,12 @@ class PathManager:
         self.graphics_root_path.mkdir(parents=True, exist_ok=True)
 
     @property
-    def base_generate_out_path(self) -> Path:
-        return self.__base_generate_out_path
+    def full_generate_out_path(self) -> Path:
+        return self.__base_generate_out_path / "full"
+
+    @property
+    def increment_generate_out_path(self) -> Path:
+        return self.__base_generate_out_path / "increment"
 
     @property
     def base_output_path(self) -> Path:
@@ -41,12 +47,17 @@ class PathManager:
 
     @property
     def descriptor_path(self) -> Path:
-        path = self.__base_generate_out_path / "descriptor.json"
+        path = self.full_generate_out_path / "descriptor.json"
+        return path
+
+    @property
+    def increment_descriptor_path(self) -> Path:
+        path = self.increment_generate_out_path / "descriptor.json"
         return path
 
     @property
     def static_root_path(self) -> Path:
-        path = self.__base_generate_out_path / "static"
+        path = self.full_generate_out_path / "static"
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -57,7 +68,7 @@ class PathManager:
 
     @property
     def localization_root_path(self) -> Path:
-        path = self.__base_generate_out_path / "localization"
+        path = self.full_generate_out_path / "localization"
         path.mkdir(parents=True, exist_ok=True)
         return path
 

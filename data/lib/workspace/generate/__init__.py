@@ -18,15 +18,21 @@ from .data import GeneratorDatasource
 from .descriptor import Descriptor
 from .hash_list import generate_hash_list
 
+
 if TYPE_CHECKING:
     from data.lib.workspace.config import WorkspaceConfig
 
 
-async def run_generator(config: WorkspaceConfig, skip: set[str]):
+async def run_generator(config: WorkspaceConfig, skip: set[str], gen_hash: bool):
     info("Running data generator...")
     datasource = GeneratorDatasource(config, is_incremental=False)
 
     desc = Descriptor.create(datasource)
+
+    with open(datasource.paths.descriptor_path, "w", encoding="utf-8") as f:
+        f.write(desc.model_dump_json(indent=4))
+
+    info(f"Generated descriptor at {datasource.paths.descriptor_path}.")
 
     collection_cache: collections_pb2.Collection | None = None
     if "static" not in skip:
@@ -48,12 +54,13 @@ async def run_generator(config: WorkspaceConfig, skip: set[str]):
 
     info("Data generator finished.")
 
-    generate_hash_list(datasource, desc)
+    if gen_hash:
+        generate_hash_list(datasource, desc)
 
     shutil.make_archive(
         str(config.paths.output / config.metadata.identifier),
         format="zip",
-        root_dir=datasource.paths.base_generate_out_path,
+        root_dir=datasource.paths.full_generate_out_path,
     )
 
     out_path = config.paths.output / f"{config.metadata.identifier}.zip"
