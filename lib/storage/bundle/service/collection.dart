@@ -5,7 +5,6 @@ import 'package:eve_fit_assistant/data/proto/collections.pb.dart';
 import 'package:eve_fit_assistant/storage/bundle/service.dart';
 import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
 import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -54,11 +53,15 @@ class BundleCollection extends _$BundleCollection {
     if (_isLoading) return;
     _isLoading = true;
     state = const BundleCollectionStatus.loading();
-    final file = File(
-      ref.read(bundlePathsProvider.select((provider) => provider.getCollectionPath())),
-    );
+    final filePath = ref.read(bundlePathsProvider)?.getCollectionPath() ?? "";
+    final file = File(filePath);
+    if (!await file.exists()) {
+      _isLoading = false;
+      return;
+    }
     final bytes = await file.readAsBytes();
     final collection = Collection.fromBuffer(bytes);
+    _isLoading = false;
     state = BundleCollectionStatus.loaded(collection);
   }
 }

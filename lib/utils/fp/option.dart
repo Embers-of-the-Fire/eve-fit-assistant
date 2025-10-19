@@ -22,7 +22,7 @@ extension Unwrap<T> on Option<T> {
       final errorText = hint == null
           ? "Unwrapping an `Option.none`"
           : "Unwrapping an `Option.none`: $hint";
-      error(errorText, stackTrace: stackTrace);
+      error(errorText, stackTrace: stackTrace, error: Exception(errorText));
       throw Exception(errorText);
     }, (value) => value);
   }
@@ -47,4 +47,8 @@ extension MapMonad<T> on T? {
     }
     return f(this as T);
   }
+}
+
+extension OrElse<T> on Option<T> {
+  T orElse(T value) => match(() => value, (v) => v);
 }

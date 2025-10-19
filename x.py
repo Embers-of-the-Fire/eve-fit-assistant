@@ -36,8 +36,11 @@ from watchfiles import awatch
 from dotenv import load_dotenv
 
 from data.lib.codegen import CODEGEN_DART
-from data.lib.constant import I18N_ROOT, SKIP_FULL_HASHLIST_UPDATE_ENV_VAR, \
-    DEFAULT_WORKSPACE_HASHLIST_ENV_VAR
+from data.lib.constant import (
+    I18N_ROOT,
+    SKIP_FULL_HASHLIST_UPDATE_ENV_VAR,
+    DEFAULT_WORKSPACE_HASHLIST_ENV_VAR,
+)
 from data.lib.constant import PROJECT_ROOT
 
 

@@ -30,12 +30,36 @@ class WorkspacePage extends ConsumerWidget {
         children: [
           TextButton(
             onPressed: () async {
-              if (ref.read(bundleServiceProvider).isLoaded) return;
+              if (ref.read(bundleServiceProvider).isLoaded) {
+                info("Loaded!");
+              }
               final result = await FilePicker.platform.pickFiles();
               if (result != null) {
                 final selected = result.xFiles.first;
                 info("Selected file: ${selected.name}");
-                await ref.read(bundleManagerProvider.notifier).addBundle(selected.path);
+                await ref
+                    .read(bundleManagerProvider.notifier)
+                    .addBundle(
+                      selected.path,
+                      confirmOverwrite: () async =>
+                          (await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              content: Text("Overwrite?"),
+                              actions: [
+                                ElevatedButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: Text("No"),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: Text("Yes"),
+                                ),
+                              ],
+                            ),
+                          )) ??
+                          false,
+                    );
                 final bundleRegistry = ref.read(bundleRegistryManagerProvider);
                 final bundleId = bundleRegistry.bundles.keys.first;
                 await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);

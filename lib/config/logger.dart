@@ -15,14 +15,14 @@ void warning(dynamic message, {StackTrace? stackTrace}) {
   GlobalLogger._file.w(message, stackTrace: stackTrace);
 }
 
-void error(dynamic message, {StackTrace? stackTrace}) {
-  GlobalLogger._console.e(message, stackTrace: stackTrace);
-  GlobalLogger._file.e(message, stackTrace: stackTrace);
+void error(dynamic message, {StackTrace? stackTrace, Object? error}) {
+  GlobalLogger._console.e(message, stackTrace: stackTrace, error: error);
+  GlobalLogger._file.e(message, stackTrace: stackTrace, error: error);
 }
 
-void fatal(dynamic message, {StackTrace? stackTrace}) {
-  GlobalLogger._console.f(message, stackTrace: stackTrace);
-  GlobalLogger._file.f(message, stackTrace: stackTrace);
+void fatal(dynamic message, {StackTrace? stackTrace, Object? error}) {
+  GlobalLogger._console.f(message, stackTrace: stackTrace, error: error);
+  GlobalLogger._file.f(message, stackTrace: stackTrace, error: error);
 }
 
 class GlobalLogger {
@@ -31,7 +31,7 @@ class GlobalLogger {
 
   static void init(String fileOutputDir, bool enableDebugLog) {
     _console = Logger(
-      printer: PrefixPrinter(PrettyPrinter()),
+      printer: PrefixPrinter(PrettyPrinter(errorMethodCount: 14)),
       filter: DevelopmentFilter()..level = Level.debug,
       output: ConsoleOutput(),
     );

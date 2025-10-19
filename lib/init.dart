@@ -34,10 +34,14 @@ Widget initBuilder(BuildContext context, Widget? child) {
 void initErrorBoundary() {
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    fatal('Found Flutter error ${details.exceptionAsString()}', stackTrace: details.stack);
+    fatal(
+      'Found Flutter error ${details.exceptionAsString()}',
+      stackTrace: details.stack,
+      error: details.exception,
+    );
   };
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    fatal('Uncaught platform error: $error', stackTrace: stack);
+    fatal('Uncaught platform error: $error', stackTrace: stack, error: error);
     return true;
   };
 }

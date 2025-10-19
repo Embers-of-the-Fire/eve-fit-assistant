@@ -5,27 +5,30 @@ import 'package:eve_fit_assistant/storage/bundle/service.dart';
 import 'package:eve_fit_assistant/utils/fp.dart';
 import 'package:eve_fit_assistant/utils/riverpod.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'paths.g.dart';
 
 @riverpodSingleton
-BundleServicePaths bundlePaths(Ref ref) => ref.watch(currentBundleProvider).paths;
+BundleServicePaths? bundlePaths(Ref ref) => ref.watch(currentBundleProvider)?.paths;
 
 @riverpod
-String iconPath(Ref ref, int iconId) => ref.watch(bundlePathsProvider).getIconPath(iconId);
+String iconPath(Ref ref, int iconId) =>
+    ref.watch(bundlePathsProvider.select((t) => t?.getIconPath(iconId) ?? ""));
 
 @riverpod
 String graphicPath(Ref ref, int graphicId) =>
-    ref.watch(bundlePathsProvider).getGraphicPath(graphicId);
+    ref.watch(bundlePathsProvider.select((t) => t?.getGraphicPath(graphicId) ?? ""));
 
 @riverpodSingleton
 String localizationPath(Ref ref, String locale) =>
-    ref.watch(bundlePathsProvider).getLocalizationPath(locale);
+    ref.watch(bundlePathsProvider.select((t) => t?.getLocalizationPath(locale) ?? ""));
 
 class BundleServicePaths {
   static const String _descriptor = "descriptor.json";
+  static const String _registrar = "registrar.json";
   static const String _staticPath = "static";
   static const String _localizationPath = "localization";
   static const String _staticImagesPath = "images";
@@ -75,6 +78,7 @@ class BundleServicePaths {
   }
 
   String getDescriptorPath() => p.join(bundlePath, _descriptor);
+  String getRegistrarPath() => p.join(bundlePath, _registrar);
 
   String getIconPath(int iconId) {
     final iconPath = p.join(

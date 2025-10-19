@@ -16,10 +16,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'service.freezed.dart';
 part 'service.g.dart';
 
+/// A `BundleDescriptor` is what we see in a bundle zip archive.
+/// It's not designed to demonstrate local storage.
 @freezed
 abstract class BundleDescriptor with _$BundleDescriptor {
   const factory BundleDescriptor({
     required int generateTimestamp,
+    // ignore: invalid_annotation_target
+    @JsonKey(defaultValue: false) required bool isIncremental,
     required String bundleId,
     required String appVersion,
     required String gameVersion,
@@ -33,12 +37,62 @@ abstract class BundleDescriptor with _$BundleDescriptor {
 }
 
 @freezed
+abstract class BundleHistoryPatch with _$BundleHistoryPatch {
+  const factory BundleHistoryPatch({
+    required String appVersion,
+    required int generateTimestamp,
+    required int loadTimestamp,
+    required String gameVersion,
+    required String gameBuild,
+    required String gameRegion,
+    required String gameBranch,
+    required String gameServer,
+    required bool isIncremental,
+  }) = _BundleHistoryPatch;
+
+  factory BundleHistoryPatch.fromJson(Map<String, dynamic> json) =>
+      _$BundleHistoryPatchFromJson(json);
+}
+
+@freezed
+abstract class BundleRegistrar with _$BundleRegistrar {
+  const factory BundleRegistrar({
+    required String bundleId,
+    required IList<BundleHistoryPatch> history,
+  }) = _BundleRegistrar;
+
+  const BundleRegistrar._();
+
+  factory BundleRegistrar.fromJson(Map<String, dynamic> json) => _$BundleRegistrarFromJson(json);
+
+  BundleHistoryPatch get latest => history.last;
+  int get lastLoadTimestamp => latest.loadTimestamp;
+  BundleRegistrar pushPatch(BundleDescriptor descriptor) {
+    final patch = BundleHistoryPatch(
+      appVersion: descriptor.appVersion,
+      generateTimestamp: descriptor.generateTimestamp,
+      loadTimestamp: DateTime.now().millisecondsSinceEpoch,
+      gameVersion: descriptor.gameVersion,
+      gameBuild: descriptor.gameBuild,
+      gameRegion: descriptor.gameRegion,
+      gameBranch: descriptor.gameBranch,
+      gameServer: descriptor.gameServer,
+      isIncremental: descriptor.isIncremental,
+    );
+    return copyWith(history: patch.isIncremental ? history.add(patch) : [patch].lock);
+  }
+
+  factory BundleRegistrar.empty(String bundleId) =>
+      BundleRegistrar(bundleId: bundleId, history: const IList<BundleHistoryPatch>.empty());
+}
+
+@freezed
 abstract class BundleMetadata with _$BundleMetadata {
   const factory BundleMetadata({
     required String bundleId,
     required BundleServicePaths paths,
     required DateTime lastModified,
-    required BundleDescriptor descriptor,
+    required BundleRegistrar metadata,
   }) = _BundleMetadata;
 }
 
@@ -83,8 +137,7 @@ class CurrentBundleStatus with _$CurrentBundleStatus {
 /// Access the currently loaded bundle data.
 /// Throws if no bundle is loaded.
 @riverpodSingleton
-BundleMetadata currentBundle(Ref ref) =>
-    (ref.watch(bundleServiceProvider).currentData).unwrap("Bundle not loaded");
+BundleMetadata? currentBundle(Ref ref) => ref.watch(bundleServiceProvider).currentData.nullable;
 
 /// Serves bundle data.
 /// UI should access this via [`currentBundleProvider`][currentBundle] rather than directly.
@@ -103,16 +156,16 @@ class BundleService extends _$BundleService {
     final bundlePath = p.join(PathProvider.resourcesPath, "bundles", bundleId);
     final bundlePathService = BundleServicePaths(bundlePath);
     final errors = await bundlePathService.validate();
-    final descriptorFile = File(bundlePathService.getDescriptorPath());
-    if (!await descriptorFile.exists()) {
+    final registrarPath = File(bundlePathService.getRegistrarPath());
+    if (!await registrarPath.exists()) {
       state = CurrentBundleStatus.error(errors: errors);
     }
-    final json = jsonDecode(await descriptorFile.readAsString());
+    final json = jsonDecode(await registrarPath.readAsString());
     try {
-      final descriptor = BundleDescriptor.fromJson(json);
+      final registrar = BundleRegistrar.fromJson(json);
       state = CurrentBundleStatus.loaded(
         data: BundleMetadata(
-          descriptor: descriptor,
+          metadata: registrar,
           bundleId: bundleId,
           paths: bundlePathService,
           lastModified: DateTime.now(),

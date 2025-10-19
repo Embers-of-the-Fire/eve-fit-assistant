@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:eve_fit_assistant/config/logger.dart';
 import 'package:eve_fit_assistant/config/paths.dart';
 import 'package:eve_fit_assistant/data/proto/fit.pb.dart';
 import 'package:eve_fit_assistant/storage/bundle/service.dart';
@@ -30,8 +31,6 @@ abstract class FitMetadata with _$FitMetadata {
     required int lastModified,
 
     required String description,
-    required String appVersion,
-    required String bundleBuild,
     required String bundleId,
   }) = _FitMetadata;
 
@@ -68,6 +67,7 @@ class FitRegistryManager extends _$FitRegistryManager {
   }
 
   void updateFit(FitMetadata metadata) {
+    debug("Update fit ${metadata.fitId} ${metadata.shipTypeId} in ${metadata.bundleId}");
     state = state.copyWith(fits: state.fits.add(metadata.fitId, metadata));
     _syncToDisk();
   }
@@ -116,18 +116,22 @@ class FitManager extends _$FitManager {
       }
     }
     if (ship == null) {
-      throw Exception("Ship with ID $shipId not found in bundle collection.");
+      final text = "Ship with ID $shipId not found in bundle collection.";
+      error(text);
+      throw Exception(text);
     }
+    info("Creating new fit of type $shipId named $name");
     final fitId = generateFitId();
-    final bundleInfo = ref.watch(currentBundleProvider.select((t) => t.descriptor));
+    final bundleInfo = ref.watch(currentBundleProvider.select((t) => t?.metadata));
+    if (bundleInfo == null) {
+      throw Exception("No bundle is currently loaded.");
+    }
     final metadata = FitMetadata(
       fitId: fitId,
       shipTypeId: shipId,
       name: name,
       lastModified: DateTime.now().millisecondsSinceEpoch,
       description: "",
-      appVersion: bundleInfo.appVersion,
-      bundleBuild: bundleInfo.gameVersion,
       bundleId: bundleInfo.bundleId,
     );
     final fit = FitStorage.empty(metadata, ship);
@@ -138,5 +142,6 @@ class FitManager extends _$FitManager {
       await path.parent.create(recursive: true);
     }
     await path.writeAsString(text);
+    ref.read(fitRegistryManagerProvider.notifier).updateFit(metadata);
   }
 }

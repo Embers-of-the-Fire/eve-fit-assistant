@@ -6,6 +6,7 @@ import 'package:eve_fit_assistant/config/paths.dart';
 import 'package:eve_fit_assistant/storage/bundle/service.dart';
 import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
 import 'package:eve_fit_assistant/utils/extract.dart';
+import 'package:eve_fit_assistant/utils/file.dart';
 import 'package:eve_fit_assistant/utils/riverpod.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -40,7 +41,7 @@ abstract class BundleRegistry with _$BundleRegistry {
 
 @riverpodSingleton
 class BundleRegistryManager extends _$BundleRegistryManager {
-  static String get _bundleRegistryPath => p.join(PathProvider.settingsPath, "bundles.json");
+  static String get _bundleRegistryPath => p.join(PathProvider.resourcesPath, "bundles.json");
   @override
   BundleRegistry build() {
     final registryFile = File(_bundleRegistryPath);
@@ -108,16 +109,16 @@ class BundleManager extends _$BundleManager {
     return DateTime.now();
   }
 
-  Future<void> addBundle(String bundlePath) async {
+  static String getBundlePath(String bundleId) => p.join(_bundleBasePath, bundleId);
+
+  Future<void> addBundle(String bundlePath, {Future<bool> Function()? confirmOverwrite}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final bundleCachePath = Directory(p.join(_bundleCachePath, "cache"));
       if (await bundleCachePath.exists()) {
-        bundleCachePath.delete(recursive: true);
-        await bundleCachePath.create(recursive: true);
-      } else {
-        await bundleCachePath.create(recursive: true);
+        await bundleCachePath.delete(recursive: true);
       }
+      await bundleCachePath.create(recursive: true);
       await extractIsolated(bundlePath, bundleCachePath.path);
       final descriptorPath = BundleServicePaths.descriptorPathFromExternalBundle(
         bundleCachePath.path,
@@ -135,13 +136,41 @@ class BundleManager extends _$BundleManager {
       if (!await baseDir.exists()) {
         await baseDir.create(recursive: true);
       }
-      final targetDir = Directory(p.join(_bundleBasePath, bundleId));
+      final targetDir = Directory(getBundlePath(bundleId));
       if (await targetDir.exists()) {
-        warning("Target bundle output dir $bundleId exists!");
-        return DateTime.now();
+        if (descriptor.isIncremental) {
+          info("Importing incremental bundle $bundleId: $descriptor");
+          copyRecursive(bundleCachePath, targetDir);
+        } else {
+          warning("Target bundle output dir $bundleId exists!");
+          final willOverwrite = await confirmOverwrite?.call() ?? false;
+          if (willOverwrite) {
+            info("Overwriting existing bundle $bundleId");
+            await targetDir.delete(recursive: true);
+            await bundleCachePath.rename(targetDir.path);
+          } else {
+            info("Aborting bundle import for $bundleId");
+            return DateTime.now();
+          }
+        }
+      } else {
+        await bundleCachePath.rename(targetDir.path);
       }
-      await bundleCachePath.rename(targetDir.path);
-      info("Successfully initialized bundle $bundleId: $descriptor");
+
+      final targetRegistrarFile = File(BundleServicePaths(targetDir.path).getRegistrarPath());
+      final BundleRegistrar registrar;
+      if (!await targetRegistrarFile.exists()) {
+        await targetRegistrarFile.create(recursive: true);
+        registrar = BundleRegistrar.empty(bundleId).pushPatch(descriptor);
+      } else {
+        final registrarContent = jsonDecode(await targetRegistrarFile.readAsString());
+        registrar = BundleRegistrar.fromJson(registrarContent).pushPatch(descriptor);
+      }
+      final registrarJson = registrar.toJson();
+      final registrarContent = const JsonEncoder.withIndent("  ").convert(registrarJson);
+      await targetRegistrarFile.writeAsString(registrarContent);
+
+      info("Successfully imported bundle $bundleId: $descriptor");
 
       ref
           .read(bundleRegistryManagerProvider.notifier)
@@ -160,6 +189,13 @@ class BundleManager extends _$BundleManager {
   Future<void> removeBundle(String bundleId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
+      final targetDir = Directory(getBundlePath(bundleId));
+      if (await targetDir.exists()) {
+        await targetDir.delete(recursive: true);
+        info("Removed bundle directory for $bundleId");
+      } else {
+        warning("Bundle directory for $bundleId does not exist");
+      }
       ref.read(bundleRegistryManagerProvider.notifier)._removeBundle(bundleId);
       return DateTime.now();
     });

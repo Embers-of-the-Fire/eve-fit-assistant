@@ -10,6 +10,7 @@ Future<void> extractIsolated(String archivePath, String outputPath) async {
   final loadingKey = "extract-$archivePath-$outputPath";
 
   GlobalLoading.add(loadingKey, "Extracting ${p.basename(archivePath)}");
+
   await compute((args) async {
     final [archivePath, outputPath, port] = args;
     int s = 0;
@@ -31,11 +32,6 @@ Future<void> extractIsolated(String archivePath, String outputPath) async {
     }
     debugPrint("Extracted $s files");
   }, [archivePath, outputPath, receivePort.sendPort]);
-
-  // await for (final progress in receivePort) {
-  //   GlobalLoading.add("$loadingKey-progress", "Extract File $progress");
-  // }
-  debugPrint("Finished extracting");
 
   GlobalLoading.dismiss("$loadingKey-progress");
   GlobalLoading.dismiss(loadingKey);
