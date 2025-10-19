@@ -30,7 +30,7 @@ def codegen_dart() -> list[Path]:
         f.write("@JsonEnum(alwaysCreate: true)\n")
         f.write("enum Locale {\n")
 
-        for key in trans_map.keys():
+        for key in trans_map:
             f.write(f"  @JsonValue('{key}')\n")
             f.write(f"  {key},\n")
         f.write("  ;\n")
@@ -41,7 +41,7 @@ def codegen_dart() -> list[Path]:
         f.write("  };\n")
 
         f.write("  String get name => switch(this) {\n")
-        for key in trans_map.keys():
+        for key in trans_map:
             f.write(f"    Locale.{key} => '{key}',\n")
         f.write("  };\n")
 
