@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 class Descriptor(BaseModel):
     generateTimestamp: int
+
+    isIncremental: bool
+
     bundleId: str
     appVersion: str
 
@@ -31,7 +34,7 @@ class Descriptor(BaseModel):
     @staticmethod
     def create(
         datasource: GeneratorDatasource,
-    ):
+    ) -> Descriptor:
         info("Generating descriptor...")
         start_config = ConfigParser()
         start_config.read(datasource.config.metadata.start_cfg)
@@ -44,6 +47,7 @@ class Descriptor(BaseModel):
 
         descriptor = Descriptor(
             generateTimestamp=int(timestamp),
+            isIncremental=datasource.is_incremental,
             appVersion=app_version,
             bundleId=datasource.config.metadata.identifier,
             gameVersion=start_config.get("main", "version"),
@@ -57,3 +61,5 @@ class Descriptor(BaseModel):
             f.write(descriptor.model_dump_json(indent=4))
 
         info(f"Generated descriptor at {datasource.paths.descriptor_path}.")
+
+        return descriptor

@@ -16,7 +16,7 @@ from . import native
 from . import static
 from .data import GeneratorDatasource
 from .descriptor import Descriptor
-
+from .hash_list import generate_hash_list
 
 if TYPE_CHECKING:
     from data.lib.workspace.config import WorkspaceConfig
@@ -24,9 +24,9 @@ if TYPE_CHECKING:
 
 async def run_generator(config: WorkspaceConfig, skip: set[str]):
     info("Running data generator...")
-    datasource = GeneratorDatasource(config)
+    datasource = GeneratorDatasource(config, is_incremental=False)
 
-    Descriptor.create(datasource)
+    desc = Descriptor.create(datasource)
 
     collection_cache: collections_pb2.Collection | None = None
     if "static" not in skip:
@@ -47,6 +47,8 @@ async def run_generator(config: WorkspaceConfig, skip: set[str]):
         await images.generate(datasource, collection_cache)
 
     info("Data generator finished.")
+
+    generate_hash_list(datasource, desc)
 
     shutil.make_archive(
         str(config.paths.output / config.metadata.identifier),
