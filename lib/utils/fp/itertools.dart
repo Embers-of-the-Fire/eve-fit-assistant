@@ -20,6 +20,19 @@ extension FilterNull<T> on Iterable<T?> {
   }
 }
 
+extension FilterNone<T> on Iterable<Option<T>> {
+  Iterable<T> filterNone() sync* {
+    for (final element in this) {
+      switch (element) {
+        case Some(:final value):
+          yield value;
+        case None():
+          continue;
+      }
+    }
+  }
+}
+
 Iterable<int> range(int start, int end) sync* {
   for (int i = start; i < end; i++) {
     yield i;

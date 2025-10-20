@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:eve_fit_assistant/native/api/storage.dart" as native;
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -28,7 +29,7 @@ abstract class FitStorage with _$FitStorage {
       implants: IList<FitImplantItem>(),
       boosters: IList<FitBoosterItem>(),
     ),
-    dynamicRegistry: FitDynamicRegistry(dynamicItems: IMap<int, IMap<int, double>>()),
+    dynamicRegistry: FitDynamicRegistry(dynamicItems: IMap<int, FitDynamicItem>()),
   );
 
   const FitStorage._();
@@ -125,7 +126,7 @@ abstract class FitModuleItem with _$FitModuleItem {
 
 @freezed
 abstract class FitChargeItem with _$FitChargeItem {
-  const factory FitChargeItem({required FitStorageItemId itemId}) = _FitChargeItem;
+  const factory FitChargeItem({required int typeId}) = _FitChargeItem;
 
   factory FitChargeItem.fromJson(Map<String, dynamic> json) => _$FitChargeItemFromJson(json);
 }
@@ -168,10 +169,125 @@ abstract class FitBoosterItem with _$FitBoosterItem {
 }
 
 @freezed
+abstract class FitDynamicItem with _$FitDynamicItem {
+  const factory FitDynamicItem({
+    required int dynamicItemId,
+    required int originTypeId,
+    required int typeId,
+    required int modifierTypeId,
+    required IMap<int, double> dynamicAttributes,
+  }) = _FitDynamicItem;
+
+  factory FitDynamicItem.fromJson(Map<String, dynamic> json) => _$FitDynamicItemFromJson(json);
+}
+
+@freezed
 abstract class FitDynamicRegistry with _$FitDynamicRegistry {
-  const factory FitDynamicRegistry({required IMap<int, IMap<int, double>> dynamicItems}) =
+  const factory FitDynamicRegistry({required IMap<int, FitDynamicItem> dynamicItems}) =
       _FitDynamicRegistry;
 
   factory FitDynamicRegistry.fromJson(Map<String, dynamic> json) =>
       _$FitDynamicRegistryFromJson(json);
 }
+
+native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
+  fit: native.Fit(
+    shipTypeId: fitStorage.body.shipTypeId,
+    damageProfile: native.DamageProfile(
+      em: fitStorage.body.damageProfile.em,
+      explosive: fitStorage.body.damageProfile.explosive,
+      kinetic: fitStorage.body.damageProfile.kinetic,
+      thermal: fitStorage.body.damageProfile.thermal,
+    ),
+    modules:
+        [
+              (fitStorage.body.slots.high, native.SlotType.high),
+              (fitStorage.body.slots.medium, native.SlotType.medium),
+              (fitStorage.body.slots.low, native.SlotType.low),
+              (fitStorage.body.slots.rig, native.SlotType.rig),
+              (fitStorage.body.slots.subsystem, native.SlotType.subSystem),
+              ([fitStorage.body.slots.tacticalMode], native.SlotType.tacticalMode),
+              (fitStorage.body.slots.service, native.SlotType.service),
+            ]
+            .flatMap<native.Module>(
+              (arg) => arg.$1.filterNone().mapWithIndex(
+                (val, index) => native.Module(
+                  itemId: val.itemId.when(
+                    item: native.ItemID.item,
+                    dynamic: native.ItemID.dynamic_,
+                  ),
+                  state: switch (val.state) {
+                    FitItemState.passive => native.State.passive,
+                    FitItemState.online => native.State.online,
+                    FitItemState.active => native.State.active,
+                    FitItemState.overload => native.State.overload,
+                  },
+                  charge: val.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
+                  slot: native.Slot(slotType: arg.$2, index: index),
+                ),
+              ),
+            )
+            .toList(),
+    drones: fitStorage.body.drones
+        .map(
+          (drone) => native.Drone(
+            typeId: drone.itemId.when(
+              item: (id) => id,
+              dynamic: (dynamicId) =>
+                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
+                  (throw StateError("Dynamic item $dynamicId not found in registry")),
+            ),
+            groupId: drone.groupId,
+            state: switch (drone.state) {
+              FitItemState.passive => native.State.passive,
+              FitItemState.online => native.State.online,
+              FitItemState.active => native.State.active,
+              FitItemState.overload => native.State.overload,
+            },
+          ),
+        )
+        .toList(),
+    fighters: fitStorage.body.fighters
+        .map(
+          (fighter) => native.Fighter(
+            typeId: fighter.itemId.when(
+              item: (id) => id,
+              dynamic: (dynamicId) =>
+                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
+                  (throw StateError("Dynamic item $dynamicId not found in registry")),
+            ),
+            groupId: fighter.groupId,
+            ability: fighter.fighterAbility,
+          ),
+        )
+        .toList(),
+    implants: fitStorage.body.implants
+        .mapWithIndex(
+          (implant, index) => native.Implant(
+            typeId: implant.itemId.when(
+              item: (id) => id,
+              dynamic: (dynamicId) =>
+                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
+                  (throw StateError("Dynamic item $dynamicId not found in registry")),
+            ),
+            index: index,
+          ),
+        )
+        .toList(),
+    boosters: fitStorage.body.boosters
+        .mapWithIndex(
+          (booster, index) => native.Booster(
+            typeId: booster.itemId.when(
+              item: (id) => id,
+              dynamic: (dynamicId) =>
+                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
+                  (throw StateError("Dynamic item $dynamicId not found in registry")),
+            ),
+            index: index,
+          ),
+        )
+        .toList(),
+  ),
+  skills: {},
+  dynamicItems: {},
+);
