@@ -1,17 +1,14 @@
-import 'package:flutter/material.dart';
+import "package:flutter/material.dart";
 
 class Layout extends StatelessWidget {
+  const Layout({required this.title, required this.child, super.key, this.bottom});
   final Widget child;
   final String title;
   final PreferredSizeWidget? bottom;
 
-  const Layout({super.key, required this.title, this.bottom, required this.child});
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title), bottom: bottom),
-      body: child,
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title), bottom: bottom),
+    body: child,
+  );
 }

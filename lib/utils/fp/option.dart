@@ -1,15 +1,15 @@
-part of '../fp.dart';
+part of "../fp.dart";
 
 extension BoolThen on bool {
-  Option<T> thenSome<T>(T value) => this ? Some(value) : None();
+  Option<T> thenSome<T>(T value) => this ? Some(value) : const None();
 
-  Option<T> then<T>(T Function() value) => this ? Some(value()) : None();
+  Option<T> then<T>(T Function() value) => this ? Some(value()) : const None();
 }
 
 extension Flatten<T> on Option<T>? {
   Option<T> flatten() {
     if (this == null) {
-      return None();
+      return const None();
     }
     return this!;
   }

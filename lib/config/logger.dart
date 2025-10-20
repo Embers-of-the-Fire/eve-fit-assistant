@@ -1,4 +1,7 @@
-import 'package:logger/logger.dart';
+// We accept dynamic messages here.
+// ignore_for_file: avoid_annotating_with_dynamic
+
+import "package:logger/logger.dart";
 
 void debug(dynamic message, {StackTrace? stackTrace}) {
   GlobalLogger._console.d(message, stackTrace: stackTrace);
@@ -29,7 +32,7 @@ class GlobalLogger {
   static late final Logger _console;
   static late final Logger _file;
 
-  static void init(String fileOutputDir, bool enableDebugLog) {
+  static void init(String fileOutputDir, {required bool enableDebugLog}) {
     _console = Logger(
       printer: PrefixPrinter(PrettyPrinter(errorMethodCount: 14)),
       filter: DevelopmentFilter()..level = Level.debug,

@@ -1,15 +1,15 @@
-import 'dart:async';
-import 'dart:io';
+import "dart:async";
+import "dart:io";
 
-import 'package:eve_fit_assistant/data/proto/localizations.pb.dart';
-import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
-import 'package:eve_fit_assistant/storage/setting/setting.dart';
-import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import "package:eve_fit_assistant/data/proto/localizations.pb.dart";
+import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:riverpod_annotation/riverpod_annotation.dart";
 
-part 'localization.freezed.dart';
-part 'localization.g.dart';
+part "localization.freezed.dart";
+part "localization.g.dart";
 
 @freezed
 abstract class BundleLocalization with _$BundleLocalization {
@@ -18,7 +18,7 @@ abstract class BundleLocalization with _$BundleLocalization {
 
   static Future<BundleLocalization> loadFromPath(String locale, String path) async {
     final file = File(path);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       throw Exception("Localization file not found: $path");
     }
     final bytes = await file.readAsBytes();

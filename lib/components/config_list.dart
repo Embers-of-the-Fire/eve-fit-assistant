@@ -1,9 +1,9 @@
-import 'package:eve_fit_assistant/utils/fp.dart';
-import 'package:flutter/material.dart';
+import "package:eve_fit_assistant/utils/fp.dart";
+import "package:flutter/material.dart";
 
 class ConfigListView extends StatelessWidget {
+  const ConfigListView({required this.children, super.key});
   final List<ConfigListTile> children;
-  const ConfigListView({super.key, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class ConfigListView extends StatelessWidget {
         children.add(_divider);
       }
     }
-    return ListView(padding: EdgeInsets.only(right: 10), children: children);
+    return ListView(padding: const EdgeInsets.only(right: 10), children: children);
   }
 }
 
@@ -33,8 +33,8 @@ sealed class ConfigListTile extends StatelessWidget {
   const factory ConfigListTile.title(String title) = _ConfigListTileTitle;
 
   const factory ConfigListTile.item({
-    IconData? icon,
     required String title,
+    IconData? icon,
     String? subtitle,
     void Function()? onTap,
   }) = _ConfigListTileItem;
@@ -45,64 +45,54 @@ sealed class ConfigListTile extends StatelessWidget {
 }
 
 class _ConfigListTileSpace extends ConfigListTile {
+  const _ConfigListTileSpace(this.height) : super._();
   final num height;
-  const _ConfigListTileSpace([this.height = 10]) : super._();
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(height: height.toDouble());
-  }
+  Widget build(BuildContext context) => SizedBox(height: height.toDouble());
 }
 
 class _ConfigListTileTitle extends ConfigListTile {
-  final String title;
   const _ConfigListTileTitle(this.title) : super._();
+  final String title;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 16, top: 24, bottom: 4),
-      child: Text(
-        title,
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(color: Theme.of(context).hintColor),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.only(left: 16, top: 24, bottom: 4),
+    child: Text(
+      title,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).hintColor),
+    ),
+  );
 }
 
 class _ConfigListTileItem extends ConfigListTile {
+  const _ConfigListTileItem({required this.title, this.icon, this.subtitle, this.onTap})
+    : super._();
   final IconData? icon;
   final String title;
   final String? subtitle;
 
   final void Function()? onTap;
 
-  const _ConfigListTileItem({this.icon, required this.title, this.subtitle, this.onTap})
-    : super._();
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.surfaceContainer,
-      child: ListTile(
-        leading: icon != null ? Icon(icon) : const SizedBox.shrink(),
-        title: Text(title),
-        subtitle: subtitle != null ? Text(subtitle!) : null,
-        trailing: onTap.optional.map((_) => const Icon(Icons.chevron_right)).nullable,
-        onTap: onTap,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ColoredBox(
+    color: Theme.of(context).colorScheme.surfaceContainer,
+    child: ListTile(
+      leading: icon != null ? Icon(icon) : const SizedBox.shrink(),
+      title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle!) : null,
+      trailing: onTap.optional.map((_) => const Icon(Icons.chevron_right)).nullable,
+      onTap: onTap,
+    ),
+  );
 }
 
 class _ConfigListTileCustom extends ConfigListTile {
-  final Widget child;
   const _ConfigListTileCustom(this.child) : super._();
+  final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(color: Theme.of(context).colorScheme.surfaceContainer, child: child);
-  }
+  Widget build(BuildContext context) =>
+      ColoredBox(color: Theme.of(context).colorScheme.surfaceContainer, child: child);
 }

@@ -1,20 +1,22 @@
-import 'dart:convert';
-import 'dart:io';
+import "dart:async";
+import "dart:convert";
+import "dart:io";
 
-import 'package:eve_fit_assistant/config/paths.dart';
-import 'package:eve_fit_assistant/storage/bundle/manager.dart';
-import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
-import 'package:eve_fit_assistant/utils/fp.dart';
-import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fpdart/fpdart.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:path/path.dart' as p;
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/bundle/manager.dart";
+import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
+import "package:eve_fit_assistant/utils/fp.dart";
+import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:eve_fit_assistant/utils/type_check.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fpdart/fpdart.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:path/path.dart" as p;
+import "package:riverpod_annotation/riverpod_annotation.dart";
 
-part 'service.freezed.dart';
-part 'service.g.dart';
+part "service.freezed.dart";
+part "service.g.dart";
 
 /// A `BundleDescriptor` is what we see in a bundle zip archive.
 /// It's not designed to demonstrate local storage.
@@ -61,6 +63,9 @@ abstract class BundleRegistrar with _$BundleRegistrar {
     required IList<BundleHistoryPatch> history,
   }) = _BundleRegistrar;
 
+  factory BundleRegistrar.empty(String bundleId) =>
+      BundleRegistrar(bundleId: bundleId, history: const IList<BundleHistoryPatch>.empty());
+
   const BundleRegistrar._();
 
   factory BundleRegistrar.fromJson(Map<String, dynamic> json) => _$BundleRegistrarFromJson(json);
@@ -81,9 +86,6 @@ abstract class BundleRegistrar with _$BundleRegistrar {
     );
     return copyWith(history: patch.isIncremental ? history.add(patch) : [patch].lock);
   }
-
-  factory BundleRegistrar.empty(String bundleId) =>
-      BundleRegistrar(bundleId: bundleId, history: const IList<BundleHistoryPatch>.empty());
 }
 
 @freezed
@@ -111,7 +113,7 @@ class CurrentBundleStatus with _$CurrentBundleStatus {
 
   Option<BundleMetadata> get currentData => switch (this) {
     _CurrentBundleStatusLoaded(:final data) => Option.of(data),
-    _ => Option.none(),
+    _ => const Option.none(),
   };
 
   bool get selected => switch (this) {
@@ -146,9 +148,9 @@ class BundleService extends _$BundleService {
   @override
   CurrentBundleStatus build() {
     if (ref.read(bundleRegistryManagerProvider.select((value) => value.selectedBundleId)) != null) {
-      loadBundle(ref.read(bundleRegistryManagerProvider).selectedBundleId!);
+      unawaited(loadBundle(ref.read(bundleRegistryManagerProvider).selectedBundleId!));
     }
-    return CurrentBundleStatus.notSelected();
+    return const CurrentBundleStatus.notSelected();
   }
 
   Future<CurrentBundleStatus> loadBundle(String bundleId) async {
@@ -157,12 +159,12 @@ class BundleService extends _$BundleService {
     final bundlePathService = BundleServicePaths(bundlePath);
     final errors = await bundlePathService.validate();
     final registrarPath = File(bundlePathService.getRegistrarPath());
-    if (!await registrarPath.exists()) {
+    if (!registrarPath.existsSync()) {
       state = CurrentBundleStatus.error(errors: errors);
     }
     final json = jsonDecode(await registrarPath.readAsString());
     try {
-      final registrar = BundleRegistrar.fromJson(json);
+      final registrar = BundleRegistrar.fromJson(ensure(json, {}));
       state = CurrentBundleStatus.loaded(
         data: BundleMetadata(
           metadata: registrar,

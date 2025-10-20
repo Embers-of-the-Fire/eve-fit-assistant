@@ -1,24 +1,25 @@
-import 'dart:io';
+import "dart:io";
 
 Future<void> copyRecursive(Directory source, Directory target) async {
-  if (!await source.exists()) {
-    throw Exception('Source directory does not exist: ${source.path}');
+  if (!source.existsSync()) {
+    throw Exception("Source directory does not exist: ${source.path}");
   }
-  if (!await target.exists()) {
+  if (!target.existsSync()) {
     await target.create(recursive: true);
   }
 
-  await for (final entity in source.list(recursive: false, followLinks: false)) {
+  await for (final entity in source.list(followLinks: false)) {
     final name = entity.uri.pathSegments.isNotEmpty ? entity.uri.pathSegments.last : entity.path;
-    final destPath = '${target.path}${Platform.pathSeparator}$name';
+    final destPath = "${target.path}${Platform.pathSeparator}$name";
 
-    if (entity is File) {
-      await entity.copy(destPath);
-    } else if (entity is Directory) {
-      await copyRecursive(entity, Directory(destPath));
-    } else if (entity is Link) {
-      final linkTarget = await entity.target();
-      await Link(destPath).create(linkTarget);
+    switch (entity) {
+      case final File file:
+        await file.copy(destPath);
+      case final Directory dir:
+        await copyRecursive(dir, Directory(destPath));
+      case final Link link:
+        final target = await link.target();
+        await Link(destPath).create(target);
     }
   }
 }

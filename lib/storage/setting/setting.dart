@@ -1,17 +1,18 @@
 // ignore_for_file: invalid_annotation_target
 
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:eve_fit_assistant/config/locale.dart';
-import 'package:eve_fit_assistant/config/paths.dart';
-import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:path/path.dart' as p;
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:eve_fit_assistant/utils/type_check.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:path/path.dart" as p;
+import "package:riverpod_annotation/riverpod_annotation.dart";
 
-part 'setting.freezed.dart';
-part 'setting.g.dart';
+part "setting.freezed.dart";
+part "setting.g.dart";
 
 @freezed
 abstract class AppSetting with _$AppSetting {
@@ -39,9 +40,7 @@ class AppSettingService extends _$AppSettingService {
   }
 
   @override
-  AppSetting build() {
-    return _appSetting;
-  }
+  AppSetting build() => _appSetting;
 
   void update(AppSetting Function(AppSetting) updater) {
     _appSetting = updater(_appSetting);
@@ -61,7 +60,7 @@ class AppSettingService extends _$AppSettingService {
     final Map<String, dynamic> json;
     if (settingFile.existsSync()) {
       final content = settingFile.readAsStringSync();
-      json = jsonDecode(content);
+      json = ensure(jsonDecode(content), {});
     } else {
       json = {};
     }

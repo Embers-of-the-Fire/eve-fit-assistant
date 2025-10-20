@@ -1,15 +1,15 @@
-import 'dart:io';
+import "dart:io";
 
-import 'package:eve_fit_assistant/config/logger.dart';
-import 'package:eve_fit_assistant/data/proto/collections.pb.dart';
-import 'package:eve_fit_assistant/storage/bundle/service.dart';
-import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
-import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/data/proto/collections.pb.dart";
+import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
+import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:riverpod_annotation/riverpod_annotation.dart";
 
-part 'collection.freezed.dart';
-part 'collection.g.dart';
+part "collection.freezed.dart";
+part "collection.g.dart";
 
 @freezed
 abstract class BundleCollectionStatus with _$BundleCollectionStatus {
@@ -20,19 +20,17 @@ abstract class BundleCollectionStatus with _$BundleCollectionStatus {
 
   const BundleCollectionStatus._();
 
-  Collection get collection {
-    return when(
-      notInitialized: () {
-        error("BundleCollection is not initialized", stackTrace: StackTrace.current);
-        throw StateError("BundleCollection is not initialized");
-      },
-      loading: () {
-        error("BundleCollection is loading", stackTrace: StackTrace.current);
-        throw StateError("BundleCollection is loading");
-      },
-      loaded: (collection) => collection,
-    );
-  }
+  Collection get collection => when(
+    notInitialized: () {
+      error("BundleCollection is not initialized", stackTrace: StackTrace.current);
+      throw StateError("BundleCollection is not initialized");
+    },
+    loading: () {
+      error("BundleCollection is loading", stackTrace: StackTrace.current);
+      throw StateError("BundleCollection is loading");
+    },
+    loaded: (collection) => collection,
+  );
 }
 
 @riverpodSingleton
@@ -41,9 +39,9 @@ class BundleCollection extends _$BundleCollection {
 
   @override
   BundleCollectionStatus build() {
-    ref.listen(bundleServiceProvider, (prev, next) {
+    ref.listen(bundleServiceProvider, (prev, next) async {
       if (!next.isLoaded) return;
-      _loadCollection();
+      await _loadCollection();
     });
     return const BundleCollectionStatus.notInitialized();
   }
@@ -55,7 +53,7 @@ class BundleCollection extends _$BundleCollection {
     state = const BundleCollectionStatus.loading();
     final filePath = ref.read(bundlePathsProvider)?.getCollectionPath() ?? "";
     final file = File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       _isLoading = false;
       return;
     }

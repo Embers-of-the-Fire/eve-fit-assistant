@@ -1,9 +1,9 @@
-import 'dart:isolate';
+import "dart:isolate";
 
-import 'package:archive/archive_io.dart';
-import 'package:eve_fit_assistant/config/loading.dart';
-import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
+import "package:archive/archive_io.dart";
+import "package:eve_fit_assistant/config/loading.dart";
+import "package:flutter/foundation.dart";
+import "package:path/path.dart" as p;
 
 Future<void> extractIsolated(String archivePath, String outputPath) async {
   final receivePort = ReceivePort();

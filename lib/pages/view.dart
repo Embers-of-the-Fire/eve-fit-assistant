@@ -1,10 +1,10 @@
-import 'package:auto_route/auto_route.dart';
-import 'package:eve_fit_assistant/pages/setting/page.dart';
-import 'package:eve_fit_assistant/pages/workspace/page.dart';
-import 'package:eve_fit_assistant/storage/loading_indicator.dart';
-import 'package:eve_fit_assistant/utils/fp.dart';
-import 'package:eve_fit_assistant/utils/l10n.dart';
-import 'package:flutter/material.dart';
+import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/pages/setting/page.dart";
+import "package:eve_fit_assistant/pages/workspace/page.dart";
+import "package:eve_fit_assistant/storage/loading_indicator.dart";
+import "package:eve_fit_assistant/utils/fp.dart";
+import "package:eve_fit_assistant/utils/l10n.dart";
+import "package:flutter/material.dart";
 
 @RoutePage()
 class FrontPage extends StatefulWidget {
@@ -30,8 +30,8 @@ class _FrontPageState extends State<FrontPage> {
     const noFloatingActionButton = {2, 3};
     const pages = <Widget>[
       WorkspacePage(),
-      Center(child: Text('fit')),
-      Center(child: Text('char')),
+      Center(child: Text("fit")),
+      Center(child: Text("char")),
       SettingPage(),
     ];
     const pageIcons = <IconData>[
@@ -61,7 +61,7 @@ class _FrontPageState extends State<FrontPage> {
             ),
           )
           .toNullable(),
-      bottomNavigationBar: Container(
+      bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 2)),
         ),
@@ -81,7 +81,10 @@ class _FrontPageState extends State<FrontPage> {
               .enumerate()
               .map(
                 (args) => BottomNavigationBarItem(
-                  icon: Padding(padding: EdgeInsets.only(top: 5), child: Icon(pageIcons[args.$1])),
+                  icon: Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Icon(pageIcons[args.$1]),
+                  ),
                   label: args.$2,
                 ),
               )

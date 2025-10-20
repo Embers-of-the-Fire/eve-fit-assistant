@@ -1,4 +1,4 @@
-import 'dart:ui';
+import "dart:ui";
 
 const Color primaryBlue = Color(0xFF30B2E6);
 const Color deepBlue = Color(0xFF0C1213);

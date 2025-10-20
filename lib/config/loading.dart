@@ -1,11 +1,12 @@
-import 'package:flutter_easyloading/flutter_easyloading.dart';
+import "dart:async";
+
+import "package:flutter_easyloading/flutter_easyloading.dart";
 
 class GlobalLoading {
-  static final GlobalLoading _instance = GlobalLoading._internal();
-
   factory GlobalLoading() => _instance;
 
   GlobalLoading._internal();
+  static final GlobalLoading _instance = GlobalLoading._internal();
 
   static void init() {
     EasyLoading.instance
@@ -30,11 +31,11 @@ class GlobalLoading {
 
   void _update() {
     if (_loadingMessages.isEmpty && _isLoading) {
-      EasyLoading.dismiss();
+      unawaited(EasyLoading.dismiss());
       _isLoading = false;
     } else if (_loadingMessages.isNotEmpty && !_isLoading) {
       final currentMessage = _loadingMessages.last;
-      EasyLoading.show(status: currentMessage.$2);
+      unawaited(EasyLoading.show(status: currentMessage.$2));
       _isLoading = true;
     } else if (_loadingMessages.isNotEmpty && _isLoading) {
       final currentMessage = _loadingMessages.last;

@@ -1,4 +1,4 @@
-part of '../fp.dart';
+part of "../fp.dart";
 
 extension Enumerate<T> on Iterable<T> {
   Iterable<(int, T)> enumerate([int start = 0]) sync* {

@@ -124,6 +124,8 @@ def lint(no_check: bool):
     if not no_check:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart fix --apply")
         __execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart analyze")
+        __execute_command([dart, "analyze"], "DART ANALYZE OUTPUT")
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart format lib/")
     __execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT")

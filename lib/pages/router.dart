@@ -1,8 +1,8 @@
-import 'package:auto_route/auto_route.dart';
-import 'package:eve_fit_assistant/pages/setting/app-settings/page.dart';
-import 'package:eve_fit_assistant/pages/view.dart';
+import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
+import "package:eve_fit_assistant/pages/view.dart";
 
-part 'router.gr.dart';
+part "router.gr.dart";
 
 @AutoRouterConfig()
 class AppRouter extends RootStackRouter {

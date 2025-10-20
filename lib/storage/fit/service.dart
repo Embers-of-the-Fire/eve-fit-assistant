@@ -1,16 +1,16 @@
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:eve_fit_assistant/config/logger.dart';
-import 'package:eve_fit_assistant/storage/fit/manager.dart';
-import 'package:eve_fit_assistant/storage/fit/schema.dart';
-import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:riverpod_annotation/riverpod_annotation.dart";
 
-part 'service.freezed.dart';
-part 'service.g.dart';
+part "service.freezed.dart";
+part "service.g.dart";
 
 @freezed
 abstract class FitServiceStatus with _$FitServiceStatus {
@@ -39,7 +39,7 @@ abstract class FitServiceState with _$FitServiceState {
     loaded: (status, fit) => fit,
   );
   FitServiceStatus get status =>
-      when(notInitialized: () => FitServiceStatus.uninitialized(), loaded: (status, fit) => status);
+      when(notInitialized: FitServiceStatus.uninitialized, loaded: (status, fit) => status);
 }
 
 @riverpod
@@ -52,17 +52,15 @@ FitServiceStatus fitStatus(Ref ref) =>
 @riverpodSingleton
 class FitService extends _$FitService {
   @override
-  FitServiceState build() {
-    return FitServiceState.notInitialized();
-  }
+  FitServiceState build() => const FitServiceState.notInitialized();
 
   Future<void> _loadFromDisk(String fitId) async {
     if (state.isInitialized) {
       warning("Fit service already initialized, force loading");
     }
-    state = FitServiceState.notInitialized();
+    state = const FitServiceState.notInitialized();
     final path = File(FitStorage.fitStoragePathForId(fitId));
-    if (!await path.exists()) {
+    if (!path.existsSync()) {
       error("Fit file does not exist: ${path.path}");
       throw StateError("Fit file does not exist: ${path.path}");
     }
@@ -81,10 +79,10 @@ class FitService extends _$FitService {
       return;
     }
     final fit = state.fit;
-    state = FitServiceState.loaded(status: FitServiceStatus.syncing(), fit: fit);
+    state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     final path = File(fit.fitStoragePath);
     final text = jsonEncode(fit.toJson());
-    if (!await path.exists()) {
+    if (!path.existsSync()) {
       await path.parent.create(recursive: true);
     }
     await path.writeAsString(text);
@@ -102,7 +100,7 @@ class FitService extends _$FitService {
 
   Future<void> unmount() async {
     await _syncToDisk();
-    state = FitServiceState.notInitialized();
+    state = const FitServiceState.notInitialized();
   }
 
   Future<void> update(FitStorage Function(FitStorage) updater) async {
@@ -113,7 +111,7 @@ class FitService extends _$FitService {
     final fit = updater(
       state.fit,
     ).copyWith(metadata: state.fit.metadata.copyWith(lastModified: DateTime.now().second));
-    state = FitServiceState.loaded(status: FitServiceStatus.syncing(), fit: fit);
+    state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);
     await _syncToDisk(setState: false);
   }

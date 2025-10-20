@@ -1,11 +1,11 @@
-import 'package:eve_fit_assistant/config/logger.dart';
-import 'package:eve_fit_assistant/storage/bundle/manager.dart';
-import 'package:eve_fit_assistant/storage/bundle/service.dart';
-import 'package:eve_fit_assistant/storage/bundle/service/localization.dart';
-import 'package:eve_fit_assistant/storage/fit/manager.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/bundle/manager.dart";
+import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
+import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:file_picker/file_picker.dart";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 class WorkspacePage extends ConsumerWidget {
   const WorkspacePage({super.key});
@@ -18,11 +18,11 @@ class WorkspacePage extends ConsumerWidget {
       final loc = ref.watch(localizationProvider(73330));
       child = loc.when(
         data: (data) => Text("$data"),
-        error: (err, stack) => Text("$err\n\n$stack", style: TextStyle(color: Colors.red)),
+        error: (err, stack) => Text("$err\n\n$stack", style: const TextStyle(color: Colors.red)),
         loading: () => const Text("Loading..."),
       );
     } else {
-      child = Text("Initialize");
+      child = const Text("Initialize");
     }
 
     return Center(
@@ -45,15 +45,15 @@ class WorkspacePage extends ConsumerWidget {
                           (await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
-                              content: Text("Overwrite?"),
+                              content: const Text("Overwrite?"),
                               actions: [
                                 ElevatedButton(
                                   onPressed: () => Navigator.of(context).pop(false),
-                                  child: Text("No"),
+                                  child: const Text("No"),
                                 ),
                                 ElevatedButton(
                                   onPressed: () => Navigator.of(context).pop(true),
-                                  child: Text("Yes"),
+                                  child: const Text("Yes"),
                                 ),
                               ],
                             ),
@@ -72,7 +72,7 @@ class WorkspacePage extends ConsumerWidget {
               final fitManager = ref.read(fitManagerProvider.notifier);
               await fitManager.newFit(28659, "Test Fit ${DateTime.now().toIso8601String()}");
             },
-            child: Text('Found ${ref.watch(fitRegistryManagerProvider).fits.length} fits'),
+            child: Text("Found ${ref.watch(fitRegistryManagerProvider).fits.length} fits"),
           ),
         ],
       ),

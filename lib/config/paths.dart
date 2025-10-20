@@ -1,7 +1,8 @@
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import "package:path/path.dart" as p;
+import "package:path_provider/path_provider.dart";
 
 class PathProvider {
+  const PathProvider._();
   // System provided directories
   static late String documentsPath;
   static late String tempPath;
@@ -23,6 +24,4 @@ class PathProvider {
 
     cachesPath = (await getApplicationCacheDirectory()).path;
   }
-
-  const PathProvider._();
 }

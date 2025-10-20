@@ -1,20 +1,21 @@
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:eve_fit_assistant/config/logger.dart';
-import 'package:eve_fit_assistant/config/paths.dart';
-import 'package:eve_fit_assistant/storage/bundle/service.dart';
-import 'package:eve_fit_assistant/storage/bundle/service/paths.dart';
-import 'package:eve_fit_assistant/utils/extract.dart';
-import 'package:eve_fit_assistant/utils/file.dart';
-import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:path/path.dart' as p;
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
+import "package:eve_fit_assistant/utils/extract.dart";
+import "package:eve_fit_assistant/utils/file.dart";
+import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:eve_fit_assistant/utils/type_check.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:path/path.dart" as p;
+import "package:riverpod_annotation/riverpod_annotation.dart";
 
-part 'manager.freezed.dart';
-part 'manager.g.dart';
+part "manager.freezed.dart";
+part "manager.g.dart";
 
 @freezed
 abstract class BundleInfo with _$BundleInfo {
@@ -46,8 +47,9 @@ class BundleRegistryManager extends _$BundleRegistryManager {
   BundleRegistry build() {
     final registryFile = File(_bundleRegistryPath);
     if (!registryFile.existsSync()) {
-      registryFile.createSync(recursive: true);
-      registryFile.writeAsStringSync("{}");
+      registryFile
+        ..createSync(recursive: true)
+        ..writeAsStringSync("{}");
     }
 
     final registryContent = registryFile.readAsStringSync();
@@ -56,11 +58,13 @@ class BundleRegistryManager extends _$BundleRegistryManager {
     return registry;
   }
 
+  // ignore: unused_element
   void _syncFromDisk() {
     final registryFile = File(_bundleRegistryPath);
     if (!registryFile.existsSync()) {
-      registryFile.createSync(recursive: true);
-      registryFile.writeAsStringSync("{}");
+      registryFile
+        ..createSync(recursive: true)
+        ..writeAsStringSync("{}");
     }
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
@@ -104,8 +108,9 @@ class BundleManager extends _$BundleManager {
 
   @override
   Future<DateTime> build() async {
-    ref.read(bundleRegistryManagerProvider);
-    ref.read(bundleServiceProvider);
+    ref
+      ..read(bundleRegistryManagerProvider)
+      ..read(bundleServiceProvider);
     return DateTime.now();
   }
 
@@ -115,7 +120,7 @@ class BundleManager extends _$BundleManager {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final bundleCachePath = Directory(p.join(_bundleCachePath, "cache"));
-      if (await bundleCachePath.exists()) {
+      if (bundleCachePath.existsSync()) {
         await bundleCachePath.delete(recursive: true);
       }
       await bundleCachePath.create(recursive: true);
@@ -123,24 +128,24 @@ class BundleManager extends _$BundleManager {
       final descriptorPath = BundleServicePaths.descriptorPathFromExternalBundle(
         bundleCachePath.path,
       );
-      final content = jsonDecode(await File(descriptorPath).readAsString());
       final BundleDescriptor descriptor;
       try {
-        descriptor = BundleDescriptor.fromJson(content);
+        final content = jsonDecode(await File(descriptorPath).readAsString());
+        descriptor = BundleDescriptor.fromJson(ensure(content, {}));
       } catch (e) {
         warning("Invalid descriptor: $e", stackTrace: StackTrace.current);
         return DateTime.now();
       }
       final bundleId = descriptor.bundleId;
       final baseDir = Directory(_bundleBasePath);
-      if (!await baseDir.exists()) {
+      if (!baseDir.existsSync()) {
         await baseDir.create(recursive: true);
       }
       final targetDir = Directory(getBundlePath(bundleId));
-      if (await targetDir.exists()) {
+      if (!targetDir.existsSync()) {
         if (descriptor.isIncremental) {
           info("Importing incremental bundle $bundleId: $descriptor");
-          copyRecursive(bundleCachePath, targetDir);
+          await copyRecursive(bundleCachePath, targetDir);
         } else {
           warning("Target bundle output dir $bundleId exists!");
           final willOverwrite = await confirmOverwrite?.call() ?? false;
@@ -159,12 +164,12 @@ class BundleManager extends _$BundleManager {
 
       final targetRegistrarFile = File(BundleServicePaths(targetDir.path).getRegistrarPath());
       final BundleRegistrar registrar;
-      if (!await targetRegistrarFile.exists()) {
+      if (!targetRegistrarFile.existsSync()) {
         await targetRegistrarFile.create(recursive: true);
         registrar = BundleRegistrar.empty(bundleId).pushPatch(descriptor);
       } else {
         final registrarContent = jsonDecode(await targetRegistrarFile.readAsString());
-        registrar = BundleRegistrar.fromJson(registrarContent).pushPatch(descriptor);
+        registrar = BundleRegistrar.fromJson(ensure(registrarContent, {})).pushPatch(descriptor);
       }
       final registrarJson = registrar.toJson();
       final registrarContent = const JsonEncoder.withIndent("  ").convert(registrarJson);
@@ -190,7 +195,7 @@ class BundleManager extends _$BundleManager {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final targetDir = Directory(getBundlePath(bundleId));
-      if (await targetDir.exists()) {
+      if (targetDir.existsSync()) {
         await targetDir.delete(recursive: true);
         info("Removed bundle directory for $bundleId");
       } else {
@@ -204,12 +209,12 @@ class BundleManager extends _$BundleManager {
   Future<void> selectBundle(String bundleId, {bool updateRegistry = true}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      if (!(ref.read(bundleRegistryManagerProvider)).bundles.containsKey(bundleId)) {
+      if (!ref.read(bundleRegistryManagerProvider).bundles.containsKey(bundleId)) {
         error("Invalid bundle $bundleId", stackTrace: StackTrace.current);
         throw Exception("Invalid bundle $bundleId");
       }
       if (updateRegistry) ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
-      ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
+      await ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
       return DateTime.now();
     });
   }

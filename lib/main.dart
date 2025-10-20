@@ -1,15 +1,15 @@
-import 'package:eve_fit_assistant/constant/colors.dart';
-import 'package:eve_fit_assistant/data/l10n/app_localizations.dart';
-import 'package:eve_fit_assistant/init.dart';
-import 'package:eve_fit_assistant/pages/router.dart';
-import 'package:eve_fit_assistant/storage/setting/setting.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import "package:eve_fit_assistant/constant/colors.dart";
+import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/init.dart";
+import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 void main() async {
   await initSingletons();
   initErrorBoundary();
-  runApp(ProviderScope(child: const MyApp()));
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
@@ -34,7 +34,7 @@ class MyApp extends ConsumerWidget {
       cardColor: colorScheme.surface,
       dividerColor: colorScheme.onSurface.withAlpha(30),
       applyElevationOverlayColor: true,
-      appBarTheme: AppBarThemeData(elevation: 2),
+      appBarTheme: const AppBarThemeData(elevation: 2),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         elevation: 2,
         backgroundColor: colorScheme.surfaceContainerLow,
@@ -43,7 +43,7 @@ class MyApp extends ConsumerWidget {
       tabBarTheme: TabBarThemeData(indicatorColor: colorScheme.primary),
     );
     return MaterialApp.router(
-      title: 'Flutter Demo',
+      title: "Flutter Demo",
       theme: theme,
       locale: Locale(ref.watch(localeProvider).name),
       localizationsDelegates: AppLocalizations.localizationsDelegates,

@@ -1,14 +1,14 @@
-import 'package:eve_fit_assistant/config/paths.dart';
-import 'package:eve_fit_assistant/data/proto/fit.pb.dart';
-import 'package:eve_fit_assistant/storage/fit/manager.dart';
-import 'package:eve_fit_assistant/utils/fp.dart';
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:fpdart/fpdart.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:path/path.dart' as p;
+import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/utils/fp.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:fpdart/fpdart.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:path/path.dart" as p;
 
-part 'schema.freezed.dart';
-part 'schema.g.dart';
+part "schema.freezed.dart";
+part "schema.g.dart";
 
 @freezed
 abstract class FitStorage with _$FitStorage {
@@ -17,6 +17,19 @@ abstract class FitStorage with _$FitStorage {
     required FitStorageBody body,
     required FitDynamicRegistry dynamicRegistry,
   }) = _FitStorage;
+  factory FitStorage.empty(FitMetadata metadata, Ship ship) => FitStorage(
+    metadata: metadata,
+    body: FitStorageBody(
+      shipTypeId: ship.typeId,
+      damageProfile: const FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 0),
+      slots: FitStorageSlots.empty(ship),
+      drones: IList<FitDroneItem>(),
+      fighters: IList<FitFighterItem>(),
+      implants: IList<FitImplantItem>(),
+      boosters: IList<FitBoosterItem>(),
+    ),
+    dynamicRegistry: FitDynamicRegistry(dynamicItems: IMap<int, IMap<int, double>>()),
+  );
 
   const FitStorage._();
 
@@ -26,21 +39,6 @@ abstract class FitStorage with _$FitStorage {
 
   static String fitStoragePathForId(String fitId) =>
       p.join(PathProvider.fittingsPath, "$fitId.json");
-  factory FitStorage.empty(FitMetadata metadata, Ship ship) {
-    return FitStorage(
-      metadata: metadata,
-      body: FitStorageBody(
-        shipTypeId: ship.typeId,
-        damageProfile: FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 0),
-        slots: FitStorageSlots.empty(ship),
-        drones: IList<FitDroneItem>(),
-        fighters: IList<FitFighterItem>(),
-        implants: IList<FitImplantItem>(),
-        boosters: IList<FitBoosterItem>(),
-      ),
-      dynamicRegistry: FitDynamicRegistry(dynamicItems: IMap<int, IMap<int, double>>()),
-    );
-  }
 }
 
 @freezed
@@ -80,17 +78,15 @@ abstract class FitStorageSlots with _$FitStorageSlots {
 
   factory FitStorageSlots.fromJson(Map<String, dynamic> json) => _$FitStorageSlotsFromJson(json);
 
-  factory FitStorageSlots.empty(Ship ship) {
-    return FitStorageSlots(
-      high: IList(Option<FitModuleItem>.none().repeat(ship.highSlots)),
-      medium: IList(Option<FitModuleItem>.none().repeat(ship.mediumSlots)),
-      low: IList(Option<FitModuleItem>.none().repeat(ship.lowSlots)),
-      rig: IList(Option<FitModuleItem>.none().repeat(ship.rigSlots)),
-      subsystem: IList(Option<FitModuleItem>.none().repeat(ship.subsystemSlots)),
-      service: IList(Option<FitModuleItem>.none().repeat(ship.serviceSlots)),
-      tacticalMode: Option.none(),
-    );
-  }
+  factory FitStorageSlots.empty(Ship ship) => FitStorageSlots(
+    high: IList(const Option<FitModuleItem>.none().repeat(ship.highSlots)),
+    medium: IList(const Option<FitModuleItem>.none().repeat(ship.mediumSlots)),
+    low: IList(const Option<FitModuleItem>.none().repeat(ship.lowSlots)),
+    rig: IList(const Option<FitModuleItem>.none().repeat(ship.rigSlots)),
+    subsystem: IList(const Option<FitModuleItem>.none().repeat(ship.subsystemSlots)),
+    service: IList(const Option<FitModuleItem>.none().repeat(ship.serviceSlots)),
+    tacticalMode: const Option.none(),
+  );
 }
 
 @freezed

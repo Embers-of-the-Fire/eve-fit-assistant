@@ -1,4 +1,4 @@
-part of 'page.dart';
+part of "page.dart";
 
 class DebugLogTile extends ConsumerStatefulWidget {
   const DebugLogTile({super.key});
@@ -17,18 +17,16 @@ class _DebugLogTileState extends ConsumerState<DebugLogTile> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      title: Text(context.l10n.appSettingsPageDebugLogTitle),
-      value: enabled,
-      onChanged: (value) async {
-        setState(() {
-          enabled = value;
-        });
-        ref
-            .read(appSettingServiceProvider.notifier)
-            .update((setting) => setting.copyWith(enableDebugLog: value));
-      },
-    );
-  }
+  Widget build(BuildContext context) => SwitchListTile(
+    title: Text(context.l10n.appSettingsPageDebugLogTitle),
+    value: enabled,
+    onChanged: (value) async {
+      setState(() {
+        enabled = value;
+      });
+      ref
+          .read(appSettingServiceProvider.notifier)
+          .update((setting) => setting.copyWith(enableDebugLog: value));
+    },
+  );
 }

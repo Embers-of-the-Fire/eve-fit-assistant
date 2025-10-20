@@ -1,24 +1,24 @@
 // ignore_for_file: invalid_annotation_target
 
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:eve_fit_assistant/config/logger.dart';
-import 'package:eve_fit_assistant/config/paths.dart';
-import 'package:eve_fit_assistant/data/proto/fit.pb.dart';
-import 'package:eve_fit_assistant/storage/bundle/service.dart';
-import 'package:eve_fit_assistant/storage/bundle/service/collection.dart';
-import 'package:eve_fit_assistant/storage/fit/schema.dart';
-import 'package:eve_fit_assistant/utils/riverpod.dart';
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:path/path.dart' as p;
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:uuid/uuid.dart';
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
+import "package:path/path.dart" as p;
+import "package:riverpod_annotation/riverpod_annotation.dart";
+import "package:uuid/uuid.dart";
 
-part 'manager.freezed.dart';
-part 'manager.g.dart';
+part "manager.freezed.dart";
+part "manager.g.dart";
 
 @freezed
 abstract class FitMetadata with _$FitMetadata {
@@ -56,8 +56,9 @@ class FitRegistryManager extends _$FitRegistryManager {
   FitRegistry build() {
     final registryFile = File(_fitRegistryPath);
     if (!registryFile.existsSync()) {
-      registryFile.createSync(recursive: true);
-      registryFile.writeAsStringSync("{}");
+      registryFile
+        ..createSync(recursive: true)
+        ..writeAsStringSync("{}");
     }
 
     final registryContent = registryFile.readAsStringSync();
@@ -72,11 +73,13 @@ class FitRegistryManager extends _$FitRegistryManager {
     _syncToDisk();
   }
 
+  // ignore: unused_element
   void _syncFromDisk() {
     final registryFile = File(_fitRegistryPath);
     if (!registryFile.existsSync()) {
-      registryFile.createSync(recursive: true);
-      registryFile.writeAsStringSync("{}");
+      registryFile
+        ..createSync(recursive: true)
+        ..writeAsStringSync("{}");
     }
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
@@ -138,7 +141,7 @@ class FitManager extends _$FitManager {
     final fitPath = fit.fitStoragePath;
     final path = File(fitPath);
     final text = jsonEncode(fit.toJson());
-    if (!await path.exists()) {
+    if (!path.existsSync()) {
       await path.parent.create(recursive: true);
     }
     await path.writeAsString(text);
