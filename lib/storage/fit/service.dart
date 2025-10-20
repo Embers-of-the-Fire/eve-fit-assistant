@@ -150,7 +150,7 @@ class FitEmulatorService extends _$FitEmulatorService {
     state = state.emulating;
     final nativeCompatible = convertToNative(fitStorage);
     final emulatedOutput = await ref
-        .watch(nativeFitEngineServerProvider)
+        .watch(nativeFitEngineServiceProvider)
         .engine
         .emulate(fit: nativeCompatible);
     state = FitEmulatorState.emulated(output: emulatedOutput);
@@ -158,31 +158,31 @@ class FitEmulatorService extends _$FitEmulatorService {
 }
 
 @freezed
-class NativeFitEngine with _$NativeFitEngine {
-  const factory NativeFitEngine.notInitialized() = _NativeFitEngineNotInitialized;
-  const factory NativeFitEngine.initializing() = _NativeFitEngineInitializing;
-  const factory NativeFitEngine.initialized({required native_server.FitEngine engine}) =
-      _NativeFitEngineInitialized;
+class NativeFitEngineState with _$NativeFitEngineState {
+  const factory NativeFitEngineState.notInitialized() = _NativeFitEngineStateNotInitialized;
+  const factory NativeFitEngineState.initializing() = _NativeFitEngineStateInitializing;
+  const factory NativeFitEngineState.initialized({required native_server.FitEngine engine}) =
+      _NativeFitEngineStateInitialized;
 
-  const NativeFitEngine._();
+  const NativeFitEngineState._();
 
   String get debugOnlyDisplayState => switch (this) {
-    _NativeFitEngineInitialized(engine: final _) => "initialized",
-    _NativeFitEngineInitializing() => "initializing",
-    _NativeFitEngineNotInitialized() => "not initialized",
+    _NativeFitEngineStateInitialized(engine: final _) => "initialized",
+    _NativeFitEngineStateInitializing() => "initializing",
+    _NativeFitEngineStateNotInitialized() => "not initialized",
     _ => throw Exception("Unreachable"),
   };
-  bool get isInitializing => this is _NativeFitEngineInitializing;
+  bool get isInitializing => this is _NativeFitEngineStateInitializing;
   native_server.FitEngine get engine => switch (this) {
-    _NativeFitEngineInitialized(:final engine) => engine,
+    _NativeFitEngineStateInitialized(:final engine) => engine,
     _ => throw StateError("Native fit engine not initialized"),
   };
 }
 
 @riverpodSingleton
-class NativeFitEngineServer extends _$NativeFitEngineServer {
+class NativeFitEngineService extends _$NativeFitEngineService {
   @override
-  NativeFitEngine build() {
+  NativeFitEngineState build() {
     ref.listen(
       currentBundleProvider,
       (prev, next) {
@@ -196,16 +196,16 @@ class NativeFitEngineServer extends _$NativeFitEngineServer {
       // because the provider will be initialized later
       weak: true,
     );
-    return const NativeFitEngine.notInitialized();
+    return const NativeFitEngineState.notInitialized();
   }
 
   Future<void> _initialize(BundleMetadata bundle) async {
     if (state.isInitializing) return;
 
-    state = const NativeFitEngine.initializing();
+    state = const NativeFitEngineState.initializing();
     final engine = native_server.FitEngine(
       data: await native_server.FitEngineData.init(staticRootPath: bundle.paths.getNativePath()),
     );
-    state = NativeFitEngine.initialized(engine: engine);
+    state = NativeFitEngineState.initialized(engine: engine);
   }
 }

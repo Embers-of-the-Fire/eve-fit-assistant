@@ -75,7 +75,7 @@ class WorkspacePage extends ConsumerWidget {
             },
             child: Text("Found ${ref.watch(fitRegistryManagerProvider).fits.length} fits"),
           ),
-          Text(ref.watch(nativeFitEngineServerProvider).debugOnlyDisplayState),
+          Text(ref.watch(nativeFitEngineServiceProvider).debugOnlyDisplayState),
         ],
       ),
     );
