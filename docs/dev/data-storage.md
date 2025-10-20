@@ -75,3 +75,8 @@ To properly handle and manage states, the application follows these principles:
 - `FitService` > `FitServiceStatus`: The fit service.
   This provider offers the fit service status data interface.
   The value might be changed by the `FitManager`.
+- `FitEmulatorService` > `FitEmulatorState`: The wrapper over backend engine service.
+  See [this file](../../lib/storage/fit/service.dart) for details.
+- `NativeFitEngineService` > `NativeFitEngineState`: The backend(native) engine service.
+  See [this dart port](../../lib/storage/fit/service.dart)
+  and [this rust source](../../rust/src/api/server.rs) for more information.
