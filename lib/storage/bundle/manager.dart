@@ -99,6 +99,13 @@ class BundleRegistryManager extends _$BundleRegistryManager {
     _syncToDisk(updatedRegistry);
     state = updatedRegistry;
   }
+
+  static BundleRegistrar getRegistrar(String bundleId) {
+    final file = BundleServicePaths(BundleManager.getBundlePath(bundleId)).getRegistrarPath();
+    final content = File(file).readAsStringSync();
+    final reg = BundleRegistrar.fromJson(ensure(jsonDecode(content), {}));
+    return reg;
+  }
 }
 
 @riverpodSingleton
@@ -142,7 +149,7 @@ class BundleManager extends _$BundleManager {
         await baseDir.create(recursive: true);
       }
       final targetDir = Directory(getBundlePath(bundleId));
-      if (!targetDir.existsSync()) {
+      if (targetDir.existsSync()) {
         if (descriptor.isIncremental) {
           info("Importing incremental bundle $bundleId: $descriptor");
           await copyRecursive(bundleCachePath, targetDir);
