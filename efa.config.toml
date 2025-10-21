@@ -14,3 +14,6 @@ descriptor = "data/resources/example/descriptor.toml"
 
 [resources.tranquility]
 descriptor = "data/resources/tranquility/descriptor.toml"
+
+[resources.serenity]
+descriptor = "data/resources/serenity/descriptor.toml"
