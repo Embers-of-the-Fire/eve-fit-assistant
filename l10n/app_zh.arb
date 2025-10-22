@@ -2,6 +2,16 @@
   "hello": "你好",
   "@_COMMON": {},
   "@@_NO_FORMAT_PLAIN_TEXT": {},
+  "delete": "删除",
+  "cancel": "取消",
+  "save": "保存",
+  "edit": "编辑",
+  "add": "添加",
+  "confirm": "确认",
+  "showInfo": "显示详情",
+  "copy": "复制",
+  "enable": "启用",
+  "disable": "禁用",
   "@_PAGE_TEXT": {},
   "@@_FRONT_PAGE": {},
   "frontPageTitleWorkspace": "工作台",
@@ -10,11 +20,37 @@
   "frontPageTitleSetting": "设置",
   "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "设置",
+  "settingTileBundleManagerTitle": "数据包",
   "@@@_APP_SETTINGS_PAGE": {},
   "appSettingsPageTitle": "应用设置",
   "appSettingsPageSectionGeneral": "常规",
   "appSettingsPageLocaleTitle": "语言",
   "appSettingsPageLocaleSubtitle": "选择应用语言",
   "appSettingsPageSectionDeveloper": "开发者选项",
-  "appSettingsPageDebugLogTitle": "启用调试日志"
+  "appSettingsPageDebugLogTitle": "启用调试日志",
+  "@@@_BUNDLE_MANAGER_PAGE": {},
+  "bundleManagerPageTitle": "数据包管理",
+  "bundleManagerBundleAppVersion": "打包应用版本：",
+  "bundleManagerBundleBuild": "构建版本：",
+  "bundleManagerBundleGameVersion": "游戏版本：",
+  "bundleManagerBundleServer": "服务器：",
+  "bundleManagerBundleRegion": "服务地区：",
+  "bundleManagerBundleBranch": "游戏分支：",
+  "bundleManagerDeleteBundleConfirmTitle": "删除数据包",
+  "bundleManagerDeleteBundleConfirmContent": "您确定要删除数据包 {bundleId} 吗？",
+  "@bundleManagerDeleteBundleConfirmContent": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerDeleteBundleInUseWarning": "该数据包正在被使用，删除后可能导致某些功能无法正常工作。",
+  "bundleManagerDetailPageTitle": "数据包详情",
+  "bundleManagerDetailSectionTitleLatestPatch": "最新补丁",
+  "bundleManagerDetailSectionTitleHistory": "历史版本",
+  "bundleManagerDetailVariantFull": "完整",
+  "bundleManagerDetailVariantIncremental": "增量",
+  "bundleManagerDetailGeneratedAt": "生成时间：",
+  "bundleManagerDetailLoadedAt": "加载时间："
 }

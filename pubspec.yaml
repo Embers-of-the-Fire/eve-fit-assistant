@@ -51,6 +51,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   flutter_typeahead: ^5.2.0
   fluttertoast: ^9.0.0
+  font_awesome_flutter: ^10.11.0
   fpdart: ^1.1.1
   freezed_annotation: ^3.1.0
   hive_ce: ^2.14.0

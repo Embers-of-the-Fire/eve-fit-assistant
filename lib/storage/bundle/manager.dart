@@ -89,7 +89,10 @@ class BundleRegistryManager extends _$BundleRegistryManager {
   }
 
   void _removeBundle(String bundleId) {
-    final updatedRegistry = state.copyWith(bundles: state.bundles.remove(bundleId));
+    final updatedRegistry = state.copyWith(
+      bundles: state.bundles.remove(bundleId),
+      selectedBundleId: bundleId == state.selectedBundleId ? null : state.selectedBundleId,
+    );
     _syncToDisk(updatedRegistry);
     state = updatedRegistry;
   }
@@ -209,6 +212,7 @@ class BundleManager extends _$BundleManager {
         warning("Bundle directory for $bundleId does not exist");
       }
       ref.read(bundleRegistryManagerProvider.notifier)._removeBundle(bundleId);
+      final _ = ref.refresh(currentBundleProvider);
       return DateTime.now();
     });
   }
@@ -221,7 +225,6 @@ class BundleManager extends _$BundleManager {
         throw Exception("Invalid bundle $bundleId");
       }
       if (updateRegistry) ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
-      await ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
       return DateTime.now();
     });
   }

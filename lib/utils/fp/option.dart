@@ -1,9 +1,14 @@
 part of "../fp.dart";
 
-extension BoolThen on bool {
-  Option<T> thenSome<T>(T value) => this ? Some(value) : const None();
+extension MonadBoolThen on bool {
+  Option<T> thenSomeM<T>(T value) => this ? Some(value) : const None();
 
-  Option<T> then<T>(T Function() value) => this ? Some(value()) : const None();
+  Option<T> thenM<T>(T Function() value) => this ? Some(value()) : const None();
+}
+
+extension PlainBoolThen on bool {
+  T? thenSome<T>(T value) => this ? value : null;
+  T? then<T>(T Function() value) => this ? value() : null;
 }
 
 extension Flatten<T> on Option<T>? {
@@ -26,10 +31,6 @@ extension Unwrap<T> on Option<T> {
       throw Exception(errorText);
     }, (value) => value);
   }
-}
-
-extension Then on bool {
-  T? then<T>(T Function() value) => this ? value() : null;
 }
 
 extension Optional<T> on T? {

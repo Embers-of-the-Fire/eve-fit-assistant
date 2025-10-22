@@ -2,8 +2,8 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/pages/setting/page.dart";
 import "package:eve_fit_assistant/pages/workspace/page.dart";
 import "package:eve_fit_assistant/storage/loading_indicator.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
-import "package:eve_fit_assistant/utils/l10n.dart";
 import "package:flutter/material.dart";
 
 @RoutePage()
@@ -20,7 +20,7 @@ class _FrontPageState extends State<FrontPage> {
 
   @override
   Widget build(BuildContext context) {
-    final loc = l10n(context);
+    final loc = context.l10n;
     final pageTitles = [
       loc.frontPageTitleWorkspace,
       loc.frontPageTitleFitList,
@@ -45,25 +45,23 @@ class _FrontPageState extends State<FrontPage> {
       appBar: AppBar(
         leading: const StorageLoadingIndicator(),
         title: Text(pageTitles[_currentIndex]),
-        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
+        titleTextStyle: context.theme.appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
       ),
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) => setState(() => _currentIndex = index),
         children: pages,
       ),
-      floatingActionButton: BoolThen(!noFloatingActionButton.contains(_currentIndex))
-          .then(
-            () => FloatingActionButton(
-              onPressed: () {},
-              shape: const CircleBorder(),
-              child: const Icon(Icons.add),
-            ),
-          )
-          .toNullable(),
+      floatingActionButton: (!noFloatingActionButton.contains(_currentIndex)).then(
+        () => FloatingActionButton(
+          onPressed: () {},
+          shape: const CircleBorder(),
+          child: const Icon(Icons.add),
+        ),
+      ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 2)),
+          border: Border(top: BorderSide(color: context.theme.dividerColor, width: 2)),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,

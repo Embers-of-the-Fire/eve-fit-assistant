@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 
@@ -61,7 +62,7 @@ class _ConfigListTileTitle extends ConfigListTile {
     padding: const EdgeInsets.only(left: 16, top: 24, bottom: 4),
     child: Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).hintColor),
+      style: context.theme.textTheme.titleMedium?.copyWith(color: context.theme.hintColor),
     ),
   );
 }
@@ -77,7 +78,7 @@ class _ConfigListTileItem extends ConfigListTile {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: Theme.of(context).colorScheme.surfaceContainer,
+    color: context.theme.colorScheme.surfaceContainer,
     child: ListTile(
       leading: icon != null ? Icon(icon) : const SizedBox.shrink(),
       title: Text(title),
@@ -94,5 +95,5 @@ class _ConfigListTileCustom extends ConfigListTile {
 
   @override
   Widget build(BuildContext context) =>
-      ColoredBox(color: Theme.of(context).colorScheme.surfaceContainer, child: child);
+      ColoredBox(color: context.theme.colorScheme.surfaceContainer, child: child);
 }

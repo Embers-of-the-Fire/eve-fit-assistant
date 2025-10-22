@@ -4,7 +4,7 @@ import "package:eve_fit_assistant/components/dropdown_list_tile.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/config/locale.dart" show Locale;
 import "package:eve_fit_assistant/storage/setting/setting.dart";
-import "package:eve_fit_assistant/utils/l10n.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 

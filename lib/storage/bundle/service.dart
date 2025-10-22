@@ -150,6 +150,17 @@ class BundleService extends _$BundleService {
     if (ref.read(bundleRegistryManagerProvider.select((value) => value.selectedBundleId)) != null) {
       unawaited(loadBundle(ref.read(bundleRegistryManagerProvider).selectedBundleId!));
     }
+    ref.listen(bundleRegistryManagerProvider.select((value) => value.selectedBundleId), (
+      prev,
+      next,
+    ) {
+      if (next == prev) return;
+      if (next == null) {
+        state = const CurrentBundleStatus.notSelected();
+        return;
+      }
+      unawaited(loadBundle(ref.read(bundleRegistryManagerProvider).selectedBundleId!));
+    });
     return const CurrentBundleStatus.notSelected();
   }
 
