@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/components/card.dart";
+import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -22,14 +22,13 @@ class WorkspacePage extends ConsumerWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.all(12),
       child: GridView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 1, // ensure square tiles
         ),
         itemCount: items.length,
         itemBuilder: (context, index) {

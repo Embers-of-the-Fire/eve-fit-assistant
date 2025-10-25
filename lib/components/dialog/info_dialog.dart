@@ -1,4 +1,6 @@
-part of "../dialog.dart";
+import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 class InfoButton extends StatelessWidget {
   const InfoButton({required this.title, super.key, this.content});

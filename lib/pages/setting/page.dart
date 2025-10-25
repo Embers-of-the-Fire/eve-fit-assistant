@@ -1,5 +1,5 @@
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/components/config_list.dart";
+import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";

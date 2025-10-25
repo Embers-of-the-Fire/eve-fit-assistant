@@ -1,7 +1,7 @@
-part of "../card.dart";
+import "package:flutter/material.dart";
 
 class HomepageLinkCard extends StatelessWidget {
-  const HomepageLinkCard({super.key, required this.title, required this.icon, required this.onTap});
+  const HomepageLinkCard({required this.title, required this.icon, required this.onTap, super.key});
 
   final String title;
   final IconData icon;

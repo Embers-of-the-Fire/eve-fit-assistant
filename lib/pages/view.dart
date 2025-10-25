@@ -180,7 +180,7 @@ class _NavItem extends StatelessWidget {
         Theme.of(context).bottomNavigationBarTheme.selectedLabelStyle ??
         Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 12) ??
         const TextStyle(fontSize: 12);
-    const double iconSizeDefault = 24.0;
+    const double iconSizeDefault = 24;
     final selectedIconTheme = Theme.of(context).bottomNavigationBarTheme.selectedIconTheme;
     final unselectedIconTheme = Theme.of(context).bottomNavigationBarTheme.unselectedIconTheme;
     final double selectedIconSize = selectedIconTheme?.size ?? iconSizeDefault;

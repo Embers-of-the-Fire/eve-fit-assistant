@@ -1,4 +1,4 @@
-part of "../clickable.dart";
+import "package:flutter/material.dart";
 
 /// ClickableCircleAvatar uses `CircleAvatar` for rendering and wraps it
 /// with `Material` + `InkWell` to provide a circular ripple effect.

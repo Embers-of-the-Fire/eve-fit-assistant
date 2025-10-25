@@ -1,8 +1,8 @@
 import "package:auto_route/annotations.dart";
-import "package:eve_fit_assistant/components/config_list.dart";
-import "package:eve_fit_assistant/components/dialog.dart";
-import "package:eve_fit_assistant/components/dropdown_list_tile.dart";
+import "package:eve_fit_assistant/components/dialog/info_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/components/list/dropdown_list_tile.dart";
 import "package:eve_fit_assistant/config/locale.dart" show Locale;
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
