@@ -1,10 +1,4 @@
-import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/storage/bundle/manager.dart";
-import "package:eve_fit_assistant/storage/bundle/service.dart";
-import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
-import "package:eve_fit_assistant/storage/fit/manager.dart";
-import "package:eve_fit_assistant/storage/fit/service.dart";
-import "package:file_picker/file_picker.dart";
+import "package:eve_fit_assistant/components/card.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -13,70 +7,45 @@ class WorkspacePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // return Center(child: Text('Workspace Page'));
-    final Widget child;
-    if (ref.watch(bundleServiceProvider).isLoaded) {
-      final loc = ref.watch(localizationProvider(73330));
-      child = loc.when(
-        data: (data) => Text("$data"),
-        error: (err, stack) => Text("$err\n\n$stack", style: const TextStyle(color: Colors.red)),
-        loading: () => const Text("Loading..."),
-      );
-    } else {
-      child = const Text("Initialize");
-    }
+    // Example items to demonstrate localization and different iconography
+    final items = <Map<String, dynamic>>[
+      {"title": "Settings", "icon": Icons.settings},
+      {"title": "设置", "icon": Icons.settings},
+      {"title": "Workspace", "icon": Icons.workspaces},
+      {"title": "工作区", "icon": Icons.workspace_premium},
+      {"title": "Files", "icon": Icons.folder},
+      {"title": "文件", "icon": Icons.folder_open},
+      {"title": "Analytics", "icon": Icons.show_chart},
+      {"title": "分析", "icon": Icons.bar_chart},
+      {"title": "Tools", "icon": Icons.build},
+      {"title": "工具", "icon": Icons.construction},
+    ];
 
-    return Center(
-      child: Column(
-        children: [
-          TextButton(
-            onPressed: () async {
-              if (ref.read(bundleServiceProvider).isLoaded) {
-                info("Loaded!");
-              }
-              final result = await FilePicker.platform.pickFiles();
-              if (result != null) {
-                final selected = result.xFiles.first;
-                info("Selected file: ${selected.name}");
-                await ref
-                    .read(bundleManagerProvider.notifier)
-                    .addBundle(
-                      selected.path,
-                      confirmOverwrite: () async =>
-                          (await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              content: const Text("Overwrite?"),
-                              actions: [
-                                ElevatedButton(
-                                  onPressed: () => Navigator.of(context).pop(false),
-                                  child: const Text("No"),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () => Navigator.of(context).pop(true),
-                                  child: const Text("Yes"),
-                                ),
-                              ],
-                            ),
-                          )) ??
-                          false,
-                    );
-                final bundleRegistry = ref.read(bundleRegistryManagerProvider);
-                final bundleId = bundleRegistry.bundles.keys.first;
-                await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
-              }
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: GridView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1, // ensure square tiles
+        ),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final it = items[index];
+          // Cast values to concrete types so static analysis is satisfied
+          final String title = it["title"] as String;
+          final IconData icon = it["icon"] as IconData;
+
+          return HomepageLinkCard(
+            title: title,
+            icon: icon,
+            onTap: () {
+              // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Tapped: $title')));
             },
-            child: child,
-          ),
-          TextButton(
-            onPressed: () async {
-              final fitManager = ref.read(fitManagerProvider.notifier);
-              await fitManager.newFit(28659, "Test Fit ${DateTime.now().toIso8601String()}");
-            },
-            child: Text("Found ${ref.watch(fitRegistryManagerProvider).fits.length} fits"),
-          ),
-          Text(ref.watch(nativeFitEngineServiceProvider).debugOnlyDisplayState),
-        ],
+          );
+        },
       ),
     );
   }

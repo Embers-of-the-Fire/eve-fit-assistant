@@ -18,7 +18,7 @@ class Layout extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(title), bottom: bottom),
-    body: child,
+    body: SafeArea(child: child),
     floatingActionButton: floatingActionButton,
     floatingActionButtonLocation: floatingActionButtonLocation,
   );
