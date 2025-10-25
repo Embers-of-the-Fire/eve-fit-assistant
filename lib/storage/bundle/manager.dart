@@ -224,6 +224,7 @@ class BundleManager extends _$BundleManager {
         error("Invalid bundle $bundleId", stackTrace: StackTrace.current);
         throw Exception("Invalid bundle $bundleId");
       }
+      debug("Select new global bundle $bundleId");
       if (updateRegistry) ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
       return DateTime.now();
     });

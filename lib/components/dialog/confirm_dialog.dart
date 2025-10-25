@@ -1,6 +1,4 @@
-import "package:eve_fit_assistant/utils/context.dart";
-import "package:flutter/material.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
+part of "../dialog.dart";
 
 Future<bool> showConfirmDialog(
   BuildContext context, {

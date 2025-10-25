@@ -3,7 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/clickable.dart";
 import "package:eve_fit_assistant/components/color.dart";
-import "package:eve_fit_assistant/components/confirm_dialog.dart";
+import "package:eve_fit_assistant/components/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
