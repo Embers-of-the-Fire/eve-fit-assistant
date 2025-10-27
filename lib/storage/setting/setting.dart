@@ -5,6 +5,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -19,6 +20,11 @@ abstract class AppSetting with _$AppSetting {
   const factory AppSetting({
     @JsonKey(unknownEnumValue: Locale.zh, defaultValue: Locale.zh) required Locale locale,
     @JsonKey(defaultValue: false) required bool enableDebugLog,
+    @JsonKey(
+      unknownEnumValue: TypeListDisplayVariant.marketGroup,
+      defaultValue: TypeListDisplayVariant.marketGroup,
+    )
+    required TypeListDisplayVariant shipSelectListDisplayVariant,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);

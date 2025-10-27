@@ -1,6 +1,17 @@
+import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
+import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+
+class _WorkspaceShortcutItem {
+  const _WorkspaceShortcutItem({required this.title, required this.icon, required this.onTap});
+
+  final String title;
+  final IconData icon;
+  final void Function() onTap;
+}
 
 class WorkspacePage extends ConsumerWidget {
   const WorkspacePage({super.key});
@@ -8,17 +19,21 @@ class WorkspacePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Example items to demonstrate localization and different iconography
-    final items = <Map<String, dynamic>>[
-      {"title": "Settings", "icon": Icons.settings},
-      {"title": "设置", "icon": Icons.settings},
-      {"title": "Workspace", "icon": Icons.workspaces},
-      {"title": "工作区", "icon": Icons.workspace_premium},
-      {"title": "Files", "icon": Icons.folder},
-      {"title": "文件", "icon": Icons.folder_open},
-      {"title": "Analytics", "icon": Icons.show_chart},
-      {"title": "分析", "icon": Icons.bar_chart},
-      {"title": "Tools", "icon": Icons.build},
-      {"title": "工具", "icon": Icons.construction},
+    final items = <_WorkspaceShortcutItem>[
+      _WorkspaceShortcutItem(
+        title: context.l10n.workspaceTabActionCreateFitName,
+        icon: Icons.add_circle_outline,
+        onTap: () => context.router.push(const FitCreationRoute()),
+      ),
+      _WorkspaceShortcutItem(title: "设置", icon: Icons.settings, onTap: () {}),
+      _WorkspaceShortcutItem(title: "Workspace", icon: Icons.workspaces, onTap: () {}),
+      _WorkspaceShortcutItem(title: "工作区", icon: Icons.workspace_premium, onTap: () {}),
+      _WorkspaceShortcutItem(title: "Files", icon: Icons.folder, onTap: () {}),
+      _WorkspaceShortcutItem(title: "文件", icon: Icons.folder_open, onTap: () {}),
+      _WorkspaceShortcutItem(title: "Analytics", icon: Icons.show_chart, onTap: () {}),
+      _WorkspaceShortcutItem(title: "分析", icon: Icons.bar_chart, onTap: () {}),
+      _WorkspaceShortcutItem(title: "Tools", icon: Icons.build, onTap: () {}),
+      _WorkspaceShortcutItem(title: "工具", icon: Icons.construction, onTap: () {}),
     ];
 
     return Padding(
@@ -33,17 +48,10 @@ class WorkspacePage extends ConsumerWidget {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final it = items[index];
-          // Cast values to concrete types so static analysis is satisfied
-          final String title = it["title"] as String;
-          final IconData icon = it["icon"] as IconData;
+          final String title = it.title;
+          final IconData icon = it.icon;
 
-          return HomepageLinkCard(
-            title: title,
-            icon: icon,
-            onTap: () {
-              // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Tapped: $title')));
-            },
-          );
+          return HomepageLinkCard(title: title, icon: icon, onTap: it.onTap);
         },
       ),
     );

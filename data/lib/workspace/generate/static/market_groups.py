@@ -85,7 +85,7 @@ async def generate(data: GeneratorDatasource, collection):
             error(f"Market group {market_group_id} has no definition")
             continue
 
-        collection.market_groups.append(
+        collection.market_groups[market_group_id].CopyFrom(
             data["def"].to_pb(
                 self_id=market_group_id,
                 groups=data["groups"],

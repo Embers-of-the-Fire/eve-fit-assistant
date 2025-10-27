@@ -4,6 +4,7 @@ import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/components/list/dropdown_list_tile.dart";
 import "package:eve_fit_assistant/config/locale.dart" show Locale;
+import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
@@ -13,6 +14,7 @@ import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 part "debug_log.dart";
 part "locale.dart";
+part "select_list.dart";
 
 @RoutePage()
 class AppSettingsPage extends ConsumerWidget {
@@ -25,6 +27,8 @@ class AppSettingsPage extends ConsumerWidget {
       children: [
         ConfigListTile.title(context.l10n.appSettingsPageSectionGeneral),
         const ConfigListTile.custom(LocaleTile()),
+        ConfigListTile.title(context.l10n.appSettingsPageSectionSelectList),
+        const ConfigListTile.custom(ShipCreateListTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
         const ConfigListTile.custom(DebugLogTile()),
       ],

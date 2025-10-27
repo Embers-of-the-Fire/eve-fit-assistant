@@ -15,8 +15,8 @@ class DropdownListTile<T> extends StatefulWidget {
   final void Function(T)? onValueChange;
 
   final IconData? icon;
-  final String title;
-  final String? subtitle;
+  final Widget title;
+  final Widget? subtitle;
 
   final List<DropdownMenuItem<T>> items;
 
@@ -30,8 +30,8 @@ class _DropdownListTileState<T> extends State<DropdownListTile<T>> {
   @override
   Widget build(BuildContext context) => ListTile(
     leading: widget.icon.map(Icon.new),
-    title: Text(widget.title),
-    subtitle: widget.subtitle.map(Text.new),
+    title: widget.title,
+    subtitle: widget.subtitle,
     trailing: Container(
       margin: const EdgeInsets.symmetric(horizontal: 10),
       child: DropdownButton(

@@ -48,6 +48,6 @@ async def generate(data: GeneratorDatasource, collection):
             continue
 
         cnt += 1
-        collection.categories.append(validated.to_pb())
+        collection.categories[validated.categoryID].CopyFrom(validated.to_pb())
 
     info(f"Generated {cnt} categories")

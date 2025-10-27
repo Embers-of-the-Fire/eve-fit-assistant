@@ -43,6 +43,6 @@ async def generate(data: GeneratorDatasource, collection):
             continue
 
         cnt += 1
-        collection.meta_groups.append(validated.to_pb(meta_group_id))
+        collection.meta_groups[meta_group_id].CopyFrom(validated.to_pb(meta_group_id))
 
     info(f"Generated {cnt} meta groups")

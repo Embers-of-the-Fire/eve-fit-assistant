@@ -62,3 +62,18 @@ extension RepeatElement<T> on T {
     }
   }
 }
+
+// Explicitly allow dynamic to make it easier to use in debug scenarios
+// ignore: avoid_annotating_with_dynamic
+void _defaultInspect(dynamic element) {
+  debugPrint("$element");
+}
+
+extension Inspect<T> on Iterable<T> {
+  Iterable<T> inspect([void Function(T) inspectFn = _defaultInspect]) sync* {
+    for (final element in this) {
+      inspectFn(element);
+      yield element;
+    }
+  }
+}

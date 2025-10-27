@@ -834,7 +834,7 @@ _GENERATOR_TYPES = {"static", "native", "localization", "images"}
     "--skip",
     "-s",
     multiple=True,
-    help=f"Skip specified data generators.Values: {', '.join(_GENERATOR_TYPES)}",
+    help=f"Skip specified data generators. Values: {', '.join(_GENERATOR_TYPES)}",
 )
 @click.option(
     "--no-hash",

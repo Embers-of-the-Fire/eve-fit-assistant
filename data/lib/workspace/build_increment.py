@@ -51,20 +51,26 @@ def build_increment_bundle(config: WorkspaceConfig, previous_hash_list_path: Pat
             continue
 
         relative_path = file_path.relative_to(full_generated).as_posix()
+        if "descriptor.json" in relative_path:
+            continue
+        absolute_parent = (increment_generated / relative_path).parent
         cfg = previous_hashes.get(relative_path)
         if cfg is None:
+            absolute_parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(file_path, increment_generated / relative_path)
             debug(f"Including {relative_path} (new file)")
             included += 1
             continue
         file_size = file_path.stat().st_size
         if file_size != cfg["size"]:
+            absolute_parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(file_path, increment_generated / relative_path)
             debug(f"Including {relative_path} (new file)")
             included += 1
             continue
         file_hash = get_file_sha256(file_path)
         if file_hash != cfg["hash"]:
+            absolute_parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(file_path, increment_generated / relative_path)
             debug(f"Including {relative_path} (new file)")
             included += 1

@@ -6,6 +6,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 CONFIG_PATH = PROJECT_ROOT / "efa.config.toml"
 CACHE_CONFIG_PATH = PROJECT_ROOT / ".efa.cache"
+ASSETS_ROOT = PROJECT_ROOT / "assets"
 
 WORKSPACE_NAME_ENV_VAR = "EFA_WORKSPACE_NAME"
 SKIP_FULL_HASHLIST_UPDATE_ENV_VAR = "EFA_SKIP_FULL_HASHLIST_UPDATE"
@@ -20,6 +21,8 @@ NATIVE_LIB_ROOT = PROJECT_ROOT / "rust" / "lib" / "eve-fit-os"
 I18N_ROOT = PROJECT_ROOT / "l10n"
 
 DART_ROOT = PROJECT_ROOT / "lib"
+
+ASSETS_OUT_PATH = DART_ROOT / "constant" / "assets.g.dart"
 
 HIGH_SLOT_ATTR = 14
 MEDIUM_SLOT_ATTR = 13

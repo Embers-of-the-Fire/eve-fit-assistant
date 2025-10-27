@@ -11,11 +11,11 @@ class HomepageLinkCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final titleStyle =
-        Theme.of(context).textTheme.titleMedium?.copyWith(
+        Theme.of(context).textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w600,
           color: colorScheme.onSurface,
         ) ??
-        TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface);
+        TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: colorScheme.onSurface);
 
     // Keep the tile square. Size things relative to the actual tile width for good scaling on different screen sizes.
     return AspectRatio(

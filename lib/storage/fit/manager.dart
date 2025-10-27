@@ -5,7 +5,6 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -111,13 +110,11 @@ class FitManager extends _$FitManager {
   static String generateFitId() => _idGenerator.v4();
 
   Future<void> newFit(int shipId, String name) async {
-    Ship? ship;
-    for (final s in ref.watch(bundleCollectionProvider).collection.ships) {
-      if (s.typeId == shipId) {
-        ship = s;
-        break;
-      }
-    }
+    final ship = ref.watch(
+      bundleCollectionServiceProvider.select(
+        (collection) => collection.collection?.getShip(shipId),
+      ),
+    );
     if (ship == null) {
       final text = "Ship with ID $shipId not found in bundle collection.";
       error(text);

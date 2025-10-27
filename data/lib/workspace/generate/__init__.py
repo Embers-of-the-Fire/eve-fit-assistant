@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
-from data.lib.log import info
+from data.lib.log import info, warning
 from data.lib.schema import collections_pb2
 from data.lib.utils import get_bin_size
 
@@ -56,6 +56,8 @@ async def run_generator(config: WorkspaceConfig, skip: set[str], gen_hash: bool)
 
     if gen_hash:
         generate_hash_list(datasource, desc)
+    else:
+        warning("Skip generating hash.")
 
     shutil.make_archive(
         str(config.paths.output / config.metadata.identifier),

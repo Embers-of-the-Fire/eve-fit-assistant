@@ -50,6 +50,25 @@ extension MapMonad<T> on T? {
   }
 }
 
-extension OrElse<T> on Option<T> {
-  T orElse(T value) => match(() => value, (v) => v);
+extension MapAndThen<T> on T? {
+  R? andThen<R>(R? Function(T value) f) {
+    if (this == null) {
+      return null;
+    }
+    return f(this as T);
+  }
+}
+
+extension MapOrElse<T> on T? {
+  R mapOrElse<R>(R Function(T value) f, R Function() orElse) {
+    if (this == null) {
+      return orElse();
+    }
+    return f(this as T);
+  }
+}
+
+extension NullableOrElse<T> on T? {
+  T orElse(T Function() value) => this ?? value();
+  T? tryOrElse(T? Function() value) => this ?? value();
 }

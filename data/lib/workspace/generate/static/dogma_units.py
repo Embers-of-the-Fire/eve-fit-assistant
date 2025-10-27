@@ -43,6 +43,6 @@ async def generate(data: GeneratorDatasource, collection):
             continue
 
         cnt += 1
-        collection.dogma_units.append(validated.to_pb(dogma_unit_id))
+        collection.dogma_units[dogma_unit_id].CopyFrom(validated.to_pb(dogma_unit_id))
 
     info(f"Generated {cnt} dogma units")

@@ -15,16 +15,16 @@ part "paths.g.dart";
 BundleServicePaths? bundlePaths(Ref ref) => ref.watch(currentBundleProvider)?.paths;
 
 @riverpod
-String iconPath(Ref ref, int iconId) =>
-    ref.watch(bundlePathsProvider.select((t) => t?.getIconPath(iconId) ?? ""));
+File? getIconPath(Ref ref, int iconId) =>
+    ref.watch(bundlePathsProvider.select((t) => t?.getIconPath(iconId)));
 
 @riverpod
-String graphicPath(Ref ref, int graphicId) =>
-    ref.watch(bundlePathsProvider.select((t) => t?.getGraphicPath(graphicId) ?? ""));
+File? getGraphicPath(Ref ref, int graphicId) =>
+    ref.watch(bundlePathsProvider.select((t) => t?.getGraphicPath(graphicId)));
 
 @riverpodSingleton
-String localizationPath(Ref ref, String locale) =>
-    ref.watch(bundlePathsProvider.select((t) => t?.getLocalizationPath(locale) ?? ""));
+String? localizationPath(Ref ref, String locale) =>
+    ref.watch(bundlePathsProvider.select((t) => t?.getLocalizationPath(locale)));
 
 class BundleServicePaths {
   const BundleServicePaths(this.bundlePath);
@@ -82,7 +82,7 @@ class BundleServicePaths {
   String getDescriptorPath() => p.join(bundlePath, _descriptor);
   String getRegistrarPath() => p.join(bundlePath, _registrar);
 
-  String getIconPath(int iconId) {
+  File? getIconPath(int iconId) {
     final iconPath = p.join(
       bundlePath,
       _staticPath,
@@ -90,19 +90,18 @@ class BundleServicePaths {
       _staticImagesIconsPath,
       "$iconId.png",
     );
-    assert(
-      (() {
-        final existence = File(iconPath).existsSync();
-        if (!existence) {
-          warning("Icon not found [$iconId]: $iconPath");
-        }
-        return existence;
-      })(),
-    );
-    return iconPath;
+    final iconFile = File(iconPath);
+    if (!iconFile.existsSync()) {
+      assert(() {
+        warning("Graphic not found [$iconFile ]: $iconFile");
+        return true;
+      }());
+      return null;
+    }
+    return iconFile;
   }
 
-  String getGraphicPath(int graphicId) {
+  File? getGraphicPath(int graphicId) {
     final graphicPath = p.join(
       bundlePath,
       _staticPath,
@@ -110,16 +109,15 @@ class BundleServicePaths {
       _staticImagesGraphicsPath,
       "$graphicId.png",
     );
-    assert(
-      (() {
-        final existence = File(graphicPath).existsSync();
-        if (!existence) {
-          warning("Graphic not found [$graphicId]: $graphicPath");
-        }
-        return existence;
-      })(),
-    );
-    return graphicPath;
+    final graphicFile = File(graphicPath);
+    if (!graphicFile.existsSync()) {
+      assert(() {
+        warning("Graphic not found [$graphicId]: $graphicPath");
+        return true;
+      }());
+      return null;
+    }
+    return graphicFile;
   }
 
   String getLocalizationPath(String locale) {
@@ -130,7 +128,7 @@ class BundleServicePaths {
         if (!existence) {
           warning("Locale definition not found [$locale]: $locPath");
         }
-        return existence;
+        return true;
       })(),
     );
     return locPath;

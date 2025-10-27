@@ -1,7 +1,8 @@
+import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
-import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
+import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:file_picker/file_picker.dart";
@@ -13,16 +14,21 @@ class CharacterPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final Widget child;
+    final List<Widget> children = [];
     if (ref.watch(bundleServiceProvider).isLoaded) {
-      final loc = ref.watch(localizationProvider(73330));
-      child = loc.when(
-        data: (data) => Text("$data"),
-        error: (err, stack) => Text("$err\n\n$stack", style: const TextStyle(color: Colors.red)),
-        loading: () => const Text("Loading..."),
-      );
+      children.add(const TypeListTile(typeId: 236));
+      final type = ref.watch(bundleCollectionGetTypeProvider(236));
+      if (type != null) {
+        children
+          ..add(MarketGroupListTile(marketGroupId: type.marketGroupId))
+          ..add(GroupListTile(groupId: type.groupId));
+        final group = ref.watch(bundleCollectionGetGroupProvider(type.groupId));
+        if (group != null) {
+          children.add(CategoryListTile(categoryId: group.categoryId));
+        }
+      }
     } else {
-      child = const Text("Initialize");
+      children.add(const Text("Initialize"));
     }
 
     return Center(
@@ -65,8 +71,9 @@ class CharacterPage extends ConsumerWidget {
                 await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
               }
             },
-            child: child,
+            child: const Text("Load Bundle"),
           ),
+          ...children,
           TextButton(
             onPressed: () async {
               final fitManager = ref.read(fitManagerProvider.notifier);

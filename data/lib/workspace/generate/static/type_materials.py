@@ -45,6 +45,6 @@ async def generate(data: GeneratorDatasource, collection):
             continue
 
         cnt += 1
-        collection.type_materials.append(validated.to_pb(type_material_id))
+        collection.type_materials[type_material_id].CopyFrom(validated.to_pb(type_material_id))
 
     info(f"Generated {cnt} type materials")

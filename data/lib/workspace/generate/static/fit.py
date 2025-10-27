@@ -135,7 +135,7 @@ async def generate(data: GeneratorDatasource, collection):
                 ),
                 0,
             )
-            collection.ships.append(ship_def)
+            collection.ships[type_id].CopyFrom(ship_def)
         elif any(
             attr.attributeID in _DETERMINE_SUBSYSTEM_ATTRS and attr.value > 0
             for attr in validated.dogmaAttributes
@@ -183,6 +183,6 @@ async def generate(data: GeneratorDatasource, collection):
                 ),
                 0,
             )
-            collection.subsystems.append(subsystem_def)
+            collection.subsystems[type_id].CopyFrom(subsystem_def)
 
     info(f"Generated {ship} ships and {subsystem} subsystems")

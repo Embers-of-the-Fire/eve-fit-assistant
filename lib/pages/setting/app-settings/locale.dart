@@ -6,8 +6,8 @@ class LocaleTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => DropdownListTile(
     icon: Icons.language,
-    title: context.l10n.appSettingsPageLocaleTitle,
-    subtitle: context.l10n.appSettingsPageLocaleSubtitle,
+    title: Text(context.l10n.appSettingsPageLocaleTitle),
+    subtitle: Text(context.l10n.appSettingsPageLocaleSubtitle),
     initialValue: ref.watch(appSettingServiceProvider).locale,
     onValueChange: (value) =>
         ref.read(appSettingServiceProvider.notifier).update((old) => old.copyWith(locale: value)),

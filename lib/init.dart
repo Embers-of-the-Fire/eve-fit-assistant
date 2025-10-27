@@ -50,5 +50,5 @@ void initWithRef(WidgetRef ref) {
   ref
     ..read(fitManagerProvider)
     ..read(bundleManagerProvider)
-    ..read(bundleCollectionProvider);
+    ..read(bundleCollectionServiceProvider);
 }

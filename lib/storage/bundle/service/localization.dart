@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/localizations.pb.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -36,5 +37,9 @@ Future<String?> localization(Ref ref, int key) => ref
 Future<BundleLocalization> bundleLocalization(Ref ref) {
   final locale = ref.watch(localeProvider).name;
   final locPath = ref.watch(localizationPathProvider(locale));
+  if (locPath == null) {
+    error("Localization path not found for locale: $locale");
+    throw Exception("Localization path not found for locale: $locale");
+  }
   return BundleLocalization.loadFromPath(locale, locPath);
 }

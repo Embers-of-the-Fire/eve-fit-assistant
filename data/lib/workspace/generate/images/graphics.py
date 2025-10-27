@@ -90,4 +90,4 @@ async def __download_graphic(graphic_id: int, graphic_folder: str, data: Generat
         debug(f"Generated graphic at {target_dir}.")
 
     if not found:
-        warning(f"No graphic files found for graphic ID {graphic_id}.")
+        warning(f"No graphic files found for graphic ID {graphic_id} in folder {graphic_folder}.")

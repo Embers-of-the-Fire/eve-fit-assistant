@@ -163,6 +163,10 @@ class ResourceIndex:
     __resource_tree: _ResourceNode
     __resource_prefix: str
 
+    @staticmethod
+    def normalize_key(key: str) -> str:
+        return key.replace("\\", "/").lower()
+
     def __init__(
         self,
         index: Path,
@@ -193,7 +197,7 @@ class ResourceIndex:
                 parts: list[str] = line.strip().split(",")
                 if len(parts) < 3:
                     continue
-                resource_id = parts[0].lower()
+                resource_id = self.normalize_key(parts[0])
                 file_path = parts[1]
 
                 path_parts = resource_id.split("/")
@@ -208,4 +212,4 @@ class ResourceIndex:
         )
 
     def get_resource(self, resource_id: str) -> _ResourceNode:
-        return self.__resource_tree.recursive_find(resource_id.lower().split("/"))
+        return self.__resource_tree.recursive_find(self.normalize_key(resource_id).split("/"))

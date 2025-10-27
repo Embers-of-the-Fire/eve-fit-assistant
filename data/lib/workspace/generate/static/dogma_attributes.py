@@ -78,6 +78,6 @@ async def generate(data: GeneratorDatasource, collection):
             continue
 
         cnt += 1
-        collection.dogma_attributes.append(validated.to_pb())
+        collection.dogma_attributes[validated.attributeID].CopyFrom(validated.to_pb())
 
     info(f"Generated {cnt} dogma attributes")

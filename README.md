@@ -175,3 +175,14 @@ See [`.env.example`](./.env.example) for more information.
 - `EFA_DEFAULT_WORKSPACE_HASHLIST`: A shortcut env-var for `x build inc <HASH_LIST>`.
   This sets the default hash list used when building the app,
   making it easier to build increment bundles.
+
+#### Hack through workspace management
+
+You may want to test different data sources during development,
+while not wanting to modify the default workspace selection.
+You can hack through the workspace management system
+by adding `--workspace/--ws` when calling `x.py`:
+
+```bash
+./x --ws serenity build data
+```

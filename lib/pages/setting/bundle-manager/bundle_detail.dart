@@ -3,6 +3,7 @@ part of "page.dart";
 @RoutePage()
 class BundleDetailPage extends ConsumerWidget {
   const BundleDetailPage({required this.bundleId, super.key});
+
   final String bundleId;
 
   @override
@@ -102,13 +103,12 @@ class BundleDetailPage extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // History list (visual style references parent page list appearance)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 240),
+            Expanded(
               child: ListView.separated(
                 shrinkWrap: true,
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemBuilder: (context, index) {
-                  final patch = bundleRegistrar.history[index];
+                  final patch = bundleRegistrar.history[bundleRegistrar.history.length - 1 - index];
                   return _PatchTile(patch: patch, formatTs: formatTs);
                 },
                 separatorBuilder: (_, __) => const Divider(),
@@ -124,6 +124,7 @@ class BundleDetailPage extends ConsumerWidget {
 
 class _PatchTile extends StatelessWidget {
   const _PatchTile({required this.patch, required this.formatTs});
+
   final BundleHistoryPatch patch;
   final String Function(int) formatTs;
 

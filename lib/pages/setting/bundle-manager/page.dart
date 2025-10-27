@@ -5,12 +5,14 @@ import "package:eve_fit_assistant/components/clickable/circle_avatar.dart";
 import "package:eve_fit_assistant/components/color.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/datetime.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
+import "package:file_picker/file_picker.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -28,7 +30,18 @@ class BundleManagerPage extends ConsumerWidget {
     return Layout(
       title: context.l10n.bundleManagerPageTitle,
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () async {
+          final result = await FilePicker.platform.pickFiles();
+          if (result == null) return;
+          final selected = result.xFiles.first;
+          info("Selected file: ${selected.name}");
+          await ref
+              .read(bundleManagerProvider.notifier)
+              .addBundle(
+                selected.path,
+                confirmOverwrite: () => showConfirmDialog(context, title: "Overwrite?"),
+              );
+        },
         shape: const CircleBorder(),
         child: const Icon(Icons.add),
       ),
