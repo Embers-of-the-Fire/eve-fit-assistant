@@ -66,10 +66,20 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
   final List<R> _history = [];
   late R _currentRoot;
 
+  // Cached in-flight or completed children future for the current root.
+  Future<List<R>>? _childrenFuture;
+
+  // Loading indicator delay: only show spinner if loading exceeds this.
+  final Duration _loadingDelay = const Duration(milliseconds: 150);
+  Timer? _loadingTimer;
+  bool _isLoading = false;
+  bool _showLoading = false;
+
   @override
   void initState() {
     super.initState();
     _currentRoot = widget.root;
+    _childrenFuture = _loadChildrenForRoot(_currentRoot);
   }
 
   @override
@@ -81,7 +91,14 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
         _history.clear();
         _currentRoot = widget.root;
       });
+      _childrenFuture = _loadChildrenForRoot(_currentRoot);
     }
+  }
+
+  @override
+  void dispose() {
+    _loadingTimer?.cancel();
+    super.dispose();
   }
 
   void _pushRoot(R newRoot) {
@@ -89,12 +106,44 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
       _history.add(_currentRoot);
       _currentRoot = newRoot;
     });
+    _childrenFuture = _loadChildrenForRoot(newRoot);
   }
 
-  Future<List<R>> _getChildrenAsync(R root) async {
-    final result = await Future.value(widget.fetchChildren(root, ref));
-    final filtered = (widget.validator == null) ? result : result.where(widget.validator!).toList();
-    return filtered;
+  // Load children and manage a short delay before showing a loading spinner.
+  Future<List<R>> _loadChildrenForRoot(R root) {
+    // Cancel any previous timer and mark loading state.
+    _loadingTimer?.cancel();
+    _isLoading = true;
+    _showLoading = false;
+
+    // Start a timer to show the spinner only if loading takes longer than [_loadingDelay].
+    _loadingTimer = Timer(_loadingDelay, () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _showLoading = true;
+        });
+      }
+    });
+
+    final future = Future.value(widget.fetchChildren(root, ref))
+        .then((result) {
+          final filtered = (widget.validator == null)
+              ? result
+              : result.where(widget.validator!).toList();
+          return filtered;
+        })
+        .whenComplete(() {
+          _loadingTimer?.cancel();
+          _isLoading = false;
+          if (mounted) {
+            setState(() {
+              // hide spinner when finished; if the load was quick the spinner never showed.
+              _showLoading = false;
+            });
+          }
+        });
+
+    return future;
   }
 
   void _clearHistory() {
@@ -102,6 +151,7 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
       _history.clear();
       _currentRoot = widget.root;
     });
+    _childrenFuture = _loadChildrenForRoot(_currentRoot);
   }
 
   void _popToRoot(int index) {
@@ -111,6 +161,7 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
         _currentRoot = _history.removeLast();
       }
     });
+    _childrenFuture = _loadChildrenForRoot(_currentRoot);
   }
 
   Widget _buildBreadcrumbItem(R node) => widget.breadcrumbBuilder(node);
@@ -143,10 +194,15 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
       ),
       Expanded(
         child: FutureBuilder<List<R>>(
-          future: _getChildrenAsync(_currentRoot),
+          future: _childrenFuture ??= _loadChildrenForRoot(_currentRoot),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              // Only show the progress indicator if the loading exceeded the short delay.
+              if (_showLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              // Don't show the spinner for very short loads — avoid flicker.
+              return const SizedBox.shrink();
             }
             if (snapshot.hasError) {
               return Center(child: Text("Error: \\${snapshot.error}"));
