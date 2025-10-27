@@ -38,6 +38,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+unlocalized_messages.txt
 
 # Symbolication related
 app.*.symbols

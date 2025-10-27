@@ -38,6 +38,7 @@
   "appSettingsPageSectionDeveloper": "Developer",
   "appSettingsPageDebugLogTitle": "Enable Debug Log",
   "appSettingsPageDebugLogDescription": "The application will print all logs to the logging directory when this feature is activated.\nIt's suggested not to enable this unless a developer requires the activation.",
+  "appSettingsPageSectionSelectList": "Display List",
   "appSettingsPageShipSelectTypeTitle": "Ship Select List Type",
   "appSettingsPageShipSelectTypeDescription": "The list format used when selecting ships.\nCategory grouping organizes ships based on in-game item categories.\nMarket group grouping organizes ships based on market groups.",
   "@@@_BUNDLE_MANAGER_PAGE": {},

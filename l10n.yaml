@@ -6,4 +6,5 @@ preferred-supported-locales: zh
 nullable-getter: false
 format: true
 use-named-parameters: true
+untranslated-messages-file: unlocalized_messages.txt
 header-file: header.dart
