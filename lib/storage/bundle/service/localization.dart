@@ -29,9 +29,8 @@ abstract class BundleLocalization with _$BundleLocalization {
 }
 
 @riverpod
-Future<String?> localization(Ref ref, int key) => ref
-    .watch(bundleLocalizationProvider.future)
-    .then((data) => data.localization.localizedStrings[key]);
+String? localization(Ref ref, int key) =>
+    ref.watch(bundleLocalizationProvider).value?.localization.localizedStrings[key];
 
 @riverpodSingleton
 Future<BundleLocalization> bundleLocalization(Ref ref) {
