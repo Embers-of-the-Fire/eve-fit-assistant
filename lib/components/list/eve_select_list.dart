@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/select_list.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
@@ -46,12 +44,12 @@ class EveSelectList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // fetchChildren mirrors original _getChildren logic and uses the provided ref.
-    FutureOr<List<EveSelectListRoot>> fetchChildren(EveSelectListRoot root, WidgetRef ref) {
+    List<EveSelectListRoot> fetchChildren(EveSelectListRoot root, WidgetRef ref) {
       final List<EveSelectListRoot> children = root.when(
         category: (categoryId) {
           final groups =
               ref
-                  .watch(bundleCollectionGetAllGroupsProvider)
+                  .read(bundleCollectionGetAllGroupsProvider)
                   .where((r) => r.categoryId == categoryId)
                   .toList()
                 ..sort((a, b) => a.groupId.compareTo(b.groupId));
@@ -63,7 +61,7 @@ class EveSelectList extends ConsumerWidget {
         group: (groupId) {
           final types =
               ref
-                  .watch(bundleCollectionGetAllTypesProvider)
+                  .read(bundleCollectionGetAllTypesProvider)
                   .where((r) => r.groupId == groupId)
                   .toList()
                 ..sort((a, b) => a.typeId.compareTo(b.typeId));
@@ -73,7 +71,7 @@ class EveSelectList extends ConsumerWidget {
               .toList();
         },
         marketGroup: (marketGroupId) {
-          final marketGroupInfo = ref.watch(bundleCollectionGetMarketGroupProvider(marketGroupId));
+          final marketGroupInfo = ref.read(bundleCollectionGetMarketGroupProvider(marketGroupId));
           if (marketGroupInfo == null) return [];
           final groups = marketGroupInfo.groups
               .map((g) => EveSelectListRoot.marketGroup(marketGroupId: g))

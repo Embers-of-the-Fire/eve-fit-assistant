@@ -1,14 +1,11 @@
-import "dart:async";
-
 import "package:flutter/material.dart";
 import "package:flutter_breadcrumb/flutter_breadcrumb.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 // Generic, reusable nested select list with breadcrumb support.
-// Inspired by eve_select_list.dart but abstracted for arbitrary root and item types.
 
 /// A function that, given a root key and a WidgetRef, returns the list of its child roots.
-typedef ChildrenFetcher<R> = FutureOr<List<R>> Function(R root, WidgetRef ref);
+typedef ChildrenFetcher<R> = List<R> Function(R root, WidgetRef ref);
 
 /// A predicate that validates whether a root should be visible/selectable.
 typedef RootValidator<R> = bool Function(R root);
@@ -37,7 +34,7 @@ class SelectList<R> extends ConsumerStatefulWidget {
   /// The initial root node to display.
   final R root;
 
-  /// Fetch children for a given node. May return synchronously or asynchronously.
+  /// Fetch children for a given node. Must return synchronously.
   final ChildrenFetcher<R> fetchChildren;
 
   /// Build a breadcrumb widget for a node.
@@ -66,20 +63,17 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
   final List<R> _history = [];
   late R _currentRoot;
 
-  // Cached in-flight or completed children future for the current root.
-  Future<List<R>>? _childrenFuture;
+  // Current (synchronously loaded) children for _currentRoot.
+  List<R> _children = [];
 
-  // Loading indicator delay: only show spinner if loading exceeds this.
-  final Duration _loadingDelay = const Duration(milliseconds: 150);
-  Timer? _loadingTimer;
-  bool _isLoading = false;
-  bool _showLoading = false;
+  // Store last load error (if any).
+  Object? _loadError;
 
   @override
   void initState() {
     super.initState();
     _currentRoot = widget.root;
-    _childrenFuture = _loadChildrenForRoot(_currentRoot);
+    _loadChildrenForCurrentRoot();
   }
 
   @override
@@ -91,14 +85,8 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
         _history.clear();
         _currentRoot = widget.root;
       });
-      _childrenFuture = _loadChildrenForRoot(_currentRoot);
+      _loadChildrenForCurrentRoot();
     }
-  }
-
-  @override
-  void dispose() {
-    _loadingTimer?.cancel();
-    super.dispose();
   }
 
   void _pushRoot(R newRoot) {
@@ -106,44 +94,28 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
       _history.add(_currentRoot);
       _currentRoot = newRoot;
     });
-    _childrenFuture = _loadChildrenForRoot(newRoot);
+    _loadChildrenForCurrentRoot();
   }
 
-  // Load children and manage a short delay before showing a loading spinner.
-  Future<List<R>> _loadChildrenForRoot(R root) {
-    // Cancel any previous timer and mark loading state.
-    _loadingTimer?.cancel();
-    _isLoading = true;
-    _showLoading = false;
+  List<R> _loadChildrenForRoot(R root) {
+    try {
+      final result = widget.fetchChildren(root, ref);
+      final filtered = (widget.validator == null)
+          ? result
+          : result.where(widget.validator!).toList();
+      _loadError = null;
+      return filtered;
+    } catch (e) {
+      _loadError = e;
+      return <R>[];
+    }
+  }
 
-    // Start a timer to show the spinner only if loading takes longer than [_loadingDelay].
-    _loadingTimer = Timer(_loadingDelay, () {
-      if (mounted && _isLoading) {
-        setState(() {
-          _showLoading = true;
-        });
-      }
+  void _loadChildrenForCurrentRoot() {
+    final children = _loadChildrenForRoot(_currentRoot);
+    setState(() {
+      _children = children;
     });
-
-    final future = Future.value(widget.fetchChildren(root, ref))
-        .then((result) {
-          final filtered = (widget.validator == null)
-              ? result
-              : result.where(widget.validator!).toList();
-          return filtered;
-        })
-        .whenComplete(() {
-          _loadingTimer?.cancel();
-          _isLoading = false;
-          if (mounted) {
-            setState(() {
-              // hide spinner when finished; if the load was quick the spinner never showed.
-              _showLoading = false;
-            });
-          }
-        });
-
-    return future;
   }
 
   void _clearHistory() {
@@ -151,7 +123,7 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
       _history.clear();
       _currentRoot = widget.root;
     });
-    _childrenFuture = _loadChildrenForRoot(_currentRoot);
+    _loadChildrenForCurrentRoot();
   }
 
   void _popToRoot(int index) {
@@ -161,7 +133,7 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
         _currentRoot = _history.removeLast();
       }
     });
-    _childrenFuture = _loadChildrenForRoot(_currentRoot);
+    _loadChildrenForCurrentRoot();
   }
 
   Widget _buildBreadcrumbItem(R node) => widget.breadcrumbBuilder(node);
@@ -193,37 +165,22 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
         ),
       ),
       Expanded(
-        child: FutureBuilder<List<R>>(
-          future: _childrenFuture ??= _loadChildrenForRoot(_currentRoot),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              // Only show the progress indicator if the loading exceeded the short delay.
-              if (_showLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              // Don't show the spinner for very short loads — avoid flicker.
-              return const SizedBox.shrink();
-            }
-            if (snapshot.hasError) {
-              return Center(child: Text("Error: \\${snapshot.error}"));
-            }
-            final children = snapshot.data ?? [];
-            return ListView.builder(
-              itemCount: children.length,
-              itemBuilder: (ctx, i) {
-                final node = children[i];
-                return widget.itemBuilder(node, () {
-                  final shallSelect = widget.shallSelect?.call(node) ?? false;
-                  if (shallSelect) {
-                    widget.onSelect?.call(node);
-                    return;
-                  }
-                  _pushRoot(node);
-                });
-              },
-            );
-          },
-        ),
+        child: _loadError != null
+            ? Center(child: Text("Error: \\${_loadError}"))
+            : ListView.builder(
+                itemCount: _children.length,
+                itemBuilder: (ctx, i) {
+                  final node = _children[i];
+                  return widget.itemBuilder(node, () {
+                    final shallSelect = widget.shallSelect?.call(node) ?? false;
+                    if (shallSelect) {
+                      widget.onSelect?.call(node);
+                      return;
+                    }
+                    _pushRoot(node);
+                  });
+                },
+              ),
       ),
     ],
   );
