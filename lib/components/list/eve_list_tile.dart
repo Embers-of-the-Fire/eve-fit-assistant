@@ -188,9 +188,15 @@ class TypeListTile extends ConsumerWidget {
     if (typeInfo == null) {
       return ListTile(title: Text("Unknown Type[$typeId]"));
     }
+    final metaGroupIcon = ref.watch(
+      bundleCollectionGetMetaGroupProvider(typeInfo.metaGroupId).select((t) => t?.icon),
+    );
 
     return ListTile(
-      leading: leading.orElse(() => EveIcon(icon: typeInfo.icon, fallbackIcon: fallbackLeading)),
+      leading: leading.orElse(
+        () =>
+            EveIcon(icon: typeInfo.icon, overlayIcon: metaGroupIcon, fallbackIcon: fallbackLeading),
+      ),
       title: LocalizedText(localizationKey: typeInfo.typeName),
       trailing: trailing,
       onTap: onTap,

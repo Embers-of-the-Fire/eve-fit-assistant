@@ -11,14 +11,20 @@ class EveIcon extends ConsumerWidget {
   const EveIcon({
     required this.icon,
     super.key,
+    this.overlayIcon,
     this.acceptGraphic = true,
     this.acceptIcon = true,
+    this.size = 24,
+    this.overlaySize = 12,
     this.fallbackIcon,
   });
 
   final pb.Icon icon;
+  final pb.Icon? overlayIcon;
   final bool acceptGraphic;
   final bool acceptIcon;
+  final double size;
+  final double overlaySize;
   final Widget? fallbackIcon;
 
   @override
@@ -35,8 +41,30 @@ class EveIcon extends ConsumerWidget {
           .tryOrElse(() => null);
     }
     if (imagePath == null) {
-      return fallbackIcon ?? const Image(image: ImageAssets.unknownIcon, width: 24);
+      return fallbackIcon ?? Image(image: ImageAssets.unknownIcon, width: size, height: size);
     }
-    return Image.file(imagePath, width: 24);
+    if (overlayIcon == null) {
+      return Image.file(imagePath, width: size, height: size);
+    }
+    return SizedBox(
+      height: size,
+      width: size,
+      child: Stack(
+        children: [
+          Image.file(imagePath, width: size),
+          Positioned(
+            top: 0,
+            left: 0,
+            child: EveIcon(
+              icon: overlayIcon!,
+              acceptGraphic: acceptGraphic,
+              acceptIcon: acceptIcon,
+              size: overlaySize,
+              fallbackIcon: const SizedBox.shrink(),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
