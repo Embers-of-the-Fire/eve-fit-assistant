@@ -42,7 +42,7 @@ abstract class CharacterStorage with _$CharacterStorage {
 
   factory CharacterStorage.fromJson(Map<String, dynamic> json) => _$CharacterStorageFromJson(json);
 
-  String get characterStoragePath => p.join(PathProvider.charactersPath, "${characterId}.json");
+  String get characterStoragePath => p.join(PathProvider.charactersPath, "$characterId.json");
 
   static String characterStoragePathForId(String characterId) =>
       p.join(PathProvider.charactersPath, "$characterId.json");

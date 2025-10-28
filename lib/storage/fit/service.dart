@@ -9,7 +9,6 @@ import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
@@ -46,17 +45,14 @@ abstract class FitServiceState with _$FitServiceState {
       when(notInitialized: FitServiceStatus.uninitialized, loaded: (status, fit) => status);
 }
 
-@riverpodSingleton
-FitStorage fit(Ref ref) => ref.watch(fitServiceProvider.select((value) => value.fit));
-
-@riverpodSingleton
-FitServiceStatus fitStatus(Ref ref) =>
-    ref.watch(fitServiceProvider.select((value) => value.status));
-
-@riverpodSingleton
-class FitService extends _$FitService {
+@riverpod
+class Fit extends _$Fit {
   @override
-  FitServiceState build() => const FitServiceState.notInitialized();
+  FitServiceState build(String fitId) {
+    ref.onDispose(_unmount);
+    unawaited(Future(() => _mount(fitId)));
+    return const FitServiceState.notInitialized();
+  }
 
   Future<void> _loadFromDisk(String fitId) async {
     if (state.isInitialized) {
@@ -98,13 +94,12 @@ class FitService extends _$FitService {
     }
   }
 
-  Future<void> mount(String fitId) async {
+  Future<void> _mount(String fitId) async {
     await _loadFromDisk(fitId);
   }
 
-  Future<void> unmount() async {
+  Future<void> _unmount() async {
     await _syncToDisk();
-    state = const FitServiceState.notInitialized();
   }
 
   Future<void> update(FitStorage Function(FitStorage) updater) async {

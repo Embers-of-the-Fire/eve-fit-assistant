@@ -34,12 +34,10 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_initialized) return;
-    final shipNameId = ref.read(
-      bundleCollectionGetTypeProvider(widget.shipId).select((t) => t?.typeName.id ?? -1),
-    );
-    final shipName = ref.read(localizationProvider(shipNameId)) ?? "";
     _textController = TextEditingController(
-      text: context.l10n.fitCreationPageDialogHint(shipName: shipName),
+      text: context.l10n.fitCreationPageDialogHint(
+        count: ref.read(fitsForShipProvider(widget.shipId).select((t) => t.length + 1)),
+      ),
     );
     _initialized = true;
   }
@@ -70,6 +68,7 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
               ),
               onTap: () {
                 debug("Open other saved fit ${fit.name} ${fit.fitId}");
+                unawaited(context.router.push(FitRoute(fitId: fit.fitId)));
               },
             ),
         ],

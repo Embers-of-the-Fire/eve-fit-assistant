@@ -1,7 +1,16 @@
-from pathlib import Path
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from caseconverter import camelcase
 
-from data.lib.constant import PROJECT_ROOT, ASSETS_ROOT, ASSETS_OUT_PATH
+from data.lib.constant import ASSETS_OUT_PATH
+from data.lib.constant import ASSETS_ROOT
+from data.lib.constant import PROJECT_ROOT
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def codegen_dart() -> list[Path]:
@@ -20,7 +29,9 @@ def codegen_dart() -> list[Path]:
             if any_file.is_file():
                 relative_path = any_file.relative_to(assets_dir).as_posix()
                 variable_name = camelcase(any_file.stem)
-                f.write(f'  static const BundleKey {variable_name} = BundleKey("{relative_path}");\n')
+                f.write(
+                    f'  static const BundleKey {variable_name} = BundleKey("{relative_path}");\n'
+                )
 
         f.write("}\n\n")
 
@@ -30,8 +41,10 @@ def codegen_dart() -> list[Path]:
             if any_file.is_file():
                 relative_path = any_file.relative_to(assets_dir).as_posix()
                 variable_name = camelcase(any_file.stem)
-                f.write(f'  static const ImageProvider {variable_name} ='
-                        f' AssetImage("{relative_path}");\n')
+                f.write(
+                    f"  static const ImageProvider {variable_name} ="
+                    f' AssetImage("{relative_path}");\n'
+                )
 
         f.write("}\n")
 

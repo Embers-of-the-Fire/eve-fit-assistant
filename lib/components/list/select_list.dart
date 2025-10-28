@@ -166,7 +166,7 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
       ),
       Expanded(
         child: _loadError != null
-            ? Center(child: Text("Error: \\${_loadError}"))
+            ? Center(child: Text("Error: \\$_loadError"))
             : ListView.builder(
                 itemCount: _children.length,
                 itemBuilder: (ctx, i) {

@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
-from data.lib.log import info, warning
+from data.lib.log import info
+from data.lib.log import warning
 from data.lib.schema import collections_pb2
 from data.lib.utils import get_bin_size
 
