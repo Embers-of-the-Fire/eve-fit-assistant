@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -28,8 +29,8 @@ class InfoDialog extends ConsumerWidget {
   final Widget? content;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => AlertDialog(
-    title: Text(title),
+  Widget build(BuildContext context, WidgetRef ref) => AppDialog(
+    title: title,
     content: content,
     actions: [ElevatedButton(onPressed: () => context.nav.pop(), child: Text(context.l10n.ok))],
   );

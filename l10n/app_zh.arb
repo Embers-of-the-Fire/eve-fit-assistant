@@ -30,6 +30,15 @@
   "settingTileBundleManagerTitle": "数据包",
   "@@@_FIT_CREATION_PAGE": {},
   "fitCreationPageTitle": "创建新配置",
+  "fitCreationPageDialogHint": "[{shipName}] 新配置",
+  "@fitCreationPageDialogHint": {
+    "placeholders": {
+      "shipName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitCreationPageDialogErrorText": "请输入配置名。",
   "@@@_APP_SETTINGS_PAGE": {},
   "appSettingsPageTitle": "应用设置",
   "appSettingsPageSectionGeneral": "常规",

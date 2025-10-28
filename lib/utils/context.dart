@@ -6,4 +6,5 @@ extension ContextExt on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
   NavigatorState get nav => Navigator.of(this);
   Locale get locale => Localizations.localeOf(this);
+  MediaQueryData get mediaQuery => MediaQuery.of(this);
 }

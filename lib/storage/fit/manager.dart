@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fpdart/fpdart.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as p;
 import "package:riverpod_annotation/riverpod_annotation.dart";
@@ -96,6 +97,10 @@ class FitRegistryManager extends _$FitRegistryManager {
     registryFile.writeAsStringSync(registryContent);
   }
 }
+
+@riverpod
+Iterable<FitMetadata> fitsForShip(Ref ref, int shipId) =>
+    ref.watch(fitRegistryManagerProvider).fits.values.filter((t) => t.shipTypeId == shipId);
 
 @riverpodSingleton
 class FitManager extends _$FitManager {

@@ -20,6 +20,6 @@ class LocalizedText extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final loc = ref.watch(localizationProvider(localizationKey.id));
 
-    return Text(loc.map(formatter) ?? "LOC[$localizationKey]");
+    return Text(loc.map(formatter) ?? "LOC[${localizationKey.id}]");
   }
 }
