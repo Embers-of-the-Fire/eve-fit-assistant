@@ -76,7 +76,7 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
       ),
       actions: [
         TextButton(onPressed: () => context.nav.pop(), child: Text(context.l10n.cancel)),
-        TextButton(
+        ElevatedButton(
           onPressed: () {
             if (_form.currentState?.validate() ?? false) {
               context.nav.pop(_textController.text);
