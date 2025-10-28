@@ -61,7 +61,6 @@ from data.lib.log import info
 from data.lib.log import warning
 from data.lib.utils import execute_command
 from data.lib.utils import get_command
-from data.lib.workspace.build_increment import build_increment_bundle
 from data.lib.workspace.config import WorkspaceConfig
 
 
@@ -876,6 +875,8 @@ def data_cmd(skip: list[str], no_hash: bool):
 @click.argument("hash_list", envvar=DEFAULT_WORKSPACE_HASHLIST_ENV_VAR)
 def build_increment_cmd(hash_list: str):
     """Build increment data bundle."""
+    from data.lib.workspace.build_increment import build_increment_bundle
+
     name = data.lib.config.WORKSPACE_CACHE.current_workspace
     if not name:
         click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
