@@ -114,7 +114,7 @@ class FitManager extends _$FitManager {
 
   static String generateFitId() => _idGenerator.v4();
 
-  Future<void> newFit(int shipId, String name) async {
+  Future<FitMetadata> newFit(int shipId, String name) async {
     final ship = ref.watch(
       bundleCollectionServiceProvider.select(
         (collection) => collection.collection?.getShip(shipId),
@@ -148,5 +148,6 @@ class FitManager extends _$FitManager {
     }
     await path.writeAsString(text);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(metadata);
+    return metadata;
   }
 }

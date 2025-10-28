@@ -1,12 +1,24 @@
 part of "page.dart";
 
-Future<String?> _showShipCreateDialog(BuildContext context, {required int shipId}) => showDialog(
-  context: context,
-  builder: (context) => _ShipCreateDialog(shipId: shipId),
-);
+Future<String?> _showShipCreateDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required int shipId,
+}) async {
+  final out = await showDialog<String?>(
+    context: context,
+    builder: (context) => _ShipCreateDialog(shipId: shipId),
+  );
+  if (out == null || out.isEmpty) return null;
+  info('Creating ship $shipId with name "$out"');
+
+  final newFitMetadata = await ref.watch(fitManagerProvider.notifier).newFit(shipId, out);
+
+  return newFitMetadata.fitId;
+}
 
 class _ShipCreateDialog extends ConsumerStatefulWidget {
-  _ShipCreateDialog({required this.shipId, super.key});
+  const _ShipCreateDialog({required this.shipId});
 
   final int shipId;
   @override
@@ -48,7 +60,18 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
                   value?.isEmpty ?? true ? context.l10n.fitCreationPageDialogErrorText : null,
             ),
           ),
-          for (final fit in relatedFits) ListTile(title: Text(fit.name)),
+          for (final fit in relatedFits)
+            ListTile(
+              title: Text(fit.name),
+              subtitle: Text(
+                yMMMMdHmsLocalized(
+                  context,
+                ).format(DateTime.fromMillisecondsSinceEpoch(fit.lastModified).toLocal()),
+              ),
+              onTap: () {
+                debug("Open other saved fit ${fit.name} ${fit.fitId}");
+              },
+            ),
         ],
       ),
       actions: [

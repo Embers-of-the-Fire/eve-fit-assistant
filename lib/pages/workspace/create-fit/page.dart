@@ -2,12 +2,14 @@ import "package:auto_route/annotations.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/eve_select_list.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/datetime.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -27,7 +29,7 @@ class FitCreationPage extends ConsumerWidget {
         _ => false,
       },
       onSelect: (t) => switch (t) {
-        EveSelectListRootType(:final typeId) => _showShipCreateDialog(context, shipId: typeId),
+        EveSelectListRootType(:final typeId) => _showShipCreateDialog(context, ref, shipId: typeId),
         _ => null,
       },
       root:
