@@ -73,35 +73,42 @@ class Fit extends _$Fit {
     );
   }
 
-  Future<void> _syncToDisk({bool setState = true}) async {
+  Future<void> _syncToDisk() async {
     if (!state.isInitialized) {
       error("Cannot sync fit service: not initialized");
       return;
     }
     final fit = state.fit;
-    if (setState) {
-      state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
-    }
+    state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     final path = File(fit.fitStoragePath);
     final text = jsonEncode(fit.toJson());
     if (!path.existsSync()) {
       await path.parent.create(recursive: true);
     }
     await path.writeAsString(text);
-    if (setState) {
-      state = FitServiceState.loaded(
-        status: FitServiceStatus.loaded(lastSync: DateTime.now()),
-        fit: state.fit,
-      );
-    }
+    state = FitServiceState.loaded(
+      status: FitServiceStatus.loaded(lastSync: DateTime.now()),
+      fit: state.fit,
+    );
   }
 
   Future<void> _mount(String fitId) async {
     await _loadFromDisk(fitId);
   }
 
-  Future<void> _unmount() async {
-    await _syncToDisk(setState: false);
+  void _unmount() {
+    debug("Unmounting fit service");
+    if (!state.isInitialized) {
+      debug("Fit service not initialized, skipping unmount");
+      return;
+    }
+    final fit = state.fit;
+    final path = File(fit.fitStoragePath);
+    final text = jsonEncode(fit.toJson());
+    if (!path.existsSync()) {
+      path.parent.createSync(recursive: true);
+    }
+    unawaited(path.writeAsString(text));
   }
 
   Future<void> update(FitStorage Function(FitStorage) updater) async {
@@ -114,7 +121,7 @@ class Fit extends _$Fit {
     ).copyWith(metadata: state.fit.metadata.copyWith(lastModified: DateTime.now().second));
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);
-    await _syncToDisk(setState: false);
+    await _syncToDisk();
   }
 }
 
