@@ -79,7 +79,9 @@ class Fit extends _$Fit {
       return;
     }
     final fit = state.fit;
-    state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
+    if (setState) {
+      state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
+    }
     final path = File(fit.fitStoragePath);
     final text = jsonEncode(fit.toJson());
     if (!path.existsSync()) {
@@ -99,7 +101,7 @@ class Fit extends _$Fit {
   }
 
   Future<void> _unmount() async {
-    await _syncToDisk();
+    await _syncToDisk(setState: false);
   }
 
   Future<void> update(FitStorage Function(FitStorage) updater) async {
