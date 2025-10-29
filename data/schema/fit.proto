@@ -17,6 +17,8 @@ message Ship {
 
   required uint32 turret_slots = 8;
   required uint32 launcher_slots = 9;
+  
+  required uint32 fighter_tubes = 10;
 }
 
 message Subsystem {

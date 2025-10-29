@@ -77,3 +77,16 @@ extension Inspect<T> on Iterable<T> {
     }
   }
 }
+
+extension Intersperse<T> on Iterable<T> {
+  Iterable<T> intersperse(T separator) sync* {
+    final iterator = this.iterator;
+    if (iterator.moveNext()) {
+      yield iterator.current;
+      while (iterator.moveNext()) {
+        yield separator;
+        yield iterator.current;
+      }
+    }
+  }
+}

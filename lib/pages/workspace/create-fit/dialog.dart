@@ -68,7 +68,7 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
               ),
               onTap: () {
                 debug("Open other saved fit ${fit.name} ${fit.fitId}");
-                unawaited(context.router.push(FitRoute(fitId: fit.fitId)));
+                unawaited(context.router.popAndPush(FitRoute(fitId: fit.fitId)));
               },
             ),
         ],

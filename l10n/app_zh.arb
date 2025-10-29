@@ -45,6 +45,12 @@
       "shipName": { "type": "String" }
     }
   },
+	"fitTabsCharacter": "角色",
+	"fitTabsEquipment": "装备",
+	"fitTabsAttributes": "属性",
+	"fitTabsDrone": "无人机",
+	"fitTabsFighter": "舰载机",
+	"fitTabsUtils": "杂项",
   "@@@_APP_SETTINGS_PAGE": {},
   "appSettingsPageTitle": "应用设置",
   "appSettingsPageSectionGeneral": "常规",

@@ -50,9 +50,16 @@ class _FitPage extends ConsumerWidget {
       );
     }
 
+    final shipInfo = ref.watch(bundleCollectionGetShipProvider(fit.fit.body.shipTypeId));
+
+    if (shipInfo == null) {
+      fatal("Failed to load ship info: ${fit.fit.body.shipTypeId}", stackTrace: StackTrace.current);
+      throw StateError("Failed to load ship info: ${fit.fit.body.shipTypeId}");
+    }
+
     return Layout(
       title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
-      child: FitDisplayColumns(fit: fit.fit, fitMetadata: fitMetadata),
+      child: FitDisplayColumns(ship: shipInfo, fit: fit.fit, fitMetadata: fitMetadata),
     );
   }
 }

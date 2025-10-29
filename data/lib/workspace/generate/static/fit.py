@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic import Field
 
+from data.lib.constant import FIGHTER_TUBES_ATTR
 from data.lib.constant import HIGH_SLOT_ATTR
 from data.lib.constant import HIGH_SLOT_MODIFIER_ATTR
 from data.lib.constant import LAUNCHER_SLOT_ATTR
@@ -36,19 +37,19 @@ class DogmaAttributeItem(BaseModel):
     value: float
 
 
-_DETERMINE_SHIP_ATTRS = [
+_DETERMINE_SHIP_ATTRS = {
     HIGH_SLOT_ATTR,
     MEDIUM_SLOT_ATTR,
     LOW_SLOT_ATTR,
     SERVICE_SLOT_ATTR,
-]
-_DETERMINE_SUBSYSTEM_ATTRS = [
+}
+_DETERMINE_SUBSYSTEM_ATTRS = {
     HIGH_SLOT_MODIFIER_ATTR,
     MEDIUM_SLOT_MODIFIER_ATTR,
     LOW_SLOT_MODIFIER_ATTR,
     TURRET_SLOT_MODIFIER_ATTR,
     LAUNCHER_SLOT_MODIFIER_ATTR,
-]
+}
 
 
 async def generate(data: GeneratorDatasource, collection):
@@ -132,6 +133,14 @@ async def generate(data: GeneratorDatasource, collection):
                     int(attr.value)
                     for attr in validated.dogmaAttributes
                     if attr.attributeID == LAUNCHER_SLOT_ATTR
+                ),
+                0,
+            )
+            ship_def.fighter_tubes = next(
+                (
+                    int(attr.value)
+                    for attr in validated.dogmaAttributes
+                    if attr.attributeID == FIGHTER_TUBES_ATTR
                 ),
                 0,
             )
