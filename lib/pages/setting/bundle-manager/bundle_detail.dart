@@ -137,12 +137,11 @@ class _PatchTile extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(
-                "${loc.bundleManagerBundleAppVersion}${patch.appVersion}",
-                style: context.theme.textTheme.bodyMedium,
-              ),
+            Text(
+              "${loc.bundleManagerBundleAppVersion}${patch.appVersion}",
+              style: context.theme.textTheme.bodyMedium,
             ),
+            const SizedBox(width: 24),
             Text(
               patch.isIncremental
                   ? loc.bundleManagerDetailVariantIncremental
