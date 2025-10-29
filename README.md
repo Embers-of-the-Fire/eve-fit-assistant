@@ -56,7 +56,7 @@ including interactions with the backend.
 It's recommended to use [Android Studio](https://developer.android.com/studio),
 but you can also try [Visual Studio Code](https://code.visualstudio.com/).
 
-The repository contains some configurations for Android Studio for easier development.
+The repository contains some configurations for both editors for easier development.
 
 ### Prerequisites
 

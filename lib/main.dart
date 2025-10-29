@@ -43,7 +43,7 @@ class MyApp extends ConsumerWidget {
       tabBarTheme: TabBarThemeData(indicatorColor: colorScheme.primary),
     );
     return MaterialApp.router(
-      title: "Flutter Demo",
+      title: "EVE Fit Assistant",
       theme: theme,
       locale: Locale(ref.watch(localeProvider).name),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
