@@ -1,0 +1,35 @@
+34317:
+  modes:
+    - variant: defense
+      typeId: 34319
+    - variant: target
+      typeId: 34321
+    - variant: speed
+      typeId: 34323
+
+34562:
+  modes:
+    - variant: defense
+      typeId: 34564
+    - variant: target
+      typeId: 34570
+    - variant: speed
+      typeId: 34566
+
+34828:
+  modes:
+    - variant: defense
+      typeId: 35676
+    - variant: target
+      typeId: 35678
+    - variant: speed
+      typeId: 35677
+
+35683:
+  modes:
+    - variant: defense
+      typeId: 35686
+    - variant: target
+      typeId: 35688
+    - variant: speed
+      typeId: 35687

@@ -19,6 +19,8 @@ message Ship {
   required uint32 launcher_slots = 9;
   
   required uint32 fighter_tubes = 10;
+
+  repeated TacticalMode tactical_modes = 11;
 }
 
 message Subsystem {
@@ -30,4 +32,15 @@ message Subsystem {
 
   required uint32 turret_slots = 5;
   required uint32 launcher_slots = 6;
+}
+
+message TacticalMode {
+  enum TacticalModeVariant {
+    DEFENSE = 1;
+    SPEED = 2;
+    TARGET = 3;
+  }
+  required uint32 type_id = 1;
+  required uint32 ship_id = 2;
+  required TacticalModeVariant variant = 3;
 }

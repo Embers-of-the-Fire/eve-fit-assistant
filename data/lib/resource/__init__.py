@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from data.lib.resource.fsd import FsdManager
+from data.lib.resource.patch import PatchesManager
 from data.lib.resource.resource_index import ResourceIndex
 
 
@@ -14,6 +15,7 @@ class ResourceManager:
     __app_index: ResourceIndex
     __resource_index: ResourceIndex
     __fsd: FsdManager
+    __patches: PatchesManager
 
     def __init__(
         self,
@@ -21,6 +23,7 @@ class ResourceManager:
         res_index: Path,
         cache_root: Path,
         fsd_root: Path,
+        patch_root: Path,
         raw_download_url: str,
     ):
         self.__app_index = ResourceIndex(
@@ -38,6 +41,7 @@ class ResourceManager:
             raw_download_url=raw_download_url,
         )
         self.__fsd = FsdManager(fsd_root_dir=fsd_root)
+        self.__patches = PatchesManager(patches_root_dir=patch_root)
 
     @property
     def app(self) -> ResourceIndex:
@@ -50,3 +54,7 @@ class ResourceManager:
     @property
     def fsd(self) -> FsdManager:
         return self.__fsd
+
+    @property
+    def patches(self) -> PatchesManager:
+        return self.__patches

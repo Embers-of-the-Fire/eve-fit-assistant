@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:riverpod/riverpod.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "service.freezed.dart";
@@ -140,24 +141,49 @@ class FitEmulatorState with _$FitEmulatorState {
     _FitEmulatorStateEmulating(previous: final _) => this,
     _ => const _FitEmulatorStateEmulating(previous: null),
   };
+
+  native.Ship? get emulated => when(
+    notInitialized: () => null,
+    emulating: (previous) => previous,
+    emulated: (output) => output,
+  );
 }
 
-@riverpodSingleton
+@riverpod
+native.Ship? nativeEmulatedShip(Ref ref, String fitId) =>
+    ref.watch(fitEmulatorServiceProvider(fitId).select((t) => t.emulated));
+
+@riverpod
 class FitEmulatorService extends _$FitEmulatorService {
   @override
-  FitEmulatorState build() => const FitEmulatorState.notInitialized();
+  FitEmulatorState build(String fitId) {
+    // Register listener for subsequent changes. Do NOT synchronously call
+    // `emulate` from the listener when `fireImmediately` would trigger it
+    // during `build` (that can cause `state` to be mutated before the
+    // notifier is fully initialized). Instead defer actual emulation to a
+    // microtask.
+    ref.listen<FitServiceState>(fitProvider(fitId), (prev, next) {
+      if (prev == next) return;
+      if (!next.isInitialized) {
+        state = const FitEmulatorState.notInitialized();
+        return;
+      }
+      unawaited(Future(() => emulate(next.fit)));
+    }, fireImmediately: true);
+
+    return const FitEmulatorState.notInitialized();
+  }
 
   Future<void> emulate(FitStorage fitStorage) async {
-    // We do no guard here because we want to refresh the output
-    // if the state changes during the emulation.
-
     state = state.emulating;
+    debug("Started emulating ${fitStorage.metadata.fitId}");
     final nativeCompatible = convertToNative(fitStorage);
     final emulatedOutput = await ref
         .watch(nativeFitEngineServiceProvider)
         .engine
         .emulate(fit: nativeCompatible);
     state = FitEmulatorState.emulated(output: emulatedOutput);
+    debug("Finished emulating ${fitStorage.metadata.fitId}");
   }
 }
 

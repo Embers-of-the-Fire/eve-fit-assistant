@@ -87,6 +87,7 @@ class WorkspaceResources(BaseModel):
     resource_index: Path
     application_index: Path
     fsd: Path
+    patches: Path
 
     def resolve(self, descriptor_root: Path, no_check: bool = False):
         if not self.resource_index.is_absolute():
@@ -95,6 +96,8 @@ class WorkspaceResources(BaseModel):
             self.application_index = (descriptor_root / self.application_index).resolve()
         if not self.fsd.is_absolute():
             self.fsd = (descriptor_root / self.fsd).resolve()
+        if not self.patches.is_absolute():
+            self.patches = (descriptor_root / self.patches).resolve()
 
         if no_check:
             return
@@ -118,6 +121,13 @@ class WorkspaceResources(BaseModel):
             exit(1)
         if not self.fsd.is_dir():
             error(f"FSD resource path is not a directory: {self.fsd}")
+            exit(1)
+        
+        if not self.patches.exists():
+            error(f"Patches path does not exist: {self.patches}")
+            exit(1)
+        if not self.patches.is_dir():
+            error(f"Patches path is not a directory: {self.patches}")
             exit(1)
 
 

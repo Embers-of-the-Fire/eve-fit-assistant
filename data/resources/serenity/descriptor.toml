@@ -12,6 +12,7 @@ identifier = "serenity"
 fsd = "fsd"
 resource_index = "resfileindex.txt"
 application_index = "index_serenity.txt"
+patches = "patches"
 
 [services]
 resource_url = "https://ma79.gdl.netease.com/eve/{resource_type}/{resource_url}"

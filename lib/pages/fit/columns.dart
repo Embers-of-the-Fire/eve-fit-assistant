@@ -1,71 +1,52 @@
-import "package:eve_fit_assistant/data/proto/fit.pb.dart";
-import "package:eve_fit_assistant/storage/fit/manager.dart";
-import "package:eve_fit_assistant/storage/fit/schema.dart";
-import "package:eve_fit_assistant/utils/context.dart";
-import "package:eve_fit_assistant/utils/fp.dart";
-import "package:eve_fit_assistant/utils/screen.dart";
-import "package:flutter/material.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
+part of "page.dart";
 
 class FitDisplayColumns extends ConsumerWidget {
   const FitDisplayColumns({
     required this.fit,
     required this.fitMetadata,
+    required this.fitWrapper,
     required this.ship,
     super.key,
   });
 
   final FitMetadata fitMetadata;
   final FitStorage fit;
+  final FitWrapper fitWrapper;
   final Ship ship;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final columns = columnCount(context);
 
-    return Row(
-      children: [
-        ...range(0, columns)
-            .map<Widget>(
-              (i) => Expanded(
-                child: _FitDisplayTab(
-                  initialIndex: i + 1,
-                  ship: ship,
-                  fitMetadata: fitMetadata,
-                  fit: fit,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Row(
+        children: [
+          ...range(0, columns)
+              .map<Widget>(
+                (i) => Expanded(
+                  child: _FitDisplayTab(
+                    fitWrapper: fitWrapper,
+                    initialIndex: i + 1,
+                    ship: ship,
+                    fitMetadata: fitMetadata,
+                    fit: fit,
+                  ),
                 ),
-              ),
-            )
-            .intersperse(const VerticalDivider(indent: 8, endIndent: 8)),
-      ],
+              )
+              .intersperse(const VerticalDivider(indent: 8, endIndent: 8)),
+        ],
+      ),
     );
   }
-}
-
-class FitDisplayColumn extends StatelessWidget {
-  const FitDisplayColumn({
-    required this.fit,
-    required this.fitMetadata,
-    required this.ship,
-    super.key,
-  });
-
-  final FitMetadata fitMetadata;
-  final FitStorage fit;
-  final Ship ship;
-
-  @override
-  Widget build(BuildContext context) =>
-      Center(child: Column(children: [Text("$fitMetadata\n"), Text("$fit\n")]));
 }
 
 class _FitDisplayTab extends StatefulWidget {
   const _FitDisplayTab({
     required this.ship,
     required this.fitMetadata,
+    required this.fitWrapper,
     required this.fit,
-    // Maybe false positive: unused parameter
-    // ignore: unused_element_parameter
     this.initialIndex = 1,
   });
 
@@ -73,6 +54,7 @@ class _FitDisplayTab extends StatefulWidget {
 
   final FitMetadata fitMetadata;
   final FitStorage fit;
+  final FitWrapper fitWrapper;
   final Ship ship;
 
   @override
@@ -99,7 +81,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
           Tab(text: context.l10n.fitTabsEquipment),
           Tab(text: context.l10n.fitTabsAttributes),
           Tab(
-            text: widget.fit.body.fighters.isNotEmpty
+            text: widget.ship.fighterTubes > 0
                 ? context.l10n.fitTabsFighter
                 : context.l10n.fitTabsDrone,
           ),
@@ -109,7 +91,16 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
       Expanded(
         child: TabBarView(
           controller: _tabController,
-          children: const Column(children: [Center(child: Text("Tab content"))]).repeat(5).toList(),
+          children: [
+            ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
+            _EquipmentTab(fit: widget.fit, fitWrapper: widget.fitWrapper, ship: widget.ship),
+            _AttributeTab(fit: widget.fit),
+            if (widget.ship.fighterTubes > 0)
+              _FighterTab(fit: widget.fit)
+            else
+              _DroneTab(fit: widget.fit),
+            ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
+          ],
         ),
       ),
     ],

@@ -1,15 +1,5 @@
 part of "../fp.dart";
 
-extension Enumerate<T> on Iterable<T> {
-  Iterable<(int, T)> enumerate([int start = 0]) sync* {
-    int index = start;
-    for (final element in this) {
-      yield (index, element);
-      index++;
-    }
-  }
-}
-
 extension FilterNull<T> on Iterable<T?> {
   Iterable<T> filterNull() sync* {
     for (final element in this) {
@@ -78,15 +68,29 @@ extension Inspect<T> on Iterable<T> {
   }
 }
 
-extension Intersperse<T> on Iterable<T> {
-  Iterable<T> intersperse(T separator) sync* {
-    final iterator = this.iterator;
-    if (iterator.moveNext()) {
-      yield iterator.current;
-      while (iterator.moveNext()) {
-        yield separator;
-        yield iterator.current;
+extension Cycle<T> on Iterable<T> {
+  Iterable<T> cycle() sync* {
+    final elements = toList();
+    if (elements.isEmpty) throw StateError("Cannot cycle an empty iterable");
+    while (true) {
+      for (final element in elements) {
+        yield element;
       }
+    }
+  }
+}
+
+extension SkipTo<T> on Iterable<T> {
+  Iterable<T> skipTo(bool Function(T) predicate) sync* {
+    final iterator = this.iterator;
+    while (iterator.moveNext()) {
+      if (predicate(iterator.current)) {
+        yield iterator.current;
+        break;
+      }
+    }
+    while (iterator.moveNext()) {
+      yield iterator.current;
     }
   }
 }

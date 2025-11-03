@@ -53,6 +53,10 @@ application_index = "index_example.txt"
 # For more information, see the `fsd` section in `<project>/data/README.md`.
 fsd = "fsd"
 
+# The directory to store patches for the resource.
+# The patches will be included in the version control and must be updated manually.
+patches = "patches"
+
 [services]
 # The `services` section lists all the remote service required by this resource.
 

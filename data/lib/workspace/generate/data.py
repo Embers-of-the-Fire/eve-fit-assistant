@@ -23,6 +23,7 @@ class GeneratorDatasource:
             res_index=self.__workspace_config.resources.resource_index,
             cache_root=self.__workspace_config.paths.cache,
             fsd_root=self.__workspace_config.resources.fsd,
+            patch_root=self.__workspace_config.resources.patches,
             raw_download_url=config.services.resource_url,
         )
         self.__path_manager = PathManager(

@@ -1,15 +1,40 @@
 import "package:auto_route/annotations.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/pages/fit/columns.dart";
+import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:eve_fit_assistant/native/api/output.dart" as native;
+import "package:eve_fit_assistant/native/api/output.dart" show $OutSlotTypeCopyWith;
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/fp.dart";
+import "package:eve_fit_assistant/utils/screen.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fpdart/fpdart.dart" hide State;
+import "package:freezed_annotation/freezed_annotation.dart";
 import "package:loading_indicator/loading_indicator.dart";
+
+part "columns.dart";
+part "components/action_icons.dart";
+part "components/equipment_header.dart";
+part "components/slot_row/empty_slot_row.dart";
+part "components/slot_row/slot_row.dart";
+part "components/warning.dart";
+part "identifier.dart";
+part "tabs/attributes.dart";
+part "tabs/character.dart";
+part "tabs/drone.dart";
+part "tabs/equipment.dart";
+part "tabs/fighter.dart";
+part "tabs/utils.dart";
+part "wrapper.dart";
+
+part "page.freezed.dart";
 
 @RoutePage()
 class FitPage extends StatelessWidget {
@@ -57,9 +82,16 @@ class _FitPage extends ConsumerWidget {
       throw StateError("Failed to load ship info: ${fit.fit.body.shipTypeId}");
     }
 
+    final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier));
+
     return Layout(
       title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
-      child: FitDisplayColumns(ship: shipInfo, fit: fit.fit, fitMetadata: fitMetadata),
+      child: FitDisplayColumns(
+        ship: shipInfo,
+        fit: fit.fit,
+        fitMetadata: fitMetadata,
+        fitWrapper: fitWrapper,
+      ),
     );
   }
 }

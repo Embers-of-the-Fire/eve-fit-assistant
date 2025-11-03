@@ -1,7 +1,7 @@
 import "package:flutter/services.dart";
 import "package:flutter/widgets.dart";
 
-part "assets.g.dart";
+part "assets_generated.dart";
 
 class BundleKey {
   const BundleKey(this.key);

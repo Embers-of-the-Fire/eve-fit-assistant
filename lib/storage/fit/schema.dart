@@ -72,7 +72,7 @@ abstract class FitStorageSlots with _$FitStorageSlots {
     required IList<Option<FitModuleItem>> rig,
     required IList<Option<FitModuleItem>> subsystem,
     required IList<Option<FitModuleItem>> service,
-    required Option<FitModuleItem> tacticalMode,
+    required Option<int> tacticalMode,
   }) = _FitStorageSlots;
 
   const FitStorageSlots._();
@@ -199,35 +199,36 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
       kinetic: fitStorage.body.damageProfile.kinetic,
       thermal: fitStorage.body.damageProfile.thermal,
     ),
-    modules:
-        [
-              (fitStorage.body.slots.high, native.SlotType.high),
-              (fitStorage.body.slots.medium, native.SlotType.medium),
-              (fitStorage.body.slots.low, native.SlotType.low),
-              (fitStorage.body.slots.rig, native.SlotType.rig),
-              (fitStorage.body.slots.subsystem, native.SlotType.subSystem),
-              ([fitStorage.body.slots.tacticalMode], native.SlotType.tacticalMode),
-              (fitStorage.body.slots.service, native.SlotType.service),
-            ]
-            .flatMap<native.Module>(
-              (arg) => arg.$1.filterNone().mapWithIndex(
-                (val, index) => native.Module(
-                  itemId: val.itemId.when(
-                    item: native.ItemID.item,
-                    dynamic: native.ItemID.dynamic_,
-                  ),
-                  state: switch (val.state) {
-                    FitItemState.passive => native.State.passive,
-                    FitItemState.online => native.State.online,
-                    FitItemState.active => native.State.active,
-                    FitItemState.overload => native.State.overload,
-                  },
-                  charge: val.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
-                  slot: native.Slot(slotType: arg.$2, index: index),
-                ),
-              ),
-            )
-            .toList(),
+    modules: [
+      ...[
+        (fitStorage.body.slots.high, native.SlotType.high),
+        (fitStorage.body.slots.medium, native.SlotType.medium),
+        (fitStorage.body.slots.low, native.SlotType.low),
+        (fitStorage.body.slots.rig, native.SlotType.rig),
+        (fitStorage.body.slots.subsystem, native.SlotType.subSystem),
+        (fitStorage.body.slots.service, native.SlotType.service),
+      ].flatMap<native.Module>(
+        (arg) => arg.$1.filterNone().mapWithIndex(
+          (val, index) => native.Module(
+            itemId: val.itemId.when(item: native.ItemID.item, dynamic: native.ItemID.dynamic_),
+            state: switch (val.state) {
+              FitItemState.passive => native.State.passive,
+              FitItemState.online => native.State.online,
+              FitItemState.active => native.State.active,
+              FitItemState.overload => native.State.overload,
+            },
+            charge: val.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
+            slot: native.Slot(slotType: arg.$2, index: index),
+          ),
+        ),
+      ),
+      if (fitStorage.body.slots.tacticalMode.isSome())
+        native.Module(
+          itemId: native.ItemID.item(fitStorage.body.slots.tacticalMode.unwrap()),
+          state: native.State.online,
+          slot: const native.Slot(slotType: native.SlotType.tacticalMode, index: 0),
+        ),
+    ],
     drones: fitStorage.body.drones
         .map(
           (drone) => native.Drone(

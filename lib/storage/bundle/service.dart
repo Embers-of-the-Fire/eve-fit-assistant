@@ -147,9 +147,6 @@ BundleMetadata? currentBundle(Ref ref) => ref.watch(bundleServiceProvider).curre
 class BundleService extends _$BundleService {
   @override
   CurrentBundleStatus build() {
-    if (ref.read(bundleRegistryManagerProvider.select((value) => value.selectedBundleId)) != null) {
-      unawaited(loadBundle(ref.read(bundleRegistryManagerProvider).selectedBundleId!));
-    }
     ref.listen(bundleRegistryManagerProvider.select((value) => value.selectedBundleId), (
       prev,
       next,
@@ -159,8 +156,8 @@ class BundleService extends _$BundleService {
         state = const CurrentBundleStatus.notSelected();
         return;
       }
-      unawaited(loadBundle(ref.read(bundleRegistryManagerProvider).selectedBundleId!));
-    });
+      unawaited(loadBundle(next));
+    }, fireImmediately: true);
     return const CurrentBundleStatus.notSelected();
   }
 

@@ -3,3 +3,4 @@ resources/*
 !resources/*/
 resources/*/*
 !resources/*/descriptor.toml
+!resources/*/patches

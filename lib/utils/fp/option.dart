@@ -22,13 +22,18 @@ extension Flatten<T> on Option<T>? {
 
 extension Unwrap<T> on Option<T> {
   T unwrap([String? hint]) {
-    final stackTrace = StackTrace.current;
-    return match(() {
+    assert(() {
+      final stackTrace = StackTrace.current;
       final errorText = hint == null
           ? "Unwrapping an `Option.none`"
           : "Unwrapping an `Option.none`: $hint";
       error(errorText, stackTrace: stackTrace, error: Exception(errorText));
-      throw Exception(errorText);
+      return true;
+    }());
+    return match(() {
+      throw Exception(
+        hint == null ? "Unwrapping an `Option.none`" : "Unwrapping an `Option.none`: $hint",
+      );
     }, (value) => value);
   }
 }

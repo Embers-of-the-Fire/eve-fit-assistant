@@ -12,6 +12,7 @@ import "package:eve_fit_assistant/data/proto/meta_groups.pb.dart";
 import "package:eve_fit_assistant/data/proto/type_materials.pb.dart";
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -164,6 +165,7 @@ class BundleCollectionService extends _$BundleCollectionService {
   BundleCollectionStatus build() {
     ref.listen(bundleServiceProvider, (prev, next) async {
       if (!next.isLoaded) return;
+      ref.read(bundleLocalizationProvider);
       await _loadCollection();
     });
     return const BundleCollectionStatus.notInitialized();

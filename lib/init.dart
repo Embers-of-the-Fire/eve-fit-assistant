@@ -8,7 +8,9 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
@@ -50,5 +52,6 @@ void initWithRef(WidgetRef ref) {
   ref
     ..read(fitManagerProvider)
     ..read(bundleManagerProvider)
-    ..read(bundleCollectionServiceProvider);
+    ..read(bundleCollectionServiceProvider)
+    ..read(nativeFitEngineServiceProvider);
 }

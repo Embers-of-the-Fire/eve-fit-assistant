@@ -55,6 +55,7 @@ _DETERMINE_SUBSYSTEM_ATTRS = {
 async def generate(data: GeneratorDatasource, collection):
     info("Generating fit dependencies...")
     type_dogma = await data.resources.fsd.get("typedogma")
+    tactical_modes = data.resources.patches.get("tactical_mode", "yaml")
 
     ship = 0
     subsystem = 1
@@ -144,6 +145,19 @@ async def generate(data: GeneratorDatasource, collection):
                 ),
                 0,
             )
+
+            tm_variant_map = {
+                "defense": fit_pb2.TacticalMode.TacticalModeVariant.DEFENSE,
+                "speed": fit_pb2.TacticalMode.TacticalModeVariant.SPEED,
+                "target": fit_pb2.TacticalMode.TacticalModeVariant.TARGET,
+            }
+            if type_id in tactical_modes:
+                for mode in tactical_modes[type_id]["modes"]:
+                    tm = ship_def.tactical_modes.add()
+                    tm.type_id = mode["typeId"]
+                    tm.ship_id = type_id
+                    tm.variant = tm_variant_map[mode["variant"].lower()]
+            
             collection.ships[type_id].CopyFrom(ship_def)
         elif any(
             attr.attributeID in _DETERMINE_SUBSYSTEM_ATTRS and attr.value > 0
