@@ -1,18 +1,9 @@
 part of "page.dart";
 
 class FitDisplayColumns extends ConsumerWidget {
-  const FitDisplayColumns({
-    required this.fit,
-    required this.fitMetadata,
-    required this.fitWrapper,
-    required this.ship,
-    super.key,
-  });
+  const FitDisplayColumns({required this.fitContext, super.key});
 
-  final FitMetadata fitMetadata;
-  final FitStorage fit;
-  final FitWrapper fitWrapper;
-  final Ship ship;
+  final FitContext fitContext;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,13 +16,7 @@ class FitDisplayColumns extends ConsumerWidget {
           ...range(0, columns)
               .map<Widget>(
                 (i) => Expanded(
-                  child: _FitDisplayTab(
-                    fitWrapper: fitWrapper,
-                    initialIndex: i + 1,
-                    ship: ship,
-                    fitMetadata: fitMetadata,
-                    fit: fit,
-                  ),
+                  child: _FitDisplayTab(fitContext: fitContext, initialIndex: i + 1),
                 ),
               )
               .intersperse(const VerticalDivider(indent: 8, endIndent: 8)),
@@ -42,20 +27,11 @@ class FitDisplayColumns extends ConsumerWidget {
 }
 
 class _FitDisplayTab extends StatefulWidget {
-  const _FitDisplayTab({
-    required this.ship,
-    required this.fitMetadata,
-    required this.fitWrapper,
-    required this.fit,
-    this.initialIndex = 1,
-  });
+  const _FitDisplayTab({required this.fitContext, this.initialIndex = 1});
 
   final int initialIndex;
 
-  final FitMetadata fitMetadata;
-  final FitStorage fit;
-  final FitWrapper fitWrapper;
-  final Ship ship;
+  final FitContext fitContext;
 
   @override
   State<_FitDisplayTab> createState() => _FitDisplayTabState();
@@ -81,7 +57,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
           Tab(text: context.l10n.fitTabsEquipment),
           Tab(text: context.l10n.fitTabsAttributes),
           Tab(
-            text: widget.ship.fighterTubes > 0
+            text: widget.fitContext.ship.fighterTubes > 0
                 ? context.l10n.fitTabsFighter
                 : context.l10n.fitTabsDrone,
           ),
@@ -93,12 +69,12 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
           controller: _tabController,
           children: [
             ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
-            _EquipmentTab(fit: widget.fit, fitWrapper: widget.fitWrapper, ship: widget.ship),
-            _AttributeTab(fit: widget.fit),
-            if (widget.ship.fighterTubes > 0)
-              _FighterTab(fit: widget.fit)
+            _EquipmentTab(fitContext: widget.fitContext),
+            _AttributeTab(fit: widget.fitContext.fit),
+            if (widget.fitContext.ship.fighterTubes > 0)
+              _FighterTab(fit: widget.fitContext.fit)
             else
-              _DroneTab(fit: widget.fit),
+              _DroneTab(fit: widget.fitContext.fit),
             ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
           ],
         ),

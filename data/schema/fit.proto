@@ -32,6 +32,16 @@ message Subsystem {
 
   required uint32 turret_slots = 5;
   required uint32 launcher_slots = 6;
+
+  enum SubsystemType {
+    UNKNOWN = 0;
+    CORE = 1;
+    DEFENSIVE = 2;
+    OFFENSIVE = 3;
+    PROPULSION = 4;
+  }
+
+  required SubsystemType subsystem_type = 7;
 }
 
 message TacticalMode {

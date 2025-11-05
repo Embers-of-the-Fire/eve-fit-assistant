@@ -86,7 +86,9 @@ abstract class FitStorageSlots with _$FitStorageSlots {
     rig: IList(const Option<FitModuleItem>.none().repeat(ship.rigSlots)),
     subsystem: IList(const Option<FitModuleItem>.none().repeat(ship.subsystemSlots)),
     service: IList(const Option<FitModuleItem>.none().repeat(ship.serviceSlots)),
-    tacticalMode: const Option.none(),
+    tacticalMode: ship.tacticalModes.isEmpty
+        ? const Option<int>.none()
+        : ship.tacticalModes.firstOption.map((t) => t.typeId),
   );
 }
 
@@ -107,7 +109,11 @@ abstract class FitStorageItemId with _$FitStorageItemId {
   const factory FitStorageItemId.item({required int id}) = _FitStorageItemIdItem;
   const factory FitStorageItemId.dynamic({required int dynamicId}) = _FitStorageItemIdDynamic;
 
+  const FitStorageItemId._();
+
   factory FitStorageItemId.fromJson(Map<String, dynamic> json) => _$FitStorageItemIdFromJson(json);
+
+  int get asId => when(item: (id) => id, dynamic: (dynamicId) => dynamicId);
 }
 
 @JsonEnum()
@@ -222,9 +228,9 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
           ),
         ),
       ),
-      if (fitStorage.body.slots.tacticalMode.isSome())
+      if (fitStorage.body.slots.tacticalMode case Some(:final value))
         native.Module(
-          itemId: native.ItemID.item(fitStorage.body.slots.tacticalMode.unwrap()),
+          itemId: native.ItemID.item(value),
           state: native.State.online,
           slot: const native.Slot(slotType: native.SlotType.tacticalMode, index: 0),
         ),

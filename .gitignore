@@ -58,3 +58,6 @@ app.*.map.json
 
 # rust
 /target
+
+# python
+__pycache__/

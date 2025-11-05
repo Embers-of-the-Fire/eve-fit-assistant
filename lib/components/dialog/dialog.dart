@@ -24,7 +24,7 @@ class AppDialog extends StatelessWidget {
     content: ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight: context.mediaQuery.size.height,
-        maxWidth: context.mediaQuery.size.height,
+        maxWidth: context.mediaQuery.size.width,
       ),
       child: content,
     ),

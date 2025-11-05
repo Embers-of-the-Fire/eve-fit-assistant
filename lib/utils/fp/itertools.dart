@@ -85,7 +85,6 @@ extension SkipTo<T> on Iterable<T> {
     final iterator = this.iterator;
     while (iterator.moveNext()) {
       if (predicate(iterator.current)) {
-        yield iterator.current;
         break;
       }
     }

@@ -1,141 +1,147 @@
 part of "../page.dart";
 
 class _EquipmentTab extends StatelessWidget {
-  const _EquipmentTab({required this.fit, required this.fitWrapper, required this.ship});
+  const _EquipmentTab({required this.fitContext});
 
-  final FitStorage fit;
-  final FitWrapper fitWrapper;
-  final Ship ship;
+  final FitContext fitContext;
 
   @override
-  Widget build(BuildContext context) => ListView(
-    children: [
-      ...fit.body.slots.tacticalMode.match(
-        () => const <Widget>[],
-        (mode) => [
-          _EquipmentHeader(
-            title: context.l10n.fitTabsEquipmentHeaderTacticalMode,
-            actions: [_ActionClearAll(onTap: () => fitWrapper.toggleTacticalMode(ship))],
-          ),
-          _AnySlotRow(
-            slotIdent: const SlotIdentifier.tacticalMode(),
-            slotInfo: SlotInfo.item(
-              state: FitItemState.active,
-              type: const native.OutSlotType.tacticalMode(),
-              index: 0,
-              slot: FitModuleItem(
-                charge: const Option.none(),
+  Widget build(BuildContext context) {
+    final fit = fitContext.fit;
+    final fitWrapper = fitContext.fitWrapper;
+
+    return ListView(
+      children: [
+        ...fit.body.slots.tacticalMode.match(
+          () => const <Widget>[],
+          (mode) => [
+            _EquipmentHeader(title: context.l10n.fitTabsEquipmentHeaderTacticalMode),
+            _AnySlotRow(
+              fitContext: fitContext,
+              slotIdent: const SlotIdentifier.tacticalMode(),
+              slotInfo: SlotInfo.item(
                 state: FitItemState.active,
-                itemId: FitStorageItemId.item(id: mode),
+                type: const native.OutSlotType.tacticalMode(),
+                index: 0,
+                slot: FitModuleItem(
+                  charge: const Option.none(),
+                  state: FitItemState.active,
+                  itemId: FitStorageItemId.item(id: mode),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (fit.body.slots.high.isNotEmpty)
+          _EquipmentHeader(
+            title: context.l10n.fitTabsEquipmentHeaderHighSlot,
+            actions: [
+              _ActionClearAll(onTap: fitWrapper.clearHigh),
+              _ActionClearCharge(onTap: fitWrapper.clearHighCharges),
+            ],
+          ),
+        ...fit.body.slots.high.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.high(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.high(),
+                index: index,
+                slot: slot,
               ),
             ),
           ),
-        ],
-      ),
-      if (fit.body.slots.high.isNotEmpty)
-        _EquipmentHeader(
-          title: context.l10n.fitTabsEquipmentHeaderHighSlot,
-          actions: [
-            _ActionClearAll(onTap: fitWrapper.clearHigh),
-            _ActionClearCharge(onTap: fitWrapper.clearHighCharges),
-          ],
         ),
-      ...fit.body.slots.high.mapWithIndex(
-        (slot, index) => _AnySlotRow(
-          slotIdent: SlotIdentifier.high(index: index),
-          slotInfo: slot.match(
-            () => SlotInfo.empty(index: index),
-            (slot) => SlotInfo.item(
-              state: slot.state,
-              type: const native.OutSlotType.high(),
-              index: index,
-              slot: slot,
+        if (fit.body.slots.medium.isNotEmpty)
+          _EquipmentHeader(
+            title: context.l10n.fitTabsEquipmentHeaderMidSlot,
+            actions: [
+              _ActionClearAll(onTap: fitWrapper.clearMedium),
+              _ActionClearCharge(onTap: fitWrapper.clearMediumCharges),
+            ],
+          ),
+        ...fit.body.slots.medium.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.medium(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.high(),
+                index: index,
+                slot: slot,
+              ),
             ),
           ),
         ),
-      ),
-      if (fit.body.slots.medium.isNotEmpty)
-        _EquipmentHeader(
-          title: context.l10n.fitTabsEquipmentHeaderMidSlot,
-          actions: [
-            _ActionClearAll(onTap: fitWrapper.clearMedium),
-            _ActionClearCharge(onTap: fitWrapper.clearMediumCharges),
-          ],
-        ),
-      ...fit.body.slots.medium.mapWithIndex(
-        (slot, index) => _AnySlotRow(
-          slotIdent: SlotIdentifier.medium(index: index),
-          slotInfo: slot.match(
-            () => SlotInfo.empty(index: index),
-            (slot) => SlotInfo.item(
-              state: slot.state,
-              type: const native.OutSlotType.high(),
-              index: index,
-              slot: slot,
+        if (fit.body.slots.low.isNotEmpty)
+          _EquipmentHeader(
+            title: context.l10n.fitTabsEquipmentHeaderLowSlot,
+            actions: [
+              _ActionClearAll(onTap: fitWrapper.clearLow),
+              _ActionClearCharge(onTap: fitWrapper.clearLowCharges),
+            ],
+          ),
+        ...fit.body.slots.low.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.low(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.high(),
+                index: index,
+                slot: slot,
+              ),
             ),
           ),
         ),
-      ),
-      if (fit.body.slots.low.isNotEmpty)
-        _EquipmentHeader(
-          title: context.l10n.fitTabsEquipmentHeaderLowSlot,
-          actions: [
-            _ActionClearAll(onTap: fitWrapper.clearLow),
-            _ActionClearCharge(onTap: fitWrapper.clearLowCharges),
-          ],
-        ),
-      ...fit.body.slots.low.mapWithIndex(
-        (slot, index) => _AnySlotRow(
-          slotIdent: SlotIdentifier.low(index: index),
-          slotInfo: slot.match(
-            () => SlotInfo.empty(index: index),
-            (slot) => SlotInfo.item(
-              state: slot.state,
-              type: const native.OutSlotType.high(),
-              index: index,
-              slot: slot,
+        if (fit.body.slots.rig.isNotEmpty)
+          _EquipmentHeader(
+            title: context.l10n.fitTabsEquipmentHeaderRigSlot,
+            actions: [_ActionClearAll(onTap: fitWrapper.clearRig)],
+          ),
+        ...fit.body.slots.rig.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.rig(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.high(),
+                index: index,
+                slot: slot,
+              ),
             ),
           ),
         ),
-      ),
-      if (fit.body.slots.rig.isNotEmpty)
-        _EquipmentHeader(
-          title: context.l10n.fitTabsEquipmentHeaderRigSlot,
-          actions: [_ActionClearAll(onTap: fitWrapper.clearRig)],
-        ),
-      ...fit.body.slots.rig.mapWithIndex(
-        (slot, index) => _AnySlotRow(
-          slotIdent: SlotIdentifier.rig(index: index),
-          slotInfo: slot.match(
-            () => SlotInfo.empty(index: index),
-            (slot) => SlotInfo.item(
-              state: slot.state,
-              type: const native.OutSlotType.high(),
-              index: index,
-              slot: slot,
+        if (fit.body.slots.subsystem.isNotEmpty)
+          _EquipmentHeader(
+            title: context.l10n.fitTabsEquipmentHeaderSubSystem,
+            actions: [_ActionClearAll(onTap: fitWrapper.clearSubsystem)],
+          ),
+        ...fit.body.slots.subsystem.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.subsystem(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.high(),
+                index: index,
+                slot: slot,
+              ),
             ),
           ),
         ),
-      ),
-      if (fit.body.slots.subsystem.isNotEmpty)
-        _EquipmentHeader(
-          title: context.l10n.fitTabsEquipmentHeaderSubSystem,
-          actions: [_ActionClearAll(onTap: fitWrapper.clearSubsystem)],
-        ),
-      ...fit.body.slots.subsystem.mapWithIndex(
-        (slot, index) => _AnySlotRow(
-          slotIdent: SlotIdentifier.subsystem(index: index),
-          slotInfo: slot.match(
-            () => SlotInfo.empty(index: index),
-            (slot) => SlotInfo.item(
-              state: slot.state,
-              type: const native.OutSlotType.high(),
-              index: index,
-              slot: slot,
-            ),
-          ),
-        ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

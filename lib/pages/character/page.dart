@@ -75,10 +75,7 @@ class CharacterPage extends ConsumerWidget {
           ),
           ...children,
           TextButton(
-            onPressed: () async {
-              final fitManager = ref.read(fitManagerProvider.notifier);
-              await fitManager.newFit(28659, "Test Fit ${DateTime.now().toIso8601String()}");
-            },
+            onPressed: () async {},
             child: Text("Found ${ref.watch(fitRegistryManagerProvider).fits.length} fits"),
           ),
           Text(ref.watch(nativeFitEngineServiceProvider).debugOnlyDisplayState),

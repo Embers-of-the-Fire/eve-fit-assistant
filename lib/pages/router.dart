@@ -23,3 +23,9 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/fitting/current", page: FitRoute.page),
   ];
 }
+
+extension RouterExtensions on StackRouter {
+  Future<void> popToRootAndPush(PageRouteInfo route) => replaceAll([const FrontRoute(), route]);
+  Future<void> popToRootAndPushAll(List<PageRouteInfo> routes) =>
+      replaceAll([const FrontRoute(), ...routes]);
+}

@@ -1,6 +1,9 @@
 import "package:auto_route/annotations.dart";
+import "package:eve_fit_assistant/components/icon/state_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/output.dart" show $OutSlotTypeCopyWith;
@@ -10,6 +13,7 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/debug.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -24,6 +28,7 @@ part "components/action_icons.dart";
 part "components/equipment_header.dart";
 part "components/slot_row/empty_slot_row.dart";
 part "components/slot_row/slot_row.dart";
+part "components/slot_row/tactical_mode_slot.dart";
 part "components/warning.dart";
 part "identifier.dart";
 part "tabs/attributes.dart";
@@ -83,15 +88,11 @@ class _FitPage extends ConsumerWidget {
     }
 
     final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier));
+    final fitContext = FitContext(fit: fit.fit, ship: shipInfo, fitWrapper: fitWrapper);
 
     return Layout(
       title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
-      child: FitDisplayColumns(
-        ship: shipInfo,
-        fit: fit.fit,
-        fitMetadata: fitMetadata,
-        fitWrapper: fitWrapper,
-      ),
+      child: FitDisplayColumns(fitContext: fitContext),
     );
   }
 }

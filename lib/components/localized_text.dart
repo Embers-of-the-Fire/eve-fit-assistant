@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/data/proto/utils.pb.dart";
+import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
@@ -21,5 +22,22 @@ class LocalizedText extends ConsumerWidget {
     final loc = ref.watch(localizationProvider(localizationKey.id));
 
     return Text(loc.map(formatter) ?? "LOC[${localizationKey.id}]");
+  }
+}
+
+class LocalizedTypeName extends ConsumerWidget {
+  const LocalizedTypeName({required this.typeId, super.key});
+
+  final int typeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final typeNameId = ref.watch(
+      bundleCollectionGetTypeProvider(typeId).select((t) => t?.typeName),
+    );
+    if (typeNameId == null) {
+      return Text("Unknown Type[$typeId]");
+    }
+    return LocalizedText(localizationKey: typeNameId);
   }
 }

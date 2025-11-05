@@ -1,5 +1,13 @@
 part of "page.dart";
 
+class FitContext {
+  const FitContext({required this.fit, required this.fitWrapper, required this.ship});
+
+  final FitStorage fit;
+  final FitWrapper fitWrapper;
+  final Ship ship;
+}
+
 class FitWrapper {
   const FitWrapper({required this.wrapped});
 
@@ -10,7 +18,6 @@ class FitWrapper {
   IList<Option<FitModuleItem>> _emptySlotList(int len) =>
       IList(List.generate(len, (_) => const Option<FitModuleItem>.none()));
 
-
   Future<void> clearHigh() => wrapped.update((fit) {
     final len = fit.body.slots.high.length;
     return fit.copyWith(
@@ -18,10 +25,12 @@ class FitWrapper {
     );
   });
   Future<void> clearHighCharges() => wrapped.update((fit) {
-    final updatedHigh = fit.body.slots.high.map((slotOpt) => slotOpt.map((slot) {
-          if (slot.charge.isNone()) return slot;
-          return slot.copyWith(charge: const Option.none());
-        }));
+    final updatedHigh = fit.body.slots.high.map(
+      (slotOpt) => slotOpt.map((slot) {
+        if (slot.charge.isNone()) return slot;
+        return slot.copyWith(charge: const Option.none());
+      }),
+    );
     return fit.copyWith(
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: IList(updatedHigh))),
     );
@@ -34,16 +43,18 @@ class FitWrapper {
     );
   });
   Future<void> clearMediumCharges() => wrapped.update((fit) {
-        final updatedMedium = fit.body.slots.medium
-            .map((slotOpt) => slotOpt.map((slot) {
-                  if (slot.charge.isNone()) return slot;
-                  return slot.copyWith(charge: const Option.none());
-                }))
-            .toList();
-        return fit.copyWith(
-          body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: IList(updatedMedium))),
-        );
-      });
+    final updatedMedium = fit.body.slots.medium
+        .map(
+          (slotOpt) => slotOpt.map((slot) {
+            if (slot.charge.isNone()) return slot;
+            return slot.copyWith(charge: const Option.none());
+          }),
+        )
+        .toList();
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: IList(updatedMedium))),
+    );
+  });
 
   Future<void> clearLow() => wrapped.update((fit) {
     final len = fit.body.slots.low.length;
@@ -52,16 +63,18 @@ class FitWrapper {
     );
   });
   Future<void> clearLowCharges() => wrapped.update((fit) {
-        final updatedLow = fit.body.slots.low
-            .map((slotOpt) => slotOpt.map((slot) {
-                  if (slot.charge.isNone()) return slot;
-                  return slot.copyWith(charge: const Option.none());
-                }))
-            .toList();
-        return fit.copyWith(
-          body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: IList(updatedLow))),
-        );
-      });
+    final updatedLow = fit.body.slots.low
+        .map(
+          (slotOpt) => slotOpt.map((slot) {
+            if (slot.charge.isNone()) return slot;
+            return slot.copyWith(charge: const Option.none());
+          }),
+        )
+        .toList();
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: IList(updatedLow))),
+    );
+  });
 
   Future<void> clearRig() => wrapped.update((fit) {
     final len = fit.body.slots.rig.length;

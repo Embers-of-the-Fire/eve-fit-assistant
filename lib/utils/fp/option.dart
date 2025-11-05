@@ -23,11 +23,13 @@ extension Flatten<T> on Option<T>? {
 extension Unwrap<T> on Option<T> {
   T unwrap([String? hint]) {
     assert(() {
-      final stackTrace = StackTrace.current;
-      final errorText = hint == null
-          ? "Unwrapping an `Option.none`"
-          : "Unwrapping an `Option.none`: $hint";
-      error(errorText, stackTrace: stackTrace, error: Exception(errorText));
+      if (isNone()) {
+        final stackTrace = StackTrace.current;
+        final errorText = hint == null
+            ? "Unwrapping an `Option.none`"
+            : "Unwrapping an `Option.none`: $hint";
+        error(errorText, stackTrace: stackTrace, error: Exception(errorText));
+      }
       return true;
     }());
     return match(() {
@@ -71,6 +73,10 @@ extension MapOrElse<T> on T? {
     }
     return f(this as T);
   }
+}
+
+extension MonadOrElse<T> on Option<T> {
+  Option<T> tryOrElseM(Option<T> Function() f) => match(f, Option.of);
 }
 
 extension NullableOrElse<T> on T? {

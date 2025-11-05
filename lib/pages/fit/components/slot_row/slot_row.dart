@@ -1,8 +1,9 @@
 part of "../../page.dart";
 
 class _AnySlotRow extends StatelessWidget {
-  const _AnySlotRow({required this.slotIdent, required this.slotInfo});
+  const _AnySlotRow({required this.fitContext, required this.slotIdent, required this.slotInfo});
 
+  final FitContext fitContext;
   final SlotIdentifier slotIdent;
   final SlotInfo slotInfo;
 
@@ -13,6 +14,7 @@ class _AnySlotRow extends StatelessWidget {
       slotInfo: _EmptySlotInfo(index: index),
     ),
     item: (state, type, index, slot) => _SlotRow(
+      fitContext: fitContext,
       slotIdent: slotIdent,
       slotInfo: _ItemSlotInfo(state: state, type: type, index: index, slot: slot),
     ),
@@ -20,8 +22,9 @@ class _AnySlotRow extends StatelessWidget {
 }
 
 class _SlotRow extends StatelessWidget {
-  const _SlotRow({required this.slotIdent, required this.slotInfo});
+  const _SlotRow({required this.fitContext, required this.slotIdent, required this.slotInfo});
 
+  final FitContext fitContext;
   final SlotIdentifier slotIdent;
   final _ItemSlotInfo slotInfo;
 
@@ -29,10 +32,16 @@ class _SlotRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final slotHasCharge = slotInfo.slot.charge.isSome();
 
-    return ListTile(
-      title: Text(
-        "${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type} ($slotHasCharge)",
-      ),
-    );
+    switch (slotIdent) {
+      case final _SlotIdentifierTacticalMode mode:
+        return _TacticalModeSlotRow(fitContext: fitContext, slotIdent: mode, slotInfo: slotInfo);
+
+      default:
+        return ListTile(
+          title: Text(
+            "${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type} ($slotHasCharge)",
+          ),
+        );
+    }
   }
 }

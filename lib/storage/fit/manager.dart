@@ -150,4 +150,26 @@ class FitManager extends _$FitManager {
     ref.read(fitRegistryManagerProvider.notifier).updateFit(metadata);
     return metadata;
   }
+
+  Future<void> deleteFit(String fitId) async {
+    final registry = ref.read(fitRegistryManagerProvider);
+    final metadata = registry.fits[fitId];
+    if (metadata == null) {
+      final text = "Fit with ID $fitId not found in registry.";
+      error(text);
+      throw Exception(text);
+    }
+    final fitPath = FitStorage.fitStoragePathForId(fitId);
+    final path = File(fitPath);
+    if (path.existsSync()) {
+      await path.delete();
+      info("Deleted fit file at $fitPath");
+    } else {
+      warning("Fit file at $fitPath does not exist.");
+    }
+    final notifier = ref.read(fitRegistryManagerProvider.notifier);
+    notifier
+      ..state = notifier.state.copyWith(fits: notifier.state.fits.remove(fitId))
+      .._syncToDisk();
+  }
 }

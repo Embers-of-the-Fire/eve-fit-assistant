@@ -12,10 +12,15 @@ from data.lib.constant import LAUNCHER_SLOT_ATTR
 from data.lib.constant import LAUNCHER_SLOT_MODIFIER_ATTR
 from data.lib.constant import LOW_SLOT_ATTR
 from data.lib.constant import LOW_SLOT_MODIFIER_ATTR
+from data.lib.constant import MAX_SUBSYSTEM_SLOT_ATTR
 from data.lib.constant import MEDIUM_SLOT_ATTR
 from data.lib.constant import MEDIUM_SLOT_MODIFIER_ATTR
 from data.lib.constant import RIG_SLOT_ATTR
 from data.lib.constant import SERVICE_SLOT_ATTR
+from data.lib.constant import SUBSYSTEM_CORE_SLOT
+from data.lib.constant import SUBSYSTEM_DEFENSIVE_SLOT
+from data.lib.constant import SUBSYSTEM_OFFENSIVE_SLOT
+from data.lib.constant import SUBSYSTEM_PROPULSION_SLOT
 from data.lib.constant import SUBSYSTEM_SLOT_ATTR
 from data.lib.constant import TURRET_SLOT_ATTR
 from data.lib.constant import TURRET_SLOT_MODIFIER_ATTR
@@ -52,6 +57,10 @@ _DETERMINE_SUBSYSTEM_ATTRS = {
 }
 
 
+def _first_attr_where(source, target):
+    return next((int(attr.value) for attr in source if attr.attributeID == target), 0)
+
+
 async def generate(data: GeneratorDatasource, collection):
     info("Generating fit dependencies...")
     type_dogma = await data.resources.fsd.get("typedogma")
@@ -73,77 +82,20 @@ async def generate(data: GeneratorDatasource, collection):
             ship += 1
             ship_def = fit_pb2.Ship()
             ship_def.type_id = type_id
-            ship_def.high_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == HIGH_SLOT_ATTR
-                ),
-                0,
+            ship_def.high_slots = _first_attr_where(validated.dogmaAttributes, HIGH_SLOT_ATTR)
+            ship_def.medium_slots = _first_attr_where(validated.dogmaAttributes, MEDIUM_SLOT_ATTR)
+            ship_def.low_slots = _first_attr_where(validated.dogmaAttributes, LOW_SLOT_ATTR)
+            ship_def.rig_slots = _first_attr_where(validated.dogmaAttributes, RIG_SLOT_ATTR)
+            ship_def.subsystem_slots = _first_attr_where(
+                validated.dogmaAttributes, MAX_SUBSYSTEM_SLOT_ATTR
             )
-            ship_def.medium_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == MEDIUM_SLOT_ATTR
-                ),
-                0,
+            ship_def.service_slots = _first_attr_where(validated.dogmaAttributes, SERVICE_SLOT_ATTR)
+            ship_def.turret_slots = _first_attr_where(validated.dogmaAttributes, TURRET_SLOT_ATTR)
+            ship_def.launcher_slots = _first_attr_where(
+                validated.dogmaAttributes, LAUNCHER_SLOT_ATTR
             )
-            ship_def.low_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == LOW_SLOT_ATTR
-                ),
-                0,
-            )
-            ship_def.rig_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == RIG_SLOT_ATTR
-                ),
-                0,
-            )
-            ship_def.subsystem_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == SUBSYSTEM_SLOT_ATTR
-                ),
-                0,
-            )
-            ship_def.service_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == SERVICE_SLOT_ATTR
-                ),
-                0,
-            )
-            ship_def.turret_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == TURRET_SLOT_ATTR
-                ),
-                0,
-            )
-            ship_def.launcher_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == LAUNCHER_SLOT_ATTR
-                ),
-                0,
-            )
-            ship_def.fighter_tubes = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == FIGHTER_TUBES_ATTR
-                ),
-                0,
+            ship_def.fighter_tubes = _first_attr_where(
+                validated.dogmaAttributes, FIGHTER_TUBES_ATTR
             )
 
             tm_variant_map = {
@@ -157,7 +109,7 @@ async def generate(data: GeneratorDatasource, collection):
                     tm.type_id = mode["typeId"]
                     tm.ship_id = type_id
                     tm.variant = tm_variant_map[mode["variant"].lower()]
-            
+
             collection.ships[type_id].CopyFrom(ship_def)
         elif any(
             attr.attributeID in _DETERMINE_SUBSYSTEM_ATTRS and attr.value > 0
@@ -166,46 +118,31 @@ async def generate(data: GeneratorDatasource, collection):
             subsystem += 1
             subsystem_def = fit_pb2.Subsystem()
             subsystem_def.type_id = type_id
-            subsystem_def.high_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == HIGH_SLOT_MODIFIER_ATTR
-                ),
-                0,
+            subsystem_def.high_slots = _first_attr_where(
+                validated.dogmaAttributes, HIGH_SLOT_MODIFIER_ATTR
             )
-            subsystem_def.medium_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == MEDIUM_SLOT_MODIFIER_ATTR
-                ),
-                0,
+            subsystem_def.medium_slots = _first_attr_where(
+                validated.dogmaAttributes, MEDIUM_SLOT_MODIFIER_ATTR
             )
-            subsystem_def.low_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == LOW_SLOT_MODIFIER_ATTR
-                ),
-                0,
+            subsystem_def.low_slots = _first_attr_where(
+                validated.dogmaAttributes, LOW_SLOT_MODIFIER_ATTR
             )
-            subsystem_def.turret_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == TURRET_SLOT_MODIFIER_ATTR
-                ),
-                0,
+            subsystem_def.turret_slots = _first_attr_where(
+                validated.dogmaAttributes, TURRET_SLOT_MODIFIER_ATTR
             )
-            subsystem_def.launcher_slots = next(
-                (
-                    int(attr.value)
-                    for attr in validated.dogmaAttributes
-                    if attr.attributeID == LAUNCHER_SLOT_MODIFIER_ATTR
-                ),
-                0,
+            subsystem_def.launcher_slots = _first_attr_where(
+                validated.dogmaAttributes, LAUNCHER_SLOT_MODIFIER_ATTR
             )
+
+            ss_variant_map = {
+                SUBSYSTEM_CORE_SLOT: fit_pb2.Subsystem.SubsystemType.CORE,
+                SUBSYSTEM_DEFENSIVE_SLOT: fit_pb2.Subsystem.SubsystemType.DEFENSIVE,
+                SUBSYSTEM_OFFENSIVE_SLOT: fit_pb2.Subsystem.SubsystemType.OFFENSIVE,
+                SUBSYSTEM_PROPULSION_SLOT: fit_pb2.Subsystem.SubsystemType.PROPULSION,
+            }
+            slot_type = _first_attr_where(validated.dogmaAttributes, SUBSYSTEM_SLOT_ATTR)
+            subsystem_def.subsystem_type = ss_variant_map.get(slot_type, fit_pb2.Subsystem.SubsystemType.UNKNOWN)
+
             collection.subsystems[type_id].CopyFrom(subsystem_def)
 
     info(f"Generated {ship} ships and {subsystem} subsystems")

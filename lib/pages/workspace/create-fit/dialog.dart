@@ -68,8 +68,23 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
               ),
               onTap: () {
                 debug("Open other saved fit ${fit.name} ${fit.fitId}");
-                unawaited(context.router.popAndPush(FitRoute(fitId: fit.fitId)));
+                unawaited(context.router.popToRootAndPush(FitRoute(fitId: fit.fitId)));
               },
+              trailing: IconButton(
+                onPressed: () async {
+                  final fm = ref.read(fitManagerProvider.notifier);
+                  final result = await showConfirmDialog(
+                    context,
+                    title: "Delete fit",
+                    content: Text("Delete fit ${fit.name}"),
+                  );
+                  if (result) {
+                    await fm.deleteFit(fit.fitId);
+                    if (context.mounted) context.nav.pop();
+                  }
+                },
+                icon: const Icon(Icons.delete_forever),
+              ),
             ),
         ],
       ),
