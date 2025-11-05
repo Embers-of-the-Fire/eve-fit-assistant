@@ -7,7 +7,7 @@ class _TacticalModeSlotRow extends StatelessWidget {
     required this.slotInfo,
   });
 
-  final _SlotIdentifierTacticalMode slotIdent;
+  final SlotIdentifierTacticalMode slotIdent;
   final _ItemSlotInfo slotInfo;
   final FitContext fitContext;
 

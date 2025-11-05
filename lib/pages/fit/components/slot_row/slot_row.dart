@@ -33,7 +33,7 @@ class _SlotRow extends StatelessWidget {
     final slotHasCharge = slotInfo.slot.charge.isSome();
 
     switch (slotIdent) {
-      case final _SlotIdentifierTacticalMode mode:
+      case final SlotIdentifierTacticalMode mode:
         return _TacticalModeSlotRow(fitContext: fitContext, slotIdent: mode, slotInfo: slotInfo);
 
       default:

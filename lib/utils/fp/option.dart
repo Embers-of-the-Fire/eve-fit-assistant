@@ -83,3 +83,7 @@ extension NullableOrElse<T> on T? {
   T orElse(T Function() value) => this ?? value();
   T? tryOrElse(T? Function() value) => this ?? value();
 }
+
+extension ReverseMap<T> on T? {
+  R? reverseMap<R>(R Function() f) => this == null ? f() : null;
+}
