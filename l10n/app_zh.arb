@@ -28,6 +28,7 @@
   "tacticalMode": "战术模式",
   "drone": "无人机",
   "fighter": "铁骑舰载机",
+  "charge": "弹药",
   "@_PAGE_TEXT": {},
   "@@_FRONT_PAGE": {},
   "frontPageTitleWorkspace": "工作台",

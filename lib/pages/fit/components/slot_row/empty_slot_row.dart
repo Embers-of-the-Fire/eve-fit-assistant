@@ -18,7 +18,7 @@ class _EmptySlotRow extends ConsumerWidget {
     };
 
     return ListTile(
-      leading: BorderedCircleAvatar(
+      leading: BorderedRectAvatar(
         size: 35,
         backgroundColor: colorStatusPassive,
         borderColor: colorStatusPassive,
@@ -34,33 +34,7 @@ class _EmptySlotRow extends ConsumerWidget {
             validator: slotIdent.validator(ref),
           ).then((found) async {
             if (found == null) return;
-            final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
-            if (slotsInfo == null) return;
-
-            switch (slotIdent) {
-              case SlotIdentifierHigh _:
-                final proto = slotsInfo.highSlots[found];
-                if (proto != null) await fitContext.fitWrapper.equipHigh(slotInfo.index, proto);
-              case SlotIdentifierMedium _:
-                final proto = slotsInfo.mediumSlots[found];
-                if (proto != null) await fitContext.fitWrapper.equipMedium(slotInfo.index, proto);
-              case SlotIdentifierLow _:
-                final proto = slotsInfo.lowSlots[found];
-                if (proto != null) await fitContext.fitWrapper.equipLow(slotInfo.index, proto);
-              case SlotIdentifierRig _:
-                final proto = slotsInfo.rigSlots[found];
-                if (proto != null) await fitContext.fitWrapper.equipRig(slotInfo.index, proto);
-              case SlotIdentifierSubsystem _:
-                final proto = slotsInfo.subsystemSlots[found];
-                if (proto != null) await fitContext.fitWrapper.equipSubsystem(slotInfo.index, proto);
-              case SlotIdentifierService _:
-                final proto = slotsInfo.serviceSlots[found];
-                if (proto != null) await fitContext.fitWrapper.equipService(slotInfo.index, proto);
-              default:
-                // Other slot types (tacticalMode, drone, fighter, implant, booster) are
-                // not handled here. Add handling if needed.
-                break;
-            }
+            await fitContext.fitWrapper.equipSlot(slotIdent, found, ref);
           }),
       trailing: Text("${slotIdent.asIndexed + 1}"),
     );

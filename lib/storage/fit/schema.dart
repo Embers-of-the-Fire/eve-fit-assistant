@@ -106,8 +106,8 @@ abstract class FitDamageProfile with _$FitDamageProfile {
 
 @freezed
 abstract class FitStorageItemId with _$FitStorageItemId {
-  const factory FitStorageItemId.item({required int id}) = _FitStorageItemIdItem;
-  const factory FitStorageItemId.dynamic({required int dynamicId}) = _FitStorageItemIdDynamic;
+  const factory FitStorageItemId.item({required int id}) = FitStorageItemIdItem;
+  const factory FitStorageItemId.dynamic({required int dynamicId}) = FitStorageItemIdDynamic;
 
   const FitStorageItemId._();
 

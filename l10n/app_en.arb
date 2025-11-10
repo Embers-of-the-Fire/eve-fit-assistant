@@ -28,6 +28,7 @@
   "tacticalMode": "Tactical Mode",
   "drone": "Drone",
   "fighter": "Fighter",
+  "charge": "Charge",
   "@_PAGE_TEXT": {},
   "@@_FRONT_PAGE": {},
   "frontPageTitleWorkspace": "Workspaces",

@@ -10,3 +10,21 @@ extension ProtobufSlotStateExt on Slots_SlotState {
     _ => FitItemState.passive,
   };
 }
+
+extension FitItemStateExt on FitItemState {
+  FitItemState get limitToActive => switch (this) {
+    FitItemState.overload => FitItemState.active,
+    _ => this,
+  };
+
+  FitItemState toggle(FitItemState max) {
+    final currNum = index;
+    final maxNum = max.index;
+
+    if (currNum < maxNum) {
+      return FitItemState.values[currNum + 1];
+    }
+
+    return FitItemState.passive;
+  }
+}

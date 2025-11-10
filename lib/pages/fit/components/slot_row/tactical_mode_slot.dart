@@ -22,7 +22,7 @@ class _TacticalModeSlotRow extends StatelessWidget {
     }
     return ListTile(
       onTap: () => fitContext.fitWrapper.toggleTacticalMode(fitContext.ship),
-      leading: StateIcon(
+      leading: StateIcon.circle(
         state: slotInfo.state,
         child: Image(
           image: switch (variant) {

@@ -1,12 +1,12 @@
 part of "../page.dart";
 
-class _EquipmentTab extends StatelessWidget {
+class _EquipmentTab extends ConsumerWidget {
   const _EquipmentTab({required this.fitContext});
 
   final FitContext fitContext;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final fit = fitContext.fit;
     final fitWrapper = fitContext.fitWrapper;
 
@@ -36,8 +36,8 @@ class _EquipmentTab extends StatelessWidget {
           _EquipmentHeader(
             title: context.l10n.highSlot,
             actions: [
-              _ActionClearAll(onTap: fitWrapper.clearHigh),
-              _ActionClearCharge(onTap: fitWrapper.clearHighCharges),
+              _ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.high(index: 0))),
+              _ActionClearCharge(onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.high(index: 0))),
             ],
           ),
         ...fit.body.slots.high.mapWithIndex(
@@ -59,8 +59,8 @@ class _EquipmentTab extends StatelessWidget {
           _EquipmentHeader(
             title: context.l10n.midSlot,
             actions: [
-              _ActionClearAll(onTap: fitWrapper.clearMedium),
-              _ActionClearCharge(onTap: fitWrapper.clearMediumCharges),
+              _ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.medium(index: 0))),
+              _ActionClearCharge(onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.medium(index: 0))),
             ],
           ),
         ...fit.body.slots.medium.mapWithIndex(
@@ -82,8 +82,8 @@ class _EquipmentTab extends StatelessWidget {
           _EquipmentHeader(
             title: context.l10n.lowSlot,
             actions: [
-              _ActionClearAll(onTap: fitWrapper.clearLow),
-              _ActionClearCharge(onTap: fitWrapper.clearLowCharges),
+              _ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.low(index: 0))),
+              _ActionClearCharge(onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.low(index: 0))),
             ],
           ),
         ...fit.body.slots.low.mapWithIndex(
@@ -104,7 +104,7 @@ class _EquipmentTab extends StatelessWidget {
         if (fit.body.slots.rig.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.rigSlot,
-            actions: [_ActionClearAll(onTap: fitWrapper.clearRig)],
+            actions: [_ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.rig(index: 0)))],
           ),
         ...fit.body.slots.rig.mapWithIndex(
           (slot, index) => _AnySlotRow(
@@ -124,7 +124,7 @@ class _EquipmentTab extends StatelessWidget {
         if (fit.body.slots.subsystem.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.subsystemSlot,
-            actions: [_ActionClearAll(onTap: fitWrapper.clearSubsystem)],
+            actions: [_ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.subsystem(index: 0)))],
           ),
         ...fit.body.slots.subsystem.mapWithIndex(
           (slot, index) => _AnySlotRow(
