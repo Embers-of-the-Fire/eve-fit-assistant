@@ -71,6 +71,7 @@ class BundleCollectionProxy {
   Iterable<Ship> get allShips => _collection.ships.values;
   Subsystem? getSubsystem(int typeId) => _collection.subsystems[typeId];
   Iterable<Subsystem> get allSubsystems => _collection.subsystems.values;
+  Slots get slots => _collection.slots;
 }
 
 @riverpodSingleton
@@ -157,6 +158,10 @@ Ship? bundleCollectionGetShip(Ref ref, int typeId) =>
 Subsystem? bundleCollectionGetSubsystem(Ref ref, int typeId) =>
     ref.watch(bundleCollectionProvider.select((p) => p?.getSubsystem(typeId)));
 
+@riverpod
+Slots? bundleCollectionGetSlots(Ref ref) =>
+    ref.watch(bundleCollectionProvider.select((p) => p?.slots));
+
 @riverpodSingleton
 class BundleCollectionService extends _$BundleCollectionService {
   static bool _isLoading = false;
@@ -165,6 +170,7 @@ class BundleCollectionService extends _$BundleCollectionService {
   BundleCollectionStatus build() {
     ref.listen(bundleServiceProvider, (prev, next) async {
       if (!next.isLoaded) return;
+      info("Loading bundle collection");
       ref.read(bundleLocalizationProvider);
       await _loadCollection();
     });

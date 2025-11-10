@@ -23,4 +23,6 @@ message Collection {
 
   map<uint32, fit.Ship> ships = 9;
   map<uint32, fit.Subsystem> subsystems = 10;
+
+  required fit.Slots slots = 11;
 }

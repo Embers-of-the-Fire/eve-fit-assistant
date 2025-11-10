@@ -43,7 +43,6 @@ class EveSelectList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // fetchChildren mirrors original _getChildren logic and uses the provided ref.
     List<EveSelectListRoot> fetchChildren(EveSelectListRoot root, WidgetRef ref) {
       final List<EveSelectListRoot> children = root.when(
         category: (categoryId) {

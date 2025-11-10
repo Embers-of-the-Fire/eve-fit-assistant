@@ -18,6 +18,102 @@ class FitWrapper {
   IList<Option<FitModuleItem>> _emptySlotList(int len) =>
       IList(List.generate(len, (_) => const Option<FitModuleItem>.none()));
 
+  Future<void> equipHigh(int index, Slots_HighSlot slotInfo) => wrapped.update((fit) {
+    final updatedHigh = fit.body.slots.high.replaceBy(
+      index,
+      (_) => Option.of(
+        FitModuleItem(
+          itemId: FitStorageItemId.item(id: slotInfo.typeId),
+          charge: const Option.none(),
+          state: slotInfo.maxState.dartImpl,
+        ),
+      ),
+    );
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
+    );
+  });
+
+  Future<void> equipMedium(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+    final updatedMedium = fit.body.slots.medium.replaceBy(
+      index,
+      (_) => Option.of(
+        FitModuleItem(
+          itemId: FitStorageItemId.item(id: slotInfo.typeId),
+          charge: const Option.none(),
+          state: slotInfo.maxState.dartImpl,
+        ),
+      ),
+    );
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
+    );
+  });
+
+  Future<void> equipLow(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+    final updatedLow = fit.body.slots.low.replaceBy(
+      index,
+      (_) => Option.of(
+        FitModuleItem(
+          itemId: FitStorageItemId.item(id: slotInfo.typeId),
+          charge: const Option.none(),
+          state: slotInfo.maxState.dartImpl,
+        ),
+      ),
+    );
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
+    );
+  });
+
+  Future<void> equipRig(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+    final updatedRig = fit.body.slots.rig.replaceBy(
+      index,
+      (_) => Option.of(
+        FitModuleItem(
+          itemId: FitStorageItemId.item(id: slotInfo.typeId),
+          charge: const Option.none(),
+          state: slotInfo.maxState.dartImpl,
+        ),
+      ),
+    );
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: updatedRig)),
+    );
+  });
+
+  Future<void> equipSubsystem(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+    final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
+      index,
+      (_) => Option.of(
+        FitModuleItem(
+          itemId: FitStorageItemId.item(id: slotInfo.typeId),
+          charge: const Option.none(),
+          state: slotInfo.maxState.dartImpl,
+        ),
+      ),
+    );
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
+    );
+  });
+
+  Future<void> equipService(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+    final updatedService = fit.body.slots.service.replaceBy(
+      index,
+      (_) => Option.of(
+        FitModuleItem(
+          itemId: FitStorageItemId.item(id: slotInfo.typeId),
+          charge: const Option.none(),
+          state: slotInfo.maxState.dartImpl,
+        ),
+      ),
+    );
+    return fit.copyWith(
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: updatedService)),
+    );
+  });
+
   Future<void> clearHigh() => wrapped.update((fit) {
     final len = fit.body.slots.high.length;
     return fit.copyWith(

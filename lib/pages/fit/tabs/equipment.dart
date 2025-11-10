@@ -15,7 +15,7 @@ class _EquipmentTab extends StatelessWidget {
         ...fit.body.slots.tacticalMode.match(
           () => const <Widget>[],
           (mode) => [
-            _EquipmentHeader(title: context.l10n.fitTabsEquipmentHeaderTacticalMode),
+            _EquipmentHeader(title: context.l10n.tacticalMode),
             _AnySlotRow(
               fitContext: fitContext,
               slotIdent: const SlotIdentifier.tacticalMode(),
@@ -34,7 +34,7 @@ class _EquipmentTab extends StatelessWidget {
         ),
         if (fit.body.slots.high.isNotEmpty)
           _EquipmentHeader(
-            title: context.l10n.fitTabsEquipmentHeaderHighSlot,
+            title: context.l10n.highSlot,
             actions: [
               _ActionClearAll(onTap: fitWrapper.clearHigh),
               _ActionClearCharge(onTap: fitWrapper.clearHighCharges),
@@ -57,7 +57,7 @@ class _EquipmentTab extends StatelessWidget {
         ),
         if (fit.body.slots.medium.isNotEmpty)
           _EquipmentHeader(
-            title: context.l10n.fitTabsEquipmentHeaderMidSlot,
+            title: context.l10n.midSlot,
             actions: [
               _ActionClearAll(onTap: fitWrapper.clearMedium),
               _ActionClearCharge(onTap: fitWrapper.clearMediumCharges),
@@ -80,7 +80,7 @@ class _EquipmentTab extends StatelessWidget {
         ),
         if (fit.body.slots.low.isNotEmpty)
           _EquipmentHeader(
-            title: context.l10n.fitTabsEquipmentHeaderLowSlot,
+            title: context.l10n.lowSlot,
             actions: [
               _ActionClearAll(onTap: fitWrapper.clearLow),
               _ActionClearCharge(onTap: fitWrapper.clearLowCharges),
@@ -103,7 +103,7 @@ class _EquipmentTab extends StatelessWidget {
         ),
         if (fit.body.slots.rig.isNotEmpty)
           _EquipmentHeader(
-            title: context.l10n.fitTabsEquipmentHeaderRigSlot,
+            title: context.l10n.rigSlot,
             actions: [_ActionClearAll(onTap: fitWrapper.clearRig)],
           ),
         ...fit.body.slots.rig.mapWithIndex(
@@ -123,7 +123,7 @@ class _EquipmentTab extends StatelessWidget {
         ),
         if (fit.body.slots.subsystem.isNotEmpty)
           _EquipmentHeader(
-            title: context.l10n.fitTabsEquipmentHeaderSubSystem,
+            title: context.l10n.subsystemSlot,
             actions: [_ActionClearAll(onTap: fitWrapper.clearSubsystem)],
           ),
         ...fit.body.slots.subsystem.mapWithIndex(

@@ -17,6 +17,17 @@
   "applyAfterRestart": "重启应用程序后生效",
   "useCategorySelectList": "组别分类",
   "useMarketGroupSelectList": "市场组别分类",
+  "highSlot": "高能量槽",
+  "midSlot": "中能量槽",
+  "lowSlot": "低能量槽",
+  "rigSlot": "改装件槽",
+  "subsystemSlot": "子系统",
+  "implantSlot": "植入体槽",
+  "boosterSlot": "增效剂槽",
+  "serviceSlot": "服务设施槽",
+  "tacticalMode": "战术模式",
+  "drone": "无人机",
+  "fighter": "铁骑舰载机",
   "@_PAGE_TEXT": {},
   "@@_FRONT_PAGE": {},
   "frontPageTitleWorkspace": "工作台",
@@ -33,7 +44,9 @@
   "fitCreationPageDialogHint": "新配置 {count}",
   "@fitCreationPageDialogHint": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "fitCreationPageDialogErrorText": "请输入配置名。",
@@ -41,23 +54,49 @@
   "fitPageTitle": "{fitName} - {shipName}",
   "@fitPageTitle": {
     "placeholders": {
-      "fitName": { "type": "String" },
-      "shipName": { "type": "String" }
+      "fitName": {
+        "type": "String"
+      },
+      "shipName": {
+        "type": "String"
+      }
     }
   },
-	"fitTabsCharacter": "角色",
-	"fitTabsEquipment": "装备",
-	"fitTabsAttributes": "属性",
-	"fitTabsDrone": "无人机",
-	"fitTabsFighter": "舰载机",
-	"fitTabsUtils": "杂项",
-  "@@@@_FIT_TAB_EQUIPMENT": {},
-  "fitTabsEquipmentHeaderHighSlot": "高能量槽",
-  "fitTabsEquipmentHeaderMidSlot": "中能量槽",
-  "fitTabsEquipmentHeaderLowSlot": "低能量槽",
-  "fitTabsEquipmentHeaderRigSlot": "改装件槽",
-  "fitTabsEquipmentHeaderSubSystem": "子系统",
-  "fitTabsEquipmentHeaderTacticalMode": "战术模式",
+  "fitTabsCharacter": "角色",
+  "fitTabsEquipment": "装备",
+  "fitTabsAttributes": "属性",
+  "fitTabsDrone": "无人机",
+  "fitTabsFighter": "舰载机",
+  "fitTabsUtils": "杂项",
+  "@@@@_FIT_EQUIPMENT_TAB": {},
+  "@@@@_FIT_GENERIC": {},
+  "fitAddItemDialogTitle": "添加物品：{slotName}",
+  "@fitAddItemDialogTitle": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitAddItemDialogTitleWithIndex": "添加物品：{slotName} #{index}",
+  "@fitAddItemDialogTitleWithIndex": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "fitSlotEmpty": "{slotName}（空）",
+  "@fitSlotEmpty": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      }
+    }
+  },
   "@@@_APP_SETTINGS_PAGE": {},
   "appSettingsPageTitle": "应用设置",
   "appSettingsPageSectionGeneral": "常规",

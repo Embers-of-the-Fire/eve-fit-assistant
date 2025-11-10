@@ -12,6 +12,7 @@ class _AnySlotRow extends StatelessWidget {
     empty: (index) => _EmptySlotRow(
       slotIdent: slotIdent,
       slotInfo: _EmptySlotInfo(index: index),
+      fitContext: fitContext,
     ),
     item: (state, type, index, slot) => _SlotRow(
       fitContext: fitContext,

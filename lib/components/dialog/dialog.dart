@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/num.dart";
 import "package:flutter/material.dart";
 
 class AppDialog extends StatelessWidget {
@@ -23,8 +24,8 @@ class AppDialog extends StatelessWidget {
     contentTextStyle: defaultContentTextStyle,
     content: ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: context.mediaQuery.size.height,
-        maxWidth: context.mediaQuery.size.width,
+        maxHeight: context.mediaQuery.size.height.ensureFinite,
+        maxWidth: context.mediaQuery.size.width.ensureFinite,
       ),
       child: content,
     ),

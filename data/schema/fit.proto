@@ -54,3 +54,45 @@ message TacticalMode {
   required uint32 ship_id = 2;
   required TacticalModeVariant variant = 3;
 }
+
+message Slots {
+  enum SlotState {
+    PASSIVE = 0;
+    ONLINE = 1;
+    ACTIVE = 2;
+    OVERLOAD = 3;
+  }
+
+  message HighSlot {
+    required uint32 type_id = 1;
+    required bool is_turret = 2;
+    required bool is_launcher = 3;
+    required SlotState max_state = 4;
+    repeated uint32 charge_groups = 5;
+  }
+
+  message GeneralSlot {
+    required uint32 type_id = 1;
+    required SlotState max_state = 2;
+    repeated uint32 charge_groups = 3;
+  }
+
+  message ImplantSlot {
+    required uint32 type_id = 1;
+    required uint32 slot_index = 2;
+  }
+
+  message BoosterSlot {
+    required uint32 type_id = 1;
+    required uint32 slot_index = 2;
+  }
+
+  map<uint32, HighSlot> high_slots = 1;
+  map<uint32, GeneralSlot> medium_slots = 2;
+  map<uint32, GeneralSlot> low_slots = 3;
+  map<uint32, GeneralSlot> rig_slots = 4;
+  map<uint32, GeneralSlot> subsystem_slots = 5;
+  map<uint32, GeneralSlot> service_slots = 6;
+  map<uint32, ImplantSlot> implant_slots = 7;
+  map<uint32, BoosterSlot> booster_slots = 8;
+}

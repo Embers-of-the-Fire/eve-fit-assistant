@@ -103,11 +103,46 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
       final filtered = (widget.validator == null)
           ? result
           : result.where(widget.validator!).toList();
+      // Only keep children that are selectable themselves or have selectable
+      // descendants (recursively). This prunes branches that lead nowhere.
+      final visible = <R>[];
+      for (final child in filtered) {
+        final selfSelectable = widget.shallSelect?.call(child) ?? false;
+        if (selfSelectable || _hasDescendantOrSelectable(child, <R>{})) {
+          visible.add(child);
+        }
+      }
       _loadError = null;
-      return filtered;
+      return visible;
     } catch (e) {
       _loadError = e;
       return <R>[];
+    }
+  }
+
+  /// Returns true when [node] is itself selectable (via `shallSelect`) or it
+  /// has at least one descendant (after applying `validator`) that is
+  /// selectable. Uses [visited] to protect against cycles.
+  bool _hasDescendantOrSelectable(R node, [Set<R>? visited]) {
+    visited ??= <R>{};
+    if (visited.contains(node)) return false;
+    visited.add(node);
+    try {
+      final children = widget.fetchChildren(node, ref);
+      final filteredChildren = (widget.validator == null)
+          ? children
+          : children.where(widget.validator!).toList();
+      for (final c in filteredChildren) {
+        final childSelectable = widget.shallSelect?.call(c) ?? false;
+        if (childSelectable) return true;
+        if (_hasDescendantOrSelectable(c, visited)) return true;
+      }
+      // If no child is selectable, check whether the node itself is selectable.
+      return widget.shallSelect?.call(node) ?? false;
+    } catch (_) {
+      // On error assume not having selectable descendants; fall back to
+      // whether this node itself is selectable.
+      return widget.shallSelect?.call(node) ?? false;
     }
   }
 
