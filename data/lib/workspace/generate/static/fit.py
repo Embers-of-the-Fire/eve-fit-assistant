@@ -38,6 +38,7 @@ from data.lib.constant import SUBSYSTEM_DEFENSIVE_SLOT
 from data.lib.constant import SUBSYSTEM_EFFECT_ID
 from data.lib.constant import SUBSYSTEM_OFFENSIVE_SLOT
 from data.lib.constant import SUBSYSTEM_PROPULSION_SLOT
+from data.lib.constant import SUBSYSTEM_SHIP_LIMIT_ATTR_ID
 from data.lib.constant import SUBSYSTEM_SLOT_ATTR
 from data.lib.constant import TURRET_EFFECT_ID
 from data.lib.constant import TURRET_SLOT_ATTR
@@ -64,6 +65,8 @@ _DETERMINE_SHIP_ATTRS = {
     HIGH_SLOT_ATTR,
     MEDIUM_SLOT_ATTR,
     LOW_SLOT_ATTR,
+    RIG_SLOT_ATTR,
+    MAX_SUBSYSTEM_SLOT_ATTR,
     SERVICE_SLOT_ATTR,
 }
 _DETERMINE_SUBSYSTEM_ATTRS = {
@@ -152,6 +155,9 @@ async def generate(data: GeneratorDatasource, collection):
             )
             subsystem_def.launcher_slots = _first_attr_where(
                 validated.dogmaAttributes, LAUNCHER_SLOT_MODIFIER_ATTR
+            )
+            subsystem_def.ship_type_id = _first_attr_where(
+                validated.dogmaAttributes, SUBSYSTEM_SHIP_LIMIT_ATTR_ID
             )
 
             ss_variant_map = {

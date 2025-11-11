@@ -42,6 +42,8 @@ message Subsystem {
   }
 
   required SubsystemType subsystem_type = 7;
+
+  required uint32 ship_type_id = 8;
 }
 
 message TacticalMode {

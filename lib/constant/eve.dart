@@ -17,3 +17,9 @@ class EveConstMarketGroupId {
   static const int charge = 11;
   static const int fighter = 2236;
 }
+
+class EveConstGeneric {
+  const EveConstGeneric._();
+
+  static const int subsystemSize = 4;
+}

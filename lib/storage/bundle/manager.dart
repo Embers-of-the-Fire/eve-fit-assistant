@@ -197,6 +197,8 @@ class BundleManager extends _$BundleManager {
               region: descriptor.gameRegion,
             ),
           );
+      ref.invalidate(bundleServiceProvider);
+
       return DateTime.now();
     });
   }

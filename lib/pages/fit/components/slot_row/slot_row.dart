@@ -35,6 +35,9 @@ class _SlotRow extends ConsumerWidget {
       case final SlotIdentifierTacticalMode mode:
         return _TacticalModeSlotRow(fitContext: fitContext, slotIdent: mode, slotInfo: slotInfo);
 
+      case final SlotIdentifierSubsystem subsystem:
+        return _SubsystemSlotRow(fitContext: fitContext, slotIdent: subsystem, slotInfo: slotInfo);
+
       default:
         final itemId = slotInfo.slot.itemId;
         if (itemId is! FitStorageItemIdItem) {

@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/native/api/storage.dart" as native;
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -84,7 +85,7 @@ abstract class FitStorageSlots with _$FitStorageSlots {
     medium: IList(const Option<FitModuleItem>.none().repeat(ship.mediumSlots)),
     low: IList(const Option<FitModuleItem>.none().repeat(ship.lowSlots)),
     rig: IList(const Option<FitModuleItem>.none().repeat(ship.rigSlots)),
-    subsystem: IList(const Option<FitModuleItem>.none().repeat(ship.subsystemSlots)),
+    subsystem: IList(const Option<FitModuleItem>.none().repeat(EveConstGeneric.subsystemSize)),
     service: IList(const Option<FitModuleItem>.none().repeat(ship.serviceSlots)),
     tacticalMode: ship.tacticalModes.isEmpty
         ? const Option<int>.none()

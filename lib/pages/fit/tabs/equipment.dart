@@ -36,8 +36,12 @@ class _EquipmentTab extends ConsumerWidget {
           _EquipmentHeader(
             title: context.l10n.highSlot,
             actions: [
-              _ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.high(index: 0))),
-              _ActionClearCharge(onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.high(index: 0))),
+              _ActionClearAll(
+                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.high(index: 0)),
+              ),
+              _ActionClearCharge(
+                onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.high(index: 0)),
+              ),
             ],
           ),
         ...fit.body.slots.high.mapWithIndex(
@@ -59,8 +63,12 @@ class _EquipmentTab extends ConsumerWidget {
           _EquipmentHeader(
             title: context.l10n.midSlot,
             actions: [
-              _ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.medium(index: 0))),
-              _ActionClearCharge(onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.medium(index: 0))),
+              _ActionClearAll(
+                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.medium(index: 0)),
+              ),
+              _ActionClearCharge(
+                onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.medium(index: 0)),
+              ),
             ],
           ),
         ...fit.body.slots.medium.mapWithIndex(
@@ -71,7 +79,7 @@ class _EquipmentTab extends ConsumerWidget {
               () => SlotInfo.empty(index: index),
               (slot) => SlotInfo.item(
                 state: slot.state,
-                type: const native.OutSlotType.high(),
+                type: const native.OutSlotType.medium(),
                 index: index,
                 slot: slot,
               ),
@@ -82,8 +90,12 @@ class _EquipmentTab extends ConsumerWidget {
           _EquipmentHeader(
             title: context.l10n.lowSlot,
             actions: [
-              _ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.low(index: 0))),
-              _ActionClearCharge(onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.low(index: 0))),
+              _ActionClearAll(
+                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.low(index: 0)),
+              ),
+              _ActionClearCharge(
+                onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.low(index: 0)),
+              ),
             ],
           ),
         ...fit.body.slots.low.mapWithIndex(
@@ -94,7 +106,7 @@ class _EquipmentTab extends ConsumerWidget {
               () => SlotInfo.empty(index: index),
               (slot) => SlotInfo.item(
                 state: slot.state,
-                type: const native.OutSlotType.high(),
+                type: const native.OutSlotType.low(),
                 index: index,
                 slot: slot,
               ),
@@ -104,7 +116,11 @@ class _EquipmentTab extends ConsumerWidget {
         if (fit.body.slots.rig.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.rigSlot,
-            actions: [_ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.rig(index: 0)))],
+            actions: [
+              _ActionClearAll(
+                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.rig(index: 0)),
+              ),
+            ],
           ),
         ...fit.body.slots.rig.mapWithIndex(
           (slot, index) => _AnySlotRow(
@@ -114,7 +130,7 @@ class _EquipmentTab extends ConsumerWidget {
               () => SlotInfo.empty(index: index),
               (slot) => SlotInfo.item(
                 state: slot.state,
-                type: const native.OutSlotType.high(),
+                type: const native.OutSlotType.rig(),
                 index: index,
                 slot: slot,
               ),
@@ -124,18 +140,23 @@ class _EquipmentTab extends ConsumerWidget {
         if (fit.body.slots.subsystem.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.subsystemSlot,
-            actions: [_ActionClearAll(onTap: () => fitWrapper.clearSlot(const SlotIdentifier.subsystem(index: 0)))],
+            actions: [
+              _ActionClearAll(
+                onTap: () =>
+                    fitWrapper.clearSlot(const SlotIdentifier.subsystem(type: SubsystemType.core)),
+              ),
+            ],
           ),
-        ...fit.body.slots.subsystem.mapWithIndex(
-          (slot, index) => _AnySlotRow(
+        ...SubsystemType.allTypes.map(
+          (type) => _AnySlotRow(
             fitContext: fitContext,
-            slotIdent: SlotIdentifier.subsystem(index: index),
-            slotInfo: slot.match(
-              () => SlotInfo.empty(index: index),
+            slotIdent: SlotIdentifier.subsystem(type: type),
+            slotInfo: fit.body.slots.subsystem[type.index].match(
+              () => SlotInfo.empty(index: type.index),
               (slot) => SlotInfo.item(
                 state: slot.state,
-                type: const native.OutSlotType.high(),
-                index: index,
+                type: const native.OutSlotType.subSystem(),
+                index: type.index,
                 slot: slot,
               ),
             ),
