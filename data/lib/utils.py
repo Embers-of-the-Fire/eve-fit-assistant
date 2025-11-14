@@ -62,16 +62,20 @@ def execute_command(cmd: list, title: str, dry_run: bool = False, *args, **kwarg
 
     debug("Executing command: " + " ".join(cmd))
     debug(title)
-    out = subprocess.run(cmd, *args, capture_output=True, text=True, **kwargs)
+    out = subprocess.run(
+        cmd, *args, capture_output=True, text=True, encoding="utf-8", errors="replace", **kwargs
+    )
+    stdout = out.stdout or ""
+    stderr = out.stderr or ""
     if out.returncode != 0:
-        for line in out.stdout.splitlines():
+        for line in stdout.splitlines():
             error(line)
         error(f"Failed to execute command [{out.returncode}]:")
-        for line in out.stderr.splitlines():
+        for line in stderr.splitlines():
             error(line)
         exit(out.returncode)
     else:
-        for line in out.stdout.splitlines():
+        for line in stdout.splitlines():
             debug(line)
     debug("-" * line_width)
 
