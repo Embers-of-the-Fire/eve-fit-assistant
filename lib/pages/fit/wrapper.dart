@@ -9,9 +9,10 @@ class FitContext {
 }
 
 class FitWrapper {
-  const FitWrapper({required this.wrapped});
+  const FitWrapper({required this.wrapped, required this.fitId});
 
   final Fit wrapped;
+  final String fitId;
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
 
@@ -38,7 +39,35 @@ class FitWrapper {
         if (proto != null) await _equipRig(index, proto);
       case SlotIdentifierSubsystem(:final type):
         final proto = slotsInfo.subsystemSlots[typeId];
-        if (proto != null) await _equipSubsystem(type, proto);
+        if (proto != null) {
+          final ship = ref.read(
+            bundleCollectionGetShipProvider(ref.read(fitProvider(fitId)).fit.body.shipTypeId),
+          );
+          if (ship == null) return;
+          // 单次 update：装配子系统并按子系统重新计算高/中/低槽
+          await wrapped.update((fit) {
+            final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
+              type.index,
+              (_) => Option.of(
+                FitModuleItem(
+                  itemId: FitStorageItemId.item(id: proto.typeId),
+                  charge: const Option.none(),
+                  state: proto.maxState.dartImpl.limitToActive,
+                ),
+              ),
+            );
+            final afterEquip = fit.copyWith(
+              body: fit.body.copyWith(
+                slots: fit.body.slots.copyWith(subsystem: updatedSubsystem),
+              ),
+            );
+            return _applySubsystemResize(
+              afterEquip,
+              ship,
+              (id) => ref.read(bundleCollectionGetSubsystemProvider(id)),
+            );
+          });
+        }
       case SlotIdentifierService(:final index):
         final proto = slotsInfo.serviceSlots[typeId];
         if (proto != null) await _equipService(index, proto);
@@ -137,6 +166,37 @@ class FitWrapper {
         await _removeService(index);
       default:
         break;
+    }
+  }
+
+  // 单次 update 版本：如果是子系统，移除并同时重算槽位长度
+  Future<void> removeSlotAdjusted(SlotIdentifier slotIdent, WidgetRef ref) async {
+    switch (slotIdent) {
+      case SlotIdentifierSubsystem(:final type):
+        final fitState = ref.read(fitProvider(fitId));
+        if (!fitState.isInitialized) return;
+        final ship = ref.read(
+          bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId),
+        );
+        if (ship == null) return;
+        await wrapped.update((fit) {
+          final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
+            type.index,
+            (_) => const Option.none(),
+          );
+          final afterRemove = fit.copyWith(
+            body: fit.body.copyWith(
+              slots: fit.body.slots.copyWith(subsystem: updatedSubsystem),
+            ),
+          );
+          return _applySubsystemResize(
+            afterRemove,
+            ship,
+            (id) => ref.read(bundleCollectionGetSubsystemProvider(id)),
+          );
+        });
+      default:
+        await removeSlot(slotIdent);
     }
   }
 
@@ -345,22 +405,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _equipSubsystem(SubsystemType type, Slots_GeneralSlot slotInfo) =>
-      wrapped.update((fit) {
-        final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
-          type.index,
-          (_) => Option.of(
-            FitModuleItem(
-              itemId: FitStorageItemId.item(id: slotInfo.typeId),
-              charge: const Option.none(),
-              state: slotInfo.maxState.dartImpl.limitToActive,
-            ),
-          ),
-        );
-        return fit.copyWith(
-          body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
-        );
-      });
+  // _equipSubsystem 已被单次 update 的嵌入式逻辑替代
 
   Future<void> _equipService(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
     final updatedService = fit.body.slots.service.replaceBy(
@@ -681,5 +726,56 @@ class FitWrapper {
         ),
       ),
     );
+  }
+
+  // 仅修改 fit 的函数，供单次 update 内复用
+  FitStorage _applySubsystemResize(
+    FitStorage fit,
+    Ship ship,
+    Subsystem? Function(int typeId) resolve,
+  ) {
+    final installed = fit.body.slots.subsystem
+        .map((opt) => opt.toNullable()?.itemId.asId)
+        .whereType<int>()
+        .toList();
+
+    final defs = installed
+        .map((id) => resolve(id))
+        .whereType<Subsystem>()
+        .toList();
+
+    int newHigh;
+    int newMedium;
+    int newLow;
+
+    if (defs.isEmpty) {
+      newHigh = ship.highSlots;
+      newMedium = ship.mediumSlots;
+      newLow = ship.lowSlots;
+    } else {
+      newHigh = defs.fold<int>(0, (sum, s) => sum + s.highSlots);
+      newMedium = defs.fold<int>(0, (sum, s) => sum + s.mediumSlots);
+      newLow = defs.fold<int>(0, (sum, s) => sum + s.lowSlots);
+    }
+
+    IList<Option<FitModuleItem>> resize(IList<Option<FitModuleItem>> current, int target) {
+      if (target == current.length) return current;
+      if (target < current.length) {
+        return IList(current.take(target));
+      }
+      final extra = List<Option<FitModuleItem>>.generate(
+        target - current.length,
+        (_) => const Option<FitModuleItem>.none(),
+      );
+      return IList([...current, ...extra]);
+    }
+
+    final updatedSlots = fit.body.slots.copyWith(
+      high: resize(fit.body.slots.high, newHigh),
+      medium: resize(fit.body.slots.medium, newMedium),
+      low: resize(fit.body.slots.low, newLow),
+    );
+
+    return fit.copyWith(body: fit.body.copyWith(slots: updatedSlots));
   }
 }

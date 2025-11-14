@@ -44,7 +44,9 @@ class _SubsystemSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: [
           SlidableAction(
-            onPressed: (_) => fitContext.fitWrapper.removeSlot(slotIdent),
+            onPressed: (_) async {
+              await fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref);
+            },
             backgroundColor: const Color(0xFFFE4A49),
             foregroundColor: Colors.white,
             icon: Icons.delete,

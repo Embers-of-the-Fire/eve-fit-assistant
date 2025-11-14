@@ -97,7 +97,7 @@ class _FitPage extends ConsumerWidget {
       throw StateError("Failed to load ship info: ${fit.fit.body.shipTypeId}");
     }
 
-    final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier));
+  final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier), fitId: fitId);
     final fitContext = FitContext(fit: fit.fit, ship: shipInfo, fitWrapper: fitWrapper);
 
     return Layout(
