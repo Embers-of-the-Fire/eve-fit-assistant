@@ -122,7 +122,7 @@ class WorkspaceResources(BaseModel):
         if not self.fsd.is_dir():
             error(f"FSD resource path is not a directory: {self.fsd}")
             exit(1)
-        
+
         if not self.patches.exists():
             error(f"Patches path does not exist: {self.patches}")
             exit(1)

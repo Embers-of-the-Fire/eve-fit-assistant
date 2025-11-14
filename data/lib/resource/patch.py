@@ -3,6 +3,7 @@ Patches Manager Module
 
 This module contains support for patches management.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 class PatchesManager:
     __patches_root_dir: Path
     __cache: dict[str, Any]
-    
+
     def __init__(self, patches_root_dir: Path) -> None:
         self.__patches_root_dir = patches_root_dir
         self.__cache = {}
@@ -34,10 +35,10 @@ class PatchesManager:
         if not self.__patches_root_dir.is_dir():
             error(f"Patches root path is not a directory: {self.__patches_root_dir}")
             exit(1)
-    
+
     def get(self, patch_key: str, variant: Literal["yaml", "json"] = "yaml") -> Any:
         """Get patch data by patch key.
-        
+
         The key must be the full file name without extension, and the variant will be the file extension.
 
         For example, `get("aaa", "json")` will load `aaa.json` file.
