@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:flutter/material.dart";
 import "package:flutter_breadcrumb/flutter_breadcrumb.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -89,12 +90,15 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
     }
   }
 
-  void _pushRoot(R newRoot) {
+  void _pushRoot(R newRoot, {bool? ensureNonRedundantSingleChild}) {
     setState(() {
       _history.add(_currentRoot);
       _currentRoot = newRoot;
     });
     _loadChildrenForCurrentRoot();
+    if (ensureNonRedundantSingleChild ?? true) {
+      _ensureNonRedundantSingleChild();
+    }
   }
 
   List<R> _loadChildrenForRoot(R root) {
@@ -146,6 +150,17 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
     }
   }
 
+  void _ensureNonRedundantSingleChild() {
+    while (_children.length == 1) {
+      final singleChild = _children.first;
+      final shallSelect = widget.shallSelect?.call(singleChild) ?? false;
+      if (shallSelect) {
+        break;
+      }
+      _pushRoot(singleChild, ensureNonRedundantSingleChild: false);
+    }
+  }
+
   void _loadChildrenForCurrentRoot() {
     final children = _loadChildrenForRoot(_currentRoot);
     setState(() {
@@ -157,16 +172,17 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
     setState(() {
       _history.clear();
       _currentRoot = widget.root;
+      _ensureNonRedundantSingleChild();
     });
     _loadChildrenForCurrentRoot();
   }
 
   void _popToRoot(int index) {
+    debug("Pop to root index: $index with $_history $_currentRoot");
     setState(() {
-      _history.removeRange(index + 1, _history.length);
-      if (_history.isNotEmpty) {
-        _currentRoot = _history.removeLast();
-      }
+      _currentRoot = _history[index];
+      _history.removeRange(index, _history.length);
+      debug("Removed history, now: $_history");
     });
     _loadChildrenForCurrentRoot();
   }
