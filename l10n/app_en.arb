@@ -61,6 +61,8 @@
   "fitSlotEmpty": "{slotName} (Empty)",
   "@@@@_FIT_ATTRIBUTE_TAB": {},
   "fitAttributeTabCapacitorStable": "{percent}% Stable",
+  "@@@@_FIT_DRONE_TAB": {},
+  "fitDroneTabAddDroneTitle": "Add Drone",
   "@@@_APP_SETTINGS_PAGE": {},
   "appSettingsPageTitle": "App Settings",
   "appSettingsPageSectionGeneral": "General",

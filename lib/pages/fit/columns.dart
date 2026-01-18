@@ -74,7 +74,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
             if (widget.fitContext.ship.fighterTubes > 0)
               _FighterTab(fit: widget.fitContext.fit)
             else
-              _DroneTab(fit: widget.fitContext.fit),
+              _DroneTab(fitContext: widget.fitContext),
             ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
           ],
         ),

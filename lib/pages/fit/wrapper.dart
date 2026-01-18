@@ -1,7 +1,12 @@
 part of "page.dart";
 
 class FitContext {
-  const FitContext({required this.fit, required this.fitWrapper, required this.emulated, required this.ship});
+  const FitContext({
+    required this.fit,
+    required this.fitWrapper,
+    required this.emulated,
+    required this.ship,
+  });
 
   final FitStorage fit;
   final FitWrapper fitWrapper;
@@ -45,7 +50,6 @@ class FitWrapper {
             bundleCollectionGetShipProvider(ref.read(fitProvider(fitId)).fit.body.shipTypeId),
           );
           if (ship == null) return;
-          // 单次 update：装配子系统并按子系统重新计算高/中/低槽
           await wrapped.update((fit) {
             final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
               type.index,
@@ -58,9 +62,7 @@ class FitWrapper {
               ),
             );
             final afterEquip = fit.copyWith(
-              body: fit.body.copyWith(
-                slots: fit.body.slots.copyWith(subsystem: updatedSubsystem),
-              ),
+              body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
             );
             return _applySubsystemResize(
               afterEquip,
@@ -72,6 +74,8 @@ class FitWrapper {
       case SlotIdentifierService(:final index):
         final proto = slotsInfo.serviceSlots[typeId];
         if (proto != null) await _equipService(index, proto);
+      case SlotIdentifierDrone(:final groupId):
+        await _equipDrone(groupId, typeId);
       default:
         break;
     }
@@ -113,6 +117,8 @@ class FitWrapper {
           final proto = slotsInfo.serviceSlots[typeId];
           if (proto == null) return fit;
           return _toggleServiceSlot(fit, index, slot, proto);
+        case SlotIdentifierDrone(:final groupId):
+          return _toggleDroneSlot(fit, slot, groupId);
         default:
           return fit;
       }
@@ -133,6 +139,8 @@ class FitWrapper {
         await _clearSubsystem();
       case SlotIdentifierService _:
         await _clearService();
+      case SlotIdentifierDrone _:
+        await _clearDrones();
       default:
         break;
     }
@@ -165,20 +173,19 @@ class FitWrapper {
         await _removeSubsystem(type);
       case SlotIdentifierService(:final index):
         await _removeService(index);
+      case SlotIdentifierDrone(:final groupId):
+        await _removeDrone(groupId);
       default:
         break;
     }
   }
 
-  // 单次 update 版本：如果是子系统，移除并同时重算槽位长度
   Future<void> removeSlotAdjusted(SlotIdentifier slotIdent, WidgetRef ref) async {
     switch (slotIdent) {
       case SlotIdentifierSubsystem(:final type):
         final fitState = ref.read(fitProvider(fitId));
         if (!fitState.isInitialized) return;
-        final ship = ref.read(
-          bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId),
-        );
+        final ship = ref.read(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId));
         if (ship == null) return;
         await wrapped.update((fit) {
           final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
@@ -186,9 +193,7 @@ class FitWrapper {
             (_) => const Option.none(),
           );
           final afterRemove = fit.copyWith(
-            body: fit.body.copyWith(
-              slots: fit.body.slots.copyWith(subsystem: updatedSubsystem),
-            ),
+            body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
           );
           return _applySubsystemResize(
             afterRemove,
@@ -298,6 +303,7 @@ class FitWrapper {
     SlotIdentifierRig(:final index) => fit.body.slots.rig[index],
     SlotIdentifierSubsystem(:final type) => fit.body.slots.subsystem[type.index],
     SlotIdentifierService(:final index) => fit.body.slots.service[index],
+    SlotIdentifierDrone(:final groupId) => _getDroneAsModule(fit, groupId),
     _ => const Option.none(),
   };
 
@@ -341,7 +347,6 @@ class FitWrapper {
     _ => fit,
   };
 
-  // Private slot-specific implementations
   Future<void> _equipHigh(int index, Slots_HighSlot slotInfo) => wrapped.update((fit) {
     final updatedHigh = fit.body.slots.high.replaceBy(
       index,
@@ -405,8 +410,6 @@ class FitWrapper {
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: updatedRig)),
     );
   });
-
-  // _equipSubsystem 已被单次 update 的嵌入式逻辑替代
 
   Future<void> _equipService(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
     final updatedService = fit.body.slots.service.replaceBy(
@@ -729,7 +732,53 @@ class FitWrapper {
     );
   }
 
-  // 仅修改 fit 的函数，供单次 update 内复用
+  // Drone-related methods
+  Option<FitModuleItem> _getDroneAsModule(FitStorage fit, int groupId) {
+    final drone = fit.body.drones.firstWhereOrNull((d) => d.groupId == groupId);
+    if (drone == null) return const Option.none();
+    return Option.of(
+      FitModuleItem(itemId: drone.itemId, charge: const Option.none(), state: drone.state),
+    );
+  }
+
+  Future<void> _equipDrone(int groupId, int typeId) => wrapped.update((fit) {
+    final hasGroup = fit.body.drones.any((d) => d.groupId == groupId);
+    final newDrone = FitDroneItem(
+      itemId: FitStorageItemId.item(id: typeId),
+      groupId: groupId,
+      state: FitItemState.active,
+    );
+
+    if (!hasGroup) {
+      return fit.copyWith(body: fit.body.copyWith(drones: fit.body.drones.add(newDrone)));
+    }
+
+    final updated = fit.body.drones
+        .map((d) => d.groupId == groupId ? newDrone.copyWith(state: FitItemState.active) : d)
+        .toIList();
+    return fit.copyWith(body: fit.body.copyWith(drones: updated));
+  });
+
+  FitStorage _toggleDroneSlot(FitStorage fit, FitModuleItem slot, int groupId) {
+    final first = fit.body.drones.firstWhereOrNull((d) => d.groupId == groupId);
+    if (first == null) return fit;
+
+    final newState = first.state.toggleDrone();
+    final updated = fit.body.drones
+        .map((d) => d.groupId == groupId ? d.copyWith(state: newState) : d)
+        .toIList();
+
+    return fit.copyWith(body: fit.body.copyWith(drones: updated));
+  }
+
+  Future<void> _clearDrones() =>
+      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(drones: IList<FitDroneItem>())));
+
+  Future<void> _removeDrone(int groupId) => wrapped.update((fit) {
+    final updatedDrones = fit.body.drones.where((d) => d.groupId != groupId).toIList();
+    return fit.copyWith(body: fit.body.copyWith(drones: updatedDrones));
+  });
+
   FitStorage _applySubsystemResize(
     FitStorage fit,
     Ship ship,
@@ -740,10 +789,7 @@ class FitWrapper {
         .whereType<int>()
         .toList();
 
-    final defs = installed
-        .map((id) => resolve(id))
-        .whereType<Subsystem>()
-        .toList();
+    final defs = installed.map((id) => resolve(id)).whereType<Subsystem>().toList();
 
     int newHigh;
     int newMedium;

@@ -34,7 +34,7 @@ class GlobalLogger {
 
   static void init(String fileOutputDir, {required bool enableDebugLog}) {
     _console = Logger(
-      printer: PrefixPrinter(PrettyPrinter(errorMethodCount: 14)),
+      printer: PrefixPrinter(PrettyPrinter(methodCount: 4, errorMethodCount: 14)),
       filter: DevelopmentFilter()..level = Level.debug,
       output: ConsoleOutput(),
     );

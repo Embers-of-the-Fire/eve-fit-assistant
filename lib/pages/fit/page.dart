@@ -49,6 +49,7 @@ part "components/attribute/miscellaneous.dart";
 part "components/attribute/resource.dart";
 part "components/attribute/ship_info.dart";
 part "components/attribute/weapon.dart";
+part "components/equipment/slot_row/drone_slot.dart";
 part "components/equipment/slot_row/empty_slot_row.dart";
 part "components/equipment/slot_row/slot_row.dart";
 part "components/equipment/slot_row/subsystem_slot.dart";

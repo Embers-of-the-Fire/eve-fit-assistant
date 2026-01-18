@@ -1,6 +1,5 @@
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/list/eve_select_list.dart";
-import "package:eve_fit_assistant/config/logger.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -27,7 +26,6 @@ Future<int?> showAddItemDialog({
     initialMarketGroupId: initialMarketGroupId,
     validator: validator,
   );
-  info("Showing add item dialog: $metadata");
   return showDialog<int>(
     context: context,
     builder: (context) => _AddItemDialog(metadata: metadata),

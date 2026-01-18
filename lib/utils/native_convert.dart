@@ -27,4 +27,15 @@ extension FitItemStateExt on FitItemState {
 
     return FitItemState.passive;
   }
+
+  FitItemState toggleDrone() {
+    switch (this) {
+      case FitItemState.passive:
+        return FitItemState.active;
+      case FitItemState.active:
+      case FitItemState.online:
+      case FitItemState.overload:
+        return FitItemState.passive;
+    }
+  }
 }

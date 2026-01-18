@@ -38,6 +38,9 @@ class _SlotRow extends ConsumerWidget {
       case final SlotIdentifierSubsystem subsystem:
         return _SubsystemSlotRow(fitContext: fitContext, slotIdent: subsystem, slotInfo: slotInfo);
 
+      case final SlotIdentifierDrone drone:
+        return _DroneSlotRow(fitContext: fitContext, slotIdent: drone, slotInfo: slotInfo);
+
       default:
         final itemId = slotInfo.slot.itemId;
         if (itemId is! FitStorageItemIdItem) {

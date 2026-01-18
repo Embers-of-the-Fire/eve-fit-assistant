@@ -151,11 +151,7 @@ abstract class SlotIdentifier with _$SlotIdentifier {
             _ => true,
           },
       drone: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootMarketGroup(:final marketGroupId) =>
-              marketGroupId == EveConstMarketGroupId.drone,
-            _ => true,
-          },
+          (node) => true,
       fighter: (_) =>
           (node) => switch (node) {
             EveSelectListRootMarketGroup(:final marketGroupId) =>

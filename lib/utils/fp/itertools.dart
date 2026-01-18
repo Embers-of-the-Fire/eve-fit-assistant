@@ -93,3 +93,14 @@ extension SkipTo<T> on Iterable<T> {
     }
   }
 }
+
+extension FirstWhereOrNull<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) predicate) {
+    for (final element in this) {
+      if (predicate(element)) {
+        return element;
+      }
+    }
+    return null;
+  }
+}

@@ -116,6 +116,8 @@
       }
     }
   },
+  "@@@@_FIT_DRONE_TAB": {},
+  "fitDroneTabAddDroneTitle": "添加无人机",
   "@@@_APP_SETTINGS_PAGE": {},
   "appSettingsPageTitle": "应用设置",
   "appSettingsPageSectionGeneral": "常规",

@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/select_list.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:flutter/material.dart";
@@ -78,7 +79,9 @@ class EveSelectList extends ConsumerWidget {
           final types = marketGroupInfo.types
               .map((t) => EveSelectListRoot.type(typeId: t))
               .where(validator);
-          return [...groups, ...types];
+          final d = [...groups, ...types];
+          info("$d");
+          return d;
         },
         type: (_) => const [],
       );
