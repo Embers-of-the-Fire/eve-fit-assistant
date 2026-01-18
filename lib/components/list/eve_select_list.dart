@@ -92,7 +92,7 @@ class EveSelectList extends ConsumerWidget {
       shallSelect: shallPopToSelect,
       onSelect: onSelect,
       breadcrumbBuilder: (node) =>
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: _displayNode(node)),
+          Padding(padding: const .symmetric(horizontal: 4), child: _displayNode(node)),
       itemBuilder: (node, onTap) => node.when(
         category: (categoryId) => CategoryListTile(
           categoryId: categoryId,

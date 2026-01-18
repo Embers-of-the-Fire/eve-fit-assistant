@@ -205,9 +205,10 @@ class TypeListTile extends ConsumerWidget {
 }
 
 class TypeNameText extends ConsumerWidget {
-  const TypeNameText({required this.typeId, super.key});
+  const TypeNameText({required this.typeId, super.key, this.textAlign});
 
   final int typeId;
+  final TextAlign? textAlign;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -217,6 +218,6 @@ class TypeNameText extends ConsumerWidget {
     if (typeNameId == null) {
       return Text("Unknown Type[$typeId]");
     }
-    return LocalizedText(localizationKey: typeNameId);
+    return LocalizedText(localizationKey: typeNameId, textAlign: textAlign);
   }
 }

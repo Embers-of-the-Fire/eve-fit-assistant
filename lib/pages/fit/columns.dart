@@ -10,7 +10,7 @@ class FitDisplayColumns extends ConsumerWidget {
     final columns = columnCount(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const .symmetric(horizontal: 6),
       child: Row(
         children: [
           ...range(0, columns)
@@ -51,7 +51,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
     children: [
       TabBar(
         controller: _tabController,
-        labelPadding: EdgeInsets.zero,
+        labelPadding: .zero,
         tabs: [
           Tab(text: context.l10n.fitTabsCharacter),
           Tab(text: context.l10n.fitTabsEquipment),
@@ -70,7 +70,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
           children: [
             ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
             _EquipmentTab(fitContext: widget.fitContext),
-            _AttributeTab(fit: widget.fitContext.fit),
+            _AttributeTab(fitContext: widget.fitContext),
             if (widget.fitContext.ship.fighterTubes > 0)
               _FighterTab(fit: widget.fitContext.fit)
             else

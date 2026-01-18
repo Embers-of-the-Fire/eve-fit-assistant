@@ -1,15 +1,48 @@
 part of "../page.dart";
 
-class _AttributeTab extends ConsumerWidget {
-  const _AttributeTab({required this.fit});
+class _AttributeTab extends ConsumerStatefulWidget {
+  const _AttributeTab({required this.fitContext});
 
-  final FitStorage fit;
+  final FitContext fitContext;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Center(
-    child: Container(
-      padding: const EdgeInsets.all(12),
-      child: Text("${ref.watch(nativeEmulatedShipProvider(fit.metadata.fitId))}"),
-    ),
-  );
+  ConsumerState<ConsumerStatefulWidget> createState() => _AttributeTabState();
+}
+
+class _AttributeTabState extends ConsumerState<_AttributeTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    final emulated = widget.fitContext.emulated;
+    if (emulated == null) {
+      return const Center(
+        child: SizedBox.square(
+          dimension: 40,
+          child: LoadingIndicator(indicatorType: Indicator.ballClipRotateMultiple),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const .only(bottom: 8),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            ShipInfo(fitContext: widget.fitContext),
+            const Divider(height: 0),
+            Capacitor(ship: emulated),
+            Weapon(ship: emulated),
+            Resource(ship: emulated),
+            Hp(ship: emulated),
+            Miscellaneous(ship: emulated),
+            Cargo(ship: emulated),
+          ],
+        ),
+      ),
+    );
+  }
 }

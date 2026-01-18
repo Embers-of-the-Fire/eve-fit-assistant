@@ -51,6 +51,15 @@
     }
   },
   "fitCreationPageDialogErrorText": "请输入配置名。",
+  "fitCreationPageDialogDeleteFitTitle": "删除配置",
+  "fitCreationPageDialogDeleteFitContent": "您确定要删除配置 {fitName} 吗？",
+  "@fitCreationPageDialogDeleteFitContent": {
+    "placeholders": {
+      "fitName": {
+        "type": "String"
+      }
+    }
+  },
   "@@@_FIT_PAGE": {},
   "fitPageTitle": "{fitName} - {shipName}",
   "@fitPageTitle": {
@@ -94,6 +103,15 @@
   "@fitSlotEmpty": {
     "placeholders": {
       "slotName": {
+        "type": "String"
+      }
+    }
+  },
+  "@@@@_FIT_ATTRIBUTE_TAB": {},
+  "fitAttributeTabCapacitorStable": "{percent}% 稳定",
+  "@fitAttributeTabCapacitorStable": {
+    "placeholders": {
+      "percent": {
         "type": "String"
       }
     }

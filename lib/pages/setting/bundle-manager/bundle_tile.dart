@@ -7,11 +7,11 @@ class _BundleTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Card(
-    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    margin: const .symmetric(horizontal: 12, vertical: 6),
     elevation: 2,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const .symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           ClickableCircleAvatar(
@@ -40,7 +40,7 @@ class _BundleTile extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const .symmetric(horizontal: 8, vertical: 2),
                   child: Text(
                     bundle.region,
                     style: context.theme.textTheme.labelSmall?.copyWith(

@@ -1,4 +1,4 @@
-part of "../../page.dart";
+part of "../../../page.dart";
 
 class _TacticalModeSlotRow extends StatelessWidget {
   const _TacticalModeSlotRow({

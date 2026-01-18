@@ -19,7 +19,7 @@ class BundleDetailPage extends ConsumerWidget {
     return Layout(
       title: bundle.bundleId,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const .symmetric(horizontal: 16, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -46,7 +46,7 @@ class BundleDetailPage extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const .symmetric(horizontal: 8, vertical: 2),
                         child: Text(
                           bundle.region,
                           style: context.theme.textTheme.labelSmall?.copyWith(

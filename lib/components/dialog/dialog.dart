@@ -19,7 +19,7 @@ class AppDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: Text(title),
-    insetPadding: const EdgeInsets.symmetric(vertical: 120, horizontal: 40),
+    insetPadding: const .symmetric(vertical: 120, horizontal: 40),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     contentTextStyle: defaultContentTextStyle,
     content: ConstrainedBox(

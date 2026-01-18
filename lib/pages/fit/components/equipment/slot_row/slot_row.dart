@@ -1,4 +1,4 @@
-part of "../../page.dart";
+part of "../../../page.dart";
 
 class _AnySlotRow extends StatelessWidget {
   const _AnySlotRow({required this.fitContext, required this.slotIdent, required this.slotInfo});
@@ -155,7 +155,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           backgroundColor: Colors.grey.shade200,
           foregroundColor: Colors.black,
           label: context.l10n.copy,
-          padding: EdgeInsets.zero,
+          padding: .zero,
         ),
       );
     }
@@ -168,7 +168,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           foregroundColor: Colors.white,
           icon: Icons.battery_charging_full,
           label: context.l10n.charge,
-          padding: EdgeInsets.zero,
+          padding: .zero,
         ),
       );
     }
@@ -187,7 +187,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           foregroundColor: Colors.white,
           icon: Icons.cancel,
           label: context.l10n.charge,
-          padding: EdgeInsets.zero,
+          padding: .zero,
         ),
       );
     }
@@ -199,7 +199,7 @@ class _SlotRowDisplay extends ConsumerWidget {
         foregroundColor: Colors.white,
         icon: Icons.delete,
         label: context.l10n.delete,
-        padding: EdgeInsets.zero,
+        padding: .zero,
       ),
     );
 

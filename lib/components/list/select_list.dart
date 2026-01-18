@@ -67,9 +67,6 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
   // Current (synchronously loaded) children for _currentRoot.
   List<R> _children = [];
 
-  // Store last load error (if any).
-  Object? _loadError;
-
   @override
   void initState() {
     super.initState();
@@ -102,26 +99,18 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
   }
 
   List<R> _loadChildrenForRoot(R root) {
-    try {
-      final result = widget.fetchChildren(root, ref);
-      final filtered = (widget.validator == null)
-          ? result
-          : result.where(widget.validator!).toList();
-      // Only keep children that are selectable themselves or have selectable
-      // descendants (recursively). This prunes branches that lead nowhere.
-      final visible = <R>[];
-      for (final child in filtered) {
-        final selfSelectable = widget.shallSelect?.call(child) ?? false;
-        if (selfSelectable || _hasDescendantOrSelectable(child, <R>{})) {
-          visible.add(child);
-        }
+    final result = widget.fetchChildren(root, ref);
+    final filtered = (widget.validator == null) ? result : result.where(widget.validator!).toList();
+    // Only keep children that are selectable themselves or have selectable
+    // descendants (recursively). This prunes branches that lead nowhere.
+    final visible = <R>[];
+    for (final child in filtered) {
+      final selfSelectable = widget.shallSelect?.call(child) ?? false;
+      if (selfSelectable || _hasDescendantOrSelectable(child, <R>{})) {
+        visible.add(child);
       }
-      _loadError = null;
-      return visible;
-    } catch (e) {
-      _loadError = e;
-      return <R>[];
     }
+    return visible;
   }
 
   /// Returns true when [node] is itself selectable (via `shallSelect`) or it
@@ -205,7 +194,7 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
     children: [
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const .symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
         ),
@@ -216,22 +205,20 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
         ),
       ),
       Expanded(
-        child: _loadError != null
-            ? Center(child: Text("Error: \\$_loadError"))
-            : ListView.builder(
-                itemCount: _children.length,
-                itemBuilder: (ctx, i) {
-                  final node = _children[i];
-                  return widget.itemBuilder(node, () {
-                    final shallSelect = widget.shallSelect?.call(node) ?? false;
-                    if (shallSelect) {
-                      widget.onSelect?.call(node);
-                      return;
-                    }
-                    _pushRoot(node);
-                  });
-                },
-              ),
+        child: ListView.builder(
+          itemCount: _children.length,
+          itemBuilder: (ctx, i) {
+            final node = _children[i];
+            return widget.itemBuilder(node, () {
+              final shallSelect = widget.shallSelect?.call(node) ?? false;
+              if (shallSelect) {
+                widget.onSelect?.call(node);
+                return;
+              }
+              _pushRoot(node);
+            });
+          },
+        ),
       ),
     ],
   );

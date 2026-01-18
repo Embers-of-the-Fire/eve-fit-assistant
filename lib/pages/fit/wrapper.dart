@@ -1,10 +1,11 @@
 part of "page.dart";
 
 class FitContext {
-  const FitContext({required this.fit, required this.fitWrapper, required this.ship});
+  const FitContext({required this.fit, required this.fitWrapper, required this.emulated, required this.ship});
 
   final FitStorage fit;
   final FitWrapper fitWrapper;
+  final native.Ship? emulated;
   final Ship ship;
 }
 

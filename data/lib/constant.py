@@ -23,6 +23,7 @@ I18N_ROOT = PROJECT_ROOT / "l10n"
 DART_ROOT = PROJECT_ROOT / "lib"
 
 ASSETS_OUT_PATH = DART_ROOT / "constant" / "assets_generated.dart"
+EVE_ATTR_OUT_PATH = DART_ROOT / "constant" / "eve_attr_generated.dart"
 
 HIGH_SLOT_ATTR = 14
 MEDIUM_SLOT_ATTR = 13

@@ -38,6 +38,10 @@ extension Unwrap<T> on Option<T> {
       );
     }, (value) => value);
   }
+
+  T unwrapOrElse(T Function() orElse) => match(orElse, (value) => value);
+
+  T unwrapOr(T defaultValue) => match(() => defaultValue, (value) => value);
 }
 
 extension Optional<T> on T? {
@@ -82,6 +86,9 @@ extension MonadOrElse<T> on Option<T> {
 extension NullableOrElse<T> on T? {
   T orElse(T Function() value) => this ?? value();
   T? tryOrElse(T? Function() value) => this ?? value();
+
+  T or(T value) => this ?? value;
+  T? tryOr(T? value) => this ?? value;
 }
 
 extension ReverseMap<T> on T? {

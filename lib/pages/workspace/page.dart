@@ -37,7 +37,7 @@ class WorkspacePage extends ConsumerWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const .all(12),
       child: GridView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

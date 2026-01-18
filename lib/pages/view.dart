@@ -215,7 +215,7 @@ class _NavItem extends StatelessWidget {
           return InkResponse(
             onTap: () => onTap(index),
             child: Padding(
-              padding: EdgeInsets.only(top: topPadding, bottom: bottomPadding),
+              padding: .only(top: topPadding, bottom: bottomPadding),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -223,7 +223,7 @@ class _NavItem extends StatelessWidget {
                   Opacity(
                     opacity: t,
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const .only(top: 2),
                       child: Text(
                         label,
                         textAlign: TextAlign.center,

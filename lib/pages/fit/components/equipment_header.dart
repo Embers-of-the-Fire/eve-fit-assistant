@@ -4,9 +4,9 @@ class _EquipmentHeader extends StatelessWidget {
   const _EquipmentHeader({
     required this.title,
     this.actions,
+    this.onErrorPrompted,
     this.trailing,
     this.warningType,
-    this.onErrorPrompted,
   });
 
   final String title;
@@ -38,14 +38,14 @@ class _EquipmentHeader extends StatelessWidget {
         ListTile(
           minVerticalPadding: 0,
           minTileHeight: 0,
-          contentPadding: const EdgeInsets.only(top: 10, left: 16, right: 16, bottom: 4),
+          contentPadding: const .only(top: 10, left: 16, right: 16, bottom: 4),
           title: Text(title),
           trailing: trailing,
         ),
         if (actions?.isNotEmpty ?? false) ...[
           const Divider(height: 8),
           Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 2),
+            padding: const .only(left: 16, right: 16, bottom: 2),
             child: Row(spacing: 10, children: actions!),
           ),
         ],

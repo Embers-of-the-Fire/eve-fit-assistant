@@ -15,7 +15,7 @@ class WarningTrigger extends StatelessWidget {
       borderRadius: const BorderRadius.all(Radius.circular(50)),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(5),
+        padding: const .all(5),
         child: switch (type) {
           WarningType.info => const Icon(Icons.info, color: Colors.blue, size: 16),
           WarningType.warning => const Icon(

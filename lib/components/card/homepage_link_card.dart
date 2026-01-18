@@ -45,7 +45,7 @@ class HomepageLinkCard extends StatelessWidget {
                 splashColor: colorScheme.primary.withAlpha((0.12 * 255).round()),
                 highlightColor: colorScheme.primary.withAlpha((0.06 * 255).round()),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const .all(12),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

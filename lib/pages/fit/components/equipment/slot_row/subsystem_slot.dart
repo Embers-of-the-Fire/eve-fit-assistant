@@ -1,4 +1,4 @@
-part of "../../page.dart";
+part of "../../../page.dart";
 
 class _SubsystemSlotRow extends ConsumerWidget {
   const _SubsystemSlotRow({
@@ -16,26 +16,20 @@ class _SubsystemSlotRow extends ConsumerWidget {
     final itemId = slotInfo.slot.itemId;
     if (itemId is! FitStorageItemIdItem) {
       return ListTile(
-        title: Text(
-          "${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type}",
-        ),
+        title: Text("${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type}"),
       );
     }
 
     final subsystemDef = ref.watch(bundleCollectionGetSubsystemProvider(itemId.asId));
     if (subsystemDef == null) {
-      return ListTile(
-        title: Text("Unknown Subsystem ${itemId.asId} at slot ${slotInfo.index}"),
-      );
+      return ListTile(title: Text("Unknown Subsystem ${itemId.asId} at slot ${slotInfo.index}"));
     }
 
     final subsystemType = subsystemDef.subsystemType;
     final type = ref.watch(bundleCollectionGetTypeProvider(itemId.asId));
-    
-    final metaGroupIcon = type != null 
-        ? ref.watch(
-            bundleCollectionGetMetaGroupProvider(type.metaGroupId).select((t) => t?.icon),
-          )
+
+    final metaGroupIcon = type != null
+        ? ref.watch(bundleCollectionGetMetaGroupProvider(type.metaGroupId).select((t) => t?.icon))
         : null;
 
     return Slidable(
@@ -51,7 +45,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
             foregroundColor: Colors.white,
             icon: Icons.delete,
             label: context.l10n.delete,
-            padding: EdgeInsets.zero,
+            padding: .zero,
           ),
         ],
       ),

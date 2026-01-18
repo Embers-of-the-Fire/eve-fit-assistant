@@ -23,7 +23,12 @@ abstract class FitStorage with _$FitStorage {
     metadata: metadata,
     body: FitStorageBody(
       shipTypeId: ship.typeId,
-      damageProfile: const FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 0),
+      damageProfile: const FitDamageProfile(
+        em: 0.25,
+        explosive: 0.25,
+        kinetic: 0.25,
+        thermal: 0.25,
+      ),
       slots: FitStorageSlots.empty(ship),
       drones: IList<FitDroneItem>(),
       fighters: IList<FitFighterItem>(),

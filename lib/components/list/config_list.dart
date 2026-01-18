@@ -22,7 +22,7 @@ class ConfigListView extends StatelessWidget {
         children.add(_divider);
       }
     }
-    return ListView(padding: const EdgeInsets.only(right: 10), children: children);
+    return ListView(padding: const .only(right: 10), children: children);
   }
 }
 
@@ -59,7 +59,7 @@ class _ConfigListTileTitle extends ConfigListTile {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.only(left: 16, top: 24, bottom: 4),
+    padding: const .only(left: 16, top: 24, bottom: 4),
     child: Text(
       title,
       style: context.theme.textTheme.titleMedium?.copyWith(color: context.theme.hintColor),

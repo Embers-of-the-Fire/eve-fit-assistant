@@ -92,10 +92,6 @@ class BundleServicePaths {
     );
     final iconFile = File(iconPath);
     if (!iconFile.existsSync()) {
-      assert(() {
-        warning("Graphic not found [$iconFile ]: $iconFile");
-        return true;
-      }());
       return null;
     }
     return iconFile;
@@ -111,10 +107,6 @@ class BundleServicePaths {
     );
     final graphicFile = File(graphicPath);
     if (!graphicFile.existsSync()) {
-      assert(() {
-        warning("Graphic not found [$graphicId]: $graphicPath");
-        return true;
-      }());
       return null;
     }
     return graphicFile;

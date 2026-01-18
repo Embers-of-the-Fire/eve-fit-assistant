@@ -75,8 +75,8 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
                   final fm = ref.read(fitManagerProvider.notifier);
                   final result = await showConfirmDialog(
                     context,
-                    title: "Delete fit",
-                    content: Text("Delete fit ${fit.name}"),
+                    title: context.l10n.fitCreationPageDialogDeleteFitTitle,
+                    content: Text(context.l10n.fitCreationPageDialogDeleteFitContent(fitName: fit.name))
                   );
                   if (result) {
                     await fm.deleteFit(fit.fitId);

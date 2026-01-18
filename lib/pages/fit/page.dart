@@ -3,16 +3,21 @@ import "package:eve_fit_assistant/components/icon/bordered_rect_avatar.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/icon/state_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/eve_select_list.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
+import "package:eve_fit_assistant/components/resonance_box.dart";
+import "package:eve_fit_assistant/components/resource_compare.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
+import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/output.dart" show $OutSlotTypeCopyWith;
+import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/fit/components/add_item_dialog.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
@@ -20,8 +25,11 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/datetime.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
+import "package:eve_fit_assistant/utils/native.dart";
 import "package:eve_fit_assistant/utils/native_convert.dart";
+import "package:eve_fit_assistant/utils/num.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:eve_fit_assistant/utils/subsystem.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -34,13 +42,21 @@ import "package:loading_indicator/loading_indicator.dart";
 
 part "columns.dart";
 part "components/action_icons.dart";
+part "components/attribute/capacitor.dart";
+part "components/attribute/cargo.dart";
+part "components/attribute/hp.dart";
+part "components/attribute/miscellaneous.dart";
+part "components/attribute/resource.dart";
+part "components/attribute/ship_info.dart";
+part "components/attribute/weapon.dart";
+part "components/equipment/slot_row/empty_slot_row.dart";
+part "components/equipment/slot_row/slot_row.dart";
+part "components/equipment/slot_row/subsystem_slot.dart";
+part "components/equipment/slot_row/tactical_mode_slot.dart";
 part "components/equipment_header.dart";
-part "components/slot_row/empty_slot_row.dart";
-part "components/slot_row/slot_row.dart";
-part "components/slot_row/subsystem_slot.dart";
-part "components/slot_row/tactical_mode_slot.dart";
 part "components/warning.dart";
 part "identifier.dart";
+part "page.freezed.dart";
 part "tabs/attributes.dart";
 part "tabs/character.dart";
 part "tabs/drone.dart";
@@ -48,8 +64,6 @@ part "tabs/equipment.dart";
 part "tabs/fighter.dart";
 part "tabs/utils.dart";
 part "wrapper.dart";
-
-part "page.freezed.dart";
 
 @RoutePage()
 class FitPage extends StatelessWidget {
@@ -97,8 +111,15 @@ class _FitPage extends ConsumerWidget {
       throw StateError("Failed to load ship info: ${fit.fit.body.shipTypeId}");
     }
 
-  final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier), fitId: fitId);
-    final fitContext = FitContext(fit: fit.fit, ship: shipInfo, fitWrapper: fitWrapper);
+    final emulated = ref.watch(nativeEmulatedShipProvider(fitId));
+
+    final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier), fitId: fitId);
+    final fitContext = FitContext(
+      fit: fit.fit,
+      ship: shipInfo,
+      emulated: emulated,
+      fitWrapper: fitWrapper,
+    );
 
     return Layout(
       title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),

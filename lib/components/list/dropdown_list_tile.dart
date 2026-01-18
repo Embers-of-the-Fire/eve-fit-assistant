@@ -33,7 +33,7 @@ class _DropdownListTileState<T> extends State<DropdownListTile<T>> {
     title: widget.title,
     subtitle: widget.subtitle,
     trailing: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10),
+      margin: const .symmetric(horizontal: 10),
       child: DropdownButton(
         value: value,
         items: widget.items,

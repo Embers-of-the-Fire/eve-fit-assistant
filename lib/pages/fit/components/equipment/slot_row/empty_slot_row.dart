@@ -1,4 +1,4 @@
-part of "../../page.dart";
+part of "../../../page.dart";
 
 // TODO: Implement slot size updater when fitting subsystems
 

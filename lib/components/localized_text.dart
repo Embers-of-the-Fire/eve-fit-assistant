@@ -12,23 +12,26 @@ class LocalizedText extends ConsumerWidget {
     required this.localizationKey,
     super.key,
     this.formatter = _doNothingFormatter,
+    this.textAlign,
   });
 
   final LocalizationID localizationKey;
   final String Function(String) formatter;
+  final TextAlign? textAlign;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loc = ref.watch(localizationProvider(localizationKey.id));
 
-    return Text(loc.map(formatter) ?? "LOC[${localizationKey.id}]");
+    return Text(loc.map(formatter) ?? "LOC[${localizationKey.id}]", textAlign: textAlign);
   }
 }
 
 class LocalizedTypeName extends ConsumerWidget {
-  const LocalizedTypeName({required this.typeId, super.key});
+  const LocalizedTypeName({required this.typeId, super.key, this.textAlign});
 
   final int typeId;
+  final TextAlign? textAlign;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,8 +39,8 @@ class LocalizedTypeName extends ConsumerWidget {
       bundleCollectionGetTypeProvider(typeId).select((t) => t?.typeName),
     );
     if (typeNameId == null) {
-      return Text("Unknown Type[$typeId]");
+      return Text("Unknown Type[$typeId]", textAlign: textAlign);
     }
-    return LocalizedText(localizationKey: typeNameId);
+    return LocalizedText(localizationKey: typeNameId, textAlign: textAlign);
   }
 }
