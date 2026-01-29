@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.7
+  sdk: 3.11.0-296.4.beta # flutter 3.41.0-0.2-pre : to satisfy riverpod
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -37,18 +37,17 @@ dependencies:
 
   animated_tree_view: ^2.3.0
   archive: ^4.0.7
-  auto_route: ^10.1.2
+  auto_route: ^11.1.0
   date_format: ^2.0.9
-  dio: ^5.9.0
+  dio: ^5.9.1
   fast_immutable_collections: ^11.1.0
-  file_picker: ^10.3.8
+  file_picker: ^10.3.10
   flutter_breadcrumb: ^1.0.1
   flutter_easyloading: ^3.0.5
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.7
-  flutter_riverpod: ^3.0.0
   flutter_rust_bridge: 2.11.1
-  flutter_secure_storage: ^9.2.4
+  flutter_secure_storage: ^10.0.0
   flutter_typeahead: ^5.2.0
   fluttertoast: ^9.0.0
   font_awesome_flutter: ^10.12.0
@@ -57,34 +56,35 @@ dependencies:
   hive_ce: ^2.18.0
   html: ^0.15.6
   intl: ^0.20.2
-  json_annotation: ^4.9.0
+  json_annotation: ^4.10.0
   loading_indicator: ^3.1.1
   logger: ^2.6.2
   markdown_widget: ^2.3.2+8
   path: ^1.9.1
   path_provider: ^2.1.5
   protobuf: ^6.0.0
-  riverpod: ^3.0.0
-  riverpod_annotation: ^3.0.0
-  shared_preferences: ^2.5.3
+  riverpod: ^3.2.0
+  flutter_riverpod: ^3.2.0
+  riverpod_annotation: ^4.0.1
+  shared_preferences: ^2.5.4
   toggle_switch: ^2.3.0
   url_launcher: ^6.3.2
-  uuid: ^4.5.1
-  webview_flutter: ^4.13.0
+  uuid: ^4.5.2
+  webview_flutter: ^4.13.1
   flutter_slidable: ^4.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  auto_route_generator: ^10.2.4
-  build_runner: ^2.7.1
-  custom_lint: ^0.8.0
-  flutter_lints: ^5.0.0
-  freezed: ^3.2.3
-  json_serializable: ^6.11.1
-  riverpod_generator: ^3.0.0
-  riverpod_lint: ^3.0.0
+  auto_route_generator: ^10.4.0
+  build_runner: ^2.10.5
+  # custom_lint: ^0.8.1 # Incompatible with flutter_lints
+  flutter_lints: ^6.0.0
+  freezed: ^3.2.4
+  json_serializable: ^6.12.0
+  riverpod_generator: ^4.0.2
+  riverpod_lint: ^3.1.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

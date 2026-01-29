@@ -30,8 +30,8 @@ analyzer:
     - "**/*.pbenum.dart"
     - "**/*.g.dart"
     - "**/*.freezed.dart"
-  plugins:
-    - custom_lint
+  # plugins:
+  #   - custom_lint
 
 linter:
   # The lint rules applied to this project can be customized in the
