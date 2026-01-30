@@ -146,7 +146,7 @@ class _SlotRowDisplay extends ConsumerWidget {
   List<SlidableAction> _buildStartActions(BuildContext context, WidgetRef ref) {
     final actions = <SlidableAction>[];
 
-    if (_canCopy(slotIdent)) {
+    if (_canCopy()) {
       actions.add(
         SlidableAction(
           onPressed: (_) => _handleCopy(context, ref),
@@ -160,7 +160,7 @@ class _SlotRowDisplay extends ConsumerWidget {
       );
     }
 
-    if (_canHaveCharge(slotIdent)) {
+    if (_canHaveCharge(ref)) {
       actions.add(
         SlidableAction(
           onPressed: (_) => _handleSetCharge(context, ref),
@@ -179,7 +179,7 @@ class _SlotRowDisplay extends ConsumerWidget {
   List<SlidableAction> _buildEndActions(BuildContext context, WidgetRef ref) {
     final actions = <SlidableAction>[];
 
-    if (slotInfo.slot.charge.isSome() && _canHaveCharge(slotIdent)) {
+    if (slotInfo.slot.charge.isSome() && _canHaveCharge(ref)) {
       actions.add(
         SlidableAction(
           onPressed: (_) => fitContext.fitWrapper.removeSlotCharge(slotIdent),
@@ -206,14 +206,31 @@ class _SlotRowDisplay extends ConsumerWidget {
     return actions;
   }
 
-  bool _canHaveCharge(SlotIdentifier ident) =>
-      ident is SlotIdentifierHigh || ident is SlotIdentifierMedium || ident is SlotIdentifierLow;
+  bool _canHaveCharge(WidgetRef ref) {
+    final originTypeId = slotInfo.slot.itemId.map(
+      item: (item) => item.id,
+      dynamic: (dyn) {
+        final dynItem = fitContext.fit.dynamicRegistry.dynamicItems.get(dyn.dynamicId);
+        return dynItem?.originTypeId;
+      },
+    );
+    if (originTypeId == null) return false;
 
-  bool _canCopy(SlotIdentifier ident) =>
-      ident is SlotIdentifierHigh ||
-      ident is SlotIdentifierMedium ||
-      ident is SlotIdentifierLow ||
-      ident is SlotIdentifierRig;
+    final slots = ref.read(bundleCollectionGetSlotsProvider);
+    if (slots == null) return false;
+    return switch (slotIdent) {
+      SlotIdentifierHigh _ => slots.highSlots[originTypeId]?.chargeGroups.isNotEmpty ?? false,
+      SlotIdentifierMedium _ => slots.mediumSlots[originTypeId]?.chargeGroups.isNotEmpty ?? false,
+      SlotIdentifierLow _ => slots.lowSlots[originTypeId]?.chargeGroups.isNotEmpty ?? false,
+      _ => false,
+    };
+  }
+
+  bool _canCopy() =>
+      slotIdent is SlotIdentifierHigh ||
+      slotIdent is SlotIdentifierMedium ||
+      slotIdent is SlotIdentifierLow ||
+      slotIdent is SlotIdentifierRig;
 
   Future<void> _handleToggleState(WidgetRef ref) async {
     await fitContext.fitWrapper.toggleSlot(slotIdent, ref);
