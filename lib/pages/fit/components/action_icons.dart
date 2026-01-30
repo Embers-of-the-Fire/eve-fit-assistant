@@ -6,10 +6,7 @@ class _ActionClearAll extends StatelessWidget {
   final void Function() onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: const Icon(Icons.clear_all),
-  );
+  Widget build(BuildContext context) => InkWell(onTap: onTap, child: const Icon(Icons.clear_all));
 }
 
 class _ActionClearCharge extends StatelessWidget {
@@ -18,8 +15,6 @@ class _ActionClearCharge extends StatelessWidget {
   final void Function() onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: const Icon(Icons.battery_alert_outlined),
-  );
+  Widget build(BuildContext context) =>
+      InkWell(onTap: onTap, child: const Icon(Icons.battery_alert_outlined));
 }

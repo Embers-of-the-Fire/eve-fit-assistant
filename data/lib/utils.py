@@ -49,12 +49,7 @@ def try_get_attr[T, R](obj: T | None, attr: str) -> R | None:
 
 
 def execute_command(
-        cmd: list,
-        title: str,
-        dry_run: bool = False,
-        capture_stdout: bool = False,
-        *args,
-        **kwargs
+    cmd: list, title: str, dry_run: bool = False, capture_stdout: bool = False, *args, **kwargs
 ) -> str:
     if dry_run:
         info(f"[Dry-Run] {title}: " + " ".join(cmd))

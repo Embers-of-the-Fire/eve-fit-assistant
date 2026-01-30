@@ -54,5 +54,9 @@ extension NumExt on num {
     required R Function() zero,
     required R Function() positive,
     required R Function() negative,
-  }) => this == 0 ? zero() : this > 0 ? positive() : negative();
+  }) => this == 0
+      ? zero()
+      : this > 0
+      ? positive()
+      : negative();
 }

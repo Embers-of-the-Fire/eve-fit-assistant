@@ -36,9 +36,7 @@ class BorderedRectAvatar extends StatelessWidget {
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-        ),
+        decoration: BoxDecoration(color: backgroundColor),
         child:
             child ??
             image.map((u) => Image(image: u, fit: BoxFit.cover)) ??

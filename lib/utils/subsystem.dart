@@ -8,7 +8,7 @@ enum SubsystemType {
   propulsion;
 
   factory SubsystemType.fromInt(int index) => SubsystemType.values[index];
-  
+
   Subsystem_SubsystemType get protoEnum => switch (this) {
     SubsystemType.core => Subsystem_SubsystemType.CORE,
     SubsystemType.defensive => Subsystem_SubsystemType.DEFENSIVE,

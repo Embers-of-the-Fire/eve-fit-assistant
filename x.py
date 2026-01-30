@@ -891,9 +891,11 @@ def build_increment_cmd(hash_list: str):
     hash_list = Path(hash_list)
     build_increment_bundle(descriptor, hash_list)
 
+
 @cli.group(cls=ClickAliasedGroup)
 def etc():
     """Extra toolsets."""
+
 
 @etc.command("codeart")
 def etc_codeart_cmd():
@@ -902,7 +904,7 @@ def etc_codeart_cmd():
     tokei = get_command("tokei")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "tokei . -o json")
     stdout = __execute_command([tokei, ".", "-o", "json"], "TOKEI OUTPUT")
-    
+
     output_file = PROJECT_ROOT / "codeart.png"
     generate_codeart(stdout, output_file)
     click.echo(

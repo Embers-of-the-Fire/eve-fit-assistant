@@ -25,15 +25,15 @@ class StateIcon extends StatelessWidget {
     void Function()? onTap,
     double size = 35,
   }) : this._(
-          state: state,
-          isCircle: true,
-          key: key,
-          image: image,
-          icon: icon,
-          child: child,
-          onTap: onTap,
-          size: size,
-        );
+         state: state,
+         isCircle: true,
+         key: key,
+         image: image,
+         icon: icon,
+         child: child,
+         onTap: onTap,
+         size: size,
+       );
 
   const StateIcon.rect({
     required FitItemState state,
@@ -44,15 +44,15 @@ class StateIcon extends StatelessWidget {
     void Function()? onTap,
     double size = 35,
   }) : this._(
-          state: state,
-          isCircle: false,
-          key: key,
-          image: image,
-          icon: icon,
-          child: child,
-          onTap: onTap,
-          size: size,
-        );
+         state: state,
+         isCircle: false,
+         key: key,
+         image: image,
+         icon: icon,
+         child: child,
+         onTap: onTap,
+         size: size,
+       );
 
   final FitItemState state;
   final bool isCircle;
@@ -64,11 +64,11 @@ class StateIcon extends StatelessWidget {
   final Widget? child;
 
   Color get _borderColor => switch (state) {
-        FitItemState.active => colorStatusActive,
-        FitItemState.online => colorStatusOnline,
-        FitItemState.overload => colorStatusOverload,
-        FitItemState.passive => colorStatusPassive,
-      };
+    FitItemState.active => colorStatusActive,
+    FitItemState.online => colorStatusOnline,
+    FitItemState.overload => colorStatusOverload,
+    FitItemState.passive => colorStatusPassive,
+  };
 
   @override
   Widget build(BuildContext context) {
