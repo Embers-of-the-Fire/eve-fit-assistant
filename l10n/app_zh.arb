@@ -153,5 +153,14 @@
   "bundleManagerDetailVariantFull": "完整",
   "bundleManagerDetailVariantIncremental": "增量",
   "bundleManagerDetailGeneratedAt": "生成时间：",
-  "bundleManagerDetailLoadedAt": "加载时间："
+  "bundleManagerDetailLoadedAt": "加载时间：",
+  "@_LOADING_TEXT": {},
+  "loadingTextExtractingBundle": "正在解压 {archiveName}...",
+  "@loadingTextExtractingBundle": {
+    "placeholders": {
+      "archiveName": {
+        "type": "String"
+      }
+    }
+  }
 }

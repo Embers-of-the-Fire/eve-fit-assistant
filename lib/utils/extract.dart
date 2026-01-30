@@ -9,7 +9,11 @@ Future<void> extractIsolated(String archivePath, String outputPath) async {
   final receivePort = ReceivePort();
   final loadingKey = "extract-$archivePath-$outputPath";
 
-  GlobalLoading.add(loadingKey, "Extracting ${p.basename(archivePath)}");
+  final archiveName = p.basename(archivePath);
+  GlobalLoading.addLocalized(
+    loadingKey,
+    (context) => context.loadingTextExtractingBundle(archiveName: archiveName),
+  );
 
   await compute((args) async {
     final [archivePath, outputPath, port] = args;
@@ -33,6 +37,5 @@ Future<void> extractIsolated(String archivePath, String outputPath) async {
     debugPrint("Extracted $s files");
   }, [archivePath, outputPath, receivePort.sendPort]);
 
-  GlobalLoading.dismiss("$loadingKey-progress");
   GlobalLoading.dismiss(loadingKey);
 }

@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/init.dart";
@@ -5,6 +6,7 @@ import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:path_provider/path_provider.dart";
 
 void main() async {
   await initSingletons();

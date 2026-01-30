@@ -91,5 +91,7 @@
   "bundleManagerDetailVariantFull": "FULL",
   "bundleManagerDetailVariantIncremental": "INCREMENTAL",
   "bundleManagerDetailGeneratedAt": "Generated At: ",
-  "bundleManagerDetailLoadedAt": "Loaded At: "
+  "bundleManagerDetailLoadedAt": "Loaded At: ",
+  "@_LOADING_TEXT": {},
+  "loadingTextExtractingBundle": "Extracting {archiveName}..."
 }
