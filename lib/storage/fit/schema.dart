@@ -147,8 +147,8 @@ abstract class FitChargeItem with _$FitChargeItem {
 abstract class FitDroneItem with _$FitDroneItem {
   const factory FitDroneItem({
     required FitStorageItemId itemId,
-    required int groupId,
     required FitItemState state,
+    required int quantity,
   }) = _FitDroneItem;
 
   factory FitDroneItem.fromJson(Map<String, dynamic> json) => _$FitDroneItemFromJson(json);
@@ -242,21 +242,24 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         ),
     ],
     drones: fitStorage.body.drones
-        .map(
-          (drone) => native.Drone(
-            typeId: drone.itemId.when(
-              item: (id) => id,
-              dynamic: (dynamicId) =>
-                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
-                  (throw StateError("Dynamic item $dynamicId not found in registry")),
+        .flatMapWithIndex(
+          (drone, index) => List.generate(
+            drone.quantity,
+            (_) => native.Drone(
+              typeId: drone.itemId.when(
+                item: (id) => id,
+                dynamic: (dynamicId) =>
+                    fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
+                    (throw StateError("Dynamic item $dynamicId not found in registry")),
+              ),
+              groupId: index,
+              state: switch (drone.state) {
+                FitItemState.passive => native.State.passive,
+                FitItemState.online => native.State.online,
+                FitItemState.active => native.State.active,
+                FitItemState.overload => native.State.overload,
+              },
             ),
-            groupId: drone.groupId,
-            state: switch (drone.state) {
-              FitItemState.passive => native.State.passive,
-              FitItemState.online => native.State.online,
-              FitItemState.active => native.State.active,
-              FitItemState.overload => native.State.overload,
-            },
           ),
         )
         .toList(),

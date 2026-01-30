@@ -107,9 +107,6 @@ class _SlotRowDisplay extends ConsumerWidget {
       }
     }
 
-    // TODO: Add range, capacitor, and other attribute display from simulation output
-    // This requires access to the fit calculation engine output
-
     final startActions = _buildStartActions(context, ref);
     final endActions = _buildEndActions(context, ref);
 
@@ -198,7 +195,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     actions.add(
       SlidableAction(
         onPressed: (_) => fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref),
-        backgroundColor: const Color(0xFFFE4A49),
+        backgroundColor: colorActionDelete,
         foregroundColor: Colors.white,
         icon: Icons.delete,
         label: context.l10n.delete,

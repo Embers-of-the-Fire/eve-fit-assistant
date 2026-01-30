@@ -20,8 +20,8 @@ abstract class SlotIdentifier with _$SlotIdentifier {
   const factory SlotIdentifier.subsystem({required SubsystemType type}) = SlotIdentifierSubsystem;
   const factory SlotIdentifier.tacticalMode() = SlotIdentifierTacticalMode;
   const factory SlotIdentifier.service({required int index}) = SlotIdentifierService;
-  const factory SlotIdentifier.drone({required int groupId}) = SlotIdentifierDrone;
-  const factory SlotIdentifier.fighter({required int groupId}) = SlotIdentifierFighter;
+  const factory SlotIdentifier.drone({required int index}) = SlotIdentifierDrone;
+  const factory SlotIdentifier.fighter({required int index}) = SlotIdentifierFighter;
   const factory SlotIdentifier.implant({required int index}) = SlotIdentifierImplant;
   const factory SlotIdentifier.booster({required int slotId}) = SlotIdentifierBooster;
 
@@ -35,8 +35,8 @@ abstract class SlotIdentifier with _$SlotIdentifier {
     subsystem: (type) => type.index,
     tacticalMode: () => 0,
     service: (index) => index,
-    drone: (groupId) => groupId,
-    fighter: (groupId) => groupId,
+    drone: (index) => index,
+    fighter: (index) => index,
     implant: (index) => index,
     booster: (slotId) => slotId - 1, // boosters are 1-indexed
   );
@@ -67,13 +67,11 @@ abstract class SlotIdentifier with _$SlotIdentifier {
       slotName: context.l10n.serviceSlot,
       index: index + 1,
     ),
-    drone: (groupId) => context.l10n.fitAddItemDialogTitleWithIndex(
-      slotName: context.l10n.drone,
-      index: groupId + 1,
-    ),
-    fighter: (groupId) => context.l10n.fitAddItemDialogTitleWithIndex(
+    drone: (index) =>
+        context.l10n.fitAddItemDialogTitleWithIndex(slotName: context.l10n.drone, index: index + 1),
+    fighter: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.fighter,
-      index: groupId + 1,
+      index: index + 1,
     ),
     implant: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.implantSlot,

@@ -10,7 +10,9 @@ class _DroneTab extends ConsumerWidget {
     final fit = fitContext.fit;
     final fitWrapper = fitContext.fitWrapper;
 
-    const slotIdent = SlotIdentifier.drone(groupId: 0);
+    const slotIdent = SlotIdentifier.drone(index: 0);
+
+    final drones = fit.body.drones.toList();
 
     return Column(
       children: [
@@ -31,8 +33,8 @@ class _DroneTab extends ConsumerWidget {
                   await fitWrapper.update((storage) {
                     final newDrone = FitDroneItem(
                       itemId: FitStorageItemId.item(id: typeId),
-                      groupId: storage.body.drones.length + 1,
                       state: FitItemState.active,
+                      quantity: 1,
                     );
                     return storage.copyWith(
                       body: storage.body.copyWith(drones: storage.body.drones.add(newDrone)),
@@ -57,24 +59,23 @@ class _DroneTab extends ConsumerWidget {
         const Divider(),
         Expanded(
           child: ListView(
-            children: fit.body.drones
-                .map(
-                  (item) => _AnySlotRow(
-                    fitContext: fitContext,
-                    slotIdent: SlotIdentifier.drone(groupId: item.groupId),
-                    slotInfo: SlotInfo.item(
-                      state: item.state,
-                      type: native.OutSlotType.droneBay(groupId: item.groupId),
-                      index: item.groupId,
-                      slot: FitModuleItem(
-                        charge: const Option.none(),
-                        state: item.state,
-                        itemId: item.itemId,
-                      ),
+            children: [
+              for (int index = 0; index < drones.length; index++)
+                _AnySlotRow(
+                  fitContext: fitContext,
+                  slotIdent: SlotIdentifier.drone(index: index),
+                  slotInfo: SlotInfo.item(
+                    state: drones[index].state,
+                    type: native.OutSlotType.droneBay(groupId: index),
+                    index: index,
+                    slot: FitModuleItem(
+                      charge: const Option.none(),
+                      state: drones[index].state,
+                      itemId: drones[index].itemId,
                     ),
                   ),
-                )
-                .toList(),
+                ),
+            ],
           ),
         ),
       ],

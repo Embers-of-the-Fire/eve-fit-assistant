@@ -41,7 +41,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
             onPressed: (_) async {
               await fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref);
             },
-            backgroundColor: const Color(0xFFFE4A49),
+            backgroundColor: colorActionDelete,
             foregroundColor: Colors.white,
             icon: Icons.delete,
             label: context.l10n.delete,

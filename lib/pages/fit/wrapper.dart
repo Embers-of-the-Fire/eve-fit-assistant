@@ -22,7 +22,7 @@ class FitWrapper {
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
 
-  IList<Option<FitModuleItem>> _emptySlotList(int len) =>
+  IList<Option<FitModuleItem>> emptySlotList(int len) =>
       IList(List.generate(len, (_) => const Option<FitModuleItem>.none()));
 
   // Public unified interfaces
@@ -33,16 +33,16 @@ class FitWrapper {
     switch (slotIdent) {
       case SlotIdentifierHigh(:final index):
         final proto = slotsInfo.highSlots[typeId];
-        if (proto != null) await _equipHigh(index, proto);
+        if (proto != null) await equipHigh(index, proto);
       case SlotIdentifierMedium(:final index):
         final proto = slotsInfo.mediumSlots[typeId];
-        if (proto != null) await _equipMedium(index, proto);
+        if (proto != null) await equipMedium(index, proto);
       case SlotIdentifierLow(:final index):
         final proto = slotsInfo.lowSlots[typeId];
-        if (proto != null) await _equipLow(index, proto);
+        if (proto != null) await equipLow(index, proto);
       case SlotIdentifierRig(:final index):
         final proto = slotsInfo.rigSlots[typeId];
-        if (proto != null) await _equipRig(index, proto);
+        if (proto != null) await equipRig(index, proto);
       case SlotIdentifierSubsystem(:final type):
         final proto = slotsInfo.subsystemSlots[typeId];
         if (proto != null) {
@@ -64,7 +64,7 @@ class FitWrapper {
             final afterEquip = fit.copyWith(
               body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
             );
-            return _applySubsystemResize(
+            return applySubsystemResize(
               afterEquip,
               ship,
               (id) => ref.read(bundleCollectionGetSubsystemProvider(id)),
@@ -73,9 +73,9 @@ class FitWrapper {
         }
       case SlotIdentifierService(:final index):
         final proto = slotsInfo.serviceSlots[typeId];
-        if (proto != null) await _equipService(index, proto);
-      case SlotIdentifierDrone(:final groupId):
-        await _equipDrone(groupId, typeId);
+        if (proto != null) await equipService(index, proto);
+      case SlotIdentifierDrone(:final index):
+        await equipDrone(index, typeId);
       default:
         break;
     }
@@ -86,7 +86,7 @@ class FitWrapper {
       final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
       if (slotsInfo == null) return fit;
 
-      final slotOpt = _getSlot(fit, slotIdent);
+      final slotOpt = getSlot(fit, slotIdent);
       if (slotOpt.isNone()) return fit;
 
       final slot = slotOpt.toNullable()!;
@@ -96,29 +96,29 @@ class FitWrapper {
         case SlotIdentifierHigh(:final index):
           final proto = slotsInfo.highSlots[typeId];
           if (proto == null) return fit;
-          return _toggleHighSlot(fit, index, slot, proto);
+          return toggleHighSlot(fit, index, slot, proto);
         case SlotIdentifierMedium(:final index):
           final proto = slotsInfo.mediumSlots[typeId];
           if (proto == null) return fit;
-          return _toggleMediumSlot(fit, index, slot, proto);
+          return toggleMediumSlot(fit, index, slot, proto);
         case SlotIdentifierLow(:final index):
           final proto = slotsInfo.lowSlots[typeId];
           if (proto == null) return fit;
-          return _toggleLowSlot(fit, index, slot, proto);
+          return toggleLowSlot(fit, index, slot, proto);
         case SlotIdentifierRig(:final index):
           final proto = slotsInfo.rigSlots[typeId];
           if (proto == null) return fit;
-          return _toggleRigSlot(fit, index, slot, proto);
+          return toggleRigSlot(fit, index, slot, proto);
         case SlotIdentifierSubsystem(:final type):
           final proto = slotsInfo.subsystemSlots[typeId];
           if (proto == null) return fit;
-          return _toggleSubsystemSlot(fit, type, slot, proto);
+          return toggleSubsystemSlot(fit, type, slot, proto);
         case SlotIdentifierService(:final index):
           final proto = slotsInfo.serviceSlots[typeId];
           if (proto == null) return fit;
-          return _toggleServiceSlot(fit, index, slot, proto);
-        case SlotIdentifierDrone(:final groupId):
-          return _toggleDroneSlot(fit, slot, groupId);
+          return toggleServiceSlot(fit, index, slot, proto);
+        case SlotIdentifierDrone(:final index):
+          return toggleDroneSlot(fit, slot, index);
         default:
           return fit;
       }
@@ -128,19 +128,19 @@ class FitWrapper {
   Future<void> clearSlot(SlotIdentifier slotIdent) async {
     switch (slotIdent) {
       case SlotIdentifierHigh _:
-        await _clearHigh();
+        await clearHigh();
       case SlotIdentifierMedium _:
-        await _clearMedium();
+        await clearMedium();
       case SlotIdentifierLow _:
-        await _clearLow();
+        await clearLow();
       case SlotIdentifierRig _:
-        await _clearRig();
+        await clearRig();
       case SlotIdentifierSubsystem _:
-        await _clearSubsystem();
+        await clearSubsystem();
       case SlotIdentifierService _:
-        await _clearService();
+        await clearService();
       case SlotIdentifierDrone _:
-        await _clearDrones();
+        await clearDrones();
       default:
         break;
     }
@@ -149,11 +149,11 @@ class FitWrapper {
   Future<void> clearSlotCharges(SlotIdentifier slotIdent) async {
     switch (slotIdent) {
       case SlotIdentifierHigh _:
-        await _clearHighCharges();
+        await clearHighCharges();
       case SlotIdentifierMedium _:
-        await _clearMediumCharges();
+        await clearMediumCharges();
       case SlotIdentifierLow _:
-        await _clearLowCharges();
+        await clearLowCharges();
       default:
         break;
     }
@@ -162,19 +162,19 @@ class FitWrapper {
   Future<void> removeSlot(SlotIdentifier slotIdent) async {
     switch (slotIdent) {
       case SlotIdentifierHigh(:final index):
-        await _removeHigh(index);
+        await removeHigh(index);
       case SlotIdentifierMedium(:final index):
-        await _removeMedium(index);
+        await removeMedium(index);
       case SlotIdentifierLow(:final index):
-        await _removeLow(index);
+        await removeLow(index);
       case SlotIdentifierRig(:final index):
-        await _removeRig(index);
+        await removeRig(index);
       case SlotIdentifierSubsystem(:final type):
-        await _removeSubsystem(type);
+        await removeSubsystem(type);
       case SlotIdentifierService(:final index):
-        await _removeService(index);
-      case SlotIdentifierDrone(:final groupId):
-        await _removeDrone(groupId);
+        await removeService(index);
+      case SlotIdentifierDrone(:final index):
+        await removeDrone(index);
       default:
         break;
     }
@@ -195,7 +195,7 @@ class FitWrapper {
           final afterRemove = fit.copyWith(
             body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
           );
-          return _applySubsystemResize(
+          return applySubsystemResize(
             afterRemove,
             ship,
             (id) => ref.read(bundleCollectionGetSubsystemProvider(id)),
@@ -209,11 +209,11 @@ class FitWrapper {
   Future<void> setSlotCharge(SlotIdentifier slotIdent, int chargeTypeId) async {
     switch (slotIdent) {
       case SlotIdentifierHigh(:final index):
-        await _setHighCharge(index, chargeTypeId);
+        await setHighCharge(index, chargeTypeId);
       case SlotIdentifierMedium(:final index):
-        await _setMediumCharge(index, chargeTypeId);
+        await setMediumCharge(index, chargeTypeId);
       case SlotIdentifierLow(:final index):
-        await _setLowCharge(index, chargeTypeId);
+        await setLowCharge(index, chargeTypeId);
       default:
         break;
     }
@@ -222,11 +222,11 @@ class FitWrapper {
   Future<void> removeSlotCharge(SlotIdentifier slotIdent) async {
     switch (slotIdent) {
       case SlotIdentifierHigh(:final index):
-        await _removeHighCharge(index);
+        await removeHighCharge(index);
       case SlotIdentifierMedium(:final index):
-        await _removeMediumCharge(index);
+        await removeMediumCharge(index);
       case SlotIdentifierLow(:final index):
-        await _removeLowCharge(index);
+        await removeLowCharge(index);
       default:
         break;
     }
@@ -234,19 +234,19 @@ class FitWrapper {
 
   Future<void> copySlot(SlotIdentifier fromIdent, SlotIdentifier toIdent) async {
     await wrapped.update((fit) {
-      final fromSlot = _getSlot(fit, fromIdent);
+      final fromSlot = getSlot(fit, fromIdent);
       if (fromSlot.isNone()) return fit;
 
-      return _updateSlot(fit, toIdent, (_) => fromSlot);
+      return updateSlot(fit, toIdent, (_) => fromSlot);
     });
   }
 
   Future<void> copySlotToNext(SlotIdentifier slotIdent) async {
     await wrapped.update((fit) {
-      final fromSlot = _getSlot(fit, slotIdent);
+      final fromSlot = getSlot(fit, slotIdent);
       if (fromSlot.isNone()) return fit;
 
-      final slots = _getSlotList(fit, slotIdent);
+      final slots = getSlotList(fit, slotIdent);
       final currentIndex = slotIdent.asIndexed;
 
       int? targetIndex;
@@ -269,13 +269,13 @@ class FitWrapper {
 
       if (targetIndex == null) return fit;
 
-      final targetIdent = _createSlotIdentifier(slotIdent, targetIndex);
+      final targetIdent = createSlotIdentifier(slotIdent, targetIndex);
 
-      return _updateSlot(fit, targetIdent, (_) => fromSlot);
+      return updateSlot(fit, targetIdent, (_) => fromSlot);
     });
   }
 
-  IList<Option<FitModuleItem>> _getSlotList(FitStorage fit, SlotIdentifier slotIdent) =>
+  IList<Option<FitModuleItem>> getSlotList(FitStorage fit, SlotIdentifier slotIdent) =>
       switch (slotIdent) {
         SlotIdentifierHigh _ => fit.body.slots.high,
         SlotIdentifierMedium _ => fit.body.slots.medium,
@@ -286,7 +286,7 @@ class FitWrapper {
         _ => IList<Option<FitModuleItem>>(),
       };
 
-  SlotIdentifier _createSlotIdentifier(SlotIdentifier original, int newIndex) => switch (original) {
+  SlotIdentifier createSlotIdentifier(SlotIdentifier original, int newIndex) => switch (original) {
     SlotIdentifierHigh _ => SlotIdentifier.high(index: newIndex),
     SlotIdentifierMedium _ => SlotIdentifier.medium(index: newIndex),
     SlotIdentifierLow _ => SlotIdentifier.low(index: newIndex),
@@ -296,18 +296,18 @@ class FitWrapper {
     _ => original,
   };
 
-  Option<FitModuleItem> _getSlot(FitStorage fit, SlotIdentifier slotIdent) => switch (slotIdent) {
+  Option<FitModuleItem> getSlot(FitStorage fit, SlotIdentifier slotIdent) => switch (slotIdent) {
     SlotIdentifierHigh(:final index) => fit.body.slots.high[index],
     SlotIdentifierMedium(:final index) => fit.body.slots.medium[index],
     SlotIdentifierLow(:final index) => fit.body.slots.low[index],
     SlotIdentifierRig(:final index) => fit.body.slots.rig[index],
     SlotIdentifierSubsystem(:final type) => fit.body.slots.subsystem[type.index],
     SlotIdentifierService(:final index) => fit.body.slots.service[index],
-    SlotIdentifierDrone(:final groupId) => _getDroneAsModule(fit, groupId),
+    SlotIdentifierDrone(:final index) => getDroneAsModule(fit, index),
     _ => const Option.none(),
   };
 
-  FitStorage _updateSlot(
+  FitStorage updateSlot(
     FitStorage fit,
     SlotIdentifier slotIdent,
     Option<FitModuleItem> Function(Option<FitModuleItem>) updater,
@@ -347,7 +347,7 @@ class FitWrapper {
     _ => fit,
   };
 
-  Future<void> _equipHigh(int index, Slots_HighSlot slotInfo) => wrapped.update((fit) {
+  Future<void> equipHigh(int index, Slots_HighSlot slotInfo) => wrapped.update((fit) {
     final updatedHigh = fit.body.slots.high.replaceBy(
       index,
       (_) => Option.of(
@@ -363,7 +363,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _equipMedium(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+  Future<void> equipMedium(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
     final updatedMedium = fit.body.slots.medium.replaceBy(
       index,
       (_) => Option.of(
@@ -379,7 +379,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _equipLow(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+  Future<void> equipLow(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
     final updatedLow = fit.body.slots.low.replaceBy(
       index,
       (_) => Option.of(
@@ -395,7 +395,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _equipRig(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+  Future<void> equipRig(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
     final updatedRig = fit.body.slots.rig.replaceBy(
       index,
       (_) => Option.of(
@@ -411,7 +411,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _equipService(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
+  Future<void> equipService(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
     final updatedService = fit.body.slots.service.replaceBy(
       index,
       (_) => Option.of(
@@ -427,7 +427,7 @@ class FitWrapper {
     );
   });
 
-  FitStorage _toggleHighSlot(
+  FitStorage toggleHighSlot(
     FitStorage fit,
     int index,
     FitModuleItem slot,
@@ -443,7 +443,7 @@ class FitWrapper {
     );
   }
 
-  FitStorage _toggleMediumSlot(
+  FitStorage toggleMediumSlot(
     FitStorage fit,
     int index,
     FitModuleItem slot,
@@ -459,7 +459,7 @@ class FitWrapper {
     );
   }
 
-  FitStorage _toggleLowSlot(
+  FitStorage toggleLowSlot(
     FitStorage fit,
     int index,
     FitModuleItem slot,
@@ -475,7 +475,7 @@ class FitWrapper {
     );
   }
 
-  FitStorage _toggleRigSlot(
+  FitStorage toggleRigSlot(
     FitStorage fit,
     int index,
     FitModuleItem slot,
@@ -491,7 +491,7 @@ class FitWrapper {
     );
   }
 
-  FitStorage _toggleSubsystemSlot(
+  FitStorage toggleSubsystemSlot(
     FitStorage fit,
     SubsystemType type,
     FitModuleItem slot,
@@ -507,7 +507,7 @@ class FitWrapper {
     );
   }
 
-  FitStorage _toggleServiceSlot(
+  FitStorage toggleServiceSlot(
     FitStorage fit,
     int index,
     FitModuleItem slot,
@@ -523,13 +523,13 @@ class FitWrapper {
     );
   }
 
-  Future<void> _clearHigh() => wrapped.update((fit) {
+  Future<void> clearHigh() => wrapped.update((fit) {
     final len = fit.body.slots.high.length;
     return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: _emptySlotList(len))),
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: emptySlotList(len))),
     );
   });
-  Future<void> _clearHighCharges() => wrapped.update((fit) {
+  Future<void> clearHighCharges() => wrapped.update((fit) {
     final updatedHigh = fit.body.slots.high.map(
       (slotOpt) => slotOpt.map((slot) {
         if (slot.charge.isNone()) return slot;
@@ -541,13 +541,13 @@ class FitWrapper {
     );
   });
 
-  Future<void> _clearMedium() => wrapped.update((fit) {
+  Future<void> clearMedium() => wrapped.update((fit) {
     final len = fit.body.slots.medium.length;
     return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: _emptySlotList(len))),
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: emptySlotList(len))),
     );
   });
-  Future<void> _clearMediumCharges() => wrapped.update((fit) {
+  Future<void> clearMediumCharges() => wrapped.update((fit) {
     final updatedMedium = fit.body.slots.medium
         .map(
           (slotOpt) => slotOpt.map((slot) {
@@ -561,13 +561,13 @@ class FitWrapper {
     );
   });
 
-  Future<void> _clearLow() => wrapped.update((fit) {
+  Future<void> clearLow() => wrapped.update((fit) {
     final len = fit.body.slots.low.length;
     return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: _emptySlotList(len))),
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: emptySlotList(len))),
     );
   });
-  Future<void> _clearLowCharges() => wrapped.update((fit) {
+  Future<void> clearLowCharges() => wrapped.update((fit) {
     final updatedLow = fit.body.slots.low
         .map(
           (slotOpt) => slotOpt.map((slot) {
@@ -581,56 +581,56 @@ class FitWrapper {
     );
   });
 
-  Future<void> _clearRig() => wrapped.update((fit) {
+  Future<void> clearRig() => wrapped.update((fit) {
     final len = fit.body.slots.rig.length;
     return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: _emptySlotList(len))),
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: emptySlotList(len))),
     );
   });
 
-  Future<void> _clearSubsystem() => wrapped.update((fit) {
+  Future<void> clearSubsystem() => wrapped.update((fit) {
     final len = fit.body.slots.subsystem.length;
     return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: _emptySlotList(len))),
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: emptySlotList(len))),
     );
   });
 
-  Future<void> _clearService() => wrapped.update((fit) {
+  Future<void> clearService() => wrapped.update((fit) {
     final len = fit.body.slots.service.length;
     return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: _emptySlotList(len))),
+      body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: emptySlotList(len))),
     );
   });
 
-  Future<void> _removeHigh(int index) => wrapped.update((fit) {
+  Future<void> removeHigh(int index) => wrapped.update((fit) {
     final updatedHigh = fit.body.slots.high.replaceBy(index, (_) => const Option.none());
     return fit.copyWith(
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
     );
   });
 
-  Future<void> _removeMedium(int index) => wrapped.update((fit) {
+  Future<void> removeMedium(int index) => wrapped.update((fit) {
     final updatedMedium = fit.body.slots.medium.replaceBy(index, (_) => const Option.none());
     return fit.copyWith(
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
     );
   });
 
-  Future<void> _removeLow(int index) => wrapped.update((fit) {
+  Future<void> removeLow(int index) => wrapped.update((fit) {
     final updatedLow = fit.body.slots.low.replaceBy(index, (_) => const Option.none());
     return fit.copyWith(
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
     );
   });
 
-  Future<void> _removeRig(int index) => wrapped.update((fit) {
+  Future<void> removeRig(int index) => wrapped.update((fit) {
     final updatedRig = fit.body.slots.rig.replaceBy(index, (_) => const Option.none());
     return fit.copyWith(
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: updatedRig)),
     );
   });
 
-  Future<void> _removeSubsystem(SubsystemType type) => wrapped.update((fit) {
+  Future<void> removeSubsystem(SubsystemType type) => wrapped.update((fit) {
     final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
       type.index,
       (_) => const Option.none(),
@@ -640,14 +640,14 @@ class FitWrapper {
     );
   });
 
-  Future<void> _removeService(int index) => wrapped.update((fit) {
+  Future<void> removeService(int index) => wrapped.update((fit) {
     final updatedService = fit.body.slots.service.replaceBy(index, (_) => const Option.none());
     return fit.copyWith(
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: updatedService)),
     );
   });
 
-  Future<void> _setHighCharge(int index, int chargeTypeId) => wrapped.update((fit) {
+  Future<void> setHighCharge(int index, int chargeTypeId) => wrapped.update((fit) {
     final updatedHigh = fit.body.slots.high.replaceBy(
       index,
       (slotOpt) => slotOpt.map(
@@ -659,7 +659,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _setMediumCharge(int index, int chargeTypeId) => wrapped.update((fit) {
+  Future<void> setMediumCharge(int index, int chargeTypeId) => wrapped.update((fit) {
     final updatedMedium = fit.body.slots.medium.replaceBy(
       index,
       (slotOpt) => slotOpt.map(
@@ -671,7 +671,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _setLowCharge(int index, int chargeTypeId) => wrapped.update((fit) {
+  Future<void> setLowCharge(int index, int chargeTypeId) => wrapped.update((fit) {
     final updatedLow = fit.body.slots.low.replaceBy(
       index,
       (slotOpt) => slotOpt.map(
@@ -683,7 +683,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _removeHighCharge(int index) => wrapped.update((fit) {
+  Future<void> removeHighCharge(int index) => wrapped.update((fit) {
     final updatedHigh = fit.body.slots.high.replaceBy(
       index,
       (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
@@ -693,7 +693,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _removeMediumCharge(int index) => wrapped.update((fit) {
+  Future<void> removeMediumCharge(int index) => wrapped.update((fit) {
     final updatedMedium = fit.body.slots.medium.replaceBy(
       index,
       (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
@@ -703,7 +703,7 @@ class FitWrapper {
     );
   });
 
-  Future<void> _removeLowCharge(int index) => wrapped.update((fit) {
+  Future<void> removeLowCharge(int index) => wrapped.update((fit) {
     final updatedLow = fit.body.slots.low.replaceBy(
       index,
       (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
@@ -733,53 +733,77 @@ class FitWrapper {
   }
 
   // Drone-related methods
-  Option<FitModuleItem> _getDroneAsModule(FitStorage fit, int groupId) {
-    final drone = fit.body.drones.firstWhereOrNull((d) => d.groupId == groupId);
-    if (drone == null) return const Option.none();
+  Option<FitModuleItem> getDroneAsModule(FitStorage fit, int index) {
+    if (index < 0 || index >= fit.body.drones.length) return const Option.none();
+    final drone = fit.body.drones[index];
     return Option.of(
       FitModuleItem(itemId: drone.itemId, charge: const Option.none(), state: drone.state),
     );
   }
 
-  Future<void> _equipDrone(int groupId, int typeId) => wrapped.update((fit) {
-    final hasGroup = fit.body.drones.any((d) => d.groupId == groupId);
+  Future<void> equipDrone(int index, int typeId) => wrapped.update((fit) {
+    if (index < 0) return fit;
     final newDrone = FitDroneItem(
       itemId: FitStorageItemId.item(id: typeId),
-      groupId: groupId,
       state: FitItemState.active,
+      quantity: 1,
     );
 
-    if (!hasGroup) {
-      return fit.copyWith(body: fit.body.copyWith(drones: fit.body.drones.add(newDrone)));
+    final drones = fit.body.drones.toList();
+    if (index >= drones.length) {
+      drones.add(newDrone);
+    } else {
+      drones[index] = newDrone;
     }
 
-    final updated = fit.body.drones
-        .map((d) => d.groupId == groupId ? newDrone.copyWith(state: FitItemState.active) : d)
-        .toIList();
-    return fit.copyWith(body: fit.body.copyWith(drones: updated));
+    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
   });
 
-  FitStorage _toggleDroneSlot(FitStorage fit, FitModuleItem slot, int groupId) {
-    final first = fit.body.drones.firstWhereOrNull((d) => d.groupId == groupId);
-    if (first == null) return fit;
+  FitStorage toggleDroneSlot(FitStorage fit, FitModuleItem _slot, int index) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
 
-    final newState = first.state.toggleDrone();
-    final updated = fit.body.drones
-        .map((d) => d.groupId == groupId ? d.copyWith(state: newState) : d)
-        .toIList();
+    final drone = fit.body.drones[index];
+    final newState = drone.state.toggleDrone();
+    final drones = fit.body.drones.toList();
+    drones[index] = drone.copyWith(state: newState);
 
-    return fit.copyWith(body: fit.body.copyWith(drones: updated));
+    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
   }
 
-  Future<void> _clearDrones() =>
+  Future<void> clearDrones() =>
       wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(drones: IList<FitDroneItem>())));
 
-  Future<void> _removeDrone(int groupId) => wrapped.update((fit) {
-    final updatedDrones = fit.body.drones.where((d) => d.groupId != groupId).toIList();
-    return fit.copyWith(body: fit.body.copyWith(drones: updatedDrones));
+  Future<void> removeDrone(int index) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
+    final drones = fit.body.drones.toList()..removeAt(index);
+    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
   });
 
-  FitStorage _applySubsystemResize(
+  Future<void> changeDroneAmount(int index, int newAmount) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
+    final drones = fit.body.drones.toList();
+    if (newAmount <= 0) {
+      drones.removeAt(index);
+    } else {
+      drones[index] = drones[index].copyWith(quantity: newAmount);
+    }
+    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+  });
+
+  Future<void> changeDroneAmountBy(int index, int diff) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
+    final drones = fit.body.drones.toList();
+    final currentAmount = drones[index].quantity;
+    final newAmount = currentAmount + diff;
+    if (newAmount <= 0) {
+      drones.removeAt(index);
+    } else {
+      drones[index] = drones[index].copyWith(quantity: newAmount);
+    }
+    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+  });
+
+  FitStorage applySubsystemResize(
     FitStorage fit,
     Ship ship,
     Subsystem? Function(int typeId) resolve,
