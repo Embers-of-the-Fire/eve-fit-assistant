@@ -40,6 +40,7 @@ from data.lib.constant import DEFAULT_WORKSPACE_HASHLIST_ENV_VAR
 from data.lib.constant import I18N_ROOT
 from data.lib.constant import PROJECT_ROOT
 from data.lib.constant import SKIP_FULL_HASHLIST_UPDATE_ENV_VAR
+from data.lib.etc.codeart import generate_codeart
 
 
 def __fix_env():
@@ -80,10 +81,10 @@ WorkspaceCache.load_from_global()
 DRY_RUN = False
 
 
-def __execute_command(cmd: list, title: str):
+def __execute_command(cmd: list, title: str, capture_stdout: bool = False) -> str:
     global DRY_RUN
 
-    execute_command(cmd, title, DRY_RUN)
+    return execute_command(cmd, title, DRY_RUN, capture_stdout)
 
 
 @click.group(
@@ -889,6 +890,25 @@ def build_increment_cmd(hash_list: str):
 
     hash_list = Path(hash_list)
     build_increment_bundle(descriptor, hash_list)
+
+@cli.group(cls=ClickAliasedGroup)
+def etc():
+    """Extra toolsets."""
+
+@etc.command("codeart")
+def etc_codeart_cmd():
+    """Generate the codeart image."""
+    warning("Generate codeart requires tokei with json output installed and exported via path.")
+    tokei = get_command("tokei")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "tokei . -o json")
+    stdout = __execute_command([tokei, ".", "-o", "json"], "TOKEI OUTPUT")
+    
+    output_file = PROJECT_ROOT / "codeart.png"
+    generate_codeart(stdout, output_file)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Codeart image generated successfully: ")
+        + str(output_file)
+    )
 
 
 cli()

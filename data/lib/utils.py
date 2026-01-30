@@ -48,10 +48,17 @@ def try_get_attr[T, R](obj: T | None, attr: str) -> R | None:
     return getattr(obj, attr, None)
 
 
-def execute_command(cmd: list, title: str, dry_run: bool = False, *args, **kwargs):
+def execute_command(
+        cmd: list,
+        title: str,
+        dry_run: bool = False,
+        capture_stdout: bool = False,
+        *args,
+        **kwargs
+) -> str:
     if dry_run:
         info(f"[Dry-Run] {title}: " + " ".join(cmd))
-        return
+        return ""
 
     line_width = 30
     title = title.strip()
@@ -78,6 +85,8 @@ def execute_command(cmd: list, title: str, dry_run: bool = False, *args, **kwarg
         for line in stdout.splitlines():
             debug(line)
     debug("-" * line_width)
+
+    return stdout
 
 
 def get_file_sha256(file: Path) -> str:
