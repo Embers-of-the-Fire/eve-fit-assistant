@@ -57,7 +57,10 @@ def run(
 
         if "iconID" in type_item.keys():
             path: str = icons[str(type_item["iconID"])]["iconFile"]
-            need_render_icon.append((type_id, index[path.lower()]))
+            try:
+                need_render_icon.append((type_id, index[path.lower()]))
+            except KeyError:
+                continue
         elif "graphicID" in type_item.keys():
             need_render_graphic.append(type_id)
         elif (image_path / "Types" / f"{type_id}_32.png").exists():
