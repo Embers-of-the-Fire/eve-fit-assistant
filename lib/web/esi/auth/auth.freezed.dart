@@ -1,6 +1,5 @@
-// dart format width=80
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -15,60 +14,47 @@ T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$EsiAuthResponse {
-  @JsonKey(name: 'access_token')
-  String get accessToken;
-  @JsonKey(name: 'expires_in')
-  int get expiresIn;
-  @JsonKey(name: 'refresh_token')
-  String get refreshToken;
 
-  /// Create a copy of EsiAuthResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $EsiAuthResponseCopyWith<EsiAuthResponse> get copyWith =>
-      _$EsiAuthResponseCopyWithImpl<EsiAuthResponse>(
-          this as EsiAuthResponse, _$identity);
+@JsonKey(name: 'access_token') String get accessToken;@JsonKey(name: 'expires_in') int get expiresIn;@JsonKey(name: 'refresh_token') String get refreshToken;
+/// Create a copy of EsiAuthResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$EsiAuthResponseCopyWith<EsiAuthResponse> get copyWith => _$EsiAuthResponseCopyWithImpl<EsiAuthResponse>(this as EsiAuthResponse, _$identity);
 
   /// Serializes this EsiAuthResponse to a JSON map.
   Map<String, dynamic> toJson();
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is EsiAuthResponse &&
-            (identical(other.accessToken, accessToken) ||
-                other.accessToken == accessToken) &&
-            (identical(other.expiresIn, expiresIn) ||
-                other.expiresIn == expiresIn) &&
-            (identical(other.refreshToken, refreshToken) ||
-                other.refreshToken == refreshToken));
-  }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode =>
-      Object.hash(runtimeType, accessToken, expiresIn, refreshToken);
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EsiAuthResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken));
+}
 
-  @override
-  String toString() {
-    return 'EsiAuthResponse(accessToken: $accessToken, expiresIn: $expiresIn, refreshToken: $refreshToken)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,accessToken,expiresIn,refreshToken);
+
+@override
+String toString() {
+  return 'EsiAuthResponse(accessToken: $accessToken, expiresIn: $expiresIn, refreshToken: $refreshToken)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class $EsiAuthResponseCopyWith<$Res> {
-  factory $EsiAuthResponseCopyWith(
-          EsiAuthResponse value, $Res Function(EsiAuthResponse) _then) =
-      _$EsiAuthResponseCopyWithImpl;
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'access_token') String accessToken,
-      @JsonKey(name: 'expires_in') int expiresIn,
-      @JsonKey(name: 'refresh_token') String refreshToken});
-}
+abstract mixin class $EsiAuthResponseCopyWith<$Res>  {
+  factory $EsiAuthResponseCopyWith(EsiAuthResponse value, $Res Function(EsiAuthResponse) _then) = _$EsiAuthResponseCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'access_token') String accessToken,@JsonKey(name: 'expires_in') int expiresIn,@JsonKey(name: 'refresh_token') String refreshToken
+});
 
+
+
+
+}
 /// @nodoc
 class _$EsiAuthResponseCopyWithImpl<$Res>
     implements $EsiAuthResponseCopyWith<$Res> {
@@ -77,106 +63,201 @@ class _$EsiAuthResponseCopyWithImpl<$Res>
   final EsiAuthResponse _self;
   final $Res Function(EsiAuthResponse) _then;
 
-  /// Create a copy of EsiAuthResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? accessToken = null,
-    Object? expiresIn = null,
-    Object? refreshToken = null,
-  }) {
-    return _then(_self.copyWith(
-      accessToken: null == accessToken
-          ? _self.accessToken
-          : accessToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      expiresIn: null == expiresIn
-          ? _self.expiresIn
-          : expiresIn // ignore: cast_nullable_to_non_nullable
-              as int,
-      refreshToken: null == refreshToken
-          ? _self.refreshToken
-          : refreshToken // ignore: cast_nullable_to_non_nullable
-              as String,
-    ));
-  }
+/// Create a copy of EsiAuthResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? accessToken = null,Object? expiresIn = null,Object? refreshToken = null,}) {
+  return _then(_self.copyWith(
+accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
+as String,expiresIn: null == expiresIn ? _self.expiresIn : expiresIn // ignore: cast_nullable_to_non_nullable
+as int,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [EsiAuthResponse].
+extension EsiAuthResponsePatterns on EsiAuthResponse {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _EsiAuthResponse value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _EsiAuthResponse() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _EsiAuthResponse value)  $default,){
+final _that = this;
+switch (_that) {
+case _EsiAuthResponse():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _EsiAuthResponse value)?  $default,){
+final _that = this;
+switch (_that) {
+case _EsiAuthResponse() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'expires_in')  int expiresIn, @JsonKey(name: 'refresh_token')  String refreshToken)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _EsiAuthResponse() when $default != null:
+return $default(_that.accessToken,_that.expiresIn,_that.refreshToken);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'expires_in')  int expiresIn, @JsonKey(name: 'refresh_token')  String refreshToken)  $default,) {final _that = this;
+switch (_that) {
+case _EsiAuthResponse():
+return $default(_that.accessToken,_that.expiresIn,_that.refreshToken);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'expires_in')  int expiresIn, @JsonKey(name: 'refresh_token')  String refreshToken)?  $default,) {final _that = this;
+switch (_that) {
+case _EsiAuthResponse() when $default != null:
+return $default(_that.accessToken,_that.expiresIn,_that.refreshToken);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 
 @JsonSerializable()
 class _EsiAuthResponse implements EsiAuthResponse {
-  const _EsiAuthResponse(
-      {@JsonKey(name: 'access_token') required this.accessToken,
-      @JsonKey(name: 'expires_in') required this.expiresIn,
-      @JsonKey(name: 'refresh_token') required this.refreshToken});
-  factory _EsiAuthResponse.fromJson(Map<String, dynamic> json) =>
-      _$EsiAuthResponseFromJson(json);
+  const _EsiAuthResponse({@JsonKey(name: 'access_token') required this.accessToken, @JsonKey(name: 'expires_in') required this.expiresIn, @JsonKey(name: 'refresh_token') required this.refreshToken});
+  factory _EsiAuthResponse.fromJson(Map<String, dynamic> json) => _$EsiAuthResponseFromJson(json);
 
-  @override
-  @JsonKey(name: 'access_token')
-  final String accessToken;
-  @override
-  @JsonKey(name: 'expires_in')
-  final int expiresIn;
-  @override
-  @JsonKey(name: 'refresh_token')
-  final String refreshToken;
+@override@JsonKey(name: 'access_token') final  String accessToken;
+@override@JsonKey(name: 'expires_in') final  int expiresIn;
+@override@JsonKey(name: 'refresh_token') final  String refreshToken;
 
-  /// Create a copy of EsiAuthResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$EsiAuthResponseCopyWith<_EsiAuthResponse> get copyWith =>
-      __$EsiAuthResponseCopyWithImpl<_EsiAuthResponse>(this, _$identity);
+/// Create a copy of EsiAuthResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$EsiAuthResponseCopyWith<_EsiAuthResponse> get copyWith => __$EsiAuthResponseCopyWithImpl<_EsiAuthResponse>(this, _$identity);
 
-  @override
-  Map<String, dynamic> toJson() {
-    return _$EsiAuthResponseToJson(
-      this,
-    );
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$EsiAuthResponseToJson(this, );
+}
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _EsiAuthResponse &&
-            (identical(other.accessToken, accessToken) ||
-                other.accessToken == accessToken) &&
-            (identical(other.expiresIn, expiresIn) ||
-                other.expiresIn == expiresIn) &&
-            (identical(other.refreshToken, refreshToken) ||
-                other.refreshToken == refreshToken));
-  }
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EsiAuthResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken));
+}
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode =>
-      Object.hash(runtimeType, accessToken, expiresIn, refreshToken);
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,accessToken,expiresIn,refreshToken);
 
-  @override
-  String toString() {
-    return 'EsiAuthResponse(accessToken: $accessToken, expiresIn: $expiresIn, refreshToken: $refreshToken)';
-  }
+@override
+String toString() {
+  return 'EsiAuthResponse(accessToken: $accessToken, expiresIn: $expiresIn, refreshToken: $refreshToken)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class _$EsiAuthResponseCopyWith<$Res>
-    implements $EsiAuthResponseCopyWith<$Res> {
-  factory _$EsiAuthResponseCopyWith(
-          _EsiAuthResponse value, $Res Function(_EsiAuthResponse) _then) =
-      __$EsiAuthResponseCopyWithImpl;
-  @override
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'access_token') String accessToken,
-      @JsonKey(name: 'expires_in') int expiresIn,
-      @JsonKey(name: 'refresh_token') String refreshToken});
-}
+abstract mixin class _$EsiAuthResponseCopyWith<$Res> implements $EsiAuthResponseCopyWith<$Res> {
+  factory _$EsiAuthResponseCopyWith(_EsiAuthResponse value, $Res Function(_EsiAuthResponse) _then) = __$EsiAuthResponseCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'access_token') String accessToken,@JsonKey(name: 'expires_in') int expiresIn,@JsonKey(name: 'refresh_token') String refreshToken
+});
 
+
+
+
+}
 /// @nodoc
 class __$EsiAuthResponseCopyWithImpl<$Res>
     implements _$EsiAuthResponseCopyWith<$Res> {
@@ -185,88 +266,64 @@ class __$EsiAuthResponseCopyWithImpl<$Res>
   final _EsiAuthResponse _self;
   final $Res Function(_EsiAuthResponse) _then;
 
-  /// Create a copy of EsiAuthResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $Res call({
-    Object? accessToken = null,
-    Object? expiresIn = null,
-    Object? refreshToken = null,
-  }) {
-    return _then(_EsiAuthResponse(
-      accessToken: null == accessToken
-          ? _self.accessToken
-          : accessToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      expiresIn: null == expiresIn
-          ? _self.expiresIn
-          : expiresIn // ignore: cast_nullable_to_non_nullable
-              as int,
-      refreshToken: null == refreshToken
-          ? _self.refreshToken
-          : refreshToken // ignore: cast_nullable_to_non_nullable
-              as String,
-    ));
-  }
+/// Create a copy of EsiAuthResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? accessToken = null,Object? expiresIn = null,Object? refreshToken = null,}) {
+  return _then(_EsiAuthResponse(
+accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
+as String,expiresIn: null == expiresIn ? _self.expiresIn : expiresIn // ignore: cast_nullable_to_non_nullable
+as int,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
 }
+
+
+}
+
 
 /// @nodoc
 mixin _$EsiAuthTokens {
-  String get accessToken;
-  int get expiresTimestamp;
-  String get refreshToken;
-  EsiAuthServer get server;
 
-  /// Create a copy of EsiAuthTokens
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $EsiAuthTokensCopyWith<EsiAuthTokens> get copyWith =>
-      _$EsiAuthTokensCopyWithImpl<EsiAuthTokens>(
-          this as EsiAuthTokens, _$identity);
+ String get accessToken; int get expiresTimestamp; String get refreshToken; EsiAuthServer get server;
+/// Create a copy of EsiAuthTokens
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$EsiAuthTokensCopyWith<EsiAuthTokens> get copyWith => _$EsiAuthTokensCopyWithImpl<EsiAuthTokens>(this as EsiAuthTokens, _$identity);
 
   /// Serializes this EsiAuthTokens to a JSON map.
   Map<String, dynamic> toJson();
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is EsiAuthTokens &&
-            (identical(other.accessToken, accessToken) ||
-                other.accessToken == accessToken) &&
-            (identical(other.expiresTimestamp, expiresTimestamp) ||
-                other.expiresTimestamp == expiresTimestamp) &&
-            (identical(other.refreshToken, refreshToken) ||
-                other.refreshToken == refreshToken) &&
-            (identical(other.server, server) || other.server == server));
-  }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(
-      runtimeType, accessToken, expiresTimestamp, refreshToken, server);
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EsiAuthTokens&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.expiresTimestamp, expiresTimestamp) || other.expiresTimestamp == expiresTimestamp)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.server, server) || other.server == server));
+}
 
-  @override
-  String toString() {
-    return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken, server: $server)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,accessToken,expiresTimestamp,refreshToken,server);
+
+@override
+String toString() {
+  return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken, server: $server)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class $EsiAuthTokensCopyWith<$Res> {
-  factory $EsiAuthTokensCopyWith(
-          EsiAuthTokens value, $Res Function(EsiAuthTokens) _then) =
-      _$EsiAuthTokensCopyWithImpl;
-  @useResult
-  $Res call(
-      {String accessToken,
-      int expiresTimestamp,
-      String refreshToken,
-      EsiAuthServer server});
-}
+abstract mixin class $EsiAuthTokensCopyWith<$Res>  {
+  factory $EsiAuthTokensCopyWith(EsiAuthTokens value, $Res Function(EsiAuthTokens) _then) = _$EsiAuthTokensCopyWithImpl;
+@useResult
+$Res call({
+ String accessToken, int expiresTimestamp, String refreshToken, EsiAuthServer server
+});
 
+
+
+
+}
 /// @nodoc
 class _$EsiAuthTokensCopyWithImpl<$Res>
     implements $EsiAuthTokensCopyWith<$Res> {
@@ -275,113 +332,203 @@ class _$EsiAuthTokensCopyWithImpl<$Res>
   final EsiAuthTokens _self;
   final $Res Function(EsiAuthTokens) _then;
 
-  /// Create a copy of EsiAuthTokens
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? accessToken = null,
-    Object? expiresTimestamp = null,
-    Object? refreshToken = null,
-    Object? server = null,
-  }) {
-    return _then(_self.copyWith(
-      accessToken: null == accessToken
-          ? _self.accessToken
-          : accessToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      expiresTimestamp: null == expiresTimestamp
-          ? _self.expiresTimestamp
-          : expiresTimestamp // ignore: cast_nullable_to_non_nullable
-              as int,
-      refreshToken: null == refreshToken
-          ? _self.refreshToken
-          : refreshToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      server: null == server
-          ? _self.server
-          : server // ignore: cast_nullable_to_non_nullable
-              as EsiAuthServer,
-    ));
-  }
+/// Create a copy of EsiAuthTokens
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? accessToken = null,Object? expiresTimestamp = null,Object? refreshToken = null,Object? server = null,}) {
+  return _then(_self.copyWith(
+accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
+as String,expiresTimestamp: null == expiresTimestamp ? _self.expiresTimestamp : expiresTimestamp // ignore: cast_nullable_to_non_nullable
+as int,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
+as String,server: null == server ? _self.server : server // ignore: cast_nullable_to_non_nullable
+as EsiAuthServer,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [EsiAuthTokens].
+extension EsiAuthTokensPatterns on EsiAuthTokens {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _EsiAuthTokens value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _EsiAuthTokens() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _EsiAuthTokens value)  $default,){
+final _that = this;
+switch (_that) {
+case _EsiAuthTokens():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _EsiAuthTokens value)?  $default,){
+final _that = this;
+switch (_that) {
+case _EsiAuthTokens() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String accessToken,  int expiresTimestamp,  String refreshToken,  EsiAuthServer server)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _EsiAuthTokens() when $default != null:
+return $default(_that.accessToken,_that.expiresTimestamp,_that.refreshToken,_that.server);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String accessToken,  int expiresTimestamp,  String refreshToken,  EsiAuthServer server)  $default,) {final _that = this;
+switch (_that) {
+case _EsiAuthTokens():
+return $default(_that.accessToken,_that.expiresTimestamp,_that.refreshToken,_that.server);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String accessToken,  int expiresTimestamp,  String refreshToken,  EsiAuthServer server)?  $default,) {final _that = this;
+switch (_that) {
+case _EsiAuthTokens() when $default != null:
+return $default(_that.accessToken,_that.expiresTimestamp,_that.refreshToken,_that.server);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 @JsonSerializable()
+
 class _EsiAuthTokens extends EsiAuthTokens {
-  const _EsiAuthTokens(
-      {required this.accessToken,
-      required this.expiresTimestamp,
-      required this.refreshToken,
-      required this.server})
-      : super._();
-  factory _EsiAuthTokens.fromJson(Map<String, dynamic> json) =>
-      _$EsiAuthTokensFromJson(json);
+  const _EsiAuthTokens({required this.accessToken, required this.expiresTimestamp, required this.refreshToken, required this.server}): super._();
+  factory _EsiAuthTokens.fromJson(Map<String, dynamic> json) => _$EsiAuthTokensFromJson(json);
 
-  @override
-  final String accessToken;
-  @override
-  final int expiresTimestamp;
-  @override
-  final String refreshToken;
-  @override
-  final EsiAuthServer server;
+@override final  String accessToken;
+@override final  int expiresTimestamp;
+@override final  String refreshToken;
+@override final  EsiAuthServer server;
 
-  /// Create a copy of EsiAuthTokens
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$EsiAuthTokensCopyWith<_EsiAuthTokens> get copyWith =>
-      __$EsiAuthTokensCopyWithImpl<_EsiAuthTokens>(this, _$identity);
+/// Create a copy of EsiAuthTokens
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$EsiAuthTokensCopyWith<_EsiAuthTokens> get copyWith => __$EsiAuthTokensCopyWithImpl<_EsiAuthTokens>(this, _$identity);
 
-  @override
-  Map<String, dynamic> toJson() {
-    return _$EsiAuthTokensToJson(
-      this,
-    );
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$EsiAuthTokensToJson(this, );
+}
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _EsiAuthTokens &&
-            (identical(other.accessToken, accessToken) ||
-                other.accessToken == accessToken) &&
-            (identical(other.expiresTimestamp, expiresTimestamp) ||
-                other.expiresTimestamp == expiresTimestamp) &&
-            (identical(other.refreshToken, refreshToken) ||
-                other.refreshToken == refreshToken) &&
-            (identical(other.server, server) || other.server == server));
-  }
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EsiAuthTokens&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.expiresTimestamp, expiresTimestamp) || other.expiresTimestamp == expiresTimestamp)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.server, server) || other.server == server));
+}
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(
-      runtimeType, accessToken, expiresTimestamp, refreshToken, server);
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,accessToken,expiresTimestamp,refreshToken,server);
 
-  @override
-  String toString() {
-    return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken, server: $server)';
-  }
+@override
+String toString() {
+  return 'EsiAuthTokens(accessToken: $accessToken, expiresTimestamp: $expiresTimestamp, refreshToken: $refreshToken, server: $server)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class _$EsiAuthTokensCopyWith<$Res>
-    implements $EsiAuthTokensCopyWith<$Res> {
-  factory _$EsiAuthTokensCopyWith(
-          _EsiAuthTokens value, $Res Function(_EsiAuthTokens) _then) =
-      __$EsiAuthTokensCopyWithImpl;
-  @override
-  @useResult
-  $Res call(
-      {String accessToken,
-      int expiresTimestamp,
-      String refreshToken,
-      EsiAuthServer server});
-}
+abstract mixin class _$EsiAuthTokensCopyWith<$Res> implements $EsiAuthTokensCopyWith<$Res> {
+  factory _$EsiAuthTokensCopyWith(_EsiAuthTokens value, $Res Function(_EsiAuthTokens) _then) = __$EsiAuthTokensCopyWithImpl;
+@override @useResult
+$Res call({
+ String accessToken, int expiresTimestamp, String refreshToken, EsiAuthServer server
+});
 
+
+
+
+}
 /// @nodoc
 class __$EsiAuthTokensCopyWithImpl<$Res>
     implements _$EsiAuthTokensCopyWith<$Res> {
@@ -390,35 +537,19 @@ class __$EsiAuthTokensCopyWithImpl<$Res>
   final _EsiAuthTokens _self;
   final $Res Function(_EsiAuthTokens) _then;
 
-  /// Create a copy of EsiAuthTokens
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $Res call({
-    Object? accessToken = null,
-    Object? expiresTimestamp = null,
-    Object? refreshToken = null,
-    Object? server = null,
-  }) {
-    return _then(_EsiAuthTokens(
-      accessToken: null == accessToken
-          ? _self.accessToken
-          : accessToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      expiresTimestamp: null == expiresTimestamp
-          ? _self.expiresTimestamp
-          : expiresTimestamp // ignore: cast_nullable_to_non_nullable
-              as int,
-      refreshToken: null == refreshToken
-          ? _self.refreshToken
-          : refreshToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      server: null == server
-          ? _self.server
-          : server // ignore: cast_nullable_to_non_nullable
-              as EsiAuthServer,
-    ));
-  }
+/// Create a copy of EsiAuthTokens
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? accessToken = null,Object? expiresTimestamp = null,Object? refreshToken = null,Object? server = null,}) {
+  return _then(_EsiAuthTokens(
+accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
+as String,expiresTimestamp: null == expiresTimestamp ? _self.expiresTimestamp : expiresTimestamp // ignore: cast_nullable_to_non_nullable
+as int,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
+as String,server: null == server ? _self.server : server // ignore: cast_nullable_to_non_nullable
+as EsiAuthServer,
+  ));
+}
+
+
 }
 
 // dart format on

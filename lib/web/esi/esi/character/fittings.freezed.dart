@@ -1,6 +1,5 @@
-// dart format width=80
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -15,642 +14,829 @@ T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$Fitting {
-  @JsonKey(name: 'fitting_id')
-  int get fittingID;
-  @JsonKey(name: 'ship_type_id')
-  int get shipTypeID;
-  String get name;
-  String get description;
-  List<FittingItem> get items;
 
-  /// Create a copy of Fitting
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $FittingCopyWith<Fitting> get copyWith =>
-      _$FittingCopyWithImpl<Fitting>(this as Fitting, _$identity);
+@JsonKey(name: 'fitting_id') int get fittingID;@JsonKey(name: 'ship_type_id') int get shipTypeID; String get name; String get description; List<FittingItem> get items;
+/// Create a copy of Fitting
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FittingCopyWith<Fitting> get copyWith => _$FittingCopyWithImpl<Fitting>(this as Fitting, _$identity);
 
   /// Serializes this Fitting to a JSON map.
   Map<String, dynamic> toJson();
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is Fitting &&
-            (identical(other.fittingID, fittingID) ||
-                other.fittingID == fittingID) &&
-            (identical(other.shipTypeID, shipTypeID) ||
-                other.shipTypeID == shipTypeID) &&
-            (identical(other.name, name) || other.name == name) &&
-            (identical(other.description, description) ||
-                other.description == description) &&
-            const DeepCollectionEquality().equals(other.items, items));
-  }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, fittingID, shipTypeID, name,
-      description, const DeepCollectionEquality().hash(items));
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Fitting&&(identical(other.fittingID, fittingID) || other.fittingID == fittingID)&&(identical(other.shipTypeID, shipTypeID) || other.shipTypeID == shipTypeID)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.items, items));
+}
 
-  @override
-  String toString() {
-    return 'Fitting(fittingID: $fittingID, shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,fittingID,shipTypeID,name,description,const DeepCollectionEquality().hash(items));
+
+@override
+String toString() {
+  return 'Fitting(fittingID: $fittingID, shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class $FittingCopyWith<$Res> {
-  factory $FittingCopyWith(Fitting value, $Res Function(Fitting) _then) =
-      _$FittingCopyWithImpl;
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'fitting_id') int fittingID,
-      @JsonKey(name: 'ship_type_id') int shipTypeID,
-      String name,
-      String description,
-      List<FittingItem> items});
-}
+abstract mixin class $FittingCopyWith<$Res>  {
+  factory $FittingCopyWith(Fitting value, $Res Function(Fitting) _then) = _$FittingCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'fitting_id') int fittingID,@JsonKey(name: 'ship_type_id') int shipTypeID, String name, String description, List<FittingItem> items
+});
 
+
+
+
+}
 /// @nodoc
-class _$FittingCopyWithImpl<$Res> implements $FittingCopyWith<$Res> {
+class _$FittingCopyWithImpl<$Res>
+    implements $FittingCopyWith<$Res> {
   _$FittingCopyWithImpl(this._self, this._then);
 
   final Fitting _self;
   final $Res Function(Fitting) _then;
 
-  /// Create a copy of Fitting
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? fittingID = null,
-    Object? shipTypeID = null,
-    Object? name = null,
-    Object? description = null,
-    Object? items = null,
-  }) {
-    return _then(_self.copyWith(
-      fittingID: null == fittingID
-          ? _self.fittingID
-          : fittingID // ignore: cast_nullable_to_non_nullable
-              as int,
-      shipTypeID: null == shipTypeID
-          ? _self.shipTypeID
-          : shipTypeID // ignore: cast_nullable_to_non_nullable
-              as int,
-      name: null == name
-          ? _self.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String,
-      description: null == description
-          ? _self.description
-          : description // ignore: cast_nullable_to_non_nullable
-              as String,
-      items: null == items
-          ? _self.items
-          : items // ignore: cast_nullable_to_non_nullable
-              as List<FittingItem>,
-    ));
-  }
+/// Create a copy of Fitting
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? fittingID = null,Object? shipTypeID = null,Object? name = null,Object? description = null,Object? items = null,}) {
+  return _then(_self.copyWith(
+fittingID: null == fittingID ? _self.fittingID : fittingID // ignore: cast_nullable_to_non_nullable
+as int,shipTypeID: null == shipTypeID ? _self.shipTypeID : shipTypeID // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
+as List<FittingItem>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [Fitting].
+extension FittingPatterns on Fitting {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Fitting value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Fitting() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Fitting value)  $default,){
+final _that = this;
+switch (_that) {
+case _Fitting():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Fitting value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Fitting() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'fitting_id')  int fittingID, @JsonKey(name: 'ship_type_id')  int shipTypeID,  String name,  String description,  List<FittingItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Fitting() when $default != null:
+return $default(_that.fittingID,_that.shipTypeID,_that.name,_that.description,_that.items);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'fitting_id')  int fittingID, @JsonKey(name: 'ship_type_id')  int shipTypeID,  String name,  String description,  List<FittingItem> items)  $default,) {final _that = this;
+switch (_that) {
+case _Fitting():
+return $default(_that.fittingID,_that.shipTypeID,_that.name,_that.description,_that.items);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'fitting_id')  int fittingID, @JsonKey(name: 'ship_type_id')  int shipTypeID,  String name,  String description,  List<FittingItem> items)?  $default,) {final _that = this;
+switch (_that) {
+case _Fitting() when $default != null:
+return $default(_that.fittingID,_that.shipTypeID,_that.name,_that.description,_that.items);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 
 @JsonSerializable()
 class _Fitting extends Fitting {
-  const _Fitting(
-      {@JsonKey(name: 'fitting_id') required this.fittingID,
-      @JsonKey(name: 'ship_type_id') required this.shipTypeID,
-      required this.name,
-      required this.description,
-      required final List<FittingItem> items})
-      : _items = items,
-        super._();
-  factory _Fitting.fromJson(Map<String, dynamic> json) =>
-      _$FittingFromJson(json);
+  const _Fitting({@JsonKey(name: 'fitting_id') required this.fittingID, @JsonKey(name: 'ship_type_id') required this.shipTypeID, required this.name, required this.description, required final  List<FittingItem> items}): _items = items,super._();
+  factory _Fitting.fromJson(Map<String, dynamic> json) => _$FittingFromJson(json);
 
-  @override
-  @JsonKey(name: 'fitting_id')
-  final int fittingID;
-  @override
-  @JsonKey(name: 'ship_type_id')
-  final int shipTypeID;
-  @override
-  final String name;
-  @override
-  final String description;
-  final List<FittingItem> _items;
-  @override
-  List<FittingItem> get items {
-    if (_items is EqualUnmodifiableListView) return _items;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_items);
-  }
+@override@JsonKey(name: 'fitting_id') final  int fittingID;
+@override@JsonKey(name: 'ship_type_id') final  int shipTypeID;
+@override final  String name;
+@override final  String description;
+ final  List<FittingItem> _items;
+@override List<FittingItem> get items {
+  if (_items is EqualUnmodifiableListView) return _items;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_items);
+}
 
-  /// Create a copy of Fitting
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$FittingCopyWith<_Fitting> get copyWith =>
-      __$FittingCopyWithImpl<_Fitting>(this, _$identity);
 
-  @override
-  Map<String, dynamic> toJson() {
-    return _$FittingToJson(
-      this,
-    );
-  }
+/// Create a copy of Fitting
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$FittingCopyWith<_Fitting> get copyWith => __$FittingCopyWithImpl<_Fitting>(this, _$identity);
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _Fitting &&
-            (identical(other.fittingID, fittingID) ||
-                other.fittingID == fittingID) &&
-            (identical(other.shipTypeID, shipTypeID) ||
-                other.shipTypeID == shipTypeID) &&
-            (identical(other.name, name) || other.name == name) &&
-            (identical(other.description, description) ||
-                other.description == description) &&
-            const DeepCollectionEquality().equals(other._items, _items));
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$FittingToJson(this, );
+}
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, fittingID, shipTypeID, name,
-      description, const DeepCollectionEquality().hash(_items));
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Fitting&&(identical(other.fittingID, fittingID) || other.fittingID == fittingID)&&(identical(other.shipTypeID, shipTypeID) || other.shipTypeID == shipTypeID)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._items, _items));
+}
 
-  @override
-  String toString() {
-    return 'Fitting(fittingID: $fittingID, shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,fittingID,shipTypeID,name,description,const DeepCollectionEquality().hash(_items));
+
+@override
+String toString() {
+  return 'Fitting(fittingID: $fittingID, shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
+}
+
+
 }
 
 /// @nodoc
 abstract mixin class _$FittingCopyWith<$Res> implements $FittingCopyWith<$Res> {
-  factory _$FittingCopyWith(_Fitting value, $Res Function(_Fitting) _then) =
-      __$FittingCopyWithImpl;
-  @override
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'fitting_id') int fittingID,
-      @JsonKey(name: 'ship_type_id') int shipTypeID,
-      String name,
-      String description,
-      List<FittingItem> items});
-}
+  factory _$FittingCopyWith(_Fitting value, $Res Function(_Fitting) _then) = __$FittingCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'fitting_id') int fittingID,@JsonKey(name: 'ship_type_id') int shipTypeID, String name, String description, List<FittingItem> items
+});
 
+
+
+
+}
 /// @nodoc
-class __$FittingCopyWithImpl<$Res> implements _$FittingCopyWith<$Res> {
+class __$FittingCopyWithImpl<$Res>
+    implements _$FittingCopyWith<$Res> {
   __$FittingCopyWithImpl(this._self, this._then);
 
   final _Fitting _self;
   final $Res Function(_Fitting) _then;
 
-  /// Create a copy of Fitting
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $Res call({
-    Object? fittingID = null,
-    Object? shipTypeID = null,
-    Object? name = null,
-    Object? description = null,
-    Object? items = null,
-  }) {
-    return _then(_Fitting(
-      fittingID: null == fittingID
-          ? _self.fittingID
-          : fittingID // ignore: cast_nullable_to_non_nullable
-              as int,
-      shipTypeID: null == shipTypeID
-          ? _self.shipTypeID
-          : shipTypeID // ignore: cast_nullable_to_non_nullable
-              as int,
-      name: null == name
-          ? _self.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String,
-      description: null == description
-          ? _self.description
-          : description // ignore: cast_nullable_to_non_nullable
-              as String,
-      items: null == items
-          ? _self._items
-          : items // ignore: cast_nullable_to_non_nullable
-              as List<FittingItem>,
-    ));
-  }
+/// Create a copy of Fitting
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? fittingID = null,Object? shipTypeID = null,Object? name = null,Object? description = null,Object? items = null,}) {
+  return _then(_Fitting(
+fittingID: null == fittingID ? _self.fittingID : fittingID // ignore: cast_nullable_to_non_nullable
+as int,shipTypeID: null == shipTypeID ? _self.shipTypeID : shipTypeID // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
+as List<FittingItem>,
+  ));
 }
+
+
+}
+
 
 /// @nodoc
 mixin _$FittingPost {
-  @JsonKey(name: 'ship_type_id')
-  int get shipTypeID;
-  String get name;
-  String get description;
-  List<FittingItem> get items;
 
-  /// Create a copy of FittingPost
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $FittingPostCopyWith<FittingPost> get copyWith =>
-      _$FittingPostCopyWithImpl<FittingPost>(this as FittingPost, _$identity);
+@JsonKey(name: 'ship_type_id') int get shipTypeID; String get name; String get description; List<FittingItem> get items;
+/// Create a copy of FittingPost
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FittingPostCopyWith<FittingPost> get copyWith => _$FittingPostCopyWithImpl<FittingPost>(this as FittingPost, _$identity);
 
   /// Serializes this FittingPost to a JSON map.
   Map<String, dynamic> toJson();
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is FittingPost &&
-            (identical(other.shipTypeID, shipTypeID) ||
-                other.shipTypeID == shipTypeID) &&
-            (identical(other.name, name) || other.name == name) &&
-            (identical(other.description, description) ||
-                other.description == description) &&
-            const DeepCollectionEquality().equals(other.items, items));
-  }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, shipTypeID, name, description,
-      const DeepCollectionEquality().hash(items));
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FittingPost&&(identical(other.shipTypeID, shipTypeID) || other.shipTypeID == shipTypeID)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.items, items));
+}
 
-  @override
-  String toString() {
-    return 'FittingPost(shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,shipTypeID,name,description,const DeepCollectionEquality().hash(items));
+
+@override
+String toString() {
+  return 'FittingPost(shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class $FittingPostCopyWith<$Res> {
-  factory $FittingPostCopyWith(
-          FittingPost value, $Res Function(FittingPost) _then) =
-      _$FittingPostCopyWithImpl;
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'ship_type_id') int shipTypeID,
-      String name,
-      String description,
-      List<FittingItem> items});
-}
+abstract mixin class $FittingPostCopyWith<$Res>  {
+  factory $FittingPostCopyWith(FittingPost value, $Res Function(FittingPost) _then) = _$FittingPostCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'ship_type_id') int shipTypeID, String name, String description, List<FittingItem> items
+});
 
+
+
+
+}
 /// @nodoc
-class _$FittingPostCopyWithImpl<$Res> implements $FittingPostCopyWith<$Res> {
+class _$FittingPostCopyWithImpl<$Res>
+    implements $FittingPostCopyWith<$Res> {
   _$FittingPostCopyWithImpl(this._self, this._then);
 
   final FittingPost _self;
   final $Res Function(FittingPost) _then;
 
-  /// Create a copy of FittingPost
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? shipTypeID = null,
-    Object? name = null,
-    Object? description = null,
-    Object? items = null,
-  }) {
-    return _then(_self.copyWith(
-      shipTypeID: null == shipTypeID
-          ? _self.shipTypeID
-          : shipTypeID // ignore: cast_nullable_to_non_nullable
-              as int,
-      name: null == name
-          ? _self.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String,
-      description: null == description
-          ? _self.description
-          : description // ignore: cast_nullable_to_non_nullable
-              as String,
-      items: null == items
-          ? _self.items
-          : items // ignore: cast_nullable_to_non_nullable
-              as List<FittingItem>,
-    ));
-  }
+/// Create a copy of FittingPost
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? shipTypeID = null,Object? name = null,Object? description = null,Object? items = null,}) {
+  return _then(_self.copyWith(
+shipTypeID: null == shipTypeID ? _self.shipTypeID : shipTypeID // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
+as List<FittingItem>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [FittingPost].
+extension FittingPostPatterns on FittingPost {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _FittingPost value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _FittingPost() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _FittingPost value)  $default,){
+final _that = this;
+switch (_that) {
+case _FittingPost():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _FittingPost value)?  $default,){
+final _that = this;
+switch (_that) {
+case _FittingPost() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'ship_type_id')  int shipTypeID,  String name,  String description,  List<FittingItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _FittingPost() when $default != null:
+return $default(_that.shipTypeID,_that.name,_that.description,_that.items);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'ship_type_id')  int shipTypeID,  String name,  String description,  List<FittingItem> items)  $default,) {final _that = this;
+switch (_that) {
+case _FittingPost():
+return $default(_that.shipTypeID,_that.name,_that.description,_that.items);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'ship_type_id')  int shipTypeID,  String name,  String description,  List<FittingItem> items)?  $default,) {final _that = this;
+switch (_that) {
+case _FittingPost() when $default != null:
+return $default(_that.shipTypeID,_that.name,_that.description,_that.items);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 
 @JsonSerializable()
 class _FittingPost extends FittingPost {
-  const _FittingPost(
-      {@JsonKey(name: 'ship_type_id') required this.shipTypeID,
-      required this.name,
-      required this.description,
-      required final List<FittingItem> items})
-      : _items = items,
-        super._();
-  factory _FittingPost.fromJson(Map<String, dynamic> json) =>
-      _$FittingPostFromJson(json);
+  const _FittingPost({@JsonKey(name: 'ship_type_id') required this.shipTypeID, required this.name, required this.description, required final  List<FittingItem> items}): _items = items,super._();
+  factory _FittingPost.fromJson(Map<String, dynamic> json) => _$FittingPostFromJson(json);
 
-  @override
-  @JsonKey(name: 'ship_type_id')
-  final int shipTypeID;
-  @override
-  final String name;
-  @override
-  final String description;
-  final List<FittingItem> _items;
-  @override
-  List<FittingItem> get items {
-    if (_items is EqualUnmodifiableListView) return _items;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_items);
-  }
+@override@JsonKey(name: 'ship_type_id') final  int shipTypeID;
+@override final  String name;
+@override final  String description;
+ final  List<FittingItem> _items;
+@override List<FittingItem> get items {
+  if (_items is EqualUnmodifiableListView) return _items;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_items);
+}
 
-  /// Create a copy of FittingPost
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$FittingPostCopyWith<_FittingPost> get copyWith =>
-      __$FittingPostCopyWithImpl<_FittingPost>(this, _$identity);
 
-  @override
-  Map<String, dynamic> toJson() {
-    return _$FittingPostToJson(
-      this,
-    );
-  }
+/// Create a copy of FittingPost
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$FittingPostCopyWith<_FittingPost> get copyWith => __$FittingPostCopyWithImpl<_FittingPost>(this, _$identity);
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _FittingPost &&
-            (identical(other.shipTypeID, shipTypeID) ||
-                other.shipTypeID == shipTypeID) &&
-            (identical(other.name, name) || other.name == name) &&
-            (identical(other.description, description) ||
-                other.description == description) &&
-            const DeepCollectionEquality().equals(other._items, _items));
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$FittingPostToJson(this, );
+}
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, shipTypeID, name, description,
-      const DeepCollectionEquality().hash(_items));
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FittingPost&&(identical(other.shipTypeID, shipTypeID) || other.shipTypeID == shipTypeID)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._items, _items));
+}
 
-  @override
-  String toString() {
-    return 'FittingPost(shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,shipTypeID,name,description,const DeepCollectionEquality().hash(_items));
+
+@override
+String toString() {
+  return 'FittingPost(shipTypeID: $shipTypeID, name: $name, description: $description, items: $items)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class _$FittingPostCopyWith<$Res>
-    implements $FittingPostCopyWith<$Res> {
-  factory _$FittingPostCopyWith(
-          _FittingPost value, $Res Function(_FittingPost) _then) =
-      __$FittingPostCopyWithImpl;
-  @override
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'ship_type_id') int shipTypeID,
-      String name,
-      String description,
-      List<FittingItem> items});
-}
+abstract mixin class _$FittingPostCopyWith<$Res> implements $FittingPostCopyWith<$Res> {
+  factory _$FittingPostCopyWith(_FittingPost value, $Res Function(_FittingPost) _then) = __$FittingPostCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'ship_type_id') int shipTypeID, String name, String description, List<FittingItem> items
+});
 
+
+
+
+}
 /// @nodoc
-class __$FittingPostCopyWithImpl<$Res> implements _$FittingPostCopyWith<$Res> {
+class __$FittingPostCopyWithImpl<$Res>
+    implements _$FittingPostCopyWith<$Res> {
   __$FittingPostCopyWithImpl(this._self, this._then);
 
   final _FittingPost _self;
   final $Res Function(_FittingPost) _then;
 
-  /// Create a copy of FittingPost
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $Res call({
-    Object? shipTypeID = null,
-    Object? name = null,
-    Object? description = null,
-    Object? items = null,
-  }) {
-    return _then(_FittingPost(
-      shipTypeID: null == shipTypeID
-          ? _self.shipTypeID
-          : shipTypeID // ignore: cast_nullable_to_non_nullable
-              as int,
-      name: null == name
-          ? _self.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String,
-      description: null == description
-          ? _self.description
-          : description // ignore: cast_nullable_to_non_nullable
-              as String,
-      items: null == items
-          ? _self._items
-          : items // ignore: cast_nullable_to_non_nullable
-              as List<FittingItem>,
-    ));
-  }
+/// Create a copy of FittingPost
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? shipTypeID = null,Object? name = null,Object? description = null,Object? items = null,}) {
+  return _then(_FittingPost(
+shipTypeID: null == shipTypeID ? _self.shipTypeID : shipTypeID // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
+as List<FittingItem>,
+  ));
 }
+
+
+}
+
 
 /// @nodoc
 mixin _$FittingItem {
-  @JsonKey(name: 'type_id')
-  int get typeID;
-  int get quantity;
-  @JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)
-  FittingItemFlag get flag;
 
-  /// Create a copy of FittingItem
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $FittingItemCopyWith<FittingItem> get copyWith =>
-      _$FittingItemCopyWithImpl<FittingItem>(this as FittingItem, _$identity);
+@JsonKey(name: 'type_id') int get typeID; int get quantity;@JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson) FittingItemFlag get flag;
+/// Create a copy of FittingItem
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FittingItemCopyWith<FittingItem> get copyWith => _$FittingItemCopyWithImpl<FittingItem>(this as FittingItem, _$identity);
 
   /// Serializes this FittingItem to a JSON map.
   Map<String, dynamic> toJson();
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is FittingItem &&
-            (identical(other.typeID, typeID) || other.typeID == typeID) &&
-            (identical(other.quantity, quantity) ||
-                other.quantity == quantity) &&
-            (identical(other.flag, flag) || other.flag == flag));
-  }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, typeID, quantity, flag);
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FittingItem&&(identical(other.typeID, typeID) || other.typeID == typeID)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.flag, flag) || other.flag == flag));
+}
 
-  @override
-  String toString() {
-    return 'FittingItem(typeID: $typeID, quantity: $quantity, flag: $flag)';
-  }
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,typeID,quantity,flag);
+
+@override
+String toString() {
+  return 'FittingItem(typeID: $typeID, quantity: $quantity, flag: $flag)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class $FittingItemCopyWith<$Res> {
-  factory $FittingItemCopyWith(
-          FittingItem value, $Res Function(FittingItem) _then) =
-      _$FittingItemCopyWithImpl;
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'type_id') int typeID,
-      int quantity,
-      @JsonKey(
-          fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)
-      FittingItemFlag flag});
-}
+abstract mixin class $FittingItemCopyWith<$Res>  {
+  factory $FittingItemCopyWith(FittingItem value, $Res Function(FittingItem) _then) = _$FittingItemCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'type_id') int typeID, int quantity,@JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson) FittingItemFlag flag
+});
 
+
+
+
+}
 /// @nodoc
-class _$FittingItemCopyWithImpl<$Res> implements $FittingItemCopyWith<$Res> {
+class _$FittingItemCopyWithImpl<$Res>
+    implements $FittingItemCopyWith<$Res> {
   _$FittingItemCopyWithImpl(this._self, this._then);
 
   final FittingItem _self;
   final $Res Function(FittingItem) _then;
 
-  /// Create a copy of FittingItem
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? typeID = null,
-    Object? quantity = null,
-    Object? flag = null,
-  }) {
-    return _then(_self.copyWith(
-      typeID: null == typeID
-          ? _self.typeID
-          : typeID // ignore: cast_nullable_to_non_nullable
-              as int,
-      quantity: null == quantity
-          ? _self.quantity
-          : quantity // ignore: cast_nullable_to_non_nullable
-              as int,
-      flag: null == flag
-          ? _self.flag
-          : flag // ignore: cast_nullable_to_non_nullable
-              as FittingItemFlag,
-    ));
-  }
+/// Create a copy of FittingItem
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? typeID = null,Object? quantity = null,Object? flag = null,}) {
+  return _then(_self.copyWith(
+typeID: null == typeID ? _self.typeID : typeID // ignore: cast_nullable_to_non_nullable
+as int,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as int,flag: null == flag ? _self.flag : flag // ignore: cast_nullable_to_non_nullable
+as FittingItemFlag,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [FittingItem].
+extension FittingItemPatterns on FittingItem {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _FittingItem value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _FittingItem() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _FittingItem value)  $default,){
+final _that = this;
+switch (_that) {
+case _FittingItem():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _FittingItem value)?  $default,){
+final _that = this;
+switch (_that) {
+case _FittingItem() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'type_id')  int typeID,  int quantity, @JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)  FittingItemFlag flag)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _FittingItem() when $default != null:
+return $default(_that.typeID,_that.quantity,_that.flag);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'type_id')  int typeID,  int quantity, @JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)  FittingItemFlag flag)  $default,) {final _that = this;
+switch (_that) {
+case _FittingItem():
+return $default(_that.typeID,_that.quantity,_that.flag);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'type_id')  int typeID,  int quantity, @JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)  FittingItemFlag flag)?  $default,) {final _that = this;
+switch (_that) {
+case _FittingItem() when $default != null:
+return $default(_that.typeID,_that.quantity,_that.flag);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 
 @JsonSerializable()
 class _FittingItem implements FittingItem {
-  const _FittingItem(
-      {@JsonKey(name: 'type_id') required this.typeID,
-      required this.quantity,
-      @JsonKey(
-          fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)
-      required this.flag});
-  factory _FittingItem.fromJson(Map<String, dynamic> json) =>
-      _$FittingItemFromJson(json);
+  const _FittingItem({@JsonKey(name: 'type_id') required this.typeID, required this.quantity, @JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson) required this.flag});
+  factory _FittingItem.fromJson(Map<String, dynamic> json) => _$FittingItemFromJson(json);
 
-  @override
-  @JsonKey(name: 'type_id')
-  final int typeID;
-  @override
-  final int quantity;
-  @override
-  @JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)
-  final FittingItemFlag flag;
+@override@JsonKey(name: 'type_id') final  int typeID;
+@override final  int quantity;
+@override@JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson) final  FittingItemFlag flag;
 
-  /// Create a copy of FittingItem
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$FittingItemCopyWith<_FittingItem> get copyWith =>
-      __$FittingItemCopyWithImpl<_FittingItem>(this, _$identity);
+/// Create a copy of FittingItem
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$FittingItemCopyWith<_FittingItem> get copyWith => __$FittingItemCopyWithImpl<_FittingItem>(this, _$identity);
 
-  @override
-  Map<String, dynamic> toJson() {
-    return _$FittingItemToJson(
-      this,
-    );
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$FittingItemToJson(this, );
+}
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _FittingItem &&
-            (identical(other.typeID, typeID) || other.typeID == typeID) &&
-            (identical(other.quantity, quantity) ||
-                other.quantity == quantity) &&
-            (identical(other.flag, flag) || other.flag == flag));
-  }
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FittingItem&&(identical(other.typeID, typeID) || other.typeID == typeID)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.flag, flag) || other.flag == flag));
+}
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(runtimeType, typeID, quantity, flag);
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,typeID,quantity,flag);
 
-  @override
-  String toString() {
-    return 'FittingItem(typeID: $typeID, quantity: $quantity, flag: $flag)';
-  }
+@override
+String toString() {
+  return 'FittingItem(typeID: $typeID, quantity: $quantity, flag: $flag)';
+}
+
+
 }
 
 /// @nodoc
-abstract mixin class _$FittingItemCopyWith<$Res>
-    implements $FittingItemCopyWith<$Res> {
-  factory _$FittingItemCopyWith(
-          _FittingItem value, $Res Function(_FittingItem) _then) =
-      __$FittingItemCopyWithImpl;
-  @override
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'type_id') int typeID,
-      int quantity,
-      @JsonKey(
-          fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson)
-      FittingItemFlag flag});
-}
+abstract mixin class _$FittingItemCopyWith<$Res> implements $FittingItemCopyWith<$Res> {
+  factory _$FittingItemCopyWith(_FittingItem value, $Res Function(_FittingItem) _then) = __$FittingItemCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'type_id') int typeID, int quantity,@JsonKey(fromJson: FittingItemFlag.fromJson, toJson: FittingItemFlag.toJson) FittingItemFlag flag
+});
 
+
+
+
+}
 /// @nodoc
-class __$FittingItemCopyWithImpl<$Res> implements _$FittingItemCopyWith<$Res> {
+class __$FittingItemCopyWithImpl<$Res>
+    implements _$FittingItemCopyWith<$Res> {
   __$FittingItemCopyWithImpl(this._self, this._then);
 
   final _FittingItem _self;
   final $Res Function(_FittingItem) _then;
 
-  /// Create a copy of FittingItem
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $Res call({
-    Object? typeID = null,
-    Object? quantity = null,
-    Object? flag = null,
-  }) {
-    return _then(_FittingItem(
-      typeID: null == typeID
-          ? _self.typeID
-          : typeID // ignore: cast_nullable_to_non_nullable
-              as int,
-      quantity: null == quantity
-          ? _self.quantity
-          : quantity // ignore: cast_nullable_to_non_nullable
-              as int,
-      flag: null == flag
-          ? _self.flag
-          : flag // ignore: cast_nullable_to_non_nullable
-              as FittingItemFlag,
-    ));
-  }
+/// Create a copy of FittingItem
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? typeID = null,Object? quantity = null,Object? flag = null,}) {
+  return _then(_FittingItem(
+typeID: null == typeID ? _self.typeID : typeID // ignore: cast_nullable_to_non_nullable
+as int,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as int,flag: null == flag ? _self.flag : flag // ignore: cast_nullable_to_non_nullable
+as FittingItemFlag,
+  ));
+}
+
+
 }
 
 // dart format on

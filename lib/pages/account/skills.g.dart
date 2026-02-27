@@ -13,14 +13,14 @@ String _$getCharacterSkillsHash() =>
 @ProviderFor(getCharacterSkills)
 final getCharacterSkillsProvider =
     AutoDisposeFutureProvider<CharacterSkills?>.internal(
-  getCharacterSkills,
-  name: r'getCharacterSkillsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$getCharacterSkillsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      getCharacterSkills,
+      name: r'getCharacterSkillsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$getCharacterSkillsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element

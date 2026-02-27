@@ -39,21 +39,15 @@ class ExportFitToGameFamily extends Family<AsyncValue<int?>> {
   const ExportFitToGameFamily();
 
   /// See also [exportFitToGame].
-  ExportFitToGameProvider call(
-    String fitID,
-  ) {
-    return ExportFitToGameProvider(
-      fitID,
-    );
+  ExportFitToGameProvider call(String fitID) {
+    return ExportFitToGameProvider(fitID);
   }
 
   @override
   ExportFitToGameProvider getProviderOverride(
     covariant ExportFitToGameProvider provider,
   ) {
-    return call(
-      provider.fitID,
-    );
+    return call(provider.fitID);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -74,24 +68,19 @@ class ExportFitToGameFamily extends Family<AsyncValue<int?>> {
 /// See also [exportFitToGame].
 class ExportFitToGameProvider extends AutoDisposeFutureProvider<int?> {
   /// See also [exportFitToGame].
-  ExportFitToGameProvider(
-    String fitID,
-  ) : this._internal(
-          (ref) => exportFitToGame(
-            ref as ExportFitToGameRef,
-            fitID,
-          ),
-          from: exportFitToGameProvider,
-          name: r'exportFitToGameProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$exportFitToGameHash,
-          dependencies: ExportFitToGameFamily._dependencies,
-          allTransitiveDependencies:
-              ExportFitToGameFamily._allTransitiveDependencies,
-          fitID: fitID,
-        );
+  ExportFitToGameProvider(String fitID)
+    : this._internal(
+        (ref) => exportFitToGame(ref as ExportFitToGameRef, fitID),
+        from: exportFitToGameProvider,
+        name: r'exportFitToGameProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$exportFitToGameHash,
+        dependencies: ExportFitToGameFamily._dependencies,
+        allTransitiveDependencies:
+            ExportFitToGameFamily._allTransitiveDependencies,
+        fitID: fitID,
+      );
 
   ExportFitToGameProvider._internal(
     super._createNotifier, {
@@ -150,11 +139,13 @@ mixin ExportFitToGameRef on AutoDisposeFutureProviderRef<int?> {
 }
 
 class _ExportFitToGameProviderElement
-    extends AutoDisposeFutureProviderElement<int?> with ExportFitToGameRef {
+    extends AutoDisposeFutureProviderElement<int?>
+    with ExportFitToGameRef {
   _ExportFitToGameProviderElement(super.provider);
 
   @override
   String get fitID => (origin as ExportFitToGameProvider).fitID;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

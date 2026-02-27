@@ -39,21 +39,15 @@ class MarkdownContentFamily extends Family<AsyncValue<String>> {
   const MarkdownContentFamily();
 
   /// See also [markdownContent].
-  MarkdownContentProvider call(
-    String contentKey,
-  ) {
-    return MarkdownContentProvider(
-      contentKey,
-    );
+  MarkdownContentProvider call(String contentKey) {
+    return MarkdownContentProvider(contentKey);
   }
 
   @override
   MarkdownContentProvider getProviderOverride(
     covariant MarkdownContentProvider provider,
   ) {
-    return call(
-      provider.contentKey,
-    );
+    return call(provider.contentKey);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -74,24 +68,19 @@ class MarkdownContentFamily extends Family<AsyncValue<String>> {
 /// See also [markdownContent].
 class MarkdownContentProvider extends AutoDisposeFutureProvider<String> {
   /// See also [markdownContent].
-  MarkdownContentProvider(
-    String contentKey,
-  ) : this._internal(
-          (ref) => markdownContent(
-            ref as MarkdownContentRef,
-            contentKey,
-          ),
-          from: markdownContentProvider,
-          name: r'markdownContentProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$markdownContentHash,
-          dependencies: MarkdownContentFamily._dependencies,
-          allTransitiveDependencies:
-              MarkdownContentFamily._allTransitiveDependencies,
-          contentKey: contentKey,
-        );
+  MarkdownContentProvider(String contentKey)
+    : this._internal(
+        (ref) => markdownContent(ref as MarkdownContentRef, contentKey),
+        from: markdownContentProvider,
+        name: r'markdownContentProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$markdownContentHash,
+        dependencies: MarkdownContentFamily._dependencies,
+        allTransitiveDependencies:
+            MarkdownContentFamily._allTransitiveDependencies,
+        contentKey: contentKey,
+      );
 
   MarkdownContentProvider._internal(
     super._createNotifier, {
@@ -150,11 +139,13 @@ mixin MarkdownContentRef on AutoDisposeFutureProviderRef<String> {
 }
 
 class _MarkdownContentProviderElement
-    extends AutoDisposeFutureProviderElement<String> with MarkdownContentRef {
+    extends AutoDisposeFutureProviderElement<String>
+    with MarkdownContentRef {
   _MarkdownContentProviderElement(super.provider);
 
   @override
   String get contentKey => (origin as MarkdownContentProvider).contentKey;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

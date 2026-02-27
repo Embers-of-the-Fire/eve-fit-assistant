@@ -12,14 +12,14 @@ String _$esiDataStorageHash() => r'c587c95283ebcefbf9ee2b18a966af34bbd9cb15';
 @ProviderFor(EsiDataStorage)
 final esiDataStorageProvider =
     NotifierProvider<EsiDataStorage, EsiDataStorage>.internal(
-  EsiDataStorage.new,
-  name: r'esiDataStorageProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$esiDataStorageHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      EsiDataStorage.new,
+      name: r'esiDataStorageProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$esiDataStorageHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 typedef _$EsiDataStorage = Notifier<EsiDataStorage>;
 // ignore_for_file: type=lint

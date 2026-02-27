@@ -40,21 +40,15 @@ class GetMarketPricesFamily
   const GetMarketPricesFamily();
 
   /// See also [getMarketPrices].
-  GetMarketPricesProvider call(
-    MapEqual<int, int> types,
-  ) {
-    return GetMarketPricesProvider(
-      types,
-    );
+  GetMarketPricesProvider call(MapEqual<int, int> types) {
+    return GetMarketPricesProvider(types);
   }
 
   @override
   GetMarketPricesProvider getProviderOverride(
     covariant GetMarketPricesProvider provider,
   ) {
-    return call(
-      provider.types,
-    );
+    return call(provider.types);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -73,27 +67,25 @@ class GetMarketPricesFamily
 }
 
 /// See also [getMarketPrices].
-class GetMarketPricesProvider extends AutoDisposeFutureProvider<
-    (double, Iterable<int>, double, Iterable<int>)> {
+class GetMarketPricesProvider
+    extends
+        AutoDisposeFutureProvider<
+          (double, Iterable<int>, double, Iterable<int>)
+        > {
   /// See also [getMarketPrices].
-  GetMarketPricesProvider(
-    MapEqual<int, int> types,
-  ) : this._internal(
-          (ref) => getMarketPrices(
-            ref as GetMarketPricesRef,
-            types,
-          ),
-          from: getMarketPricesProvider,
-          name: r'getMarketPricesProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$getMarketPricesHash,
-          dependencies: GetMarketPricesFamily._dependencies,
-          allTransitiveDependencies:
-              GetMarketPricesFamily._allTransitiveDependencies,
-          types: types,
-        );
+  GetMarketPricesProvider(MapEqual<int, int> types)
+    : this._internal(
+        (ref) => getMarketPrices(ref as GetMarketPricesRef, types),
+        from: getMarketPricesProvider,
+        name: r'getMarketPricesProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$getMarketPricesHash,
+        dependencies: GetMarketPricesFamily._dependencies,
+        allTransitiveDependencies:
+            GetMarketPricesFamily._allTransitiveDependencies,
+        types: types,
+      );
 
   GetMarketPricesProvider._internal(
     super._createNotifier, {
@@ -110,8 +102,9 @@ class GetMarketPricesProvider extends AutoDisposeFutureProvider<
   @override
   Override overrideWith(
     FutureOr<(double, Iterable<int>, double, Iterable<int>)> Function(
-            GetMarketPricesRef provider)
-        create,
+      GetMarketPricesRef provider,
+    )
+    create,
   ) {
     return ProviderOverride(
       origin: this,
@@ -129,7 +122,9 @@ class GetMarketPricesProvider extends AutoDisposeFutureProvider<
 
   @override
   AutoDisposeFutureProviderElement<
-      (double, Iterable<int>, double, Iterable<int>)> createElement() {
+    (double, Iterable<int>, double, Iterable<int>)
+  >
+  createElement() {
     return _GetMarketPricesProviderElement(this);
   }
 
@@ -149,14 +144,21 @@ class GetMarketPricesProvider extends AutoDisposeFutureProvider<
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin GetMarketPricesRef on AutoDisposeFutureProviderRef<
-    (double, Iterable<int>, double, Iterable<int>)> {
+mixin GetMarketPricesRef
+    on
+        AutoDisposeFutureProviderRef<
+          (double, Iterable<int>, double, Iterable<int>)
+        > {
   /// The parameter `types` of this provider.
   MapEqual<int, int> get types;
 }
 
-class _GetMarketPricesProviderElement extends AutoDisposeFutureProviderElement<
-    (double, Iterable<int>, double, Iterable<int>)> with GetMarketPricesRef {
+class _GetMarketPricesProviderElement
+    extends
+        AutoDisposeFutureProviderElement<
+          (double, Iterable<int>, double, Iterable<int>)
+        >
+    with GetMarketPricesRef {
   _GetMarketPricesProviderElement(super.provider);
 
   @override
@@ -175,21 +177,15 @@ class GetMarketPriceFamily extends Family<AsyncValue<MarketPriceGroup>> {
   const GetMarketPriceFamily();
 
   /// See also [getMarketPrice].
-  GetMarketPriceProvider call(
-    int typeID,
-  ) {
-    return GetMarketPriceProvider(
-      typeID,
-    );
+  GetMarketPriceProvider call(int typeID) {
+    return GetMarketPriceProvider(typeID);
   }
 
   @override
   GetMarketPriceProvider getProviderOverride(
     covariant GetMarketPriceProvider provider,
   ) {
-    return call(
-      provider.typeID,
-    );
+    return call(provider.typeID);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -211,24 +207,19 @@ class GetMarketPriceFamily extends Family<AsyncValue<MarketPriceGroup>> {
 class GetMarketPriceProvider
     extends AutoDisposeFutureProvider<MarketPriceGroup> {
   /// See also [getMarketPrice].
-  GetMarketPriceProvider(
-    int typeID,
-  ) : this._internal(
-          (ref) => getMarketPrice(
-            ref as GetMarketPriceRef,
-            typeID,
-          ),
-          from: getMarketPriceProvider,
-          name: r'getMarketPriceProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$getMarketPriceHash,
-          dependencies: GetMarketPriceFamily._dependencies,
-          allTransitiveDependencies:
-              GetMarketPriceFamily._allTransitiveDependencies,
-          typeID: typeID,
-        );
+  GetMarketPriceProvider(int typeID)
+    : this._internal(
+        (ref) => getMarketPrice(ref as GetMarketPriceRef, typeID),
+        from: getMarketPriceProvider,
+        name: r'getMarketPriceProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$getMarketPriceHash,
+        dependencies: GetMarketPriceFamily._dependencies,
+        allTransitiveDependencies:
+            GetMarketPriceFamily._allTransitiveDependencies,
+        typeID: typeID,
+      );
 
   GetMarketPriceProvider._internal(
     super._createNotifier, {
@@ -294,5 +285,6 @@ class _GetMarketPriceProviderElement
   @override
   int get typeID => (origin as GetMarketPriceProvider).typeID;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

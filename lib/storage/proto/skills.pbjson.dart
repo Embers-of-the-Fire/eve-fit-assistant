@@ -1,13 +1,15 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: skills.proto
-//
-// @dart = 2.12
+// Generated from skills.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -17,7 +19,14 @@ import 'dart:typed_data' as $typed_data;
 const Skills$json = {
   '1': 'Skills',
   '2': [
-    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.skills.Skills.EntriesEntry', '10': 'entries'},
+    {
+      '1': 'entries',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.skills.Skills.EntriesEntry',
+      '10': 'entries'
+    },
   ],
   '3': [Skills_Skill$json, Skills_EntriesEntry$json],
 };
@@ -38,7 +47,14 @@ const Skills_EntriesEntry$json = {
   '1': 'EntriesEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.skills.Skills.Skill', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.skills.Skills.Skill',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -56,9 +72,20 @@ final $typed_data.Uint8List skillsDescriptor = $convert.base64Decode(
 const TypeSkills$json = {
   '1': 'TypeSkills',
   '2': [
-    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.skills.TypeSkills.EntriesEntry', '10': 'entries'},
+    {
+      '1': 'entries',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.skills.TypeSkills.EntriesEntry',
+      '10': 'entries'
+    },
   ],
-  '3': [TypeSkills_Skill$json, TypeSkills_TypeSkill$json, TypeSkills_EntriesEntry$json],
+  '3': [
+    TypeSkills_Skill$json,
+    TypeSkills_TypeSkill$json,
+    TypeSkills_EntriesEntry$json
+  ],
 };
 
 @$core.Deprecated('Use typeSkillsDescriptor instead')
@@ -74,7 +101,14 @@ const TypeSkills_Skill$json = {
 const TypeSkills_TypeSkill$json = {
   '1': 'TypeSkill',
   '2': [
-    {'1': 'skills', '3': 1, '4': 3, '5': 11, '6': '.skills.TypeSkills.Skill', '10': 'skills'},
+    {
+      '1': 'skills',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.skills.TypeSkills.Skill',
+      '10': 'skills'
+    },
   ],
 };
 
@@ -83,7 +117,14 @@ const TypeSkills_EntriesEntry$json = {
   '1': 'EntriesEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.skills.TypeSkills.TypeSkill', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.skills.TypeSkills.TypeSkill',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -95,4 +136,3 @@ final $typed_data.Uint8List typeSkillsDescriptor = $convert.base64Decode(
     'UgVsZXZlbBo9CglUeXBlU2tpbGwSMAoGc2tpbGxzGAEgAygLMhguc2tpbGxzLlR5cGVTa2lsbH'
     'MuU2tpbGxSBnNraWxscxpYCgxFbnRyaWVzRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSMgoFdmFs'
     'dWUYAiABKAsyHC5za2lsbHMuVHlwZVNraWxscy5UeXBlU2tpbGxSBXZhbHVlOgI4AQ==');
-

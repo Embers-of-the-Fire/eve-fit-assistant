@@ -1,13 +1,15 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: dynamic_item.proto
-//
-// @dart = 2.12
+// Generated from dynamic_item.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -17,7 +19,14 @@ import 'dart:typed_data' as $typed_data;
 const DynamicItems$json = {
   '1': 'DynamicItems',
   '2': [
-    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.dynamic_item.DynamicItems.EntriesEntry', '10': 'entries'},
+    {
+      '1': 'entries',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.dynamic_item.DynamicItems.EntriesEntry',
+      '10': 'entries'
+    },
   ],
   '3': [DynamicItems_DynamicItem$json, DynamicItems_EntriesEntry$json],
 };
@@ -26,10 +35,28 @@ const DynamicItems$json = {
 const DynamicItems_DynamicItem$json = {
   '1': 'DynamicItem',
   '2': [
-    {'1': 'inputOutputMapping', '3': 1, '4': 2, '5': 11, '6': '.dynamic_item.DynamicItems.DynamicItem.InputOutputMapping', '10': 'inputOutputMapping'},
-    {'1': 'attributes', '3': 2, '4': 3, '5': 11, '6': '.dynamic_item.DynamicItems.DynamicItem.AttributesEntry', '10': 'attributes'},
+    {
+      '1': 'inputOutputMapping',
+      '3': 1,
+      '4': 2,
+      '5': 11,
+      '6': '.dynamic_item.DynamicItems.DynamicItem.InputOutputMapping',
+      '10': 'inputOutputMapping'
+    },
+    {
+      '1': 'attributes',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.dynamic_item.DynamicItems.DynamicItem.AttributesEntry',
+      '10': 'attributes'
+    },
   ],
-  '3': [DynamicItems_DynamicItem_InputOutputMapping$json, DynamicItems_DynamicItem_DynamicAttribute$json, DynamicItems_DynamicItem_AttributesEntry$json],
+  '3': [
+    DynamicItems_DynamicItem_InputOutputMapping$json,
+    DynamicItems_DynamicItem_DynamicAttribute$json,
+    DynamicItems_DynamicItem_AttributesEntry$json
+  ],
 };
 
 @$core.Deprecated('Use dynamicItemsDescriptor instead')
@@ -55,7 +82,14 @@ const DynamicItems_DynamicItem_AttributesEntry$json = {
   '1': 'AttributesEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.dynamic_item.DynamicItems.DynamicItem.DynamicAttribute', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.dynamic_item.DynamicItems.DynamicItem.DynamicAttribute',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -65,7 +99,14 @@ const DynamicItems_EntriesEntry$json = {
   '1': 'EntriesEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.dynamic_item.DynamicItems.DynamicItem', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.dynamic_item.DynamicItems.DynamicItem',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -90,7 +131,14 @@ final $typed_data.Uint8List dynamicItemsDescriptor = $convert.base64Decode(
 const DynamicTypes$json = {
   '1': 'DynamicTypes',
   '2': [
-    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.dynamic_item.DynamicTypes.EntriesEntry', '10': 'entries'},
+    {
+      '1': 'entries',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.dynamic_item.DynamicTypes.EntriesEntry',
+      '10': 'entries'
+    },
   ],
   '3': [DynamicTypes_DynamicType$json, DynamicTypes_EntriesEntry$json],
 };
@@ -108,7 +156,14 @@ const DynamicTypes_EntriesEntry$json = {
   '1': 'EntriesEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.dynamic_item.DynamicTypes.DynamicType', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.dynamic_item.DynamicTypes.DynamicType',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -120,4 +175,3 @@ final $typed_data.Uint8List dynamicTypesDescriptor = $convert.base64Decode(
     'VHlwZXMYASADKAVSEG11dGFwbGFzbWlkVHlwZXMaYgoMRW50cmllc0VudHJ5EhAKA2tleRgBIA'
     'EoBVIDa2V5EjwKBXZhbHVlGAIgASgLMiYuZHluYW1pY19pdGVtLkR5bmFtaWNUeXBlcy5EeW5h'
     'bWljVHlwZVIFdmFsdWU6AjgB');
-

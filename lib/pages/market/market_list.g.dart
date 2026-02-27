@@ -39,24 +39,15 @@ class GetMarketPriceFamily extends Family<AsyncValue<MarketPriceGroup>> {
   const GetMarketPriceFamily();
 
   /// See also [getMarketPrice].
-  GetMarketPriceProvider call(
-    int typeID,
-    int timestamp,
-  ) {
-    return GetMarketPriceProvider(
-      typeID,
-      timestamp,
-    );
+  GetMarketPriceProvider call(int typeID, int timestamp) {
+    return GetMarketPriceProvider(typeID, timestamp);
   }
 
   @override
   GetMarketPriceProvider getProviderOverride(
     covariant GetMarketPriceProvider provider,
   ) {
-    return call(
-      provider.typeID,
-      provider.timestamp,
-    );
+    return call(provider.typeID, provider.timestamp);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -78,27 +69,20 @@ class GetMarketPriceFamily extends Family<AsyncValue<MarketPriceGroup>> {
 class GetMarketPriceProvider
     extends AutoDisposeFutureProvider<MarketPriceGroup> {
   /// See also [getMarketPrice].
-  GetMarketPriceProvider(
-    int typeID,
-    int timestamp,
-  ) : this._internal(
-          (ref) => getMarketPrice(
-            ref as GetMarketPriceRef,
-            typeID,
-            timestamp,
-          ),
-          from: getMarketPriceProvider,
-          name: r'getMarketPriceProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$getMarketPriceHash,
-          dependencies: GetMarketPriceFamily._dependencies,
-          allTransitiveDependencies:
-              GetMarketPriceFamily._allTransitiveDependencies,
-          typeID: typeID,
-          timestamp: timestamp,
-        );
+  GetMarketPriceProvider(int typeID, int timestamp)
+    : this._internal(
+        (ref) => getMarketPrice(ref as GetMarketPriceRef, typeID, timestamp),
+        from: getMarketPriceProvider,
+        name: r'getMarketPriceProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$getMarketPriceHash,
+        dependencies: GetMarketPriceFamily._dependencies,
+        allTransitiveDependencies:
+            GetMarketPriceFamily._allTransitiveDependencies,
+        typeID: typeID,
+        timestamp: timestamp,
+      );
 
   GetMarketPriceProvider._internal(
     super._createNotifier, {
@@ -175,5 +159,6 @@ class _GetMarketPriceProviderElement
   @override
   int get timestamp => (origin as GetMarketPriceProvider).timestamp;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

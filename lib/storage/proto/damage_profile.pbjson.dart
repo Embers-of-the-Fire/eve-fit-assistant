@@ -1,13 +1,15 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: damage_profile.proto
-//
-// @dart = 2.12
+// Generated from damage_profile.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -17,9 +19,19 @@ import 'dart:typed_data' as $typed_data;
 const DamageProfiles$json = {
   '1': 'DamageProfiles',
   '2': [
-    {'1': 'groups', '3': 1, '4': 3, '5': 11, '6': '.damage_profile.DamageProfiles.DamageProfileGroup', '10': 'groups'},
+    {
+      '1': 'groups',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.damage_profile.DamageProfiles.DamageProfileGroup',
+      '10': 'groups'
+    },
   ],
-  '3': [DamageProfiles_DamageProfile$json, DamageProfiles_DamageProfileGroup$json],
+  '3': [
+    DamageProfiles_DamageProfile$json,
+    DamageProfiles_DamageProfileGroup$json
+  ],
 };
 
 @$core.Deprecated('Use damageProfilesDescriptor instead')
@@ -39,7 +51,14 @@ const DamageProfiles_DamageProfileGroup$json = {
   '1': 'DamageProfileGroup',
   '2': [
     {'1': 'name', '3': 1, '4': 2, '5': 9, '10': 'name'},
-    {'1': 'profiles', '3': 2, '4': 3, '5': 11, '6': '.damage_profile.DamageProfiles.DamageProfile', '10': 'profiles'},
+    {
+      '1': 'profiles',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.damage_profile.DamageProfiles.DamageProfile',
+      '10': 'profiles'
+    },
   ],
 };
 
@@ -52,4 +71,3 @@ final $typed_data.Uint8List damageProfilesDescriptor = $convert.base64Decode(
     'ZXJtYWwacgoSRGFtYWdlUHJvZmlsZUdyb3VwEhIKBG5hbWUYASACKAlSBG5hbWUSSAoIcHJvZm'
     'lsZXMYAiADKAsyLC5kYW1hZ2VfcHJvZmlsZS5EYW1hZ2VQcm9maWxlcy5EYW1hZ2VQcm9maWxl'
     'Ughwcm9maWxlcw==');
-

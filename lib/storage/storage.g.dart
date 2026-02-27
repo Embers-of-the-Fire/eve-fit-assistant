@@ -13,14 +13,14 @@ String _$globalStorageNotifierHash() =>
 @ProviderFor(GlobalStorageNotifier)
 final globalStorageNotifierProvider =
     AutoDisposeNotifierProvider<GlobalStorageNotifier, bool>.internal(
-  GlobalStorageNotifier.new,
-  name: r'globalStorageNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$globalStorageNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      GlobalStorageNotifier.new,
+      name: r'globalStorageNotifierProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$globalStorageNotifierHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 typedef _$GlobalStorageNotifier = AutoDisposeNotifier<bool>;
 // ignore_for_file: type=lint

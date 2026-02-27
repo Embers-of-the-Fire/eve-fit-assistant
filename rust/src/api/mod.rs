@@ -6,7 +6,6 @@ pub mod data;
 pub mod error;
 pub mod proxy;
 pub mod schema;
-pub mod simple;
 
 pub(crate) mod validate;
 

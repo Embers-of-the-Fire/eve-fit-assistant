@@ -13,8 +13,9 @@ String _$getFittingsHash() => r'15dd3be6e2da58f22f481b89bc4d9eb20e6cdc6b';
 final getFittingsProvider = AutoDisposeFutureProvider<List<Fitting>?>.internal(
   getFittings,
   name: r'getFittingsProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$getFittingsHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$getFittingsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -55,21 +56,15 @@ class DeleteFittingFamily extends Family<AsyncValue<void>> {
   const DeleteFittingFamily();
 
   /// See also [deleteFitting].
-  DeleteFittingProvider call(
-    int fittingID,
-  ) {
-    return DeleteFittingProvider(
-      fittingID,
-    );
+  DeleteFittingProvider call(int fittingID) {
+    return DeleteFittingProvider(fittingID);
   }
 
   @override
   DeleteFittingProvider getProviderOverride(
     covariant DeleteFittingProvider provider,
   ) {
-    return call(
-      provider.fittingID,
-    );
+    return call(provider.fittingID);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -90,24 +85,19 @@ class DeleteFittingFamily extends Family<AsyncValue<void>> {
 /// See also [deleteFitting].
 class DeleteFittingProvider extends AutoDisposeFutureProvider<void> {
   /// See also [deleteFitting].
-  DeleteFittingProvider(
-    int fittingID,
-  ) : this._internal(
-          (ref) => deleteFitting(
-            ref as DeleteFittingRef,
-            fittingID,
-          ),
-          from: deleteFittingProvider,
-          name: r'deleteFittingProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$deleteFittingHash,
-          dependencies: DeleteFittingFamily._dependencies,
-          allTransitiveDependencies:
-              DeleteFittingFamily._allTransitiveDependencies,
-          fittingID: fittingID,
-        );
+  DeleteFittingProvider(int fittingID)
+    : this._internal(
+        (ref) => deleteFitting(ref as DeleteFittingRef, fittingID),
+        from: deleteFittingProvider,
+        name: r'deleteFittingProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$deleteFittingHash,
+        dependencies: DeleteFittingFamily._dependencies,
+        allTransitiveDependencies:
+            DeleteFittingFamily._allTransitiveDependencies,
+        fittingID: fittingID,
+      );
 
   DeleteFittingProvider._internal(
     super._createNotifier, {
@@ -166,11 +156,13 @@ mixin DeleteFittingRef on AutoDisposeFutureProviderRef<void> {
 }
 
 class _DeleteFittingProviderElement
-    extends AutoDisposeFutureProviderElement<void> with DeleteFittingRef {
+    extends AutoDisposeFutureProviderElement<void>
+    with DeleteFittingRef {
   _DeleteFittingProviderElement(super.provider);
 
   @override
   int get fittingID => (origin as DeleteFittingProvider).fittingID;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

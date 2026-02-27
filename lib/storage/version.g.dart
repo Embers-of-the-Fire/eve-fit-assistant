@@ -6,11 +6,8 @@ part of 'version.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-VersionInfo _$VersionInfoFromJson(Map<String, dynamic> json) => VersionInfo(
-      version: (json['version'] as num).toInt(),
-    );
+VersionInfo _$VersionInfoFromJson(Map<String, dynamic> json) =>
+    VersionInfo(version: (json['version'] as num).toInt());
 
 Map<String, dynamic> _$VersionInfoToJson(VersionInfo instance) =>
-    <String, dynamic>{
-      'version': instance.version,
-    };
+    <String, dynamic>{'version': instance.version};

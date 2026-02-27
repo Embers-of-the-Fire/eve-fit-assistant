@@ -33,35 +33,24 @@ class MyApp extends ConsumerWidget {
         cardColor: neonGreen,
         appBarTheme: const AppBarTheme(
           color: deepBlue,
-          titleTextStyle: TextStyle(
-            color: neonHighlight,
-            fontSize: 20,
-          ),
+          titleTextStyle: TextStyle(color: neonHighlight, fontSize: 20),
           elevation: 0,
           iconTheme: IconThemeData(color: neonHighlight),
         ),
         textTheme: TextTheme(
-          titleLarge: const TextStyle(
-            color: terminalText,
-            fontSize: 24,
-          ),
-          bodyMedium: TextStyle(
-            color: terminalText.withAlpha(204),
-            fontSize: 14,
-          ),
-          labelSmall: const TextStyle(
-            color: neonHighlight,
-            letterSpacing: 1.5,
-          ),
+          titleLarge: const TextStyle(color: terminalText, fontSize: 24),
+          bodyMedium: TextStyle(color: terminalText.withAlpha(204), fontSize: 14),
+          labelSmall: const TextStyle(color: neonHighlight, letterSpacing: 1.5),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-          backgroundColor: primaryBlue.withAlpha(51),
-          foregroundColor: neonHighlight,
-          side: const BorderSide(color: primaryBlue, width: 1.5),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        )),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryBlue.withAlpha(51),
+            foregroundColor: neonHighlight,
+            side: const BorderSide(color: primaryBlue, width: 1.5),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          ),
+        ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: neonHighlight,
@@ -71,26 +60,14 @@ class MyApp extends ConsumerWidget {
         ),
         dialogTheme: const DialogThemeData(
           backgroundColor: deepSpace,
-          titleTextStyle: TextStyle(
-            color: neonHighlight,
-            fontSize: 20,
-          ),
-          contentTextStyle: TextStyle(
-            color: terminalText,
-            fontSize: 16,
-          ),
+          titleTextStyle: TextStyle(color: neonHighlight, fontSize: 20),
+          contentTextStyle: TextStyle(color: terminalText, fontSize: 16),
         ),
         canvasColor: deepSpace,
-        dividerTheme: const DividerThemeData(
-          color: cyberTeal,
-          indent: 10,
-          endIndent: 10,
-        ),
+        dividerTheme: const DividerThemeData(color: cyberTeal, indent: 10, endIndent: 10),
         dividerColor: cyberTeal,
         iconTheme: const IconThemeData(color: neonHighlight),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: deepBlue,
-        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(backgroundColor: deepBlue),
       ),
       home: const front.FrontendPage(),
       builder: (context, child) {

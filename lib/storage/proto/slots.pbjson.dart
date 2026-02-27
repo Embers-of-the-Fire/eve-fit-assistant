@@ -1,13 +1,15 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: slots.proto
-//
-// @dart = 2.12
+// Generated from slots.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -17,15 +19,76 @@ import 'dart:typed_data' as $typed_data;
 const Slots$json = {
   '1': 'Slots',
   '2': [
-    {'1': 'high', '3': 1, '4': 3, '5': 11, '6': '.slots.Slots.HighEntry', '10': 'high'},
-    {'1': 'med', '3': 2, '4': 3, '5': 11, '6': '.slots.Slots.MedEntry', '10': 'med'},
-    {'1': 'low', '3': 3, '4': 3, '5': 11, '6': '.slots.Slots.LowEntry', '10': 'low'},
-    {'1': 'rig', '3': 4, '4': 3, '5': 11, '6': '.slots.Slots.RigEntry', '10': 'rig'},
-    {'1': 'subsystem', '3': 5, '4': 3, '5': 11, '6': '.slots.Slots.SubsystemEntry', '10': 'subsystem'},
-    {'1': 'implant', '3': 6, '4': 3, '5': 11, '6': '.slots.Slots.ImplantEntry', '10': 'implant'},
-    {'1': 'booster', '3': 7, '4': 3, '5': 11, '6': '.slots.Slots.BoosterEntry', '10': 'booster'},
+    {
+      '1': 'high',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.slots.Slots.HighEntry',
+      '10': 'high'
+    },
+    {
+      '1': 'med',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.slots.Slots.MedEntry',
+      '10': 'med'
+    },
+    {
+      '1': 'low',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.slots.Slots.LowEntry',
+      '10': 'low'
+    },
+    {
+      '1': 'rig',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.slots.Slots.RigEntry',
+      '10': 'rig'
+    },
+    {
+      '1': 'subsystem',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.slots.Slots.SubsystemEntry',
+      '10': 'subsystem'
+    },
+    {
+      '1': 'implant',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.slots.Slots.ImplantEntry',
+      '10': 'implant'
+    },
+    {
+      '1': 'booster',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.slots.Slots.BoosterEntry',
+      '10': 'booster'
+    },
   ],
-  '3': [Slots_HighSlot$json, Slots_Slot$json, Slots_ImplantSlot$json, Slots_BoosterSlot$json, Slots_HighEntry$json, Slots_MedEntry$json, Slots_LowEntry$json, Slots_RigEntry$json, Slots_SubsystemEntry$json, Slots_ImplantEntry$json, Slots_BoosterEntry$json],
+  '3': [
+    Slots_HighSlot$json,
+    Slots_Slot$json,
+    Slots_ImplantSlot$json,
+    Slots_BoosterSlot$json,
+    Slots_HighEntry$json,
+    Slots_MedEntry$json,
+    Slots_LowEntry$json,
+    Slots_RigEntry$json,
+    Slots_SubsystemEntry$json,
+    Slots_ImplantEntry$json,
+    Slots_BoosterEntry$json
+  ],
   '4': [Slots_SlotState$json],
 };
 
@@ -37,7 +100,14 @@ const Slots_HighSlot$json = {
     {'1': 'isTurret', '3': 2, '4': 2, '5': 8, '10': 'isTurret'},
     {'1': 'isLauncher', '3': 3, '4': 2, '5': 8, '10': 'isLauncher'},
     {'1': 'published', '3': 4, '4': 2, '5': 8, '10': 'published'},
-    {'1': 'maxState', '3': 5, '4': 2, '5': 14, '6': '.slots.Slots.SlotState', '10': 'maxState'},
+    {
+      '1': 'maxState',
+      '3': 5,
+      '4': 2,
+      '5': 14,
+      '6': '.slots.Slots.SlotState',
+      '10': 'maxState'
+    },
     {'1': 'chargeGroups', '3': 6, '4': 3, '5': 5, '10': 'chargeGroups'},
   ],
 };
@@ -48,7 +118,14 @@ const Slots_Slot$json = {
   '2': [
     {'1': 'name', '3': 1, '4': 2, '5': 11, '6': '.i18n.I18N', '10': 'name'},
     {'1': 'published', '3': 2, '4': 2, '5': 8, '10': 'published'},
-    {'1': 'maxState', '3': 3, '4': 2, '5': 14, '6': '.slots.Slots.SlotState', '10': 'maxState'},
+    {
+      '1': 'maxState',
+      '3': 3,
+      '4': 2,
+      '5': 14,
+      '6': '.slots.Slots.SlotState',
+      '10': 'maxState'
+    },
     {'1': 'chargeGroups', '3': 4, '4': 3, '5': 5, '10': 'chargeGroups'},
   ],
 };
@@ -78,7 +155,14 @@ const Slots_HighEntry$json = {
   '1': 'HighEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.HighSlot', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.slots.Slots.HighSlot',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -88,7 +172,14 @@ const Slots_MedEntry$json = {
   '1': 'MedEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.Slot', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.slots.Slots.Slot',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -98,7 +189,14 @@ const Slots_LowEntry$json = {
   '1': 'LowEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.Slot', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.slots.Slots.Slot',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -108,7 +206,14 @@ const Slots_RigEntry$json = {
   '1': 'RigEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.Slot', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.slots.Slots.Slot',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -118,7 +223,14 @@ const Slots_SubsystemEntry$json = {
   '1': 'SubsystemEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.Slot', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.slots.Slots.Slot',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -128,7 +240,14 @@ const Slots_ImplantEntry$json = {
   '1': 'ImplantEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.ImplantSlot', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.slots.Slots.ImplantSlot',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -138,7 +257,14 @@ const Slots_BoosterEntry$json = {
   '1': 'BoosterEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 5, '10': 'key'},
-    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.slots.Slots.BoosterSlot', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.slots.Slots.BoosterSlot',
+      '10': 'value'
+    },
   ],
   '7': {'7': true},
 };
@@ -184,4 +310,3 @@ final $typed_data.Uint8List slotsDescriptor = $convert.base64Decode(
     'pUCgxCb29zdGVyRW50cnkSEAoDa2V5GAEgASgFUgNrZXkSLgoFdmFsdWUYAiABKAsyGC5zbG90'
     'cy5TbG90cy5Cb29zdGVyU2xvdFIFdmFsdWU6AjgBIj4KCVNsb3RTdGF0ZRILCgdQQVNTSVZFEA'
     'ASCgoGT05MSU5FEAESCgoGQUNUSVZFEAISDAoIT1ZFUkxPQUQQAw==');
-

@@ -35,7 +35,7 @@ class Character {
       id: brief.id,
       name: brief.name,
       description: brief.description,
-      skills: skills,
+      skills: skills.entries,
     );
     return Character._private(raw);
   }

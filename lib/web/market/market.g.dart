@@ -7,11 +7,11 @@ part of 'market.dart';
 // **************************************************************************
 
 _MarketPrice _$MarketPriceFromJson(Map<String, dynamic> json) => _MarketPrice(
-      typeID: (json['typeID'] as num).toInt(),
-      server: $enumDecode(_$ServerEnumMap, json['server']),
-      summary: PriceSummary.fromJson(json['summary'] as Map<String, dynamic>),
-      orders: OrderGroup.fromJson(json['orders'] as Map<String, dynamic>),
-    );
+  typeID: (json['typeID'] as num).toInt(),
+  server: $enumDecode(_$ServerEnumMap, json['server']),
+  summary: PriceSummary.fromJson(json['summary'] as Map<String, dynamic>),
+  orders: OrderGroup.fromJson(json['orders'] as Map<String, dynamic>),
+);
 
 Map<String, dynamic> _$MarketPriceToJson(_MarketPrice instance) =>
     <String, dynamic>{
@@ -41,43 +41,40 @@ Map<String, dynamic> _$PriceSummaryToJson(_PriceSummary instance) =>
     };
 
 _Price _$PriceFromJson(Map<String, dynamic> json) => _Price(
-      min: (json['min'] as num).toDouble(),
-      max: (json['max'] as num).toDouble(),
-      volume: (json['volume'] as num).toInt(),
-    );
+  min: (json['min'] as num).toDouble(),
+  max: (json['max'] as num).toDouble(),
+  volume: (json['volume'] as num).toInt(),
+);
 
 Map<String, dynamic> _$PriceToJson(_Price instance) => <String, dynamic>{
-      'min': instance.min,
-      'max': instance.max,
-      'volume': instance.volume,
-    };
+  'min': instance.min,
+  'max': instance.max,
+  'volume': instance.volume,
+};
 
 _OrderGroup _$OrderGroupFromJson(Map<String, dynamic> json) => _OrderGroup(
-      buy: (json['buy'] as List<dynamic>)
-          .map((e) => Order.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      sell: (json['sell'] as List<dynamic>)
-          .map((e) => Order.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
+  buy: (json['buy'] as List<dynamic>)
+      .map((e) => Order.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  sell: (json['sell'] as List<dynamic>)
+      .map((e) => Order.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
 
 Map<String, dynamic> _$OrderGroupToJson(_OrderGroup instance) =>
-    <String, dynamic>{
-      'buy': instance.buy,
-      'sell': instance.sell,
-    };
+    <String, dynamic>{'buy': instance.buy, 'sell': instance.sell};
 
 _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
-      volumeRemain: (json['volumeRemain'] as num).toInt(),
-      volumeTotal: (json['volumeTotal'] as num).toInt(),
-      price: (json['price'] as num).toDouble(),
-    );
+  volumeRemain: (json['volumeRemain'] as num).toInt(),
+  volumeTotal: (json['volumeTotal'] as num).toInt(),
+  price: (json['price'] as num).toDouble(),
+);
 
 Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
-      'volumeRemain': instance.volumeRemain,
-      'volumeTotal': instance.volumeTotal,
-      'price': instance.price,
-    };
+  'volumeRemain': instance.volumeRemain,
+  'volumeTotal': instance.volumeTotal,
+  'price': instance.price,
+};
 
 _CEveMarketResponse _$CEveMarketResponseFromJson(Map<String, dynamic> json) =>
     _CEveMarketResponse(

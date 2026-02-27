@@ -7,56 +7,70 @@ part of 'schema.dart';
 // **************************************************************************
 
 _FitExport _$FitExportFromJson(Map<String, dynamic> json) => _FitExport(
-      name: json['name'] as String,
-      description: json['description'] as String,
-      shipID: (json['shipID'] as num).toInt(),
-      damageProfile:
-          DamageProfile.fromJson(json['damageProfile'] as Map<String, dynamic>),
-      high: (json['high'] as List<dynamic>)
-          .map((e) =>
-              e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      med: (json['med'] as List<dynamic>)
-          .map((e) =>
-              e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      low: (json['low'] as List<dynamic>)
-          .map((e) =>
-              e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      rig: (json['rig'] as List<dynamic>)
-          .map((e) =>
-              e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      subSystem: (json['subSystem'] as List<dynamic>)
-          .map((e) =>
-              e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      drone: (json['drone'] as List<dynamic>?)
-              ?.map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      fighter: (json['fighter'] as List<dynamic>?)
-              ?.map((e) => FighterItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      implant: (json['implant'] as List<dynamic>?)
-              ?.map((e) => e == null
-                  ? null
-                  : SlotItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      booster: (json['booster'] as List<dynamic>?)
-              ?.map((e) => SlotItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      dynamicItems: (json['dynamicItems'] as Map<String, dynamic>?)?.map(
-            (k, e) => MapEntry(
-                int.parse(k), DynamicItem.fromJson(e as Map<String, dynamic>)),
-          ) ??
-          {},
-      tacticalModeID: (json['tacticalModeID'] as num?)?.toInt(),
-    );
+  name: json['name'] as String,
+  description: json['description'] as String,
+  shipID: (json['shipID'] as num).toInt(),
+  damageProfile: DamageProfile.fromJson(
+    json['damageProfile'] as Map<String, dynamic>,
+  ),
+  high: (json['high'] as List<dynamic>)
+      .map(
+        (e) => e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>),
+      )
+      .toList(),
+  med: (json['med'] as List<dynamic>)
+      .map(
+        (e) => e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>),
+      )
+      .toList(),
+  low: (json['low'] as List<dynamic>)
+      .map(
+        (e) => e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>),
+      )
+      .toList(),
+  rig: (json['rig'] as List<dynamic>)
+      .map(
+        (e) => e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>),
+      )
+      .toList(),
+  subSystem: (json['subSystem'] as List<dynamic>)
+      .map(
+        (e) => e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>),
+      )
+      .toList(),
+  drone:
+      (json['drone'] as List<dynamic>?)
+          ?.map((e) => DroneItem.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      [],
+  fighter:
+      (json['fighter'] as List<dynamic>?)
+          ?.map((e) => FighterItem.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      [],
+  implant:
+      (json['implant'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                e == null ? null : SlotItem.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      [],
+  booster:
+      (json['booster'] as List<dynamic>?)
+          ?.map((e) => SlotItem.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      [],
+  dynamicItems:
+      (json['dynamicItems'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(
+          int.parse(k),
+          DynamicItem.fromJson(e as Map<String, dynamic>),
+        ),
+      ) ??
+      {},
+  tacticalModeID: (json['tacticalModeID'] as num?)?.toInt(),
+);
 
 Map<String, dynamic> _$FitExportToJson(_FitExport instance) =>
     <String, dynamic>{
@@ -73,7 +87,8 @@ Map<String, dynamic> _$FitExportToJson(_FitExport instance) =>
       'fighter': instance.fighter,
       'implant': instance.implant,
       'booster': instance.booster,
-      'dynamicItems':
-          instance.dynamicItems.map((k, e) => MapEntry(k.toString(), e)),
+      'dynamicItems': instance.dynamicItems.map(
+        (k, e) => MapEntry(k.toString(), e),
+      ),
       'tacticalModeID': instance.tacticalModeID,
     };

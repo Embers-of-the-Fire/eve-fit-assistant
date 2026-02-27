@@ -33,9 +33,7 @@ abstract class _$CharacterNotifier
     extends BuildlessAutoDisposeNotifier<CharacterState> {
   late final String id;
 
-  CharacterState build(
-    String id,
-  );
+  CharacterState build(String id);
 }
 
 /// See also [CharacterNotifier].
@@ -48,21 +46,15 @@ class CharacterNotifierFamily extends Family<CharacterState> {
   const CharacterNotifierFamily();
 
   /// See also [CharacterNotifier].
-  CharacterNotifierProvider call(
-    String id,
-  ) {
-    return CharacterNotifierProvider(
-      id,
-    );
+  CharacterNotifierProvider call(String id) {
+    return CharacterNotifierProvider(id);
   }
 
   @override
   CharacterNotifierProvider getProviderOverride(
     covariant CharacterNotifierProvider provider,
   ) {
-    return call(
-      provider.id,
-    );
+    return call(provider.id);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -84,21 +76,19 @@ class CharacterNotifierFamily extends Family<CharacterState> {
 class CharacterNotifierProvider
     extends AutoDisposeNotifierProviderImpl<CharacterNotifier, CharacterState> {
   /// See also [CharacterNotifier].
-  CharacterNotifierProvider(
-    String id,
-  ) : this._internal(
-          () => CharacterNotifier()..id = id,
-          from: characterNotifierProvider,
-          name: r'characterNotifierProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$characterNotifierHash,
-          dependencies: CharacterNotifierFamily._dependencies,
-          allTransitiveDependencies:
-              CharacterNotifierFamily._allTransitiveDependencies,
-          id: id,
-        );
+  CharacterNotifierProvider(String id)
+    : this._internal(
+        () => CharacterNotifier()..id = id,
+        from: characterNotifierProvider,
+        name: r'characterNotifierProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$characterNotifierHash,
+        dependencies: CharacterNotifierFamily._dependencies,
+        allTransitiveDependencies:
+            CharacterNotifierFamily._allTransitiveDependencies,
+        id: id,
+      );
 
   CharacterNotifierProvider._internal(
     super._createNotifier, {
@@ -113,12 +103,8 @@ class CharacterNotifierProvider
   final String id;
 
   @override
-  CharacterState runNotifierBuild(
-    covariant CharacterNotifier notifier,
-  ) {
-    return notifier.build(
-      id,
-    );
+  CharacterState runNotifierBuild(covariant CharacterNotifier notifier) {
+    return notifier.build(id);
   }
 
   @override
@@ -139,7 +125,7 @@ class CharacterNotifierProvider
 
   @override
   AutoDisposeNotifierProviderElement<CharacterNotifier, CharacterState>
-      createElement() {
+  createElement() {
     return _CharacterNotifierProviderElement(this);
   }
 
@@ -165,12 +151,14 @@ mixin CharacterNotifierRef on AutoDisposeNotifierProviderRef<CharacterState> {
 }
 
 class _CharacterNotifierProviderElement
-    extends AutoDisposeNotifierProviderElement<CharacterNotifier,
-        CharacterState> with CharacterNotifierRef {
+    extends
+        AutoDisposeNotifierProviderElement<CharacterNotifier, CharacterState>
+    with CharacterNotifierRef {
   _CharacterNotifierProviderElement(super.provider);
 
   @override
   String get id => (origin as CharacterNotifierProvider).id;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

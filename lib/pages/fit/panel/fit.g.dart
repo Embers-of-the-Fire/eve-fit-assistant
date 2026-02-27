@@ -33,9 +33,7 @@ abstract class _$FitRecordNotifier
     extends BuildlessAutoDisposeNotifier<FitRecordState> {
   late final String id;
 
-  FitRecordState build(
-    String id,
-  );
+  FitRecordState build(String id);
 }
 
 /// See also [FitRecordNotifier].
@@ -48,21 +46,15 @@ class FitRecordNotifierFamily extends Family<FitRecordState> {
   const FitRecordNotifierFamily();
 
   /// See also [FitRecordNotifier].
-  FitRecordNotifierProvider call(
-    String id,
-  ) {
-    return FitRecordNotifierProvider(
-      id,
-    );
+  FitRecordNotifierProvider call(String id) {
+    return FitRecordNotifierProvider(id);
   }
 
   @override
   FitRecordNotifierProvider getProviderOverride(
     covariant FitRecordNotifierProvider provider,
   ) {
-    return call(
-      provider.id,
-    );
+    return call(provider.id);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -84,21 +76,19 @@ class FitRecordNotifierFamily extends Family<FitRecordState> {
 class FitRecordNotifierProvider
     extends AutoDisposeNotifierProviderImpl<FitRecordNotifier, FitRecordState> {
   /// See also [FitRecordNotifier].
-  FitRecordNotifierProvider(
-    String id,
-  ) : this._internal(
-          () => FitRecordNotifier()..id = id,
-          from: fitRecordNotifierProvider,
-          name: r'fitRecordNotifierProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$fitRecordNotifierHash,
-          dependencies: FitRecordNotifierFamily._dependencies,
-          allTransitiveDependencies:
-              FitRecordNotifierFamily._allTransitiveDependencies,
-          id: id,
-        );
+  FitRecordNotifierProvider(String id)
+    : this._internal(
+        () => FitRecordNotifier()..id = id,
+        from: fitRecordNotifierProvider,
+        name: r'fitRecordNotifierProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$fitRecordNotifierHash,
+        dependencies: FitRecordNotifierFamily._dependencies,
+        allTransitiveDependencies:
+            FitRecordNotifierFamily._allTransitiveDependencies,
+        id: id,
+      );
 
   FitRecordNotifierProvider._internal(
     super._createNotifier, {
@@ -113,12 +103,8 @@ class FitRecordNotifierProvider
   final String id;
 
   @override
-  FitRecordState runNotifierBuild(
-    covariant FitRecordNotifier notifier,
-  ) {
-    return notifier.build(
-      id,
-    );
+  FitRecordState runNotifierBuild(covariant FitRecordNotifier notifier) {
+    return notifier.build(id);
   }
 
   @override
@@ -139,7 +125,7 @@ class FitRecordNotifierProvider
 
   @override
   AutoDisposeNotifierProviderElement<FitRecordNotifier, FitRecordState>
-      createElement() {
+  createElement() {
     return _FitRecordNotifierProviderElement(this);
   }
 
@@ -165,12 +151,14 @@ mixin FitRecordNotifierRef on AutoDisposeNotifierProviderRef<FitRecordState> {
 }
 
 class _FitRecordNotifierProviderElement
-    extends AutoDisposeNotifierProviderElement<FitRecordNotifier,
-        FitRecordState> with FitRecordNotifierRef {
+    extends
+        AutoDisposeNotifierProviderElement<FitRecordNotifier, FitRecordState>
+    with FitRecordNotifierRef {
   _FitRecordNotifierProviderElement(super.provider);
 
   @override
   String get id => (origin as FitRecordNotifierProvider).id;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

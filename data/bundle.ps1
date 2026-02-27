@@ -17,6 +17,12 @@ if ($ClearCache) {
 $version_file = Join-Path $cache_dir "version"
 New-Item -ItemType Directory -Force -Path $cache_dir | Out-Null
 Copy-Item -Path (Join-Path $pb2_dir "*") -Destination $cache_dir -Recurse -Force
+$character_src_dir = Join-Path $pb2_dir "character"
+$character_cache_dir = Join-Path $cache_dir "character"
+if (Test-Path $character_src_dir) {
+    New-Item -ItemType Directory -Force -Path $character_cache_dir | Out-Null
+    Copy-Item -Path (Join-Path $character_src_dir "*") -Destination $character_cache_dir -Recurse -Force
+}
 New-Item -ItemType File -Force -Path $version_file | Out-Null
 $time = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 Write-Host "Creating version timestamp at $time"
@@ -52,6 +58,11 @@ Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dogmaEffects.pb2") -Destination 
 Copy-Item -Path (Join-Path $eve_fit_os_out_dir "typeDogma.pb2") -Destination $native_cache_dir -Recurse -Force
 Copy-Item -Path (Join-Path $eve_fit_os_out_dir "types.pb2") -Destination $native_cache_dir -Recurse -Force
 Copy-Item -Path (Join-Path $eve_fit_os_out_dir "dbuffcollections.pb2") -Destination $native_cache_dir -Recurse -Force
+
+$character_files = Get-ChildItem -Path (Join-Path $character_cache_dir "*.pb") -File -ErrorAction SilentlyContinue
+if (-not $character_files) {
+    throw "Missing character pb files in cache. Expected files under $character_cache_dir"
+}
 
 Write-Host "Creating tarball ..."
 $tarball = Join-Path $current "storage.tar.xz"

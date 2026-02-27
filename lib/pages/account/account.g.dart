@@ -13,8 +13,9 @@ String _$getCharacterHash() => r'9d2ee2ae0aeb858ff448041e75abe421b5d1bb6b';
 final getCharacterProvider = AutoDisposeFutureProvider<Character?>.internal(
   getCharacter,
   name: r'getCharacterProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$getCharacterHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$getCharacterHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

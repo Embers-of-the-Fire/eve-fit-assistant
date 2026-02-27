@@ -7,31 +7,31 @@ part of 'fittings.dart';
 // **************************************************************************
 
 _Fitting _$FittingFromJson(Map<String, dynamic> json) => _Fitting(
-      fittingID: (json['fitting_id'] as num).toInt(),
-      shipTypeID: (json['ship_type_id'] as num).toInt(),
-      name: json['name'] as String,
-      description: json['description'] as String,
-      items: (json['items'] as List<dynamic>)
-          .map((e) => FittingItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
+  fittingID: (json['fitting_id'] as num).toInt(),
+  shipTypeID: (json['ship_type_id'] as num).toInt(),
+  name: json['name'] as String,
+  description: json['description'] as String,
+  items: (json['items'] as List<dynamic>)
+      .map((e) => FittingItem.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
 
 Map<String, dynamic> _$FittingToJson(_Fitting instance) => <String, dynamic>{
-      'fitting_id': instance.fittingID,
-      'ship_type_id': instance.shipTypeID,
-      'name': instance.name,
-      'description': instance.description,
-      'items': instance.items,
-    };
+  'fitting_id': instance.fittingID,
+  'ship_type_id': instance.shipTypeID,
+  'name': instance.name,
+  'description': instance.description,
+  'items': instance.items,
+};
 
 _FittingPost _$FittingPostFromJson(Map<String, dynamic> json) => _FittingPost(
-      shipTypeID: (json['ship_type_id'] as num).toInt(),
-      name: json['name'] as String,
-      description: json['description'] as String,
-      items: (json['items'] as List<dynamic>)
-          .map((e) => FittingItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
+  shipTypeID: (json['ship_type_id'] as num).toInt(),
+  name: json['name'] as String,
+  description: json['description'] as String,
+  items: (json['items'] as List<dynamic>)
+      .map((e) => FittingItem.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
 
 Map<String, dynamic> _$FittingPostToJson(_FittingPost instance) =>
     <String, dynamic>{
@@ -42,10 +42,10 @@ Map<String, dynamic> _$FittingPostToJson(_FittingPost instance) =>
     };
 
 _FittingItem _$FittingItemFromJson(Map<String, dynamic> json) => _FittingItem(
-      typeID: (json['type_id'] as num).toInt(),
-      quantity: (json['quantity'] as num).toInt(),
-      flag: FittingItemFlag.fromJson(json['flag'] as String),
-    );
+  typeID: (json['type_id'] as num).toInt(),
+  quantity: (json['quantity'] as num).toInt(),
+  flag: FittingItemFlag.fromJson(json['flag'] as String),
+);
 
 Map<String, dynamic> _$FittingItemToJson(_FittingItem instance) =>
     <String, dynamic>{

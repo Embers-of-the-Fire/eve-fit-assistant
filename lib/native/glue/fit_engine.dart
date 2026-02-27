@@ -14,8 +14,10 @@ class FitEngine {
     return FitEngine._private(database);
   }
 
-  native.CalculateOutput calculate({required Fit fit, required Character character}) =>
-      _database.calculate(intoNativeFit(fit: fit, skills: character.skills));
+  native.CalculateOutput calculate({
+    required Fit fit,
+    required Character character,
+  }) => _database.calculate(intoNativeFit(fit: fit, skills: character.skills));
 
   Map<int, double> getTypeAttr(int typeID) => _database.getTypeAttr(typeID);
 }
