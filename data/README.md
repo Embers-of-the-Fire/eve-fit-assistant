@@ -8,32 +8,11 @@
 
 ## External dataset
 
-### Officially exported game static data
-
-Official developer document: <https://developers.eveonline.com/docs/resources/>
-
-| Data Identifier | Recommended Save Path | Download URL                                  |
-| --------------- | --------------------- | --------------------------------------------- |
-| FSD             | `./fsd`               | [FSD (fsd.zip)][FSD URL]                      |
-| Images/Icons    | `./images/Icons`      | [Icons (XXX_Vxxx_Icons.zip)][Icon URL]        |
-| Images/Renders  | `./images/Renders`    | [Renders (XXX_Vxxx_Renders.zip)][Renders URL] |
-| Images/Types    | `./images/Types`      | [Types (XXX_Vxxx_Types.zip)][Types URL]       |
-
-[FSD URL]: https://eve-static-data-export.s3-eu-west-1.amazonaws.com/tranquility/fsd.zip
-
-[Icon URL]: https://web.ccpgamescdn.com/aws/developers/Uprising_V21.03_Icons.zip
-
-[Renders URL]: https://web.ccpgamescdn.com/aws/developers/Uprising_V21.03_Renders.zip
-
-[Types URL]: https://web.ccpgamescdn.com/aws/developers/Uprising_V21.03_Renders.zip
-
-### Non-officially public data
-
-**These data are collected from the game client**, so there's only instructions but no URLs.
-
-| Data Identifier    | Recommended Save Path | Local position                             |
-| ------------------ | --------------------- | ------------------------------------------ |
-| `resfileindex.txt` | `.`                   | `<path-to-eve-client>\tq\resfileindex.txt` |
+| Data Identifier    | Recommended Save Path                               | Download URL                                     |
+|--------------------|-----------------------------------------------------|--------------------------------------------------|
+| FSD                | `./fsd`                                             | See `Embers-of-the-Fire/eve-multitools-archive`  |
+| FSD Localization   | `./fsd-localization/localization_fsd_en-us.pickle`  | See `Embers-of-the-Fire/eve-multitools-archive`  |
+| `resfileindex.txt` | `.`                                                 | `<path-to-eve-client>\tq\resfileindex.txt`       |
 
 ### Patches
 
@@ -123,6 +102,12 @@ To skip downloading (mainly static images), run:
 ```
 
 **Additional switch:** `-ClearCache`: clear the cache dir before executing commands.
+
+And finally, to generate release version information, run:
+
+```powershell
+.\codegen.ps1
+```
 
 <details><summary>Manually</summary>
 
