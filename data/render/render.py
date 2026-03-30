@@ -14,6 +14,28 @@ import csv
 OVERLAY_DIR = pathlib.Path(__file__).parent / "overlay"
 
 
+def get_type_icon_file(target_dir: pathlib.Path, type_id: int) -> pathlib.Path:
+    return target_dir / f"{type_id}.png"
+
+
+def get_missing_type_icon_file(target_dir: pathlib.Path, type_id: int) -> pathlib.Path:
+    return target_dir / f"{type_id}.missing"
+
+
+def is_type_icon_missing(target_dir: pathlib.Path, type_id: int) -> bool:
+    return get_missing_type_icon_file(target_dir, type_id).exists()
+
+
+def mark_type_icon_missing(target_dir: pathlib.Path, type_id: int):
+    get_missing_type_icon_file(target_dir, type_id).touch()
+
+
+def clear_type_icon_missing(target_dir: pathlib.Path, type_id: int):
+    missing_file = get_missing_type_icon_file(target_dir, type_id)
+    if missing_file.exists():
+        missing_file.unlink()
+
+
 def read_resfile_index(resfile_index_file) -> dict[str, str]:
     index = {}
     with open(resfile_index_file, "r", encoding="utf-8") as f:
@@ -47,6 +69,7 @@ def run(
     need_render_graphic = []
     need_download = []
     need_render_icon = []
+    skipped_missing_source = 0
     print("Started copying type icons...")
     for type_id, type_item in types.items():
         type_id = int(type_id)
@@ -64,12 +87,19 @@ def run(
         elif "graphicID" in type_item.keys():
             need_render_graphic.append(type_id)
         elif (image_path / "Types" / f"{type_id}_32.png").exists():
+            clear_type_icon_missing(target_dir, type_id)
             shutil.copyfile(
-                image_path / "Types" / f"{type_id}_32.png", target_dir / f"{type_id}.png"
+                image_path / "Types" / f"{type_id}_32.png",
+                get_type_icon_file(target_dir, type_id),
             )
         else:
-            need_download.append(type_id)
+            mark_type_icon_missing(target_dir, type_id)
+            skipped_missing_source += 1
     print("Finished copying type icons.")
+    if skipped_missing_source:
+        print(
+            f"Skipped {skipped_missing_source} type icons without iconID, graphicID, or source image."
+        )
 
     print(f"Need to render {len(need_render_graphic)} type icons by graphic.")
 
@@ -133,18 +163,24 @@ async def download(need_download: list[int], target_dir: pathlib.Path):
 
     async def download(session: aiohttp.ClientSession, type_id):
         nonlocal semaphore
-        if (target_dir / f"{type_id}.png").exists():
+        if get_type_icon_file(target_dir, type_id).exists() or is_type_icon_missing(
+            target_dir, type_id
+        ):
             return
         async with semaphore:
             if os.environ["SERVER"] == "tq":
-                url = f"https://resources.eveonline.com/Type/{type_id}_32.png"
+                url = f"https://images.evetech.net/types/{type_id}/icon?size=32"
             elif os.environ["SERVER"] == "se":
                 url = f"https://image.evepc.163.com/Type/{type_id}_32.png"
             print(f"Downloading icon for type {type_id} from {url}")
             async with session.get(url) as response:
                 if response.status == 200:
-                    with open(target_dir / f"{type_id}.png", "wb") as f:
+                    clear_type_icon_missing(target_dir, type_id)
+                    with open(get_type_icon_file(target_dir, type_id), "wb") as f:
                         f.write(await response.read())
+                elif response.status == 404 and response.url.host == "images.evetech.net":
+                    mark_type_icon_missing(target_dir, type_id)
+                    print(f"No icon provided for type {type_id} [{response.url}]")
                 else:
                     print(
                         f"Failed to download icon for type {type_id} [{response.url}]: {await response.read()}"
@@ -208,7 +244,8 @@ def process_type_icons(type_id: int, type_info: dict, image: bytes, target_dir: 
             png_rgba = img_png.convert("RGBA")
             final_image.paste(png_rgba, (0, 0), png_rgba)
 
-    final_image.save(target_dir / f"{type_id}.png", "PNG")
+    clear_type_icon_missing(target_dir, type_id)
+    final_image.save(get_type_icon_file(target_dir, type_id), "PNG")
 
 
 if not __name__ == "__main__":
