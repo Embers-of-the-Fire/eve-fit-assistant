@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # 0.x.mmDD0u+mmDD0u
 # u = 0 for tranquility, 1 for serenity, 2 for singularity
-version: 0.28.022701+022701
+version: 0.28.033002+033002
 
 environment:
   sdk: ^3.11.0
