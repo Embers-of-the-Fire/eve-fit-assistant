@@ -38,6 +38,13 @@
 
       androidSdk = androidComposition.androidsdk;
       gccRuntimeLibraryPath = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc ];
+      nativeRustToolchainPath = pkgs.lib.makeBinPath [
+        pkgs.cargo
+        pkgs.rustc
+        pkgs.rustfmt
+        pkgs.clippy
+        pkgs.rust-analyzer
+      ];
       inherit (pkgs)
         flutter
         jdk17
@@ -66,6 +73,8 @@
           llvmPackages.libclang
           protobuf
           protoc-gen-dart
+          flutter_rust_bridge_codegen
+          cargo-expand
         ];
 
         LANG = "C.UTF-8";
@@ -81,6 +90,9 @@
 
         shellHook = ''
           export LD_LIBRARY_PATH="${gccRuntimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          # Prefer the Nix-wrapped Rust toolchain for local builds and codegen.
+          # rustup remains available later in PATH for target management via cargokit.
+          export PATH="${nativeRustToolchainPath}:$PATH"
 
           aapt2_path="$(echo "$ANDROID_SDK_ROOT/build-tools/"*"/aapt2")"
           export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$aapt2_path''${GRADLE_OPTS:+ $GRADLE_OPTS}"
