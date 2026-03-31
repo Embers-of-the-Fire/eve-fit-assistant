@@ -62,3 +62,8 @@ app.*.map.json
 
 # python
 __pycache__/
+
+# nix
+/.direnv
+.envrc
+
