@@ -28,7 +28,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import aiofiles
-import aiohttp
 import tenacity
 
 from tenacity import stop_after_attempt
@@ -40,14 +39,15 @@ from data.lib.log import warning
 
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable
+    from collections.abc import Callable
     from pathlib import Path
+
+    import aiohttp
 
     from _typeshed import OpenBinaryMode
     from _typeshed import OpenTextMode
 
-
-SEMAPHORE_NUMBER = 8
-RESOURCE_SEMAPHORE = asyncio.Semaphore(SEMAPHORE_NUMBER)
 DOWNLOAD_RETRY_ATTEMPTS = 3
 DOWNLOAD_RETRY_WAIT_SECONDS = 2
 
@@ -73,6 +73,7 @@ class _ResourceNode:
     full_path: str
     name: str
     is_file: bool
+    session_factory: Callable[[], Awaitable[aiohttp.ClientSession]]
     url: str | None = None
     local_path: Path | None = None
     children: dict[str, _ResourceNode] | None = None
@@ -99,6 +100,7 @@ class _ResourceNode:
                 full_path=child_full_path,
                 name=next_part,
                 is_file=is_file,
+                session_factory=self.session_factory,
             )
 
         next_node = self.children[next_part]
@@ -134,18 +136,14 @@ class _ResourceNode:
             return
 
         debug(f"Downloading resource: {self.url} -> {self.local_path}")
-        async with (
-            RESOURCE_SEMAPHORE,
-            aiohttp.ClientSession() as session,
-            session.get(self.url) as response,
-        ):
+        session = await self.session_factory()
+        async with session.get(self.url) as response:
             response.raise_for_status()
             content = await response.read()
-            if self.local_path:
-                if not self.local_path.parent.exists():
-                    self.local_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(self.local_path, "wb") as f:
-                    f.write(content)
+        if not self.local_path.parent.exists():
+            self.local_path.parent.mkdir(parents=True, exist_ok=True)
+        async with aiofiles.open(self.local_path, "wb") as f:
+            await f.write(content)
 
     def download_blocking(self):
         asyncio.get_event_loop().run_until_complete(self.download())
@@ -189,6 +187,7 @@ class ResourceIndex:
         resource_prefix: str,
         cache_dir: Path,
         raw_download_url: str,
+        session_factory: Callable[[], Awaitable[aiohttp.ClientSession]],
     ):
         assert index.is_file()
 
@@ -202,7 +201,10 @@ class ResourceIndex:
 
         self.__resource_prefix = resource_prefix
         self.__resource_tree = _ResourceNode(
-            full_path=resource_prefix, name=resource_prefix, is_file=False
+            full_path=resource_prefix,
+            name=resource_prefix,
+            is_file=False,
+            session_factory=session_factory,
         )
 
         info(f"Loading resource index from {index}")

@@ -47,3 +47,6 @@ class GeneratorDatasource:
     @property
     def is_incremental(self) -> bool:
         return self.__is_incremental
+
+    async def aclose(self) -> None:
+        await self.__resource_manager.aclose()
