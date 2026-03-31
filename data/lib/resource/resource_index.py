@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -32,14 +31,12 @@ import aiofiles
 import aiohttp
 import tenacity
 
-from tenacity import before_log
 from tenacity import stop_after_attempt
 from tenacity import wait_fixed
 
-import data.lib.log
-
 from data.lib.log import debug
 from data.lib.log import info
+from data.lib.log import warning
 
 
 if TYPE_CHECKING:
@@ -51,6 +48,24 @@ if TYPE_CHECKING:
 
 SEMAPHORE_NUMBER = 8
 RESOURCE_SEMAPHORE = asyncio.Semaphore(SEMAPHORE_NUMBER)
+DOWNLOAD_RETRY_ATTEMPTS = 3
+DOWNLOAD_RETRY_WAIT_SECONDS = 2
+
+
+def _log_download_retry(retry_state: tenacity.RetryCallState) -> None:
+    node = retry_state.args[0] if retry_state.args else None
+    resource_path = getattr(node, "full_path", "<unknown resource>")
+    local_path = getattr(node, "local_path", None)
+    outcome = retry_state.outcome
+    error = outcome.exception() if outcome is not None and outcome.failed else None
+    sleep = retry_state.next_action.sleep if retry_state.next_action is not None else None
+
+    warning(
+        "Retrying download for resource "
+        f"{resource_path} -> {local_path} "
+        f"(attempt {retry_state.attempt_number}/{DOWNLOAD_RETRY_ATTEMPTS}, "
+        f"next retry in {sleep}s): {error}"
+    )
 
 
 @dataclass(kw_only=True)
@@ -104,9 +119,9 @@ class _ResourceNode:
         return next_node.recursive_find(path_parts[1:])
 
     @tenacity.retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(2),
-        before=before_log(data.lib.log.LOGGER, logging.WARNING),
+        stop=stop_after_attempt(DOWNLOAD_RETRY_ATTEMPTS),
+        wait=wait_fixed(DOWNLOAD_RETRY_WAIT_SECONDS),
+        before_sleep=_log_download_retry,
     )
     async def download(self):
         if not self.is_file:

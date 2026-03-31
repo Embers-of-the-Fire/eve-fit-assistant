@@ -15,9 +15,9 @@ message DogmaAttribute {
   required bool published = 7;
   required bool high_is_good = 8;
   required bool display_when_zero = 9;
+  required bool stackable = 10;
 
-  optional uint32 unit_id = 10;
-  required uint32 stackable = 11;
+  optional uint32 unit_id = 11;
 
   optional double default_value = 12;
 

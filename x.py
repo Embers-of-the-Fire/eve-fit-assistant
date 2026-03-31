@@ -459,7 +459,7 @@ def rust_cmd(ctx: click.Context):
 @click.option("--watch", "-w", is_flag=True, default=False, help="Run in watch mode.")
 @click.pass_context
 def dart_build_runner(ctx: click.Context, watch: bool):
-    """Run `dart run build_runner build`."""
+    """Run `flutter pub run build_runner build`."""
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Executing codegen: "),
     )
@@ -467,14 +467,15 @@ def dart_build_runner(ctx: click.Context, watch: bool):
         for file in codegen():
             click.echo(f"  Modified {file}")
 
-    dart = get_command("dart")
+    flutter = get_command("flutter")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-        + f"dart run build_runner {'watch' if watch else 'build'} --delete-conflicting-outputs"
+        + f"flutter pub run build_runner {'watch' if watch else 'build'} --delete-conflicting-outputs"
     )
     __execute_command(
         [
-            dart,
+            flutter,
+            "pub",
             "run",
             "build_runner",
             "watch" if watch else "build",
