@@ -22,18 +22,14 @@
         includeNDK = true;
         includeSystemImages = false;
         platformVersions = [
+          "31"
           "33"
-          "34"
           "35"
-          "latest"
+          "36"
         ];
-        buildToolsVersions = [ "latest" ];
+        buildToolsVersions = [ "35.0.0" ];
         cmakeVersions = [ "latest" ];
-        ndkVersions = [
-          "27.0.12077973"
-          "28.0.13004108"
-          "29.0.14206865"
-        ];
+        ndkVersions = [ "28.2.13676358" ];
       };
 
       androidSdk = androidComposition.androidsdk;

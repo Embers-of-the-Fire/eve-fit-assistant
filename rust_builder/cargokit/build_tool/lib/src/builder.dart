@@ -1,6 +1,8 @@
 /// This is copied from Cargokit (which is the official way to use it currently)
 /// Details: https://fzyzcjy.github.io/flutter_rust_bridge/manual/integrate/builtin
 
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
@@ -157,7 +159,7 @@ class RustBuilder {
         '--target-dir',
         environment.targetTempDir,
       ],
-      environment: await _buildEnvironment(),
+      environment: await _commandEnvironment(),
     );
     return path.join(
       environment.targetTempDir,
@@ -194,5 +196,39 @@ class RustBuilder {
       }
       return env.buildEnvironment();
     }
+  }
+
+  Future<Map<String, String>> _commandEnvironment() async {
+    final commandEnvironment = await _buildEnvironment();
+    final pathSeparator = Platform.isWindows ? ';' : ':';
+    final rustc = _toolchainExecutable('rustc');
+    final rustdoc = _toolchainExecutable('rustdoc');
+    final toolchainBin = path.dirname(rustc);
+    final parentPath = Platform.environment['PATH'];
+
+    return {
+      ...commandEnvironment,
+      'RUSTC': rustc,
+      'RUSTDOC': rustdoc,
+      if (parentPath != null) 'PATH': '$toolchainBin$pathSeparator$parentPath',
+    };
+  }
+
+  String _toolchainExecutable(String executable) {
+    final resolved = runCommand(
+      'rustup',
+      [
+        'which',
+        '--toolchain',
+        _toolchain,
+        executable,
+      ],
+    ).stdout.toString().trim();
+    if (resolved.isEmpty) {
+      throw BuildException(
+        'Failed to resolve $executable for rustup toolchain $_toolchain',
+      );
+    }
+    return resolved;
   }
 }
