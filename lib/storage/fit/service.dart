@@ -48,6 +48,8 @@ abstract class FitServiceState with _$FitServiceState {
 
 @riverpod
 class Fit extends _$Fit {
+  FitStorage? _mountedFit;
+
   @override
   FitServiceState build(String fitId) {
     ref.onDispose(_unmount);
@@ -68,6 +70,7 @@ class Fit extends _$Fit {
     final text = await path.readAsString();
     final json = jsonDecode(text) as Map<String, dynamic>;
     final fit = FitStorage.fromJson(json);
+    _mountedFit = fit;
     state = FitServiceState.loaded(
       status: FitServiceStatus.loaded(lastSync: DateTime.now()),
       fit: fit,
@@ -80,6 +83,7 @@ class Fit extends _$Fit {
       return;
     }
     final fit = state.fit;
+    _mountedFit = fit;
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     final path = File(fit.fitStoragePath);
     final text = jsonEncode(fit.toJson());
@@ -99,11 +103,11 @@ class Fit extends _$Fit {
 
   void _unmount() {
     debug("Unmounting fit service");
-    if (!state.isInitialized) {
+    final fit = _mountedFit;
+    if (fit == null) {
       debug("Fit service not initialized, skipping unmount");
       return;
     }
-    final fit = state.fit;
     final path = File(fit.fitStoragePath);
     final text = jsonEncode(fit.toJson());
     if (!path.existsSync()) {
@@ -120,6 +124,7 @@ class Fit extends _$Fit {
     final fit = updater(
       state.fit,
     ).copyWith(metadata: state.fit.metadata.copyWith(lastModified: DateTime.now().second));
+    _mountedFit = fit;
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);
     await _syncToDisk();

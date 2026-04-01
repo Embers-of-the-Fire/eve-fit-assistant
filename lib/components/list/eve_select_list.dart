@@ -80,7 +80,6 @@ class EveSelectList extends ConsumerWidget {
               .map((t) => EveSelectListRoot.type(typeId: t))
               .where(validator);
           final d = [...groups, ...types];
-          info("$d");
           return d;
         },
         type: (_) => const [],
