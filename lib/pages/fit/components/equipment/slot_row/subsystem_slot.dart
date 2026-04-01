@@ -52,7 +52,6 @@ class _SubsystemSlotRow extends ConsumerWidget {
       child: ListTile(
         leading: StateIcon.rect(
           state: slotInfo.state,
-          onTap: () => fitContext.fitWrapper.toggleSlot(slotIdent, ref),
           child: type != null
               ? EveIcon(icon: type.icon, overlayIcon: metaGroupIcon, size: 35)
               : Image(

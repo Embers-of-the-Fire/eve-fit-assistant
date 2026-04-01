@@ -221,7 +221,12 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         (fitStorage.body.slots.medium, native.SlotType.medium),
         (fitStorage.body.slots.low, native.SlotType.low),
         (fitStorage.body.slots.rig, native.SlotType.rig),
-        (fitStorage.body.slots.subsystem, native.SlotType.subSystem),
+        (
+          fitStorage.body.slots.subsystem.map(
+            (slotOpt) => slotOpt.map((slot) => slot.copyWith(state: FitItemState.online)),
+          ),
+          native.SlotType.subSystem,
+        ),
         (fitStorage.body.slots.service, native.SlotType.service),
       ].flatMap<native.Module>(
         (arg) => arg.$1.filterNone().mapWithIndex(

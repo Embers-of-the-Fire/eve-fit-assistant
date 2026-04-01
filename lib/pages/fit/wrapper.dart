@@ -206,7 +206,7 @@ class FitWrapper {
                 FitModuleItem(
                   itemId: FitStorageItemId.item(id: proto.typeId),
                   charge: const Option.none(),
-                  state: proto.maxState.dartImpl.limitToActive,
+                  state: FitItemState.online,
                 ),
               ),
             );
@@ -667,12 +667,11 @@ class FitWrapper {
     FitStorage fit,
     SubsystemType type,
     FitModuleItem slot,
-    Slots_GeneralSlot slotInfo,
+    Slots_GeneralSlot _,
   ) {
-    final newState = slot.state.toggle(slotInfo.maxState.dartImpl);
     final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
       type.index,
-      (_) => Option.of(slot.copyWith(state: newState)),
+      (_) => Option.of(slot.copyWith(state: FitItemState.online)),
     );
     return fit.copyWith(
       body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
@@ -931,7 +930,7 @@ class FitWrapper {
     return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
   });
 
-  FitStorage toggleDroneSlot(FitStorage fit, FitModuleItem _slot, int index) {
+  FitStorage toggleDroneSlot(FitStorage fit, FitModuleItem _, int index) {
     if (index < 0 || index >= fit.body.drones.length) return fit;
 
     final drone = fit.body.drones[index];
