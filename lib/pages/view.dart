@@ -2,6 +2,8 @@ import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/pages/character/page.dart";
+import "package:eve_fit_assistant/pages/fit-list/page.dart";
+import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/page.dart";
 import "package:eve_fit_assistant/pages/workspace/page.dart";
 import "package:eve_fit_assistant/storage/loading_indicator.dart";
@@ -21,6 +23,12 @@ class _FrontPageState extends State<FrontPage> {
   final PageController _pageController = PageController();
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final loc = context.l10n;
     final pageTitles = [
@@ -29,12 +37,7 @@ class _FrontPageState extends State<FrontPage> {
       loc.frontPageTitleCharacter,
       loc.frontPageTitleSetting,
     ];
-    const pages = <Widget>[
-      WorkspacePage(),
-      Center(child: Text("fit")),
-      CharacterPage(),
-      SettingPage(),
-    ];
+    const pages = <Widget>[WorkspacePage(), FitListPage(), CharacterPage(), SettingPage()];
     const pageIcons = <IconData>[
       Icons.dashboard_rounded,
       Icons.list_alt_rounded,
@@ -55,7 +58,7 @@ class _FrontPageState extends State<FrontPage> {
       ),
       // FloatingActionButton: docked in the center (notched BottomAppBar).
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => context.router.push(const FitCreationRoute()),
         shape: const CircleBorder(),
         child: const Icon(Icons.add),
       ),
