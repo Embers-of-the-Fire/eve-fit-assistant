@@ -68,14 +68,14 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
         child: TabBarView(
           controller: _tabController,
           children: [
-            ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
+            _CharacterTab(fitContext: widget.fitContext),
             _EquipmentTab(fitContext: widget.fitContext),
             _AttributeTab(fitContext: widget.fitContext),
             if (widget.fitContext.ship.fighterTubes > 0)
               _FighterTab(fit: widget.fitContext.fit)
             else
               _DroneTab(fitContext: widget.fitContext),
-            ...const Column(children: [Center(child: Text("Tab content"))]).repeat(1),
+            _UtilsTab(fitContext: widget.fitContext),
           ],
         ),
       ),

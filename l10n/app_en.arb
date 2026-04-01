@@ -59,6 +59,42 @@
   "fitAddItemDialogTitle": "Add Item: {slotName}",
   "fitAddItemDialogTitleWithIndex": "Add Item: {slotName} #{index}",
   "fitSlotEmpty": "{slotName} (Empty)",
+  "fitActionSet": "Set",
+  "fitUnknownImplantAtSlot": "Unknown implant at slot {slot}",
+  "@fitUnknownImplantAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownImplant": "Unknown implant {typeId}",
+  "@fitUnknownImplant": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownBoosterAtSlot": "Unknown booster at slot {slot}",
+  "@fitUnknownBoosterAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownBooster": "Unknown booster {typeId}",
+  "@fitUnknownBooster": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUtilsNameRequired": "Fit name is required",
+  "fitUtilsNameLabel": "Fit name",
+  "fitUtilsDescriptionLabel": "Description",
   "@@@@_FIT_ATTRIBUTE_TAB": {},
   "fitAttributeTabCapacitorStable": "{percent}% Stable",
   "@@@@_FIT_DRONE_TAB": {},

@@ -167,15 +167,19 @@ abstract class FitFighterItem with _$FitFighterItem {
 
 @freezed
 abstract class FitImplantItem with _$FitImplantItem {
-  const factory FitImplantItem({required FitStorageItemId itemId}) = _FitImplantItem;
+  const factory FitImplantItem({required FitStorageItemId itemId, required FitItemState state}) =
+      _FitImplantItem;
 
   factory FitImplantItem.fromJson(Map<String, dynamic> json) => _$FitImplantItemFromJson(json);
 }
 
 @freezed
 abstract class FitBoosterItem with _$FitBoosterItem {
-  const factory FitBoosterItem({required FitStorageItemId itemId, required int index}) =
-      _FitBoosterItem;
+  const factory FitBoosterItem({
+    required FitStorageItemId itemId,
+    required int index,
+    required FitItemState state,
+  }) = _FitBoosterItem;
 
   factory FitBoosterItem.fromJson(Map<String, dynamic> json) => _$FitBoosterItemFromJson(json);
 }
@@ -278,6 +282,7 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         )
         .toList(),
     implants: fitStorage.body.implants
+        .where((implant) => implant.state != FitItemState.passive)
         .mapWithIndex(
           (implant, index) => native.Implant(
             typeId: implant.itemId.when(
@@ -291,15 +296,16 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         )
         .toList(),
     boosters: fitStorage.body.boosters
-        .mapWithIndex(
-          (booster, index) => native.Booster(
+        .where((booster) => booster.state != FitItemState.passive)
+        .map(
+          (booster) => native.Booster(
             typeId: booster.itemId.when(
               item: (id) => id,
               dynamic: (dynamicId) =>
                   fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
                   (throw StateError("Dynamic item $dynamicId not found in registry")),
             ),
-            index: index,
+            index: booster.index,
           ),
         )
         .toList(),

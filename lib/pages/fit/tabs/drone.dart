@@ -10,6 +10,9 @@ class _DroneTab extends ConsumerWidget {
     final fit = fitContext.fit;
     final fitWrapper = fitContext.fitWrapper;
 
+    // The deprecated implementation exposed drone quantity controls directly on
+    // each row. The dedicated drone row widget still owns those interactions,
+    // while this tab keeps the top-level add and clear actions.
     const slotIdent = SlotIdentifier.drone(index: 0);
 
     final drones = fit.body.drones.toList();

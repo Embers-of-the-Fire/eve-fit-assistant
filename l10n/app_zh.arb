@@ -107,6 +107,42 @@
       }
     }
   },
+  "fitActionSet": "设置",
+  "fitUnknownImplantAtSlot": "未知植入体，槽位 {slot}",
+  "@fitUnknownImplantAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownImplant": "未知植入体 {typeId}",
+  "@fitUnknownImplant": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownBoosterAtSlot": "未知增效剂，槽位 {slot}",
+  "@fitUnknownBoosterAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownBooster": "未知增效剂 {typeId}",
+  "@fitUnknownBooster": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUtilsNameRequired": "请输入配置名。",
+  "fitUtilsNameLabel": "配置名称",
+  "fitUtilsDescriptionLabel": "配置备注",
   "@@@@_FIT_ATTRIBUTE_TAB": {},
   "fitAttributeTabCapacitorStable": "{percent}% 稳定",
   "@fitAttributeTabCapacitorStable": {

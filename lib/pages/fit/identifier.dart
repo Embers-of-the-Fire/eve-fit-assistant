@@ -158,12 +158,14 @@ abstract class SlotIdentifier with _$SlotIdentifier {
           },
       implant: (_) =>
           (node) => switch (node) {
-            EveSelectListRootType(:final typeId) => slotsInfo.implantSlots.containsKey(typeId),
+            EveSelectListRootType(:final typeId) =>
+              slotsInfo.implantSlots[typeId]?.slotIndex == asIndexed,
             _ => true,
           },
       booster: (_) =>
           (node) => switch (node) {
-            EveSelectListRootType(:final typeId) => slotsInfo.boosterSlots.containsKey(typeId),
+            EveSelectListRootType(:final typeId) =>
+              slotsInfo.boosterSlots[typeId]?.slotIndex == asIndexed + 1,
             _ => true,
           },
     );

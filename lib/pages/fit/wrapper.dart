@@ -22,6 +22,155 @@ class FitWrapper {
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
 
+  // Implants are serialized as a plain array, but the authoritative slot id for
+  // each implant still comes from bundle metadata. We therefore keep array
+  // storage while resolving the logical slot from the fitted type whenever the
+  // UI needs slot-aware behavior.
+  Future<void> setImplant(int index, int typeId) => wrapped.update((fit) {
+    final implants = fit.body.implants.toList();
+    final implant = FitImplantItem(
+      itemId: FitStorageItemId.item(id: typeId),
+      state: FitItemState.online,
+    );
+
+    if (index < 0) return fit;
+    if (index < implants.length) {
+      implants[index] = implant;
+    } else if (index == implants.length) {
+      implants.add(implant);
+    } else {
+      warning("Cannot set implant at sparse index $index with current fit storage layout");
+      return fit;
+    }
+
+    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+  });
+
+  Future<void> removeImplant(int index) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.implants.length) return fit;
+    final implants = fit.body.implants.toList()..removeAt(index);
+    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+  });
+
+  Future<void> clearImplants() =>
+      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(implants: IList())));
+
+  // Boosters already carry their own slot id in storage, so replacement is
+  // keyed by that slot instead of by list position.
+  Future<void> setBooster(int slotId, int typeId) => wrapped.update((fit) {
+    final boosters = fit.body.boosters.toList();
+    final newBooster = FitBoosterItem(
+      itemId: FitStorageItemId.item(id: typeId),
+      index: slotId,
+      state: FitItemState.online,
+    );
+    final existingIndex = boosters.indexWhere((booster) => booster.index == slotId);
+
+    if (existingIndex >= 0) {
+      boosters[existingIndex] = newBooster;
+    } else {
+      boosters
+        ..add(newBooster)
+        ..sort((left, right) => left.index.compareTo(right.index));
+    }
+
+    return fit.copyWith(body: fit.body.copyWith(boosters: boosters.toIList()));
+  });
+
+  Future<void> removeBooster(int slotId) => wrapped.update((fit) {
+    final boosters = fit.body.boosters.where((booster) => booster.index != slotId).toIList();
+    return fit.copyWith(body: fit.body.copyWith(boosters: boosters));
+  });
+
+  Future<void> clearBoosters() =>
+      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(boosters: IList())));
+
+  int? findImplantStorageIndex(FitStorage fit, int slotId, WidgetRef ref) {
+    final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
+    if (slotsInfo == null) return null;
+
+    for (final (index, implant) in fit.body.implants.mapWithIndex(
+      (implant, index) => (index, implant),
+    )) {
+      final typeId = switch (implant.itemId) {
+        FitStorageItemIdItem(:final id) => id,
+        _ => null,
+      };
+      if (typeId == null) continue;
+      if (slotsInfo.implantSlots[typeId]?.slotIndex == slotId) return index;
+    }
+
+    return null;
+  }
+
+  Future<void> equipImplantForSlot(int slotId, int typeId, WidgetRef ref) => wrapped.update((fit) {
+    final implants = fit.body.implants.toList();
+    final implant = FitImplantItem(
+      itemId: FitStorageItemId.item(id: typeId),
+      state: FitItemState.online,
+    );
+    final existingIndex = findImplantStorageIndex(fit, slotId, ref);
+
+    if (existingIndex == null) {
+      implants.add(implant);
+    } else {
+      implants[existingIndex] = implant;
+    }
+
+    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+  });
+
+  Future<void> removeImplantForSlot(int slotId, WidgetRef ref) => wrapped.update((fit) {
+    final existingIndex = findImplantStorageIndex(fit, slotId, ref);
+    if (existingIndex == null) return fit;
+    final implants = fit.body.implants.toList()..removeAt(existingIndex);
+    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+  });
+
+  Future<void> toggleImplantForSlot(int slotId, WidgetRef ref) => wrapped.update((fit) {
+    final existingIndex = findImplantStorageIndex(fit, slotId, ref);
+    if (existingIndex == null) return fit;
+
+    final implants = fit.body.implants.toList();
+    implants[existingIndex] = implants[existingIndex].copyWith(
+      state: implants[existingIndex].state.toggle(FitItemState.online),
+    );
+    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+  });
+
+  Option<FitModuleItem> getImplantAsModule(FitStorage fit, int index) {
+    if (index < 0 || index >= fit.body.implants.length) return const Option.none();
+    final implant = fit.body.implants[index];
+    return Option.of(
+      FitModuleItem(itemId: implant.itemId, charge: const Option.none(), state: implant.state),
+    );
+  }
+
+  Option<FitModuleItem> getBoosterAsModule(FitStorage fit, int slotId) {
+    final booster = fit.body.boosters.firstWhereOrNull((entry) => entry.index == slotId);
+    if (booster == null) return const Option.none();
+    return Option.of(
+      FitModuleItem(itemId: booster.itemId, charge: const Option.none(), state: booster.state),
+    );
+  }
+
+  FitStorage toggleImplantSlot(FitStorage fit, FitModuleItem slot, int index) {
+    if (index < 0 || index >= fit.body.implants.length) return fit;
+    final implants = fit.body.implants.toList();
+    implants[index] = implants[index].copyWith(state: slot.state.toggle(FitItemState.online));
+    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+  }
+
+  FitStorage toggleBoosterSlot(FitStorage fit, FitModuleItem slot, int slotId) {
+    final boosterIndex = fit.body.boosters.indexWhere((entry) => entry.index == slotId);
+    if (boosterIndex < 0) return fit;
+    final boosters = fit.body.boosters.toList();
+    boosters[boosterIndex] = boosters[boosterIndex].copyWith(
+      state: slot.state.toggle(FitItemState.online),
+    );
+    return fit.copyWith(body: fit.body.copyWith(boosters: boosters.toIList()));
+  }
+
   IList<Option<FitModuleItem>> emptySlotList(int len) =>
       IList(List.generate(len, (_) => const Option<FitModuleItem>.none()));
 
@@ -76,12 +225,21 @@ class FitWrapper {
         if (proto != null) await equipService(index, proto);
       case SlotIdentifierDrone(:final index):
         await equipDrone(index, typeId);
+      case SlotIdentifierImplant(:final index):
+        await equipImplantForSlot(index, typeId, ref);
+      case SlotIdentifierBooster(:final slotId):
+        await setBooster(slotId, typeId);
       default:
         break;
     }
   }
 
   Future<void> toggleSlot(SlotIdentifier slotIdent, WidgetRef ref) async {
+    if (slotIdent case SlotIdentifierImplant(:final index)) {
+      await toggleImplantForSlot(index, ref);
+      return;
+    }
+
     await wrapped.update((fit) {
       final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
       if (slotsInfo == null) return fit;
@@ -119,6 +277,10 @@ class FitWrapper {
           return toggleServiceSlot(fit, index, slot, proto);
         case SlotIdentifierDrone(:final index):
           return toggleDroneSlot(fit, slot, index);
+        case SlotIdentifierImplant(:final index):
+          return toggleImplantSlot(fit, slot, index);
+        case SlotIdentifierBooster(:final slotId):
+          return toggleBoosterSlot(fit, slot, slotId);
         default:
           return fit;
       }
@@ -141,6 +303,10 @@ class FitWrapper {
         await clearService();
       case SlotIdentifierDrone _:
         await clearDrones();
+      case SlotIdentifierImplant _:
+        await clearImplants();
+      case SlotIdentifierBooster _:
+        await clearBoosters();
       default:
         break;
     }
@@ -159,7 +325,7 @@ class FitWrapper {
     }
   }
 
-  Future<void> removeSlot(SlotIdentifier slotIdent) async {
+  Future<void> removeSlot(SlotIdentifier slotIdent, [WidgetRef? ref]) async {
     switch (slotIdent) {
       case SlotIdentifierHigh(:final index):
         await removeHigh(index);
@@ -175,6 +341,10 @@ class FitWrapper {
         await removeService(index);
       case SlotIdentifierDrone(:final index):
         await removeDrone(index);
+      case SlotIdentifierImplant(:final index):
+        if (ref != null) await removeImplantForSlot(index, ref);
+      case SlotIdentifierBooster(:final slotId):
+        await removeBooster(slotId);
       default:
         break;
     }
@@ -202,7 +372,7 @@ class FitWrapper {
           );
         });
       default:
-        await removeSlot(slotIdent);
+        await removeSlot(slotIdent, ref);
     }
   }
 
@@ -304,6 +474,8 @@ class FitWrapper {
     SlotIdentifierSubsystem(:final type) => fit.body.slots.subsystem[type.index],
     SlotIdentifierService(:final index) => fit.body.slots.service[index],
     SlotIdentifierDrone(:final index) => getDroneAsModule(fit, index),
+    SlotIdentifierImplant(:final index) => getImplantAsModule(fit, index),
+    SlotIdentifierBooster(:final slotId) => getBoosterAsModule(fit, slotId),
     _ => const Option.none(),
   };
 
