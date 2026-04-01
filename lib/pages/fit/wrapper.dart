@@ -669,6 +669,10 @@ class FitWrapper {
     FitModuleItem slot,
     Slots_GeneralSlot _,
   ) {
+    if (slot.state == FitItemState.online) {
+      return fit;
+    }
+
     final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
       type.index,
       (_) => Option.of(slot.copyWith(state: FitItemState.online)),
