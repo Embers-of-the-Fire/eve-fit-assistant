@@ -8,6 +8,10 @@ class _EquipmentTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fit = fitContext.fit;
+    final subsystemSlotCount = fitContext.ship.subsystemSlots.clamp(
+      0,
+      fit.body.slots.subsystem.length,
+    );
     final fitWrapper = fitContext.fitWrapper;
 
     return ListView(
@@ -137,7 +141,7 @@ class _EquipmentTab extends ConsumerWidget {
             ),
           ),
         ),
-        if (fit.body.slots.subsystem.isNotEmpty)
+        if (subsystemSlotCount > 0)
           _EquipmentHeader(
             title: context.l10n.subsystemSlot,
             actions: [
@@ -147,21 +151,23 @@ class _EquipmentTab extends ConsumerWidget {
               ),
             ],
           ),
-        ...SubsystemType.allTypes.map(
-          (type) => _AnySlotRow(
-            fitContext: fitContext,
-            slotIdent: SlotIdentifier.subsystem(type: type),
-            slotInfo: fit.body.slots.subsystem[type.index].match(
-              () => SlotInfo.empty(index: type.index),
-              (slot) => SlotInfo.item(
-                state: slot.state,
-                type: const native.OutSlotType.subSystem(),
-                index: type.index,
-                slot: slot,
+        ...SubsystemType.allTypes
+            .take(subsystemSlotCount)
+            .map(
+              (type) => _AnySlotRow(
+                fitContext: fitContext,
+                slotIdent: SlotIdentifier.subsystem(type: type),
+                slotInfo: fit.body.slots.subsystem[type.index].match(
+                  () => SlotInfo.empty(index: type.index),
+                  (slot) => SlotInfo.item(
+                    state: FitItemState.online,
+                    type: const native.OutSlotType.subSystem(),
+                    index: type.index,
+                    slot: slot,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
       ],
     );
   }
