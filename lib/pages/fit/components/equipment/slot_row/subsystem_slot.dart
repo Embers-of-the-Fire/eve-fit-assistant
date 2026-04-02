@@ -14,19 +14,19 @@ class _SubsystemSlotRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemId = slotInfo.slot.itemId;
-    if (itemId is! FitStorageItemIdItem) {
-      return ListTile(
-        title: Text("${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type}"),
-      );
-    }
-
-    final subsystemDef = ref.watch(bundleCollectionGetSubsystemProvider(itemId.asId));
-    if (subsystemDef == null) {
+    final originTypeId = fitContext.resolveOriginTypeId(itemId);
+    final displayTypeId = fitContext.resolveDisplayTypeId(itemId);
+    if (originTypeId == null || displayTypeId == null) {
       return ListTile(title: Text("Unknown Subsystem ${itemId.asId} at slot ${slotInfo.index}"));
     }
 
+    final subsystemDef = ref.watch(bundleCollectionGetSubsystemProvider(originTypeId));
+    if (subsystemDef == null) {
+      return ListTile(title: Text("Unknown Subsystem $originTypeId at slot ${slotInfo.index}"));
+    }
+
     final subsystemType = subsystemDef.subsystemType;
-    final type = ref.watch(bundleCollectionGetTypeProvider(itemId.asId));
+    final type = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
 
     final metaGroupIcon = type != null
         ? ref.watch(bundleCollectionGetMetaGroupProvider(type.metaGroupId).select((t) => t?.icon))
@@ -64,7 +64,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
                   },
                 ),
         ),
-        title: LocalizedTypeName(typeId: itemId.asId),
+        title: LocalizedTypeName(typeId: displayTypeId),
       ),
     );
   }

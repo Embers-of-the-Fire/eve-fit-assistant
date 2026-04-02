@@ -12,6 +12,21 @@ class FitContext {
   final FitWrapper fitWrapper;
   final native.Ship? emulated;
   final Ship ship;
+
+  FitDynamicItem? dynamicItemFor(FitStorageItemId itemId) => itemId.when(
+    item: (_) => null,
+    dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId],
+  );
+
+  int? resolveDisplayTypeId(FitStorageItemId itemId) => itemId.when(
+    item: (id) => id,
+    dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.typeId,
+  );
+
+  int? resolveOriginTypeId(FitStorageItemId itemId) => itemId.when(
+    item: (id) => id,
+    dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.originTypeId,
+  );
 }
 
 class FitWrapper {
@@ -21,6 +36,14 @@ class FitWrapper {
   final String fitId;
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
+
+  int? _resolveOriginTypeId(FitStorage fit, FitStorageItemId itemId) => itemId.when(
+    item: (id) => id,
+    dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.originTypeId,
+  );
+
+  IList<FitFighterItem> _normalizeFighters(Iterable<FitFighterItem> fighters) =>
+      IList(fighters.mapWithIndex((fighter, index) => fighter.copyWith(groupId: index)));
 
   // Implants are serialized as a plain array, but the authoritative slot id for
   // each implant still comes from bundle metadata. We therefore keep array
@@ -248,7 +271,8 @@ class FitWrapper {
       if (slotOpt.isNone()) return fit;
 
       final slot = slotOpt.toNullable()!;
-      final typeId = slot.itemId.asId;
+      final typeId = _resolveOriginTypeId(fit, slot.itemId);
+      if (typeId == null) return fit;
 
       switch (slotIdent) {
         case SlotIdentifierHigh(:final index):
@@ -337,6 +361,8 @@ class FitWrapper {
         await removeRig(index);
       case SlotIdentifierSubsystem(:final type):
         await removeSubsystem(type);
+      case SlotIdentifierFighter(:final index):
+        await removeFighter(index);
       case SlotIdentifierService(:final index):
         await removeService(index);
       case SlotIdentifierDrone(:final index):
@@ -375,6 +401,15 @@ class FitWrapper {
         await removeSlot(slotIdent, ref);
     }
   }
+
+  Future<void> clearSubsystemAdjusted(Ship ship) => wrapped.update((fit) {
+    final cleared = fit.copyWith(
+      body: fit.body.copyWith(
+        slots: fit.body.slots.copyWith(subsystem: emptySlotList(fit.body.slots.subsystem.length)),
+      ),
+    );
+    return applySubsystemResize(cleared, ship, (_) => null);
+  });
 
   Future<void> setSlotCharge(SlotIdentifier slotIdent, int chargeTypeId) async {
     switch (slotIdent) {
@@ -948,6 +983,43 @@ class FitWrapper {
   Future<void> clearDrones() =>
       wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(drones: IList<FitDroneItem>())));
 
+  Future<void> addFighter(int typeId) => wrapped.update((fit) {
+    final fighters = fit.body.fighters.toList()
+      ..add(
+        FitFighterItem(
+          itemId: FitStorageItemId.item(id: typeId),
+          groupId: fit.body.fighters.length,
+          fighterAbility: 0,
+        ),
+      );
+    return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
+  });
+
+  Future<void> clearFighters() => wrapped.update(
+    (fit) => fit.copyWith(body: fit.body.copyWith(fighters: IList<FitFighterItem>())),
+  );
+
+  Future<void> removeFighter(int index) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.fighters.length) return fit;
+    final fighters = fit.body.fighters.toList()..removeAt(index);
+    return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
+  });
+
+  Future<void> setFighterAbility(int index, int abilityMask) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.fighters.length) return fit;
+    final fighters = fit.body.fighters.toList();
+    fighters[index] = fighters[index].copyWith(fighterAbility: abilityMask);
+    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+  });
+
+  Future<void> toggleFighterAbilityBit(int index, int abilityBit) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.fighters.length) return fit;
+    final fighters = fit.body.fighters.toList();
+    final fighter = fighters[index];
+    fighters[index] = fighter.copyWith(fighterAbility: fighter.fighterAbility ^ abilityBit);
+    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+  });
+
   Future<void> removeDrone(int index) => wrapped.update((fit) {
     if (index < 0 || index >= fit.body.drones.length) return fit;
     final drones = fit.body.drones.toList()..removeAt(index);
@@ -1004,6 +1076,10 @@ class FitWrapper {
       newLow = defs.fold<int>(0, (sum, s) => sum + s.lowSlots);
     }
 
+    // Subsystems can redefine the ship's slot topology. We intentionally keep
+    // legacy behavior here: when the new layout shrinks, tail slots are dropped
+    // outright so the resulting fit shape matches the deprecated fitter and the
+    // native engine never sees modules in now-invalid slots.
     IList<Option<FitModuleItem>> resize(IList<Option<FitModuleItem>> current, int target) {
       if (target == current.length) return current;
       if (target < current.length) {

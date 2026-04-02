@@ -69,15 +69,14 @@ class _DroneSlotRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemId = slotInfo.slot.itemId;
-    if (itemId is! FitStorageItemIdItem) {
-      return ListTile(
-        title: Text("${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type}"),
-      );
+    final displayTypeId = fitContext.resolveDisplayTypeId(itemId);
+    if (displayTypeId == null) {
+      return ListTile(title: Text("Unknown Item ${itemId.asId} at slot ${slotInfo.index}"));
     }
 
-    final typeDef = ref.watch(bundleCollectionGetTypeProvider(itemId.asId));
+    final typeDef = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
     if (typeDef == null) {
-      return ListTile(title: Text("Unknown Item ${itemId.asId} at slot ${slotInfo.index}"));
+      return ListTile(title: Text("Unknown Item $displayTypeId at slot ${slotInfo.index}"));
     }
 
     final metaGroupIcon = ref.watch(
@@ -106,7 +105,7 @@ class _DroneSlotRow extends ConsumerWidget {
           onTap: () => fitContext.fitWrapper.toggleSlot(slotIdent, ref),
           child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
         ),
-        title: LocalizedTypeName(typeId: itemId.asId),
+        title: LocalizedTypeName(typeId: displayTypeId),
         trailing: Text("x $quantity"),
       ),
     );

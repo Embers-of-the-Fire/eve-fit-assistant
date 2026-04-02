@@ -1,4 +1,5 @@
 import "package:auto_route/annotations.dart";
+import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/icon/bordered_rect_avatar.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/icon/state_icon.dart";
@@ -42,6 +43,7 @@ import "package:loading_indicator/loading_indicator.dart";
 
 part "columns.dart";
 part "components/action_icons.dart";
+part "components/add_charge_dialog.dart";
 part "components/attribute/capacitor.dart";
 part "components/attribute/cargo.dart";
 part "components/attribute/hp.dart";
@@ -51,6 +53,7 @@ part "components/attribute/ship_info.dart";
 part "components/attribute/weapon.dart";
 part "components/equipment/slot_row/drone_slot.dart";
 part "components/equipment/slot_row/empty_slot_row.dart";
+part "components/equipment/slot_row/fighter_slot.dart";
 part "components/equipment/slot_row/slot_row.dart";
 part "components/equipment/slot_row/subsystem_slot.dart";
 part "components/equipment/slot_row/tactical_mode_slot.dart";

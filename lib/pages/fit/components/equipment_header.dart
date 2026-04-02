@@ -3,10 +3,10 @@ part of "../page.dart";
 class _EquipmentHeader extends StatelessWidget {
   const _EquipmentHeader({
     required this.title,
-    this.actions,
-    this.onErrorPrompted,
     this.trailing,
+    this.actions,
     this.warningType,
+    this.onErrorPrompted,
   });
 
   final String title;

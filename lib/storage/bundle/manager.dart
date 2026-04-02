@@ -32,7 +32,6 @@ abstract class BundleInfo with _$BundleInfo {
 @freezed
 abstract class BundleRegistry with _$BundleRegistry {
   const factory BundleRegistry({
-    // ignore: invalid_annotation_target
     @JsonKey(defaultValue: IMap.empty) required IMap<String, BundleInfo> bundles,
     String? selectedBundleId,
   }) = _BundleRegistry;

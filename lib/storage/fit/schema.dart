@@ -316,5 +316,15 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         .toList(),
   ),
   skills: {},
-  dynamicItems: {},
+  dynamicItems: Map<int, native.DynamicItem>.fromEntries(
+    fitStorage.dynamicRegistry.dynamicItems.entries.map(
+      (entry) => MapEntry(
+        entry.key,
+        native.DynamicItem(
+          baseType: entry.value.originTypeId,
+          dynamicAttributes: Map<int, double>.from(entry.value.dynamicAttributes.unlock),
+        ),
+      ),
+    ),
+  ),
 );

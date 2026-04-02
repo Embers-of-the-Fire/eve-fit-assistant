@@ -41,19 +41,20 @@ class _SlotRow extends ConsumerWidget {
       case final SlotIdentifierDrone drone:
         return _DroneSlotRow(fitContext: fitContext, slotIdent: drone, slotInfo: slotInfo);
 
+      case final SlotIdentifierFighter fighter:
+        return _FighterSlotRow(fitContext: fitContext, slotIdent: fighter, slotInfo: slotInfo);
+
       default:
-        final itemId = slotInfo.slot.itemId;
-        if (itemId is! FitStorageItemIdItem) {
+        final displayTypeId = fitContext.resolveDisplayTypeId(slotInfo.slot.itemId);
+        if (displayTypeId == null) {
           return ListTile(
-            title: Text(
-              "${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type}",
-            ),
+            title: Text("Unknown Item ${slotInfo.slot.itemId.asId} at slot ${slotInfo.index}"),
           );
         }
 
-        final type = ref.watch(bundleCollectionGetTypeProvider(itemId.asId));
+        final type = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
         if (type == null) {
-          return ListTile(title: Text("Unknown Item ${itemId.asId} at slot ${slotInfo.index}"));
+          return ListTile(title: Text("Unknown Item $displayTypeId at slot ${slotInfo.index}"));
         }
 
         final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));
@@ -207,13 +208,7 @@ class _SlotRowDisplay extends ConsumerWidget {
   }
 
   bool _canHaveCharge(WidgetRef ref) {
-    final originTypeId = slotInfo.slot.itemId.map(
-      item: (item) => item.id,
-      dynamic: (dyn) {
-        final dynItem = fitContext.fit.dynamicRegistry.dynamicItems.get(dyn.dynamicId);
-        return dynItem?.originTypeId;
-      },
-    );
+    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
     if (originTypeId == null) return false;
 
     final slots = ref.read(bundleCollectionGetSlotsProvider);
@@ -241,7 +236,23 @@ class _SlotRowDisplay extends ConsumerWidget {
   }
 
   Future<void> _handleSetCharge(BuildContext context, WidgetRef ref) async {
-    // TODO: Implement charge selection dialog
-    // Need to filter compatible charges based on module type
+    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
+    if (originTypeId == null) return;
+
+    final slots = ref.read(bundleCollectionGetSlotsProvider);
+    if (slots == null) return;
+
+    final chargeGroups = switch (slotIdent) {
+      SlotIdentifierHigh _ => slots.highSlots[originTypeId]?.chargeGroups,
+      SlotIdentifierMedium _ => slots.mediumSlots[originTypeId]?.chargeGroups,
+      SlotIdentifierLow _ => slots.lowSlots[originTypeId]?.chargeGroups,
+      _ => null,
+    };
+    if (chargeGroups == null || chargeGroups.isEmpty) return;
+
+    final chargeTypeId = await showAddChargeDialog(context: context, chargeGroups: chargeGroups);
+    if (chargeTypeId == null) return;
+
+    await fitContext.fitWrapper.setSlotCharge(slotIdent, chargeTypeId);
   }
 }

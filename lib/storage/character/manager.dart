@@ -33,7 +33,6 @@ abstract class CharacterMetadata with _$CharacterMetadata {
 @freezed
 abstract class CharacterRegistry with _$CharacterRegistry {
   const factory CharacterRegistry({
-    // ignore: invalid_annotation_target
     @JsonKey(defaultValue: IMap.empty) required IMap<String, CharacterMetadata> characters,
   }) = _CharacterRegistry;
 

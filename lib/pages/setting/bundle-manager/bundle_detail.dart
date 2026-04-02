@@ -111,7 +111,7 @@ class BundleDetailPage extends ConsumerWidget {
                   final patch = bundleRegistrar.history[bundleRegistrar.history.length - 1 - index];
                   return _PatchTile(patch: patch, formatTs: formatTs);
                 },
-                separatorBuilder: (_, __) => const Divider(),
+                separatorBuilder: (_, _) => const Divider(),
                 itemCount: bundleRegistrar.history.length,
               ),
             ),
