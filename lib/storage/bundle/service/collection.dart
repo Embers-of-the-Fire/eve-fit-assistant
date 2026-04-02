@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/data/proto/categories.pb.dart";
 import "package:eve_fit_assistant/data/proto/collections.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
+import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/data/proto/groups.pb.dart";
 import "package:eve_fit_assistant/data/proto/market_groups.pb.dart";
@@ -72,6 +73,10 @@ class BundleCollectionProxy {
   Subsystem? getSubsystem(int typeId) => _collection.subsystems[typeId];
   Iterable<Subsystem> get allSubsystems => _collection.subsystems.values;
   Slots get slots => _collection.slots;
+  pb_dynamic.DynamicMutator? getDynamicMutator(int modifierTypeId) =>
+      _collection.dynamicMutators[modifierTypeId];
+  pb_dynamic.DynamicTypeOptions? getDynamicTypeOptions(int baseTypeId) =>
+      _collection.dynamicTypeOptions[baseTypeId];
 }
 
 @riverpodSingleton

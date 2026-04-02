@@ -4,6 +4,7 @@ package collections;
 import "categories.proto";
 import "dogma_attributes.proto";
 import "dogma_units.proto";
+import "dynamic.proto";
 import "groups.proto";
 import "market_groups.proto";
 import "meta_groups.proto";
@@ -25,4 +26,6 @@ message Collection {
   map<uint32, fit.Subsystem> subsystems = 10;
 
   required fit.Slots slots = 11;
+  map<uint32, dynamic.DynamicMutator> dynamic_mutators = 12;
+  map<uint32, dynamic.DynamicTypeOptions> dynamic_type_options = 13;
 }

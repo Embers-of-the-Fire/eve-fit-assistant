@@ -146,6 +146,7 @@ class _SlotRowDisplay extends ConsumerWidget {
 
   List<SlidableAction> _buildStartActions(BuildContext context, WidgetRef ref) {
     final actions = <SlidableAction>[];
+    final isDynamic = fitContext.dynamicItemFor(slotInfo.slot.itemId) != null;
 
     if (_canCopy()) {
       actions.add(
@@ -159,6 +160,32 @@ class _SlotRowDisplay extends ConsumerWidget {
           padding: .zero,
         ),
       );
+    }
+
+    if (_supportsDynamicItems()) {
+      if (isDynamic) {
+        actions.add(
+          SlidableAction(
+            onPressed: (_) => fitContext.fitWrapper.revertSlotFromDynamic(slotIdent),
+            backgroundColor: Colors.grey,
+            foregroundColor: Colors.white,
+            icon: Icons.cyclone_outlined,
+            label: context.l10n.dynamicRevert,
+            padding: .zero,
+          ),
+        );
+      } else if (_availableDynamicModifierTypeIds(ref).isNotEmpty) {
+        actions.add(
+          SlidableAction(
+            onPressed: (_) => _handleConvertToDynamic(context, ref),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.cyclone_outlined,
+            label: context.l10n.dynamicConvert,
+            padding: .zero,
+          ),
+        );
+      }
     }
 
     if (_canHaveCharge(ref)) {
@@ -227,12 +254,38 @@ class _SlotRowDisplay extends ConsumerWidget {
       slotIdent is SlotIdentifierLow ||
       slotIdent is SlotIdentifierRig;
 
+  bool _supportsDynamicItems() => _canCopy();
+
+  List<int> _availableDynamicModifierTypeIds(WidgetRef ref) {
+    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
+    if (originTypeId == null) return const [];
+
+    final collection = ref.read(bundleCollectionProvider);
+    return collection?.getDynamicTypeOptions(originTypeId)?.modifierTypeIds.toList() ?? const [];
+  }
+
   Future<void> _handleToggleState(WidgetRef ref) async {
     await fitContext.fitWrapper.toggleSlot(slotIdent, ref);
   }
 
   Future<void> _handleCopy(BuildContext context, WidgetRef ref) async {
     await fitContext.fitWrapper.copySlotToNext(slotIdent);
+  }
+
+  Future<void> _handleConvertToDynamic(BuildContext context, WidgetRef ref) async {
+    final modifierTypeIds = _availableDynamicModifierTypeIds(ref);
+    if (modifierTypeIds.isEmpty) return;
+
+    final modifierTypeId = await showDialog<int>(
+      context: context,
+      builder: (context) => AppDialog(
+        title: context.l10n.dynamicSelectTitle,
+        content: _DynamicModifierDialog(modifierTypeIds: modifierTypeIds),
+      ),
+    );
+    if (modifierTypeId == null) return;
+
+    await fitContext.fitWrapper.convertSlotToDynamic(slotIdent, modifierTypeId, ref);
   }
 
   Future<void> _handleSetCharge(BuildContext context, WidgetRef ref) async {
@@ -255,4 +308,34 @@ class _SlotRowDisplay extends ConsumerWidget {
 
     await fitContext.fitWrapper.setSlotCharge(slotIdent, chargeTypeId);
   }
+}
+
+class _DynamicModifierDialog extends ConsumerWidget {
+  const _DynamicModifierDialog({required this.modifierTypeIds});
+
+  final List<int> modifierTypeIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => SizedBox(
+    width: double.maxFinite,
+    child: ListView.builder(
+      shrinkWrap: true,
+      itemCount: modifierTypeIds.length,
+      itemBuilder: (context, index) {
+        final modifierTypeId = modifierTypeIds[index];
+        final type = ref.watch(bundleCollectionGetTypeProvider(modifierTypeId));
+        if (type == null) {
+          return ListTile(title: Text("Unknown Type $modifierTypeId"));
+        }
+
+        final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));
+
+        return ListTile(
+          onTap: () => Navigator.of(context).pop(modifierTypeId),
+          leading: EveIcon(icon: type.icon, size: 32),
+          title: Text(typeName),
+        );
+      },
+    ),
+  );
 }

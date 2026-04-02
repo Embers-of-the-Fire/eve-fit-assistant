@@ -37,6 +37,42 @@ class FitWrapper {
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
 
+  int _allocateDynamicItemId(FitStorage fit) {
+    var nextId = 0;
+    for (final dynamicId in fit.dynamicRegistry.dynamicItems.keys) {
+      if (dynamicId >= nextId) {
+        nextId = dynamicId + 1;
+      }
+    }
+    return nextId;
+  }
+
+  (FitStorage, FitStorageItemId) _cloneStorageItemId(FitStorage fit, FitStorageItemId itemId) =>
+      itemId.when(
+        item: (id) => (fit, FitStorageItemId.item(id: id)),
+        dynamic: (dynamicId) {
+          final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
+          if (dynamicItem == null) {
+            warning("Missing dynamic item $dynamicId while copying fit item");
+            return (fit, FitStorageItemId.dynamic(dynamicId: dynamicId));
+          }
+
+          final newDynamicId = _allocateDynamicItemId(fit);
+          final clonedDynamicItem = dynamicItem.copyWith(dynamicItemId: newDynamicId);
+          final updatedFit = fit.copyWith(
+            dynamicRegistry: fit.dynamicRegistry.copyWith(
+              dynamicItems: fit.dynamicRegistry.dynamicItems.add(newDynamicId, clonedDynamicItem),
+            ),
+          );
+          return (updatedFit, FitStorageItemId.dynamic(dynamicId: newDynamicId));
+        },
+      );
+
+  (FitStorage, FitModuleItem) _cloneModuleItem(FitStorage fit, FitModuleItem slot) {
+    final (updatedFit, itemId) = _cloneStorageItemId(fit, slot.itemId);
+    return (updatedFit, slot.copyWith(itemId: itemId));
+  }
+
   int? _resolveOriginTypeId(FitStorage fit, FitStorageItemId itemId) => itemId.when(
     item: (id) => id,
     dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.originTypeId,
@@ -442,7 +478,9 @@ class FitWrapper {
       final fromSlot = getSlot(fit, fromIdent);
       if (fromSlot.isNone()) return fit;
 
-      return updateSlot(fit, toIdent, (_) => fromSlot);
+      final (updatedFit, clonedSlot) = _cloneModuleItem(fit, fromSlot.toNullable()!);
+
+      return updateSlot(updatedFit, toIdent, (_) => Option.of(clonedSlot));
     });
   }
 
@@ -475,10 +513,72 @@ class FitWrapper {
       if (targetIndex == null) return fit;
 
       final targetIdent = createSlotIdentifier(slotIdent, targetIndex);
+      final (updatedFit, clonedSlot) = _cloneModuleItem(fit, fromSlot.toNullable()!);
 
-      return updateSlot(fit, targetIdent, (_) => fromSlot);
+      return updateSlot(updatedFit, targetIdent, (_) => Option.of(clonedSlot));
     });
   }
+
+  Future<void> convertSlotToDynamic(
+    SlotIdentifier slotIdent,
+    int modifierTypeId,
+    WidgetRef ref,
+  ) => wrapped.update((fit) {
+    final slotOpt = getSlot(fit, slotIdent);
+    if (slotOpt.isNone()) return fit;
+
+    final slot = slotOpt.toNullable()!;
+    if (slot.itemId is FitStorageItemIdDynamic) return fit;
+
+    final originTypeId = _resolveOriginTypeId(fit, slot.itemId);
+    if (originTypeId == null) return fit;
+
+    final dynamicMutator = ref.read(bundleCollectionProvider)?.getDynamicMutator(modifierTypeId);
+    if (dynamicMutator == null) return fit;
+    if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+
+    final dynamicItemId = _allocateDynamicItemId(fit);
+    final dynamicItem = FitDynamicItem(
+      dynamicItemId: dynamicItemId,
+      originTypeId: originTypeId,
+      typeId: dynamicMutator.resultingTypeId,
+      modifierTypeId: modifierTypeId,
+      dynamicAttributes: IMap.fromEntries(
+        dynamicMutator.attributes.keys.map((attributeId) => MapEntry<int, double>(attributeId, 1)),
+      ),
+    );
+    final updatedFit = fit.copyWith(
+      dynamicRegistry: fit.dynamicRegistry.copyWith(
+        dynamicItems: fit.dynamicRegistry.dynamicItems.add(dynamicItemId, dynamicItem),
+      ),
+    );
+
+    return updateSlot(
+      updatedFit,
+      slotIdent,
+      (_) => Option.of(slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId))),
+    );
+  });
+
+  Future<void> revertSlotFromDynamic(SlotIdentifier slotIdent) => wrapped.update((fit) {
+    final slotOpt = getSlot(fit, slotIdent);
+    if (slotOpt.isNone()) return fit;
+
+    final slot = slotOpt.toNullable()!;
+    return slot.itemId.when(
+      item: (_) => fit,
+      dynamic: (dynamicId) {
+        final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
+        if (dynamicItem == null) return fit;
+        return updateSlot(
+          fit,
+          slotIdent,
+          (_) =>
+              Option.of(slot.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId))),
+        );
+      },
+    );
+  });
 
   IList<Option<FitModuleItem>> getSlotList(FitStorage fit, SlotIdentifier slotIdent) =>
       switch (slotIdent) {
