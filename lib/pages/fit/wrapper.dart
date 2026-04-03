@@ -29,6 +29,27 @@ class FitContext {
   );
 }
 
+enum _FighterCategory { light, support, heavy }
+
+const int _fighterMissilesEffectId = 6431;
+const int _fighterAttackMissileEffectId = 6465;
+const int _fighterBombEffectId = 6485;
+
+_FighterCategory? _fighterCategoryFromGroupId(int groupId) => switch (groupId) {
+  1652 || 4777 => _FighterCategory.light,
+  1537 || 4778 => _FighterCategory.support,
+  1653 || 4779 => _FighterCategory.heavy,
+  _ => null,
+};
+
+int _fighterDefaultQuantityForGroupId(int groupId) =>
+    switch (_fighterCategoryFromGroupId(groupId)) {
+      _FighterCategory.light => 9,
+      _FighterCategory.support => 6,
+      _FighterCategory.heavy => 3,
+      null => 1,
+    };
+
 class FitWrapper {
   const FitWrapper({required this.wrapped, required this.fitId, required this.ref});
 
@@ -63,6 +84,28 @@ class FitWrapper {
     item: (id) => id,
     dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.originTypeId,
   );
+
+  int _fighterCategoryLimit(native.Ship? emulated, _FighterCategory category) {
+    final hull = emulated?.hull;
+    if (hull == null) return 0;
+
+    return switch (category) {
+      _FighterCategory.light => hull.getAttribute(EveConstAttrID.fighterLightSlots).round(),
+      _FighterCategory.support => hull.getAttribute(EveConstAttrID.fighterSupportSlots).round(),
+      _FighterCategory.heavy => hull.getAttribute(EveConstAttrID.fighterHeavySlots).round(),
+    };
+  }
+
+  int _fighterCategoryCount(FitStorage fit, _FighterCategory category) =>
+      fit.body.fighters.where((fighter) {
+        final typeId = _resolveOriginTypeId(fit, fighter.itemId);
+        if (typeId == null) return false;
+
+        final type = ref.read(bundleCollectionGetTypeProvider(typeId));
+        if (type == null) return false;
+
+        return _fighterCategoryFromGroupId(type.groupId) == category;
+      }).length;
 
   IList<FitFighterItem> _normalizeFighters(Iterable<FitFighterItem> fighters) =>
       IList(fighters.mapWithIndex((fighter, index) => fighter.copyWith(groupId: index)));
@@ -1079,14 +1122,27 @@ class FitWrapper {
 
   Future<void> addFighter(int typeId) => wrapped.update((fit) {
     final ship = ref.read(bundleCollectionGetShipProvider(fit.body.shipTypeId));
-    if (ship == null) return fit;
+    final fighterType = ref.read(bundleCollectionGetTypeProvider(typeId));
+    if (ship == null || fighterType == null) return fit;
     if (fit.body.fighters.length >= ship.fighterTubes) return fit;
+
+    final category = _fighterCategoryFromGroupId(fighterType.groupId);
+    if (category != null) {
+      final categoryLimit = _fighterCategoryLimit(
+        ref.read(nativeEmulatedShipProvider(fitId)),
+        category,
+      );
+      if (categoryLimit > 0 && _fighterCategoryCount(fit, category) >= categoryLimit) {
+        return fit;
+      }
+    }
 
     final fighters = fit.body.fighters.toList()
       ..add(
         FitFighterItem(
           itemId: FitStorageItemId.item(id: typeId),
           groupId: fit.body.fighters.length,
+          quantity: _fighterDefaultQuantityForGroupId(fighterType.groupId),
           fighterAbility: 0,
         ),
       );
@@ -1107,6 +1163,31 @@ class FitWrapper {
     if (index < 0 || index >= fit.body.fighters.length) return fit;
     final fighters = fit.body.fighters.toList();
     fighters[index] = fighters[index].copyWith(fighterAbility: abilityMask);
+    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+  });
+
+  Future<void> changeFighterAmount(int index, int newAmount) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.fighters.length) return fit;
+    final fighters = fit.body.fighters.toList();
+    if (newAmount <= 0) {
+      fighters.removeAt(index);
+      return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
+    }
+
+    fighters[index] = fighters[index].copyWith(quantity: newAmount);
+    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+  });
+
+  Future<void> changeFighterAmountBy(int index, int diff) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.fighters.length) return fit;
+    final fighters = fit.body.fighters.toList();
+    final newAmount = fighters[index].quantity + diff;
+    if (newAmount <= 0) {
+      fighters.removeAt(index);
+      return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
+    }
+
+    fighters[index] = fighters[index].copyWith(quantity: newAmount);
     return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
   });
 

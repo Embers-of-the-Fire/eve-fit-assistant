@@ -8,43 +8,69 @@ class _FighterTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fighters = fitContext.fit.body.fighters;
+    final lightLimit =
+        fitContext.emulated?.hull.getAttribute(EveConstAttrID.fighterLightSlots).round() ?? 0;
+    final supportLimit =
+        fitContext.emulated?.hull.getAttribute(EveConstAttrID.fighterSupportSlots).round() ?? 0;
+    final heavyLimit =
+        fitContext.emulated?.hull.getAttribute(EveConstAttrID.fighterHeavySlots).round() ?? 0;
+
+    var lightCount = 0;
+    var supportCount = 0;
+    var heavyCount = 0;
+
+    for (final fighter in fighters) {
+      final typeId = fitContext.resolveOriginTypeId(fighter.itemId);
+      if (typeId == null) continue;
+
+      final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+      if (type == null) continue;
+
+      switch (_fighterCategoryFromGroupId(type.groupId)) {
+        case _FighterCategory.light:
+          lightCount += 1;
+        case _FighterCategory.support:
+          supportCount += 1;
+        case _FighterCategory.heavy:
+          heavyCount += 1;
+        case null:
+          break;
+      }
+    }
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 10, right: 10, top: 8, bottom: 4),
-          child: Row(
-            spacing: 10,
-            children: <Widget>[
-              InkWell(
-                onTap: () async {
-                  if (fighters.length >= fitContext.ship.fighterTubes) return;
-                  final typeId = await showAddItemDialog(
-                    context: context,
-                    title: context.l10n.fitAddItemDialogTitle(slotName: context.l10n.fighter),
-                    initialMarketGroupId: SlotIdentifier.fighter(
-                      index: fighters.length,
-                    ).baseMarketGroupId,
-                    validator: SlotIdentifier.fighter(index: fighters.length).validator(ref),
-                  );
-                  if (typeId == null) return;
-                  await fitContext.fitWrapper.addFighter(typeId);
-                },
-                child: const Icon(Icons.add),
+        _EquipmentTitleRow(
+          leftActions: [
+            InkWell(
+              onTap: () async {
+                if (fighters.length >= fitContext.ship.fighterTubes) return;
+                final typeId = await showAddItemDialog(
+                  context: context,
+                  title: context.l10n.fitAddItemDialogTitle(slotName: context.l10n.fighter),
+                  initialMarketGroupId: SlotIdentifier.fighter(
+                    index: fighters.length,
+                  ).baseMarketGroupId,
+                  validator: SlotIdentifier.fighter(index: fighters.length).validator(ref),
+                );
+                if (typeId == null) return;
+                await fitContext.fitWrapper.addFighter(typeId);
+              },
+              child: const Icon(Icons.add),
+            ),
+            InkWell(onTap: fitContext.fitWrapper.clearFighters, child: const Icon(Icons.clear_all)),
+          ],
+          rightInfo: [
+            if (lightLimit > 0) Text("L $lightCount/$lightLimit"),
+            if (supportLimit > 0) Text("S $supportCount/$supportLimit"),
+            if (heavyLimit > 0) Text("H $heavyCount/$heavyLimit"),
+            Text(
+              context.l10n.fitFighterTabTubeCounter(
+                count: fighters.length,
+                total: fitContext.ship.fighterTubes,
               ),
-              InkWell(
-                onTap: fitContext.fitWrapper.clearFighters,
-                child: const Icon(Icons.clear_all),
-              ),
-              const Spacer(),
-              Text(
-                context.l10n.fitFighterTabTubeCounter(
-                  count: fighters.length,
-                  total: fitContext.ship.fighterTubes,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         const Divider(),
         Expanded(

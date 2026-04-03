@@ -1,56 +1,67 @@
 part of "../page.dart";
 
-class _EquipmentHeader extends StatelessWidget {
-  const _EquipmentHeader({
-    required this.title,
-    this.trailing,
-    this.actions,
-    this.warningType,
-    this.onErrorPrompted,
+class _EquipmentTitleRow extends StatelessWidget {
+  const _EquipmentTitleRow({
+    this.leftActions = const <Widget>[],
+    this.rightInfo = const <Widget>[],
   });
 
-  final String title;
-  final Widget? trailing;
-  final List<Widget>? actions;
-
-  final WarningType? warningType;
-  final void Function()? onErrorPrompted;
+  final List<Widget> leftActions;
+  final List<Widget> rightInfo;
 
   @override
-  Widget build(BuildContext context) {
-    final errorTrigger = warningType != null
-        ? WarningTrigger(type: warningType!, onTap: onErrorPrompted)
-        : null;
-    final trailing = this.trailing == null
-        ? errorTrigger
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              this.trailing!,
-              if (errorTrigger != null) ...[const SizedBox(width: 8), errorTrigger],
-            ],
-          );
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 10, right: 10, top: 8, bottom: 4),
+    child: Row(
       children: [
-        ListTile(
-          minVerticalPadding: 0,
-          minTileHeight: 0,
-          contentPadding: const .only(top: 10, left: 16, right: 16, bottom: 4),
-          title: Text(title),
-          trailing: trailing,
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: leftActions,
         ),
-        if (actions?.isNotEmpty ?? false) ...[
-          const Divider(height: 8),
-          Padding(
-            padding: const .only(left: 16, right: 16, bottom: 2),
-            child: Row(spacing: 10, children: actions!),
+        const Spacer(),
+        Flexible(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 6,
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: rightInfo,
+            ),
           ),
-        ],
-        const Divider(height: 4),
+        ),
       ],
-    );
-  }
+    ),
+  );
+}
+
+class _EquipmentHeader extends StatelessWidget {
+  const _EquipmentHeader({required this.title, this.actions});
+
+  final String title;
+  final List<Widget>? actions;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      ListTile(
+        minVerticalPadding: 0,
+        minTileHeight: 0,
+        contentPadding: const .only(top: 10, left: 16, right: 16, bottom: 4),
+        title: Text(title),
+      ),
+      if (actions?.isNotEmpty ?? false) ...[
+        const Divider(height: 8),
+        Padding(
+          padding: const .only(left: 16, right: 16, bottom: 2),
+          child: Row(spacing: 10, children: actions!),
+        ),
+      ],
+      const Divider(height: 4),
+    ],
+  );
 }

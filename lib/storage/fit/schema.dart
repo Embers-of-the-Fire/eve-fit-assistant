@@ -161,6 +161,7 @@ abstract class FitFighterItem with _$FitFighterItem {
   const factory FitFighterItem({
     required FitStorageItemId itemId,
     required int groupId,
+    @JsonKey(defaultValue: 1) required int quantity,
     required int fighterAbility,
   }) = _FitFighterItem;
 
@@ -339,16 +340,19 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         )
         .toList(),
     fighters: fitStorage.body.fighters
-        .map(
-          (fighter) => native.Fighter(
-            typeId: fighter.itemId.when(
-              item: (id) => id,
-              dynamic: (dynamicId) =>
-                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
-                  (throw StateError("Dynamic item $dynamicId not found in registry")),
+        .expand(
+          (fighter) => List.generate(
+            fighter.quantity,
+            (_) => native.Fighter(
+              typeId: fighter.itemId.when(
+                item: (id) => id,
+                dynamic: (dynamicId) =>
+                    fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
+                    (throw StateError("Dynamic item $dynamicId not found in registry")),
+              ),
+              groupId: fighter.groupId,
+              ability: fighter.fighterAbility,
             ),
-            groupId: fighter.groupId,
-            ability: fighter.fighterAbility,
           ),
         )
         .toList(),
