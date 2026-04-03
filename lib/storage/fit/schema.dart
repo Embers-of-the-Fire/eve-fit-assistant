@@ -120,6 +120,8 @@ abstract class FitStorageItemId with _$FitStorageItemId {
   factory FitStorageItemId.fromJson(Map<String, dynamic> json) => _$FitStorageItemIdFromJson(json);
 
   int get asId => when(item: (id) => id, dynamic: (dynamicId) => dynamicId);
+
+  int? get dynamicIdOrNull => when(item: (_) => null, dynamic: (dynamicId) => dynamicId);
 }
 
 @JsonEnum()
@@ -204,6 +206,70 @@ abstract class FitDynamicRegistry with _$FitDynamicRegistry {
 
   factory FitDynamicRegistry.fromJson(Map<String, dynamic> json) =>
       _$FitDynamicRegistryFromJson(json);
+}
+
+Set<int> collectReferencedDynamicItemIds(FitStorage fit) {
+  final referencedIds = <int>{};
+
+  void add(FitStorageItemId itemId) {
+    final dynamicId = itemId.dynamicIdOrNull;
+    if (dynamicId != null) {
+      referencedIds.add(dynamicId);
+    }
+  }
+
+  for (final slotList in [
+    fit.body.slots.high,
+    fit.body.slots.medium,
+    fit.body.slots.low,
+    fit.body.slots.rig,
+    fit.body.slots.subsystem,
+    fit.body.slots.service,
+  ]) {
+    for (final slot in slotList.filterNone()) {
+      add(slot.itemId);
+    }
+  }
+
+  for (final drone in fit.body.drones) {
+    add(drone.itemId);
+  }
+  for (final fighter in fit.body.fighters) {
+    add(fighter.itemId);
+  }
+  for (final implant in fit.body.implants) {
+    add(implant.itemId);
+  }
+  for (final booster in fit.body.boosters) {
+    add(booster.itemId);
+  }
+
+  return referencedIds;
+}
+
+int allocateDynamicItemId(FitStorage fit) {
+  final referencedIds = collectReferencedDynamicItemIds(fit);
+  var nextId = 0;
+  while (referencedIds.contains(nextId)) {
+    nextId += 1;
+  }
+  return nextId;
+}
+
+FitStorage pruneDynamicRegistry(FitStorage fit) {
+  final referencedIds = collectReferencedDynamicItemIds(fit);
+  final prunedDynamicItems = fit.dynamicRegistry.dynamicItems.removeWhere(
+    (dynamicId, _) => !referencedIds.contains(dynamicId),
+  );
+
+  if (identical(prunedDynamicItems, fit.dynamicRegistry.dynamicItems) ||
+      prunedDynamicItems == fit.dynamicRegistry.dynamicItems) {
+    return fit;
+  }
+
+  return fit.copyWith(
+    dynamicRegistry: fit.dynamicRegistry.copyWith(dynamicItems: prunedDynamicItems),
+  );
 }
 
 native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
@@ -316,5 +382,15 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         .toList(),
   ),
   skills: {},
-  dynamicItems: {},
+  dynamicItems: Map<int, native.DynamicItem>.fromEntries(
+    fitStorage.dynamicRegistry.dynamicItems.entries.map(
+      (entry) => MapEntry(
+        entry.key,
+        native.DynamicItem(
+          baseType: entry.value.originTypeId,
+          dynamicAttributes: Map<int, double>.from(entry.value.dynamicAttributes.unlock),
+        ),
+      ),
+    ),
+  ),
 );

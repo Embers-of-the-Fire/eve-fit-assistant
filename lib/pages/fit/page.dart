@@ -1,4 +1,5 @@
 import "package:auto_route/annotations.dart";
+import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/icon/bordered_rect_avatar.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/icon/state_icon.dart";
@@ -33,6 +34,7 @@ import "package:eve_fit_assistant/utils/num.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:eve_fit_assistant/utils/subsystem.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_slidable/flutter_slidable.dart";
@@ -42,6 +44,7 @@ import "package:loading_indicator/loading_indicator.dart";
 
 part "columns.dart";
 part "components/action_icons.dart";
+part "components/add_charge_dialog.dart";
 part "components/attribute/capacitor.dart";
 part "components/attribute/cargo.dart";
 part "components/attribute/hp.dart";
@@ -51,6 +54,7 @@ part "components/attribute/ship_info.dart";
 part "components/attribute/weapon.dart";
 part "components/equipment/slot_row/drone_slot.dart";
 part "components/equipment/slot_row/empty_slot_row.dart";
+part "components/equipment/slot_row/fighter_slot.dart";
 part "components/equipment/slot_row/slot_row.dart";
 part "components/equipment/slot_row/subsystem_slot.dart";
 part "components/equipment/slot_row/tactical_mode_slot.dart";
@@ -114,7 +118,11 @@ class _FitPage extends ConsumerWidget {
 
     final emulated = ref.watch(nativeEmulatedShipProvider(fitId));
 
-    final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier), fitId: fitId);
+    final fitWrapper = FitWrapper(
+      wrapped: ref.read(fitProvider(fitId).notifier),
+      fitId: fitId,
+      ref: ref,
+    );
     final fitContext = FitContext(
       fit: fit.fit,
       ship: shipInfo,

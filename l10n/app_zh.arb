@@ -11,6 +11,9 @@
   "confirm": "确认",
   "showInfo": "显示详情",
   "copy": "复制",
+  "dynamicConvert": "深渊",
+  "dynamicRevert": "还原",
+  "dynamicSelectTitle": "选择深渊物质",
   "enable": "启用",
   "disable": "禁用",
   "loading": "加载中...",
@@ -107,6 +110,17 @@
       }
     }
   },
+  "fitFighterTabTubeCounter": "{count}/{total} 管",
+  "@fitFighterTabTubeCounter": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "fitActionSet": "设置",
   "fitUnknownImplantAtSlot": "未知植入体，槽位 {slot}",
   "@fitUnknownImplantAtSlot": {
@@ -152,6 +166,10 @@
       }
     }
   },
+  "fitFighterAbilityTurret": "炮塔",
+  "fitFighterAbilityMissiles": "导弹",
+  "fitFighterAbilityVolley": "齐射",
+  "fitFighterAbilityBomb": "炸弹",
   "@@@@_FIT_DRONE_TAB": {},
   "fitDroneTabAddDroneTitle": "添加无人机",
   "@@@_APP_SETTINGS_PAGE": {},

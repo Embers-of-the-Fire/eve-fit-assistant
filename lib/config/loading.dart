@@ -8,11 +8,10 @@ import "package:flutter_easyloading/flutter_easyloading.dart";
 typedef L10nMessageBuilder = String Function(AppLocalizations l10n);
 
 class _LoadingMessage {
+  const _LoadingMessage(this.key, {this.message, this.l10nBuilder});
   final String key;
   final String? message;
   final L10nMessageBuilder? l10nBuilder;
-
-  const _LoadingMessage(this.key, {this.message, this.l10nBuilder});
 
   String resolve(AppLocalizations? l10n) {
     if (l10nBuilder != null && l10n != null) {

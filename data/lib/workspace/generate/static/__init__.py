@@ -12,6 +12,7 @@ from data.lib.schema import collections_pb2
 from . import categories
 from . import dogma_attributes
 from . import dogma_units
+from . import dynamic
 from . import fit
 from . import groups
 from . import market_groups
@@ -39,6 +40,7 @@ async def generate(data: GeneratorDatasource) -> collections_pb2.Collection:
             type_materials,
             dogma_units,
             dogma_attributes,
+            dynamic,
             fit,
         ]
     )

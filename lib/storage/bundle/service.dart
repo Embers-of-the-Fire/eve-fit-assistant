@@ -24,7 +24,6 @@ part "service.g.dart";
 abstract class BundleDescriptor with _$BundleDescriptor {
   const factory BundleDescriptor({
     required int generateTimestamp,
-    // ignore: invalid_annotation_target
     @JsonKey(defaultValue: false) required bool isIncremental,
     required String bundleId,
     required String appVersion,

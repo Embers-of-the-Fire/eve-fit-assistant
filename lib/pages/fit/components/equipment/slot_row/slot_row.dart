@@ -41,19 +41,20 @@ class _SlotRow extends ConsumerWidget {
       case final SlotIdentifierDrone drone:
         return _DroneSlotRow(fitContext: fitContext, slotIdent: drone, slotInfo: slotInfo);
 
+      case final SlotIdentifierFighter fighter:
+        return _FighterSlotRow(fitContext: fitContext, slotIdent: fighter, slotInfo: slotInfo);
+
       default:
-        final itemId = slotInfo.slot.itemId;
-        if (itemId is! FitStorageItemIdItem) {
+        final displayTypeId = fitContext.resolveDisplayTypeId(slotInfo.slot.itemId);
+        if (displayTypeId == null) {
           return ListTile(
-            title: Text(
-              "${slotInfo.state} at ${slotInfo.index}[${slotInfo.slot}]: ${slotInfo.type}",
-            ),
+            title: Text("Unknown Item ${slotInfo.slot.itemId.asId} at slot ${slotInfo.index}"),
           );
         }
 
-        final type = ref.watch(bundleCollectionGetTypeProvider(itemId.asId));
+        final type = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
         if (type == null) {
-          return ListTile(title: Text("Unknown Item ${itemId.asId} at slot ${slotInfo.index}"));
+          return ListTile(title: Text("Unknown Item $displayTypeId at slot ${slotInfo.index}"));
         }
 
         final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));
@@ -145,6 +146,7 @@ class _SlotRowDisplay extends ConsumerWidget {
 
   List<SlidableAction> _buildStartActions(BuildContext context, WidgetRef ref) {
     final actions = <SlidableAction>[];
+    final isDynamic = fitContext.dynamicItemFor(slotInfo.slot.itemId) != null;
 
     if (_canCopy()) {
       actions.add(
@@ -158,6 +160,32 @@ class _SlotRowDisplay extends ConsumerWidget {
           padding: .zero,
         ),
       );
+    }
+
+    if (_supportsDynamicItems()) {
+      if (isDynamic) {
+        actions.add(
+          SlidableAction(
+            onPressed: (_) => fitContext.fitWrapper.revertSlotFromDynamic(slotIdent),
+            backgroundColor: Colors.grey,
+            foregroundColor: Colors.white,
+            icon: Icons.cyclone_outlined,
+            label: context.l10n.dynamicRevert,
+            padding: .zero,
+          ),
+        );
+      } else if (_availableDynamicModifierTypeIds(ref).isNotEmpty) {
+        actions.add(
+          SlidableAction(
+            onPressed: (_) => _handleConvertToDynamic(context, ref),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.cyclone_outlined,
+            label: context.l10n.dynamicConvert,
+            padding: .zero,
+          ),
+        );
+      }
     }
 
     if (_canHaveCharge(ref)) {
@@ -207,13 +235,7 @@ class _SlotRowDisplay extends ConsumerWidget {
   }
 
   bool _canHaveCharge(WidgetRef ref) {
-    final originTypeId = slotInfo.slot.itemId.map(
-      item: (item) => item.id,
-      dynamic: (dyn) {
-        final dynItem = fitContext.fit.dynamicRegistry.dynamicItems.get(dyn.dynamicId);
-        return dynItem?.originTypeId;
-      },
-    );
+    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
     if (originTypeId == null) return false;
 
     final slots = ref.read(bundleCollectionGetSlotsProvider);
@@ -232,6 +254,16 @@ class _SlotRowDisplay extends ConsumerWidget {
       slotIdent is SlotIdentifierLow ||
       slotIdent is SlotIdentifierRig;
 
+  bool _supportsDynamicItems() => _canCopy();
+
+  List<int> _availableDynamicModifierTypeIds(WidgetRef ref) {
+    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
+    if (originTypeId == null) return const [];
+
+    final collection = ref.read(bundleCollectionProvider);
+    return collection?.getDynamicTypeOptions(originTypeId)?.modifierTypeIds.toList() ?? const [];
+  }
+
   Future<void> _handleToggleState(WidgetRef ref) async {
     await fitContext.fitWrapper.toggleSlot(slotIdent, ref);
   }
@@ -240,8 +272,70 @@ class _SlotRowDisplay extends ConsumerWidget {
     await fitContext.fitWrapper.copySlotToNext(slotIdent);
   }
 
-  Future<void> _handleSetCharge(BuildContext context, WidgetRef ref) async {
-    // TODO: Implement charge selection dialog
-    // Need to filter compatible charges based on module type
+  Future<void> _handleConvertToDynamic(BuildContext context, WidgetRef ref) async {
+    final modifierTypeIds = _availableDynamicModifierTypeIds(ref);
+    if (modifierTypeIds.isEmpty) return;
+
+    final modifierTypeId = await showDialog<int>(
+      context: context,
+      builder: (context) => AppDialog(
+        title: context.l10n.dynamicSelectTitle,
+        content: _DynamicModifierDialog(modifierTypeIds: modifierTypeIds),
+      ),
+    );
+    if (modifierTypeId == null) return;
+
+    await fitContext.fitWrapper.convertSlotToDynamic(slotIdent, modifierTypeId, ref);
   }
+
+  Future<void> _handleSetCharge(BuildContext context, WidgetRef ref) async {
+    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
+    if (originTypeId == null) return;
+
+    final slots = ref.read(bundleCollectionGetSlotsProvider);
+    if (slots == null) return;
+
+    final chargeGroups = switch (slotIdent) {
+      SlotIdentifierHigh _ => slots.highSlots[originTypeId]?.chargeGroups,
+      SlotIdentifierMedium _ => slots.mediumSlots[originTypeId]?.chargeGroups,
+      SlotIdentifierLow _ => slots.lowSlots[originTypeId]?.chargeGroups,
+      _ => null,
+    };
+    if (chargeGroups == null || chargeGroups.isEmpty) return;
+
+    final chargeTypeId = await showAddChargeDialog(context: context, chargeGroups: chargeGroups);
+    if (chargeTypeId == null) return;
+
+    await fitContext.fitWrapper.setSlotCharge(slotIdent, chargeTypeId);
+  }
+}
+
+class _DynamicModifierDialog extends ConsumerWidget {
+  const _DynamicModifierDialog({required this.modifierTypeIds});
+
+  final List<int> modifierTypeIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => SizedBox(
+    width: double.maxFinite,
+    child: ListView.builder(
+      shrinkWrap: true,
+      itemCount: modifierTypeIds.length,
+      itemBuilder: (context, index) {
+        final modifierTypeId = modifierTypeIds[index];
+        final type = ref.watch(bundleCollectionGetTypeProvider(modifierTypeId));
+        if (type == null) {
+          return ListTile(title: Text("Unknown Type $modifierTypeId"));
+        }
+
+        final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));
+
+        return ListTile(
+          onTap: () => Navigator.of(context).pop(modifierTypeId),
+          leading: EveIcon(icon: type.icon, size: 32),
+          title: Text(typeName),
+        );
+      },
+    ),
+  );
 }

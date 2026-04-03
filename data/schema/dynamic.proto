@@ -1,0 +1,18 @@
+syntax = "proto2";
+package dynamic;
+
+message DynamicAttribute {
+  required double min = 1;
+  required double max = 2;
+}
+
+message DynamicMutator {
+  required uint32 modifier_type_id = 1;
+  required uint32 resulting_type_id = 2;
+  repeated uint32 applicable_types = 3;
+  map<uint32, DynamicAttribute> attributes = 4;
+}
+
+message DynamicTypeOptions {
+  repeated uint32 modifier_type_ids = 1;
+}

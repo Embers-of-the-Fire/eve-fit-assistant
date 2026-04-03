@@ -145,10 +145,7 @@ class _EquipmentTab extends ConsumerWidget {
           _EquipmentHeader(
             title: context.l10n.subsystemSlot,
             actions: [
-              _ActionClearAll(
-                onTap: () =>
-                    fitWrapper.clearSlot(const SlotIdentifier.subsystem(type: SubsystemType.core)),
-              ),
+              _ActionClearAll(onTap: () => fitWrapper.clearSubsystemAdjusted(fitContext.ship)),
             ],
           ),
         ...SubsystemType.allTypes

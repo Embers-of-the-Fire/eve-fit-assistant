@@ -1,7 +1,7 @@
 part of "../page.dart";
 
 class _DroneTab extends ConsumerWidget {
-  const _DroneTab({required this.fitContext, super.key});
+  const _DroneTab({required this.fitContext});
 
   final FitContext fitContext;
 

@@ -1,7 +1,5 @@
 part of "../../../page.dart";
 
-// TODO: Implement slot size updater when fitting subsystems
-
 class _EmptySlotRow extends ConsumerWidget {
   const _EmptySlotRow({required this.slotIdent, required this.slotInfo, required this.fitContext});
 
