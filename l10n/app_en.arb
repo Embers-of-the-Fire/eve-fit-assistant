@@ -62,7 +62,6 @@
   "fitAddItemDialogTitle": "Add Item: {slotName}",
   "fitAddItemDialogTitleWithIndex": "Add Item: {slotName} #{index}",
   "fitSlotEmpty": "{slotName} (Empty)",
-  "fitFighterTabTubeCounter": "{count}/{total} tubes",
   "@fitFighterTabTubeCounter": {
     "placeholders": {
       "count": {
@@ -73,6 +72,7 @@
       }
     }
   },
+  "fitActionFill": "Fill",
   "fitActionSet": "Set",
   "fitUnknownImplantAtSlot": "Unknown implant at slot {slot}",
   "@fitUnknownImplantAtSlot": {

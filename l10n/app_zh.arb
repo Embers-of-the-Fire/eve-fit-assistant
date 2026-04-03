@@ -110,17 +110,7 @@
       }
     }
   },
-  "fitFighterTabTubeCounter": "{count}/{total} 管",
-  "@fitFighterTabTubeCounter": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
+  "fitActionFill": "补满",
   "fitActionSet": "设置",
   "fitUnknownImplantAtSlot": "未知植入体，槽位 {slot}",
   "@fitUnknownImplantAtSlot": {
