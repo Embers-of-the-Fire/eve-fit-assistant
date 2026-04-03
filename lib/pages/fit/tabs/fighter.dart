@@ -61,16 +61,13 @@ class _FighterTab extends ConsumerWidget {
             InkWell(onTap: fitContext.fitWrapper.clearFighters, child: const Icon(Icons.clear_all)),
           ],
           rightInfo: [
-            Text("H $heavyCount/$heavyLimit"),
-            Text("L $lightCount/$lightLimit"),
-            Text("S $supportCount/$supportLimit"),
-            Text(
-              context.l10n.fitFighterTabTubeCounter(
-                count: fighters.length,
-                total: fitContext.ship.fighterTubes,
-              ),
-              softWrap: false,
-              overflow: TextOverflow.fade,
+            _FighterHeaderCounter(prefix: "H", count: heavyCount, total: heavyLimit),
+            _FighterHeaderCounter(prefix: "L", count: lightCount, total: lightLimit),
+            _FighterHeaderCounter(prefix: "S", count: supportCount, total: supportLimit),
+            _FighterHeaderCounter(
+              suffix: "x",
+              count: fighters.length,
+              total: fitContext.ship.fighterTubes,
             ),
           ],
         ),
@@ -108,6 +105,37 @@ class _FighterTab extends ConsumerWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _FighterHeaderCounter extends StatelessWidget {
+  const _FighterHeaderCounter({required this.count, required this.total, this.prefix, this.suffix});
+
+  final String? prefix;
+  final String? suffix;
+  final int count;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = count > total ? Colors.red : null;
+    final textStyle = DefaultTextStyle.of(context).style;
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          if (prefix != null) TextSpan(text: "$prefix "),
+          TextSpan(
+            text: "$count",
+            style: textStyle.copyWith(color: color),
+          ),
+          TextSpan(text: " / $total"),
+          if (suffix != null) TextSpan(text: " $suffix"),
+        ],
+      ),
+      softWrap: false,
+      overflow: TextOverflow.fade,
     );
   }
 }

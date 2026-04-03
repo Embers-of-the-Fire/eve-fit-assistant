@@ -202,8 +202,46 @@ class _FighterSlotRow extends ConsumerWidget {
             ?dpsText,
           ],
         ),
-        trailing: Text("x ${storedFighter.quantity}"),
+        trailing: _FighterCountText(count: storedFighter.quantity, total: maxQuantity),
       ),
     );
+  }
+}
+
+class _FighterCountText extends StatelessWidget {
+  const _FighterCountText({required this.count, required this.total});
+
+  final int count;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _fighterSlotCounterColor(count: count, total: total);
+    final textStyle = DefaultTextStyle.of(context).style;
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          const TextSpan(text: "x "),
+          TextSpan(
+            text: "$count",
+            style: textStyle.copyWith(color: color),
+          ),
+          TextSpan(text: " / $total"),
+        ],
+      ),
+      textAlign: TextAlign.end,
+      softWrap: false,
+    );
+  }
+}
+
+Color? _fighterSlotCounterColor({required int count, required int total}) {
+  if (count > total) {
+    return Colors.red;
+  } else if (count < total && total > 0) {
+    return Colors.orange;
+  } else {
+    return null;
   }
 }
