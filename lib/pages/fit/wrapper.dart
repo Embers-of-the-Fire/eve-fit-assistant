@@ -37,15 +37,7 @@ class FitWrapper {
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
 
-  int _allocateDynamicItemId(FitStorage fit) {
-    var nextId = 0;
-    for (final dynamicId in fit.dynamicRegistry.dynamicItems.keys) {
-      if (dynamicId >= nextId) {
-        nextId = dynamicId + 1;
-      }
-    }
-    return nextId;
-  }
+  int _allocateDynamicItemId(FitStorage fit) => allocateDynamicItemId(fit);
 
   (FitStorage, FitStorageItemId) _cloneStorageItemId(FitStorage fit, FitStorageItemId itemId) =>
       itemId.when(
@@ -57,14 +49,7 @@ class FitWrapper {
             return (fit, FitStorageItemId.dynamic(dynamicId: dynamicId));
           }
 
-          final newDynamicId = _allocateDynamicItemId(fit);
-          final clonedDynamicItem = dynamicItem.copyWith(dynamicItemId: newDynamicId);
-          final updatedFit = fit.copyWith(
-            dynamicRegistry: fit.dynamicRegistry.copyWith(
-              dynamicItems: fit.dynamicRegistry.dynamicItems.add(newDynamicId, clonedDynamicItem),
-            ),
-          );
-          return (updatedFit, FitStorageItemId.dynamic(dynamicId: newDynamicId));
+          return (fit, FitStorageItemId.dynamic(dynamicId: dynamicItem.dynamicItemId));
         },
       );
 
