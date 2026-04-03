@@ -33,6 +33,12 @@ async def generate(data, collection):
         dynamic_item = DynamicItemAttributes.model_validate(raw)
         if not dynamic_item.inputOutputMapping:
             continue
+        if len(dynamic_item.inputOutputMapping) > 1:
+            raise ValueError(
+                "Dynamic mutator "
+                f"{modifier_type_id} has {len(dynamic_item.inputOutputMapping)} "
+                "input/output mappings; generation only supports one"
+            )
 
         mapping = dynamic_item.inputOutputMapping[0]
         entry = collection.dynamic_mutators[modifier_type_id]
