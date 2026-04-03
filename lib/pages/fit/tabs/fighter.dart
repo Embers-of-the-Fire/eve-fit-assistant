@@ -37,7 +37,12 @@ class _FighterTab extends ConsumerWidget {
                 child: const Icon(Icons.clear_all),
               ),
               const Spacer(),
-              Text("${fighters.length}/${fitContext.ship.fighterTubes} tubes"),
+              Text(
+                context.l10n.fitFighterTabTubeCounter(
+                  count: fighters.length,
+                  total: fitContext.ship.fighterTubes,
+                ),
+              ),
             ],
           ),
         ),
