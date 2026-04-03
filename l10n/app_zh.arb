@@ -155,6 +155,10 @@
       }
     }
   },
+  "fitFighterAbilityTurret": "炮塔",
+  "fitFighterAbilityMissiles": "导弹",
+  "fitFighterAbilityVolley": "齐射",
+  "fitFighterAbilityBomb": "炸弹",
   "@@@@_FIT_DRONE_TAB": {},
   "fitDroneTabAddDroneTitle": "添加无人机",
   "@@@_APP_SETTINGS_PAGE": {},
