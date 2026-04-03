@@ -11,18 +11,47 @@ class _SubsystemSlotRow extends ConsumerWidget {
   final _ItemSlotInfo slotInfo;
   final FitContext fitContext;
 
+  Future<void> _handleRemoveSubsystem(WidgetRef ref) =>
+      fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref);
+
+  Widget _buildRecoveryRow(BuildContext context, WidgetRef ref, String title) => Slidable(
+    endActionPane: ActionPane(
+      extentRatio: 0.15,
+      motion: const StretchMotion(),
+      children: [
+        SlidableAction(
+          onPressed: (_) => _handleRemoveSubsystem(ref),
+          backgroundColor: colorActionDelete,
+          foregroundColor: Colors.white,
+          icon: Icons.delete,
+          label: context.l10n.delete,
+          padding: .zero,
+        ),
+      ],
+    ),
+    child: ListTile(title: Text(title)),
+  );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemId = slotInfo.slot.itemId;
     final originTypeId = fitContext.resolveOriginTypeId(itemId);
     final displayTypeId = fitContext.resolveDisplayTypeId(itemId);
     if (originTypeId == null || displayTypeId == null) {
-      return ListTile(title: Text("Unknown Subsystem ${itemId.asId} at slot ${slotInfo.index}"));
+      return _buildRecoveryRow(
+        context,
+        ref,
+        "Unknown Subsystem ${itemId.asId} at slot ${slotInfo.index}",
+      );
     }
 
     final subsystemDef = ref.watch(bundleCollectionGetSubsystemProvider(originTypeId));
     if (subsystemDef == null) {
-      return ListTile(title: Text("Unknown Subsystem $originTypeId at slot ${slotInfo.index}"));
+      return _buildRecoveryRow(
+        context,
+        ref,
+        "Unknown Subsystem $originTypeId at slot ${slotInfo.index}",
+      );
     }
 
     final subsystemType = subsystemDef.subsystemType;
@@ -38,9 +67,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: [
           SlidableAction(
-            onPressed: (_) async {
-              await fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref);
-            },
+            onPressed: (_) => _handleRemoveSubsystem(ref),
             backgroundColor: colorActionDelete,
             foregroundColor: Colors.white,
             icon: Icons.delete,
