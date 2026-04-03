@@ -120,6 +120,11 @@ abstract class SlotIdentifier with _$SlotIdentifier {
       return type != null && !type.isDynamicType;
     }
 
+    bool isFighterType(int typeId) {
+      final type = ref.read(bundleCollectionGetTypeProvider(typeId));
+      return type != null && EveConstGroupId.fighter.contains(type.groupId);
+    }
+
     return when(
       high: (_) =>
           (node) => switch (node) {
@@ -161,14 +166,12 @@ abstract class SlotIdentifier with _$SlotIdentifier {
           },
       drone: (_) =>
           (node) => switch (node) {
-            EveSelectListRootType(:final typeId) => isBaseType(typeId),
+            EveSelectListRootType(:final typeId) => isBaseType(typeId) && !isFighterType(typeId),
             _ => true,
           },
       fighter: (_) =>
           (node) => switch (node) {
-            EveSelectListRootMarketGroup(:final marketGroupId) =>
-              marketGroupId == EveConstMarketGroupId.fighter,
-            EveSelectListRootType(:final typeId) => isBaseType(typeId),
+            EveSelectListRootType(:final typeId) => isBaseType(typeId) && isFighterType(typeId),
             _ => true,
           },
       implant: (_) =>

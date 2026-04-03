@@ -20,6 +20,20 @@ class EveConstMarketGroupId {
   static const int fighter = 2236;
 }
 
+class EveConstGroupId {
+  const EveConstGroupId._();
+
+  static const Set<int> fighter = {
+    1454, // irregular fighter
+    1537, // support fighter
+    1652, // light fighter
+    1653, // heavy fighter
+    4777, // structure light fighter
+    4778, // structure support fighter
+    4779, // structure heavy fighter
+  };
+}
+
 class EveConstGeneric {
   const EveConstGeneric._();
 
