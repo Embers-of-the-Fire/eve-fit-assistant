@@ -73,6 +73,7 @@
       }
     }
   },
+  "fitActionFill": "Fill",
   "fitActionSet": "Set",
   "fitUnknownImplantAtSlot": "Unknown implant at slot {slot}",
   "@fitUnknownImplantAtSlot": {

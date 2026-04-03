@@ -42,14 +42,6 @@ _FighterCategory? _fighterCategoryFromGroupId(int groupId) => switch (groupId) {
   _ => null,
 };
 
-int _fighterDefaultQuantityForGroupId(int groupId) =>
-    switch (_fighterCategoryFromGroupId(groupId)) {
-      _FighterCategory.light => 9,
-      _FighterCategory.support => 6,
-      _FighterCategory.heavy => 3,
-      null => 1,
-    };
-
 class FitWrapper {
   const FitWrapper({required this.wrapped, required this.fitId, required this.ref});
 
@@ -106,6 +98,40 @@ class FitWrapper {
 
         return _fighterCategoryFromGroupId(type.groupId) == category;
       }).length;
+
+  Future<int> _resolveDefaultFighterQuantity(FitStorage fit, int typeId, int groupId) async {
+    try {
+      final tempFighters = fit.body.fighters.toList()
+        ..add(
+          FitFighterItem(
+            itemId: FitStorageItemId.item(id: typeId),
+            groupId: groupId,
+            quantity: 1,
+            fighterAbility: 0,
+          ),
+        );
+      final tempFit = fit.copyWith(
+        body: fit.body.copyWith(fighters: _normalizeFighters(tempFighters)),
+      );
+      final engine = ref.read(nativeFitEngineServiceProvider).engine;
+      final output = await engine.emulate(fit: convertToNative(tempFit));
+
+      for (final item in output.modules) {
+        final slotType = item.slot.slotType;
+        if (slotType case native.OutSlotType_Fighter(:final groupId)) {
+          if (groupId != tempFighters.length - 1) continue;
+
+          final quantity = item.getAttribute(EveConstAttrID.fighterSquadronMaxSize).round();
+          if (quantity > 0) return quantity;
+        }
+      }
+    } on Object catch (error, stackTrace) {
+      warning("Failed to resolve fighter squadron max size for $typeId: $error");
+      debug(error.toString(), stackTrace: stackTrace);
+    }
+
+    return 1;
+  }
 
   IList<FitFighterItem> _normalizeFighters(Iterable<FitFighterItem> fighters) =>
       IList(fighters.mapWithIndex((fighter, index) => fighter.copyWith(groupId: index)));
@@ -1120,11 +1146,12 @@ class FitWrapper {
   Future<void> clearDrones() =>
       wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(drones: IList<FitDroneItem>())));
 
-  Future<void> addFighter(int typeId) => wrapped.update((fit) {
+  Future<void> addFighter(int typeId) async {
+    final fit = ref.read(fitProvider(fitId)).fit;
     final ship = ref.read(bundleCollectionGetShipProvider(fit.body.shipTypeId));
     final fighterType = ref.read(bundleCollectionGetTypeProvider(typeId));
-    if (ship == null || fighterType == null) return fit;
-    if (fit.body.fighters.length >= ship.fighterTubes) return fit;
+    if (ship == null || fighterType == null) return;
+    if (fit.body.fighters.length >= ship.fighterTubes) return;
 
     final category = _fighterCategoryFromGroupId(fighterType.groupId);
     if (category != null) {
@@ -1133,21 +1160,33 @@ class FitWrapper {
         category,
       );
       if (categoryLimit > 0 && _fighterCategoryCount(fit, category) >= categoryLimit) {
-        return fit;
+        return;
       }
     }
 
-    final fighters = fit.body.fighters.toList()
-      ..add(
-        FitFighterItem(
-          itemId: FitStorageItemId.item(id: typeId),
-          groupId: fit.body.fighters.length,
-          quantity: _fighterDefaultQuantityForGroupId(fighterType.groupId),
-          fighterAbility: 0,
-        ),
+    final groupId = fit.body.fighters.length;
+    final quantity = await _resolveDefaultFighterQuantity(fit, typeId, groupId);
+
+    await wrapped.update((currentFit) {
+      final currentShip = ref.read(bundleCollectionGetShipProvider(currentFit.body.shipTypeId));
+      if (currentShip == null || currentFit.body.fighters.length >= currentShip.fighterTubes) {
+        return currentFit;
+      }
+
+      final fighters = currentFit.body.fighters.toList()
+        ..add(
+          FitFighterItem(
+            itemId: FitStorageItemId.item(id: typeId),
+            groupId: currentFit.body.fighters.length,
+            quantity: quantity,
+            fighterAbility: 0,
+          ),
+        );
+      return currentFit.copyWith(
+        body: currentFit.body.copyWith(fighters: _normalizeFighters(fighters)),
       );
-    return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
-  });
+    });
+  }
 
   Future<void> clearFighters() => wrapped.update(
     (fit) => fit.copyWith(body: fit.body.copyWith(fighters: IList<FitFighterItem>())),

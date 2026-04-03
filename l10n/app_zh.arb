@@ -121,6 +121,7 @@
       }
     }
   },
+  "fitActionFill": "补满",
   "fitActionSet": "设置",
   "fitUnknownImplantAtSlot": "未知植入体，槽位 {slot}",
   "@fitUnknownImplantAtSlot": {

@@ -113,7 +113,7 @@ class _FighterSlotRow extends ConsumerWidget {
           onPressed: (_) => _setAmount(maxQuantity),
           backgroundColor: Colors.green.shade400,
           foregroundColor: Colors.white,
-          label: "Fill",
+          label: context.l10n.fitActionFill,
           padding: .zero,
         ),
     ];
@@ -134,15 +134,6 @@ class _FighterSlotRow extends ConsumerWidget {
           backgroundColor: Colors.green.shade400,
           foregroundColor: Colors.black,
           label: "+1",
-          padding: .zero,
-        ),
-      if (storedFighter.fighterAbility != 0)
-        SlidableAction(
-          onPressed: (_) => fitContext.fitWrapper.setFighterAbility(slotIdent.index, 0),
-          backgroundColor: Colors.grey,
-          foregroundColor: Colors.white,
-          icon: Icons.restart_alt,
-          label: context.l10n.cancel,
           padding: .zero,
         ),
       SlidableAction(
