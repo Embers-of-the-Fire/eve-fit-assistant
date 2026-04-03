@@ -54,6 +54,18 @@ class _DroneSlotRow extends ConsumerWidget {
     ),
   ];
 
+  List<SlidableAction> _buildRecoveryActions(BuildContext context, WidgetRef ref) =>
+      <SlidableAction>[
+        SlidableAction(
+          onPressed: (_) => _handleRemoveDrone(context, ref),
+          backgroundColor: colorActionDelete,
+          foregroundColor: Colors.white,
+          icon: Icons.delete,
+          label: context.l10n.delete,
+          padding: .zero,
+        ),
+      ];
+
   Future<void> _handleSetAmount(BuildContext context, WidgetRef ref, int amount) async {
     await fitContext.fitWrapper.changeDroneAmount(slotIdent.index, amount);
   }
@@ -66,17 +78,39 @@ class _DroneSlotRow extends ConsumerWidget {
     await fitContext.fitWrapper.removeDrone(slotIdent.index);
   }
 
+  Widget _buildRecoveryRow(BuildContext context, WidgetRef ref, String title) {
+    final quantity = fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity ?? 0;
+    final recoveryActions = _buildRecoveryActions(context, ref);
+
+    return Slidable(
+      endActionPane: ActionPane(
+        extentRatio: 0.15 * recoveryActions.length,
+        motion: const StretchMotion(),
+        children: recoveryActions,
+      ),
+      child: ListTile(title: Text(title), trailing: Text("x $quantity")),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemId = slotInfo.slot.itemId;
     final displayTypeId = fitContext.resolveDisplayTypeId(itemId);
     if (displayTypeId == null) {
-      return ListTile(title: Text("Unknown Item ${itemId.asId} at slot ${slotInfo.index}"));
+      return _buildRecoveryRow(
+        context,
+        ref,
+        "Unknown Item ${itemId.asId} at slot ${slotInfo.index}",
+      );
     }
 
     final typeDef = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
     if (typeDef == null) {
-      return ListTile(title: Text("Unknown Item $displayTypeId at slot ${slotInfo.index}"));
+      return _buildRecoveryRow(
+        context,
+        ref,
+        "Unknown Item $displayTypeId at slot ${slotInfo.index}",
+      );
     }
 
     final metaGroupIcon = ref.watch(
