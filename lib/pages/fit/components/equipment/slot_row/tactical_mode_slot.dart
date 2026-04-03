@@ -22,6 +22,11 @@ class _TacticalModeSlotRow extends StatelessWidget {
     }
     return ListTile(
       onTap: () => fitContext.fitWrapper.toggleTacticalMode(fitContext.ship),
+      onLongPress: () => showItemDetailPage(
+        context,
+        typeId: slotInfo.slot.itemId.asId,
+        fitReference: ItemDetailFitReference.module(fitId: fitContext.fitId, index: slotInfo.index),
+      ),
       leading: StateIcon.circle(
         state: slotInfo.state,
         child: Image(

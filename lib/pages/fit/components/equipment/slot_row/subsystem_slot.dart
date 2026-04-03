@@ -92,6 +92,14 @@ class _SubsystemSlotRow extends ConsumerWidget {
                 ),
         ),
         title: LocalizedTypeName(typeId: displayTypeId),
+        onTap: () => showItemDetailPage(
+          context,
+          typeId: displayTypeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            index: slotInfo.index,
+          ),
+        ),
       ),
     );
   }

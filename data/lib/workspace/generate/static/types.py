@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import sqlite3
+
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
@@ -14,6 +17,32 @@ from data.lib.workspace.generate.static.utils import loc
 
 if TYPE_CHECKING:
     from data.lib.workspace.generate import GeneratorDatasource
+
+
+_REQUIRED_SKILL_ATTRIBUTE_IDS = [182, 183, 184, 1285, 1289, 1290]
+_REQUIRED_SKILL_LEVEL_ATTRIBUTE_IDS = [277, 278, 279, 1286, 1287, 1288]
+
+
+class TypeDogmaDef(BaseModel):
+    dogmaAttributes: list[DogmaAttributeItem] = Field(default_factory=list)
+
+
+class DogmaAttributeItem(BaseModel):
+    attributeID: int
+    value: float
+
+
+class TypeTraitRaw(BaseModel):
+    types: dict[str, list[TraitRawBonus]] = Field(default_factory=dict)
+    roleBonuses: list[TraitRawBonus] = Field(default_factory=list)
+    miscBonuses: list[TraitRawBonus] = Field(default_factory=list)
+
+
+class TraitRawBonus(BaseModel):
+    nameID: int
+    importance: int = Field(default=0)
+    bonus: float | None = Field(default=None)
+    unitID: int | None = Field(default=None)
 
 
 class TypeDef(BaseModel):
@@ -51,9 +80,81 @@ class TypeDef(BaseModel):
         return pb
 
 
+def _extract_required_skills(dogma_attributes: list[DogmaAttributeItem]) -> list[tuple[int, int]]:
+    attr_map = {attr.attributeID: attr.value for attr in dogma_attributes}
+    requirements: list[tuple[int, int]] = []
+    for skill_attr_id, level_attr_id in zip(
+        _REQUIRED_SKILL_ATTRIBUTE_IDS,
+        _REQUIRED_SKILL_LEVEL_ATTRIBUTE_IDS,
+        strict=True,
+    ):
+        skill_type_id = int(attr_map.get(skill_attr_id, 0))
+        if skill_type_id <= 0:
+            continue
+        level = int(attr_map.get(level_attr_id, 0))
+        if level <= 0:
+            level = 1
+        requirements.append((skill_type_id, level))
+    return requirements
+
+
+def _append_trait_entry(pb_section, bonus: TraitRawBonus) -> None:
+    entry = pb_section.entries.add()
+    entry.text.CopyFrom(loc(bonus.nameID))
+    if bonus.bonus is not None:
+        entry.bonus = bonus.bonus
+    if bonus.unitID is not None:
+        entry.unit_id = bonus.unitID
+
+
+def _apply_traits(pb: types_pb2.Type, traits: TypeTraitRaw | None) -> None:
+    if traits is None:
+        return
+
+    for skill_type_id, entries in sorted(traits.types.items(), key=lambda item: int(item[0])):
+        section = pb.trait_sections.add()
+        section.kind = types_pb2.Type.SKILL
+        section.skill_type_id = int(skill_type_id)
+        for bonus in sorted(entries, key=lambda entry: entry.importance):
+            _append_trait_entry(section, bonus)
+
+    if traits.roleBonuses:
+        section = pb.trait_sections.add()
+        section.kind = types_pb2.Type.ROLE
+        for bonus in sorted(traits.roleBonuses, key=lambda entry: entry.importance):
+            _append_trait_entry(section, bonus)
+
+    if traits.miscBonuses:
+        section = pb.trait_sections.add()
+        section.kind = types_pb2.Type.MISC
+        for bonus in sorted(traits.miscBonuses, key=lambda entry: entry.importance):
+            _append_trait_entry(section, bonus)
+
+
+async def _load_info_bubble_traits(data: GeneratorDatasource) -> dict[int, TypeTraitRaw]:
+    node = data.resources.res.get_resource("res:/staticdata/infobubbles.static")
+    await node.download()
+    path = node.local_path
+    if path is None:
+        raise RuntimeError("Failed to resolve infobubbles.static local path")
+
+    with sqlite3.connect(path) as connection:
+        traits_row = connection.execute(
+            "SELECT value FROM cache WHERE key = 'infoBubbleTypeBonuses'",
+        ).fetchone()
+
+    if traits_row is None:
+        raise RuntimeError("Failed to load infoBubbleTypeBonuses from infobubbles.static")
+
+    traits = json.loads(traits_row[0])
+    return {int(type_id): TypeTraitRaw.model_validate(value) for type_id, value in traits.items()}
+
+
 async def generate(data: GeneratorDatasource, collection):
     info("Generating types...")
     types = await data.resources.fsd.get("types")
+    type_dogma = await data.resources.fsd.get("typedogma")
+    traits = await _load_info_bubble_traits(data)
 
     cnt = 0
     for type_id, type_def in types.items():
@@ -64,6 +165,28 @@ async def generate(data: GeneratorDatasource, collection):
             continue
 
         cnt += 1
-        collection.types[type_id].CopyFrom(validated.to_pb())
+        pb = validated.to_pb()
+
+        dogma_def = type_dogma.get(type_id)
+        if dogma_def is not None:
+            try:
+                validated_dogma = TypeDogmaDef.model_validate(dogma_def)
+            except Exception as e:
+                error(f"Failed to validate type dogma {type_id}: {e}")
+            else:
+                for skill_type_id, level in _extract_required_skills(
+                    validated_dogma.dogmaAttributes
+                ):
+                    req = pb.required_skills.add()
+                    req.skill_type_id = skill_type_id
+                    req.level = level
+
+                for attr in validated_dogma.dogmaAttributes:
+                    entry = pb.dogma_attributes.add()
+                    entry.dogma_attribute_id = attr.attributeID
+                    entry.value = attr.value
+
+        _apply_traits(pb, traits.get(type_id))
+        collection.types[type_id].CopyFrom(pb)
 
     info(f"Generated {cnt} types")

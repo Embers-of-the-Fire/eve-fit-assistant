@@ -20,6 +20,7 @@ import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/output.dart" show $OutSlotTypeCopyWith;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/fit/components/add_item_dialog.dart";
+import "package:eve_fit_assistant/pages/item_detail/page.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -124,6 +125,7 @@ class _FitPage extends ConsumerWidget {
       ref: ref,
     );
     final fitContext = FitContext(
+      fitId: fitId,
       fit: fit.fit,
       ship: shipInfo,
       emulated: emulated,

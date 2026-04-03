@@ -46,8 +46,11 @@ class _AddChargeDialog extends ConsumerWidget {
                 child: GroupNameText(groupId: groupId),
               ),
               ...groupedTypes[groupId]!.map(
-                (typeId) =>
-                    TypeListTile(typeId: typeId, onTap: () => Navigator.of(context).pop(typeId)),
+                (typeId) => TypeListTile(
+                  typeId: typeId,
+                  onTap: () => Navigator.of(context).pop(typeId),
+                  onLongPress: () => showItemDetailPage(context, typeId: typeId),
+                ),
               ),
             ],
           ],

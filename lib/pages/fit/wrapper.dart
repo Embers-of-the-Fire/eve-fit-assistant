@@ -2,12 +2,14 @@ part of "page.dart";
 
 class FitContext {
   const FitContext({
+    required this.fitId,
     required this.fit,
     required this.fitWrapper,
     required this.emulated,
     required this.ship,
   });
 
+  final String fitId;
   final FitStorage fit;
   final FitWrapper fitWrapper;
   final native.Ship? emulated;
