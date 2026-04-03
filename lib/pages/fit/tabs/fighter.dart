@@ -61,14 +61,16 @@ class _FighterTab extends ConsumerWidget {
             InkWell(onTap: fitContext.fitWrapper.clearFighters, child: const Icon(Icons.clear_all)),
           ],
           rightInfo: [
-            if (lightLimit > 0) Text("L $lightCount/$lightLimit"),
-            if (supportLimit > 0) Text("S $supportCount/$supportLimit"),
-            if (heavyLimit > 0) Text("H $heavyCount/$heavyLimit"),
+            Text("H $heavyCount/$heavyLimit"),
+            Text("L $lightCount/$lightLimit"),
+            Text("S $supportCount/$supportLimit"),
             Text(
               context.l10n.fitFighterTabTubeCounter(
                 count: fighters.length,
                 total: fitContext.ship.fighterTubes,
               ),
+              softWrap: false,
+              overflow: TextOverflow.fade,
             ),
           ],
         ),

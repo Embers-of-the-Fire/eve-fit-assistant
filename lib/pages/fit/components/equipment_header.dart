@@ -20,8 +20,8 @@ class _EquipmentTitleRow extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: leftActions,
         ),
-        const Spacer(),
-        Flexible(
+        const SizedBox(width: 10),
+        Expanded(
           child: Align(
             alignment: Alignment.centerRight,
             child: Wrap(
