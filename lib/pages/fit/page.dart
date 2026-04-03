@@ -34,6 +34,7 @@ import "package:eve_fit_assistant/utils/num.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:eve_fit_assistant/utils/subsystem.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_slidable/flutter_slidable.dart";

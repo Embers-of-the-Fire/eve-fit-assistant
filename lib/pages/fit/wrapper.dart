@@ -293,7 +293,15 @@ class FitWrapper {
 
       final slot = slotOpt.toNullable()!;
       final typeId = _resolveOriginTypeId(fit, slot.itemId);
-      if (typeId == null) return fit;
+      if (typeId == null) {
+        final message =
+            "Missing origin type for slot toggle: slotIdent=$slotIdent, itemId=${slot.itemId}";
+        warning(message);
+        if (kDebugMode) {
+          throw StateError(message);
+        }
+        return fit;
+      }
 
       switch (slotIdent) {
         case SlotIdentifierHigh(:final index):
