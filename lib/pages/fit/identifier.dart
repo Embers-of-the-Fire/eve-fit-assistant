@@ -177,7 +177,7 @@ abstract class SlotIdentifier with _$SlotIdentifier {
       implant: (_) =>
           (node) => switch (node) {
             EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.implantSlots[typeId]?.slotIndex == asIndexed,
+              isBaseType(typeId) && slotsInfo.implantSlots[typeId]?.slotIndex == asIndexed + 1,
             _ => true,
           },
       booster: (_) =>
