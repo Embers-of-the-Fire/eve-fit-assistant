@@ -118,7 +118,11 @@ class _FitPage extends ConsumerWidget {
 
     final emulated = ref.watch(nativeEmulatedShipProvider(fitId));
 
-    final fitWrapper = FitWrapper(wrapped: ref.read(fitProvider(fitId).notifier), fitId: fitId);
+    final fitWrapper = FitWrapper(
+      wrapped: ref.read(fitProvider(fitId).notifier),
+      fitId: fitId,
+      ref: ref,
+    );
     final fitContext = FitContext(
       fit: fit.fit,
       ship: shipInfo,

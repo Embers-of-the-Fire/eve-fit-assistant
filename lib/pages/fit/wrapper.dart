@@ -30,10 +30,11 @@ class FitContext {
 }
 
 class FitWrapper {
-  const FitWrapper({required this.wrapped, required this.fitId});
+  const FitWrapper({required this.wrapped, required this.fitId, required this.ref});
 
   final Fit wrapped;
   final String fitId;
+  final WidgetRef ref;
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
 
@@ -1077,6 +1078,10 @@ class FitWrapper {
       wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(drones: IList<FitDroneItem>())));
 
   Future<void> addFighter(int typeId) => wrapped.update((fit) {
+    final ship = ref.read(bundleCollectionGetShipProvider(fit.body.shipTypeId));
+    if (ship == null) return fit;
+    if (fit.body.fighters.length >= ship.fighterTubes) return fit;
+
     final fighters = fit.body.fighters.toList()
       ..add(
         FitFighterItem(
