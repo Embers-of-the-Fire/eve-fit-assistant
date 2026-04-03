@@ -211,7 +211,7 @@ class FitWrapper {
         _ => null,
       };
       if (typeId == null) continue;
-      if (slotsInfo.implantSlots[typeId]?.slotIndex == slotId) return index;
+      if (slotsInfo.implantSlots[typeId]?.slotIndex == slotId + 1) return index;
     }
 
     return null;

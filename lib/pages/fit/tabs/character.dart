@@ -112,8 +112,9 @@ class _CharacterImplantTab extends ConsumerWidget {
     if (typeId == null) return;
 
     final slotId = ref.read(bundleCollectionGetSlotsProvider)?.implantSlots[typeId]?.slotIndex;
-    if (slotId == null || slotId >= _maxImplantSlots) return;
-    await fitContext.fitWrapper.equipSlot(SlotIdentifier.implant(index: slotId), typeId, ref);
+    final storageIndex = slotId == null ? null : slotId - 1;
+    if (storageIndex == null || storageIndex < 0 || storageIndex >= _maxImplantSlots) return;
+    await fitContext.fitWrapper.equipSlot(SlotIdentifier.implant(index: storageIndex), typeId, ref);
   }
 }
 
@@ -363,8 +364,9 @@ Map<int, int> _buildImplantAssignments(FitStorage fit, WidgetRef ref) {
     if (typeId == null) continue;
 
     final slotId = slotsInfo.implantSlots[typeId]?.slotIndex;
-    if (slotId == null || slotId < 0 || slotId >= _maxImplantSlots) continue;
-    assignments[slotId] ??= storageIndex;
+    final storageSlotId = slotId == null ? null : slotId - 1;
+    if (storageSlotId == null || storageSlotId < 0 || storageSlotId >= _maxImplantSlots) continue;
+    assignments[storageSlotId] ??= storageIndex;
   }
   return assignments;
 }
