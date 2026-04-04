@@ -63,7 +63,6 @@ class _DescriptionTextState extends State<DescriptionText>
   TextSpan _buildFromElement(BuildContext context, html.Element element) {
     List<TextSpan> buildChildren() =>
         element.nodes.map((child) => _buildFromNode(context, child)).toList();
-    String buildInlineText() => buildChildren().map((child) => child.toPlainText()).join();
 
     final builder = switch (element.localName) {
       "i" => () => TextSpan(
@@ -83,7 +82,7 @@ class _DescriptionTextState extends State<DescriptionText>
         ),
       ),
       "url" => () => TextSpan(
-        text: buildInlineText(),
+        children: buildChildren(),
         style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
         recognizer: _registerRecognizer(
           element.attributes["href"] == null
@@ -92,7 +91,7 @@ class _DescriptionTextState extends State<DescriptionText>
         ),
       ),
       "a" => () => TextSpan(
-        text: buildInlineText(),
+        children: buildChildren(),
         style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
         recognizer: _registerRecognizer(
           element.attributes["href"] == null ? null : () => _openShowInfo(context, element),
