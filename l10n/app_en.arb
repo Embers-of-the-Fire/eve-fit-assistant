@@ -191,6 +191,8 @@
   "itemDetailOriginal": "Original",
   "itemDetailNormalized": "Normalized",
   "itemDetailPenalized": "Penalized",
+  "itemDetailPenalty": "Penalty",
+  "itemDetailNet": "Net",
   "itemDetailBuffSource": "Buff {buffId}",
   "@itemDetailBuffSource": {
     "placeholders": {

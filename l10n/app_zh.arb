@@ -243,6 +243,8 @@
   "itemDetailOriginal": "原始值",
   "itemDetailNormalized": "归一化",
   "itemDetailPenalized": "惩罚后",
+  "itemDetailPenalty": "惩罚",
+  "itemDetailNet": "净变化",
   "itemDetailBuffSource": "增益 {buffId}",
   "@itemDetailBuffSource": {
     "placeholders": {

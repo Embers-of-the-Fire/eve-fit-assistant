@@ -225,6 +225,15 @@ class AttributeDetailPage extends ConsumerWidget {
                       value: current?.value == null
                           ? context.l10n.itemDetailUnavailable
                           : _formatAttributeValue(ref, attribute, unit, current!.value!),
+                      tone: current?.value == null
+                          ? null
+                          : staticValue == null
+                          ? null
+                          : _attributeDeltaTone(
+                              attribute: attribute,
+                              baseValue: staticValue,
+                              currentValue: current!.value!,
+                            ),
                     ),
                     if (staticValue != null && current?.value != null)
                       _ValueChip(
@@ -234,6 +243,11 @@ class AttributeDetailPage extends ConsumerWidget {
                           attribute,
                           unit,
                           current!.value! - staticValue,
+                        ),
+                        tone: _attributeDeltaTone(
+                          attribute: attribute,
+                          baseValue: staticValue,
+                          currentValue: current.value!,
                         ),
                       ),
                   ],
@@ -548,25 +562,8 @@ class _AttributesCard extends ConsumerWidget {
         for (final attribute in attributes)
           ListTile(
             contentPadding: EdgeInsets.zero,
+            minVerticalPadding: 8,
             title: Text(attribute.displayName),
-            subtitle: attribute.currentValue == null
-                ? null
-                : Text(
-                    context.l10n.itemDetailAttributeBaseAndCurrent(
-                      base: _formatAttributeValue(
-                        ref,
-                        attribute.attribute,
-                        attribute.unit,
-                        attribute.staticValue,
-                      ),
-                      current: _formatAttributeValue(
-                        ref,
-                        attribute.attribute,
-                        attribute.unit,
-                        attribute.currentValue!,
-                      ),
-                    ),
-                  ),
             trailing: Text(
               _formatAttributeValue(
                 ref,
@@ -575,6 +572,19 @@ class _AttributesCard extends ConsumerWidget {
                 attribute.currentValue ?? attribute.staticValue,
               ),
               textAlign: TextAlign.end,
+              style: context.theme.textTheme.bodyLarge?.copyWith(
+                color: _toneColor(
+                  context,
+                  attribute.currentValue == null
+                      ? null
+                      : _attributeDeltaTone(
+                          attribute: attribute.attribute,
+                          baseValue: attribute.staticValue,
+                          currentValue: attribute.currentValue!,
+                        ),
+                ),
+                fontWeight: FontWeight.w500,
+              ),
             ),
             onTap: () => showAttributeDetailPage(
               context,
@@ -598,6 +608,9 @@ class _ModifierTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sourceLabel = _modifierSourceLabel(ref, fit, emulated, modifier.source);
+    final normalizedDelta = modifier.normalizedValue - modifier.originalValue;
+    final penalizedDelta = modifier.penalizedValue - modifier.normalizedValue;
+    final netDelta = modifier.penalizedValue - modifier.originalValue;
     final detail = modifier.source.when(
       effect: (effect) {
         final attribute = ref.watch(
@@ -605,7 +618,7 @@ class _ModifierTile extends ConsumerWidget {
         );
         final attributeName =
             _attributeDisplayName(ref, attribute) ?? "Attribute ${effect.sourceAttributeId}";
-        return "${_effectCategoryLabel(effect.sourceCategory)} - $attributeName";
+        return "${_effectCategoryLabel(effect.sourceCategory)} - ${_effectOperatorLabel(effect.operator_)} - $attributeName";
       },
       buff: (buffId) => context.l10n.itemDetailBuffSource(buffId: buffId),
     );
@@ -613,25 +626,50 @@ class _ModifierTile extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(sourceLabel, style: context.theme.textTheme.titleSmall),
+        Row(
+          children: [
+            Expanded(child: Text(sourceLabel, style: context.theme.textTheme.titleSmall)),
+            if (modifier.source is native.ModifierSource_Effect &&
+                (modifier.source as native.ModifierSource_Effect).field0.penalty)
+              Text(
+                context.l10n.itemDetailPenalty,
+                style: context.theme.textTheme.labelMedium?.copyWith(color: Colors.red.shade700),
+              ),
+          ],
+        ),
         const SizedBox(height: 4),
         Text(detail),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        Row(
           children: [
-            _ValueChip(
-              label: context.l10n.itemDetailOriginal,
-              value: _formatCompactNumber(modifier.originalValue),
+            Expanded(
+              child: _EffectValueText(
+                label: context.l10n.itemDetailOriginal,
+                value: _formatCompactNumber(modifier.originalValue),
+              ),
             ),
-            _ValueChip(
-              label: context.l10n.itemDetailNormalized,
-              value: _formatCompactNumber(modifier.normalizedValue),
+            Expanded(
+              child: _EffectValueText(
+                label: context.l10n.itemDetailNormalized,
+                value: _formatCompactNumber(modifier.normalizedValue),
+                delta: _formatSignedCompactNumber(normalizedDelta),
+                tone: _effectDeltaTone(normalizedDelta),
+              ),
             ),
-            _ValueChip(
-              label: context.l10n.itemDetailPenalized,
-              value: _formatCompactNumber(modifier.penalizedValue),
+            Expanded(
+              child: _EffectValueText(
+                label: context.l10n.itemDetailPenalized,
+                value: _formatCompactNumber(modifier.penalizedValue),
+                delta: _formatSignedCompactNumber(penalizedDelta),
+                tone: _effectDeltaTone(penalizedDelta),
+              ),
+            ),
+            Expanded(
+              child: _EffectValueText(
+                label: context.l10n.itemDetailNet,
+                value: _formatSignedCompactNumber(netDelta),
+                tone: _effectDeltaTone(netDelta),
+              ),
             ),
           ],
         ),
@@ -692,28 +730,80 @@ class _DataRow extends StatelessWidget {
 }
 
 class _ValueChip extends StatelessWidget {
-  const _ValueChip({required this.label, required this.value});
+  const _ValueChip({required this.label, required this.value, this.tone});
 
   final String label;
   final String value;
+  final _ValueTone? tone;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: context.theme.colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Column(
+  Widget build(BuildContext context) {
+    final color = _toneColor(context, tone);
+    final background = _toneBackground(context, tone);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: tone == null
+              ? context.theme.colorScheme.outlineVariant
+              : color.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: context.theme.textTheme.labelSmall),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: context.theme.textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: tone == null ? FontWeight.w500 : FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EffectValueText extends StatelessWidget {
+  const _EffectValueText({required this.label, required this.value, this.delta, this.tone});
+
+  final String label;
+  final String value;
+  final String? delta;
+  final _ValueTone? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _toneColor(context, tone);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
         Text(label, style: context.theme.textTheme.labelSmall),
         const SizedBox(height: 2),
-        Text(value, style: context.theme.textTheme.bodyMedium),
+        Text(
+          value,
+          style: context.theme.textTheme.bodyMedium?.copyWith(
+            color: tone == null ? null : color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (delta != null)
+          Text(
+            delta!,
+            style: context.theme.textTheme.labelMedium?.copyWith(
+              color: tone == null ? null : color,
+            ),
+          ),
       ],
-    ),
-  );
+    );
+  }
 }
 
 class _LevelPips extends StatelessWidget {
@@ -758,6 +848,8 @@ class _InspectableAttribute {
   final DogmaUnit? unit;
 }
 
+enum _ValueTone { positive, negative }
+
 String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) => switch (localization) {
   null => null,
   _ => ref.watch(localizationProvider(localization.id)),
@@ -774,6 +866,42 @@ String? _attributeDisplayName(WidgetRef ref, DogmaAttribute? attribute) {
   if (attribute.name.isNotEmpty) return attribute.name;
   return null;
 }
+
+_ValueTone? _attributeDeltaTone({
+  required DogmaAttribute? attribute,
+  required double baseValue,
+  required double currentValue,
+}) {
+  final delta = currentValue - baseValue;
+  if (delta == 0) {
+    return null;
+  }
+  final highIsGood = attribute?.highIsGood ?? true;
+  final positiveIsGood = highIsGood;
+  if (delta > 0) {
+    return positiveIsGood ? _ValueTone.positive : _ValueTone.negative;
+  }
+  return positiveIsGood ? _ValueTone.negative : _ValueTone.positive;
+}
+
+_ValueTone? _effectDeltaTone(double delta) {
+  if (delta == 0) {
+    return null;
+  }
+  return delta > 0 ? _ValueTone.positive : _ValueTone.negative;
+}
+
+Color _toneColor(BuildContext context, _ValueTone? tone) => switch (tone) {
+  _ValueTone.positive => Colors.green.shade700,
+  _ValueTone.negative => Colors.red.shade700,
+  null => context.theme.colorScheme.onSurface,
+};
+
+Color _toneBackground(BuildContext context, _ValueTone? tone) => switch (tone) {
+  _ValueTone.positive => Colors.green.withValues(alpha: 0.08),
+  _ValueTone.negative => Colors.red.withValues(alpha: 0.08),
+  null => context.theme.colorScheme.surfaceContainerHighest,
+};
 
 double? _staticAttributeValue(pb_types.Type? type, int attributeId) {
   if (type == null) return null;
@@ -913,6 +1041,23 @@ String _formatCompactNumber(double value) {
   }
   return value.toStringAsPrecision(4);
 }
+
+String _formatSignedCompactNumber(double value) {
+  final prefix = value > 0 ? "+" : "";
+  return "$prefix${_formatCompactNumber(value)}";
+}
+
+String _effectOperatorLabel(native.EffectOperator operator) => switch (operator) {
+  native.EffectOperator.preAssign => "Pre Assign",
+  native.EffectOperator.preMul => "Pre Mul",
+  native.EffectOperator.preDiv => "Pre Div",
+  native.EffectOperator.modAdd => "Add",
+  native.EffectOperator.modSub => "Sub",
+  native.EffectOperator.postMul => "Post Mul",
+  native.EffectOperator.postDiv => "Post Div",
+  native.EffectOperator.postPercent => "Percent",
+  native.EffectOperator.postAssign => "Post Assign",
+};
 
 String _traitSectionTitle(
   BuildContext context,
