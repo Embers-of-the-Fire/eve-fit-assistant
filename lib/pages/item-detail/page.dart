@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/components/description_text.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
@@ -17,7 +18,6 @@ import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:html/parser.dart" as html_parser;
 
 const List<int> _requiredSkillAttributeIds = [182, 183, 184, 1285, 1289, 1290];
 const List<int> _requiredSkillLevelAttributeIds = [277, 278, 279, 1286, 1287, 1288];
@@ -279,7 +279,7 @@ class _ItemTabContent extends ConsumerWidget {
         const SizedBox(height: 12),
         _SectionCard(
           title: context.l10n.itemDetailDescription,
-          child: SelectableText(description!),
+          child: DescriptionText(text: description!, style: context.theme.textTheme.bodyMedium),
         ),
       ],
       if (type.traitSections.isNotEmpty) ...[
@@ -382,8 +382,8 @@ class AttributeDetailPage extends ConsumerWidget {
                   const SizedBox(height: 12),
                 ],
                 if (attribute != null && attribute.description.isNotEmpty) ...[
-                  Text(
-                    _normalizeRichText(attribute.description),
+                  DescriptionText(
+                    text: attribute.description,
                     style: context.theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 12),
@@ -555,8 +555,8 @@ class _TraitCard extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final section in type.traitSections) ...[
-          Text(
-            _traitSectionTitle(context, ref, section),
+          DescriptionText(
+            text: _traitSectionLabel(ref, context, section),
             style: context.theme.textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
@@ -568,25 +568,14 @@ class _TraitCard extends ConsumerWidget {
                 children: [
                   const Text("- "),
                   Expanded(
-                    child: Text(
-                      _traitEntryLabel(ref, entry),
+                    child: DescriptionText(
+                      text: _traitEntryMarkup(ref, entry),
                       style: context.theme.textTheme.bodyMedium,
                     ),
                   ),
                 ],
               ),
             ),
-          if (section.hasSkillTypeId()) ...[
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => showItemDetailPage(context, typeId: section.skillTypeId),
-                icon: const Icon(Icons.open_in_new),
-                label: TypeNameText(typeId: section.skillTypeId),
-              ),
-            ),
-          ],
           const SizedBox(height: 12),
         ],
       ],
@@ -1056,8 +1045,6 @@ String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) => swi
   _ => ref.watch(localizationProvider(localization.id)),
 };
 
-String _normalizeRichText(String input) => (html_parser.parseFragment(input).text ?? "").trim();
-
 String? _attributeDisplayName(WidgetRef ref, DogmaAttribute? attribute) {
   if (attribute == null) return null;
   if (attribute.hasDisplayName()) {
@@ -1299,21 +1286,28 @@ String _effectOperatorLabel(BuildContext context, native.EffectOperator operator
       native.EffectOperator.postAssign => context.l10n.itemDetailEffectOperatorPostAssign,
     };
 
-String _traitSectionTitle(
-  BuildContext context,
+String _traitSectionLabel(
   WidgetRef ref,
+  BuildContext context,
   pb_types.Type_TraitSection section,
 ) => switch (section.kind) {
-  pb_types.Type_TraitSectionKind.SKILL when section.hasSkillTypeId() =>
-    context.l10n.itemDetailTraitPerLevel(
-      skillName: _resolveTypeName(ref, section.skillTypeId) ?? "Type ${section.skillTypeId}",
-    ),
+  pb_types.Type_TraitSectionKind.SKILL when section.hasSkillTypeId() => _traitSectionSkillLabel(
+    ref,
+    context,
+    section.skillTypeId,
+  ),
   pb_types.Type_TraitSectionKind.ROLE => context.l10n.itemDetailTraitRoleBonuses,
   pb_types.Type_TraitSectionKind.MISC => context.l10n.itemDetailTraitMiscBonuses,
   _ => context.l10n.itemDetailTraits,
 };
 
-String _traitEntryLabel(WidgetRef ref, pb_types.Type_TraitEntry entry) {
+String _traitSectionSkillLabel(WidgetRef ref, BuildContext context, int skillTypeId) {
+  final skillName = _resolveTypeName(ref, skillTypeId) ?? "Type $skillTypeId";
+  final localized = context.l10n.itemDetailTraitPerLevel(skillName: skillName);
+  return localized.replaceFirst(skillName, '<a href="showinfo:$skillTypeId">$skillName</a>');
+}
+
+String _traitEntryMarkup(WidgetRef ref, pb_types.Type_TraitEntry entry) {
   final text = _resolveLocalization(ref, entry.text) ?? "LOC[${entry.text.id}]";
   if (!entry.hasBonus()) return text;
 
