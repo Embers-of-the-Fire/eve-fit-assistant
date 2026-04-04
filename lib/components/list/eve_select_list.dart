@@ -112,7 +112,7 @@ class EveSelectList extends ConsumerWidget {
           typeId: typeId,
           fallbackLeading: const Image(image: ImageAssets.unknownIcon, height: 32),
           onTap: onTap,
-          onLongPressStart: () => showItemDetailPage(context, typeId: typeId),
+          onLongPress: () => showItemDetailPage(context, typeId: typeId),
         ),
       ),
     );

@@ -97,9 +97,8 @@ class _SlotRowDisplay extends ConsumerWidget {
           localizationProvider(chargeType.typeName.id).select((t) => t ?? ""),
         );
         subtitleWidgets.add(
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onLongPressStart: (_) => showItemDetailPage(
+          InkWell(
+            onTap: () => showItemDetailPage(
               context,
               typeId: chargeId,
               fitReference: ItemDetailFitReference.module(
@@ -108,23 +107,21 @@ class _SlotRowDisplay extends ConsumerWidget {
                 inspectCharge: true,
               ),
             ),
-            child: InkWell(
-              onTap: () => showItemDetailPage(
-                context,
-                typeId: chargeId,
-                fitReference: ItemDetailFitReference.module(
-                  fitId: fitContext.fitId,
-                  index: slotInfo.index,
-                  inspectCharge: true,
-                ),
+            onLongPress: () => showItemDetailPage(
+              context,
+              typeId: chargeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                index: slotInfo.index,
+                inspectCharge: true,
               ),
-              child: Row(
-                children: [
-                  EveIcon(icon: chargeType.icon, size: 18),
-                  const SizedBox(width: 4),
-                  Text(chargeName, style: const TextStyle(fontSize: 14)),
-                ],
-              ),
+            ),
+            child: Row(
+              children: [
+                EveIcon(icon: chargeType.icon, size: 18),
+                const SizedBox(width: 4),
+                Text(chargeName, style: const TextStyle(fontSize: 14)),
+              ],
             ),
           ),
         );
@@ -153,9 +150,17 @@ class _SlotRowDisplay extends ConsumerWidget {
               motion: const StretchMotion(),
               children: endActions,
             ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onLongPressStart: (_) => showItemDetailPage(
+      child: ListTile(
+        leading: StateIcon.rect(
+          state: slotInfo.state,
+          onTap: () => _handleToggleState(ref),
+          child: EveIcon(icon: itemType.icon, overlayIcon: metaGroupIcon, size: 35),
+        ),
+        title: Text(typeName),
+        subtitle: subtitleWidgets.isEmpty
+            ? null
+            : Column(crossAxisAlignment: CrossAxisAlignment.start, children: subtitleWidgets),
+        onTap: () => showItemDetailPage(
           context,
           typeId: itemType.typeId,
           fitReference: ItemDetailFitReference.module(
@@ -163,23 +168,12 @@ class _SlotRowDisplay extends ConsumerWidget {
             index: slotInfo.index,
           ),
         ),
-        child: ListTile(
-          leading: StateIcon.rect(
-            state: slotInfo.state,
-            onTap: () => _handleToggleState(ref),
-            child: EveIcon(icon: itemType.icon, overlayIcon: metaGroupIcon, size: 35),
-          ),
-          title: Text(typeName),
-          subtitle: subtitleWidgets.isEmpty
-              ? null
-              : Column(crossAxisAlignment: CrossAxisAlignment.start, children: subtitleWidgets),
-          onTap: () => showItemDetailPage(
-            context,
-            typeId: itemType.typeId,
-            fitReference: ItemDetailFitReference.module(
-              fitId: fitContext.fitId,
-              index: slotInfo.index,
-            ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: itemType.typeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            index: slotInfo.index,
           ),
         ),
       ),

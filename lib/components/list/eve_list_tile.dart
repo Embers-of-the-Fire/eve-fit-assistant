@@ -174,7 +174,6 @@ class TypeListTile extends ConsumerWidget {
     this.fallbackLeading,
     this.onTap,
     this.onLongPress,
-    this.onLongPressStart,
   });
 
   final int typeId;
@@ -183,7 +182,6 @@ class TypeListTile extends ConsumerWidget {
   final Widget? fallbackLeading;
   final void Function()? onTap;
   final void Function()? onLongPress;
-  final void Function()? onLongPressStart;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -196,22 +194,15 @@ class TypeListTile extends ConsumerWidget {
       bundleCollectionGetMetaGroupProvider(typeInfo.metaGroupId).select((t) => t?.icon),
     );
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onLongPressStart: onLongPressStart == null ? null : (_) => onLongPressStart!.call(),
-      child: ListTile(
-        leading: leading.orElse(
-          () => EveIcon(
-            icon: typeInfo.icon,
-            overlayIcon: metaGroupIcon,
-            fallbackIcon: fallbackLeading,
-          ),
-        ),
-        title: LocalizedText(localizationKey: typeInfo.typeName),
-        trailing: trailing,
-        onTap: onTap,
-        onLongPress: onLongPress,
+    return ListTile(
+      leading: leading.orElse(
+        () =>
+            EveIcon(icon: typeInfo.icon, overlayIcon: metaGroupIcon, fallbackIcon: fallbackLeading),
       ),
+      title: LocalizedText(localizationKey: typeInfo.typeName),
+      trailing: trailing,
+      onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 }

@@ -224,9 +224,15 @@ class _ImplantRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onLongPressStart: (_) => showItemDetailPage(
+      child: ListTile(
+        leading: StateIcon.rect(
+          state: implant.state,
+          onTap: () => fitContext.fitWrapper.toggleSlot(SlotIdentifier.implant(index: slotId), ref),
+          child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+        ),
+        title: LocalizedTypeName(typeId: itemId.asId),
+        trailing: Text("${slotId + 1}"),
+        onTap: () => showItemDetailPage(
           context,
           typeId: itemId.asId,
           fitReference: ItemDetailFitReference.implant(
@@ -234,22 +240,12 @@ class _ImplantRow extends ConsumerWidget {
             index: storageIndex,
           ),
         ),
-        child: ListTile(
-          leading: StateIcon.rect(
-            state: implant.state,
-            onTap: () =>
-                fitContext.fitWrapper.toggleSlot(SlotIdentifier.implant(index: slotId), ref),
-            child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-          ),
-          title: LocalizedTypeName(typeId: itemId.asId),
-          trailing: Text("${slotId + 1}"),
-          onTap: () => showItemDetailPage(
-            context,
-            typeId: itemId.asId,
-            fitReference: ItemDetailFitReference.implant(
-              fitId: fitContext.fitId,
-              index: storageIndex,
-            ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: itemId.asId,
+          fitReference: ItemDetailFitReference.implant(
+            fitId: fitContext.fitId,
+            index: storageIndex,
           ),
         ),
       ),
@@ -336,27 +332,24 @@ class _BoosterRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onLongPressStart: (_) => showItemDetailPage(
+      child: ListTile(
+        leading: StateIcon.rect(
+          state: booster.state,
+          onTap: () =>
+              fitContext.fitWrapper.toggleSlot(SlotIdentifier.booster(slotId: slotId), ref),
+          child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+        ),
+        title: LocalizedTypeName(typeId: itemId.asId),
+        subtitle: Text("${context.l10n.boosterSlot} $slotId"),
+        onTap: () => showItemDetailPage(
           context,
           typeId: itemId.asId,
           fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
         ),
-        child: ListTile(
-          leading: StateIcon.rect(
-            state: booster.state,
-            onTap: () =>
-                fitContext.fitWrapper.toggleSlot(SlotIdentifier.booster(slotId: slotId), ref),
-            child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-          ),
-          title: LocalizedTypeName(typeId: itemId.asId),
-          subtitle: Text("${context.l10n.boosterSlot} $slotId"),
-          onTap: () => showItemDetailPage(
-            context,
-            typeId: itemId.asId,
-            fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
-          ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: itemId.asId,
+          fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
         ),
       ),
     );

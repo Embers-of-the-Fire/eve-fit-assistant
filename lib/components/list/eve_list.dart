@@ -35,7 +35,7 @@ class EveItemList extends StatelessWidget {
             (select) =>
                 () => select(item),
           ),
-          onLongPressStart: () => showItemDetailPage(context, typeId: typeId),
+          onLongPress: () => showItemDetailPage(context, typeId: typeId),
         ),
         _EveListItemGroup(:final groupId, :final fallbackIcon) => GroupListTile(
           groupId: groupId,

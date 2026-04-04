@@ -133,9 +133,15 @@ class _DroneSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: endActions,
       ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onLongPressStart: (_) => showItemDetailPage(
+      child: ListTile(
+        leading: StateIcon.rect(
+          state: slotInfo.state,
+          onTap: () => fitContext.fitWrapper.toggleSlot(slotIdent, ref),
+          child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+        ),
+        title: LocalizedTypeName(typeId: displayTypeId),
+        trailing: Text("x $quantity"),
+        onTap: () => showItemDetailPage(
           context,
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
@@ -143,21 +149,12 @@ class _DroneSlotRow extends ConsumerWidget {
             index: slotInfo.index,
           ),
         ),
-        child: ListTile(
-          leading: StateIcon.rect(
-            state: slotInfo.state,
-            onTap: () => fitContext.fitWrapper.toggleSlot(slotIdent, ref),
-            child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-          ),
-          title: LocalizedTypeName(typeId: displayTypeId),
-          trailing: Text("x $quantity"),
-          onTap: () => showItemDetailPage(
-            context,
-            typeId: displayTypeId,
-            fitReference: ItemDetailFitReference.module(
-              fitId: fitContext.fitId,
-              index: slotInfo.index,
-            ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: displayTypeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            index: slotInfo.index,
           ),
         ),
       ),

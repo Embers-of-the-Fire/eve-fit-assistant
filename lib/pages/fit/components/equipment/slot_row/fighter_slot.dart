@@ -164,9 +164,46 @@ class _FighterSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: endActions,
       ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onLongPressStart: (_) => showItemDetailPage(
+      child: ListTile(
+        leading: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+        title: LocalizedTypeName(typeId: displayTypeId),
+        subtitle: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            if ((availableAbilityMask & _attackTurretBit) != 0)
+              _buildAbilityChip(
+                context: context,
+                bit: _attackTurretBit,
+                icon: Icons.gps_fixed,
+                label: context.l10n.fitFighterAbilityTurret,
+              ),
+            if ((availableAbilityMask & _missilesBit) != 0)
+              _buildAbilityChip(
+                context: context,
+                bit: _missilesBit,
+                icon: Icons.rocket_launch,
+                label: context.l10n.fitFighterAbilityMissiles,
+              ),
+            if ((availableAbilityMask & _attackMissileBit) != 0)
+              _buildAbilityChip(
+                context: context,
+                bit: _attackMissileBit,
+                icon: Icons.flash_on,
+                label: context.l10n.fitFighterAbilityVolley,
+              ),
+            if ((availableAbilityMask & _bombBit) != 0)
+              _buildAbilityChip(
+                context: context,
+                bit: _bombBit,
+                icon: Icons.blur_on,
+                label: context.l10n.fitFighterAbilityBomb,
+              ),
+            ?dpsText,
+          ],
+        ),
+        trailing: _FighterCountText(count: storedFighter.quantity, total: maxQuantity),
+        onTap: () => showItemDetailPage(
           context,
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
@@ -174,52 +211,12 @@ class _FighterSlotRow extends ConsumerWidget {
             index: slotInfo.index,
           ),
         ),
-        child: ListTile(
-          leading: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-          title: LocalizedTypeName(typeId: displayTypeId),
-          subtitle: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              if ((availableAbilityMask & _attackTurretBit) != 0)
-                _buildAbilityChip(
-                  context: context,
-                  bit: _attackTurretBit,
-                  icon: Icons.gps_fixed,
-                  label: context.l10n.fitFighterAbilityTurret,
-                ),
-              if ((availableAbilityMask & _missilesBit) != 0)
-                _buildAbilityChip(
-                  context: context,
-                  bit: _missilesBit,
-                  icon: Icons.rocket_launch,
-                  label: context.l10n.fitFighterAbilityMissiles,
-                ),
-              if ((availableAbilityMask & _attackMissileBit) != 0)
-                _buildAbilityChip(
-                  context: context,
-                  bit: _attackMissileBit,
-                  icon: Icons.flash_on,
-                  label: context.l10n.fitFighterAbilityVolley,
-                ),
-              if ((availableAbilityMask & _bombBit) != 0)
-                _buildAbilityChip(
-                  context: context,
-                  bit: _bombBit,
-                  icon: Icons.blur_on,
-                  label: context.l10n.fitFighterAbilityBomb,
-                ),
-              ?dpsText,
-            ],
-          ),
-          trailing: _FighterCountText(count: storedFighter.quantity, total: maxQuantity),
-          onTap: () => showItemDetailPage(
-            context,
-            typeId: displayTypeId,
-            fitReference: ItemDetailFitReference.module(
-              fitId: fitContext.fitId,
-              index: slotInfo.index,
-            ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: displayTypeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            index: slotInfo.index,
           ),
         ),
       ),
