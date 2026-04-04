@@ -1117,8 +1117,14 @@ bool _hasSlotSummary(WidgetRef ref, int typeId) {
   final subsystem = ref.watch(bundleCollectionGetSubsystemProvider(typeId));
   final slots = ref.watch(bundleCollectionGetSlotsProvider);
   if (ship != null || subsystem != null) return true;
-  return slots != null && _renderedSlotClassLabel(null, slots, typeId) != null;
+  return slots != null && _hasRenderedSlotClass(slots, typeId);
 }
+
+bool _hasRenderedSlotClass(Slots slots, int typeId) =>
+    slots.highSlots.containsKey(typeId) ||
+    slots.mediumSlots.containsKey(typeId) ||
+    slots.lowSlots.containsKey(typeId) ||
+    slots.rigSlots.containsKey(typeId);
 
 String? _renderedSlotClassLabel(BuildContext? context, Slots slots, int typeId) {
   if (slots.highSlots.containsKey(typeId)) {
