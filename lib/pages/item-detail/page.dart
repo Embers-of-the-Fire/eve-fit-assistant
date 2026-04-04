@@ -413,7 +413,7 @@ class AttributeDetailPage extends ConsumerWidget {
                               currentValue: current!.value!,
                             ),
                     ),
-                    if (staticValue != null && current?.value != null)
+                    if (staticValue != null && current?.value != null && !_isBooleanUnit(ref, unit))
                       _ValueChip(
                         label: context.l10n.itemDetailAttributeDelta,
                         value: _formatSignedValue(
@@ -1228,17 +1228,26 @@ String _formatAttributeValue(
   final formatted = _formatCompactNumber(value);
   if (unit == null) return formatted;
 
-  final localizedUnit = unit.hasDisplayName() ? _resolveLocalization(ref, unit.displayName) : null;
-  final unitLabel = localizedUnit?.trim().isNotEmpty ?? false ? localizedUnit! : unit.name;
+  final unitLabel = _unitLabel(ref, unit);
   final normalizedUnit = unitLabel.toLowerCase();
   if (unitLabel.contains("%") || normalizedUnit.contains("percent")) {
     return "${_formatCompactNumber(value)}%";
   }
-  if (normalizedUnit == "bool") {
+  if (_isBooleanUnit(ref, unit)) {
     return value == 0 ? context.l10n.itemDetailBooleanFalse : context.l10n.itemDetailBooleanTrue;
   }
   if (unitLabel.isEmpty) return formatted;
   return "$formatted $unitLabel";
+}
+
+String _unitLabel(WidgetRef ref, DogmaUnit unit) {
+  final localizedUnit = unit.hasDisplayName() ? _resolveLocalization(ref, unit.displayName) : null;
+  return localizedUnit?.trim().isNotEmpty ?? false ? localizedUnit! : unit.name;
+}
+
+bool _isBooleanUnit(WidgetRef ref, DogmaUnit? unit) {
+  if (unit == null) return false;
+  return _unitLabel(ref, unit).toLowerCase() == "bool";
 }
 
 String _formatSignedValue(
