@@ -19,6 +19,8 @@ class DescriptionText extends StatefulWidget {
 
 class _DescriptionTextState extends State<DescriptionText>
     with AutomaticKeepAliveClientMixin<DescriptionText> {
+  static const Set<String> _externalUrlSchemes = <String>{"http", "https"};
+
   final List<TapGestureRecognizer> _recognizers = <TapGestureRecognizer>[];
 
   @override
@@ -115,11 +117,14 @@ class _DescriptionTextState extends State<DescriptionText>
 
   Future<void> _openExternalUrl(String rawUrl) async {
     final uri = Uri.tryParse(rawUrl);
-    if (uri == null) {
+    if (uri == null || !_externalUrlSchemes.contains(uri.scheme)) {
       return;
     }
 
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final didLaunch = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!didLaunch) {
+      throw StateError("Could not launch external URL: $rawUrl");
+    }
   }
 
   Future<void> _openShowInfo(BuildContext context, html.Element element) async {
