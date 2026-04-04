@@ -235,18 +235,12 @@ class _ImplantRow extends ConsumerWidget {
         onTap: () => showItemDetailPage(
           context,
           typeId: itemId.asId,
-          fitReference: ItemDetailFitReference.implant(
-            fitId: fitContext.fitId,
-            index: storageIndex,
-          ),
+          fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
         ),
         onLongPress: () => showItemDetailPage(
           context,
           typeId: itemId.asId,
-          fitReference: ItemDetailFitReference.implant(
-            fitId: fitContext.fitId,
-            index: storageIndex,
-          ),
+          fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
         ),
       ),
     );
