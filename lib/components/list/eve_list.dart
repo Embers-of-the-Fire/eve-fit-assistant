@@ -1,5 +1,5 @@
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
-import "package:eve_fit_assistant/pages/item_detail/page.dart";
+import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 import "package:freezed_annotation/freezed_annotation.dart";

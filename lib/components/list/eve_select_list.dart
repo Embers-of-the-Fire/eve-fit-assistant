@@ -1,7 +1,7 @@
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/select_list.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
-import "package:eve_fit_assistant/pages/item_detail/page.dart";
+import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";

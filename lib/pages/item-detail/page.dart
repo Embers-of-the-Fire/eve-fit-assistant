@@ -13,12 +13,14 @@ import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:html/parser.dart" as html_parser;
 
 const List<int> _requiredSkillAttributeIds = [182, 183, 184, 1285, 1289, 1290];
 const List<int> _requiredSkillLevelAttributeIds = [277, 278, 279, 1286, 1287, 1288];
+const int _itemDetailTabCount = 3;
 
 enum ItemDetailFitObjectKind { hull, module, implant, booster }
 
@@ -106,50 +108,218 @@ class ItemDetailPage extends ConsumerWidget {
     };
 
     final attributes = _collectInspectableAttributes(ref, type, resolvedItem);
-    final description = type.hasDescription()
-        ? _normalizeRichText(_resolveLocalization(ref, type.description) ?? "")
-        : null;
+    final description = type.hasDescription() ? _resolveLocalization(ref, type.description) : null;
 
     return Layout(
       title: itemName,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
+      child: _ItemDetailColumns(
+        typeId: typeId,
+        type: type,
+        fitReference: fitReference,
+        description: description,
+        attributes: attributes,
+        resolvedItem: resolvedItem,
+      ),
+    );
+  }
+}
+
+class _ItemDetailColumns extends StatelessWidget {
+  const _ItemDetailColumns({
+    required this.typeId,
+    required this.type,
+    required this.fitReference,
+    required this.description,
+    required this.attributes,
+    required this.resolvedItem,
+  });
+
+  final int typeId;
+  final pb_types.Type type;
+  final ItemDetailFitReference? fitReference;
+  final String? description;
+  final List<_InspectableAttribute> attributes;
+  final native.Item? resolvedItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final paneCount = switch (columnCount(context)) {
+      >= _itemDetailTabCount => _itemDetailTabCount,
+      final count => count,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Row(
         children: [
-          _HeaderCard(type: type, fitReference: fitReference),
-          const SizedBox(height: 12),
-          _ClassificationCard(type: type),
-          if (description?.trim().isNotEmpty ?? false) ...[
-            const SizedBox(height: 12),
-            _SectionCard(
-              title: context.l10n.itemDetailDescription,
-              child: SelectableText(description!),
-            ),
-          ],
-          if (type.traitSections.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _TraitCard(type: type, fitReference: fitReference),
-          ],
-          if (type.requiredSkills.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _RequirementsCard(type: type, fitReference: fitReference),
-          ],
-          if (_hasSlotSummary(ref, typeId)) ...[
-            const SizedBox(height: 12),
-            _SlotSummaryCard(typeId: typeId),
-          ],
-          if (attributes.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _AttributesCard(
-              typeId: typeId,
-              fitReference: fitReference,
-              attributes: attributes,
-              resolvedItem: resolvedItem,
+          for (var index = 0; index < paneCount; index++) ...[
+            if (index > 0) const VerticalDivider(indent: 8, endIndent: 8),
+            Expanded(
+              child: _ItemDetailTabPane(
+                initialIndex: index,
+                typeId: typeId,
+                type: type,
+                fitReference: fitReference,
+                description: description,
+                attributes: attributes,
+              ),
             ),
           ],
         ],
       ),
     );
   }
+}
+
+class _ItemDetailTabPane extends StatefulWidget {
+  const _ItemDetailTabPane({
+    required this.initialIndex,
+    required this.typeId,
+    required this.type,
+    required this.fitReference,
+    required this.description,
+    required this.attributes,
+  });
+
+  final int initialIndex;
+  final int typeId;
+  final pb_types.Type type;
+  final ItemDetailFitReference? fitReference;
+  final String? description;
+  final List<_InspectableAttribute> attributes;
+
+  @override
+  State<_ItemDetailTabPane> createState() => _ItemDetailTabPaneState();
+}
+
+class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      initialIndex: widget.initialIndex,
+      length: _itemDetailTabCount,
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      TabBar(
+        controller: _tabController,
+        labelPadding: EdgeInsets.zero,
+        tabs: [
+          Tab(text: context.l10n.itemDetailTabInfo),
+          Tab(text: context.l10n.itemDetailTabAttributes),
+          Tab(text: context.l10n.itemDetailTabSkills),
+        ],
+      ),
+      Expanded(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _ItemTabContent(
+              typeId: widget.typeId,
+              type: widget.type,
+              fitReference: widget.fitReference,
+              description: widget.description,
+            ),
+            _AttributeTabContent(
+              typeId: widget.typeId,
+              fitReference: widget.fitReference,
+              attributes: widget.attributes,
+            ),
+            _SkillTabContent(type: widget.type, fitReference: widget.fitReference),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _ItemTabContent extends ConsumerWidget {
+  const _ItemTabContent({
+    required this.typeId,
+    required this.type,
+    required this.fitReference,
+    required this.description,
+  });
+
+  final int typeId;
+  final pb_types.Type type;
+  final ItemDetailFitReference? fitReference;
+  final String? description;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      _HeaderCard(type: type, fitReference: fitReference),
+      const SizedBox(height: 12),
+      _ClassificationCard(type: type),
+      if (description?.trim().isNotEmpty ?? false) ...[
+        const SizedBox(height: 12),
+        _SectionCard(
+          title: context.l10n.itemDetailDescription,
+          child: SelectableText(description!),
+        ),
+      ],
+      if (type.traitSections.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        _TraitCard(type: type, fitReference: fitReference),
+      ],
+      if (_hasSlotSummary(ref, typeId)) ...[
+        const SizedBox(height: 12),
+        _SlotSummaryCard(typeId: typeId),
+      ],
+    ],
+  );
+}
+
+class _AttributeTabContent extends StatelessWidget {
+  const _AttributeTabContent({
+    required this.typeId,
+    required this.fitReference,
+    required this.attributes,
+  });
+
+  final int typeId;
+  final ItemDetailFitReference? fitReference;
+  final List<_InspectableAttribute> attributes;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      if (attributes.isNotEmpty)
+        _AttributesList(typeId: typeId, fitReference: fitReference, attributes: attributes),
+    ],
+  );
+}
+
+class _SkillTabContent extends StatelessWidget {
+  const _SkillTabContent({required this.type, required this.fitReference});
+
+  final pb_types.Type type;
+  final ItemDetailFitReference? fitReference;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      if (type.requiredSkills.isNotEmpty) _SkillTree(type: type, fitReference: fitReference),
+    ],
+  );
 }
 
 class AttributeDetailPage extends ConsumerWidget {
@@ -308,11 +478,6 @@ class _HeaderCard extends ConsumerWidget {
                         _TagChip(label: _resolveLocalization(ref, metaGroup.metaGroupName) ?? ""),
                       if (group != null)
                         _TagChip(label: _resolveLocalization(ref, group.groupName) ?? ""),
-                      _TagChip(
-                        label: fitReference == null
-                            ? context.l10n.itemDetailStaticData
-                            : context.l10n.itemDetailFitAware,
-                      ),
                     ],
                   ),
                 ],
@@ -424,71 +589,92 @@ class _TraitCard extends ConsumerWidget {
   );
 }
 
-class _RequirementsCard extends ConsumerWidget {
-  const _RequirementsCard({required this.type, required this.fitReference});
+class _SkillTree extends StatelessWidget {
+  const _SkillTree({required this.type, required this.fitReference});
 
   final pb_types.Type type;
   final ItemDetailFitReference? fitReference;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => _SectionCard(
-    title: context.l10n.itemDetailRequirements,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final requirement in type.requiredSkills)
-          _SkillRequirementNode(requirement: requirement, fitReference: fitReference, depth: 0),
-      ],
-    ),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final requirement in type.requiredSkills)
+        _SkillTreeNode(requirement: requirement, fitReference: fitReference),
+    ],
   );
 }
 
-class _SkillRequirementNode extends ConsumerWidget {
-  const _SkillRequirementNode({
-    required this.requirement,
-    required this.fitReference,
-    required this.depth,
-  });
+class _SkillTreeNode extends ConsumerStatefulWidget {
+  const _SkillTreeNode({required this.requirement, required this.fitReference, this.depth = 0});
 
   final pb_types.Type_SkillRequirement requirement;
   final ItemDetailFitReference? fitReference;
   final int depth;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final skillType = ref.watch(bundleCollectionGetTypeProvider(requirement.skillTypeId));
-    final List<pb_types.Type_SkillRequirement> childRequirements =
-        skillType?.requiredSkills.toList() ?? const [];
-    final title = skillType == null
-        ? Text("Type ${requirement.skillTypeId}")
-        : TypeNameText(typeId: requirement.skillTypeId);
+  ConsumerState<_SkillTreeNode> createState() => _SkillTreeNodeState();
+}
 
-    return Padding(
-      padding: EdgeInsets.only(left: depth * 16.0, bottom: 8),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        dense: true,
-        title: Row(
-          children: [
-            Expanded(child: title),
-            const SizedBox(width: 8),
-            _LevelPips(level: requirement.level),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: () => showItemDetailPage(
-                context,
-                typeId: requirement.skillTypeId,
-                fitReference: fitReference,
-              ),
-              icon: const Icon(Icons.open_in_new, size: 18),
+class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final skillType = ref.watch(bundleCollectionGetTypeProvider(widget.requirement.skillTypeId));
+    final childRequirements =
+        skillType?.requiredSkills.toList() ?? const <pb_types.Type_SkillRequirement>[];
+    final hasChildren = childRequirements.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onLongPress: () => showItemDetailPage(
+            context,
+            typeId: widget.requirement.skillTypeId,
+            fitReference: widget.fitReference,
+          ),
+          child: Padding(
+            padding: EdgeInsets.only(left: widget.depth * 24.0, top: 5, bottom: 5, right: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  child: hasChildren
+                      ? IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          onPressed: () => setState(() => _expanded = !_expanded),
+                          icon: Icon(_expanded ? Icons.expand_more : Icons.chevron_right, size: 18),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                Expanded(
+                  child: skillType == null
+                      ? Text("Type ${widget.requirement.skillTypeId}")
+                      : TypeNameText(typeId: widget.requirement.skillTypeId),
+                ),
+                const SizedBox(width: 12),
+                _LevelPips(level: widget.requirement.level),
+              ],
             ),
-          ],
+          ),
         ),
-        children: [
+        if (_expanded)
           for (final child in childRequirements)
-            _SkillRequirementNode(requirement: child, fitReference: fitReference, depth: depth + 1),
-        ],
-      ),
+            _SkillTreeNode(
+              requirement: child,
+              fitReference: widget.fitReference,
+              depth: widget.depth + 1,
+            ),
+      ],
     );
   }
 }
@@ -541,60 +727,66 @@ class _SlotSummaryCard extends ConsumerWidget {
   }
 }
 
-class _AttributesCard extends ConsumerWidget {
-  const _AttributesCard({
+class _AttributesList extends ConsumerWidget {
+  const _AttributesList({
     required this.typeId,
     required this.fitReference,
     required this.attributes,
-    required this.resolvedItem,
   });
 
   final int typeId;
   final ItemDetailFitReference? fitReference;
   final List<_InspectableAttribute> attributes;
-  final native.Item? resolvedItem;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => _SectionCard(
-    title: context.l10n.itemDetailAttributes,
-    child: Column(
-      children: [
-        for (final attribute in attributes)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            minVerticalPadding: 8,
-            title: Text(attribute.displayName),
-            trailing: Text(
-              _formatAttributeValue(
-                ref,
-                attribute.attribute,
-                attribute.unit,
-                attribute.currentValue ?? attribute.staticValue,
-              ),
-              textAlign: TextAlign.end,
-              style: context.theme.textTheme.bodyLarge?.copyWith(
-                color: _toneColor(
-                  context,
-                  attribute.currentValue == null
-                      ? null
-                      : _attributeDeltaTone(
-                          attribute: attribute.attribute,
-                          baseValue: attribute.staticValue,
-                          currentValue: attribute.currentValue!,
-                        ),
+  Widget build(BuildContext context, WidgetRef ref) => Column(
+    children: [
+      for (final attribute in attributes)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          minVerticalPadding: 8,
+          minTileHeight: 0,
+          leading: attribute.attribute == null
+              ? const Icon(Icons.square_outlined, color: Colors.transparent, size: 24)
+              : EveIcon(
+                  icon: attribute.attribute!.icon,
+                  fallbackIcon: const Icon(
+                    Icons.square_outlined,
+                    color: Colors.transparent,
+                    size: 24,
+                  ),
                 ),
-                fontWeight: FontWeight.w500,
-              ),
+          title: Text(attribute.displayName),
+          trailing: Text(
+            _formatAttributeValue(
+              ref,
+              attribute.attribute,
+              attribute.unit,
+              attribute.currentValue ?? attribute.staticValue,
             ),
-            onTap: () => showAttributeDetailPage(
-              context,
-              typeId: typeId,
-              attributeId: attribute.attributeId,
-              fitReference: fitReference,
+            textAlign: TextAlign.end,
+            style: context.theme.textTheme.bodyLarge?.copyWith(
+              color: _toneColor(
+                context,
+                attribute.currentValue == null
+                    ? null
+                    : _attributeDeltaTone(
+                        attribute: attribute.attribute,
+                        baseValue: attribute.staticValue,
+                        currentValue: attribute.currentValue!,
+                      ),
+              ),
+              fontWeight: FontWeight.w500,
             ),
           ),
-      ],
-    ),
+          onLongPress: () => showAttributeDetailPage(
+            context,
+            typeId: typeId,
+            attributeId: attribute.attributeId,
+            fitReference: fitReference,
+          ),
+        ),
+    ],
   );
 }
 
@@ -817,12 +1009,14 @@ class _LevelPips extends StatelessWidget {
     children: List.generate(5, (index) {
       final active = index < level;
       return Container(
-        width: 10,
-        height: 10,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
+        width: 16,
+        height: 16,
+        margin: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
           color: active ? context.theme.colorScheme.primary : Colors.transparent,
-          border: Border.all(color: context.theme.colorScheme.primary),
+          border: Border.all(
+            color: active ? context.theme.colorScheme.primary : context.theme.colorScheme.outline,
+          ),
           borderRadius: BorderRadius.circular(2),
         ),
       );
@@ -997,7 +1191,15 @@ List<_InspectableAttribute> _collectInspectableAttributes(
     );
   }
 
-  attributes.sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
+  attributes.sort((a, b) {
+    final leftCategory = a.attribute?.categoryId ?? -1;
+    final rightCategory = b.attribute?.categoryId ?? -1;
+    final categoryCompare = leftCategory.compareTo(rightCategory);
+    if (categoryCompare != 0) {
+      return categoryCompare;
+    }
+    return a.attributeId.compareTo(b.attributeId);
+  });
   return attributes;
 }
 
