@@ -4,6 +4,7 @@ import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
+import "package:eve_fit_assistant/data/proto/fit.pb.dart" show Slots;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/data/proto/utils.pb.dart" show LocalizationID;
 import "package:eve_fit_assistant/native/api/output.dart" as native;
@@ -714,14 +715,9 @@ class _SlotSummaryCard extends ConsumerWidget {
       ]);
     }
     if (slots != null) {
-      if (slots.highSlots.containsKey(typeId)) {
-        rows.add(_DataRow(label: context.l10n.itemDetailSlotClass, value: context.l10n.highSlot));
-      } else if (slots.mediumSlots.containsKey(typeId)) {
-        rows.add(_DataRow(label: context.l10n.itemDetailSlotClass, value: context.l10n.midSlot));
-      } else if (slots.lowSlots.containsKey(typeId)) {
-        rows.add(_DataRow(label: context.l10n.itemDetailSlotClass, value: context.l10n.lowSlot));
-      } else if (slots.rigSlots.containsKey(typeId)) {
-        rows.add(_DataRow(label: context.l10n.itemDetailSlotClass, value: context.l10n.rigSlot));
+      final slotClass = _renderedSlotClassLabel(context, slots, typeId);
+      if (slotClass != null) {
+        rows.add(_DataRow(label: context.l10n.itemDetailSlotClass, value: slotClass));
       }
     }
 
@@ -1119,15 +1115,23 @@ bool _hasSlotSummary(WidgetRef ref, int typeId) {
   final subsystem = ref.watch(bundleCollectionGetSubsystemProvider(typeId));
   final slots = ref.watch(bundleCollectionGetSlotsProvider);
   if (ship != null || subsystem != null) return true;
-  if (slots == null) return false;
-  return slots.highSlots.containsKey(typeId) ||
-      slots.mediumSlots.containsKey(typeId) ||
-      slots.lowSlots.containsKey(typeId) ||
-      slots.rigSlots.containsKey(typeId) ||
-      slots.subsystemSlots.containsKey(typeId) ||
-      slots.serviceSlots.containsKey(typeId) ||
-      slots.implantSlots.containsKey(typeId) ||
-      slots.boosterSlots.containsKey(typeId);
+  return slots != null && _renderedSlotClassLabel(null, slots, typeId) != null;
+}
+
+String? _renderedSlotClassLabel(BuildContext? context, Slots slots, int typeId) {
+  if (slots.highSlots.containsKey(typeId)) {
+    return context?.l10n.highSlot;
+  }
+  if (slots.mediumSlots.containsKey(typeId)) {
+    return context?.l10n.midSlot;
+  }
+  if (slots.lowSlots.containsKey(typeId)) {
+    return context?.l10n.lowSlot;
+  }
+  if (slots.rigSlots.containsKey(typeId)) {
+    return context?.l10n.rigSlot;
+  }
+  return null;
 }
 
 native.Item? _resolveNativeItem(native.Ship ship, ItemDetailFitReference reference) {
