@@ -37,8 +37,8 @@ class _DescriptionTextState extends State<DescriptionText>
     _disposeRecognizers();
 
     final normalizedText = widget.text.replaceAllMapped(
-      RegExp("<url=([^>]+)>([^<]+)</url>"),
-      (match) => '<url href="${match.group(1)}">${match.group(2)}</url>',
+      RegExp("<url=([^>]+)>"),
+      (match) => '<url href="${match.group(1)}">',
     );
     final fragment = html_parser.parseFragment("<div>$normalizedText</div>");
 
