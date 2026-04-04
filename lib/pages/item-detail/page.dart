@@ -299,7 +299,7 @@ class _AttributeTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.symmetric(vertical: 16),
     children: [
       if (attributes.isNotEmpty)
         _AttributesList(typeId: typeId, fitReference: fitReference, attributes: attributes),
@@ -633,38 +633,43 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
     final hasChildren = childRequirements.isNotEmpty;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onLongPressStart: (_) => showItemDetailPage(
-            context,
-            typeId: widget.requirement.skillTypeId,
-            fitReference: widget.fitReference,
-          ),
-          child: Padding(
-            padding: EdgeInsets.only(left: widget.depth * 24.0, top: 5, bottom: 5, right: 4),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 24,
-                  child: hasChildren
-                      ? IconButton(
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          onPressed: () => setState(() => _expanded = !_expanded),
-                          icon: Icon(_expanded ? Icons.expand_more : Icons.chevron_right, size: 18),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                Expanded(
-                  child: skillType == null
-                      ? Text("Type ${widget.requirement.skillTypeId}")
-                      : TypeNameText(typeId: widget.requirement.skillTypeId),
-                ),
-                const SizedBox(width: 12),
-                _LevelPips(level: widget.requirement.level),
-              ],
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onLongPress: () => showItemDetailPage(
+              context,
+              typeId: widget.requirement.skillTypeId,
+              fitReference: widget.fitReference,
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(left: widget.depth * 24.0, top: 5, bottom: 5, right: 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    child: hasChildren
+                        ? IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            onPressed: () => setState(() => _expanded = !_expanded),
+                            icon: Icon(
+                              _expanded ? Icons.expand_more : Icons.chevron_right,
+                              size: 18,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  Expanded(
+                    child: skillType == null
+                        ? Text("Type ${widget.requirement.skillTypeId}")
+                        : TypeNameText(typeId: widget.requirement.skillTypeId),
+                  ),
+                  const SizedBox(width: 12),
+                  _LevelPips(level: widget.requirement.level),
+                ],
+              ),
             ),
           ),
         ),
@@ -741,50 +746,54 @@ class _AttributesList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       for (final attribute in attributes)
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          minVerticalPadding: 8,
-          minTileHeight: 0,
-          leading: attribute.attribute == null
-              ? const Icon(Icons.square_outlined, color: Colors.transparent, size: 24)
-              : EveIcon(
-                  icon: attribute.attribute!.icon,
-                  fallbackIcon: const Icon(
-                    Icons.square_outlined,
-                    color: Colors.transparent,
-                    size: 24,
+        SizedBox(
+          width: double.infinity,
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            minVerticalPadding: 8,
+            minTileHeight: 0,
+            leading: attribute.attribute == null
+                ? const Icon(Icons.square_outlined, color: Colors.transparent, size: 24)
+                : EveIcon(
+                    icon: attribute.attribute!.icon,
+                    fallbackIcon: const Icon(
+                      Icons.square_outlined,
+                      color: Colors.transparent,
+                      size: 24,
+                    ),
                   ),
-                ),
-          title: Text(attribute.displayName),
-          trailing: Text(
-            _formatAttributeValue(
-              ref,
-              attribute.attribute,
-              attribute.unit,
-              attribute.currentValue ?? attribute.staticValue,
-            ),
-            textAlign: TextAlign.end,
-            style: context.theme.textTheme.bodyLarge?.copyWith(
-              color: _toneColor(
-                context,
-                attribute.currentValue == null
-                    ? null
-                    : _attributeDeltaTone(
-                        attribute: attribute.attribute,
-                        baseValue: attribute.staticValue,
-                        currentValue: attribute.currentValue!,
-                      ),
+            title: Text(attribute.displayName),
+            trailing: Text(
+              _formatAttributeValue(
+                ref,
+                attribute.attribute,
+                attribute.unit,
+                attribute.currentValue ?? attribute.staticValue,
               ),
-              fontWeight: FontWeight.w500,
+              textAlign: TextAlign.end,
+              style: context.theme.textTheme.bodyLarge?.copyWith(
+                color: _toneColor(
+                  context,
+                  attribute.currentValue == null
+                      ? null
+                      : _attributeDeltaTone(
+                          attribute: attribute.attribute,
+                          baseValue: attribute.staticValue,
+                          currentValue: attribute.currentValue!,
+                        ),
+                ),
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          onLongPress: () => showAttributeDetailPage(
-            context,
-            typeId: typeId,
-            attributeId: attribute.attributeId,
-            fitReference: fitReference,
+            onLongPress: () => showAttributeDetailPage(
+              context,
+              typeId: typeId,
+              attributeId: attribute.attributeId,
+              fitReference: fitReference,
+            ),
           ),
         ),
     ],
