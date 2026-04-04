@@ -97,6 +97,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),
@@ -105,6 +106,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),

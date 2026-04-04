@@ -146,6 +146,7 @@ class _DroneSlotRow extends ConsumerWidget {
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),
@@ -154,6 +155,7 @@ class _DroneSlotRow extends ConsumerWidget {
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),

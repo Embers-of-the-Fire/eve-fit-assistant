@@ -103,6 +103,7 @@ class _SlotRowDisplay extends ConsumerWidget {
               typeId: chargeId,
               fitReference: ItemDetailFitReference.module(
                 fitId: fitContext.fitId,
+                slotType: slotInfo.type,
                 index: slotInfo.index,
                 inspectCharge: true,
               ),
@@ -112,6 +113,7 @@ class _SlotRowDisplay extends ConsumerWidget {
               typeId: chargeId,
               fitReference: ItemDetailFitReference.module(
                 fitId: fitContext.fitId,
+                slotType: slotInfo.type,
                 index: slotInfo.index,
                 inspectCharge: true,
               ),
@@ -165,6 +167,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           typeId: itemType.typeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),
@@ -173,6 +176,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           typeId: itemType.typeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),

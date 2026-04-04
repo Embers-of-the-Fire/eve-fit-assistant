@@ -29,17 +29,23 @@ class ItemDetailFitReference {
     required this.fitId,
     required this.kind,
     this.index,
+    this.slotType,
     this.inspectCharge = false,
-  });
+  }) : assert(
+         kind != ItemDetailFitObjectKind.module || slotType != null,
+         "Module fit references must include a slot type.",
+       );
 
   const ItemDetailFitReference.module({
     required String fitId,
+    required native.OutSlotType slotType,
     required int index,
     bool inspectCharge = false,
   }) : this(
          fitId: fitId,
          kind: ItemDetailFitObjectKind.module,
          index: index,
+         slotType: slotType,
          inspectCharge: inspectCharge,
        );
 
@@ -55,6 +61,7 @@ class ItemDetailFitReference {
   final String fitId;
   final ItemDetailFitObjectKind kind;
   final int? index;
+  final native.OutSlotType? slotType;
   final bool inspectCharge;
 }
 
@@ -1136,7 +1143,7 @@ native.Item? _resolveNativeItem(native.Ship ship, ItemDetailFitReference referen
     ItemDetailFitObjectKind.hull => ship.hull,
     ItemDetailFitObjectKind.module => _firstWhereOrNull(
       ship.modules,
-      (item) => item.slot.index == reference.index,
+      (item) => item.slot.slotType == reference.slotType && item.slot.index == reference.index,
     ),
     ItemDetailFitObjectKind.implant => _firstWhereOrNull(
       ship.implants,

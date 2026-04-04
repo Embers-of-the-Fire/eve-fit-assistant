@@ -208,6 +208,7 @@ class _FighterSlotRow extends ConsumerWidget {
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),
@@ -216,6 +217,7 @@ class _FighterSlotRow extends ConsumerWidget {
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
+            slotType: slotInfo.type,
             index: slotInfo.index,
           ),
         ),

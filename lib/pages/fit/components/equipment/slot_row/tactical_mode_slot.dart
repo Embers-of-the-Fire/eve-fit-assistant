@@ -25,7 +25,11 @@ class _TacticalModeSlotRow extends StatelessWidget {
       onLongPress: () => showItemDetailPage(
         context,
         typeId: slotInfo.slot.itemId.asId,
-        fitReference: ItemDetailFitReference.module(fitId: fitContext.fitId, index: slotInfo.index),
+        fitReference: ItemDetailFitReference.module(
+          fitId: fitContext.fitId,
+          slotType: slotInfo.type,
+          index: slotInfo.index,
+        ),
       ),
       leading: StateIcon.circle(
         state: slotInfo.state,
