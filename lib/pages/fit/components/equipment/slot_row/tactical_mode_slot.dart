@@ -20,24 +20,27 @@ class _TacticalModeSlotRow extends StatelessWidget {
     if (variant == null) {
       return ListTile(title: Text("Unknown Tactical Mode ${slotInfo.slot.itemId.asId}"));
     }
-    return ListTile(
-      onTap: () => fitContext.fitWrapper.toggleTacticalMode(fitContext.ship),
-      onLongPress: () => showItemDetailPage(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: (_) => showItemDetailPage(
         context,
         typeId: slotInfo.slot.itemId.asId,
         fitReference: ItemDetailFitReference.module(fitId: fitContext.fitId, index: slotInfo.index),
       ),
-      leading: StateIcon.circle(
-        state: slotInfo.state,
-        child: Image(
-          image: switch (variant) {
-            TacticalMode_TacticalModeVariant.TARGET => ImageAssets.tacticalModeTarget,
-            TacticalMode_TacticalModeVariant.SPEED => ImageAssets.tacticalModeSpeed,
-            _ => ImageAssets.tacticalModeDefense,
-          },
+      child: ListTile(
+        onTap: () => fitContext.fitWrapper.toggleTacticalMode(fitContext.ship),
+        leading: StateIcon.circle(
+          state: slotInfo.state,
+          child: Image(
+            image: switch (variant) {
+              TacticalMode_TacticalModeVariant.TARGET => ImageAssets.tacticalModeTarget,
+              TacticalMode_TacticalModeVariant.SPEED => ImageAssets.tacticalModeSpeed,
+              _ => ImageAssets.tacticalModeDefense,
+            },
+          ),
         ),
+        title: LocalizedTypeName(typeId: slotInfo.slot.itemId.asId),
       ),
-      title: LocalizedTypeName(typeId: slotInfo.slot.itemId.asId),
     );
   }
 }

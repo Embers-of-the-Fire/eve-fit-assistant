@@ -49,7 +49,7 @@ class _AddChargeDialog extends ConsumerWidget {
                 (typeId) => TypeListTile(
                   typeId: typeId,
                   onTap: () => Navigator.of(context).pop(typeId),
-                  onLongPress: () => showItemDetailPage(context, typeId: typeId),
+                  onLongPressStart: () => showItemDetailPage(context, typeId: typeId),
                 ),
               ),
             ],

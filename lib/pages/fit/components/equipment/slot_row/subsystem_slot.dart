@@ -76,28 +76,39 @@ class _SubsystemSlotRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: ListTile(
-        leading: StateIcon.rect(
-          state: slotInfo.state,
-          child: type != null
-              ? EveIcon(icon: type.icon, overlayIcon: metaGroupIcon, size: 35)
-              : Image(
-                  image: switch (subsystemType) {
-                    Subsystem_SubsystemType.CORE => ImageAssets.slotSubsystemCore,
-                    Subsystem_SubsystemType.DEFENSIVE => ImageAssets.slotSubsystemDefensive,
-                    Subsystem_SubsystemType.OFFENSIVE => ImageAssets.slotSubsystemOffensive,
-                    Subsystem_SubsystemType.PROPULSION => ImageAssets.slotSubsystemPropulsion,
-                    _ => ImageAssets.slotSubsystem,
-                  },
-                ),
-        ),
-        title: LocalizedTypeName(typeId: displayTypeId),
-        onTap: () => showItemDetailPage(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPressStart: (_) => showItemDetailPage(
           context,
           typeId: displayTypeId,
           fitReference: ItemDetailFitReference.module(
             fitId: fitContext.fitId,
             index: slotInfo.index,
+          ),
+        ),
+        child: ListTile(
+          leading: StateIcon.rect(
+            state: slotInfo.state,
+            child: type != null
+                ? EveIcon(icon: type.icon, overlayIcon: metaGroupIcon, size: 35)
+                : Image(
+                    image: switch (subsystemType) {
+                      Subsystem_SubsystemType.CORE => ImageAssets.slotSubsystemCore,
+                      Subsystem_SubsystemType.DEFENSIVE => ImageAssets.slotSubsystemDefensive,
+                      Subsystem_SubsystemType.OFFENSIVE => ImageAssets.slotSubsystemOffensive,
+                      Subsystem_SubsystemType.PROPULSION => ImageAssets.slotSubsystemPropulsion,
+                      _ => ImageAssets.slotSubsystem,
+                    },
+                  ),
+          ),
+          title: LocalizedTypeName(typeId: displayTypeId),
+          onTap: () => showItemDetailPage(
+            context,
+            typeId: displayTypeId,
+            fitReference: ItemDetailFitReference.module(
+              fitId: fitContext.fitId,
+              index: slotInfo.index,
+            ),
           ),
         ),
       ),

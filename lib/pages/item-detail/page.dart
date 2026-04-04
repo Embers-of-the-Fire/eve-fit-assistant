@@ -635,8 +635,9 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
-          onLongPress: () => showItemDetailPage(
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onLongPressStart: (_) => showItemDetailPage(
             context,
             typeId: widget.requirement.skillTypeId,
             fitReference: widget.fitReference,
