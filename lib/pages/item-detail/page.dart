@@ -579,11 +579,7 @@ class _TraitCard extends ConsumerWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: () => showItemDetailPage(
-                  context,
-                  typeId: section.skillTypeId,
-                  fitReference: fitReference,
-                ),
+                onPressed: () => showItemDetailPage(context, typeId: section.skillTypeId),
                 icon: const Icon(Icons.open_in_new),
                 label: TypeNameText(typeId: section.skillTypeId),
               ),
@@ -645,11 +641,7 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onLongPress: () => showItemDetailPage(
-              context,
-              typeId: widget.requirement.skillTypeId,
-              fitReference: widget.fitReference,
-            ),
+            onLongPress: () => showItemDetailPage(context, typeId: widget.requirement.skillTypeId),
             child: Padding(
               padding: EdgeInsets.only(left: widget.depth * 24.0, top: 5, bottom: 5, right: 4),
               child: Row(
