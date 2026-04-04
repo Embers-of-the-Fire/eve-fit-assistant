@@ -139,12 +139,21 @@ class _DescriptionTextState extends State<DescriptionText>
     }
 
     final normalized = value.replaceFirst("#", "");
-    final parsed = int.tryParse(normalized, radix: 16);
+    final expanded = switch (normalized.length) {
+      3 || 4 => normalized.split("").map((part) => "$part$part").join(),
+      6 || 8 => normalized,
+      _ => null,
+    };
+    if (expanded == null) {
+      return null;
+    }
+
+    final parsed = int.tryParse(expanded, radix: 16);
     if (parsed == null) {
       return null;
     }
 
-    return Color(normalized.length <= 6 ? parsed | 0xFF000000 : parsed);
+    return Color(expanded.length == 6 ? parsed | 0xFF000000 : parsed);
   }
 
   double? _parseHtmlFontSize(String? value) {
