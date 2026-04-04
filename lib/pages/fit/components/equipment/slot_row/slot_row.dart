@@ -97,12 +97,34 @@ class _SlotRowDisplay extends ConsumerWidget {
           localizationProvider(chargeType.typeName.id).select((t) => t ?? ""),
         );
         subtitleWidgets.add(
-          Row(
-            children: [
-              EveIcon(icon: chargeType.icon, size: 18),
-              const SizedBox(width: 4),
-              Text(chargeName, style: const TextStyle(fontSize: 14)),
-            ],
+          InkWell(
+            onTap: () => showItemDetailPage(
+              context,
+              typeId: chargeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+                inspectCharge: true,
+              ),
+            ),
+            onLongPress: () => showItemDetailPage(
+              context,
+              typeId: chargeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+                inspectCharge: true,
+              ),
+            ),
+            child: Row(
+              children: [
+                EveIcon(icon: chargeType.icon, size: 18),
+                const SizedBox(width: 4),
+                Text(chargeName, style: const TextStyle(fontSize: 14)),
+              ],
+            ),
           ),
         );
       }
@@ -140,6 +162,24 @@ class _SlotRowDisplay extends ConsumerWidget {
         subtitle: subtitleWidgets.isEmpty
             ? null
             : Column(crossAxisAlignment: CrossAxisAlignment.start, children: subtitleWidgets),
+        onTap: () => showItemDetailPage(
+          context,
+          typeId: itemType.typeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            slotType: slotInfo.type,
+            index: slotInfo.index,
+          ),
+        ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: itemType.typeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            slotType: slotInfo.type,
+            index: slotInfo.index,
+          ),
+        ),
       ),
     );
   }

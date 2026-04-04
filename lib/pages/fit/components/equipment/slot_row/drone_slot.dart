@@ -141,6 +141,24 @@ class _DroneSlotRow extends ConsumerWidget {
         ),
         title: LocalizedTypeName(typeId: displayTypeId),
         trailing: Text("x $quantity"),
+        onTap: () => showItemDetailPage(
+          context,
+          typeId: displayTypeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            slotType: slotInfo.type,
+            index: slotInfo.index,
+          ),
+        ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: displayTypeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            slotType: slotInfo.type,
+            index: slotInfo.index,
+          ),
+        ),
       ),
     );
   }

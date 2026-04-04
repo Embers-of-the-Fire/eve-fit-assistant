@@ -4,6 +4,34 @@ package types;
 import "utils.proto";
 
 message Type {
+  message SkillRequirement {
+    required uint32 skill_type_id = 1;
+    required uint32 level = 2;
+  }
+
+  message DogmaAttributeValue {
+    required uint32 dogma_attribute_id = 1;
+    required double value = 2;
+  }
+
+  enum TraitSectionKind {
+    SKILL = 0;
+    ROLE = 1;
+    MISC = 2;
+  }
+
+  message TraitEntry {
+    required utils.LocalizationID text = 1;
+    optional double bonus = 2;
+    optional uint32 unit_id = 3;
+  }
+
+  message TraitSection {
+    required TraitSectionKind kind = 1;
+    optional uint32 skill_type_id = 2;
+    repeated TraitEntry entries = 3;
+  }
+
   required uint32 type_id = 1;
 
   required utils.Icon icon = 2;
@@ -17,4 +45,7 @@ message Type {
 
   required utils.LocalizationID type_name = 8;
   optional utils.LocalizationID description = 9;
+  repeated SkillRequirement required_skills = 10;
+  repeated DogmaAttributeValue dogma_attributes = 11;
+  repeated TraitSection trait_sections = 12;
 }

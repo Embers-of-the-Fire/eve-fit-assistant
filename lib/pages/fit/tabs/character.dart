@@ -232,6 +232,16 @@ class _ImplantRow extends ConsumerWidget {
         ),
         title: LocalizedTypeName(typeId: itemId.asId),
         trailing: Text("${slotId + 1}"),
+        onTap: () => showItemDetailPage(
+          context,
+          typeId: itemId.asId,
+          fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
+        ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: itemId.asId,
+          fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
+        ),
       ),
     );
   }
@@ -325,6 +335,16 @@ class _BoosterRow extends ConsumerWidget {
         ),
         title: LocalizedTypeName(typeId: itemId.asId),
         subtitle: Text("${context.l10n.boosterSlot} $slotId"),
+        onTap: () => showItemDetailPage(
+          context,
+          typeId: itemId.asId,
+          fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
+        ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: itemId.asId,
+          fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
+        ),
       ),
     );
   }

@@ -203,6 +203,24 @@ class _FighterSlotRow extends ConsumerWidget {
           ],
         ),
         trailing: _FighterCountText(count: storedFighter.quantity, total: maxQuantity),
+        onTap: () => showItemDetailPage(
+          context,
+          typeId: displayTypeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            slotType: slotInfo.type,
+            index: slotInfo.index,
+          ),
+        ),
+        onLongPress: () => showItemDetailPage(
+          context,
+          typeId: displayTypeId,
+          fitReference: ItemDetailFitReference.module(
+            fitId: fitContext.fitId,
+            slotType: slotInfo.type,
+            index: slotInfo.index,
+          ),
+        ),
       ),
     );
   }

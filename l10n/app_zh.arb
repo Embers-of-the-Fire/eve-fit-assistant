@@ -198,6 +198,125 @@
   "bundleManagerDetailVariantIncremental": "增量",
   "bundleManagerDetailGeneratedAt": "生成时间：",
   "bundleManagerDetailLoadedAt": "加载时间：",
+  "itemDetailTabInfo": "信息",
+  "itemDetailTabAttributes": "属性",
+  "itemDetailTabSkills": "技能",
+  "itemDetailDescription": "描述",
+  "itemDetailClassification": "分类",
+  "itemDetailTypeId": "类型 ID",
+  "itemDetailCategory": "分类",
+  "itemDetailGroup": "组",
+  "itemDetailMarketGroup": "市场组",
+  "itemDetailTraits": "特性",
+  "itemDetailTraitRoleBonuses": "特有加成",
+  "itemDetailTraitMiscBonuses": "其他加成",
+  "itemDetailTraitPerLevel": "{skillName} 每级加成",
+  "@itemDetailTraitPerLevel": {
+    "placeholders": {
+      "skillName": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailRequirements": "需求",
+  "itemDetailFitting": "装配信息",
+  "itemDetailSlotClass": "槽位类别",
+  "itemDetailBooleanFalse": "否",
+  "itemDetailBooleanTrue": "是",
+  "itemDetailAttributes": "属性",
+  "itemDetailAttributeOverview": "属性概览",
+  "itemDetailAttributeType": "物品",
+  "itemDetailAttributeBaseValue": "基础值",
+  "itemDetailAttributeCurrentValue": "当前值",
+  "itemDetailAttributeDelta": "变化量",
+  "itemDetailAttributeBaseAndCurrent": "基础：{base}  当前：{current}",
+  "@itemDetailAttributeBaseAndCurrent": {
+    "placeholders": {
+      "base": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailUnavailable": "不可用",
+  "itemDetailEffectChain": "效果链",
+  "itemDetailNoEffectChain": "该属性当前没有可用的配置修正链信息。",
+  "itemDetailOriginal": "原始值",
+  "itemDetailNormalized": "归一化",
+  "itemDetailPenalized": "惩罚后",
+  "itemDetailPenalty": "惩罚",
+  "itemDetailNet": "净变化",
+  "itemDetailBuffSource": "增益 {buffId}",
+  "@itemDetailBuffSource": {
+    "placeholders": {
+      "buffId": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceShip": "舰船",
+  "itemDetailModifierSourceModule": "模块 {index}",
+  "@itemDetailModifierSourceModule": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceImplant": "植入体 {index}",
+  "@itemDetailModifierSourceImplant": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceBooster": "增效剂 {index}",
+  "@itemDetailModifierSourceBooster": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceSkill": "技能 {index}",
+  "@itemDetailModifierSourceSkill": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceCharge": "弹药 {index}",
+  "@itemDetailModifierSourceCharge": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceCharacter": "角色",
+  "itemDetailModifierSourceStructure": "建筑",
+  "itemDetailModifierSourceTarget": "目标",
+  "itemDetailEffectOperatorPreAssign": "预赋值",
+  "itemDetailEffectOperatorPreMul": "预乘",
+  "itemDetailEffectOperatorPreDiv": "预除",
+  "itemDetailEffectOperatorAdd": "增加",
+  "itemDetailEffectOperatorSub": "减少",
+  "itemDetailEffectOperatorPostMul": "后乘",
+  "itemDetailEffectOperatorPostDiv": "后除",
+  "itemDetailEffectOperatorPercent": "百分比",
+  "itemDetailEffectOperatorPostAssign": "后赋值",
+  "itemDetailEffectCategoryPassive": "被动",
+  "itemDetailEffectCategoryOnline": "在线",
+  "itemDetailEffectCategoryActive": "激活",
+  "itemDetailEffectCategoryOverload": "过载",
+  "itemDetailEffectCategoryTarget": "目标",
+  "itemDetailEffectCategoryArea": "区域",
+  "itemDetailEffectCategoryDungeon": "副本",
+  "itemDetailEffectCategorySystem": "系统",
   "@_LOADING_TEXT": {},
   "loadingTextExtractingBundle": "正在解压 {archiveName}...",
   "@loadingTextExtractingBundle": {

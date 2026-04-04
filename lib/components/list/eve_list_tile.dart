@@ -173,6 +173,7 @@ class TypeListTile extends ConsumerWidget {
     this.leading,
     this.fallbackLeading,
     this.onTap,
+    this.onLongPress,
   });
 
   final int typeId;
@@ -180,6 +181,7 @@ class TypeListTile extends ConsumerWidget {
   final Widget? leading;
   final Widget? fallbackLeading;
   final void Function()? onTap;
+  final void Function()? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -200,6 +202,7 @@ class TypeListTile extends ConsumerWidget {
       title: LocalizedText(localizationKey: typeInfo.typeName),
       trailing: trailing,
       onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 }
