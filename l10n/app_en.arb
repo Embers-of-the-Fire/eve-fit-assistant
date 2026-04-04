@@ -169,6 +169,8 @@
   "itemDetailRequirements": "Requirements",
   "itemDetailFitting": "Fitting",
   "itemDetailSlotClass": "Slot Class",
+  "itemDetailBooleanFalse": "False",
+  "itemDetailBooleanTrue": "True",
   "itemDetailAttributes": "Attributes",
   "itemDetailAttributeOverview": "Attribute Overview",
   "itemDetailAttributeType": "Type",
@@ -202,6 +204,67 @@
       }
     }
   },
+  "itemDetailModifierSourceShip": "Ship",
+  "itemDetailModifierSourceModule": "Module {index}",
+  "@itemDetailModifierSourceModule": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceImplant": "Implant {index}",
+  "@itemDetailModifierSourceImplant": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceBooster": "Booster {index}",
+  "@itemDetailModifierSourceBooster": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceSkill": "Skill {index}",
+  "@itemDetailModifierSourceSkill": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceCharge": "Charge {index}",
+  "@itemDetailModifierSourceCharge": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "itemDetailModifierSourceCharacter": "Character",
+  "itemDetailModifierSourceStructure": "Structure",
+  "itemDetailModifierSourceTarget": "Target",
+  "itemDetailEffectOperatorPreAssign": "Pre Assign",
+  "itemDetailEffectOperatorPreMul": "Pre Mul",
+  "itemDetailEffectOperatorPreDiv": "Pre Div",
+  "itemDetailEffectOperatorAdd": "Add",
+  "itemDetailEffectOperatorSub": "Sub",
+  "itemDetailEffectOperatorPostMul": "Post Mul",
+  "itemDetailEffectOperatorPostDiv": "Post Div",
+  "itemDetailEffectOperatorPercent": "Percent",
+  "itemDetailEffectOperatorPostAssign": "Post Assign",
+  "itemDetailEffectCategoryPassive": "Passive",
+  "itemDetailEffectCategoryOnline": "Online",
+  "itemDetailEffectCategoryActive": "Active",
+  "itemDetailEffectCategoryOverload": "Overload",
+  "itemDetailEffectCategoryTarget": "Target",
+  "itemDetailEffectCategoryArea": "Area",
+  "itemDetailEffectCategoryDungeon": "Dungeon",
+  "itemDetailEffectCategorySystem": "System",
   "@_LOADING_TEXT": {},
   "loadingTextExtractingBundle": "Extracting {archiveName}..."
 }

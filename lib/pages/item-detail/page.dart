@@ -396,13 +396,13 @@ class AttributeDetailPage extends ConsumerWidget {
                       label: context.l10n.itemDetailAttributeBaseValue,
                       value: staticValue == null
                           ? context.l10n.itemDetailUnavailable
-                          : _formatAttributeValue(ref, attribute, unit, staticValue),
+                          : _formatAttributeValue(context, ref, attribute, unit, staticValue),
                     ),
                     _ValueChip(
                       label: context.l10n.itemDetailAttributeCurrentValue,
                       value: current?.value == null
                           ? context.l10n.itemDetailUnavailable
-                          : _formatAttributeValue(ref, attribute, unit, current!.value!),
+                          : _formatAttributeValue(context, ref, attribute, unit, current!.value!),
                       tone: current?.value == null
                           ? null
                           : staticValue == null
@@ -417,6 +417,7 @@ class AttributeDetailPage extends ConsumerWidget {
                       _ValueChip(
                         label: context.l10n.itemDetailAttributeDelta,
                         value: _formatSignedValue(
+                          context,
                           ref,
                           attribute,
                           unit,
@@ -763,6 +764,7 @@ class _AttributesList extends ConsumerWidget {
             title: Text(attribute.displayName),
             trailing: Text(
               _formatAttributeValue(
+                context,
                 ref,
                 attribute.attribute,
                 attribute.unit,
@@ -804,7 +806,7 @@ class _ModifierTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sourceLabel = _modifierSourceLabel(ref, fit, emulated, modifier.source);
+    final sourceLabel = _modifierSourceLabel(context, ref, fit, emulated, modifier.source);
     final normalizedDelta = modifier.normalizedValue - modifier.originalValue;
     final penalizedDelta = modifier.penalizedValue - modifier.normalizedValue;
     final netDelta = modifier.penalizedValue - modifier.originalValue;
@@ -815,7 +817,7 @@ class _ModifierTile extends ConsumerWidget {
         );
         final attributeName =
             _attributeDisplayName(ref, attribute) ?? "Attribute ${effect.sourceAttributeId}";
-        return "${_effectCategoryLabel(effect.sourceCategory)} - ${_effectOperatorLabel(effect.operator_)} - $attributeName";
+        return "${_effectCategoryLabel(context, effect.sourceCategory)} - ${_effectOperatorLabel(context, effect.operator_)} - $attributeName";
       },
       buff: (buffId) => context.l10n.itemDetailBuffSource(buffId: buffId),
     );
@@ -1217,6 +1219,7 @@ List<_InspectableAttribute> _collectInspectableAttributes(
 }
 
 String _formatAttributeValue(
+  BuildContext context,
   WidgetRef ref,
   DogmaAttribute? attribute,
   DogmaUnit? unit,
@@ -1232,15 +1235,21 @@ String _formatAttributeValue(
     return "${_formatCompactNumber(value)}%";
   }
   if (normalizedUnit == "bool") {
-    return value == 0 ? "False" : "True";
+    return value == 0 ? context.l10n.itemDetailBooleanFalse : context.l10n.itemDetailBooleanTrue;
   }
   if (unitLabel.isEmpty) return formatted;
   return "$formatted $unitLabel";
 }
 
-String _formatSignedValue(WidgetRef ref, DogmaAttribute? attribute, DogmaUnit? unit, double value) {
+String _formatSignedValue(
+  BuildContext context,
+  WidgetRef ref,
+  DogmaAttribute? attribute,
+  DogmaUnit? unit,
+  double value,
+) {
   final prefix = value >= 0 ? "+" : "";
-  return "$prefix${_formatAttributeValue(ref, attribute, unit, value)}";
+  return "$prefix${_formatAttributeValue(context, ref, attribute, unit, value)}";
 }
 
 String _formatCompactNumber(double value) {
@@ -1262,17 +1271,18 @@ String _formatSignedCompactNumber(double value) {
   return "$prefix${_formatCompactNumber(value)}";
 }
 
-String _effectOperatorLabel(native.EffectOperator operator) => switch (operator) {
-  native.EffectOperator.preAssign => "Pre Assign",
-  native.EffectOperator.preMul => "Pre Mul",
-  native.EffectOperator.preDiv => "Pre Div",
-  native.EffectOperator.modAdd => "Add",
-  native.EffectOperator.modSub => "Sub",
-  native.EffectOperator.postMul => "Post Mul",
-  native.EffectOperator.postDiv => "Post Div",
-  native.EffectOperator.postPercent => "Percent",
-  native.EffectOperator.postAssign => "Post Assign",
-};
+String _effectOperatorLabel(BuildContext context, native.EffectOperator operator) =>
+    switch (operator) {
+      native.EffectOperator.preAssign => context.l10n.itemDetailEffectOperatorPreAssign,
+      native.EffectOperator.preMul => context.l10n.itemDetailEffectOperatorPreMul,
+      native.EffectOperator.preDiv => context.l10n.itemDetailEffectOperatorPreDiv,
+      native.EffectOperator.modAdd => context.l10n.itemDetailEffectOperatorAdd,
+      native.EffectOperator.modSub => context.l10n.itemDetailEffectOperatorSub,
+      native.EffectOperator.postMul => context.l10n.itemDetailEffectOperatorPostMul,
+      native.EffectOperator.postDiv => context.l10n.itemDetailEffectOperatorPostDiv,
+      native.EffectOperator.postPercent => context.l10n.itemDetailEffectOperatorPercent,
+      native.EffectOperator.postAssign => context.l10n.itemDetailEffectOperatorPostAssign,
+    };
 
 String _traitSectionTitle(
   BuildContext context,
@@ -1312,47 +1322,51 @@ String? _resolveTypeName(WidgetRef ref, int typeId) {
 }
 
 String _modifierSourceLabel(
+  BuildContext context,
   WidgetRef ref,
   FitStorage? fit,
   native.Ship? emulated,
   native.ModifierSource source,
 ) => source.when(
   effect: (effect) => switch (effect.source) {
-    native.FitObject_Ship() => _resolveTypeName(ref, fit?.body.shipTypeId ?? 0) ?? "Ship",
+    native.FitObject_Ship() =>
+      _resolveTypeName(ref, fit?.body.shipTypeId ?? 0) ?? context.l10n.itemDetailModifierSourceShip,
     native.FitObject_Item(:final field0) => _resolveNativeIndexedObjectName(
       ref,
       fit,
       emulated?.modules,
       field0.toInt(),
-      fallback: "Module ${field0.toInt() + 1}",
+      fallback: context.l10n.itemDetailModifierSourceModule(index: field0.toInt() + 1),
     ),
     native.FitObject_Implant(:final field0) => _resolveNativeIndexedObjectName(
       ref,
       fit,
       emulated?.implants,
       field0.toInt(),
-      fallback: "Implant ${field0.toInt() + 1}",
+      fallback: context.l10n.itemDetailModifierSourceImplant(index: field0.toInt() + 1),
     ),
     native.FitObject_Booster(:final field0) => _resolveNativeIndexedObjectName(
       ref,
       fit,
       emulated?.boosters,
       field0.toInt(),
-      fallback: "Booster ${field0.toInt() + 1}",
+      fallback: context.l10n.itemDetailModifierSourceBooster(index: field0.toInt() + 1),
     ),
     native.FitObject_Skill(:final field0) => _resolveNativeIndexedObjectName(
       ref,
       fit,
       emulated?.skills,
       field0.toInt(),
-      fallback: "Skill ${field0.toInt() + 1}",
+      fallback: context.l10n.itemDetailModifierSourceSkill(index: field0.toInt() + 1),
     ),
-    native.FitObject_Charge(:final field0) => "Charge ${field0.toInt() + 1}",
-    native.FitObject_Character() => "Character",
-    native.FitObject_Structure() => "Structure",
-    native.FitObject_Target() => "Target",
+    native.FitObject_Charge(:final field0) => context.l10n.itemDetailModifierSourceCharge(
+      index: field0.toInt() + 1,
+    ),
+    native.FitObject_Character() => context.l10n.itemDetailModifierSourceCharacter,
+    native.FitObject_Structure() => context.l10n.itemDetailModifierSourceStructure,
+    native.FitObject_Target() => context.l10n.itemDetailModifierSourceTarget,
   },
-  buff: (buffId) => "Buff $buffId",
+  buff: (buffId) => context.l10n.itemDetailBuffSource(buffId: buffId),
 );
 
 String _resolveNativeIndexedObjectName(
@@ -1372,13 +1386,14 @@ int? _resolveNativeItemTypeId(FitStorage? fit, native.Item item) => switch (item
   native_storage.ItemID_Dynamic(:final field0) => fit?.dynamicRegistry.dynamicItems[field0]?.typeId,
 };
 
-String _effectCategoryLabel(native.EffectCategory category) => switch (category) {
-  native.EffectCategory.passive => "Passive",
-  native.EffectCategory.online => "Online",
-  native.EffectCategory.active => "Active",
-  native.EffectCategory.overload => "Overload",
-  native.EffectCategory.target => "Target",
-  native.EffectCategory.area => "Area",
-  native.EffectCategory.dungeon => "Dungeon",
-  native.EffectCategory.system => "System",
-};
+String _effectCategoryLabel(BuildContext context, native.EffectCategory category) =>
+    switch (category) {
+      native.EffectCategory.passive => context.l10n.itemDetailEffectCategoryPassive,
+      native.EffectCategory.online => context.l10n.itemDetailEffectCategoryOnline,
+      native.EffectCategory.active => context.l10n.itemDetailEffectCategoryActive,
+      native.EffectCategory.overload => context.l10n.itemDetailEffectCategoryOverload,
+      native.EffectCategory.target => context.l10n.itemDetailEffectCategoryTarget,
+      native.EffectCategory.area => context.l10n.itemDetailEffectCategoryArea,
+      native.EffectCategory.dungeon => context.l10n.itemDetailEffectCategoryDungeon,
+      native.EffectCategory.system => context.l10n.itemDetailEffectCategorySystem,
+    };
