@@ -1014,7 +1014,19 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(sourceLabel, style: context.theme.textTheme.titleSmall),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(sourceLabel, style: context.theme.textTheme.titleSmall),
+                            if (hasPenalty)
+                              _InlineStatusChip(
+                                label: context.l10n.itemDetailPenalty,
+                                tone: _ValueTone.negative,
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           detail,
@@ -1043,16 +1055,6 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
                   ),
                 ],
               ),
-              if (hasPenalty) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _InlineStatusChip(
-                    label: context.l10n.itemDetailPenalty,
-                    tone: _ValueTone.negative,
-                  ),
-                ),
-              ],
               if (_expanded) ...[
                 const SizedBox(height: 12),
                 Wrap(
