@@ -971,10 +971,8 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
       widget.emulated,
       modifier.source,
     );
-    final normalizedDelta = modifier.normalizedValue - modifier.originalValue;
-    final penalizedDelta = modifier.penalizedValue - modifier.normalizedValue;
-    final netDelta = modifier.penalizedValue - modifier.originalValue;
-    final netTone = _effectDeltaTone(netDelta);
+    final appliedValue = modifier.penalizedValue;
+    final appliedTone = _effectDeltaTone(appliedValue);
     final detail = modifier.source.when(
       effect: (effect) {
         final attribute = ref.watch(
@@ -989,6 +987,7 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
     final hasPenalty =
         modifier.source is native.ModifierSource_Effect &&
         (modifier.source as native.ModifierSource_Effect).field0.penalty;
+    final penaltyChangedValue = modifier.penalizedValue != modifier.normalizedValue;
 
     return Material(
       color: Colors.transparent,
@@ -1033,13 +1032,13 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        _formatSignedCompactNumber(netDelta),
+                        _formatSignedCompactNumber(appliedValue),
                         style: context.theme.textTheme.bodyLarge?.copyWith(
-                          color: _toneColor(context, netTone),
+                          color: _toneColor(context, appliedTone),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      Text(context.l10n.itemDetailNet, style: context.theme.textTheme.labelSmall),
+                      Text("Applied", style: context.theme.textTheme.labelSmall),
                     ],
                   ),
                 ],
@@ -1061,28 +1060,29 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
                   runSpacing: 12,
                   children: [
                     _EffectSummaryChip(
-                      label: context.l10n.itemDetailOriginal,
+                      label: "Source",
                       value: _formatCompactNumber(modifier.originalValue),
                     ),
                     _EffectSummaryChip(
-                      label: context.l10n.itemDetailNormalized,
+                      label: "Transformed",
                       value: _formatCompactNumber(modifier.normalizedValue),
-                      delta: _formatSignedCompactNumber(normalizedDelta),
-                      tone: _effectDeltaTone(normalizedDelta),
                     ),
                     _EffectSummaryChip(
-                      label: context.l10n.itemDetailPenalized,
+                      label: hasPenalty ? "Applied After Penalty" : "Applied",
                       value: _formatCompactNumber(modifier.penalizedValue),
-                      delta: _formatSignedCompactNumber(penalizedDelta),
-                      tone: _effectDeltaTone(penalizedDelta),
-                    ),
-                    _EffectSummaryChip(
-                      label: context.l10n.itemDetailNet,
-                      value: _formatSignedCompactNumber(netDelta),
-                      tone: netTone,
+                      tone: appliedTone,
                     ),
                   ],
                 ),
+                if (hasPenalty && penaltyChangedValue) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    "The stacking penalty reduces the transformed value before application.",
+                    style: context.theme.textTheme.bodySmall?.copyWith(
+                      color: context.theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -1120,11 +1120,10 @@ class _InlineStatusChip extends StatelessWidget {
 }
 
 class _EffectSummaryChip extends StatelessWidget {
-  const _EffectSummaryChip({required this.label, required this.value, this.delta, this.tone});
+  const _EffectSummaryChip({required this.label, required this.value, this.tone});
 
   final String label;
   final String value;
-  final String? delta;
   final _ValueTone? tone;
 
   @override
@@ -1142,7 +1141,7 @@ class _EffectSummaryChip extends StatelessWidget {
               : color.withValues(alpha: 0.35),
         ),
       ),
-      child: _EffectValueText(label: label, value: value, delta: delta, tone: tone),
+      child: _EffectValueText(label: label, value: value, tone: tone),
     );
   }
 }
@@ -1241,11 +1240,10 @@ class _ValueChip extends StatelessWidget {
 }
 
 class _EffectValueText extends StatelessWidget {
-  const _EffectValueText({required this.label, required this.value, this.delta, this.tone});
+  const _EffectValueText({required this.label, required this.value, this.tone});
 
   final String label;
   final String value;
-  final String? delta;
   final _ValueTone? tone;
 
   @override
@@ -1263,13 +1261,6 @@ class _EffectValueText extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        if (delta != null)
-          Text(
-            delta!,
-            style: context.theme.textTheme.labelMedium?.copyWith(
-              color: tone == null ? null : color,
-            ),
-          ),
       ],
     );
   }
