@@ -392,6 +392,7 @@ class AttributeDetailPage extends ConsumerWidget {
                   const VerticalDivider(indent: 8, endIndent: 8),
                   Expanded(
                     child: _AttributeEffectChainContent(
+                      attribute: attribute,
                       modifiers: current?.trackedModifiers ?? const <native.ModifierTracker>[],
                       fit: fit?.fit,
                       emulated: emulated,
@@ -466,6 +467,7 @@ class _AttributeDetailTabPaneState extends State<_AttributeDetailTabPane>
               current: widget.current,
             ),
             _AttributeEffectChainContent(
+              attribute: widget.attribute,
               modifiers: widget.current?.trackedModifiers ?? const <native.ModifierTracker>[],
               fit: widget.fit,
               emulated: widget.emulated,
@@ -571,11 +573,13 @@ class _AttributeOverviewContent extends ConsumerWidget {
 class _AttributeEffectChainContent extends StatelessWidget {
   const _AttributeEffectChainContent({
     required this.modifiers,
+    required this.attribute,
     required this.fit,
     required this.emulated,
   });
 
   final List<native.ModifierTracker> modifiers;
+  final DogmaAttribute? attribute;
   final FitStorage? fit;
   final native.Ship? emulated;
 
@@ -601,7 +605,12 @@ class _AttributeEffectChainContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         for (var index = 0; index < modifiers.length; index++) ...[
-          _ModifierTile(modifier: modifiers[index], fit: fit, emulated: emulated),
+          _ModifierTile(
+            modifier: modifiers[index],
+            attribute: attribute,
+            fit: fit,
+            emulated: emulated,
+          ),
           if (index < modifiers.length - 1) const Divider(height: 1, indent: 16, endIndent: 16),
         ],
       ],
@@ -942,9 +951,15 @@ class _AttributesList extends ConsumerWidget {
 }
 
 class _ModifierTile extends ConsumerStatefulWidget {
-  const _ModifierTile({required this.modifier, required this.fit, required this.emulated});
+  const _ModifierTile({
+    required this.modifier,
+    required this.attribute,
+    required this.fit,
+    required this.emulated,
+  });
 
   final native.ModifierTracker modifier;
+  final DogmaAttribute? attribute;
   final FitStorage? fit;
   final native.Ship? emulated;
 
@@ -972,13 +987,24 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
       modifier.source,
     );
     final appliedValue = modifier.penalizedValue;
-    final transformedDisplay = _modifierValueDisplay(
+    final headlineDisplay = _modifierHeadlineValueDisplay(
+      context,
+      modifier.source,
+      modifier.originalValue,
+      appliedValue,
+    );
+    final sourceDisplay = _modifierSourceValueDisplay(
+      context,
+      modifier.source,
+      modifier.originalValue,
+    );
+    final transformedDisplay = _modifierAppliedValueDisplay(
       context,
       modifier.source,
       modifier.normalizedValue,
     );
-    final appliedDisplay = _modifierValueDisplay(context, modifier.source, appliedValue);
-    final appliedTone = _modifierValueTone(modifier.source, appliedValue);
+    final appliedDisplay = _modifierAppliedValueDisplay(context, modifier.source, appliedValue);
+    final appliedTone = _modifierValueTone(widget.attribute, modifier.source, appliedValue);
     final detail = modifier.source.when(
       effect: (effect) {
         final attribute = ref.watch(
@@ -1050,14 +1076,14 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        appliedDisplay.primary,
+                        headlineDisplay.primary,
                         style: context.theme.textTheme.bodyLarge?.copyWith(
                           color: _toneColor(context, appliedTone),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
-                        appliedDisplay.secondary ?? context.l10n.itemDetailApplied,
+                        headlineDisplay.secondary ?? context.l10n.itemDetailApplied,
                         style: context.theme.textTheme.labelSmall,
                       ),
                     ],
@@ -1072,7 +1098,8 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
                   children: [
                     _EffectSummaryChip(
                       label: context.l10n.itemDetailModifierValueSource,
-                      value: _formatCompactNumber(modifier.originalValue),
+                      value: sourceDisplay.primary,
+                      caption: sourceDisplay.secondary,
                     ),
                     _EffectSummaryChip(
                       label: context.l10n.itemDetailModifierValueTransformed,
@@ -1387,13 +1414,6 @@ _ValueTone? _attributeDeltaTone({
   return positiveIsGood ? _ValueTone.negative : _ValueTone.positive;
 }
 
-_ValueTone? _effectDeltaTone(double delta) {
-  if (delta == 0) {
-    return null;
-  }
-  return delta > 0 ? _ValueTone.positive : _ValueTone.negative;
-}
-
 Color _toneColor(BuildContext context, _ValueTone? tone) => switch (tone) {
   _ValueTone.positive => Colors.green.shade700,
   _ValueTone.negative => Colors.red.shade700,
@@ -1588,17 +1608,91 @@ String _formatSignedCompactNumber(double value) {
   return "$prefix${_formatCompactNumber(value)}";
 }
 
-_ModifierValueDisplay _modifierValueDisplay(
+_ModifierValueDisplay _modifierHeadlineValueDisplay(
+  BuildContext context,
+  native.ModifierSource source,
+  double originalValue,
+  double appliedValue,
+) => source.when(
+  effect: (effect) => switch (effect.operator_) {
+    native.EffectOperator.preMul || native.EffectOperator.postMul => _ModifierValueDisplay(
+      primary: "×${_formatCompactNumber(originalValue)}",
+      secondary: _effectivePercentLabel(context, appliedValue * 100),
+      explanation: _percentShiftExplanation(context, appliedValue * 100),
+    ),
+    native.EffectOperator.preDiv || native.EffectOperator.postDiv => _ModifierValueDisplay(
+      primary: "÷${_formatCompactNumber(originalValue)}",
+      secondary: _effectivePercentLabel(context, appliedValue * 100),
+      explanation: _divisionPercentShiftExplanation(context, appliedValue * 100),
+    ),
+    native.EffectOperator.postPercent => _ModifierValueDisplay(
+      primary: "${_formatSignedCompactNumber(originalValue)}%",
+      explanation: _percentBonusExplanation(context, originalValue),
+    ),
+    native.EffectOperator.preAssign || native.EffectOperator.postAssign => _ModifierValueDisplay(
+      primary: "=${_formatCompactNumber(originalValue)}",
+      explanation: context.l10n.itemDetailModifierSetAttribute(
+        value: _formatCompactNumber(originalValue),
+      ),
+    ),
+    native.EffectOperator.modAdd => _ModifierValueDisplay(
+      primary: "+${_formatCompactNumber(originalValue)}",
+      explanation: context.l10n.itemDetailModifierAddsAttribute(
+        value: _formatCompactNumber(originalValue),
+      ),
+    ),
+    native.EffectOperator.modSub => _ModifierValueDisplay(
+      primary: "-${_formatCompactNumber(originalValue)}",
+      explanation: context.l10n.itemDetailModifierSubtractsAttribute(
+        value: _formatCompactNumber(originalValue),
+      ),
+    ),
+  },
+  buff: (_) => _ModifierValueDisplay(primary: _formatSignedCompactNumber(appliedValue)),
+);
+
+_ModifierValueDisplay _modifierSourceValueDisplay(
+  BuildContext context,
+  native.ModifierSource source,
+  double originalValue,
+) => source.when(
+  effect: (effect) => switch (effect.operator_) {
+    native.EffectOperator.preMul || native.EffectOperator.postMul => _ModifierValueDisplay(
+      primary: "×${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.preDiv || native.EffectOperator.postDiv => _ModifierValueDisplay(
+      primary: "÷${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.postPercent => _ModifierValueDisplay(
+      primary: "${_formatSignedCompactNumber(originalValue)}%",
+    ),
+    native.EffectOperator.preAssign || native.EffectOperator.postAssign => _ModifierValueDisplay(
+      primary: "=${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.modAdd => _ModifierValueDisplay(
+      primary: "+${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.modSub => _ModifierValueDisplay(
+      primary: "-${_formatCompactNumber(originalValue)}",
+    ),
+  },
+  buff: (_) => _ModifierValueDisplay(primary: _formatSignedCompactNumber(originalValue)),
+);
+
+_ModifierValueDisplay _modifierAppliedValueDisplay(
   BuildContext context,
   native.ModifierSource source,
   double value,
 ) => source.when(
   effect: (effect) => switch (effect.operator_) {
     native.EffectOperator.preMul ||
-    native.EffectOperator.postMul => _multiplierValueDisplay(context, value),
+    native.EffectOperator.postMul => _factorStageValueDisplay(context, value),
     native.EffectOperator.preDiv ||
-    native.EffectOperator.postDiv => _dividerValueDisplay(context, value),
-    native.EffectOperator.postPercent => _percentValueDisplay(context, value),
+    native.EffectOperator.postDiv => _dividerStageValueDisplay(context, value),
+    native.EffectOperator.postPercent => _ModifierValueDisplay(
+      primary: "${_formatSignedCompactNumber(value * 100)}%",
+      explanation: _percentBonusExplanation(context, value * 100),
+    ),
     native.EffectOperator.preAssign || native.EffectOperator.postAssign => _ModifierValueDisplay(
       primary: "=${_formatCompactNumber(value)}",
       explanation: context.l10n.itemDetailModifierSetAttribute(value: _formatCompactNumber(value)),
@@ -1615,53 +1709,74 @@ _ModifierValueDisplay _modifierValueDisplay(
   buff: (_) => _ModifierValueDisplay(primary: _formatSignedCompactNumber(value)),
 );
 
-_ModifierValueDisplay _multiplierValueDisplay(BuildContext context, double value) {
-  final effectivePercent = (value - 1) * 100;
-  final formattedPercent = _formatCompactNumber(effectivePercent);
-  final absolutePercent = _formatCompactNumber(effectivePercent.abs());
+_ModifierValueDisplay _factorStageValueDisplay(BuildContext context, double value) {
+  final factor = 1.0 + value;
+  final effectivePercent = value * 100;
   return _ModifierValueDisplay(
-    primary: "×${_formatCompactNumber(value)}",
-    secondary: context.l10n.itemDetailModifierEffectivePercent(value: formattedPercent),
-    explanation: effectivePercent >= 0
-        ? context.l10n.itemDetailModifierIncreaseCurrentValue(value: absolutePercent)
-        : context.l10n.itemDetailModifierReduceCurrentValue(value: absolutePercent),
+    primary: "${_formatSignedCompactNumber(effectivePercent)}%",
+    secondary: "×${_formatCompactNumber(factor)}",
+    explanation: _percentShiftExplanation(context, effectivePercent),
   );
 }
 
-_ModifierValueDisplay _dividerValueDisplay(BuildContext context, double value) {
-  final effectivePercent = value == 0 ? 0.0 : ((1 / value) - 1) * 100;
-  final formattedPercent = _formatCompactNumber(effectivePercent);
-  final absolutePercent = _formatCompactNumber(effectivePercent.abs());
+_ModifierValueDisplay _dividerStageValueDisplay(BuildContext context, double value) {
+  final divisor = value <= -1 ? null : 1.0 / (1.0 + value);
+  final effectivePercent = value * 100;
   return _ModifierValueDisplay(
-    primary: "÷${_formatCompactNumber(value)}",
-    secondary: context.l10n.itemDetailModifierEffectivePercent(value: formattedPercent),
-    explanation: effectivePercent >= 0
-        ? context.l10n.itemDetailModifierIncreaseCurrentValueAfterDivision(value: absolutePercent)
-        : context.l10n.itemDetailModifierReduceCurrentValueAfterDivision(value: absolutePercent),
+    primary: "${_formatSignedCompactNumber(effectivePercent)}%",
+    secondary: divisor == null ? null : "÷${_formatCompactNumber(divisor)}",
+    explanation: _divisionPercentShiftExplanation(context, effectivePercent),
   );
 }
 
-_ModifierValueDisplay _percentValueDisplay(BuildContext context, double value) =>
-    _ModifierValueDisplay(
-      primary: "${_formatSignedCompactNumber(value)}%",
-      explanation: value >= 0
-          ? context.l10n.itemDetailModifierAppliesBonusPercent(value: _formatCompactNumber(value))
-          : context.l10n.itemDetailModifierAppliesReductionPercent(
-              value: _formatCompactNumber(value.abs()),
-            ),
-    );
+String _effectivePercentLabel(BuildContext context, double effectivePercent) => context.l10n
+    .itemDetailModifierEffectivePercent(value: _formatSignedCompactNumber(effectivePercent));
 
-_ValueTone? _modifierValueTone(native.ModifierSource source, double value) => source.when(
-  effect: (effect) => switch (effect.operator_) {
-    native.EffectOperator.preMul || native.EffectOperator.postMul => _effectDeltaTone(value - 1),
-    native.EffectOperator.preDiv ||
-    native.EffectOperator.postDiv => _effectDeltaTone(value == 0 ? 0 : (1 / value) - 1),
-    native.EffectOperator.postPercent => _effectDeltaTone(value),
-    native.EffectOperator.preAssign || native.EffectOperator.postAssign => null,
-    native.EffectOperator.modAdd || native.EffectOperator.modSub => _effectDeltaTone(value),
-  },
-  buff: (_) => _effectDeltaTone(value),
-);
+String _percentShiftExplanation(BuildContext context, double effectivePercent) {
+  final absolutePercent = _formatCompactNumber(effectivePercent.abs());
+  return effectivePercent >= 0
+      ? context.l10n.itemDetailModifierIncreaseCurrentValue(value: absolutePercent)
+      : context.l10n.itemDetailModifierReduceCurrentValue(value: absolutePercent);
+}
+
+String _divisionPercentShiftExplanation(BuildContext context, double effectivePercent) {
+  final absolutePercent = _formatCompactNumber(effectivePercent.abs());
+  return effectivePercent >= 0
+      ? context.l10n.itemDetailModifierIncreaseCurrentValueAfterDivision(value: absolutePercent)
+      : context.l10n.itemDetailModifierReduceCurrentValueAfterDivision(value: absolutePercent);
+}
+
+String _percentBonusExplanation(BuildContext context, double percentValue) => percentValue >= 0
+    ? context.l10n.itemDetailModifierAppliesBonusPercent(value: _formatCompactNumber(percentValue))
+    : context.l10n.itemDetailModifierAppliesReductionPercent(
+        value: _formatCompactNumber(percentValue.abs()),
+      );
+
+_ValueTone? _modifierValueTone(
+  DogmaAttribute? inspectedAttribute,
+  native.ModifierSource source,
+  double value,
+) {
+  final delta = source.when(
+    effect: (effect) => switch (effect.operator_) {
+      native.EffectOperator.preAssign || native.EffectOperator.postAssign => null,
+      native.EffectOperator.preMul ||
+      native.EffectOperator.postMul ||
+      native.EffectOperator.preDiv ||
+      native.EffectOperator.postDiv ||
+      native.EffectOperator.postPercent ||
+      native.EffectOperator.modAdd ||
+      native.EffectOperator.modSub => value,
+    },
+    buff: (_) => value,
+  );
+  if (delta == null || delta == 0) return null;
+  final highIsGood = inspectedAttribute?.highIsGood ?? true;
+  if (delta > 0) {
+    return highIsGood ? _ValueTone.positive : _ValueTone.negative;
+  }
+  return highIsGood ? _ValueTone.negative : _ValueTone.positive;
+}
 
 String _effectOperatorLabel(BuildContext context, native.EffectOperator operator) =>
     switch (operator) {
