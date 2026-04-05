@@ -51,8 +51,23 @@ class PathManager:
         return path
 
     @property
+    def manifest_path(self) -> Path:
+        path = self.full_generate_out_path / "manifest.json"
+        return path
+
+    @property
     def increment_descriptor_path(self) -> Path:
         path = self.increment_generate_out_path / "descriptor.json"
+        return path
+
+    @property
+    def increment_manifest_path(self) -> Path:
+        path = self.increment_generate_out_path / "manifest.json"
+        return path
+
+    @property
+    def increment_deleted_files_path(self) -> Path:
+        path = self.increment_generate_out_path / "deleted_files.json"
         return path
 
     @property

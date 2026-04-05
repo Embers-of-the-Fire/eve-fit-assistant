@@ -36,10 +36,10 @@ from dotenv import load_dotenv
 from watchfiles import awatch
 
 from data.lib.codegen import CODEGEN_DART
-from data.lib.constant import DEFAULT_WORKSPACE_HASHLIST_ENV_VAR
+from data.lib.constant import DEFAULT_WORKSPACE_MANIFEST_ENV_VAR
 from data.lib.constant import I18N_ROOT
 from data.lib.constant import PROJECT_ROOT
-from data.lib.constant import SKIP_FULL_HASHLIST_UPDATE_ENV_VAR
+from data.lib.constant import SKIP_FULL_MANIFEST_UPDATE_ENV_VAR
 from data.lib.etc.codeart import generate_codeart
 
 
@@ -839,10 +839,10 @@ _GENERATOR_TYPES = {"static", "native", "localization", "images"}
 )
 @click.option(
     "--no-hash",
-    envvar=SKIP_FULL_HASHLIST_UPDATE_ENV_VAR,
+    envvar=SKIP_FULL_MANIFEST_UPDATE_ENV_VAR,
     is_flag=True,
     default=False,
-    help="Do not generate hash files for the data bundle.",
+    help="Do not generate the snapshot manifest for the data bundle.",
 )
 def data_cmd(skip: list[str], no_hash: bool):
     """Build data files."""
@@ -874,9 +874,9 @@ def data_cmd(skip: list[str], no_hash: bool):
 
 
 @build.command("increment", aliases=["inc", "incremental"])
-@click.argument("hash_list", envvar=DEFAULT_WORKSPACE_HASHLIST_ENV_VAR)
-def build_increment_cmd(hash_list: str):
-    """Build increment data bundle."""
+@click.argument("baseline_manifest_path", envvar=DEFAULT_WORKSPACE_MANIFEST_ENV_VAR)
+def build_increment_cmd(baseline_manifest_path: str):
+    """Build incremental patch bundle."""
     from data.lib.workspace.build_increment import build_increment_bundle
 
     name = data.lib.config.WORKSPACE_CACHE.current_workspace
@@ -889,8 +889,8 @@ def build_increment_cmd(hash_list: str):
     info(f"Resolving workspace: {name} ({ws})")
     descriptor = WorkspaceConfig.load_from_descriptor(ws)
 
-    hash_list = Path(hash_list)
-    build_increment_bundle(descriptor, hash_list)
+    baseline_manifest = Path(baseline_manifest_path)
+    build_increment_bundle(descriptor, baseline_manifest)
 
 
 @cli.group(cls=ClickAliasedGroup)

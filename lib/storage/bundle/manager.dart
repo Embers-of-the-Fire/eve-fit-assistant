@@ -17,6 +17,18 @@ import "package:riverpod_annotation/riverpod_annotation.dart";
 part "manager.freezed.dart";
 part "manager.g.dart";
 
+class _PreparedBundleArtifact {
+  const _PreparedBundleArtifact({
+    required this.cachePath,
+    required this.descriptor,
+    required this.deletedFiles,
+  });
+
+  final Directory cachePath;
+  final BundleDescriptor descriptor;
+  final IList<String> deletedFiles;
+}
+
 @freezed
 abstract class BundleInfo with _$BundleInfo {
   const factory BundleInfo({
@@ -125,26 +137,93 @@ class BundleManager extends _$BundleManager {
 
   static String getBundlePath(String bundleId) => p.join(_bundleBasePath, bundleId);
 
+  static Future<BundleDescriptor> _readDescriptor(String bundlePath) async {
+    final descriptorPath = BundleServicePaths.descriptorPathFromExternalBundle(bundlePath);
+    final content = jsonDecode(await File(descriptorPath).readAsString());
+    return BundleDescriptor.fromJson(ensure(content, {}));
+  }
+
+  static Future<IList<String>> _readDeletedFiles(String bundlePath) async {
+    final deletedFilesPath = BundleServicePaths.deletedFilesPathFromExternalBundle(bundlePath);
+    final deletedFilesFile = File(deletedFilesPath);
+    if (!deletedFilesFile.existsSync()) {
+      return const IList<String>.empty();
+    }
+
+    final content = jsonDecode(await deletedFilesFile.readAsString());
+    final files = ensure<List<dynamic>>(content, <dynamic>[]).whereType<String>().toIList();
+    return files;
+  }
+
+  static Future<BundleRegistrar> _readRegistrar(Directory targetDir) async {
+    final registrarPath = BundleServicePaths(targetDir.path).getRegistrarPath();
+    final registrarContent = jsonDecode(await File(registrarPath).readAsString());
+    return BundleRegistrar.fromJson(ensure(registrarContent, {}));
+  }
+
+  static Future<void> _writeRegistrar(Directory targetDir, BundleRegistrar registrar) async {
+    final targetRegistrarFile = File(BundleServicePaths(targetDir.path).getRegistrarPath());
+    await targetRegistrarFile.create(recursive: true);
+    final registrarContent = const JsonEncoder.withIndent("  ").convert(registrar.toJson());
+    await targetRegistrarFile.writeAsString(registrarContent);
+  }
+
+  static void _validateIncrementalCompatibility(
+    BundleDescriptor descriptor,
+    BundleRegistrar registrar,
+  ) {
+    if (descriptor.baseBundleId != null && descriptor.baseBundleId != registrar.bundleId) {
+      throw StateError(
+        "Incremental bundle base bundle id mismatch: "
+        "${descriptor.baseBundleId} != ${registrar.bundleId}",
+      );
+    }
+    if (descriptor.baseManifestHash == null) {
+      throw StateError("Incremental bundle is missing base manifest hash.");
+    }
+
+    final installedManifestHash = registrar.latest.manifestHash;
+    if (installedManifestHash == null) {
+      throw StateError("Installed bundle is missing manifest hash metadata.");
+    }
+    if (installedManifestHash != descriptor.baseManifestHash) {
+      throw StateError(
+        "Incremental bundle base manifest mismatch: "
+        "${descriptor.baseManifestHash} != $installedManifestHash",
+      );
+    }
+  }
+
+  static Future<_PreparedBundleArtifact> _prepareBundleArtifact(String bundlePath) async {
+    final bundleCachePath = Directory(p.join(_bundleCachePath, "cache"));
+    if (bundleCachePath.existsSync()) {
+      await bundleCachePath.delete(recursive: true);
+    }
+    await bundleCachePath.create(recursive: true);
+    await extractIsolated(bundlePath, bundleCachePath.path);
+
+    final descriptor = await _readDescriptor(bundleCachePath.path);
+    final deletedFiles = await _readDeletedFiles(bundleCachePath.path);
+    return _PreparedBundleArtifact(
+      cachePath: bundleCachePath,
+      descriptor: descriptor,
+      deletedFiles: deletedFiles,
+    );
+  }
+
   Future<void> addBundle(String bundlePath, {Future<bool> Function()? confirmOverwrite}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final bundleCachePath = Directory(p.join(_bundleCachePath, "cache"));
-      if (bundleCachePath.existsSync()) {
-        await bundleCachePath.delete(recursive: true);
-      }
-      await bundleCachePath.create(recursive: true);
-      await extractIsolated(bundlePath, bundleCachePath.path);
-      final descriptorPath = BundleServicePaths.descriptorPathFromExternalBundle(
-        bundleCachePath.path,
-      );
-      final BundleDescriptor descriptor;
+      late final _PreparedBundleArtifact artifact;
       try {
-        final content = jsonDecode(await File(descriptorPath).readAsString());
-        descriptor = BundleDescriptor.fromJson(ensure(content, {}));
+        artifact = await _prepareBundleArtifact(bundlePath);
       } catch (e) {
-        warning("Invalid descriptor: $e", stackTrace: StackTrace.current);
+        warning("Invalid bundle artifact: $e", stackTrace: StackTrace.current);
         return DateTime.now();
       }
+
+      final bundleCachePath = artifact.cachePath;
+      final descriptor = artifact.descriptor;
       final bundleId = descriptor.bundleId;
       final baseDir = Directory(_bundleBasePath);
       if (!baseDir.existsSync()) {
@@ -153,8 +232,18 @@ class BundleManager extends _$BundleManager {
       final targetDir = Directory(getBundlePath(bundleId));
       if (targetDir.existsSync()) {
         if (descriptor.isIncremental) {
+          final registrar = await _readRegistrar(targetDir);
+          _validateIncrementalCompatibility(descriptor, registrar);
           info("Importing incremental bundle $bundleId: $descriptor");
+          await deletePaths(targetDir, artifact.deletedFiles);
+          final deletedFilesPath = File(
+            BundleServicePaths.deletedFilesPathFromExternalBundle(bundleCachePath.path),
+          );
+          if (deletedFilesPath.existsSync()) {
+            await deletedFilesPath.delete();
+          }
           await copyRecursive(bundleCachePath, targetDir);
+          await _writeRegistrar(targetDir, registrar.pushPatch(descriptor));
         } else {
           warning("Target bundle output dir $bundleId exists!");
           final willOverwrite = await confirmOverwrite?.call() ?? false;
@@ -162,27 +251,19 @@ class BundleManager extends _$BundleManager {
             info("Overwriting existing bundle $bundleId");
             await targetDir.delete(recursive: true);
             await bundleCachePath.rename(targetDir.path);
+            await _writeRegistrar(targetDir, BundleRegistrar.empty(bundleId).pushPatch(descriptor));
           } else {
             info("Aborting bundle import for $bundleId");
             return DateTime.now();
           }
         }
       } else {
+        if (descriptor.isIncremental) {
+          throw StateError("Cannot import incremental bundle without an installed base bundle.");
+        }
         await bundleCachePath.rename(targetDir.path);
+        await _writeRegistrar(targetDir, BundleRegistrar.empty(bundleId).pushPatch(descriptor));
       }
-
-      final targetRegistrarFile = File(BundleServicePaths(targetDir.path).getRegistrarPath());
-      final BundleRegistrar registrar;
-      if (!targetRegistrarFile.existsSync()) {
-        await targetRegistrarFile.create(recursive: true);
-        registrar = BundleRegistrar.empty(bundleId).pushPatch(descriptor);
-      } else {
-        final registrarContent = jsonDecode(await targetRegistrarFile.readAsString());
-        registrar = BundleRegistrar.fromJson(ensure(registrarContent, {})).pushPatch(descriptor);
-      }
-      final registrarJson = registrar.toJson();
-      final registrarContent = const JsonEncoder.withIndent("  ").convert(registrarJson);
-      await targetRegistrarFile.writeAsString(registrarContent);
 
       info("Successfully imported bundle $bundleId: $descriptor");
 

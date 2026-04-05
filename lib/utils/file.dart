@@ -43,3 +43,30 @@ Future<void> copyRecursive(Directory source, Directory target) async {
     }
   }
 }
+
+Future<void> deletePaths(Directory root, Iterable<String> relativePaths) async {
+  final normalizedRootPath = p.normalize(p.absolute(root.path));
+
+  for (final relativePath in relativePaths) {
+    final normalizedPath = p.normalize(p.absolute(root.path, relativePath));
+    final isWithinRoot =
+        p.equals(normalizedPath, normalizedRootPath) ||
+        p.isWithin(normalizedRootPath, normalizedPath);
+    if (!isWithinRoot || p.equals(normalizedPath, normalizedRootPath)) {
+      throw StateError("Refusing to delete path outside bundle root: $relativePath");
+    }
+
+    switch (FileSystemEntity.typeSync(normalizedPath, followLinks: false)) {
+      case FileSystemEntityType.file:
+        await File(normalizedPath).delete();
+      case FileSystemEntityType.directory:
+        await Directory(normalizedPath).delete(recursive: true);
+      case FileSystemEntityType.link:
+        await Link(normalizedPath).delete();
+      case FileSystemEntityType.pipe:
+      case FileSystemEntityType.unixDomainSock:
+      case FileSystemEntityType.notFound:
+        break;
+    }
+  }
+}

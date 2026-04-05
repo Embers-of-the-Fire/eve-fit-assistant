@@ -32,6 +32,9 @@ abstract class BundleDescriptor with _$BundleDescriptor {
     required String gameRegion,
     required String gameBranch,
     required String gameServer,
+    String? manifestHash,
+    String? baseBundleId,
+    String? baseManifestHash,
   }) = _BundleDescriptor;
 
   factory BundleDescriptor.fromJson(Map<String, dynamic> json) => _$BundleDescriptorFromJson(json);
@@ -49,6 +52,7 @@ abstract class BundleHistoryPatch with _$BundleHistoryPatch {
     required String gameBranch,
     required String gameServer,
     required bool isIncremental,
+    String? manifestHash,
   }) = _BundleHistoryPatch;
 
   factory BundleHistoryPatch.fromJson(Map<String, dynamic> json) =>
@@ -76,6 +80,7 @@ abstract class BundleRegistrar with _$BundleRegistrar {
       appVersion: descriptor.appVersion,
       generateTimestamp: descriptor.generateTimestamp,
       loadTimestamp: DateTime.now().millisecondsSinceEpoch,
+      manifestHash: descriptor.manifestHash,
       gameVersion: descriptor.gameVersion,
       gameBuild: descriptor.gameBuild,
       gameRegion: descriptor.gameRegion,
@@ -200,4 +205,6 @@ abstract class BundleValidationError with _$BundleValidationError {
 
   const factory BundleValidationError.badDescriptor({required Object error}) =
       _BundleValidationErrorBadDescriptor;
+  const factory BundleValidationError.badPatch({required String reason}) =
+      _BundleValidationErrorBadPatch;
 }
