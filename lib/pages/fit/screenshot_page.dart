@@ -1,9 +1,9 @@
 part of "page.dart";
 
 class FitScreenshotPage extends ConsumerStatefulWidget {
-  const FitScreenshotPage({required this.fitContext, super.key});
+  const FitScreenshotPage({required this.fitId, super.key});
 
-  final FitContext fitContext;
+  final String fitId;
 
   @override
   ConsumerState<FitScreenshotPage> createState() => _FitScreenshotPageState();
@@ -14,50 +14,87 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
   bool _busy = false;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
-    body: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton.icon(
-                onPressed: _busy ? null : _handleSave,
-                icon: const Icon(Icons.download_outlined),
-                label: Text(context.l10n.fitScreenshotSave),
-              ),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _handleShare,
-                icon: const Icon(Icons.share_outlined),
-                label: Text(context.l10n.fitScreenshotShare),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    final fitState = ref.watch(fitProvider(widget.fitId));
+    final emulated = ref.watch(nativeEmulatedShipProvider(widget.fitId));
+    final shipInfo = fitState.isInitialized
+        ? ref.watch(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId))
+        : null;
+
+    if (!fitState.isInitialized) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
+        body: const Center(
+          child: SizedBox(height: 40, child: LoadingIndicator(indicatorType: Indicator.lineScale)),
         ),
-        const Divider(height: 1),
-        Expanded(
-          child: SingleChildScrollView(
+      );
+    }
+
+    if (shipInfo == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
+        body: Center(child: Text("Unknown ship ${fitState.fit.body.shipTypeId}")),
+      );
+    }
+
+    final fitContext = FitContext(
+      fitId: widget.fitId,
+      fit: fitState.fit,
+      ship: shipInfo,
+      emulated: emulated,
+      fitWrapper: FitWrapper(
+        wrapped: ref.read(fitProvider(widget.fitId).notifier),
+        fitId: widget.fitId,
+        ref: ref,
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
+      body: Column(
+        children: [
+          Padding(
             padding: const EdgeInsets.all(16),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                FilledButton.icon(
+                  onPressed: _busy ? null : () => _handleSave(fitContext),
+                  icon: const Icon(Icons.download_outlined),
+                  label: Text(context.l10n.fitScreenshotSave),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _handleShare(fitContext),
+                  icon: const Icon(Icons.share_outlined),
+                  label: Text(context.l10n.fitScreenshotShare),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
             child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: RepaintBoundary(
-                key: _captureKey,
-                child: _FitScreenshotSurface(fitContext: widget.fitContext),
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: RepaintBoundary(
+                  key: _captureKey,
+                  child: _FitScreenshotSurface(fitContext: fitContext),
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
-  Future<void> _handleSave() async {
+  Future<void> _handleSave(FitContext fitContext) async {
     await _runCaptureAction((pngBytes) async {
       final file = await _writePng(
         pngBytes,
+        fitContext: fitContext,
         directoryPath: PathProvider.downloadsPath ?? PathProvider.documentsPath,
       );
       if (!mounted) return;
@@ -67,10 +104,14 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
     });
   }
 
-  Future<void> _handleShare() async {
+  Future<void> _handleShare(FitContext fitContext) async {
     await _runCaptureAction((pngBytes) async {
-      final file = await _writePng(pngBytes, directoryPath: PathProvider.tempPath);
-      await Share.shareXFiles([XFile(file.path)], subject: widget.fitContext.fit.metadata.name);
+      final file = await _writePng(
+        pngBytes,
+        fitContext: fitContext,
+        directoryPath: PathProvider.tempPath,
+      );
+      await Share.shareXFiles([XFile(file.path)], subject: fitContext.fit.metadata.name);
     });
   }
 
@@ -97,16 +138,17 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
     return byteData?.buffer.asUint8List();
   }
 
-  Future<File> _writePng(Uint8List pngBytes, {required String directoryPath}) async {
+  Future<File> _writePng(
+    Uint8List pngBytes, {
+    required String directoryPath,
+    required FitContext fitContext,
+  }) async {
     final directory = Directory(directoryPath);
     if (!directory.existsSync()) {
       await directory.create(recursive: true);
     }
 
-    final safeName = widget.fitContext.fit.metadata.name.replaceAll(
-      RegExp("[^A-Za-z0-9._-]+"),
-      "_",
-    );
+    final safeName = fitContext.fit.metadata.name.replaceAll(RegExp("[^A-Za-z0-9._-]+"), "_");
     final fileName =
         "${safeName.isEmpty ? "fit" : safeName}_${DateTime.now().millisecondsSinceEpoch}.png";
     final file = File(p.join(directory.path, fileName));
