@@ -3,7 +3,6 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
-import "package:eve_fit_assistant/features/fit_io/import_dialog.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -28,63 +27,46 @@ class FitListPage extends ConsumerWidget {
       ),
     );
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: () => showFitImportDialog(context),
-              icon: const Icon(Icons.download_outlined),
-              label: Text(context.l10n.fitListActionImport),
-            ),
-          ),
-        ),
-        Expanded(
-          child: fits.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 56,
-                          color: context.theme.colorScheme.outline,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          context.l10n.workspaceTabActionCreateFitName,
-                          style: context.theme.textTheme.titleMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          context.l10n.frontPageTitleFitList,
-                          style: context.theme.textTheme.bodyMedium?.copyWith(
-                            color: context.theme.colorScheme.onSurfaceVariant,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+    return fits.isEmpty
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 56,
+                    color: context.theme.colorScheme.outline,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    context.l10n.workspaceTabActionCreateFitName,
+                    style: context.theme.textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    context.l10n.frontPageTitleFitList,
+                    style: context.theme.textTheme.bodyMedium?.copyWith(
+                      color: context.theme.colorScheme.onSurfaceVariant,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(fitRegistryManagerProvider),
-                  child: ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(top: 8, bottom: 20),
-                    itemCount: fits.length,
-                    separatorBuilder: (context, index) => const Divider(height: 1),
-                    itemBuilder: (context, index) => _FitListTile(metadata: fits[index]),
-                  ),
-                ),
-        ),
-      ],
-    );
+                ],
+              ),
+            ),
+          )
+        : RefreshIndicator(
+            onRefresh: () async => ref.invalidate(fitRegistryManagerProvider),
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 8, bottom: 20),
+              itemCount: fits.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) => _FitListTile(metadata: fits[index]),
+            ),
+          );
   }
 }
 
@@ -107,8 +89,8 @@ class _FitListTile extends ConsumerWidget {
 
     return Slidable(
       key: ValueKey(metadata.fitId),
-      endActionPane: ActionPane(
-        extentRatio: 0.36,
+      startActionPane: ActionPane(
+        extentRatio: 0.18,
         motion: const StretchMotion(),
         children: [
           SlidableAction(
@@ -118,6 +100,12 @@ class _FitListTile extends ConsumerWidget {
             icon: Icons.ios_share_outlined,
             label: context.l10n.fitListActionExport,
           ),
+        ],
+      ),
+      endActionPane: ActionPane(
+        extentRatio: 0.18,
+        motion: const StretchMotion(),
+        children: [
           SlidableAction(
             onPressed: (_) async {
               // Deletion stays behind a confirmation step so swipe gestures do

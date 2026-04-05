@@ -1,6 +1,7 @@
 import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/features/fit_io/import_dialog.dart";
 import "package:eve_fit_assistant/pages/character/page.dart";
 import "package:eve_fit_assistant/pages/fit-list/page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
@@ -57,10 +58,14 @@ class _FrontPageState extends State<FrontPage> {
         children: pages,
       ),
       // FloatingActionButton: docked in the center (notched BottomAppBar).
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.router.push(const FitCreationRoute()),
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add),
+      floatingActionButton: GestureDetector(
+        onDoubleTap: () => showFitImportDialog(context),
+        child: FloatingActionButton(
+          onPressed: () => context.router.push(const FitCreationRoute()),
+          tooltip: loc.workspaceTabActionCreateFitName,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.add),
+        ),
       ),
       // Center docked so BottomAppBar shows a notch for the FAB.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
