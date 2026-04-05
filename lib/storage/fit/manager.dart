@@ -170,4 +170,43 @@ class FitManager extends _$FitManager {
       ..state = notifier.state.copyWith(fits: notifier.state.fits.remove(fitId))
       .._syncToDisk();
   }
+
+  Future<FitMetadata> importFit(FitStorage importedFit) async {
+    final ship = ref.watch(
+      bundleCollectionServiceProvider.select(
+        (collection) => collection.collection?.getShip(importedFit.body.shipTypeId),
+      ),
+    );
+    if (ship == null) {
+      final text = "Ship with ID ${importedFit.body.shipTypeId} not found in bundle collection.";
+      error(text);
+      throw Exception(text);
+    }
+
+    final bundleInfo = ref.watch(currentBundleProvider.select((t) => t?.metadata));
+    if (bundleInfo == null) {
+      throw Exception("No bundle is currently loaded.");
+    }
+
+    final fitId = generateFitId();
+    final metadata = importedFit.metadata.copyWith(
+      fitId: fitId,
+      shipTypeId: importedFit.body.shipTypeId,
+      name: importedFit.metadata.name.trim().isEmpty
+          ? "Imported Fit"
+          : importedFit.metadata.name.trim(),
+      lastModified: DateTime.now().millisecondsSinceEpoch,
+      bundleId: bundleInfo.bundleId,
+    );
+    final fit = pruneDynamicRegistry(importedFit.copyWith(metadata: metadata));
+
+    final path = File(fit.fitStoragePath);
+    final text = jsonEncode(fit.toJson());
+    if (!path.existsSync()) {
+      await path.parent.create(recursive: true);
+    }
+    await path.writeAsString(text);
+    ref.read(fitRegistryManagerProvider.notifier).updateFit(metadata);
+    return metadata;
+  }
 }

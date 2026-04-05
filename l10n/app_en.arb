@@ -122,6 +122,21 @@
   "fitExportLossyWarning": "This export format is lossy and does not preserve every fit detail.",
   "fitExportCopied": "Fit export copied to clipboard.",
   "fitListActionExport": "Export",
+  "fitListActionImport": "Import",
+  "fitImportDialogTitle": "Import fit",
+  "fitImportDialogDescription": "Paste exported fit text below. App-native EFA codes and EFT text are supported in this first import flow.",
+  "fitImportInputLabel": "Fit text",
+  "fitImportPasteButton": "Paste",
+  "fitImportConfirmButton": "Import",
+  "fitImportSuccess": "Imported {fitName}",
+  "@fitImportSuccess": {
+    "placeholders": {
+      "fitName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitImportUnknownError": "Unable to import this fit.",
   "fitScreenshotPageTitle": "Fit image export",
   "fitScreenshotSave": "Save image",
   "fitScreenshotShare": "Share image",
