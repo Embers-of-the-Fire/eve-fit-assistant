@@ -196,6 +196,91 @@
   "itemDetailPenalized": "Penalized",
   "itemDetailPenalty": "Penalty",
   "itemDetailNet": "Net",
+  "itemDetailApplied": "Applied",
+  "itemDetailModifierValueSource": "Source",
+  "itemDetailModifierValueTransformed": "Transformed",
+  "itemDetailModifierValueAppliedAfterPenalty": "Applied After Penalty",
+  "itemDetailModifierEffectivePercent": "{value}% effective",
+  "@itemDetailModifierEffectivePercent": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierSetAttribute": "sets the attribute directly to {value}",
+  "@itemDetailModifierSetAttribute": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierAddsAttribute": "adds {value} to the attribute",
+  "@itemDetailModifierAddsAttribute": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierSubtractsAttribute": "subtracts {value} from the attribute",
+  "@itemDetailModifierSubtractsAttribute": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierIncreaseCurrentValue": "increases the current value by {value}%",
+  "@itemDetailModifierIncreaseCurrentValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierReduceCurrentValue": "reduces the current value by {value}%",
+  "@itemDetailModifierReduceCurrentValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierIncreaseCurrentValueAfterDivision": "increases the current value by {value}% after division",
+  "@itemDetailModifierIncreaseCurrentValueAfterDivision": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierReduceCurrentValueAfterDivision": "reduces the current value by {value}% after division",
+  "@itemDetailModifierReduceCurrentValueAfterDivision": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierAppliesBonusPercent": "applies a {value}% bonus",
+  "@itemDetailModifierAppliesBonusPercent": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierAppliesReductionPercent": "applies a {value}% reduction",
+  "@itemDetailModifierAppliesReductionPercent": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierStackingPenaltyHint": "The stacking penalty reduces the transformed value before application.",
   "itemDetailBuffSource": "Buff {buffId}",
   "@itemDetailBuffSource": {
     "placeholders": {

@@ -22,6 +22,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 const List<int> _requiredSkillAttributeIds = [182, 183, 184, 1285, 1289, 1290];
 const List<int> _requiredSkillLevelAttributeIds = [277, 278, 279, 1286, 1287, 1288];
 const int _itemDetailTabCount = 3;
+const int _attributeDetailTabCount = 2;
 
 enum ItemDetailFitObjectKind { hull, module, implant, booster }
 
@@ -344,6 +345,7 @@ class AttributeDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final columns = columnCount(context);
     final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
     final attribute = ref.watch(bundleCollectionGetDogmaAttributeProvider(attributeId));
     final unit = attribute?.hasUnitId() ?? false
@@ -364,94 +366,256 @@ class AttributeDetailPage extends ConsumerWidget {
 
     return Layout(
       title: title,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _SectionCard(
-            title: context.l10n.itemDetailAttributeOverview,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (type != null) ...[
-                  Text(
-                    context.l10n.itemDetailAttributeType,
-                    style: context.theme.textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  TypeNameText(typeId: typeId),
-                  const SizedBox(height: 12),
-                ],
-                if (attribute != null && attribute.description.isNotEmpty) ...[
-                  DescriptionText(
-                    text: attribute.description,
-                    style: context.theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _ValueChip(
-                      label: context.l10n.itemDetailAttributeBaseValue,
-                      value: staticValue == null
-                          ? context.l10n.itemDetailUnavailable
-                          : _formatAttributeValue(context, ref, attribute, unit, staticValue),
+      child: columns <= 1
+          ? _AttributeDetailTabPane(
+              typeId: typeId,
+              attribute: attribute,
+              unit: unit,
+              staticValue: staticValue,
+              current: current,
+              fit: fit?.fit,
+              emulated: emulated,
+            )
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _AttributeOverviewContent(
+                      typeId: typeId,
+                      attribute: attribute,
+                      unit: unit,
+                      staticValue: staticValue,
+                      current: current,
                     ),
-                    _ValueChip(
-                      label: context.l10n.itemDetailAttributeCurrentValue,
-                      value: current?.value == null
-                          ? context.l10n.itemDetailUnavailable
-                          : _formatAttributeValue(context, ref, attribute, unit, current!.value!),
-                      tone: current?.value == null
-                          ? null
-                          : staticValue == null
-                          ? null
-                          : _attributeDeltaTone(
-                              attribute: attribute,
-                              baseValue: staticValue,
-                              currentValue: current!.value!,
-                            ),
+                  ),
+                  const VerticalDivider(indent: 8, endIndent: 8),
+                  Expanded(
+                    child: _AttributeEffectChainContent(
+                      attribute: attribute,
+                      modifiers: current?.trackedModifiers ?? const <native.ModifierTracker>[],
+                      fit: fit?.fit,
+                      emulated: emulated,
                     ),
-                    if (staticValue != null && current?.value != null && !_isBooleanUnit(ref, unit))
-                      _ValueChip(
-                        label: context.l10n.itemDetailAttributeDelta,
-                        value: _formatSignedValue(
-                          context,
-                          ref,
-                          attribute,
-                          unit,
-                          current!.value! - staticValue,
-                        ),
-                        tone: _attributeDeltaTone(
-                          attribute: attribute,
-                          baseValue: staticValue,
-                          currentValue: current.value!,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _SectionCard(
-            title: context.l10n.itemDetailEffectChain,
-            child: (current?.trackedModifiers.isNotEmpty ?? false)
-                ? Column(
-                    children: [
-                      for (final modifier in current!.trackedModifiers) ...[
-                        _ModifierTile(modifier: modifier, fit: fit?.fit, emulated: emulated),
-                        const Divider(height: 16),
-                      ],
-                    ],
-                  )
-                : Text(context.l10n.itemDetailNoEffectChain),
-          ),
-        ],
-      ),
     );
   }
+}
+
+class _AttributeDetailTabPane extends StatefulWidget {
+  const _AttributeDetailTabPane({
+    required this.typeId,
+    required this.attribute,
+    required this.unit,
+    required this.staticValue,
+    required this.current,
+    required this.fit,
+    required this.emulated,
+  });
+
+  final int typeId;
+  final DogmaAttribute? attribute;
+  final DogmaUnit? unit;
+  final double? staticValue;
+  final native.Attribute? current;
+  final FitStorage? fit;
+  final native.Ship? emulated;
+
+  @override
+  State<_AttributeDetailTabPane> createState() => _AttributeDetailTabPaneState();
+}
+
+class _AttributeDetailTabPaneState extends State<_AttributeDetailTabPane>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _attributeDetailTabCount, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      TabBar(
+        controller: _tabController,
+        labelPadding: EdgeInsets.zero,
+        tabs: [
+          Tab(text: context.l10n.itemDetailAttributeOverview),
+          Tab(text: context.l10n.itemDetailEffectChain),
+        ],
+      ),
+      Expanded(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _AttributeOverviewContent(
+              typeId: widget.typeId,
+              attribute: widget.attribute,
+              unit: widget.unit,
+              staticValue: widget.staticValue,
+              current: widget.current,
+            ),
+            _AttributeEffectChainContent(
+              attribute: widget.attribute,
+              modifiers: widget.current?.trackedModifiers ?? const <native.ModifierTracker>[],
+              fit: widget.fit,
+              emulated: widget.emulated,
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _AttributeOverviewContent extends ConsumerWidget {
+  const _AttributeOverviewContent({
+    required this.typeId,
+    required this.attribute,
+    required this.unit,
+    required this.staticValue,
+    required this.current,
+  });
+
+  final int typeId;
+  final DogmaAttribute? attribute;
+  final DogmaUnit? unit;
+  final double? staticValue;
+  final native.Attribute? current;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      _SectionCard(
+        title: context.l10n.itemDetailAttributeOverview,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.l10n.itemDetailAttributeType, style: context.theme.textTheme.labelMedium),
+            const SizedBox(height: 4),
+            TypeNameText(typeId: typeId),
+          ],
+        ),
+      ),
+      if (attribute != null && attribute!.description.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        _SectionCard(
+          title: context.l10n.itemDetailDescription,
+          child: DescriptionText(
+            text: attribute!.description,
+            style: context.theme.textTheme.bodyMedium,
+          ),
+        ),
+      ],
+      const SizedBox(height: 12),
+      _SectionCard(
+        title: context.l10n.itemDetailAttributes,
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _ValueChip(
+              label: context.l10n.itemDetailAttributeBaseValue,
+              value: staticValue == null
+                  ? context.l10n.itemDetailUnavailable
+                  : _formatAttributeValue(context, ref, attribute, unit, staticValue!),
+            ),
+            _ValueChip(
+              label: context.l10n.itemDetailAttributeCurrentValue,
+              value: current?.value == null
+                  ? context.l10n.itemDetailUnavailable
+                  : _formatAttributeValue(context, ref, attribute, unit, current!.value!),
+              tone: current?.value == null
+                  ? null
+                  : staticValue == null
+                  ? null
+                  : _attributeDeltaTone(
+                      attribute: attribute,
+                      baseValue: staticValue!,
+                      currentValue: current!.value!,
+                    ),
+            ),
+            if (staticValue != null && current?.value != null && !_isBooleanUnit(ref, unit))
+              _ValueChip(
+                label: context.l10n.itemDetailAttributeDelta,
+                value: _formatSignedValue(
+                  context,
+                  ref,
+                  attribute,
+                  unit,
+                  current!.value! - staticValue!,
+                ),
+                tone: _attributeDeltaTone(
+                  attribute: attribute,
+                  baseValue: staticValue!,
+                  currentValue: current!.value!,
+                ),
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _AttributeEffectChainContent extends StatelessWidget {
+  const _AttributeEffectChainContent({
+    required this.modifiers,
+    required this.attribute,
+    required this.fit,
+    required this.emulated,
+  });
+
+  final List<native.ModifierTracker> modifiers;
+  final DogmaAttribute? attribute;
+  final FitStorage? fit;
+  final native.Ship? emulated;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    children: [
+      if (modifiers.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _SectionCard(
+            title: context.l10n.itemDetailEffectChain,
+            child: Text(context.l10n.itemDetailNoEffectChain),
+          ),
+        )
+      else ...[
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            context.l10n.itemDetailEffectChain,
+            style: context.theme.textTheme.titleMedium,
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (var index = 0; index < modifiers.length; index++) ...[
+          _ModifierTile(
+            modifier: modifiers[index],
+            attribute: attribute,
+            fit: fit,
+            emulated: emulated,
+          ),
+          if (index < modifiers.length - 1) const Divider(height: 1, indent: 16, endIndent: 16),
+        ],
+      ],
+    ],
+  );
 }
 
 class _HeaderCard extends ConsumerWidget {
@@ -786,19 +950,61 @@ class _AttributesList extends ConsumerWidget {
   );
 }
 
-class _ModifierTile extends ConsumerWidget {
-  const _ModifierTile({required this.modifier, required this.fit, required this.emulated});
+class _ModifierTile extends ConsumerStatefulWidget {
+  const _ModifierTile({
+    required this.modifier,
+    required this.attribute,
+    required this.fit,
+    required this.emulated,
+  });
 
   final native.ModifierTracker modifier;
+  final DogmaAttribute? attribute;
   final FitStorage? fit;
   final native.Ship? emulated;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sourceLabel = _modifierSourceLabel(context, ref, fit, emulated, modifier.source);
-    final normalizedDelta = modifier.normalizedValue - modifier.originalValue;
-    final penalizedDelta = modifier.penalizedValue - modifier.normalizedValue;
-    final netDelta = modifier.penalizedValue - modifier.originalValue;
+  ConsumerState<_ModifierTile> createState() => _ModifierTileState();
+}
+
+class _ModifierTileState extends ConsumerState<_ModifierTile> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final modifier = widget.modifier;
+    final sourceLabel = _modifierSourceLabel(
+      context,
+      ref,
+      widget.fit,
+      widget.emulated,
+      modifier.source,
+    );
+    final appliedValue = modifier.penalizedValue;
+    final headlineDisplay = _modifierHeadlineValueDisplay(
+      context,
+      modifier.source,
+      modifier.originalValue,
+      appliedValue,
+    );
+    final sourceDisplay = _modifierSourceValueDisplay(
+      context,
+      modifier.source,
+      modifier.originalValue,
+    );
+    final transformedDisplay = _modifierAppliedValueDisplay(
+      context,
+      modifier.source,
+      modifier.normalizedValue,
+    );
+    final appliedDisplay = _modifierAppliedValueDisplay(context, modifier.source, appliedValue);
+    final appliedTone = _modifierValueTone(widget.attribute, modifier.source, appliedValue);
     final detail = modifier.source.when(
       effect: (effect) {
         final attribute = ref.watch(
@@ -810,58 +1016,184 @@ class _ModifierTile extends ConsumerWidget {
       },
       buff: (buffId) => context.l10n.itemDetailBuffSource(buffId: buffId),
     );
+    final hasPenalty =
+        modifier.source is native.ModifierSource_Effect &&
+        (modifier.source as native.ModifierSource_Effect).field0.penalty;
+    final penaltyChangedValue = modifier.penalizedValue != modifier.normalizedValue;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text(sourceLabel, style: context.theme.textTheme.titleSmall)),
-            if (modifier.source is native.ModifierSource_Effect &&
-                (modifier.source as native.ModifierSource_Effect).field0.penalty)
-              Text(
-                context.l10n.itemDetailPenalty,
-                style: context.theme.textTheme.labelMedium?.copyWith(color: Colors.red.shade700),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    child: IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      onPressed: () => setState(() => _expanded = !_expanded),
+                      icon: Icon(_expanded ? Icons.expand_more : Icons.chevron_right, size: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(sourceLabel, style: context.theme.textTheme.titleSmall),
+                            if (hasPenalty)
+                              _InlineStatusChip(
+                                label: context.l10n.itemDetailPenalty,
+                                tone: _ValueTone.negative,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          detail,
+                          maxLines: _expanded ? null : 1,
+                          overflow: _expanded ? null : TextOverflow.ellipsis,
+                          style: context.theme.textTheme.bodySmall?.copyWith(
+                            color: context.theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        headlineDisplay.primary,
+                        style: context.theme.textTheme.bodyLarge?.copyWith(
+                          color: _toneColor(context, appliedTone),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        headlineDisplay.secondary ?? context.l10n.itemDetailApplied,
+                        style: context.theme.textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-          ],
+              if (_expanded) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _EffectSummaryChip(
+                      label: context.l10n.itemDetailModifierValueSource,
+                      value: sourceDisplay.primary,
+                      caption: sourceDisplay.secondary,
+                    ),
+                    _EffectSummaryChip(
+                      label: context.l10n.itemDetailModifierValueTransformed,
+                      value: transformedDisplay.primary,
+                      caption: transformedDisplay.secondary,
+                    ),
+                    _EffectSummaryChip(
+                      label: hasPenalty
+                          ? context.l10n.itemDetailModifierValueAppliedAfterPenalty
+                          : context.l10n.itemDetailApplied,
+                      value: appliedDisplay.primary,
+                      caption: appliedDisplay.secondary,
+                      tone: appliedTone,
+                    ),
+                  ],
+                ),
+                if (hasPenalty && penaltyChangedValue) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    context.l10n.itemDetailModifierStackingPenaltyHint,
+                    style: context.theme.textTheme.bodySmall?.copyWith(
+                      color: context.theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                if (appliedDisplay.explanation != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    appliedDisplay.explanation!,
+                    style: context.theme.textTheme.bodySmall?.copyWith(
+                      color: context.theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(detail),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _EffectValueText(
-                label: context.l10n.itemDetailOriginal,
-                value: _formatCompactNumber(modifier.originalValue),
-              ),
-            ),
-            Expanded(
-              child: _EffectValueText(
-                label: context.l10n.itemDetailNormalized,
-                value: _formatCompactNumber(modifier.normalizedValue),
-                delta: _formatSignedCompactNumber(normalizedDelta),
-                tone: _effectDeltaTone(normalizedDelta),
-              ),
-            ),
-            Expanded(
-              child: _EffectValueText(
-                label: context.l10n.itemDetailPenalized,
-                value: _formatCompactNumber(modifier.penalizedValue),
-                delta: _formatSignedCompactNumber(penalizedDelta),
-                tone: _effectDeltaTone(penalizedDelta),
-              ),
-            ),
-            Expanded(
-              child: _EffectValueText(
-                label: context.l10n.itemDetailNet,
-                value: _formatSignedCompactNumber(netDelta),
-                tone: _effectDeltaTone(netDelta),
-              ),
-            ),
-          ],
+      ),
+    );
+  }
+}
+
+class _InlineStatusChip extends StatelessWidget {
+  const _InlineStatusChip({required this.label, required this.tone});
+
+  final String label;
+  final _ValueTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _toneColor(context, tone);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _toneBackground(context, tone),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        style: context.theme.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _EffectSummaryChip extends StatelessWidget {
+  const _EffectSummaryChip({required this.label, required this.value, this.caption, this.tone});
+
+  final String label;
+  final String value;
+  final String? caption;
+  final _ValueTone? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _toneColor(context, tone);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _toneBackground(context, tone),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: tone == null
+              ? context.theme.colorScheme.outlineVariant
+              : color.withValues(alpha: 0.35),
+        ),
+      ),
+      child: _EffectValueText(label: label, value: value, caption: caption, tone: tone),
     );
   }
 }
@@ -960,11 +1292,11 @@ class _ValueChip extends StatelessWidget {
 }
 
 class _EffectValueText extends StatelessWidget {
-  const _EffectValueText({required this.label, required this.value, this.delta, this.tone});
+  const _EffectValueText({required this.label, required this.value, this.caption, this.tone});
 
   final String label;
   final String value;
-  final String? delta;
+  final String? caption;
   final _ValueTone? tone;
 
   @override
@@ -982,13 +1314,15 @@ class _EffectValueText extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        if (delta != null)
+        if (caption != null) ...[
+          const SizedBox(height: 2),
           Text(
-            delta!,
+            caption!,
             style: context.theme.textTheme.labelMedium?.copyWith(
-              color: tone == null ? null : color,
+              color: tone == null ? context.theme.colorScheme.onSurfaceVariant : color,
             ),
           ),
+        ],
       ],
     );
   }
@@ -1038,6 +1372,14 @@ class _InspectableAttribute {
   final DogmaUnit? unit;
 }
 
+class _ModifierValueDisplay {
+  const _ModifierValueDisplay({required this.primary, this.secondary, this.explanation});
+
+  final String primary;
+  final String? secondary;
+  final String? explanation;
+}
+
 enum _ValueTone { positive, negative }
 
 String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) => switch (localization) {
@@ -1070,13 +1412,6 @@ _ValueTone? _attributeDeltaTone({
     return positiveIsGood ? _ValueTone.positive : _ValueTone.negative;
   }
   return positiveIsGood ? _ValueTone.negative : _ValueTone.positive;
-}
-
-_ValueTone? _effectDeltaTone(double delta) {
-  if (delta == 0) {
-    return null;
-  }
-  return delta > 0 ? _ValueTone.positive : _ValueTone.negative;
 }
 
 Color _toneColor(BuildContext context, _ValueTone? tone) => switch (tone) {
@@ -1271,6 +1606,176 @@ String _formatCompactNumber(double value) {
 String _formatSignedCompactNumber(double value) {
   final prefix = value > 0 ? "+" : "";
   return "$prefix${_formatCompactNumber(value)}";
+}
+
+_ModifierValueDisplay _modifierHeadlineValueDisplay(
+  BuildContext context,
+  native.ModifierSource source,
+  double originalValue,
+  double appliedValue,
+) => source.when(
+  effect: (effect) => switch (effect.operator_) {
+    native.EffectOperator.preMul || native.EffectOperator.postMul => _ModifierValueDisplay(
+      primary: "×${_formatCompactNumber(originalValue)}",
+      secondary: _effectivePercentLabel(context, appliedValue * 100),
+      explanation: _percentShiftExplanation(context, appliedValue * 100),
+    ),
+    native.EffectOperator.preDiv || native.EffectOperator.postDiv => _ModifierValueDisplay(
+      primary: "÷${_formatCompactNumber(originalValue)}",
+      secondary: _effectivePercentLabel(context, appliedValue * 100),
+      explanation: _divisionPercentShiftExplanation(context, appliedValue * 100),
+    ),
+    native.EffectOperator.postPercent => _ModifierValueDisplay(
+      primary: "${_formatSignedCompactNumber(originalValue)}%",
+      explanation: _percentBonusExplanation(context, originalValue),
+    ),
+    native.EffectOperator.preAssign || native.EffectOperator.postAssign => _ModifierValueDisplay(
+      primary: "=${_formatCompactNumber(originalValue)}",
+      explanation: context.l10n.itemDetailModifierSetAttribute(
+        value: _formatCompactNumber(originalValue),
+      ),
+    ),
+    native.EffectOperator.modAdd => _ModifierValueDisplay(
+      primary: "+${_formatCompactNumber(originalValue)}",
+      explanation: context.l10n.itemDetailModifierAddsAttribute(
+        value: _formatCompactNumber(originalValue),
+      ),
+    ),
+    native.EffectOperator.modSub => _ModifierValueDisplay(
+      primary: "-${_formatCompactNumber(originalValue)}",
+      explanation: context.l10n.itemDetailModifierSubtractsAttribute(
+        value: _formatCompactNumber(originalValue),
+      ),
+    ),
+  },
+  buff: (_) => _ModifierValueDisplay(primary: _formatSignedCompactNumber(appliedValue)),
+);
+
+_ModifierValueDisplay _modifierSourceValueDisplay(
+  BuildContext context,
+  native.ModifierSource source,
+  double originalValue,
+) => source.when(
+  effect: (effect) => switch (effect.operator_) {
+    native.EffectOperator.preMul || native.EffectOperator.postMul => _ModifierValueDisplay(
+      primary: "×${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.preDiv || native.EffectOperator.postDiv => _ModifierValueDisplay(
+      primary: "÷${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.postPercent => _ModifierValueDisplay(
+      primary: "${_formatSignedCompactNumber(originalValue)}%",
+    ),
+    native.EffectOperator.preAssign || native.EffectOperator.postAssign => _ModifierValueDisplay(
+      primary: "=${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.modAdd => _ModifierValueDisplay(
+      primary: "+${_formatCompactNumber(originalValue)}",
+    ),
+    native.EffectOperator.modSub => _ModifierValueDisplay(
+      primary: "-${_formatCompactNumber(originalValue)}",
+    ),
+  },
+  buff: (_) => _ModifierValueDisplay(primary: _formatSignedCompactNumber(originalValue)),
+);
+
+_ModifierValueDisplay _modifierAppliedValueDisplay(
+  BuildContext context,
+  native.ModifierSource source,
+  double value,
+) => source.when(
+  effect: (effect) => switch (effect.operator_) {
+    native.EffectOperator.preMul ||
+    native.EffectOperator.postMul => _factorStageValueDisplay(context, value),
+    native.EffectOperator.preDiv ||
+    native.EffectOperator.postDiv => _dividerStageValueDisplay(context, value),
+    native.EffectOperator.postPercent => _ModifierValueDisplay(
+      primary: "${_formatSignedCompactNumber(value * 100)}%",
+      explanation: _percentBonusExplanation(context, value * 100),
+    ),
+    native.EffectOperator.preAssign || native.EffectOperator.postAssign => _ModifierValueDisplay(
+      primary: "=${_formatCompactNumber(value)}",
+      explanation: context.l10n.itemDetailModifierSetAttribute(value: _formatCompactNumber(value)),
+    ),
+    native.EffectOperator.modAdd || native.EffectOperator.modSub => _ModifierValueDisplay(
+      primary: _formatSignedCompactNumber(value),
+      explanation: value >= 0
+          ? context.l10n.itemDetailModifierAddsAttribute(value: _formatCompactNumber(value))
+          : context.l10n.itemDetailModifierSubtractsAttribute(
+              value: _formatCompactNumber(value.abs()),
+            ),
+    ),
+  },
+  buff: (_) => _ModifierValueDisplay(primary: _formatSignedCompactNumber(value)),
+);
+
+_ModifierValueDisplay _factorStageValueDisplay(BuildContext context, double value) {
+  final factor = 1.0 + value;
+  final effectivePercent = value * 100;
+  return _ModifierValueDisplay(
+    primary: "${_formatSignedCompactNumber(effectivePercent)}%",
+    secondary: "×${_formatCompactNumber(factor)}",
+    explanation: _percentShiftExplanation(context, effectivePercent),
+  );
+}
+
+_ModifierValueDisplay _dividerStageValueDisplay(BuildContext context, double value) {
+  final divisor = value <= -1 ? null : 1.0 / (1.0 + value);
+  final effectivePercent = value * 100;
+  return _ModifierValueDisplay(
+    primary: "${_formatSignedCompactNumber(effectivePercent)}%",
+    secondary: divisor == null ? null : "÷${_formatCompactNumber(divisor)}",
+    explanation: _divisionPercentShiftExplanation(context, effectivePercent),
+  );
+}
+
+String _effectivePercentLabel(BuildContext context, double effectivePercent) => context.l10n
+    .itemDetailModifierEffectivePercent(value: _formatSignedCompactNumber(effectivePercent));
+
+String _percentShiftExplanation(BuildContext context, double effectivePercent) {
+  final absolutePercent = _formatCompactNumber(effectivePercent.abs());
+  return effectivePercent >= 0
+      ? context.l10n.itemDetailModifierIncreaseCurrentValue(value: absolutePercent)
+      : context.l10n.itemDetailModifierReduceCurrentValue(value: absolutePercent);
+}
+
+String _divisionPercentShiftExplanation(BuildContext context, double effectivePercent) {
+  final absolutePercent = _formatCompactNumber(effectivePercent.abs());
+  return effectivePercent >= 0
+      ? context.l10n.itemDetailModifierIncreaseCurrentValueAfterDivision(value: absolutePercent)
+      : context.l10n.itemDetailModifierReduceCurrentValueAfterDivision(value: absolutePercent);
+}
+
+String _percentBonusExplanation(BuildContext context, double percentValue) => percentValue >= 0
+    ? context.l10n.itemDetailModifierAppliesBonusPercent(value: _formatCompactNumber(percentValue))
+    : context.l10n.itemDetailModifierAppliesReductionPercent(
+        value: _formatCompactNumber(percentValue.abs()),
+      );
+
+_ValueTone? _modifierValueTone(
+  DogmaAttribute? inspectedAttribute,
+  native.ModifierSource source,
+  double value,
+) {
+  final delta = source.when(
+    effect: (effect) => switch (effect.operator_) {
+      native.EffectOperator.preAssign || native.EffectOperator.postAssign => null,
+      native.EffectOperator.preMul ||
+      native.EffectOperator.postMul ||
+      native.EffectOperator.preDiv ||
+      native.EffectOperator.postDiv ||
+      native.EffectOperator.postPercent ||
+      native.EffectOperator.modAdd ||
+      native.EffectOperator.modSub => value,
+    },
+    buff: (_) => value,
+  );
+  if (delta == null || delta == 0) return null;
+  final highIsGood = inspectedAttribute?.highIsGood ?? true;
+  if (delta > 0) {
+    return highIsGood ? _ValueTone.positive : _ValueTone.negative;
+  }
+  return highIsGood ? _ValueTone.negative : _ValueTone.positive;
 }
 
 String _effectOperatorLabel(BuildContext context, native.EffectOperator operator) =>
