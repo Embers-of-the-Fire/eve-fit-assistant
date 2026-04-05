@@ -602,7 +602,7 @@ class _AttributeEffectChainContent extends StatelessWidget {
         const SizedBox(height: 8),
         for (var index = 0; index < modifiers.length; index++) ...[
           _ModifierTile(modifier: modifiers[index], fit: fit, emulated: emulated),
-          if (index < modifiers.length - 1) const Divider(height: 1),
+          if (index < modifiers.length - 1) const Divider(height: 1, indent: 16, endIndent: 16),
         ],
       ],
     ],
