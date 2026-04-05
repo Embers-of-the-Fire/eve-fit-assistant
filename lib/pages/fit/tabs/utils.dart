@@ -52,6 +52,34 @@ class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveCli
         key: _formKey,
         child: Column(
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => showFitExportDialog(
+                      context,
+                      fitId: widget.fitContext.fitId,
+                      initialFit: widget.fitContext.fit,
+                    ),
+                    icon: const Icon(Icons.ios_share_outlined),
+                    label: Text(context.l10n.fitUtilsExportButton),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => FitScreenshotPage(fitId: widget.fitContext.fitId),
+                      ),
+                    ),
+                    icon: const Icon(Icons.image_outlined),
+                    label: Text(context.l10n.fitUtilsExportImageButton),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _nameController,
               readOnly: !_editable,

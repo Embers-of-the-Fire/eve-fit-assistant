@@ -16,11 +16,7 @@ class FitDisplayColumns extends ConsumerWidget {
           ...range(0, columns)
               .map<Widget>(
                 (i) => Expanded(
-                  child: _FitDisplayTab(
-                    fitContext: fitContext,
-                    initialIndex: i + 1,
-                    showQuickActions: i == 0,
-                  ),
+                  child: _FitDisplayTab(fitContext: fitContext, initialIndex: i + 1),
                 ),
               )
               .intersperse(const VerticalDivider(indent: 8, endIndent: 8)),
@@ -31,16 +27,11 @@ class FitDisplayColumns extends ConsumerWidget {
 }
 
 class _FitDisplayTab extends StatefulWidget {
-  const _FitDisplayTab({
-    required this.fitContext,
-    this.initialIndex = 1,
-    this.showQuickActions = false,
-  });
+  const _FitDisplayTab({required this.fitContext, this.initialIndex = 1});
 
   final int initialIndex;
 
   final FitContext fitContext;
-  final bool showQuickActions;
 
   @override
   State<_FitDisplayTab> createState() => _FitDisplayTabState();
@@ -60,13 +51,6 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      if (widget.showQuickActions) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: _FitQuickActions(fitContext: widget.fitContext),
-        ),
-        const Divider(height: 1),
-      ],
       TabBar(
         controller: _tabController,
         labelPadding: .zero,
@@ -96,33 +80,6 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
             _UtilsTab(fitContext: widget.fitContext),
           ],
         ),
-      ),
-    ],
-  );
-}
-
-class _FitQuickActions extends StatelessWidget {
-  const _FitQuickActions({required this.fitContext});
-
-  final FitContext fitContext;
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 12,
-    runSpacing: 12,
-    children: [
-      OutlinedButton.icon(
-        onPressed: () =>
-            showFitExportDialog(context, fitId: fitContext.fitId, initialFit: fitContext.fit),
-        icon: const Icon(Icons.ios_share_outlined),
-        label: Text(context.l10n.fitUtilsExportButton),
-      ),
-      OutlinedButton.icon(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (context) => FitScreenshotPage(fitId: fitContext.fitId)),
-        ),
-        icon: const Icon(Icons.image_outlined),
-        label: Text(context.l10n.fitUtilsExportImageButton),
       ),
     ],
   );
