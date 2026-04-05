@@ -39,7 +39,7 @@ class FitTextExporter {
   String _exportNativeFit(FitStorage fit) {
     final payload = jsonEncode({"version": 1, "fit": fit.toJson()});
     final compressed = const GZipEncoder().encodeBytes(utf8.encode(payload), level: 9);
-    return "EFA2:${base64Encode(compressed)}";
+    return "EFA:${base64Encode(compressed)}";
   }
 
   String _exportFittingLink(FitStorage fit) {
