@@ -41,6 +41,7 @@ migrate_working_dir/
 /build/
 /coverage/
 unlocalized_messages.txt
+android/build/reports/
 
 # Symbolication related
 app.*.symbols
