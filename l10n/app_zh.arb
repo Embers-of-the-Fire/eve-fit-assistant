@@ -146,6 +146,7 @@
   },
   "fitUtilsNameRequired": "请输入配置名。",
   "fitUtilsExportButton": "导出配置",
+  "fitUtilsExportImageButton": "导出图片",
   "fitUtilsNameLabel": "配置名称",
   "fitUtilsDescriptionLabel": "配置备注",
   "fitExportDialogTitle": "导出配置",
@@ -159,6 +160,29 @@
   "fitExportLossyWarning": "该导出格式会丢失部分配置细节。",
   "fitExportCopied": "已复制配置导出内容。",
   "fitListActionExport": "导出",
+  "fitScreenshotPageTitle": "配置图片导出",
+  "fitScreenshotSave": "保存图片",
+  "fitScreenshotShare": "分享图片",
+  "fitScreenshotSaved": "已保存截图到 {path}",
+  "@fitScreenshotSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "fitScreenshotDamageProfile": "伤害分布",
+  "fitScreenshotEquipment": "装备",
+  "fitScreenshotSupport": "植入体与增效剂",
+  "fitScreenshotMinions": "无人机与舰载机",
+  "fitScreenshotStats": "快速属性",
+  "fitScreenshotEmpty": "无",
+  "fitScreenshotStatsUnavailable": "属性不可用",
+  "fitScreenshotShieldHp": "护盾 HP",
+  "fitScreenshotArmorHp": "装甲 HP",
+  "fitScreenshotHullHp": "结构 HP",
+  "fitScreenshotCapacitor": "电容",
+  "fitScreenshotDroneBandwidth": "无人机带宽",
   "@@@@_FIT_ATTRIBUTE_TAB": {},
   "fitAttributeTabCapacitorStable": "{percent}% 稳定",
   "@fitAttributeTabCapacitorStable": {

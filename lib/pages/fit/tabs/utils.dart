@@ -54,14 +54,32 @@ class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveCli
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: () => showFitExportDialog(
-                  context,
-                  fitId: widget.fitContext.fitId,
-                  initialFit: widget.fitContext.fit,
-                ),
-                icon: const Icon(Icons.ios_share_outlined),
-                label: Text(context.l10n.fitUtilsExportButton),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => showFitExportDialog(
+                      context,
+                      fitId: widget.fitContext.fitId,
+                      initialFit: widget.fitContext.fit,
+                    ),
+                    icon: const Icon(Icons.ios_share_outlined),
+                    label: Text(context.l10n.fitUtilsExportButton),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => FitScreenshotPage(
+                          fit: widget.fitContext.fit,
+                          emulated: widget.fitContext.emulated,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.image_outlined),
+                    label: Text(context.l10n.fitUtilsExportImageButton),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),

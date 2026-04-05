@@ -17,6 +17,7 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
+import "package:eve_fit_assistant/features/fit_io/screenshot_page.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/output.dart" show $OutSlotTypeCopyWith;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
