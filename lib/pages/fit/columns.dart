@@ -117,10 +117,7 @@ class _FitQuickActions extends StatelessWidget {
       ),
       OutlinedButton.icon(
         onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (context) =>
-                FitScreenshotPage(fit: fitContext.fit, emulated: fitContext.emulated),
-          ),
+          MaterialPageRoute<void>(builder: (context) => FitScreenshotPage(fitContext: fitContext)),
         ),
         icon: const Icon(Icons.image_outlined),
         label: Text(context.l10n.fitUtilsExportImageButton),
