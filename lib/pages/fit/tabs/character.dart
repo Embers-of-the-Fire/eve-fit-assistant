@@ -3,9 +3,13 @@ part of "../page.dart";
 const _maxImplantSlots = 10;
 
 class _CharacterTab extends StatefulWidget {
-  const _CharacterTab({required this.fitContext});
+  const _CharacterTab({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   State<_CharacterTab> createState() => _CharacterTabState();
@@ -48,8 +52,14 @@ class _CharacterTabState extends State<_CharacterTab>
           child: TabBarView(
             controller: _controller,
             children: [
-              _CharacterImplantTab(fitContext: widget.fitContext),
-              _CharacterBoosterTab(fitContext: widget.fitContext),
+              _CharacterImplantTab(
+                fitContext: widget.fitContext,
+                interactionOptions: widget.interactionOptions,
+              ),
+              _CharacterBoosterTab(
+                fitContext: widget.fitContext,
+                interactionOptions: widget.interactionOptions,
+              ),
             ],
           ),
         ),
@@ -59,9 +69,13 @@ class _CharacterTabState extends State<_CharacterTab>
 }
 
 class _CharacterImplantTab extends ConsumerWidget {
-  const _CharacterImplantTab({required this.fitContext});
+  const _CharacterImplantTab({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -73,8 +87,10 @@ class _CharacterImplantTab extends ConsumerWidget {
         _EquipmentHeader(
           title: context.l10n.implantSlot,
           actions: [
-            InkWell(onTap: () => _handleAddImplant(context, ref), child: const Icon(Icons.add)),
-            _ActionClearAll(onTap: fitContext.fitWrapper.clearImplants),
+            if (interactionOptions.allowMutations)
+              InkWell(onTap: () => _handleAddImplant(context, ref), child: const Icon(Icons.add)),
+            if (interactionOptions.allowMutations)
+              _ActionClearAll(onTap: fitContext.fitWrapper.clearImplants),
           ],
         ),
         Expanded(
@@ -86,9 +102,14 @@ class _CharacterImplantTab extends ConsumerWidget {
                     fitContext: fitContext,
                     slotId: slotId,
                     storageIndex: implantAssignments[slotId]!,
+                    interactionOptions: interactionOptions,
                   )
                 else
-                  _EmptyImplantRow(fitContext: fitContext, slotId: slotId),
+                  _EmptyImplantRow(
+                    fitContext: fitContext,
+                    slotId: slotId,
+                    interactionOptions: interactionOptions,
+                  ),
             ],
           ),
         ),
@@ -119,9 +140,13 @@ class _CharacterImplantTab extends ConsumerWidget {
 }
 
 class _CharacterBoosterTab extends ConsumerWidget {
-  const _CharacterBoosterTab({required this.fitContext});
+  const _CharacterBoosterTab({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -132,15 +157,21 @@ class _CharacterBoosterTab extends ConsumerWidget {
         _EquipmentHeader(
           title: context.l10n.boosterSlot,
           actions: [
-            InkWell(onTap: () => _handleAddBooster(context, ref), child: const Icon(Icons.add)),
-            _ActionClearAll(onTap: fitContext.fitWrapper.clearBoosters),
+            if (interactionOptions.allowMutations)
+              InkWell(onTap: () => _handleAddBooster(context, ref), child: const Icon(Icons.add)),
+            if (interactionOptions.allowMutations)
+              _ActionClearAll(onTap: fitContext.fitWrapper.clearBoosters),
           ],
         ),
         Expanded(
           child: ListView(
             children: [
               for (final booster in boosters)
-                _BoosterRow(fitContext: fitContext, slotId: booster.index),
+                _BoosterRow(
+                  fitContext: fitContext,
+                  slotId: booster.index,
+                  interactionOptions: interactionOptions,
+                ),
             ],
           ),
         ),
@@ -171,11 +202,17 @@ class _CharacterBoosterTab extends ConsumerWidget {
 }
 
 class _ImplantRow extends ConsumerWidget {
-  const _ImplantRow({required this.fitContext, required this.slotId, required this.storageIndex});
+  const _ImplantRow({
+    required this.fitContext,
+    required this.slotId,
+    required this.storageIndex,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
   final int slotId;
   final int storageIndex;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -193,6 +230,34 @@ class _ImplantRow extends ConsumerWidget {
     final metaGroupIcon = ref.watch(
       bundleCollectionGetMetaGroupProvider(typeDef.metaGroupId).select((t) => t?.icon),
     );
+
+    final content = ListTile(
+      leading: StateIcon.rect(
+        state: implant.state,
+        onTap: interactionOptions.allowStateToggle
+            ? () => fitContext.fitWrapper.toggleSlot(SlotIdentifier.implant(index: slotId), ref)
+            : null,
+        child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+      ),
+      title: LocalizedTypeName(typeId: itemId.asId),
+      trailing: Text("${slotId + 1}"),
+      onTap: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: itemId.asId,
+              fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
+            )
+          : null,
+      onLongPress: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: itemId.asId,
+              fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
+            )
+          : null,
+    );
+
+    if (!interactionOptions.allowMutations) return content;
 
     return Slidable(
       startActionPane: ActionPane(
@@ -224,25 +289,7 @@ class _ImplantRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: ListTile(
-        leading: StateIcon.rect(
-          state: implant.state,
-          onTap: () => fitContext.fitWrapper.toggleSlot(SlotIdentifier.implant(index: slotId), ref),
-          child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-        ),
-        title: LocalizedTypeName(typeId: itemId.asId),
-        trailing: Text("${slotId + 1}"),
-        onTap: () => showItemDetailPage(
-          context,
-          typeId: itemId.asId,
-          fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
-        ),
-        onLongPress: () => showItemDetailPage(
-          context,
-          typeId: itemId.asId,
-          fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
-        ),
-      ),
+      child: content,
     );
   }
 
@@ -260,24 +307,35 @@ class _ImplantRow extends ConsumerWidget {
 }
 
 class _EmptyImplantRow extends ConsumerWidget {
-  const _EmptyImplantRow({required this.fitContext, required this.slotId});
+  const _EmptyImplantRow({
+    required this.fitContext,
+    required this.slotId,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
   final int slotId;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => _EmptySlotRow(
     fitContext: fitContext,
     slotIdent: SlotIdentifier.implant(index: slotId),
     slotInfo: _EmptySlotInfo(index: slotId),
+    interactionOptions: interactionOptions,
   );
 }
 
 class _BoosterRow extends ConsumerWidget {
-  const _BoosterRow({required this.fitContext, required this.slotId});
+  const _BoosterRow({
+    required this.fitContext,
+    required this.slotId,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
   final int slotId;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -296,6 +354,34 @@ class _BoosterRow extends ConsumerWidget {
     final metaGroupIcon = ref.watch(
       bundleCollectionGetMetaGroupProvider(typeDef.metaGroupId).select((t) => t?.icon),
     );
+
+    final content = ListTile(
+      leading: StateIcon.rect(
+        state: booster.state,
+        onTap: interactionOptions.allowStateToggle
+            ? () => fitContext.fitWrapper.toggleSlot(SlotIdentifier.booster(slotId: slotId), ref)
+            : null,
+        child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+      ),
+      title: LocalizedTypeName(typeId: itemId.asId),
+      subtitle: Text("${context.l10n.boosterSlot} $slotId"),
+      onTap: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: itemId.asId,
+              fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
+            )
+          : null,
+      onLongPress: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: itemId.asId,
+              fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
+            )
+          : null,
+    );
+
+    if (!interactionOptions.allowMutations) return content;
 
     return Slidable(
       startActionPane: ActionPane(
@@ -326,26 +412,7 @@ class _BoosterRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: ListTile(
-        leading: StateIcon.rect(
-          state: booster.state,
-          onTap: () =>
-              fitContext.fitWrapper.toggleSlot(SlotIdentifier.booster(slotId: slotId), ref),
-          child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-        ),
-        title: LocalizedTypeName(typeId: itemId.asId),
-        subtitle: Text("${context.l10n.boosterSlot} $slotId"),
-        onTap: () => showItemDetailPage(
-          context,
-          typeId: itemId.asId,
-          fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
-        ),
-        onLongPress: () => showItemDetailPage(
-          context,
-          typeId: itemId.asId,
-          fitReference: ItemDetailFitReference.booster(fitId: fitContext.fitId, index: slotId),
-        ),
-      ),
+      child: content,
     );
   }
 

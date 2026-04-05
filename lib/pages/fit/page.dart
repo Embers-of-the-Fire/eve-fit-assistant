@@ -147,3 +147,21 @@ class _FitPage extends ConsumerWidget {
     );
   }
 }
+
+class FitInteractionOptions {
+  const FitInteractionOptions({
+    this.allowMutations = true,
+    this.allowInspect = true,
+    this.allowStateToggle = true,
+    this.allowFighterAbilityToggle = true,
+    this.allowHpToggle = true,
+  });
+
+  static const screenshot = FitInteractionOptions(allowMutations: false, allowInspect: false);
+
+  final bool allowMutations;
+  final bool allowInspect;
+  final bool allowStateToggle;
+  final bool allowFighterAbilityToggle;
+  final bool allowHpToggle;
+}

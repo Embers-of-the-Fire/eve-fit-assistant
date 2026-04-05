@@ -1,9 +1,13 @@
 part of "../page.dart";
 
 class _DroneTab extends ConsumerWidget {
-  const _DroneTab({required this.fitContext});
+  const _DroneTab({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,35 +29,39 @@ class _DroneTab extends ConsumerWidget {
             spacing: 10,
             children: <InkWell>[
               InkWell(
-                onTap: () async {
-                  final typeId = await showAddItemDialog(
-                    context: context,
-                    title: context.l10n.fitDroneTabAddDroneTitle,
-                    initialMarketGroupId: slotIdent.baseMarketGroupId,
-                    validator: slotIdent.validator(ref),
-                  );
-                  if (typeId == null) return;
-                  await fitWrapper.update((storage) {
-                    final newDrone = FitDroneItem(
-                      itemId: FitStorageItemId.item(id: typeId),
-                      state: FitItemState.active,
-                      quantity: 1,
-                    );
-                    return storage.copyWith(
-                      body: storage.body.copyWith(drones: storage.body.drones.add(newDrone)),
-                    );
-                  });
-                },
+                onTap: interactionOptions.allowMutations
+                    ? () async {
+                        final typeId = await showAddItemDialog(
+                          context: context,
+                          title: context.l10n.fitDroneTabAddDroneTitle,
+                          initialMarketGroupId: slotIdent.baseMarketGroupId,
+                          validator: slotIdent.validator(ref),
+                        );
+                        if (typeId == null) return;
+                        await fitWrapper.update((storage) {
+                          final newDrone = FitDroneItem(
+                            itemId: FitStorageItemId.item(id: typeId),
+                            state: FitItemState.active,
+                            quantity: 1,
+                          );
+                          return storage.copyWith(
+                            body: storage.body.copyWith(drones: storage.body.drones.add(newDrone)),
+                          );
+                        });
+                      }
+                    : null,
                 child: const Icon(Icons.add),
               ),
               InkWell(
-                onTap: () async {
-                  await fitWrapper.update(
-                    (storage) => storage.copyWith(
-                      body: storage.body.copyWith(drones: IList<FitDroneItem>()),
-                    ),
-                  );
-                },
+                onTap: interactionOptions.allowMutations
+                    ? () async {
+                        await fitWrapper.update(
+                          (storage) => storage.copyWith(
+                            body: storage.body.copyWith(drones: IList<FitDroneItem>()),
+                          ),
+                        );
+                      }
+                    : null,
                 child: const Icon(Icons.clear_all),
               ),
             ],
@@ -77,6 +85,7 @@ class _DroneTab extends ConsumerWidget {
                       itemId: drones[index].itemId,
                     ),
                   ),
+                  interactionOptions: interactionOptions,
                 ),
             ],
           ),

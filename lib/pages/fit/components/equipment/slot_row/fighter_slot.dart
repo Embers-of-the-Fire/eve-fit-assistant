@@ -5,6 +5,7 @@ class _FighterSlotRow extends ConsumerWidget {
     required this.fitContext,
     required this.slotIdent,
     required this.slotInfo,
+    this.interactionOptions = const FitInteractionOptions(),
   });
 
   static const int _attackTurretBit = 0x01;
@@ -15,6 +16,7 @@ class _FighterSlotRow extends ConsumerWidget {
   final SlotIdentifierFighter slotIdent;
   final _ItemSlotInfo slotInfo;
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   Future<void> _toggleAbility(int bit) =>
       fitContext.fitWrapper.toggleFighterAbilityBit(slotIdent.index, bit);
@@ -38,7 +40,7 @@ class _FighterSlotRow extends ConsumerWidget {
       selected: enabled,
       avatar: Icon(icon, size: 16),
       label: Text(label),
-      onSelected: (_) => _toggleAbility(bit),
+      onSelected: interactionOptions.allowFighterAbilityToggle ? (_) => _toggleAbility(bit) : null,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
     );
@@ -151,6 +153,77 @@ class _FighterSlotRow extends ConsumerWidget {
             "${storedFighter.quantity} x ${representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond).toStringAsFixed(1)}/s = ${(representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond) * storedFighter.quantity).toStringAsFixed(1)}/s",
           );
 
+    final content = ListTile(
+      leading: StateIcon.rect(
+        state: slotInfo.state,
+        onTap: interactionOptions.allowStateToggle
+            ? () => fitContext.fitWrapper.toggleSlot(slotIdent, ref)
+            : null,
+        child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+      ),
+      title: LocalizedTypeName(typeId: displayTypeId),
+      subtitle: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          if ((availableAbilityMask & _attackTurretBit) != 0)
+            _buildAbilityChip(
+              context: context,
+              bit: _attackTurretBit,
+              icon: Icons.gps_fixed,
+              label: context.l10n.fitFighterAbilityTurret,
+            ),
+          if ((availableAbilityMask & _missilesBit) != 0)
+            _buildAbilityChip(
+              context: context,
+              bit: _missilesBit,
+              icon: Icons.rocket_launch,
+              label: context.l10n.fitFighterAbilityMissiles,
+            ),
+          if ((availableAbilityMask & _attackMissileBit) != 0)
+            _buildAbilityChip(
+              context: context,
+              bit: _attackMissileBit,
+              icon: Icons.flash_on,
+              label: context.l10n.fitFighterAbilityVolley,
+            ),
+          if ((availableAbilityMask & _bombBit) != 0)
+            _buildAbilityChip(
+              context: context,
+              bit: _bombBit,
+              icon: Icons.blur_on,
+              label: context.l10n.fitFighterAbilityBomb,
+            ),
+          ?dpsText,
+        ],
+      ),
+      trailing: _FighterCountText(count: storedFighter.quantity, total: maxQuantity),
+      onTap: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: displayTypeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+              ),
+            )
+          : null,
+      onLongPress: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: displayTypeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+              ),
+            )
+          : null,
+    );
+
+    if (!interactionOptions.allowMutations) return content;
+
     return Slidable(
       startActionPane: startActions.isEmpty
           ? null
@@ -164,64 +237,7 @@ class _FighterSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: endActions,
       ),
-      child: ListTile(
-        leading: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-        title: LocalizedTypeName(typeId: displayTypeId),
-        subtitle: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            if ((availableAbilityMask & _attackTurretBit) != 0)
-              _buildAbilityChip(
-                context: context,
-                bit: _attackTurretBit,
-                icon: Icons.gps_fixed,
-                label: context.l10n.fitFighterAbilityTurret,
-              ),
-            if ((availableAbilityMask & _missilesBit) != 0)
-              _buildAbilityChip(
-                context: context,
-                bit: _missilesBit,
-                icon: Icons.rocket_launch,
-                label: context.l10n.fitFighterAbilityMissiles,
-              ),
-            if ((availableAbilityMask & _attackMissileBit) != 0)
-              _buildAbilityChip(
-                context: context,
-                bit: _attackMissileBit,
-                icon: Icons.flash_on,
-                label: context.l10n.fitFighterAbilityVolley,
-              ),
-            if ((availableAbilityMask & _bombBit) != 0)
-              _buildAbilityChip(
-                context: context,
-                bit: _bombBit,
-                icon: Icons.blur_on,
-                label: context.l10n.fitFighterAbilityBomb,
-              ),
-            ?dpsText,
-          ],
-        ),
-        trailing: _FighterCountText(count: storedFighter.quantity, total: maxQuantity),
-        onTap: () => showItemDetailPage(
-          context,
-          typeId: displayTypeId,
-          fitReference: ItemDetailFitReference.module(
-            fitId: fitContext.fitId,
-            slotType: slotInfo.type,
-            index: slotInfo.index,
-          ),
-        ),
-        onLongPress: () => showItemDetailPage(
-          context,
-          typeId: displayTypeId,
-          fitReference: ItemDetailFitReference.module(
-            fitId: fitContext.fitId,
-            slotType: slotInfo.type,
-            index: slotInfo.index,
-          ),
-        ),
-      ),
+      child: content,
     );
   }
 }

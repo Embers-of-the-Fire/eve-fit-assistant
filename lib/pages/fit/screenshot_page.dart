@@ -10,44 +10,8 @@ class FitScreenshotPage extends ConsumerStatefulWidget {
 }
 
 class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
-  static const _panelWidth = 360.0;
-  static const _minPanelHeight = 1200.0;
-  static const _panelHeaderHeight = 54.0;
-  static const _panelVerticalPadding = 28.0;
-  static const _rowHeight = 76.0;
-
   final GlobalKey _captureKey = GlobalKey();
   bool _busy = false;
-
-  double get _panelHeight {
-    final fit = widget.fitContext.fit;
-
-    final characterRows = 4 + fit.body.implants.length + fit.body.boosters.length;
-    final equipmentRows =
-        fit.body.slots.high.length +
-        fit.body.slots.medium.length +
-        fit.body.slots.low.length +
-        fit.body.slots.rig.length +
-        fit.body.slots.subsystem.length +
-        fit.body.slots.service.length +
-        6 +
-        fit.body.slots.tacticalMode.match(() => 0, (_) => 2);
-    const attributeRows = 10;
-    final minionRows = widget.fitContext.ship.fighterTubes > 0
-        ? 3 + fit.body.fighters.length
-        : 3 + fit.body.drones.length;
-
-    final maxRows = [
-      characterRows,
-      equipmentRows,
-      attributeRows,
-      minionRows,
-    ].reduce((left, right) => left > right ? left : right);
-    return (_panelHeaderHeight + _panelVerticalPadding + (maxRows * _rowHeight)).clamp(
-      _minPanelHeight,
-      8000,
-    );
-  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -81,43 +45,7 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
               scrollDirection: Axis.horizontal,
               child: RepaintBoundary(
                 key: _captureKey,
-                child: Container(
-                  color: context.theme.scaffoldBackgroundColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ScreenshotPanel(
-                        height: _panelHeight,
-                        title: context.l10n.fitTabsCharacter,
-                        child: _CharacterTab(fitContext: widget.fitContext),
-                      ),
-                      const SizedBox(width: 12),
-                      _ScreenshotPanel(
-                        height: _panelHeight,
-                        title: context.l10n.fitTabsEquipment,
-                        child: _EquipmentTab(fitContext: widget.fitContext),
-                      ),
-                      const SizedBox(width: 12),
-                      _ScreenshotPanel(
-                        height: _panelHeight,
-                        title: context.l10n.fitTabsAttributes,
-                        child: _AttributeTab(fitContext: widget.fitContext),
-                      ),
-                      const SizedBox(width: 12),
-                      _ScreenshotPanel(
-                        height: _panelHeight,
-                        title: widget.fitContext.ship.fighterTubes > 0
-                            ? context.l10n.fitTabsFighter
-                            : context.l10n.fitTabsDrone,
-                        child: widget.fitContext.ship.fighterTubes > 0
-                            ? _FighterTab(fitContext: widget.fitContext)
-                            : _DroneTab(fitContext: widget.fitContext),
-                      ),
-                    ],
-                  ),
-                ),
+                child: _FitScreenshotSurface(fitContext: widget.fitContext),
               ),
             ),
           ),
@@ -187,39 +115,368 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
   }
 }
 
-class _ScreenshotPanel extends StatelessWidget {
-  const _ScreenshotPanel({required this.title, required this.child, required this.height});
+class _FitScreenshotSurface extends StatelessWidget {
+  const _FitScreenshotSurface({required this.fitContext});
 
-  final String title;
-  final Widget child;
-  final double height;
+  static const _columnWidth = 420.0;
+
+  final FitContext fitContext;
 
   @override
   Widget build(BuildContext context) => Container(
-    width: _FitScreenshotPageState._panelWidth,
-    height: height,
-    decoration: BoxDecoration(
-      color: context.theme.colorScheme.surface,
-      border: Border.all(color: context.theme.colorScheme.outlineVariant),
-    ),
-    child: Column(
+    color: context.theme.scaffoldBackgroundColor,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(title, style: context.theme.textTheme.titleMedium),
-          ),
+        _ScreenshotColumn(
+          width: _columnWidth,
+          child: _ScreenshotCharacterColumn(fitContext: fitContext),
         ),
-        const Divider(height: 1),
-        Expanded(
-          child: IgnorePointer(
-            child: ClipRect(
-              child: Padding(padding: const EdgeInsets.only(top: 4), child: child),
-            ),
-          ),
+        const SizedBox(width: 12),
+        _ScreenshotColumn(
+          width: _columnWidth,
+          child: _ScreenshotEquipmentColumn(fitContext: fitContext),
+        ),
+        const SizedBox(width: 12),
+        _ScreenshotColumn(
+          width: _columnWidth,
+          child: _ScreenshotAttributeColumn(fitContext: fitContext),
         ),
       ],
     ),
   );
+}
+
+class _ScreenshotColumn extends StatelessWidget {
+  const _ScreenshotColumn({required this.width, required this.child});
+
+  final double width;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    decoration: BoxDecoration(
+      color: context.theme.colorScheme.surface,
+      border: Border.all(color: context.theme.colorScheme.outlineVariant),
+    ),
+    child: Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: child),
+  );
+}
+
+class _ScreenshotCharacterColumn extends ConsumerWidget {
+  const _ScreenshotCharacterColumn({required this.fitContext});
+
+  final FitContext fitContext;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fit = fitContext.fit;
+    final implantAssignments = _buildImplantAssignments(fit, ref);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _EquipmentHeader(title: context.l10n.implantSlot),
+        for (int slotId = 0; slotId < _maxImplantSlots; slotId++)
+          if (implantAssignments.containsKey(slotId))
+            _ImplantRow(
+              fitContext: fitContext,
+              slotId: slotId,
+              storageIndex: implantAssignments[slotId]!,
+              interactionOptions: FitInteractionOptions.screenshot,
+            )
+          else
+            _EmptyImplantRow(
+              fitContext: fitContext,
+              slotId: slotId,
+              interactionOptions: FitInteractionOptions.screenshot,
+            ),
+        _EquipmentHeader(title: context.l10n.boosterSlot),
+        if (fit.body.boosters.isEmpty)
+          ListTile(title: Text(context.l10n.fitSlotEmpty(slotName: context.l10n.boosterSlot))),
+        for (final booster in fit.body.boosters)
+          _BoosterRow(
+            fitContext: fitContext,
+            slotId: booster.index,
+            interactionOptions: FitInteractionOptions.screenshot,
+          ),
+      ],
+    );
+  }
+}
+
+class _ScreenshotEquipmentColumn extends ConsumerWidget {
+  const _ScreenshotEquipmentColumn({required this.fitContext});
+
+  final FitContext fitContext;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fit = fitContext.fit;
+    final subsystemSlotCount = fitContext.ship.subsystemSlots.clamp(
+      0,
+      fit.body.slots.subsystem.length,
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...fit.body.slots.tacticalMode.match(
+          () => const <Widget>[],
+          (mode) => [
+            _EquipmentHeader(title: context.l10n.tacticalMode),
+            _AnySlotRow(
+              fitContext: fitContext,
+              slotIdent: const SlotIdentifier.tacticalMode(),
+              slotInfo: SlotInfo.item(
+                state: FitItemState.active,
+                type: const native.OutSlotType.tacticalMode(),
+                index: 0,
+                slot: FitModuleItem(
+                  charge: const Option.none(),
+                  state: FitItemState.active,
+                  itemId: FitStorageItemId.item(id: mode),
+                ),
+              ),
+              interactionOptions: FitInteractionOptions.screenshot,
+            ),
+          ],
+        ),
+        _EquipmentHeader(title: context.l10n.highSlot),
+        ...fit.body.slots.high.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.high(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.high(),
+                index: index,
+                slot: slot,
+              ),
+            ),
+            interactionOptions: FitInteractionOptions.screenshot,
+          ),
+        ),
+        _EquipmentHeader(title: context.l10n.midSlot),
+        ...fit.body.slots.medium.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.medium(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.medium(),
+                index: index,
+                slot: slot,
+              ),
+            ),
+            interactionOptions: FitInteractionOptions.screenshot,
+          ),
+        ),
+        _EquipmentHeader(title: context.l10n.lowSlot),
+        ...fit.body.slots.low.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.low(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.low(),
+                index: index,
+                slot: slot,
+              ),
+            ),
+            interactionOptions: FitInteractionOptions.screenshot,
+          ),
+        ),
+        _EquipmentHeader(title: context.l10n.rigSlot),
+        ...fit.body.slots.rig.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.rig(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.rig(),
+                index: index,
+                slot: slot,
+              ),
+            ),
+            interactionOptions: FitInteractionOptions.screenshot,
+          ),
+        ),
+        if (subsystemSlotCount > 0) _EquipmentHeader(title: context.l10n.subsystemSlot),
+        ...SubsystemType.allTypes
+            .take(subsystemSlotCount)
+            .map(
+              (type) => _AnySlotRow(
+                fitContext: fitContext,
+                slotIdent: SlotIdentifier.subsystem(type: type),
+                slotInfo: fit.body.slots.subsystem[type.index].match(
+                  () => SlotInfo.empty(index: type.index),
+                  (slot) => SlotInfo.item(
+                    state: FitItemState.online,
+                    type: const native.OutSlotType.subSystem(),
+                    index: type.index,
+                    slot: slot,
+                  ),
+                ),
+                interactionOptions: FitInteractionOptions.screenshot,
+              ),
+            ),
+        if (fit.body.slots.service.isNotEmpty) _EquipmentHeader(title: context.l10n.serviceSlot),
+        ...fit.body.slots.service.mapWithIndex(
+          (slot, index) => _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.service(index: index),
+            slotInfo: slot.match(
+              () => SlotInfo.empty(index: index),
+              (slot) => SlotInfo.item(
+                state: slot.state,
+                type: const native.OutSlotType.service(),
+                index: index,
+                slot: slot,
+              ),
+            ),
+            interactionOptions: FitInteractionOptions.screenshot,
+          ),
+        ),
+        _EquipmentHeader(title: context.l10n.drone),
+        if (fit.body.drones.isEmpty)
+          ListTile(title: Text(context.l10n.fitSlotEmpty(slotName: context.l10n.drone))),
+        for (int index = 0; index < fit.body.drones.length; index++)
+          _AnySlotRow(
+            fitContext: fitContext,
+            slotIdent: SlotIdentifier.drone(index: index),
+            slotInfo: SlotInfo.item(
+              state: fit.body.drones[index].state,
+              type: native.OutSlotType.droneBay(groupId: index),
+              index: index,
+              slot: FitModuleItem(
+                charge: const Option.none(),
+                state: fit.body.drones[index].state,
+                itemId: fit.body.drones[index].itemId,
+              ),
+            ),
+            interactionOptions: FitInteractionOptions.screenshot,
+          ),
+        if (fitContext.ship.fighterTubes > 0) ...[
+          _EquipmentHeader(title: context.l10n.fighter),
+          Padding(
+            padding: const EdgeInsets.only(left: 10, right: 10, top: 8, bottom: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              spacing: 10,
+              children: [
+                _FighterHeaderCounter(
+                  prefix: "H",
+                  count: _fighterCountForGroup(const {1653, 4779}, fitContext, ref),
+                  total:
+                      fitContext.emulated?.hull
+                          .getAttribute(EveConstAttrID.fighterHeavySlots)
+                          .round() ??
+                      0,
+                ),
+                _FighterHeaderCounter(
+                  prefix: "L",
+                  count: _fighterCountForGroup(const {1652, 4777}, fitContext, ref),
+                  total:
+                      fitContext.emulated?.hull
+                          .getAttribute(EveConstAttrID.fighterLightSlots)
+                          .round() ??
+                      0,
+                ),
+                _FighterHeaderCounter(
+                  prefix: "S",
+                  count: _fighterCountForGroup(const {1537, 4778}, fitContext, ref),
+                  total:
+                      fitContext.emulated?.hull
+                          .getAttribute(EveConstAttrID.fighterSupportSlots)
+                          .round() ??
+                      0,
+                ),
+                _FighterHeaderCounter(
+                  suffix: "x",
+                  count: fit.body.fighters.length,
+                  total: fitContext.ship.fighterTubes,
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          if (fit.body.fighters.isEmpty)
+            ListTile(title: Text(context.l10n.fitSlotEmpty(slotName: context.l10n.fighter))),
+          for (int index = 0; index < fit.body.fighters.length; index++)
+            _AnySlotRow(
+              fitContext: fitContext,
+              slotIdent: SlotIdentifier.fighter(index: index),
+              slotInfo: SlotInfo.item(
+                state: FitItemState.active,
+                type: native.OutSlotType.fighter(
+                  groupId: fit.body.fighters[index].groupId,
+                  ability: fit.body.fighters[index].fighterAbility,
+                ),
+                index: index,
+                slot: FitModuleItem(
+                  itemId: fit.body.fighters[index].itemId,
+                  charge: const Option.none(),
+                  state: FitItemState.active,
+                ),
+              ),
+              interactionOptions: FitInteractionOptions.screenshot,
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ScreenshotAttributeColumn extends StatelessWidget {
+  const _ScreenshotAttributeColumn({required this.fitContext});
+
+  final FitContext fitContext;
+
+  @override
+  Widget build(BuildContext context) {
+    final emulated = fitContext.emulated;
+    if (emulated == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ShipInfo(fitContext: fitContext),
+        const Divider(height: 0),
+        Capacitor(ship: emulated),
+        Weapon(ship: emulated),
+        Resource(ship: emulated),
+        Hp(ship: emulated, interactionOptions: FitInteractionOptions.screenshot),
+        Miscellaneous(ship: emulated),
+        Cargo(ship: emulated),
+      ],
+    );
+  }
+}
+
+int _fighterCountForGroup(Set<int> groups, FitContext fitContext, WidgetRef ref) {
+  var count = 0;
+  for (final fighter in fitContext.fit.body.fighters) {
+    final typeId = fitContext.resolveOriginTypeId(fighter.itemId);
+    if (typeId == null) continue;
+    final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+    if (type == null) continue;
+    if (groups.contains(type.groupId)) {
+      count += 1;
+    }
+  }
+  return count;
 }

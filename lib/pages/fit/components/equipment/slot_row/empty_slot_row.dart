@@ -1,11 +1,17 @@
 part of "../../../page.dart";
 
 class _EmptySlotRow extends ConsumerWidget {
-  const _EmptySlotRow({required this.slotIdent, required this.slotInfo, required this.fitContext});
+  const _EmptySlotRow({
+    required this.slotIdent,
+    required this.slotInfo,
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final SlotIdentifier slotIdent;
   final _EmptySlotInfo slotInfo;
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   /// Build a custom validator for subsystem slots that checks:
   /// The subsystem type matches the slot index (CORE=0, DEFENSIVE=1, OFFENSIVE=2, PROPULSION=3)
@@ -65,16 +71,18 @@ class _EmptySlotRow extends ConsumerWidget {
         icon: display.reverseMap(() => Icons.add_circle_outline),
       ),
       title: Text(context.l10n.fitSlotEmpty(slotName: slotIdent.localizedSlotName(context))),
-      onTap: () =>
-          showAddItemDialog(
-            context: context,
-            title: slotIdent.localizedAddItemDialogTitle(context),
-            initialMarketGroupId: slotIdent.baseMarketGroupId,
-            validator: validator,
-          ).then((found) async {
-            if (found == null) return;
-            await fitContext.fitWrapper.equipSlot(slotIdent, found, ref);
-          }),
+      onTap: interactionOptions.allowMutations
+          ? () =>
+                showAddItemDialog(
+                  context: context,
+                  title: slotIdent.localizedAddItemDialogTitle(context),
+                  initialMarketGroupId: slotIdent.baseMarketGroupId,
+                  validator: validator,
+                ).then((found) async {
+                  if (found == null) return;
+                  await fitContext.fitWrapper.equipSlot(slotIdent, found, ref);
+                })
+          : null,
       trailing: Text("${slotIdent.asIndexed + 1}"),
     );
   }

@@ -1,8 +1,13 @@
 part of "../../page.dart";
 
 class Hp extends StatefulWidget {
-  const Hp({required this.ship, super.key});
+  const Hp({
+    required this.ship,
+    super.key,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
   final native.Ship ship;
+  final FitInteractionOptions interactionOptions;
 
   @override
   State<Hp> createState() => _HpState();
@@ -28,9 +33,11 @@ class _HpState extends State<Hp> {
       Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
         child: _HpTable(
-          onToggle: () => setState(() {
-            displayEhp = !displayEhp;
-          }),
+          onToggle: widget.interactionOptions.allowHpToggle
+              ? () => setState(() {
+                  displayEhp = !displayEhp;
+                })
+              : null,
           hull: widget.ship.hull,
           displayEhp: displayEhp,
           damageProfile: widget.ship.damageProfile,
@@ -76,13 +83,13 @@ class _HpTable extends ConsumerWidget {
     required this.hull,
     required this.displayEhp,
     required this.damageProfile,
-    required this.onToggle,
+    this.onToggle,
   });
   final native.Item hull;
   final bool displayEhp;
   final native_storage.DamageProfile damageProfile;
 
-  final void Function() onToggle;
+  final void Function()? onToggle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => DefaultTextStyle(

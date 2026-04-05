@@ -48,11 +48,13 @@ class _FitDisplayTab extends StatefulWidget {
 
 class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late final FitInteractionOptions _interactionOptions;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(initialIndex: widget.initialIndex, length: 5, vsync: this);
+    _interactionOptions = const FitInteractionOptions();
   }
 
   @override
@@ -84,13 +86,13 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
         child: TabBarView(
           controller: _tabController,
           children: [
-            _CharacterTab(fitContext: widget.fitContext),
-            _EquipmentTab(fitContext: widget.fitContext),
-            _AttributeTab(fitContext: widget.fitContext),
+            _CharacterTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
+            _EquipmentTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
+            _AttributeTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
             if (widget.fitContext.ship.fighterTubes > 0)
-              _FighterTab(fitContext: widget.fitContext)
+              _FighterTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions)
             else
-              _DroneTab(fitContext: widget.fitContext),
+              _DroneTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
             _UtilsTab(fitContext: widget.fitContext),
           ],
         ),

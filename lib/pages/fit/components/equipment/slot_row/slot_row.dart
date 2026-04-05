@@ -1,11 +1,17 @@
 part of "../../../page.dart";
 
 class _AnySlotRow extends StatelessWidget {
-  const _AnySlotRow({required this.fitContext, required this.slotIdent, required this.slotInfo});
+  const _AnySlotRow({
+    required this.fitContext,
+    required this.slotIdent,
+    required this.slotInfo,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
   final SlotIdentifier slotIdent;
   final SlotInfo slotInfo;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context) => slotInfo.when(
@@ -13,21 +19,29 @@ class _AnySlotRow extends StatelessWidget {
       slotIdent: slotIdent,
       slotInfo: _EmptySlotInfo(index: index),
       fitContext: fitContext,
+      interactionOptions: interactionOptions,
     ),
     item: (state, type, index, slot) => _SlotRow(
       fitContext: fitContext,
       slotIdent: slotIdent,
       slotInfo: _ItemSlotInfo(state: state, type: type, index: index, slot: slot),
+      interactionOptions: interactionOptions,
     ),
   );
 }
 
 class _SlotRow extends ConsumerWidget {
-  const _SlotRow({required this.fitContext, required this.slotIdent, required this.slotInfo});
+  const _SlotRow({
+    required this.fitContext,
+    required this.slotIdent,
+    required this.slotInfo,
+    required this.interactionOptions,
+  });
 
   final FitContext fitContext;
   final SlotIdentifier slotIdent;
   final _ItemSlotInfo slotInfo;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,10 +53,20 @@ class _SlotRow extends ConsumerWidget {
         return _SubsystemSlotRow(fitContext: fitContext, slotIdent: subsystem, slotInfo: slotInfo);
 
       case final SlotIdentifierDrone drone:
-        return _DroneSlotRow(fitContext: fitContext, slotIdent: drone, slotInfo: slotInfo);
+        return _DroneSlotRow(
+          fitContext: fitContext,
+          slotIdent: drone,
+          slotInfo: slotInfo,
+          interactionOptions: interactionOptions,
+        );
 
       case final SlotIdentifierFighter fighter:
-        return _FighterSlotRow(fitContext: fitContext, slotIdent: fighter, slotInfo: slotInfo);
+        return _FighterSlotRow(
+          fitContext: fitContext,
+          slotIdent: fighter,
+          slotInfo: slotInfo,
+          interactionOptions: interactionOptions,
+        );
 
       default:
         final displayTypeId = fitContext.resolveDisplayTypeId(slotInfo.slot.itemId);
@@ -65,6 +89,7 @@ class _SlotRow extends ConsumerWidget {
           slotInfo: slotInfo,
           itemType: type,
           typeName: typeName,
+          interactionOptions: interactionOptions,
         );
     }
   }
@@ -77,6 +102,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     required this.slotInfo,
     required this.itemType,
     required this.typeName,
+    required this.interactionOptions,
   });
 
   final FitContext fitContext;
@@ -84,6 +110,7 @@ class _SlotRowDisplay extends ConsumerWidget {
   final _ItemSlotInfo slotInfo;
   final pb_types.Type itemType;
   final String typeName;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -98,26 +125,30 @@ class _SlotRowDisplay extends ConsumerWidget {
         );
         subtitleWidgets.add(
           InkWell(
-            onTap: () => showItemDetailPage(
-              context,
-              typeId: chargeId,
-              fitReference: ItemDetailFitReference.module(
-                fitId: fitContext.fitId,
-                slotType: slotInfo.type,
-                index: slotInfo.index,
-                inspectCharge: true,
-              ),
-            ),
-            onLongPress: () => showItemDetailPage(
-              context,
-              typeId: chargeId,
-              fitReference: ItemDetailFitReference.module(
-                fitId: fitContext.fitId,
-                slotType: slotInfo.type,
-                index: slotInfo.index,
-                inspectCharge: true,
-              ),
-            ),
+            onTap: interactionOptions.allowInspect
+                ? () => showItemDetailPage(
+                    context,
+                    typeId: chargeId,
+                    fitReference: ItemDetailFitReference.module(
+                      fitId: fitContext.fitId,
+                      slotType: slotInfo.type,
+                      index: slotInfo.index,
+                      inspectCharge: true,
+                    ),
+                  )
+                : null,
+            onLongPress: interactionOptions.allowInspect
+                ? () => showItemDetailPage(
+                    context,
+                    typeId: chargeId,
+                    fitReference: ItemDetailFitReference.module(
+                      fitId: fitContext.fitId,
+                      slotType: slotInfo.type,
+                      index: slotInfo.index,
+                      inspectCharge: true,
+                    ),
+                  )
+                : null,
             child: Row(
               children: [
                 EveIcon(icon: chargeType.icon, size: 18),
@@ -137,6 +168,44 @@ class _SlotRowDisplay extends ConsumerWidget {
       bundleCollectionGetMetaGroupProvider(itemType.metaGroupId).select((t) => t?.icon),
     );
 
+    final content = ListTile(
+      leading: StateIcon.rect(
+        state: slotInfo.state,
+        onTap: interactionOptions.allowStateToggle ? () => _handleToggleState(ref) : null,
+        child: EveIcon(icon: itemType.icon, overlayIcon: metaGroupIcon, size: 35),
+      ),
+      title: Text(typeName),
+      subtitle: subtitleWidgets.isEmpty
+          ? null
+          : Column(crossAxisAlignment: CrossAxisAlignment.start, children: subtitleWidgets),
+      onTap: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: itemType.typeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+              ),
+            )
+          : null,
+      onLongPress: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: itemType.typeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+              ),
+            )
+          : null,
+    );
+
+    if (!interactionOptions.allowMutations) {
+      return content;
+    }
+
     return Slidable(
       startActionPane: startActions.isEmpty
           ? null
@@ -152,35 +221,7 @@ class _SlotRowDisplay extends ConsumerWidget {
               motion: const StretchMotion(),
               children: endActions,
             ),
-      child: ListTile(
-        leading: StateIcon.rect(
-          state: slotInfo.state,
-          onTap: () => _handleToggleState(ref),
-          child: EveIcon(icon: itemType.icon, overlayIcon: metaGroupIcon, size: 35),
-        ),
-        title: Text(typeName),
-        subtitle: subtitleWidgets.isEmpty
-            ? null
-            : Column(crossAxisAlignment: CrossAxisAlignment.start, children: subtitleWidgets),
-        onTap: () => showItemDetailPage(
-          context,
-          typeId: itemType.typeId,
-          fitReference: ItemDetailFitReference.module(
-            fitId: fitContext.fitId,
-            slotType: slotInfo.type,
-            index: slotInfo.index,
-          ),
-        ),
-        onLongPress: () => showItemDetailPage(
-          context,
-          typeId: itemType.typeId,
-          fitReference: ItemDetailFitReference.module(
-            fitId: fitContext.fitId,
-            slotType: slotInfo.type,
-            index: slotInfo.index,
-          ),
-        ),
-      ),
+      child: content,
     );
   }
 

@@ -1,9 +1,13 @@
 part of "../page.dart";
 
 class _AttributeTab extends ConsumerStatefulWidget {
-  const _AttributeTab({required this.fitContext});
+  const _AttributeTab({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _AttributeTabState();
@@ -37,7 +41,7 @@ class _AttributeTabState extends ConsumerState<_AttributeTab> with AutomaticKeep
             Capacitor(ship: emulated),
             Weapon(ship: emulated),
             Resource(ship: emulated),
-            Hp(ship: emulated),
+            Hp(ship: emulated, interactionOptions: widget.interactionOptions),
             Miscellaneous(ship: emulated),
             Cargo(ship: emulated),
           ],
