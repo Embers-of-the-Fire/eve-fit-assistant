@@ -248,6 +248,91 @@
   "itemDetailPenalized": "惩罚后",
   "itemDetailPenalty": "惩罚",
   "itemDetailNet": "净变化",
+  "itemDetailApplied": "应用值",
+  "itemDetailModifierValueSource": "来源值",
+  "itemDetailModifierValueTransformed": "转换后",
+  "itemDetailModifierValueAppliedAfterPenalty": "惩罚后应用值",
+  "itemDetailModifierEffectivePercent": "等效 {value}%",
+  "@itemDetailModifierEffectivePercent": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierSetAttribute": "将该属性直接设为 {value}",
+  "@itemDetailModifierSetAttribute": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierAddsAttribute": "为该属性增加 {value}",
+  "@itemDetailModifierAddsAttribute": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierSubtractsAttribute": "为该属性减少 {value}",
+  "@itemDetailModifierSubtractsAttribute": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierIncreaseCurrentValue": "使当前值提高 {value}%",
+  "@itemDetailModifierIncreaseCurrentValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierReduceCurrentValue": "使当前值降低 {value}%",
+  "@itemDetailModifierReduceCurrentValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierIncreaseCurrentValueAfterDivision": "在除法后使当前值提高 {value}%",
+  "@itemDetailModifierIncreaseCurrentValueAfterDivision": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierReduceCurrentValueAfterDivision": "在除法后使当前值降低 {value}%",
+  "@itemDetailModifierReduceCurrentValueAfterDivision": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierAppliesBonusPercent": "施加 {value}% 加成",
+  "@itemDetailModifierAppliesBonusPercent": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierAppliesReductionPercent": "施加 {value}% 减益",
+  "@itemDetailModifierAppliesReductionPercent": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "itemDetailModifierStackingPenaltyHint": "叠加惩罚会在实际应用前降低转换后的数值。",
   "itemDetailBuffSource": "增益 {buffId}",
   "@itemDetailBuffSource": {
     "placeholders": {
