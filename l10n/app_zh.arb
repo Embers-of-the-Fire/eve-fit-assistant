@@ -193,6 +193,7 @@
   "fitScreenshotStats": "快速属性",
   "fitScreenshotEmpty": "无",
   "fitScreenshotStatsUnavailable": "属性不可用",
+  "fitScreenshotFighterCapacity": "舰载机容量",
   "fitScreenshotShieldHp": "护盾 HP",
   "fitScreenshotArmorHp": "装甲 HP",
   "fitScreenshotHullHp": "结构 HP",

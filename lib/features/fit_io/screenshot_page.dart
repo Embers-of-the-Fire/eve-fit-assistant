@@ -62,7 +62,8 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: Center(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: RepaintBoundary(
                 key: _captureKey,
                 child: _FitScreenshotCard(fit: widget.fit, emulated: widget.emulated),
@@ -132,140 +133,119 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
   }
 }
 
-class _FitScreenshotCard extends ConsumerWidget {
+class _FitScreenshotCard extends StatelessWidget {
   const _FitScreenshotCard({required this.fit, required this.emulated});
 
   final FitStorage fit;
   final native.Ship? emulated;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final shipType = ref.watch(bundleCollectionGetTypeProvider(fit.body.shipTypeId));
-
-    return Container(
-      width: 1080,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: context.theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (shipType != null) ...[
-                EveIcon(icon: shipType.icon, size: 64),
-                const SizedBox(width: 16),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(fit.metadata.name, style: context.theme.textTheme.headlineSmall),
-                    const SizedBox(height: 4),
-                    TypeNameText(typeId: fit.body.shipTypeId),
-                    if (fit.metadata.description.trim().isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        fit.metadata.description,
-                        style: context.theme.textTheme.bodyMedium?.copyWith(
-                          color: context.theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              _ScreenshotMetaChip(
-                label: context.l10n.fitScreenshotDamageProfile,
-                value:
-                    "EM ${(fit.body.damageProfile.em * 100).round()}% / TH ${(fit.body.damageProfile.thermal * 100).round()}% / KI ${(fit.body.damageProfile.kinetic * 100).round()}% / EX ${(fit.body.damageProfile.explosive * 100).round()}%",
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              _ScreenshotSection(
-                width: 520,
-                title: context.l10n.fitScreenshotEquipment,
-                child: _EquipmentSummary(fit: fit),
-              ),
-              _ScreenshotSection(
-                width: 520,
-                title: context.l10n.fitScreenshotSupport,
-                child: _SupportSummary(fit: fit),
-              ),
-              _ScreenshotSection(
-                width: 520,
-                title: context.l10n.fitScreenshotMinions,
-                child: _MinionSummary(fit: fit),
-              ),
-              _ScreenshotSection(
-                width: 520,
-                title: context.l10n.fitScreenshotStats,
-                child: _StatSummary(emulated: emulated),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScreenshotSection extends StatelessWidget {
-  const _ScreenshotSection({required this.title, required this.child, required this.width});
-
-  final String title;
-  final Widget child;
-  final double width;
-
-  @override
   Widget build(BuildContext context) => Container(
-    width: width,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: context.theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Column(
+    width: _ScreenshotTabPanel.width * 4 + 36,
+    color: context.theme.scaffoldBackgroundColor,
+    padding: const EdgeInsets.all(12),
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: context.theme.textTheme.titleMedium),
-        const SizedBox(height: 12),
-        child,
+        _ScreenshotTabPanel(
+          title: context.l10n.frontPageTitleCharacter,
+          child: _CharacterSummary(fit: fit),
+        ),
+        const SizedBox(width: 12),
+        _ScreenshotTabPanel(
+          title: context.l10n.fitScreenshotEquipment,
+          child: _EquipmentSummary(fit: fit),
+        ),
+        const SizedBox(width: 12),
+        _ScreenshotTabPanel(
+          title: context.l10n.fitScreenshotStats,
+          child: _AttributeSummary(fit: fit, emulated: emulated),
+        ),
+        const SizedBox(width: 12),
+        _ScreenshotTabPanel(
+          title: context.l10n.fitScreenshotMinions,
+          child: _MinionSummary(fit: fit, emulated: emulated),
+        ),
       ],
     ),
   );
 }
 
-class _ScreenshotMetaChip extends StatelessWidget {
-  const _ScreenshotMetaChip({required this.label, required this.value});
+class _ScreenshotTabPanel extends StatelessWidget {
+  const _ScreenshotTabPanel({required this.title, required this.child});
 
-  final String label;
-  final String value;
+  static const width = 360.0;
+
+  final String title;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    width: width,
     decoration: BoxDecoration(
-      color: context.theme.colorScheme.primaryContainer,
-      borderRadius: BorderRadius.circular(16),
+      color: context.theme.colorScheme.surface,
+      border: Border.all(color: context.theme.colorScheme.outlineVariant),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: context.theme.textTheme.labelMedium),
-        const SizedBox(height: 4),
-        Text(value, style: context.theme.textTheme.bodyMedium),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Text(title, style: context.theme.textTheme.titleMedium),
+        ),
+        const Divider(height: 1),
+        Padding(padding: const EdgeInsets.all(12), child: child),
       ],
     ),
+  );
+}
+
+class _CharacterSummary extends StatelessWidget {
+  const _CharacterSummary({required this.fit});
+
+  final FitStorage fit;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(fit.metadata.name, style: context.theme.textTheme.titleMedium),
+      const SizedBox(height: 4),
+      if (fit.metadata.description.trim().isNotEmpty) ...[
+        Text(
+          fit.metadata.description,
+          style: context.theme.textTheme.bodySmall?.copyWith(
+            color: context.theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+      _SectionLabel(title: context.l10n.implantSlot),
+      const SizedBox(height: 8),
+      if (fit.body.implants.isEmpty) Text(context.l10n.fitScreenshotEmpty),
+      ...fit.body.implants.indexed.map(
+        (entry) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _SimpleTypeRow(
+            title: "${context.l10n.implantSlot} ${entry.$1 + 1}",
+            typeId: _resolveTypeId(fit, entry.$2.itemId),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      _SectionLabel(title: context.l10n.boosterSlot),
+      const SizedBox(height: 8),
+      if (fit.body.boosters.isEmpty) Text(context.l10n.fitScreenshotEmpty),
+      ...fit.body.boosters.map(
+        (booster) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _SimpleTypeRow(
+            title: "${context.l10n.boosterSlot} ${booster.index}",
+            typeId: _resolveTypeId(fit, booster.itemId),
+          ),
+        ),
+      ),
+    ],
   );
 }
 
@@ -278,66 +258,64 @@ class _EquipmentSummary extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      _SlotList(title: context.l10n.lowSlot, slots: fit.body.slots.low, fit: fit),
-      _SlotList(title: context.l10n.midSlot, slots: fit.body.slots.medium, fit: fit),
+      fit.body.slots.tacticalMode.match(
+        () => const SizedBox.shrink(),
+        (value) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _SimpleTypeRow(title: context.l10n.tacticalMode, typeId: value),
+        ),
+      ),
       _SlotList(title: context.l10n.highSlot, slots: fit.body.slots.high, fit: fit),
+      _SlotList(title: context.l10n.midSlot, slots: fit.body.slots.medium, fit: fit),
+      _SlotList(title: context.l10n.lowSlot, slots: fit.body.slots.low, fit: fit),
       _SlotList(title: context.l10n.rigSlot, slots: fit.body.slots.rig, fit: fit),
       _SlotList(title: context.l10n.subsystemSlot, slots: fit.body.slots.subsystem, fit: fit),
       _SlotList(title: context.l10n.serviceSlot, slots: fit.body.slots.service, fit: fit),
-      fit.body.slots.tacticalMode.match(
-        () => const SizedBox.shrink(),
-        (value) => _SimpleTypeRow(title: context.l10n.tacticalMode, typeId: value),
-      ),
     ],
   );
 }
 
-class _SupportSummary extends StatelessWidget {
-  const _SupportSummary({required this.fit});
+class _AttributeSummary extends StatelessWidget {
+  const _AttributeSummary({required this.fit, required this.emulated});
 
   final FitStorage fit;
+  final native.Ship? emulated;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (fit.body.implants.isEmpty && fit.body.boosters.isEmpty)
-        Text(context.l10n.fitScreenshotEmpty),
-      if (fit.body.implants.isNotEmpty)
-        ...fit.body.implants.indexed.map(
-          (entry) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _SimpleTypeRow(
-              title: "${context.l10n.implantSlot} ${entry.$1 + 1}",
-              typeId: _resolveTypeId(fit, entry.$2.itemId),
-            ),
-          ),
-        ),
-      if (fit.body.boosters.isNotEmpty)
-        ...fit.body.boosters.map(
-          (booster) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _SimpleTypeRow(
-              title: "${context.l10n.boosterSlot} ${booster.index}",
-              typeId: _resolveTypeId(fit, booster.itemId),
-            ),
-          ),
-        ),
+      _SimpleTypeRow(typeId: fit.body.shipTypeId),
+      const SizedBox(height: 12),
+      _SectionLabel(title: context.l10n.fitScreenshotDamageProfile),
+      const SizedBox(height: 8),
+      Text(
+        "EM ${(fit.body.damageProfile.em * 100).round()}% / "
+        "TH ${(fit.body.damageProfile.thermal * 100).round()}% / "
+        "KI ${(fit.body.damageProfile.kinetic * 100).round()}% / "
+        "EX ${(fit.body.damageProfile.explosive * 100).round()}%",
+      ),
+      const SizedBox(height: 12),
+      _SectionLabel(title: context.l10n.fitScreenshotStats),
+      const SizedBox(height: 8),
+      _StatSummary(emulated: emulated),
     ],
   );
 }
 
 class _MinionSummary extends StatelessWidget {
-  const _MinionSummary({required this.fit});
+  const _MinionSummary({required this.fit, required this.emulated});
 
   final FitStorage fit;
+  final native.Ship? emulated;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (fit.body.drones.isEmpty && fit.body.fighters.isEmpty)
-        Text(context.l10n.fitScreenshotEmpty),
+      _SectionLabel(title: context.l10n.drone),
+      const SizedBox(height: 8),
+      if (fit.body.drones.isEmpty) Text(context.l10n.fitScreenshotEmpty),
       ...fit.body.drones.map(
         (drone) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -347,6 +325,10 @@ class _MinionSummary extends StatelessWidget {
           ),
         ),
       ),
+      const SizedBox(height: 12),
+      _SectionLabel(title: context.l10n.fighter),
+      const SizedBox(height: 8),
+      if (fit.body.fighters.isEmpty) Text(context.l10n.fitScreenshotEmpty),
       ...fit.body.fighters.map(
         (fighter) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -356,8 +338,28 @@ class _MinionSummary extends StatelessWidget {
           ),
         ),
       ),
+      if (emulated != null) ...[
+        const SizedBox(height: 12),
+        _SectionLabel(title: context.l10n.fitScreenshotFighterCapacity),
+        const SizedBox(height: 8),
+        Text(
+          "H ${emulated!.hull.getAttribute(EveConstAttrID.fighterHeavySlots).round()} / "
+          "L ${emulated!.hull.getAttribute(EveConstAttrID.fighterLightSlots).round()} / "
+          "S ${emulated!.hull.getAttribute(EveConstAttrID.fighterSupportSlots).round()} / "
+          "x ${fit.body.fighters.length}/${emulated!.hull.getAttribute(EveConstAttrID.fighterTubes).round()}",
+        ),
+      ],
     ],
   );
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Text(title, style: context.theme.textTheme.titleSmall);
 }
 
 class _StatSummary extends StatelessWidget {
@@ -437,7 +439,7 @@ class _SlotList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: context.theme.textTheme.titleSmall),
+          _SectionLabel(title: title),
           const SizedBox(height: 8),
           ...nonEmpty.map(
             (slot) => Padding(

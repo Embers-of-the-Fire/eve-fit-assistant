@@ -155,6 +155,7 @@
   "fitScreenshotStats": "Quick stats",
   "fitScreenshotEmpty": "None",
   "fitScreenshotStatsUnavailable": "Stats unavailable",
+  "fitScreenshotFighterCapacity": "Fighter capacity",
   "fitScreenshotShieldHp": "Shield HP",
   "fitScreenshotArmorHp": "Armor HP",
   "fitScreenshotHullHp": "Hull HP",
