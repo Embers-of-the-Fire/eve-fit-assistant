@@ -11,10 +11,43 @@ class FitScreenshotPage extends ConsumerStatefulWidget {
 
 class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
   static const _panelWidth = 360.0;
-  static const _panelHeight = 1200.0;
+  static const _minPanelHeight = 1200.0;
+  static const _panelHeaderHeight = 54.0;
+  static const _panelVerticalPadding = 28.0;
+  static const _rowHeight = 76.0;
 
   final GlobalKey _captureKey = GlobalKey();
   bool _busy = false;
+
+  double get _panelHeight {
+    final fit = widget.fitContext.fit;
+
+    final characterRows = 4 + fit.body.implants.length + fit.body.boosters.length;
+    final equipmentRows =
+        fit.body.slots.high.length +
+        fit.body.slots.medium.length +
+        fit.body.slots.low.length +
+        fit.body.slots.rig.length +
+        fit.body.slots.subsystem.length +
+        fit.body.slots.service.length +
+        6 +
+        fit.body.slots.tacticalMode.match(() => 0, (_) => 2);
+    const attributeRows = 10;
+    final minionRows = widget.fitContext.ship.fighterTubes > 0
+        ? 3 + fit.body.fighters.length
+        : 3 + fit.body.drones.length;
+
+    final maxRows = [
+      characterRows,
+      equipmentRows,
+      attributeRows,
+      minionRows,
+    ].reduce((left, right) => left > right ? left : right);
+    return (_panelHeaderHeight + _panelVerticalPadding + (maxRows * _rowHeight)).clamp(
+      _minPanelHeight,
+      8000,
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -56,21 +89,25 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _ScreenshotPanel(
+                        height: _panelHeight,
                         title: context.l10n.fitTabsCharacter,
                         child: _CharacterTab(fitContext: widget.fitContext),
                       ),
                       const SizedBox(width: 12),
                       _ScreenshotPanel(
+                        height: _panelHeight,
                         title: context.l10n.fitTabsEquipment,
                         child: _EquipmentTab(fitContext: widget.fitContext),
                       ),
                       const SizedBox(width: 12),
                       _ScreenshotPanel(
+                        height: _panelHeight,
                         title: context.l10n.fitTabsAttributes,
                         child: _AttributeTab(fitContext: widget.fitContext),
                       ),
                       const SizedBox(width: 12),
                       _ScreenshotPanel(
+                        height: _panelHeight,
                         title: widget.fitContext.ship.fighterTubes > 0
                             ? context.l10n.fitTabsFighter
                             : context.l10n.fitTabsDrone,
@@ -151,15 +188,16 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
 }
 
 class _ScreenshotPanel extends StatelessWidget {
-  const _ScreenshotPanel({required this.title, required this.child});
+  const _ScreenshotPanel({required this.title, required this.child, required this.height});
 
   final String title;
   final Widget child;
+  final double height;
 
   @override
   Widget build(BuildContext context) => Container(
     width: _FitScreenshotPageState._panelWidth,
-    height: _FitScreenshotPageState._panelHeight,
+    height: height,
     decoration: BoxDecoration(
       color: context.theme.colorScheme.surface,
       border: Border.all(color: context.theme.colorScheme.outlineVariant),
