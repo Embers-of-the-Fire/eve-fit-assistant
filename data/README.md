@@ -61,6 +61,7 @@ The converted output shall be a zip archive containing:
 ```text
 - /
   - descriptor.json             # metadata about the generation
+  - manifest.json               # snapshot manifest for strict patch compatibility
   - static/
     - native/                   # native data, used by eve-fit-os
       - *.pb2                   # native static data collection
@@ -75,6 +76,9 @@ The converted output shall be a zip archive containing:
   - localization/
     - localization_<lang>.pb2   # for each supported language
 ```
+
+Incremental patch bundles reuse the same root layout for changed files,
+and also include `deleted_files.json` so the app can remove files that no longer exist in the target snapshot.
 
 ## Generate Routine
 

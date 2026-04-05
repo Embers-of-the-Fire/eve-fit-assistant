@@ -21,6 +21,9 @@ class Descriptor(BaseModel):
     generateTimestamp: int
 
     isIncremental: bool
+    manifestHash: str | None = None
+    baseBundleId: str | None = None
+    baseManifestHash: str | None = None
 
     bundleId: str
     appVersion: str
@@ -34,6 +37,9 @@ class Descriptor(BaseModel):
     @staticmethod
     def create(
         datasource: GeneratorDatasource,
+        *,
+        base_bundle_id: str | None = None,
+        base_manifest_hash: str | None = None,
     ) -> Descriptor:
         info("Generating descriptor...")
         start_config = ConfigParser()
@@ -48,6 +54,8 @@ class Descriptor(BaseModel):
         descriptor = Descriptor(
             generateTimestamp=int(timestamp),
             isIncremental=datasource.is_incremental,
+            baseBundleId=base_bundle_id,
+            baseManifestHash=base_manifest_hash,
             appVersion=app_version,
             bundleId=datasource.config.metadata.identifier,
             gameVersion=start_config.get("main", "version"),

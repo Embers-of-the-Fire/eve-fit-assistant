@@ -29,6 +29,8 @@ String? localizationPath(Ref ref, String locale) =>
 class BundleServicePaths {
   const BundleServicePaths(this.bundlePath);
   static const String _descriptor = "descriptor.json";
+  static const String _manifest = "manifest.json";
+  static const String _deletedFiles = "deleted_files.json";
   static const String _registrar = "registrar.json";
   static const String _staticPath = "static";
   static const String _localizationPath = "localization";
@@ -41,6 +43,9 @@ class BundleServicePaths {
 
   static String descriptorPathFromExternalBundle(String bundlePath) =>
       p.join(bundlePath, _descriptor);
+  static String manifestPathFromExternalBundle(String bundlePath) => p.join(bundlePath, _manifest);
+  static String deletedFilesPathFromExternalBundle(String bundlePath) =>
+      p.join(bundlePath, _deletedFiles);
 
   Future<IList<BundleValidationError>> validate() async {
     Future<BundleValidationError?> validateForSingle(
@@ -80,6 +85,7 @@ class BundleServicePaths {
   }
 
   String getDescriptorPath() => p.join(bundlePath, _descriptor);
+  String getManifestPath() => p.join(bundlePath, _manifest);
   String getRegistrarPath() => p.join(bundlePath, _registrar);
 
   File? getIconPath(int iconId) {

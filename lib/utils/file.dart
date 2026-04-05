@@ -43,3 +43,19 @@ Future<void> copyRecursive(Directory source, Directory target) async {
     }
   }
 }
+
+Future<void> deletePaths(Directory root, Iterable<String> relativePaths) async {
+  for (final relativePath in relativePaths) {
+    final absolutePath = p.join(root.path, relativePath);
+    final file = File(absolutePath);
+    if (file.existsSync()) {
+      await file.delete();
+      continue;
+    }
+
+    final dir = Directory(absolutePath);
+    if (dir.existsSync()) {
+      await dir.delete(recursive: true);
+    }
+  }
+}

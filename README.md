@@ -170,11 +170,43 @@ It's strongly not recommended to use these variables in production builds.
 
 See [`.env.example`](./.env.example) for more information.
 
-- `EFA_SKIP_FULL_HASHLIST_UPDATE`: A shortcut env-var for `x build data --no-hash`.
-  This disables the hash list generator so you do not to rebuild the full bundle when developing.
-- `EFA_DEFAULT_WORKSPACE_HASHLIST`: A shortcut env-var for `x build inc <HASH_LIST>`.
-  This sets the default hash list used when building the app,
-  making it easier to build increment bundles.
+- `EFA_SKIP_FULL_MANIFEST_UPDATE`: A shortcut env-var for `x build data --no-hash`.
+  This disables snapshot manifest generation, so incremental patch bundles cannot be produced from that build output.
+- `EFA_DEFAULT_WORKSPACE_MANIFEST`: A shortcut env-var for `x build inc <BASELINE_MANIFEST>`.
+  This sets the default baseline manifest path used for incremental patch builds.
+
+Full data builds now emit `bundle_manifest.json` beside the bundle archive.
+Incremental builds are strict patch bundles: they require a compatible installed base bundle,
+carry only changed files plus deletions, and update `bundle_manifest.json` to the new snapshot.
+
+### Data Bundle Routine
+
+When you need to publish a new full data bundle:
+
+1. Select the target workspace with `./x workspace default <workspace>` if needed.
+2. Build the full bundle with `./x build data`.
+3. Collect the two output artifacts from the workspace output directory:
+   - `<bundle_id>.zip`
+   - `bundle_manifest.json`
+4. Treat `bundle_manifest.json` as the baseline manifest for the next patch build.
+
+When you need to publish a new incremental data patch:
+
+1. Start from a workspace that already has a fresh full generated snapshot.
+2. Keep the previous published `bundle_manifest.json` from the base bundle or base patch.
+3. Rebuild the current data state if needed with `./x build data`.
+4. Build the patch with `./x build increment <BASELINE_MANIFEST>`.
+5. Collect the new output artifacts from the workspace output directory:
+   - `<bundle_id>_increment.zip`
+   - `bundle_manifest.json`
+6. Publish the new `bundle_manifest.json` together with the patch, because it becomes the baseline for the next patch.
+
+Important rules:
+
+- Full bundles are standalone; incremental patches are not.
+- An incremental patch can only be imported onto an installed bundle with the matching baseline manifest.
+- If you run `./x build data --no-hash` or set `EFA_SKIP_FULL_MANIFEST_UPDATE=true`, the build will not produce a usable baseline manifest for patch generation.
+- Always keep the manifest that was published with the last accepted bundle state; that is the input for the next patch build.
 
 #### Hack through workspace management
 

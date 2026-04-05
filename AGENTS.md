@@ -45,8 +45,8 @@ Agents should read this file before editing code.
 - `cargo build -p rust_lib_eve_fit_assistant` - build the FRB Rust bridge crate.
 - `cargo build -p eve-fit-os` - build the backend engine directly.
 - `./x build data` - generate the selected workspace bundle.
-- `./x build data --no-hash` - faster dev-only data build without hash list updates.
-- `./x build increment <hash_list>` - create an incremental bundle.
+- `./x build data --no-hash` - faster dev-only data build without snapshot manifest updates.
+- `./x build increment <baseline_manifest>` - create an incremental patch bundle from a baseline manifest.
 
 ## Code generation commands
 
