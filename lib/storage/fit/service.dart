@@ -121,9 +121,9 @@ class Fit extends _$Fit {
       error("Cannot update fit service: not initialized");
       return;
     }
-    final fit = pruneDynamicRegistry(
-      updater(state.fit),
-    ).copyWith(metadata: state.fit.metadata.copyWith(lastModified: DateTime.now().second));
+    final fit = pruneDynamicRegistry(updater(state.fit)).copyWith(
+      metadata: state.fit.metadata.copyWith(lastModified: DateTime.now().millisecondsSinceEpoch),
+    );
     _mountedFit = fit;
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);

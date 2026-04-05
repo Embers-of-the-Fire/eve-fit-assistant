@@ -2,6 +2,7 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
+import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -87,9 +88,16 @@ class _FitListTile extends ConsumerWidget {
     return Slidable(
       key: ValueKey(metadata.fitId),
       endActionPane: ActionPane(
-        extentRatio: 0.18,
+        extentRatio: 0.36,
         motion: const StretchMotion(),
         children: [
+          SlidableAction(
+            onPressed: (_) => showFitExportDialog(context, fitId: metadata.fitId),
+            backgroundColor: context.theme.colorScheme.secondaryContainer,
+            foregroundColor: context.theme.colorScheme.onSecondaryContainer,
+            icon: Icons.ios_share_outlined,
+            label: context.l10n.fitListActionExport,
+          ),
           SlidableAction(
             onPressed: (_) async {
               // Deletion stays behind a confirmation step so swipe gestures do
