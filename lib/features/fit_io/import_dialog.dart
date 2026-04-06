@@ -76,6 +76,8 @@ class _FitImportDialogState extends ConsumerState<FitImportDialog> {
 
   Future<void> _handlePaste() async {
     final data = await Clipboard.getData("text/plain");
+    if (!mounted) return;
+
     setState(() {
       _controller.text = data?.text?.trim() ?? "";
       _error = null;
