@@ -21,7 +21,7 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
         ? ref.watch(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId))
         : null;
 
-    if (!fitState.isInitialized) {
+    if (!fitState.isInitialized || emulated == null) {
       return Scaffold(
         appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
         body: const Center(
