@@ -57,6 +57,8 @@
   "fitTabsDrone": "Drone",
   "fitTabsFighter": "Fighter",
   "fitTabsUtils": "Utils",
+  "fitSkillPolicyUnsupportedTitle": "Skill-aware simulation is not available in this build.",
+  "fitSkillPolicyUnsupportedDescription": "Fits are simulated without character skill modifiers. Implants and boosters still apply.",
   "@@@@_FIT_EQUIPMENT_TAB": {},
   "@@@@_FIT_GENERIC": {},
   "fitAddItemDialogTitle": "Add Item: {slotName}",

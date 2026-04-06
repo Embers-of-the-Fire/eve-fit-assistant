@@ -11,16 +11,43 @@ class FitDisplayColumns extends ConsumerWidget {
 
     return Padding(
       padding: const .symmetric(horizontal: 6),
-      child: Row(
+      child: Column(
         children: [
-          ...range(0, columns)
-              .map<Widget>(
-                (i) => Expanded(
-                  child: _FitDisplayTab(fitContext: fitContext, initialIndex: i + 1),
-                ),
-              )
-              .intersperse(const VerticalDivider(indent: 8, endIndent: 8)),
+          if (!currentFitSkillPolicy.supportsSkillAwareSimulation)
+            const Padding(padding: .only(bottom: 8), child: _FitSkillPolicyBanner()),
+          Expanded(
+            child: Row(
+              children: [
+                ...range(0, columns)
+                    .map<Widget>(
+                      (i) => Expanded(
+                        child: _FitDisplayTab(fitContext: fitContext, initialIndex: i + 1),
+                      ),
+                    )
+                    .intersperse(const VerticalDivider(indent: 8, endIndent: 8)),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _FitSkillPolicyBanner extends StatelessWidget {
+  const _FitSkillPolicyBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: ListTile(
+        leading: Icon(Icons.info_outline, color: colorScheme.primary),
+        title: Text(context.l10n.fitSkillPolicyUnsupportedTitle),
+        subtitle: Text(context.l10n.fitSkillPolicyUnsupportedDescription),
       ),
     );
   }

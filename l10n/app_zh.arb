@@ -81,6 +81,8 @@
   "fitTabsDrone": "无人机",
   "fitTabsFighter": "舰载机",
   "fitTabsUtils": "杂项",
+  "fitSkillPolicyUnsupportedTitle": "当前构建暂不支持技能感知模拟。",
+  "fitSkillPolicyUnsupportedDescription": "当前配置模拟不会应用角色技能修正。植入体和增效剂仍然生效。",
   "@@@@_FIT_EQUIPMENT_TAB": {},
   "@@@@_FIT_GENERIC": {},
   "fitAddItemDialogTitle": "添加物品：{slotName}",
