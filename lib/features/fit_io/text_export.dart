@@ -7,10 +7,9 @@ import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
-import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
-enum FitTextExportFormat { native, fittingLink, eft }
+enum FitTextExportFormat { native, eft }
 
 class FitTextExportResult {
   const FitTextExportResult({required this.text, required this.lossy});
@@ -29,10 +28,6 @@ class FitTextExporter {
     required FitTextExportFormat format,
   }) async => switch (format) {
     FitTextExportFormat.native => FitTextExportResult(text: _exportNativeFit(fit), lossy: false),
-    FitTextExportFormat.fittingLink => FitTextExportResult(
-      text: _exportFittingLink(fit),
-      lossy: true,
-    ),
     FitTextExportFormat.eft => FitTextExportResult(text: await _exportEft(fit), lossy: true),
   };
 
@@ -40,39 +35,6 @@ class FitTextExporter {
     final payload = jsonEncode({"version": 1, "fit": fit.toJson()});
     final compressed = const GZipEncoder().encodeBytes(utf8.encode(payload), level: 9);
     return "EFA:${base64Encode(compressed)}";
-  }
-
-  String _exportFittingLink(FitStorage fit) {
-    final items = <int, int>{};
-
-    void addTypeId(int? typeId, {int quantity = 1}) {
-      if (typeId == null) return;
-      items[typeId] = (items[typeId] ?? 0) + quantity;
-    }
-
-    for (final slotList in [
-      fit.body.slots.low,
-      fit.body.slots.medium,
-      fit.body.slots.high,
-      fit.body.slots.rig,
-      fit.body.slots.subsystem,
-      fit.body.slots.service,
-    ]) {
-      for (final slot in slotList.filterNone()) {
-        addTypeId(_resolveExportTypeId(fit, slot.itemId));
-        addTypeId(slot.charge.match(() => null, (charge) => charge.typeId));
-      }
-    }
-
-    for (final drone in fit.body.drones) {
-      addTypeId(_resolveExportTypeId(fit, drone.itemId), quantity: drone.quantity);
-    }
-    for (final fighter in fit.body.fighters) {
-      addTypeId(_resolveExportTypeId(fit, fighter.itemId), quantity: fighter.quantity);
-    }
-
-    final itemText = items.entries.map((entry) => "${entry.key};${entry.value}").join(":");
-    return "fitting:${fit.body.shipTypeId}:$itemText::";
   }
 
   Future<String> _exportEft(FitStorage fit) async {
@@ -165,11 +127,6 @@ class FitTextExporter {
     }
     return "$header\n\n${sections.join("\n\n\n")}";
   }
-
-  int? _resolveExportTypeId(FitStorage fit, FitStorageItemId itemId) => itemId.when(
-    item: (id) => id,
-    dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.typeId,
-  );
 
   int _resolveEftModuleTypeId(FitStorage fit, FitStorageItemId itemId) => itemId.when(
     item: (id) => id,

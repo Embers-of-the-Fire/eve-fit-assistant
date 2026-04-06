@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:share_plus/share_plus.dart";
 
 Future<void> showFitExportDialog(
   BuildContext context, {
@@ -33,6 +34,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   FitTextExportFormat _selectedFormat = FitTextExportFormat.native;
   FitStorage? _fit;
   Object? _loadingError;
+  String? _actionError;
   bool _isExporting = false;
 
   @override
@@ -72,10 +74,6 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
                       label: Text(context.l10n.fitExportFormatNative),
                     ),
                     ButtonSegment<FitTextExportFormat>(
-                      value: FitTextExportFormat.fittingLink,
-                      label: Text(context.l10n.fitExportFormatFittingLink),
-                    ),
-                    ButtonSegment<FitTextExportFormat>(
                       value: FitTextExportFormat.eft,
                       label: Text(context.l10n.fitExportFormatEft),
                     ),
@@ -86,10 +84,19 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
                   _descriptionFor(_selectedFormat, context),
                   style: context.theme.textTheme.bodyMedium,
                 ),
-                if (_selectedFormat != FitTextExportFormat.native) ...[
+                if (_selectedFormat == FitTextExportFormat.eft) ...[
                   const SizedBox(height: 12),
                   Text(
                     context.l10n.fitExportLossyWarning,
+                    style: context.theme.textTheme.bodySmall?.copyWith(
+                      color: context.theme.colorScheme.error,
+                    ),
+                  ),
+                ],
+                if (_actionError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _actionError!,
                     style: context.theme.textTheme.bodySmall?.copyWith(
                       color: context.theme.colorScheme.error,
                     ),
@@ -99,6 +106,10 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
             ),
     ),
     actions: [
+      TextButton(
+        onPressed: _fit == null || _isExporting ? null : _handleShare,
+        child: Text(context.l10n.share),
+      ),
       TextButton(
         onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
         child: Text(context.l10n.cancel),
@@ -112,13 +123,15 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
 
   String _descriptionFor(FitTextExportFormat format, BuildContext context) => switch (format) {
     FitTextExportFormat.native => context.l10n.fitExportFormatNativeDescription,
-    FitTextExportFormat.fittingLink => context.l10n.fitExportFormatFittingLinkDescription,
     FitTextExportFormat.eft => context.l10n.fitExportFormatEftDescription,
   };
 
   void _handleFormatChanged(FitTextExportFormat? format) {
     if (format == null) return;
-    setState(() => _selectedFormat = format);
+    setState(() {
+      _selectedFormat = format;
+      _actionError = null;
+    });
   }
 
   Future<void> _loadFit() async {
@@ -135,19 +148,40 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   }
 
   Future<void> _handleCopy() async {
-    final fit = _fit;
-    if (fit == null) return;
-
-    setState(() => _isExporting = true);
-    try {
-      final exporter = FitTextExporter(ref);
-      final result = await exporter.export(fit: fit, format: _selectedFormat);
+    await _runExportAction((fit, result) async {
       await Clipboard.setData(ClipboardData(text: result.text));
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.l10n.fitExportCopied)));
+    }, onErrorMessage: context.l10n.fitExportClipboardError);
+  }
+
+  Future<void> _handleShare() async {
+    await _runExportAction((fit, result) async {
+      await Share.share(result.text, subject: fit.metadata.name);
+    }, onErrorMessage: context.l10n.fitExportShareError);
+  }
+
+  Future<void> _runExportAction(
+    Future<void> Function(FitStorage fit, FitTextExportResult result) action, {
+    required String onErrorMessage,
+  }) async {
+    final fit = _fit;
+    if (fit == null) return;
+
+    setState(() {
+      _isExporting = true;
+      _actionError = null;
+    });
+    try {
+      final exporter = FitTextExporter(ref);
+      final result = await exporter.export(fit: fit, format: _selectedFormat);
+      await action(fit, result);
+    } on Object catch (_) {
+      if (!mounted) return;
+      setState(() => _actionError = onErrorMessage);
     } finally {
       if (mounted) {
         setState(() => _isExporting = false);
