@@ -241,13 +241,6 @@ class _ImplantRow extends ConsumerWidget {
       ),
       title: LocalizedTypeName(typeId: itemId.asId),
       trailing: Text("${slotId + 1}"),
-      onTap: interactionOptions.allowInspect
-          ? () => showItemDetailPage(
-              context,
-              typeId: itemId.asId,
-              fitReference: ItemDetailFitReference.implant(fitId: fitContext.fitId, index: slotId),
-            )
-          : null,
       onLongPress: interactionOptions.allowInspect
           ? () => showItemDetailPage(
               context,
