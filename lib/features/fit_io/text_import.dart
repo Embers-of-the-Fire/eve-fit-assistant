@@ -14,13 +14,26 @@ import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
 
-class FitTextImportException implements Exception {
-  const FitTextImportException(this.message);
+enum FitTextImportErrorCode {
+  emptyInput,
+  unsupportedFormat,
+  unsupportedFittingLink,
+  unsupportedNativeVersion,
+  invalidNativePayload,
+  invalidEft,
+  unknownType,
+  unavailableShip,
+  unavailableData,
+}
 
-  final String message;
+class FitTextImportException implements Exception {
+  const FitTextImportException(this.code, {this.detail});
+
+  final FitTextImportErrorCode code;
+  final String? detail;
 
   @override
-  String toString() => message;
+  String toString() => "FitTextImportException($code, detail: $detail)";
 }
 
 class FitTextImporter {
@@ -39,18 +52,22 @@ class FitTextImporter {
   Future<FitStorage> parse(String input) async {
     final text = input.trim();
     if (text.isEmpty) {
-      throw const FitTextImportException("Empty import text");
+      throw const FitTextImportException(FitTextImportErrorCode.emptyInput);
     }
 
     if (nativePrefixes.any(text.startsWith)) {
       return _parseNative(text);
     }
 
+    if (text.startsWith("fitting:")) {
+      throw const FitTextImportException(FitTextImportErrorCode.unsupportedFittingLink);
+    }
+
     if (text.startsWith("[") && text.contains("]")) {
       return _parseEft(text);
     }
 
-    throw const FitTextImportException("Unsupported fit import format");
+    throw const FitTextImportException(FitTextImportErrorCode.unsupportedFormat);
   }
 
   FitStorage _parseNative(String text) {
@@ -58,7 +75,7 @@ class FitTextImporter {
       final prefix = nativePrefixes.firstWhere(text.startsWith);
       final version = nativePayloadVersions[prefix];
       if (version == null) {
-        throw const FitTextImportException("Unsupported native fit payload version");
+        throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
       }
 
       final encoded = text.substring(prefix.length).trim();
@@ -66,18 +83,18 @@ class FitTextImporter {
       final jsonText = utf8.decode(const GZipDecoder().decodeBytes(compressed));
       final payload = jsonDecode(jsonText) as Map<String, dynamic>;
       if (payload["version"] != version) {
-        throw const FitTextImportException("Unsupported native fit payload version");
+        throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
       }
 
       final fitJson = payload["fit"];
       if (fitJson is! Map<String, dynamic>) {
-        throw const FitTextImportException("Invalid native fit payload");
+        throw const FitTextImportException(FitTextImportErrorCode.invalidNativePayload);
       }
       return FitStorage.fromJson(fitJson);
     } on FitTextImportException {
       rethrow;
     } on Object catch (_) {
-      throw const FitTextImportException("Failed to decode native fit payload");
+      throw const FitTextImportException(FitTextImportErrorCode.invalidNativePayload);
     }
   }
 
@@ -86,23 +103,23 @@ class FitTextImporter {
     final lines = text.split("\n").map((line) => line.trim()).toList(growable: false);
     final headerIndex = lines.indexWhere((line) => line.isNotEmpty);
     if (headerIndex < 0) {
-      throw const FitTextImportException("Empty EFT text");
+      throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
     }
 
     final header = _parseHeader(lines[headerIndex]);
     final shipTypeId = index.resolveShip(header.$1);
     if (shipTypeId == null) {
-      throw FitTextImportException("Unknown ship name: ${header.$1}");
+      throw FitTextImportException(FitTextImportErrorCode.unknownType, detail: header.$1);
     }
 
     final ship = ref.read(bundleCollectionGetShipProvider(shipTypeId));
     if (ship == null) {
-      throw FitTextImportException("Ship $shipTypeId is not available in the current bundle");
+      throw FitTextImportException(FitTextImportErrorCode.unavailableShip, detail: header.$1);
     }
 
     final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
     if (slotsInfo == null) {
-      throw const FitTextImportException("Slot metadata is not available");
+      throw const FitTextImportException(FitTextImportErrorCode.unavailableData);
     }
 
     var fit = FitStorage.empty(
@@ -136,11 +153,11 @@ class FitTextImporter {
           final parsed = _parseCountLine(line);
           final typeId = index.resolve(parsed.$1);
           if (typeId == null) {
-            throw FitTextImportException("Unknown item name: ${parsed.$1}");
+            throw FitTextImportException(FitTextImportErrorCode.unknownType, detail: parsed.$1);
           }
           final type = ref.read(bundleCollectionGetTypeProvider(typeId));
           if (type == null) {
-            throw FitTextImportException("Unknown type id: $typeId");
+            throw const FitTextImportException(FitTextImportErrorCode.unavailableData);
           }
 
           if (EveConstGroupId.fighter.contains(type.groupId)) {
@@ -166,7 +183,7 @@ class FitTextImporter {
             continue;
           }
 
-          throw FitTextImportException("Unsupported counted item: ${parsed.$1}");
+          throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
         }
         continue;
       }
@@ -175,7 +192,7 @@ class FitTextImporter {
         for (final line in block) {
           final typeId = index.resolve(line);
           if (typeId == null) {
-            throw FitTextImportException("Unknown item name: $line");
+            throw FitTextImportException(FitTextImportErrorCode.unknownType, detail: line);
           }
           final implantSlot = slotsInfo.implantSlots[typeId]?.slotIndex;
           if (implantSlot != null) {
@@ -202,12 +219,12 @@ class FitTextImporter {
             continue;
           }
 
-          throw FitTextImportException("Unsupported EFT line: $line");
+          throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
         }
         continue;
       }
 
-      throw FitTextImportException("Unsupported EFT block: ${block.join(" | ")}");
+      throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
     }
 
     implants.sort((left, right) => left.$1.compareTo(right.$1));
@@ -225,12 +242,12 @@ class FitTextImporter {
 
   (String, String) _parseHeader(String line) {
     if (!line.startsWith("[") || !line.endsWith("]")) {
-      throw const FitTextImportException("Invalid EFT header");
+      throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
     }
     final content = line.substring(1, line.length - 1);
     final separator = content.indexOf(",");
     if (separator < 0) {
-      throw const FitTextImportException("Invalid EFT header");
+      throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
     }
     return (content.substring(0, separator).trim(), content.substring(separator + 1).trim());
   }
@@ -283,7 +300,7 @@ class FitTextImporter {
       final placeholderRack = _placeholderRack(line);
       if (placeholderRack != null) {
         if (placeholderRack != rack) {
-          throw FitTextImportException("Mixed EFT rack block: $line");
+          throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
         }
         slotIndices[rack] = (slotIndices[rack] ?? 0) + 1;
         continue;
@@ -291,19 +308,19 @@ class FitTextImporter {
 
       final parsed = _tryParseModuleLine(line);
       if (parsed == null) {
-        throw FitTextImportException("Invalid EFT module line: $line");
+        throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
       }
       final typeId = index.resolve(parsed.typeName);
       if (typeId == null) {
-        throw FitTextImportException("Unknown module name: ${parsed.typeName}");
+        throw FitTextImportException(FitTextImportErrorCode.unknownType, detail: parsed.typeName);
       }
       if (_rackForTypeId(typeId, slotsInfo) != rack) {
-        throw FitTextImportException("Module does not fit expected rack: ${parsed.typeName}");
+        throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
       }
 
       final chargeId = parsed.chargeName == null ? null : index.resolve(parsed.chargeName!);
       if (parsed.chargeName != null && chargeId == null) {
-        throw FitTextImportException("Unknown charge name: ${parsed.chargeName}");
+        throw FitTextImportException(FitTextImportErrorCode.unknownType, detail: parsed.chargeName);
       }
 
       final nextIndex = slotIndices[rack] ?? 0;
@@ -325,7 +342,7 @@ class FitTextImporter {
   FitStorage _setModuleAt(FitStorage fit, _ModuleRack rack, int index, FitModuleItem module) {
     IList<Option<FitModuleItem>> updateList(IList<Option<FitModuleItem>> slots) {
       if (index < 0 || index >= slots.length) {
-        throw FitTextImportException("EFT module index out of range for ${rack.name}");
+        throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
       }
       return slots.replace(index, some(module));
     }
@@ -394,7 +411,7 @@ class FitTextImporter {
   (String, int) _parseCountLine(String line) {
     final match = RegExp(r"^(.+?) x(\d+)$").firstMatch(line);
     if (match == null) {
-      throw FitTextImportException("Invalid quantity line: $line");
+      throw const FitTextImportException(FitTextImportErrorCode.invalidEft);
     }
     return (match.group(1)!.trim(), int.parse(match.group(2)!));
   }

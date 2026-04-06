@@ -128,6 +128,29 @@
   "fitImportInputLabel": "Fit text",
   "fitImportPasteButton": "Paste",
   "fitImportConfirmButton": "Import",
+  "fitImportErrorEmpty": "Paste fit text before importing.",
+  "fitImportErrorUnsupportedFormat": "This text is not a supported fit import format.",
+  "fitImportErrorUnsupportedFittingLink": "In-game fitting links are not supported for import in this release.",
+  "fitImportErrorUnsupportedNativeVersion": "This EFA export was created by a newer app version and cannot be imported here yet.",
+  "fitImportErrorInvalidNativePayload": "This EFA export is damaged or incomplete.",
+  "fitImportErrorInvalidEft": "This EFT text is invalid or uses sections that are not supported in this release.",
+  "fitImportErrorUnknownType": "The current data bundle does not recognize \"{typeName}\".",
+  "@fitImportErrorUnknownType": {
+    "placeholders": {
+      "typeName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitImportErrorUnavailableShip": "The ship \"{shipName}\" is not available in the current data bundle.",
+  "@fitImportErrorUnavailableShip": {
+    "placeholders": {
+      "shipName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitImportErrorUnavailableData": "Fit import data is not available right now. Try again after the app finishes loading its bundle.",
   "fitImportSuccess": "Imported {fitName}",
   "@fitImportSuccess": {
     "placeholders": {
