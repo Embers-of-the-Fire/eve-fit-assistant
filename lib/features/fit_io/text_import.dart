@@ -152,7 +152,10 @@ class FitTextImporter {
                 fighterAbility: 0,
               ),
             );
-          } else {
+            continue;
+          }
+
+          if (type.hasMarketGroupId() && type.marketGroupId == EveConstMarketGroupId.drone) {
             drones.add(
               FitDroneItem(
                 itemId: FitStorageItemId.item(id: typeId),
@@ -160,7 +163,10 @@ class FitTextImporter {
                 quantity: parsed.$2,
               ),
             );
+            continue;
           }
+
+          throw FitTextImportException("Unsupported counted item: ${parsed.$1}");
         }
         continue;
       }
