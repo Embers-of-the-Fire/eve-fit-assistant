@@ -171,7 +171,7 @@ class FitTextImporter {
         continue;
       }
 
-      if (block.every((line) => !_isModuleLine(line) && !_isCountLine(line))) {
+      if (_isCharacterBlock(block, index, slotsInfo)) {
         for (final line in block) {
           final typeId = index.resolve(line);
           if (typeId == null) {
@@ -362,8 +362,30 @@ class FitTextImporter {
 
   bool _isCountLine(String line) => RegExp(r"^.+ x\d+$").hasMatch(line);
 
-  bool _isModuleLine(String line) =>
-      line.startsWith("[Empty ") || _tryParseModuleLine(line) != null;
+  bool _isCharacterBlock(List<String> block, _FitTypeNameIndex index, Slots slotsInfo) {
+    for (final line in block) {
+      if (_isCountLine(line) || line.startsWith("[Empty ")) {
+        return false;
+      }
+
+      final parsed = _tryParseModuleLine(line);
+      if (parsed == null || parsed.chargeName != null || parsed.offline) {
+        return false;
+      }
+
+      final typeId = index.resolve(parsed.typeName);
+      if (typeId == null) {
+        return false;
+      }
+
+      if (!slotsInfo.implantSlots.containsKey(typeId) &&
+          !slotsInfo.boosterSlots.containsKey(typeId)) {
+        return false;
+      }
+    }
+
+    return block.isNotEmpty;
+  }
 
   (String, int) _parseCountLine(String line) {
     final match = RegExp(r"^(.+?) x(\d+)$").firstMatch(line);
