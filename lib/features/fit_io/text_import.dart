@@ -27,6 +27,7 @@ class FitTextImporter {
   const FitTextImporter(this.ref);
 
   static const nativePrefixes = <String>["EFA:", "EFA2:"];
+  static const nativePayloadVersions = <String, int>{"EFA:": 1, "EFA2:": 2};
 
   final WidgetRef ref;
 
@@ -55,10 +56,19 @@ class FitTextImporter {
   FitStorage _parseNative(String text) {
     try {
       final prefix = nativePrefixes.firstWhere(text.startsWith);
+      final version = nativePayloadVersions[prefix];
+      if (version == null) {
+        throw const FitTextImportException("Unsupported native fit payload version");
+      }
+
       final encoded = text.substring(prefix.length).trim();
       final compressed = base64Decode(encoded);
       final jsonText = utf8.decode(const GZipDecoder().decodeBytes(compressed));
       final payload = jsonDecode(jsonText) as Map<String, dynamic>;
+      if (payload["version"] != version) {
+        throw const FitTextImportException("Unsupported native fit payload version");
+      }
+
       final fitJson = payload["fit"];
       if (fitJson is! Map<String, dynamic>) {
         throw const FitTextImportException("Invalid native fit payload");
