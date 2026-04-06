@@ -107,8 +107,60 @@
     }
   },
   "fitUtilsNameRequired": "Fit name is required",
+  "fitUtilsExportButton": "Export fit",
+  "fitUtilsExportImageButton": "Export image",
   "fitUtilsNameLabel": "Fit name",
   "fitUtilsDescriptionLabel": "Description",
+  "fitExportDialogTitle": "Export fit",
+  "fitExportLoadError": "Unable to load this fit for export.",
+  "fitExportFormatNative": "EFA native code",
+  "fitExportFormatNativeDescription": "Full-fidelity export for sharing with another EVE Fit Assistant installation.",
+  "fitExportFormatFittingLink": "In-game fitting link",
+  "fitExportFormatFittingLinkDescription": "Copy a fitting link that can be pasted into EVE. Modules, charges, drones, and fighters are preserved where the game format supports them.",
+  "fitExportFormatEft": "EFT text",
+  "fitExportFormatEftDescription": "Copy EFT text for tools such as pyfa and other text-based fitting workflows.",
+  "fitExportLossyWarning": "This export format is lossy and does not preserve every fit detail.",
+  "fitExportCopied": "Fit export copied to clipboard.",
+  "fitListActionExport": "Export",
+  "fitListActionImport": "Import",
+  "fitImportDialogTitle": "Import fit",
+  "fitImportDialogDescription": "Paste exported fit text below. App-native EFA codes and EFT text are supported in this first import flow.",
+  "fitImportInputLabel": "Fit text",
+  "fitImportPasteButton": "Paste",
+  "fitImportConfirmButton": "Import",
+  "fitImportSuccess": "Imported {fitName}",
+  "@fitImportSuccess": {
+    "placeholders": {
+      "fitName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitImportUnknownError": "Unable to import this fit.",
+  "fitScreenshotPageTitle": "Fit image export",
+  "fitScreenshotSave": "Save image",
+  "fitScreenshotShare": "Share image",
+  "fitScreenshotSaved": "Saved screenshot to {path}",
+  "@fitScreenshotSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "fitScreenshotDamageProfile": "Damage profile",
+  "fitScreenshotEquipment": "Equipment",
+  "fitScreenshotSupport": "Implants & boosters",
+  "fitScreenshotMinions": "Drones & fighters",
+  "fitScreenshotStats": "Quick stats",
+  "fitScreenshotEmpty": "None",
+  "fitScreenshotStatsUnavailable": "Stats unavailable",
+  "fitScreenshotFighterCapacity": "Fighter capacity",
+  "fitScreenshotShieldHp": "Shield HP",
+  "fitScreenshotArmorHp": "Armor HP",
+  "fitScreenshotHullHp": "Hull HP",
+  "fitScreenshotCapacitor": "Capacitor",
+  "fitScreenshotDroneBandwidth": "Drone bandwidth",
   "@@@@_FIT_ATTRIBUTE_TAB": {},
   "fitAttributeTabCapacitorStable": "{percent}% Stable",
   "fitFighterAbilityTurret": "Turret",

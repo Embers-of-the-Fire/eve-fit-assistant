@@ -1,9 +1,13 @@
 part of "../page.dart";
 
 class _EquipmentTab extends ConsumerWidget {
-  const _EquipmentTab({required this.fitContext});
+  const _EquipmentTab({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,20 +37,23 @@ class _EquipmentTab extends ConsumerWidget {
                   itemId: FitStorageItemId.item(id: mode),
                 ),
               ),
+              interactionOptions: interactionOptions,
             ),
           ],
         ),
         if (fit.body.slots.high.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.highSlot,
-            actions: [
-              _ActionClearAll(
-                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.high(index: 0)),
-              ),
-              _ActionClearCharge(
-                onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.high(index: 0)),
-              ),
-            ],
+            actions: interactionOptions.allowMutations
+                ? [
+                    _ActionClearAll(
+                      onTap: () => fitWrapper.clearSlot(const SlotIdentifier.high(index: 0)),
+                    ),
+                    _ActionClearCharge(
+                      onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.high(index: 0)),
+                    ),
+                  ]
+                : const [],
           ),
         ...fit.body.slots.high.mapWithIndex(
           (slot, index) => _AnySlotRow(
@@ -61,19 +68,23 @@ class _EquipmentTab extends ConsumerWidget {
                 slot: slot,
               ),
             ),
+            interactionOptions: interactionOptions,
           ),
         ),
         if (fit.body.slots.medium.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.midSlot,
-            actions: [
-              _ActionClearAll(
-                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.medium(index: 0)),
-              ),
-              _ActionClearCharge(
-                onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.medium(index: 0)),
-              ),
-            ],
+            actions: interactionOptions.allowMutations
+                ? [
+                    _ActionClearAll(
+                      onTap: () => fitWrapper.clearSlot(const SlotIdentifier.medium(index: 0)),
+                    ),
+                    _ActionClearCharge(
+                      onTap: () =>
+                          fitWrapper.clearSlotCharges(const SlotIdentifier.medium(index: 0)),
+                    ),
+                  ]
+                : const [],
           ),
         ...fit.body.slots.medium.mapWithIndex(
           (slot, index) => _AnySlotRow(
@@ -88,19 +99,22 @@ class _EquipmentTab extends ConsumerWidget {
                 slot: slot,
               ),
             ),
+            interactionOptions: interactionOptions,
           ),
         ),
         if (fit.body.slots.low.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.lowSlot,
-            actions: [
-              _ActionClearAll(
-                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.low(index: 0)),
-              ),
-              _ActionClearCharge(
-                onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.low(index: 0)),
-              ),
-            ],
+            actions: interactionOptions.allowMutations
+                ? [
+                    _ActionClearAll(
+                      onTap: () => fitWrapper.clearSlot(const SlotIdentifier.low(index: 0)),
+                    ),
+                    _ActionClearCharge(
+                      onTap: () => fitWrapper.clearSlotCharges(const SlotIdentifier.low(index: 0)),
+                    ),
+                  ]
+                : const [],
           ),
         ...fit.body.slots.low.mapWithIndex(
           (slot, index) => _AnySlotRow(
@@ -115,16 +129,19 @@ class _EquipmentTab extends ConsumerWidget {
                 slot: slot,
               ),
             ),
+            interactionOptions: interactionOptions,
           ),
         ),
         if (fit.body.slots.rig.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.rigSlot,
-            actions: [
-              _ActionClearAll(
-                onTap: () => fitWrapper.clearSlot(const SlotIdentifier.rig(index: 0)),
-              ),
-            ],
+            actions: interactionOptions.allowMutations
+                ? [
+                    _ActionClearAll(
+                      onTap: () => fitWrapper.clearSlot(const SlotIdentifier.rig(index: 0)),
+                    ),
+                  ]
+                : const [],
           ),
         ...fit.body.slots.rig.mapWithIndex(
           (slot, index) => _AnySlotRow(
@@ -139,14 +156,15 @@ class _EquipmentTab extends ConsumerWidget {
                 slot: slot,
               ),
             ),
+            interactionOptions: interactionOptions,
           ),
         ),
         if (subsystemSlotCount > 0)
           _EquipmentHeader(
             title: context.l10n.subsystemSlot,
-            actions: [
-              _ActionClearAll(onTap: () => fitWrapper.clearSubsystemAdjusted(fitContext.ship)),
-            ],
+            actions: interactionOptions.allowMutations
+                ? [_ActionClearAll(onTap: () => fitWrapper.clearSubsystemAdjusted(fitContext.ship))]
+                : const [],
           ),
         ...SubsystemType.allTypes
             .take(subsystemSlotCount)
@@ -163,6 +181,7 @@ class _EquipmentTab extends ConsumerWidget {
                     slot: slot,
                   ),
                 ),
+                interactionOptions: interactionOptions,
               ),
             ),
       ],

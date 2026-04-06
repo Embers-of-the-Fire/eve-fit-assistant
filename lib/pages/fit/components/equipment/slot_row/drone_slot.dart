@@ -1,11 +1,17 @@
 part of "../../../page.dart";
 
 class _DroneSlotRow extends ConsumerWidget {
-  const _DroneSlotRow({required this.fitContext, required this.slotIdent, required this.slotInfo});
+  const _DroneSlotRow({
+    required this.fitContext,
+    required this.slotIdent,
+    required this.slotInfo,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final SlotIdentifierDrone slotIdent;
   final _ItemSlotInfo slotInfo;
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   List<SlidableAction> _buildStartActions(BuildContext context, WidgetRef ref) => <SlidableAction>[
     if (fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity != 1)
@@ -81,6 +87,9 @@ class _DroneSlotRow extends ConsumerWidget {
   Widget _buildRecoveryRow(BuildContext context, WidgetRef ref, String title) {
     final quantity = fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity ?? 0;
     final recoveryActions = _buildRecoveryActions(context, ref);
+    final content = ListTile(title: Text(title), trailing: Text("x $quantity"));
+
+    if (!interactionOptions.allowMutations) return content;
 
     return Slidable(
       endActionPane: ActionPane(
@@ -122,6 +131,42 @@ class _DroneSlotRow extends ConsumerWidget {
 
     final quantity = fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity ?? 0;
 
+    final content = ListTile(
+      leading: StateIcon.rect(
+        state: slotInfo.state,
+        onTap: interactionOptions.allowStateToggle
+            ? () => fitContext.fitWrapper.toggleSlot(slotIdent, ref)
+            : null,
+        child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
+      ),
+      title: LocalizedTypeName(typeId: displayTypeId),
+      trailing: Text("x $quantity"),
+      onTap: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: displayTypeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+              ),
+            )
+          : null,
+      onLongPress: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: displayTypeId,
+              fitReference: ItemDetailFitReference.module(
+                fitId: fitContext.fitId,
+                slotType: slotInfo.type,
+                index: slotInfo.index,
+              ),
+            )
+          : null,
+    );
+
+    if (!interactionOptions.allowMutations) return content;
+
     return Slidable(
       startActionPane: ActionPane(
         extentRatio: 0.15 * startActions.length,
@@ -133,33 +178,7 @@ class _DroneSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: endActions,
       ),
-      child: ListTile(
-        leading: StateIcon.rect(
-          state: slotInfo.state,
-          onTap: () => fitContext.fitWrapper.toggleSlot(slotIdent, ref),
-          child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
-        ),
-        title: LocalizedTypeName(typeId: displayTypeId),
-        trailing: Text("x $quantity"),
-        onTap: () => showItemDetailPage(
-          context,
-          typeId: displayTypeId,
-          fitReference: ItemDetailFitReference.module(
-            fitId: fitContext.fitId,
-            slotType: slotInfo.type,
-            index: slotInfo.index,
-          ),
-        ),
-        onLongPress: () => showItemDetailPage(
-          context,
-          typeId: displayTypeId,
-          fitReference: ItemDetailFitReference.module(
-            fitId: fitContext.fitId,
-            slotType: slotInfo.type,
-            index: slotInfo.index,
-          ),
-        ),
-      ),
+      child: content,
     );
   }
 }

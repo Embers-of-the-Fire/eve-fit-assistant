@@ -1,3 +1,6 @@
+import "dart:io";
+import "dart:ui" as ui;
+
 import "package:auto_route/annotations.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/icon/bordered_rect_avatar.dart";
@@ -10,12 +13,14 @@ import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/components/resonance_box.dart";
 import "package:eve_fit_assistant/components/resource_compare.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
+import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/output.dart" show $OutSlotTypeCopyWith;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
@@ -37,11 +42,14 @@ import "package:eve_fit_assistant/utils/subsystem.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_slidable/flutter_slidable.dart";
 import "package:fpdart/fpdart.dart" hide State;
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:loading_indicator/loading_indicator.dart";
+import "package:path/path.dart" as p;
+import "package:share_plus/share_plus.dart";
 
 part "columns.dart";
 part "components/action_icons.dart";
@@ -63,6 +71,7 @@ part "components/equipment_header.dart";
 part "components/warning.dart";
 part "identifier.dart";
 part "page.freezed.dart";
+part "screenshot_page.dart";
 part "tabs/attributes.dart";
 part "tabs/character.dart";
 part "tabs/drone.dart";
@@ -137,4 +146,22 @@ class _FitPage extends ConsumerWidget {
       child: FitDisplayColumns(fitContext: fitContext),
     );
   }
+}
+
+class FitInteractionOptions {
+  const FitInteractionOptions({
+    this.allowMutations = true,
+    this.allowInspect = true,
+    this.allowStateToggle = true,
+    this.allowFighterAbilityToggle = true,
+    this.allowHpToggle = true,
+  });
+
+  static const screenshot = FitInteractionOptions(allowMutations: false, allowInspect: false);
+
+  final bool allowMutations;
+  final bool allowInspect;
+  final bool allowStateToggle;
+  final bool allowFighterAbilityToggle;
+  final bool allowHpToggle;
 }

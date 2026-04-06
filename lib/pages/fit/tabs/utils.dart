@@ -1,15 +1,15 @@
 part of "../page.dart";
 
-class _UtilsTab extends StatefulWidget {
+class _UtilsTab extends ConsumerStatefulWidget {
   const _UtilsTab({required this.fitContext});
 
   final FitContext fitContext;
 
   @override
-  State<_UtilsTab> createState() => _UtilsTabState();
+  ConsumerState<_UtilsTab> createState() => _UtilsTabState();
 }
 
-class _UtilsTabState extends State<_UtilsTab> with AutomaticKeepAliveClientMixin {
+class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveClientMixin {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   final _formKey = GlobalKey<FormState>();
@@ -52,6 +52,33 @@ class _UtilsTabState extends State<_UtilsTab> with AutomaticKeepAliveClientMixin
         key: _formKey,
         child: Column(
           children: [
+            Align(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => showFitExportDialog(
+                      context,
+                      fitId: widget.fitContext.fitId,
+                      initialFit: widget.fitContext.fit,
+                    ),
+                    icon: const Icon(Icons.ios_share_outlined),
+                    label: Text(context.l10n.fitUtilsExportButton),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => FitScreenshotPage(fitId: widget.fitContext.fitId),
+                      ),
+                    ),
+                    icon: const Icon(Icons.image_outlined),
+                    label: Text(context.l10n.fitUtilsExportImageButton),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _nameController,
               readOnly: !_editable,

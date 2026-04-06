@@ -145,8 +145,60 @@
     }
   },
   "fitUtilsNameRequired": "请输入配置名。",
+  "fitUtilsExportButton": "导出配置",
+  "fitUtilsExportImageButton": "导出图片",
   "fitUtilsNameLabel": "配置名称",
   "fitUtilsDescriptionLabel": "配置备注",
+  "fitExportDialogTitle": "导出配置",
+  "fitExportLoadError": "无法加载该配置用于导出。",
+  "fitExportFormatNative": "EFA 原生编码",
+  "fitExportFormatNativeDescription": "完整保留配置细节的导出格式，适合在另一台 EVE Fit Assistant 设备上导入。",
+  "fitExportFormatFittingLink": "游戏内装配链接",
+  "fitExportFormatFittingLinkDescription": "复制可粘贴到 EVE 的装配链接。游戏支持的模块、弹药、无人机和舰载机信息会被保留。",
+  "fitExportFormatEft": "EFT 文本",
+  "fitExportFormatEftDescription": "复制可用于 pyfa 等第三方工具的 EFT 文本格式。",
+  "fitExportLossyWarning": "该导出格式会丢失部分配置细节。",
+  "fitExportCopied": "已复制配置导出内容。",
+  "fitListActionExport": "导出",
+  "fitListActionImport": "导入",
+  "fitImportDialogTitle": "导入配置",
+  "fitImportDialogDescription": "请在下方粘贴配置文本。当前导入流程支持 EFA 原生编码和 EFT 文本。",
+  "fitImportInputLabel": "配置文本",
+  "fitImportPasteButton": "粘贴",
+  "fitImportConfirmButton": "导入",
+  "fitImportSuccess": "已导入 {fitName}",
+  "@fitImportSuccess": {
+    "placeholders": {
+      "fitName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitImportUnknownError": "无法导入该配置。",
+  "fitScreenshotPageTitle": "配置图片导出",
+  "fitScreenshotSave": "保存图片",
+  "fitScreenshotShare": "分享图片",
+  "fitScreenshotSaved": "已保存截图到 {path}",
+  "@fitScreenshotSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "fitScreenshotDamageProfile": "伤害分布",
+  "fitScreenshotEquipment": "装备",
+  "fitScreenshotSupport": "植入体与增效剂",
+  "fitScreenshotMinions": "无人机与舰载机",
+  "fitScreenshotStats": "快速属性",
+  "fitScreenshotEmpty": "无",
+  "fitScreenshotStatsUnavailable": "属性不可用",
+  "fitScreenshotFighterCapacity": "舰载机容量",
+  "fitScreenshotShieldHp": "护盾 HP",
+  "fitScreenshotArmorHp": "装甲 HP",
+  "fitScreenshotHullHp": "结构 HP",
+  "fitScreenshotCapacitor": "电容",
+  "fitScreenshotDroneBandwidth": "无人机带宽",
   "@@@@_FIT_ATTRIBUTE_TAB": {},
   "fitAttributeTabCapacitorStable": "{percent}% 稳定",
   "@fitAttributeTabCapacitorStable": {

@@ -1,9 +1,13 @@
 part of "../page.dart";
 
 class _FighterTab extends ConsumerWidget {
-  const _FighterTab({required this.fitContext});
+  const _FighterTab({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,22 +47,27 @@ class _FighterTab extends ConsumerWidget {
         _EquipmentTitleRow(
           leftActions: [
             InkWell(
-              onTap: () async {
-                if (fighters.length >= fitContext.ship.fighterTubes) return;
-                final typeId = await showAddItemDialog(
-                  context: context,
-                  title: context.l10n.fitAddItemDialogTitle(slotName: context.l10n.fighter),
-                  initialMarketGroupId: SlotIdentifier.fighter(
-                    index: fighters.length,
-                  ).baseMarketGroupId,
-                  validator: SlotIdentifier.fighter(index: fighters.length).validator(ref),
-                );
-                if (typeId == null) return;
-                await fitContext.fitWrapper.addFighter(typeId);
-              },
+              onTap: interactionOptions.allowMutations
+                  ? () async {
+                      if (fighters.length >= fitContext.ship.fighterTubes) return;
+                      final typeId = await showAddItemDialog(
+                        context: context,
+                        title: context.l10n.fitAddItemDialogTitle(slotName: context.l10n.fighter),
+                        initialMarketGroupId: SlotIdentifier.fighter(
+                          index: fighters.length,
+                        ).baseMarketGroupId,
+                        validator: SlotIdentifier.fighter(index: fighters.length).validator(ref),
+                      );
+                      if (typeId == null) return;
+                      await fitContext.fitWrapper.addFighter(typeId);
+                    }
+                  : null,
               child: const Icon(Icons.add),
             ),
-            InkWell(onTap: fitContext.fitWrapper.clearFighters, child: const Icon(Icons.clear_all)),
+            InkWell(
+              onTap: interactionOptions.allowMutations ? fitContext.fitWrapper.clearFighters : null,
+              child: const Icon(Icons.clear_all),
+            ),
           ],
           rightInfo: [
             _FighterHeaderCounter(prefix: "H", count: heavyCount, total: heavyLimit),
@@ -99,6 +108,7 @@ class _FighterTab extends ConsumerWidget {
                               state: FitItemState.active,
                             ),
                           ),
+                          interactionOptions: interactionOptions,
                         ),
                       )
                       .toList(),
