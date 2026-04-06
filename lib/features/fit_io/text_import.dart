@@ -302,6 +302,10 @@ class FitTextImporter {
       }
 
       final chargeId = parsed.chargeName == null ? null : index.resolve(parsed.chargeName!);
+      if (parsed.chargeName != null && chargeId == null) {
+        throw FitTextImportException("Unknown charge name: ${parsed.chargeName}");
+      }
+
       final nextIndex = slotIndices[rack] ?? 0;
       currentFit = _setModuleAt(
         currentFit,
