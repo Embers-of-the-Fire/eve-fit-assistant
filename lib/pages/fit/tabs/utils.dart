@@ -53,7 +53,6 @@ class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveCli
         child: Column(
           children: [
             Align(
-              alignment: Alignment.centerLeft,
               child: Wrap(
                 spacing: 12,
                 runSpacing: 12,
