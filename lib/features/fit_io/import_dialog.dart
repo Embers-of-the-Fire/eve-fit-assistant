@@ -7,8 +7,11 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
-Future<void> showFitImportDialog(BuildContext context) =>
-    showDialog<void>(context: context, builder: (context) => const FitImportDialog());
+Future<void> showFitImportDialog(BuildContext context) => showDialog<void>(
+  context: context,
+  barrierDismissible: false,
+  builder: (context) => const FitImportDialog(),
+);
 
 class FitImportDialog extends ConsumerStatefulWidget {
   const FitImportDialog({super.key});
@@ -29,43 +32,46 @@ class _FitImportDialogState extends ConsumerState<FitImportDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AppDialog(
-    title: context.l10n.fitImportDialogTitle,
-    content: SizedBox(
-      width: 480,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(context.l10n.fitImportDialogDescription),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _controller,
-            maxLines: 10,
-            minLines: 8,
-            decoration: InputDecoration(
-              labelText: context.l10n.fitImportInputLabel,
-              errorText: _error,
-              alignLabelWithHint: true,
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_busy,
+    child: AppDialog(
+      title: context.l10n.fitImportDialogTitle,
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.l10n.fitImportDialogDescription),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              maxLines: 10,
+              minLines: 8,
+              decoration: InputDecoration(
+                labelText: context.l10n.fitImportInputLabel,
+                errorText: _error,
+                alignLabelWithHint: true,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : _handlePaste,
+          child: Text(context.l10n.fitImportPasteButton),
+        ),
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text(context.l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _handleImport,
+          child: Text(_busy ? context.l10n.loading : context.l10n.fitImportConfirmButton),
+        ),
+      ],
     ),
-    actions: [
-      TextButton(
-        onPressed: _busy ? null : _handlePaste,
-        child: Text(context.l10n.fitImportPasteButton),
-      ),
-      TextButton(
-        onPressed: _busy ? null : () => Navigator.of(context).pop(),
-        child: Text(context.l10n.cancel),
-      ),
-      FilledButton(
-        onPressed: _busy ? null : _handleImport,
-        child: Text(_busy ? context.l10n.loading : context.l10n.fitImportConfirmButton),
-      ),
-    ],
   );
 
   Future<void> _handlePaste() async {
