@@ -47,10 +47,20 @@ class _SlotRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     switch (slotIdent) {
       case final SlotIdentifierTacticalMode mode:
-        return _TacticalModeSlotRow(fitContext: fitContext, slotIdent: mode, slotInfo: slotInfo);
+        return _TacticalModeSlotRow(
+          fitContext: fitContext,
+          slotIdent: mode,
+          slotInfo: slotInfo,
+          interactionOptions: interactionOptions,
+        );
 
       case final SlotIdentifierSubsystem subsystem:
-        return _SubsystemSlotRow(fitContext: fitContext, slotIdent: subsystem, slotInfo: slotInfo);
+        return _SubsystemSlotRow(
+          fitContext: fitContext,
+          slotIdent: subsystem,
+          slotInfo: slotInfo,
+          interactionOptions: interactionOptions,
+        );
 
       case final SlotIdentifierDrone drone:
         return _DroneSlotRow(
