@@ -17,7 +17,12 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
   Widget build(BuildContext context) {
     final fitState = ref.watch(fitProvider(widget.fitId));
     final emulatorState = ref.watch(fitEmulatorServiceProvider(widget.fitId));
-    final emulated = ref.watch(nativeEmulatedShipProvider(widget.fitId));
+    final emulated = emulatorState.when(
+      notInitialized: () => null,
+      emulating: (previous) => null,
+      error: (message, previous) => null,
+      emulated: (output) => output,
+    );
     final shipInfo = fitState.isInitialized
         ? ref.watch(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId))
         : null;
@@ -40,7 +45,7 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
       );
     }
 
-    if (emulatorState.hasError && emulated == null) {
+    if (emulatorState.hasError) {
       return Scaffold(
         appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
         body: _FitPageErrorState(
