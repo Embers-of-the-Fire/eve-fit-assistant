@@ -115,7 +115,11 @@ class FitWrapper {
       final tempFit = fit.copyWith(
         body: fit.body.copyWith(fighters: _normalizeFighters(tempFighters)),
       );
-      final engine = ref.read(nativeFitEngineServiceProvider).engine;
+      final engine = ref.read(nativeFitEngineServiceProvider).engineOrNull;
+      if (engine == null) {
+        warning("Fit engine unavailable while resolving fighter squadron max size for $typeId");
+        return 1;
+      }
       final output = await engine.emulate(fit: convertToNative(tempFit));
 
       for (final item in output.modules) {

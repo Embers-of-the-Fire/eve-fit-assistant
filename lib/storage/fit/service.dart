@@ -27,34 +27,57 @@ abstract class FitServiceStatus with _$FitServiceStatus {
 @freezed
 abstract class FitServiceState with _$FitServiceState {
   const factory FitServiceState.notInitialized() = _FitServiceStateNotInitialized;
+  const factory FitServiceState.error({required String message}) = _FitServiceStateError;
   const factory FitServiceState.loaded({
     required FitServiceStatus status,
     required FitStorage fit,
   }) = _FitServiceStateLoaded;
 
   const FitServiceState._();
-  bool get isInitialized => when(notInitialized: () => false, loaded: (status, fit) => true);
+  bool get isInitialized =>
+      when(notInitialized: () => false, error: (message) => false, loaded: (status, fit) => true);
+  bool get hasError =>
+      when(notInitialized: () => false, error: (message) => true, loaded: (status, fit) => false);
+  String? get errorMessage =>
+      when(notInitialized: () => null, error: (message) => message, loaded: (status, fit) => null);
   FitStorage get fit => when(
     notInitialized: () {
       final stackTrace = StackTrace.current;
       error("Invalid fit service access: fit not initialized", stackTrace: stackTrace);
       throw StateError("Fit service not initialized");
     },
+    error: (message) {
+      final stackTrace = StackTrace.current;
+      error("Invalid fit service access: $message", stackTrace: stackTrace);
+      throw StateError(message);
+    },
     loaded: (status, fit) => fit,
   );
-  FitServiceStatus get status =>
-      when(notInitialized: FitServiceStatus.uninitialized, loaded: (status, fit) => status);
+  FitServiceStatus get status => when(
+    notInitialized: FitServiceStatus.uninitialized,
+    error: (message) => FitServiceStatus.error(message: message),
+    loaded: (status, fit) => status,
+  );
 }
 
 @riverpod
 class Fit extends _$Fit {
+  late String _fitId;
   FitStorage? _mountedFit;
 
   @override
   FitServiceState build(String fitId) {
+    _fitId = fitId;
     ref.onDispose(_unmount);
     unawaited(Future(() => _mount(fitId)));
     return const FitServiceState.notInitialized();
+  }
+
+  Future<void> reload() => _mount(_fitId);
+
+  void _setLoadError(String fitId, String message, Object errorValue, StackTrace stackTrace) {
+    error("Failed to load fit $fitId: $errorValue", stackTrace: stackTrace);
+    state = FitServiceState.error(message: message);
   }
 
   Future<void> _loadFromDisk(String fitId) async {
@@ -62,19 +85,26 @@ class Fit extends _$Fit {
       warning("Fit service already initialized, force loading");
     }
     state = const FitServiceState.notInitialized();
+    _mountedFit = null;
     final path = File(FitStorage.fitStoragePathForId(fitId));
-    if (!path.existsSync()) {
-      error("Fit file does not exist: ${path.path}");
-      throw StateError("Fit file does not exist: ${path.path}");
+    try {
+      if (!path.existsSync()) {
+        throw StateError("Fit file does not exist: ${path.path}");
+      }
+      final text = await path.readAsString();
+      final json = jsonDecode(text) as Map<String, dynamic>;
+      final fit = pruneDynamicRegistry(FitStorage.fromJson(json));
+      _mountedFit = fit;
+      state = FitServiceState.loaded(
+        status: FitServiceStatus.loaded(lastSync: DateTime.now()),
+        fit: fit,
+      );
+    } on Object catch (errorValue, stackTrace) {
+      final message = path.existsSync()
+          ? "This fit could not be loaded."
+          : "This fit file is missing.";
+      _setLoadError(fitId, message, errorValue, stackTrace);
     }
-    final text = await path.readAsString();
-    final json = jsonDecode(text) as Map<String, dynamic>;
-    final fit = FitStorage.fromJson(json);
-    _mountedFit = fit;
-    state = FitServiceState.loaded(
-      status: FitServiceStatus.loaded(lastSync: DateTime.now()),
-      fit: fit,
-    );
   }
 
   Future<void> _syncToDisk() async {
@@ -87,19 +117,25 @@ class Fit extends _$Fit {
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     final path = File(fit.fitStoragePath);
     final text = jsonEncode(fit.toJson());
-    if (!path.existsSync()) {
-      await path.parent.create(recursive: true);
+    try {
+      if (!path.existsSync()) {
+        await path.parent.create(recursive: true);
+      }
+      await path.writeAsString(text);
+      state = FitServiceState.loaded(
+        status: FitServiceStatus.loaded(lastSync: DateTime.now()),
+        fit: state.fit,
+      );
+    } on Object catch (errorValue, stackTrace) {
+      error("Failed to sync fit ${fit.metadata.fitId}: $errorValue", stackTrace: stackTrace);
+      state = FitServiceState.loaded(
+        status: const FitServiceStatus.error(message: "Failed to save fit changes."),
+        fit: fit,
+      );
     }
-    await path.writeAsString(text);
-    state = FitServiceState.loaded(
-      status: FitServiceStatus.loaded(lastSync: DateTime.now()),
-      fit: state.fit,
-    );
   }
 
-  Future<void> _mount(String fitId) async {
-    await _loadFromDisk(fitId);
-  }
+  Future<void> _mount(String fitId) => _loadFromDisk(fitId);
 
   void _unmount() {
     debug("Unmounting fit service");
@@ -108,12 +144,17 @@ class Fit extends _$Fit {
       debug("Fit service not initialized, skipping unmount");
       return;
     }
-    final path = File(fit.fitStoragePath);
-    final text = jsonEncode(fit.toJson());
-    if (!path.existsSync()) {
-      path.parent.createSync(recursive: true);
+    try {
+      final path = File(fit.fitStoragePath);
+      final text = jsonEncode(fit.toJson());
+      if (!path.existsSync()) {
+        path.parent.createSync(recursive: true);
+      }
+      unawaited(path.writeAsString(text));
+    } on Object catch (errorValue, stackTrace) {
+      warning("Failed to persist fit ${fit.metadata.fitId} on unmount: $errorValue");
+      debug(errorValue.toString(), stackTrace: stackTrace);
     }
-    unawaited(path.writeAsString(text));
   }
 
   Future<void> update(FitStorage Function(FitStorage) updater) async {
@@ -136,6 +177,8 @@ class FitEmulatorState with _$FitEmulatorState {
   const factory FitEmulatorState.notInitialized() = _FitEmulatorStateNotInitialized;
   const factory FitEmulatorState.emulating({required native.Ship? previous}) =
       _FitEmulatorStateEmulating;
+  const factory FitEmulatorState.error({required String message, required native.Ship? previous}) =
+      _FitEmulatorStateError;
   const factory FitEmulatorState.emulated({required native.Ship output}) =
       _FitEmulatorStateEmulated;
 
@@ -144,12 +187,28 @@ class FitEmulatorState with _$FitEmulatorState {
   FitEmulatorState get emulating => switch (this) {
     _FitEmulatorStateEmulated(:final output) => _FitEmulatorStateEmulating(previous: output),
     _FitEmulatorStateEmulating(previous: final _) => this,
+    _FitEmulatorStateError(:final previous) => _FitEmulatorStateEmulating(previous: previous),
     _ => const _FitEmulatorStateEmulating(previous: null),
   };
+
+  bool get hasError => when(
+    notInitialized: () => false,
+    emulating: (previous) => false,
+    error: (message, previous) => true,
+    emulated: (output) => false,
+  );
+
+  String? get errorMessage => when(
+    notInitialized: () => null,
+    emulating: (previous) => null,
+    error: (message, previous) => message,
+    emulated: (output) => null,
+  );
 
   native.Ship? get emulated => when(
     notInitialized: () => null,
     emulating: (previous) => previous,
+    error: (message, previous) => previous,
     emulated: (output) => output,
   );
 }
@@ -160,8 +219,11 @@ native.Ship? nativeEmulatedShip(Ref ref, String fitId) =>
 
 @riverpod
 class FitEmulatorService extends _$FitEmulatorService {
+  late String _fitId;
+
   @override
   FitEmulatorState build(String fitId) {
+    _fitId = fitId;
     // Register listener for subsequent changes. Do NOT synchronously call
     // `emulate` from the listener when `fireImmediately` would trigger it
     // during `build` (that can cause `state` to be mutated before the
@@ -170,7 +232,12 @@ class FitEmulatorService extends _$FitEmulatorService {
     ref.listen<FitServiceState>(fitProvider(fitId), (prev, next) {
       if (prev == next) return;
       if (!next.isInitialized) {
-        state = const FitEmulatorState.notInitialized();
+        state = next.hasError
+            ? FitEmulatorState.error(
+                message: next.errorMessage ?? "This fit is unavailable.",
+                previous: state.emulated,
+              )
+            : const FitEmulatorState.notInitialized();
         return;
       }
       unawaited(Future(() => emulate(next.fit)));
@@ -179,16 +246,38 @@ class FitEmulatorService extends _$FitEmulatorService {
     return const FitEmulatorState.notInitialized();
   }
 
+  Future<void> retry() async {
+    final fitState = ref.read(fitProvider(_fitId));
+    if (!fitState.isInitialized) return;
+    await emulate(fitState.fit);
+  }
+
   Future<void> emulate(FitStorage fitStorage) async {
     state = state.emulating;
     debug("Started emulating ${fitStorage.metadata.fitId}");
-    final nativeCompatible = convertToNative(fitStorage);
-    final emulatedOutput = await ref
-        .watch(nativeFitEngineServiceProvider)
-        .engine
-        .emulate(fit: nativeCompatible);
-    state = FitEmulatorState.emulated(output: emulatedOutput);
-    debug("Finished emulating ${fitStorage.metadata.fitId}");
+    try {
+      final engineState = ref.read(nativeFitEngineServiceProvider);
+      final engine = engineState.engineOrNull;
+      if (engine == null) {
+        final message = engineState.errorMessage ?? "The fit engine is not available yet.";
+        warning("Failed to emulate ${fitStorage.metadata.fitId}: $message");
+        state = FitEmulatorState.error(message: message, previous: state.emulated);
+        return;
+      }
+      final nativeCompatible = convertToNative(fitStorage);
+      final emulatedOutput = await engine.emulate(fit: nativeCompatible);
+      state = FitEmulatorState.emulated(output: emulatedOutput);
+      debug("Finished emulating ${fitStorage.metadata.fitId}");
+    } on Object catch (errorValue, stackTrace) {
+      error(
+        "Failed to emulate fit ${fitStorage.metadata.fitId}: $errorValue",
+        stackTrace: stackTrace,
+      );
+      state = FitEmulatorState.error(
+        message: "Stats are temporarily unavailable for this fit.",
+        previous: state.emulated,
+      );
+    }
   }
 }
 
@@ -196,6 +285,7 @@ class FitEmulatorService extends _$FitEmulatorService {
 class NativeFitEngineState with _$NativeFitEngineState {
   const factory NativeFitEngineState.notInitialized() = _NativeFitEngineStateNotInitialized;
   const factory NativeFitEngineState.initializing() = _NativeFitEngineStateInitializing;
+  const factory NativeFitEngineState.error({required String message}) = _NativeFitEngineStateError;
   const factory NativeFitEngineState.initialized({required native_server.FitEngine engine}) =
       _NativeFitEngineStateInitialized;
 
@@ -204,24 +294,32 @@ class NativeFitEngineState with _$NativeFitEngineState {
   String get debugOnlyDisplayState => switch (this) {
     _NativeFitEngineStateInitialized(engine: final _) => "initialized",
     _NativeFitEngineStateInitializing() => "initializing",
+    _NativeFitEngineStateError(:final message) => "error: $message",
     _NativeFitEngineStateNotInitialized() => "not initialized",
     _ => throw Exception("Unreachable"),
   };
   bool get isInitializing => this is _NativeFitEngineStateInitializing;
-  native_server.FitEngine get engine => switch (this) {
+  String? get errorMessage => switch (this) {
+    _NativeFitEngineStateError(:final message) => message,
+    _ => null,
+  };
+  native_server.FitEngine? get engineOrNull => switch (this) {
     _NativeFitEngineStateInitialized(:final engine) => engine,
-    _ => throw StateError("Native fit engine not initialized"),
+    _ => null,
   };
 }
 
 @riverpodSingleton
 class NativeFitEngineService extends _$NativeFitEngineService {
+  BundleMetadata? _lastBundle;
+
   @override
   NativeFitEngineState build() {
     ref.listen(
       currentBundleProvider,
       (prev, next) {
         if (prev == next || next == null) return;
+        _lastBundle = next;
         // Laten initialize routine to avoid influence the widget tree
         // when we change bundle.
         // DO NOT AWAIT THIS OR THE MUTATION WILL BE TRIGGERED IN THE WIDGET BUILD STAGE.
@@ -234,13 +332,29 @@ class NativeFitEngineService extends _$NativeFitEngineService {
     return const NativeFitEngineState.notInitialized();
   }
 
+  Future<void> retry() async {
+    final bundle = _lastBundle ?? ref.read(currentBundleProvider);
+    if (bundle == null) return;
+    await _initialize(bundle);
+  }
+
   Future<void> _initialize(BundleMetadata bundle) async {
     if (state.isInitializing) return;
 
     state = const NativeFitEngineState.initializing();
-    final engine = native_server.FitEngine(
-      data: await native_server.FitEngineData.init(staticRootPath: bundle.paths.getNativePath()),
-    );
-    state = NativeFitEngineState.initialized(engine: engine);
+    try {
+      final engine = native_server.FitEngine(
+        data: await native_server.FitEngineData.init(staticRootPath: bundle.paths.getNativePath()),
+      );
+      state = NativeFitEngineState.initialized(engine: engine);
+    } on Object catch (errorValue, stackTrace) {
+      error(
+        "Failed to initialize native fit engine for bundle ${bundle.bundleId}: $errorValue",
+        stackTrace: stackTrace,
+      );
+      state = const NativeFitEngineState.error(
+        message: "Fit calculations are temporarily unavailable.",
+      );
+    }
   }
 }

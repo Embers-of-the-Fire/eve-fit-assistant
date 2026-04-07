@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
@@ -287,128 +288,196 @@ extension FitSkillPolicyX on FitSkillPolicy {
   };
 }
 
-native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
-  fit: native.Fit(
-    shipTypeId: fitStorage.body.shipTypeId,
-    damageProfile: native.DamageProfile(
-      em: fitStorage.body.damageProfile.em,
-      explosive: fitStorage.body.damageProfile.explosive,
-      kinetic: fitStorage.body.damageProfile.kinetic,
-      thermal: fitStorage.body.damageProfile.thermal,
-    ),
-    modules: [
-      ...[
-        (fitStorage.body.slots.high, native.SlotType.high),
-        (fitStorage.body.slots.medium, native.SlotType.medium),
-        (fitStorage.body.slots.low, native.SlotType.low),
-        (fitStorage.body.slots.rig, native.SlotType.rig),
-        (
-          fitStorage.body.slots.subsystem.map(
-            (slotOpt) => slotOpt.map((slot) => slot.copyWith(state: FitItemState.online)),
-          ),
-          native.SlotType.subSystem,
-        ),
-        (fitStorage.body.slots.service, native.SlotType.service),
-      ].flatMap<native.Module>(
-        (arg) => arg.$1.filterNone().mapWithIndex(
-          (val, index) => native.Module(
-            itemId: val.itemId.when(item: native.ItemID.item, dynamic: native.ItemID.dynamic_),
-            state: switch (val.state) {
-              FitItemState.passive => native.State.passive,
-              FitItemState.online => native.State.online,
-              FitItemState.active => native.State.active,
-              FitItemState.overload => native.State.overload,
-            },
-            charge: val.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
-            slot: native.Slot(slotType: arg.$2, index: index),
-          ),
-        ),
-      ),
-      if (fitStorage.body.slots.tacticalMode case Some(:final value))
-        native.Module(
-          itemId: native.ItemID.item(value),
-          state: native.State.online,
-          slot: const native.Slot(slotType: native.SlotType.tacticalMode, index: 0),
-        ),
-    ],
-    drones: fitStorage.body.drones
-        .flatMapWithIndex(
-          (drone, index) => List.generate(
-            drone.quantity,
-            (_) => native.Drone(
-              typeId: drone.itemId.when(
-                item: (id) => id,
-                dynamic: (dynamicId) =>
-                    fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
-                    (throw StateError("Dynamic item $dynamicId not found in registry")),
-              ),
-              groupId: index,
-              state: switch (drone.state) {
-                FitItemState.passive => native.State.passive,
-                FitItemState.online => native.State.online,
-                FitItemState.active => native.State.active,
-                FitItemState.overload => native.State.overload,
-              },
-            ),
-          ),
-        )
-        .toList(),
-    fighters: fitStorage.body.fighters
-        .expand(
-          (fighter) => List.generate(
-            fighter.quantity,
-            (_) => native.Fighter(
-              typeId: fighter.itemId.when(
-                item: (id) => id,
-                dynamic: (dynamicId) =>
-                    fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
-                    (throw StateError("Dynamic item $dynamicId not found in registry")),
-              ),
-              groupId: fighter.groupId,
-              ability: fighter.fighterAbility,
-            ),
-          ),
-        )
-        .toList(),
-    implants: fitStorage.body.implants
-        .where((implant) => implant.state != FitItemState.passive)
-        .mapWithIndex(
-          (implant, index) => native.Implant(
-            typeId: implant.itemId.when(
-              item: (id) => id,
-              dynamic: (dynamicId) =>
-                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
-                  (throw StateError("Dynamic item $dynamicId not found in registry")),
-            ),
-            index: index,
-          ),
-        )
-        .toList(),
-    boosters: fitStorage.body.boosters
-        .where((booster) => booster.state != FitItemState.passive)
-        .map(
-          (booster) => native.Booster(
-            typeId: booster.itemId.when(
-              item: (id) => id,
-              dynamic: (dynamicId) =>
-                  fitStorage.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
-                  (throw StateError("Dynamic item $dynamicId not found in registry")),
-            ),
-            index: booster.index,
-          ),
-        )
-        .toList(),
-  ),
-  skills: currentFitSkillPolicy.resolveSkills(fitStorage),
-  dynamicItems: Map<int, native.DynamicItem>.fromEntries(
-    fitStorage.dynamicRegistry.dynamicItems.entries.map(
-      (entry) => MapEntry(
-        entry.key,
-        native.DynamicItem(
-          baseType: entry.value.originTypeId,
-          dynamicAttributes: Map<int, double>.from(entry.value.dynamicAttributes.unlock),
-        ),
-      ),
-    ),
-  ),
+bool _hasValidDynamicReference(
+  FitStorage fitStorage,
+  FitStorageItemId itemId, {
+  required String context,
+}) => itemId.when(
+  item: (_) => true,
+  dynamic: (dynamicId) {
+    if (fitStorage.dynamicRegistry.dynamicItems.containsKey(dynamicId)) {
+      return true;
+    }
+    warning("Missing dynamic item $dynamicId while converting fit: $context");
+    return false;
+  },
 );
+
+int? _resolveNativeTypeId(
+  FitStorage fitStorage,
+  FitStorageItemId itemId, {
+  required String context,
+}) => itemId.when(
+  item: (id) => id,
+  dynamic: (dynamicId) {
+    final dynamicItem = fitStorage.dynamicRegistry.dynamicItems[dynamicId];
+    if (dynamicItem == null) {
+      warning("Missing dynamic item $dynamicId while converting fit: $context");
+      return null;
+    }
+    return dynamicItem.typeId;
+  },
+);
+
+native.FitStorage convertToNative(FitStorage fitStorage) {
+  final validDynamicIds = collectReferencedDynamicItemIds(
+    fitStorage,
+  ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
+
+  final modules = <native.Module>[];
+
+  for (final slotGroup in [
+    (fitStorage.body.slots.high, native.SlotType.high, "high"),
+    (fitStorage.body.slots.medium, native.SlotType.medium, "medium"),
+    (fitStorage.body.slots.low, native.SlotType.low, "low"),
+    (fitStorage.body.slots.rig, native.SlotType.rig, "rig"),
+    (
+      fitStorage.body.slots.subsystem.map(
+        (slotOpt) => slotOpt.map((slot) => slot.copyWith(state: FitItemState.online)),
+      ),
+      native.SlotType.subSystem,
+      "subsystem",
+    ),
+    (fitStorage.body.slots.service, native.SlotType.service, "service"),
+  ]) {
+    for (final (index, slot) in slotGroup.$1.filterNone().mapWithIndex(
+      (slot, index) => (index, slot),
+    )) {
+      if (!_hasValidDynamicReference(
+        fitStorage,
+        slot.itemId,
+        context: "${slotGroup.$3} slot $index in fit ${fitStorage.metadata.fitId}",
+      )) {
+        continue;
+      }
+      modules.add(
+        native.Module(
+          itemId: slot.itemId.when(item: native.ItemID.item, dynamic: native.ItemID.dynamic_),
+          state: switch (slot.state) {
+            FitItemState.passive => native.State.passive,
+            FitItemState.online => native.State.online,
+            FitItemState.active => native.State.active,
+            FitItemState.overload => native.State.overload,
+          },
+          charge: slot.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
+          slot: native.Slot(slotType: slotGroup.$2, index: index),
+        ),
+      );
+    }
+  }
+
+  final drones = <native.Drone>[];
+  for (final (index, drone) in fitStorage.body.drones.mapWithIndex(
+    (drone, index) => (index, drone),
+  )) {
+    final typeId = _resolveNativeTypeId(
+      fitStorage,
+      drone.itemId,
+      context: "drone $index in fit ${fitStorage.metadata.fitId}",
+    );
+    if (typeId == null) continue;
+    drones.addAll(
+      List.generate(
+        drone.quantity,
+        (_) => native.Drone(
+          typeId: typeId,
+          groupId: index,
+          state: switch (drone.state) {
+            FitItemState.passive => native.State.passive,
+            FitItemState.online => native.State.online,
+            FitItemState.active => native.State.active,
+            FitItemState.overload => native.State.overload,
+          },
+        ),
+      ),
+    );
+  }
+
+  final fighters = <native.Fighter>[];
+  for (final (index, fighter) in fitStorage.body.fighters.mapWithIndex(
+    (fighter, index) => (index, fighter),
+  )) {
+    final typeId = _resolveNativeTypeId(
+      fitStorage,
+      fighter.itemId,
+      context: "fighter $index in fit ${fitStorage.metadata.fitId}",
+    );
+    if (typeId == null) continue;
+    fighters.addAll(
+      List.generate(
+        fighter.quantity,
+        (_) => native.Fighter(
+          typeId: typeId,
+          groupId: fighter.groupId,
+          ability: fighter.fighterAbility,
+        ),
+      ),
+    );
+  }
+
+  final implants = <native.Implant>[];
+  for (final (index, implant)
+      in fitStorage.body.implants
+          .where((implant) => implant.state != FitItemState.passive)
+          .mapWithIndex((implant, index) => (index, implant))) {
+    final typeId = _resolveNativeTypeId(
+      fitStorage,
+      implant.itemId,
+      context: "implant $index in fit ${fitStorage.metadata.fitId}",
+    );
+    if (typeId == null) continue;
+    implants.add(native.Implant(typeId: typeId, index: index));
+  }
+
+  final boosters = <native.Booster>[];
+  for (final booster in fitStorage.body.boosters.where(
+    (booster) => booster.state != FitItemState.passive,
+  )) {
+    final typeId = _resolveNativeTypeId(
+      fitStorage,
+      booster.itemId,
+      context: "booster slot ${booster.index} in fit ${fitStorage.metadata.fitId}",
+    );
+    if (typeId == null) continue;
+    boosters.add(native.Booster(typeId: typeId, index: booster.index));
+  }
+
+  return native.FitStorage(
+    fit: native.Fit(
+      shipTypeId: fitStorage.body.shipTypeId,
+      damageProfile: native.DamageProfile(
+        em: fitStorage.body.damageProfile.em,
+        explosive: fitStorage.body.damageProfile.explosive,
+        kinetic: fitStorage.body.damageProfile.kinetic,
+        thermal: fitStorage.body.damageProfile.thermal,
+      ),
+      modules: [
+        ...modules,
+        if (fitStorage.body.slots.tacticalMode case Some(:final value))
+          native.Module(
+            itemId: native.ItemID.item(value),
+            state: native.State.online,
+            slot: const native.Slot(slotType: native.SlotType.tacticalMode, index: 0),
+          ),
+      ],
+      drones: drones,
+      fighters: fighters,
+      implants: implants,
+      boosters: boosters,
+    ),
+    skills: currentFitSkillPolicy.resolveSkills(fitStorage),
+    dynamicItems: Map<int, native.DynamicItem>.fromEntries(
+      fitStorage.dynamicRegistry.dynamicItems.entries
+          .where((entry) => validDynamicIds.contains(entry.key))
+          .map(
+            (entry) => MapEntry(
+              entry.key,
+              native.DynamicItem(
+                baseType: entry.value.originTypeId,
+                dynamicAttributes: Map<int, double>.from(entry.value.dynamicAttributes.unlock),
+              ),
+            ),
+          ),
+    ),
+  );
+}
