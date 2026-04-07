@@ -111,6 +111,17 @@
   "fitTabsDrone": "Drone",
   "fitTabsFighter": "Fighter",
   "fitTabsUtils": "Utils",
+  "fitSkillPolicyPresetTitle": "Skill profile: {profileName}",
+  "@fitSkillPolicyPresetTitle": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitSkillPolicyPresetDescription": "This build uses preset skill profiles instead of real character data.",
+  "fitSkillProfileAll5": "All V",
+  "fitSkillProfileAll0": "All 0",
   "fitSkillPolicyUnsupportedTitle": "Skill-aware simulation is not available in this build.",
   "fitSkillPolicyUnsupportedDescription": "Fits are simulated without character skill modifiers. Implants and boosters still apply.",
   "@@@@_FIT_EQUIPMENT_TAB": {},
