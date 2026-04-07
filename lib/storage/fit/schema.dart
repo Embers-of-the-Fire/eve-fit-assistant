@@ -275,7 +275,7 @@ FitStorage pruneDynamicRegistry(FitStorage fit) {
 
 enum FitSkillPolicy { noCharacterSkills }
 
-const currentFitSkillPolicy = FitSkillPolicy.noCharacterSkills;
+const FitSkillPolicy currentFitSkillPolicy = FitSkillPolicy.noCharacterSkills;
 
 extension FitSkillPolicyX on FitSkillPolicy {
   Map<int, int> resolveSkills(FitStorage fitStorage) => switch (this) {
