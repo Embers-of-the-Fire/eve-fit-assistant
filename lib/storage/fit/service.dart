@@ -228,6 +228,12 @@ native.Ship? nativeEmulatedShip(Ref ref, String fitId) =>
 class FitEmulatorService extends _$FitEmulatorService {
   late String _fitId;
 
+  void _scheduleEmulationForCurrentFit() {
+    final fitState = ref.read(fitProvider(_fitId));
+    if (!fitState.isInitialized) return;
+    unawaited(Future(() => emulate(fitState.fit)));
+  }
+
   @override
   FitEmulatorState build(String fitId) {
     _fitId = fitId;
@@ -236,19 +242,28 @@ class FitEmulatorService extends _$FitEmulatorService {
     // during `build` (that can cause `state` to be mutated before the
     // notifier is fully initialized). Instead defer actual emulation to a
     // microtask.
-    ref.listen<FitServiceState>(fitProvider(fitId), (prev, next) {
-      if (prev == next) return;
-      if (!next.isInitialized) {
-        state = next.hasError
-            ? FitEmulatorState.error(
-                message: next.errorMessage ?? "This fit is unavailable.",
-                previous: state.emulated,
-              )
-            : const FitEmulatorState.notInitialized();
-        return;
-      }
-      unawaited(Future(() => emulate(next.fit)));
-    }, fireImmediately: true);
+    ref
+      ..listen<FitServiceState>(fitProvider(fitId), (prev, next) {
+        if (prev == next) return;
+        if (!next.isInitialized) {
+          state = next.hasError
+              ? FitEmulatorState.error(
+                  message: next.errorMessage ?? "This fit is unavailable.",
+                  previous: state.emulated,
+                )
+              : const FitEmulatorState.notInitialized();
+          return;
+        }
+        _scheduleEmulationForCurrentFit();
+      }, fireImmediately: true)
+      ..listen<NativeFitEngineState>(nativeFitEngineServiceProvider, (prev, next) {
+        if (prev == next) return;
+        _scheduleEmulationForCurrentFit();
+      })
+      ..listen(bundleCollectionSkillTypeIdsProvider, (prev, next) {
+        if (prev == next) return;
+        _scheduleEmulationForCurrentFit();
+      });
 
     return const FitEmulatorState.notInitialized();
   }
@@ -265,13 +280,28 @@ class FitEmulatorService extends _$FitEmulatorService {
     try {
       final engineState = ref.read(nativeFitEngineServiceProvider);
       final engine = engineState.engineOrNull;
-      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
       if (engine == null) {
-        final message = engineState.errorMessage ?? "The fit engine is not available yet.";
+        final message = engineState.errorMessage;
+        if (message == null) {
+          debug(
+            "Deferring emulation for ${fitStorage.metadata.fitId}: fit engine is still loading",
+          );
+          return;
+        }
         warning("Failed to emulate ${fitStorage.metadata.fitId}: $message");
         state = FitEmulatorState.error(message: message, previous: state.emulated);
         return;
       }
+
+      if (fitStorage.body.skillProfile == FitSkillProfile.all5 &&
+          ref.read(bundleCollectionProvider) == null) {
+        debug(
+          "Deferring emulation for ${fitStorage.metadata.fitId}: bundle skill definitions are still loading",
+        );
+        return;
+      }
+
+      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
       final nativeCompatible = convertToNative(
         fitStorage,
         availableSkillTypeIds: availableSkillTypeIds,
