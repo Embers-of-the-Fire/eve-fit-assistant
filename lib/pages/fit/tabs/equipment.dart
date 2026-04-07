@@ -23,7 +23,15 @@ class _EquipmentTab extends ConsumerWidget {
         ...fit.body.slots.tacticalMode.match(
           () => const <Widget>[],
           (mode) => [
-            _EquipmentHeader(title: context.l10n.tacticalMode),
+            _EquipmentHeader(
+              title: context.l10n.tacticalMode,
+              issues: _collectFitIssuesForSection(
+                context,
+                ref,
+                fitContext,
+                _FitIssueSection.tacticalMode,
+              ),
+            ),
             _AnySlotRow(
               fitContext: fitContext,
               slotIdent: const SlotIdentifier.tacticalMode(),
@@ -44,6 +52,7 @@ class _EquipmentTab extends ConsumerWidget {
         if (fit.body.slots.high.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.highSlot,
+            issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.high),
             actions: interactionOptions.allowMutations
                 ? [
                     _ActionClearAll(
@@ -74,6 +83,7 @@ class _EquipmentTab extends ConsumerWidget {
         if (fit.body.slots.medium.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.midSlot,
+            issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.medium),
             actions: interactionOptions.allowMutations
                 ? [
                     _ActionClearAll(
@@ -105,6 +115,7 @@ class _EquipmentTab extends ConsumerWidget {
         if (fit.body.slots.low.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.lowSlot,
+            issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.low),
             actions: interactionOptions.allowMutations
                 ? [
                     _ActionClearAll(
@@ -135,6 +146,7 @@ class _EquipmentTab extends ConsumerWidget {
         if (fit.body.slots.rig.isNotEmpty)
           _EquipmentHeader(
             title: context.l10n.rigSlot,
+            issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.rig),
             actions: interactionOptions.allowMutations
                 ? [
                     _ActionClearAll(
@@ -162,6 +174,12 @@ class _EquipmentTab extends ConsumerWidget {
         if (subsystemSlotCount > 0)
           _EquipmentHeader(
             title: context.l10n.subsystemSlot,
+            issues: _collectFitIssuesForSection(
+              context,
+              ref,
+              fitContext,
+              _FitIssueSection.subsystem,
+            ),
             actions: interactionOptions.allowMutations
                 ? [_ActionClearAll(onTap: () => fitWrapper.clearSubsystemAdjusted(fitContext.ship))]
                 : const [],

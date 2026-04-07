@@ -71,6 +71,40 @@
   "fitPageSaveErrorTitle": "Changes not saved",
   "fitPageRetryAction": "Retry",
   "fitPageBackAction": "Back",
+  "fitIssueDialogTitle": "Fit issues",
+  "fitIssueMissingDynamic": "{slotName} #{index} references missing dynamic item data.",
+  "@fitIssueMissingDynamic": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueMissingItemType": "{slotName} #{index} references item data that is not available.",
+  "@fitIssueMissingItemType": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueMissingChargeType": "{slotName} #{index} references charge data that is not available.",
+  "@fitIssueMissingChargeType": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
   "fitTabsCharacter": "Char",
   "fitTabsEquipment": "Equip",
   "fitTabsAttributes": "Attrib",

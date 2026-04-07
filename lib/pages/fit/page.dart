@@ -66,6 +66,7 @@ part "components/equipment/slot_row/slot_row.dart";
 part "components/equipment/slot_row/subsystem_slot.dart";
 part "components/equipment/slot_row/tactical_mode_slot.dart";
 part "components/equipment_header.dart";
+part "components/issue_reporting.dart";
 part "components/warning.dart";
 part "identifier.dart";
 part "screenshot_page.dart";

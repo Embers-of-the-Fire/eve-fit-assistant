@@ -45,6 +45,7 @@ class _FighterTab extends ConsumerWidget {
     return Column(
       children: [
         _EquipmentTitleRow(
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.fighter),
           leftActions: [
             InkWell(
               onTap: interactionOptions.allowMutations

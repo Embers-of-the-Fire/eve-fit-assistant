@@ -23,49 +23,46 @@ class _DroneTab extends ConsumerWidget {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 10, right: 10, top: 8, bottom: 4),
-          child: Row(
-            spacing: 10,
-            children: <InkWell>[
-              InkWell(
-                onTap: interactionOptions.allowMutations
-                    ? () async {
-                        final typeId = await showAddItemDialog(
-                          context: context,
-                          title: context.l10n.fitDroneTabAddDroneTitle,
-                          initialMarketGroupId: slotIdent.baseMarketGroupId,
-                          validator: slotIdent.validator(ref),
+        _EquipmentTitleRow(
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.drone),
+          leftActions: <Widget>[
+            InkWell(
+              onTap: interactionOptions.allowMutations
+                  ? () async {
+                      final typeId = await showAddItemDialog(
+                        context: context,
+                        title: context.l10n.fitDroneTabAddDroneTitle,
+                        initialMarketGroupId: slotIdent.baseMarketGroupId,
+                        validator: slotIdent.validator(ref),
+                      );
+                      if (typeId == null) return;
+                      await fitWrapper.update((storage) {
+                        final newDrone = FitDroneItem(
+                          itemId: FitStorageItemId.item(id: typeId),
+                          state: FitItemState.active,
+                          quantity: 1,
                         );
-                        if (typeId == null) return;
-                        await fitWrapper.update((storage) {
-                          final newDrone = FitDroneItem(
-                            itemId: FitStorageItemId.item(id: typeId),
-                            state: FitItemState.active,
-                            quantity: 1,
-                          );
-                          return storage.copyWith(
-                            body: storage.body.copyWith(drones: storage.body.drones.add(newDrone)),
-                          );
-                        });
-                      }
-                    : null,
-                child: const Icon(Icons.add),
-              ),
-              InkWell(
-                onTap: interactionOptions.allowMutations
-                    ? () async {
-                        await fitWrapper.update(
-                          (storage) => storage.copyWith(
-                            body: storage.body.copyWith(drones: IList<FitDroneItem>()),
-                          ),
+                        return storage.copyWith(
+                          body: storage.body.copyWith(drones: storage.body.drones.add(newDrone)),
                         );
-                      }
-                    : null,
-                child: const Icon(Icons.clear_all),
-              ),
-            ],
-          ),
+                      });
+                    }
+                  : null,
+              child: const Icon(Icons.add),
+            ),
+            InkWell(
+              onTap: interactionOptions.allowMutations
+                  ? () async {
+                      await fitWrapper.update(
+                        (storage) => storage.copyWith(
+                          body: storage.body.copyWith(drones: IList<FitDroneItem>()),
+                        ),
+                      );
+                    }
+                  : null,
+              child: const Icon(Icons.clear_all),
+            ),
+          ],
         ),
         const Divider(),
         Expanded(

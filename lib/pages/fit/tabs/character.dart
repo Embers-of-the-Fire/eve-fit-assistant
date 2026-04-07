@@ -86,6 +86,7 @@ class _CharacterImplantTab extends ConsumerWidget {
       children: [
         _EquipmentHeader(
           title: context.l10n.implantSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.implant),
           actions: [
             if (interactionOptions.allowMutations)
               InkWell(onTap: () => _handleAddImplant(context, ref), child: const Icon(Icons.add)),
@@ -156,6 +157,7 @@ class _CharacterBoosterTab extends ConsumerWidget {
       children: [
         _EquipmentHeader(
           title: context.l10n.boosterSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.booster),
           actions: [
             if (interactionOptions.allowMutations)
               InkWell(onTap: () => _handleAddBooster(context, ref), child: const Icon(Icons.add)),
