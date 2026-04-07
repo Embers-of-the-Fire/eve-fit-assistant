@@ -101,7 +101,7 @@ class _FitImportDialogState extends ConsumerState<FitImportDialog> {
       await context.router.push(FitRoute(fitId: imported.fitId));
     } on FitTextImportException catch (error) {
       if (!mounted) return;
-      setState(() => _error = error.message);
+      setState(() => _error = _localizeImportError(error));
     } on Object catch (_) {
       if (!mounted) return;
       setState(() => _error = context.l10n.fitImportUnknownError);
@@ -111,4 +111,22 @@ class _FitImportDialogState extends ConsumerState<FitImportDialog> {
       }
     }
   }
+
+  String _localizeImportError(FitTextImportException error) => switch (error.code) {
+    FitTextImportErrorCode.emptyInput => context.l10n.fitImportErrorEmpty,
+    FitTextImportErrorCode.unsupportedFormat => context.l10n.fitImportErrorUnsupportedFormat,
+    FitTextImportErrorCode.unsupportedFittingLink =>
+      context.l10n.fitImportErrorUnsupportedFittingLink,
+    FitTextImportErrorCode.unsupportedNativeVersion =>
+      context.l10n.fitImportErrorUnsupportedNativeVersion,
+    FitTextImportErrorCode.invalidNativePayload => context.l10n.fitImportErrorInvalidNativePayload,
+    FitTextImportErrorCode.invalidEft => context.l10n.fitImportErrorInvalidEft,
+    FitTextImportErrorCode.unknownType => context.l10n.fitImportErrorUnknownType(
+      typeName: error.detail ?? "?",
+    ),
+    FitTextImportErrorCode.unavailableShip => context.l10n.fitImportErrorUnavailableShip(
+      shipName: error.detail ?? "?",
+    ),
+    FitTextImportErrorCode.unavailableData => context.l10n.fitImportErrorUnavailableData,
+  };
 }

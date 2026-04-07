@@ -11,6 +11,7 @@
   "confirm": "确认",
   "showInfo": "显示详情",
   "copy": "复制",
+  "share": "分享",
   "dynamicConvert": "深渊",
   "dynamicRevert": "还原",
   "dynamicSelectTitle": "选择深渊物质",
@@ -159,6 +160,8 @@
   "fitExportFormatEftDescription": "复制可用于 pyfa 等第三方工具的 EFT 文本格式。",
   "fitExportLossyWarning": "该导出格式会丢失部分配置细节。",
   "fitExportCopied": "已复制配置导出内容。",
+  "fitExportClipboardError": "当前无法复制该配置导出内容。",
+  "fitExportShareError": "当前无法分享该配置导出内容。",
   "fitListActionExport": "导出",
   "fitListActionImport": "导入",
   "fitImportDialogTitle": "导入配置",
@@ -166,6 +169,29 @@
   "fitImportInputLabel": "配置文本",
   "fitImportPasteButton": "粘贴",
   "fitImportConfirmButton": "导入",
+  "fitImportErrorEmpty": "请先粘贴配置文本再导入。",
+  "fitImportErrorUnsupportedFormat": "该文本不是当前支持的配置导入格式。",
+  "fitImportErrorUnsupportedFittingLink": "当前测试版本暂不支持导入游戏内装配链接。",
+  "fitImportErrorUnsupportedNativeVersion": "该 EFA 导出内容来自较新的应用版本，当前版本暂时无法导入。",
+  "fitImportErrorInvalidNativePayload": "该 EFA 导出内容已损坏或不完整。",
+  "fitImportErrorInvalidEft": "该 EFT 文本无效，或包含当前测试版本暂不支持的段落。",
+  "fitImportErrorUnknownType": "当前数据包无法识别“{typeName}”。",
+  "@fitImportErrorUnknownType": {
+    "placeholders": {
+      "typeName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitImportErrorUnavailableShip": "当前数据包中没有舰船“{shipName}”。",
+  "@fitImportErrorUnavailableShip": {
+    "placeholders": {
+      "shipName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitImportErrorUnavailableData": "导入所需的数据暂未就绪。请等待应用完成数据包加载后再试。",
   "fitImportSuccess": "已导入 {fitName}",
   "@fitImportSuccess": {
     "placeholders": {
