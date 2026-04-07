@@ -1,7 +1,8 @@
 part of "page.dart";
 
-@freezed
-abstract class SlotInfo with _$SlotInfo {
+sealed class SlotInfo {
+  const SlotInfo();
+
   const factory SlotInfo.empty({required int index}) = _EmptySlotInfo;
   const factory SlotInfo.item({
     required FitItemState state,
@@ -11,8 +12,29 @@ abstract class SlotInfo with _$SlotInfo {
   }) = _ItemSlotInfo;
 }
 
-@freezed
-abstract class SlotIdentifier with _$SlotIdentifier {
+final class _EmptySlotInfo extends SlotInfo {
+  const _EmptySlotInfo({required this.index});
+
+  final int index;
+}
+
+final class _ItemSlotInfo extends SlotInfo {
+  const _ItemSlotInfo({
+    required this.state,
+    required this.type,
+    required this.index,
+    required this.slot,
+  });
+
+  final FitItemState state;
+  final native.OutSlotType type;
+  final int index;
+  final FitModuleItem slot;
+}
+
+sealed class SlotIdentifier {
+  const SlotIdentifier();
+
   const factory SlotIdentifier.high({required int index}) = SlotIdentifierHigh;
   const factory SlotIdentifier.medium({required int index}) = SlotIdentifierMedium;
   const factory SlotIdentifier.low({required int index}) = SlotIdentifierLow;
@@ -25,91 +47,93 @@ abstract class SlotIdentifier with _$SlotIdentifier {
   const factory SlotIdentifier.implant({required int index}) = SlotIdentifierImplant;
   const factory SlotIdentifier.booster({required int slotId}) = SlotIdentifierBooster;
 
-  const SlotIdentifier._();
+  int get asIndexed => switch (this) {
+    SlotIdentifierHigh(:final index) => index,
+    SlotIdentifierMedium(:final index) => index,
+    SlotIdentifierLow(:final index) => index,
+    SlotIdentifierRig(:final index) => index,
+    SlotIdentifierSubsystem(:final type) => type.index,
+    SlotIdentifierTacticalMode() => 0,
+    SlotIdentifierService(:final index) => index,
+    SlotIdentifierDrone(:final index) => index,
+    SlotIdentifierFighter(:final index) => index,
+    SlotIdentifierImplant(:final index) => index,
+    SlotIdentifierBooster(:final slotId) => slotId - 1,
+  };
 
-  int get asIndexed => when(
-    high: (index) => index,
-    medium: (index) => index,
-    low: (index) => index,
-    rig: (index) => index,
-    subsystem: (type) => type.index,
-    tacticalMode: () => 0,
-    service: (index) => index,
-    drone: (index) => index,
-    fighter: (index) => index,
-    implant: (index) => index,
-    booster: (slotId) => slotId - 1, // boosters are 1-indexed
-  );
-
-  String localizedAddItemDialogTitle(BuildContext context) => when(
-    high: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
+  String localizedAddItemDialogTitle(BuildContext context) => switch (this) {
+    SlotIdentifierHigh(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.highSlot,
       index: index + 1,
     ),
-    medium: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierMedium(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.midSlot,
       index: index + 1,
     ),
-    low: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierLow(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.lowSlot,
       index: index + 1,
     ),
-    rig: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierRig(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.rigSlot,
       index: index + 1,
     ),
-    subsystem: (type) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierSubsystem(:final type) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.subsystemSlot,
       index: type.index + 1,
     ),
-    tacticalMode: () => context.l10n.fitAddItemDialogTitle(slotName: context.l10n.tacticalMode),
-    service: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierTacticalMode() => context.l10n.fitAddItemDialogTitle(
+      slotName: context.l10n.tacticalMode,
+    ),
+    SlotIdentifierService(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.serviceSlot,
       index: index + 1,
     ),
-    drone: (index) =>
-        context.l10n.fitAddItemDialogTitleWithIndex(slotName: context.l10n.drone, index: index + 1),
-    fighter: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierDrone(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
+      slotName: context.l10n.drone,
+      index: index + 1,
+    ),
+    SlotIdentifierFighter(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.fighter,
       index: index + 1,
     ),
-    implant: (index) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierImplant(:final index) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.implantSlot,
       index: index + 1,
     ),
-    booster: (slotId) => context.l10n.fitAddItemDialogTitleWithIndex(
+    SlotIdentifierBooster(:final slotId) => context.l10n.fitAddItemDialogTitleWithIndex(
       slotName: context.l10n.boosterSlot,
       index: slotId,
     ),
-  );
+  };
 
-  String localizedSlotName(BuildContext context) => when(
-    high: (_) => context.l10n.highSlot,
-    medium: (_) => context.l10n.midSlot,
-    low: (_) => context.l10n.lowSlot,
-    rig: (_) => context.l10n.rigSlot,
-    subsystem: (_) => context.l10n.subsystemSlot,
-    tacticalMode: () => context.l10n.tacticalMode,
-    service: (_) => context.l10n.serviceSlot,
-    drone: (_) => context.l10n.drone,
-    fighter: (_) => context.l10n.fighter,
-    implant: (_) => context.l10n.implantSlot,
-    booster: (_) => context.l10n.boosterSlot,
-  );
+  String localizedSlotName(BuildContext context) => switch (this) {
+    SlotIdentifierHigh() => context.l10n.highSlot,
+    SlotIdentifierMedium() => context.l10n.midSlot,
+    SlotIdentifierLow() => context.l10n.lowSlot,
+    SlotIdentifierRig() => context.l10n.rigSlot,
+    SlotIdentifierSubsystem() => context.l10n.subsystemSlot,
+    SlotIdentifierTacticalMode() => context.l10n.tacticalMode,
+    SlotIdentifierService() => context.l10n.serviceSlot,
+    SlotIdentifierDrone() => context.l10n.drone,
+    SlotIdentifierFighter() => context.l10n.fighter,
+    SlotIdentifierImplant() => context.l10n.implantSlot,
+    SlotIdentifierBooster() => context.l10n.boosterSlot,
+  };
 
-  int get baseMarketGroupId => when(
-    high: (_) => EveConstMarketGroupId.equipment,
-    medium: (_) => EveConstMarketGroupId.equipment,
-    low: (_) => EveConstMarketGroupId.equipment,
-    rig: (_) => EveConstMarketGroupId.rig,
-    subsystem: (_) => EveConstMarketGroupId.subsystem,
-    tacticalMode: () => 0,
-    service: (_) => EveConstMarketGroupId.subsystem,
-    drone: (_) => EveConstMarketGroupId.drone,
-    fighter: (_) => EveConstMarketGroupId.fighter,
-    implant: (_) => EveConstMarketGroupId.implant,
-    booster: (_) => EveConstMarketGroupId.booster,
-  );
+  int get baseMarketGroupId => switch (this) {
+    SlotIdentifierHigh() => EveConstMarketGroupId.equipment,
+    SlotIdentifierMedium() => EveConstMarketGroupId.equipment,
+    SlotIdentifierLow() => EveConstMarketGroupId.equipment,
+    SlotIdentifierRig() => EveConstMarketGroupId.rig,
+    SlotIdentifierSubsystem() => EveConstMarketGroupId.subsystem,
+    SlotIdentifierTacticalMode() => 0,
+    SlotIdentifierService() => EveConstMarketGroupId.subsystem,
+    SlotIdentifierDrone() => EveConstMarketGroupId.drone,
+    SlotIdentifierFighter() => EveConstMarketGroupId.fighter,
+    SlotIdentifierImplant() => EveConstMarketGroupId.implant,
+    SlotIdentifierBooster() => EveConstMarketGroupId.booster,
+  };
 
   bool Function(EveSelectListRoot) validator(WidgetRef ref) {
     final slotsInfo = ref.watch(bundleCollectionGetSlotsProvider);
@@ -125,67 +149,120 @@ abstract class SlotIdentifier with _$SlotIdentifier {
       return type != null && EveConstGroupId.fighter.contains(type.groupId);
     }
 
-    return when(
-      high: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.highSlots.containsKey(typeId),
-            _ => true,
-          },
-      medium: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.mediumSlots.containsKey(typeId),
-            _ => true,
-          },
-      low: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.lowSlots.containsKey(typeId),
-            _ => true,
-          },
-      rig: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.rigSlots.containsKey(typeId),
-            _ => true,
-          },
-      subsystem: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.subsystemSlots.containsKey(typeId),
-            _ => true,
-          },
-      tacticalMode: () =>
-          (_) => true,
-      service: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.serviceSlots.containsKey(typeId),
-            _ => true,
-          },
-      drone: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) => isBaseType(typeId) && !isFighterType(typeId),
-            _ => true,
-          },
-      fighter: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) => isBaseType(typeId) && isFighterType(typeId),
-            _ => true,
-          },
-      implant: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.implantSlots[typeId]?.slotIndex == asIndexed + 1,
-            _ => true,
-          },
-      booster: (_) =>
-          (node) => switch (node) {
-            EveSelectListRootType(:final typeId) =>
-              isBaseType(typeId) && slotsInfo.boosterSlots[typeId]?.slotIndex == asIndexed + 1,
-            _ => true,
-          },
-    );
+    return switch (this) {
+      SlotIdentifierHigh() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.highSlots.containsKey(typeId),
+        _ => true,
+      },
+      SlotIdentifierMedium() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.mediumSlots.containsKey(typeId),
+        _ => true,
+      },
+      SlotIdentifierLow() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.lowSlots.containsKey(typeId),
+        _ => true,
+      },
+      SlotIdentifierRig() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.rigSlots.containsKey(typeId),
+        _ => true,
+      },
+      SlotIdentifierSubsystem() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.subsystemSlots.containsKey(typeId),
+        _ => true,
+      },
+      SlotIdentifierTacticalMode() => (_) => true,
+      SlotIdentifierService() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.serviceSlots.containsKey(typeId),
+        _ => true,
+      },
+      SlotIdentifierDrone() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) => isBaseType(typeId) && !isFighterType(typeId),
+        _ => true,
+      },
+      SlotIdentifierFighter() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) => isBaseType(typeId) && isFighterType(typeId),
+        _ => true,
+      },
+      SlotIdentifierImplant() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.implantSlots[typeId]?.slotIndex == asIndexed + 1,
+        _ => true,
+      },
+      SlotIdentifierBooster() => (node) => switch (node) {
+        EveSelectListRootType(:final typeId) =>
+          isBaseType(typeId) && slotsInfo.boosterSlots[typeId]?.slotIndex == asIndexed + 1,
+        _ => true,
+      },
+    };
   }
+}
+
+final class SlotIdentifierHigh extends SlotIdentifier {
+  const SlotIdentifierHigh({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierMedium extends SlotIdentifier {
+  const SlotIdentifierMedium({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierLow extends SlotIdentifier {
+  const SlotIdentifierLow({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierRig extends SlotIdentifier {
+  const SlotIdentifierRig({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierSubsystem extends SlotIdentifier {
+  const SlotIdentifierSubsystem({required this.type});
+
+  final SubsystemType type;
+}
+
+final class SlotIdentifierTacticalMode extends SlotIdentifier {
+  const SlotIdentifierTacticalMode();
+}
+
+final class SlotIdentifierService extends SlotIdentifier {
+  const SlotIdentifierService({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierDrone extends SlotIdentifier {
+  const SlotIdentifierDrone({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierFighter extends SlotIdentifier {
+  const SlotIdentifierFighter({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierImplant extends SlotIdentifier {
+  const SlotIdentifierImplant({required this.index});
+
+  final int index;
+}
+
+final class SlotIdentifierBooster extends SlotIdentifier {
+  const SlotIdentifierBooster({required this.slotId});
+
+  final int slotId;
 }

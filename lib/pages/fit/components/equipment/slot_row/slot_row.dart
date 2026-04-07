@@ -14,20 +14,20 @@ class _AnySlotRow extends StatelessWidget {
   final FitInteractionOptions interactionOptions;
 
   @override
-  Widget build(BuildContext context) => slotInfo.when(
-    empty: (index) => _EmptySlotRow(
+  Widget build(BuildContext context) => switch (slotInfo) {
+    final _EmptySlotInfo emptySlotInfo => _EmptySlotRow(
       slotIdent: slotIdent,
-      slotInfo: _EmptySlotInfo(index: index),
+      slotInfo: emptySlotInfo,
       fitContext: fitContext,
       interactionOptions: interactionOptions,
     ),
-    item: (state, type, index, slot) => _SlotRow(
+    final _ItemSlotInfo itemSlotInfo => _SlotRow(
       fitContext: fitContext,
       slotIdent: slotIdent,
-      slotInfo: _ItemSlotInfo(state: state, type: type, index: index, slot: slot),
+      slotInfo: itemSlotInfo,
       interactionOptions: interactionOptions,
     ),
-  );
+  };
 }
 
 class _SlotRow extends ConsumerWidget {
