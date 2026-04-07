@@ -64,6 +64,8 @@ abstract class FitServiceState with _$FitServiceState {
 class Fit extends _$Fit {
   late String _fitId;
   FitStorage? _mountedFit;
+  Future<void> _pendingSync = Future<void>.value();
+  int _latestSyncRevision = 0;
 
   @override
   FitServiceState build(String fitId) {
@@ -107,14 +109,8 @@ class Fit extends _$Fit {
     }
   }
 
-  Future<void> _syncToDisk() async {
-    if (!state.isInitialized) {
-      error("Cannot sync fit service: not initialized");
-      return;
-    }
-    final fit = state.fit;
+  Future<void> _syncToDisk(FitStorage fit, int revision) async {
     _mountedFit = fit;
-    state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     final path = File(fit.fitStoragePath);
     final text = jsonEncode(fit.toJson());
     try {
@@ -122,17 +118,27 @@ class Fit extends _$Fit {
         await path.parent.create(recursive: true);
       }
       await path.writeAsString(text);
+      if (revision != _latestSyncRevision) return;
       state = FitServiceState.loaded(
         status: FitServiceStatus.loaded(lastSync: DateTime.now()),
-        fit: state.fit,
+        fit: fit,
       );
     } on Object catch (errorValue, stackTrace) {
       error("Failed to sync fit ${fit.metadata.fitId}: $errorValue", stackTrace: stackTrace);
+      if (revision != _latestSyncRevision) return;
       state = FitServiceState.loaded(
         status: const FitServiceStatus.error(message: "Failed to save fit changes."),
         fit: fit,
       );
     }
+  }
+
+  Future<void> _queueSync(FitStorage fit) {
+    final revision = ++_latestSyncRevision;
+    _pendingSync = _pendingSync
+        .catchError((Object _, StackTrace _) {})
+        .then((_) => _syncToDisk(fit, revision));
+    return _pendingSync;
   }
 
   Future<void> _mount(String fitId) => _loadFromDisk(fitId);
@@ -168,7 +174,7 @@ class Fit extends _$Fit {
     _mountedFit = fit;
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);
-    await _syncToDisk();
+    await _queueSync(fit);
   }
 }
 
