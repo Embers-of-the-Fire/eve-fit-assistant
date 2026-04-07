@@ -273,6 +273,20 @@ FitStorage pruneDynamicRegistry(FitStorage fit) {
   );
 }
 
+enum FitSkillPolicy { noCharacterSkills }
+
+const FitSkillPolicy currentFitSkillPolicy = FitSkillPolicy.noCharacterSkills;
+
+extension FitSkillPolicyX on FitSkillPolicy {
+  Map<int, int> resolveSkills(FitStorage fitStorage) => switch (this) {
+    FitSkillPolicy.noCharacterSkills => const <int, int>{},
+  };
+
+  bool get supportsSkillAwareSimulation => switch (this) {
+    FitSkillPolicy.noCharacterSkills => false,
+  };
+}
+
 native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
   fit: native.Fit(
     shipTypeId: fitStorage.body.shipTypeId,
@@ -385,7 +399,7 @@ native.FitStorage convertToNative(FitStorage fitStorage) => native.FitStorage(
         )
         .toList(),
   ),
-  skills: {},
+  skills: currentFitSkillPolicy.resolveSkills(fitStorage),
   dynamicItems: Map<int, native.DynamicItem>.fromEntries(
     fitStorage.dynamicRegistry.dynamicItems.entries.map(
       (entry) => MapEntry(
