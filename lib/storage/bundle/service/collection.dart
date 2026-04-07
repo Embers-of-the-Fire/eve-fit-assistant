@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/categories.pb.dart";
 import "package:eve_fit_assistant/data/proto/collections.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
@@ -99,7 +100,7 @@ IList<int> bundleCollectionSkillTypeIds(Ref ref) {
   }
 
   final skillGroupIds = collection.allGroups
-      .where((group) => group.categoryId == 16)
+      .where((group) => group.categoryId == EveConstCategoryId.skill)
       .map((group) => group.groupId)
       .toSet();
 
