@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -227,6 +228,12 @@ native.Ship? nativeEmulatedShip(Ref ref, String fitId) =>
 class FitEmulatorService extends _$FitEmulatorService {
   late String _fitId;
 
+  void _scheduleEmulationForCurrentFit() {
+    final fitState = ref.read(fitProvider(_fitId));
+    if (!fitState.isInitialized) return;
+    unawaited(Future(() => emulate(fitState.fit)));
+  }
+
   @override
   FitEmulatorState build(String fitId) {
     _fitId = fitId;
@@ -235,19 +242,28 @@ class FitEmulatorService extends _$FitEmulatorService {
     // during `build` (that can cause `state` to be mutated before the
     // notifier is fully initialized). Instead defer actual emulation to a
     // microtask.
-    ref.listen<FitServiceState>(fitProvider(fitId), (prev, next) {
-      if (prev == next) return;
-      if (!next.isInitialized) {
-        state = next.hasError
-            ? FitEmulatorState.error(
-                message: next.errorMessage ?? "This fit is unavailable.",
-                previous: state.emulated,
-              )
-            : const FitEmulatorState.notInitialized();
-        return;
-      }
-      unawaited(Future(() => emulate(next.fit)));
-    }, fireImmediately: true);
+    ref
+      ..listen<FitServiceState>(fitProvider(fitId), (prev, next) {
+        if (prev == next) return;
+        if (!next.isInitialized) {
+          state = next.hasError
+              ? FitEmulatorState.error(
+                  message: next.errorMessage ?? "This fit is unavailable.",
+                  previous: state.emulated,
+                )
+              : const FitEmulatorState.notInitialized();
+          return;
+        }
+        _scheduleEmulationForCurrentFit();
+      }, fireImmediately: true)
+      ..listen<NativeFitEngineState>(nativeFitEngineServiceProvider, (prev, next) {
+        if (prev == next) return;
+        _scheduleEmulationForCurrentFit();
+      })
+      ..listen(bundleCollectionSkillTypeIdsProvider, (prev, next) {
+        if (prev == next) return;
+        _scheduleEmulationForCurrentFit();
+      });
 
     return const FitEmulatorState.notInitialized();
   }
@@ -265,12 +281,31 @@ class FitEmulatorService extends _$FitEmulatorService {
       final engineState = ref.read(nativeFitEngineServiceProvider);
       final engine = engineState.engineOrNull;
       if (engine == null) {
-        final message = engineState.errorMessage ?? "The fit engine is not available yet.";
+        final message = engineState.errorMessage;
+        if (message == null) {
+          debug(
+            "Deferring emulation for ${fitStorage.metadata.fitId}: fit engine is still loading",
+          );
+          return;
+        }
         warning("Failed to emulate ${fitStorage.metadata.fitId}: $message");
         state = FitEmulatorState.error(message: message, previous: state.emulated);
         return;
       }
-      final nativeCompatible = convertToNative(fitStorage);
+
+      if (fitStorage.body.skillProfile == FitSkillProfile.all5 &&
+          ref.read(bundleCollectionProvider) == null) {
+        debug(
+          "Deferring emulation for ${fitStorage.metadata.fitId}: bundle skill definitions are still loading",
+        );
+        return;
+      }
+
+      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
+      final nativeCompatible = convertToNative(
+        fitStorage,
+        availableSkillTypeIds: availableSkillTypeIds,
+      );
       final emulatedOutput = await engine.emulate(fit: nativeCompatible);
       state = FitEmulatorState.emulated(output: emulatedOutput);
       debug("Finished emulating ${fitStorage.metadata.fitId}");

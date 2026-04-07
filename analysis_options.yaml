@@ -57,7 +57,6 @@ linter:
     - avoid_escaping_inner_quotes
     - avoid_final_parameters
     - avoid_multiple_declarations_per_line
-    - avoid_null_checks_in_equality_operators
     - avoid_positional_boolean_parameters
     - avoid_private_typedef_functions
     - avoid_redundant_argument_values
@@ -137,7 +136,6 @@ linter:
     - use_colored_box
     - use_decorated_box
     - use_enums
-    - use_if_null_to_convert_nulls_to_bools
     - use_is_even_rather_than_modulo
     - use_named_constants
     - use_null_aware_elements

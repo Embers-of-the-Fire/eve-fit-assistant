@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/categories.pb.dart";
 import "package:eve_fit_assistant/data/proto/collections.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
@@ -90,6 +91,24 @@ pb_types.Type? bundleCollectionGetType(Ref ref, int typeId) =>
 @riverpod
 Iterable<pb_types.Type> bundleCollectionGetAllTypes(Ref ref) =>
     ref.watch(bundleCollectionProvider.select((p) => p?.allTypes ?? const IList.empty()));
+
+@riverpod
+IList<int> bundleCollectionSkillTypeIds(Ref ref) {
+  final collection = ref.watch(bundleCollectionProvider);
+  if (collection == null) {
+    return const IList<int>.empty();
+  }
+
+  final skillGroupIds = collection.allGroups
+      .where((group) => group.categoryId == EveConstCategoryId.skill)
+      .map((group) => group.groupId)
+      .toSet();
+
+  return collection.allTypes
+      .where((type) => skillGroupIds.contains(type.groupId))
+      .map((type) => type.typeId)
+      .toIList();
+}
 
 @riverpod
 Iterable<TypeMaterial> bundleCollectionGetAllTypeMaterials(Ref ref) =>

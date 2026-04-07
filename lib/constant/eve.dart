@@ -4,6 +4,7 @@ class EveConstCategoryId {
   const EveConstCategoryId._();
 
   static const int ship = 6;
+  static const int skill = 16;
 }
 
 class EveConstMarketGroupId {

@@ -125,6 +125,17 @@
   "fitTabsDrone": "无人机",
   "fitTabsFighter": "舰载机",
   "fitTabsUtils": "杂项",
+  "fitSkillPolicyPresetTitle": "技能档案：{profileName}",
+  "@fitSkillPolicyPresetTitle": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitSkillPolicyPresetDescription": "当前构建使用预设技能档案，而不是真实角色数据。",
+  "fitSkillProfileAll5": "全 5",
+  "fitSkillProfileAll0": "全 0",
   "fitSkillPolicyUnsupportedTitle": "当前构建暂不支持技能感知模拟。",
   "fitSkillPolicyUnsupportedDescription": "当前配置模拟不会应用角色技能修正。植入体和增效剂仍然生效。",
   "@@@@_FIT_EQUIPMENT_TAB": {},
