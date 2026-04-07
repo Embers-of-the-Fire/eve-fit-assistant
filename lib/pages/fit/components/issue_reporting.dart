@@ -90,43 +90,51 @@ List<_FitIssue> _collectFitIssuesForSection(
         );
       });
     case _FitIssueSection.high:
-      for (final (index, slot) in fit.body.slots.high.filterNone().mapWithIndex(
+      for (final (index, slot) in fit.body.slots.high.mapWithIndex(
         (slot, index) => (index, slot),
       )) {
-        addItemIssue(slot.itemId, context.l10n.highSlot, index);
-        addChargeIssue(slot.charge, context.l10n.highSlot, index);
+        slot.match(() {}, (slot) {
+          addItemIssue(slot.itemId, context.l10n.highSlot, index);
+          addChargeIssue(slot.charge, context.l10n.highSlot, index);
+        });
       }
     case _FitIssueSection.medium:
-      for (final (index, slot) in fit.body.slots.medium.filterNone().mapWithIndex(
+      for (final (index, slot) in fit.body.slots.medium.mapWithIndex(
         (slot, index) => (index, slot),
       )) {
-        addItemIssue(slot.itemId, context.l10n.midSlot, index);
-        addChargeIssue(slot.charge, context.l10n.midSlot, index);
+        slot.match(() {}, (slot) {
+          addItemIssue(slot.itemId, context.l10n.midSlot, index);
+          addChargeIssue(slot.charge, context.l10n.midSlot, index);
+        });
       }
     case _FitIssueSection.low:
-      for (final (index, slot) in fit.body.slots.low.filterNone().mapWithIndex(
-        (slot, index) => (index, slot),
-      )) {
-        addItemIssue(slot.itemId, context.l10n.lowSlot, index);
-        addChargeIssue(slot.charge, context.l10n.lowSlot, index);
+      for (final (index, slot) in fit.body.slots.low.mapWithIndex((slot, index) => (index, slot))) {
+        slot.match(() {}, (slot) {
+          addItemIssue(slot.itemId, context.l10n.lowSlot, index);
+          addChargeIssue(slot.charge, context.l10n.lowSlot, index);
+        });
       }
     case _FitIssueSection.rig:
-      for (final (index, slot) in fit.body.slots.rig.filterNone().mapWithIndex(
-        (slot, index) => (index, slot),
-      )) {
-        addItemIssue(slot.itemId, context.l10n.rigSlot, index);
+      for (final (index, slot) in fit.body.slots.rig.mapWithIndex((slot, index) => (index, slot))) {
+        slot.match(() {}, (slot) {
+          addItemIssue(slot.itemId, context.l10n.rigSlot, index);
+        });
       }
     case _FitIssueSection.subsystem:
-      for (final (index, slot) in fit.body.slots.subsystem.filterNone().mapWithIndex(
+      for (final (index, slot) in fit.body.slots.subsystem.mapWithIndex(
         (slot, index) => (index, slot),
       )) {
-        addItemIssue(slot.itemId, context.l10n.subsystemSlot, index);
+        slot.match(() {}, (slot) {
+          addItemIssue(slot.itemId, context.l10n.subsystemSlot, index);
+        });
       }
     case _FitIssueSection.service:
-      for (final (index, slot) in fit.body.slots.service.filterNone().mapWithIndex(
+      for (final (index, slot) in fit.body.slots.service.mapWithIndex(
         (slot, index) => (index, slot),
       )) {
-        addItemIssue(slot.itemId, context.l10n.serviceSlot, index);
+        slot.match(() {}, (slot) {
+          addItemIssue(slot.itemId, context.l10n.serviceSlot, index);
+        });
       }
     case _FitIssueSection.drone:
       for (final (index, slot) in fit.body.drones.mapWithIndex((slot, index) => (index, slot))) {
