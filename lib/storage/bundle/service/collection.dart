@@ -92,6 +92,24 @@ Iterable<pb_types.Type> bundleCollectionGetAllTypes(Ref ref) =>
     ref.watch(bundleCollectionProvider.select((p) => p?.allTypes ?? const IList.empty()));
 
 @riverpod
+IList<int> bundleCollectionSkillTypeIds(Ref ref) {
+  final collection = ref.watch(bundleCollectionProvider);
+  if (collection == null) {
+    return const IList<int>.empty();
+  }
+
+  final skillGroupIds = collection.allGroups
+      .where((group) => group.categoryId == 16)
+      .map((group) => group.groupId)
+      .toSet();
+
+  return collection.allTypes
+      .where((type) => skillGroupIds.contains(type.groupId))
+      .map((type) => type.typeId)
+      .toIList();
+}
+
+@riverpod
 Iterable<TypeMaterial> bundleCollectionGetAllTypeMaterials(Ref ref) =>
     ref.watch(bundleCollectionProvider.select((p) => p?.allTypeMaterials ?? const IList.empty()));
 

@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -264,13 +265,17 @@ class FitEmulatorService extends _$FitEmulatorService {
     try {
       final engineState = ref.read(nativeFitEngineServiceProvider);
       final engine = engineState.engineOrNull;
+      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
       if (engine == null) {
         final message = engineState.errorMessage ?? "The fit engine is not available yet.";
         warning("Failed to emulate ${fitStorage.metadata.fitId}: $message");
         state = FitEmulatorState.error(message: message, previous: state.emulated);
         return;
       }
-      final nativeCompatible = convertToNative(fitStorage);
+      final nativeCompatible = convertToNative(
+        fitStorage,
+        availableSkillTypeIds: availableSkillTypeIds,
+      );
       final emulatedOutput = await engine.emulate(fit: nativeCompatible);
       state = FitEmulatorState.emulated(output: emulatedOutput);
       debug("Finished emulating ${fitStorage.metadata.fitId}");

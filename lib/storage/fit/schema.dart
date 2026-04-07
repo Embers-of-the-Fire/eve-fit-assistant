@@ -24,6 +24,7 @@ abstract class FitStorage with _$FitStorage {
     metadata: metadata,
     body: FitStorageBody(
       shipTypeId: ship.typeId,
+      skillProfile: FitSkillProfile.all5,
       damageProfile: const FitDamageProfile(
         em: 0.25,
         explosive: 0.25,
@@ -53,6 +54,7 @@ abstract class FitStorage with _$FitStorage {
 abstract class FitStorageBody with _$FitStorageBody {
   const factory FitStorageBody({
     required int shipTypeId,
+    @JsonKey(defaultValue: FitSkillProfile.all5) required FitSkillProfile skillProfile,
     required FitDamageProfile damageProfile,
     required FitStorageSlots slots,
     required IList<FitDroneItem> drones,
@@ -274,17 +276,38 @@ FitStorage pruneDynamicRegistry(FitStorage fit) {
   );
 }
 
-enum FitSkillPolicy { noCharacterSkills }
+enum FitSkillPolicy { presetProfiles }
 
-const FitSkillPolicy currentFitSkillPolicy = FitSkillPolicy.noCharacterSkills;
+@JsonEnum()
+enum FitSkillProfile { all5, all0 }
+
+const FitSkillPolicy currentFitSkillPolicy = FitSkillPolicy.presetProfiles;
+
+extension FitSkillProfileX on FitSkillProfile {
+  Map<int, int> resolveSkills(Iterable<int> availableSkillTypeIds) {
+    switch (this) {
+      case FitSkillProfile.all0:
+        return const <int, int>{};
+      case FitSkillProfile.all5:
+        final skillTypeIds = availableSkillTypeIds.toList(growable: false);
+        if (skillTypeIds.isEmpty) {
+          throw StateError("All V skill profile requires bundle skill definitions.");
+        }
+        return Map<int, int>.fromEntries(skillTypeIds.map((typeId) => MapEntry(typeId, 5)));
+    }
+  }
+}
 
 extension FitSkillPolicyX on FitSkillPolicy {
-  Map<int, int> resolveSkills(FitStorage fitStorage) => switch (this) {
-    FitSkillPolicy.noCharacterSkills => const <int, int>{},
-  };
+  Map<int, int> resolveSkills(FitStorage fitStorage, Iterable<int> availableSkillTypeIds) =>
+      switch (this) {
+        FitSkillPolicy.presetProfiles => fitStorage.body.skillProfile.resolveSkills(
+          availableSkillTypeIds,
+        ),
+      };
 
   bool get supportsSkillAwareSimulation => switch (this) {
-    FitSkillPolicy.noCharacterSkills => false,
+    FitSkillPolicy.presetProfiles => true,
   };
 }
 
@@ -319,7 +342,10 @@ int? _resolveNativeTypeId(
   },
 );
 
-native.FitStorage convertToNative(FitStorage fitStorage) {
+native.FitStorage convertToNative(
+  FitStorage fitStorage, {
+  required Iterable<int> availableSkillTypeIds,
+}) {
   final validDynamicIds = collectReferencedDynamicItemIds(
     fitStorage,
   ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
@@ -465,7 +491,7 @@ native.FitStorage convertToNative(FitStorage fitStorage) {
       implants: implants,
       boosters: boosters,
     ),
-    skills: currentFitSkillPolicy.resolveSkills(fitStorage),
+    skills: currentFitSkillPolicy.resolveSkills(fitStorage, availableSkillTypeIds),
     dynamicItems: Map<int, native.DynamicItem>.fromEntries(
       fitStorage.dynamicRegistry.dynamicItems.entries
           .where((entry) => validDynamicIds.contains(entry.key))

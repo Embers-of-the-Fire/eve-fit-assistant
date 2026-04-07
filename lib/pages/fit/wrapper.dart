@@ -53,6 +53,9 @@ class FitWrapper {
 
   Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
 
+  Future<void> setSkillProfile(FitSkillProfile skillProfile) =>
+      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(skillProfile: skillProfile)));
+
   int _allocateDynamicItemId(FitStorage fit) => allocateDynamicItemId(fit);
 
   (FitStorage, FitStorageItemId) _cloneStorageItemId(FitStorage fit, FitStorageItemId itemId) =>
@@ -116,11 +119,14 @@ class FitWrapper {
         body: fit.body.copyWith(fighters: _normalizeFighters(tempFighters)),
       );
       final engine = ref.read(nativeFitEngineServiceProvider).engineOrNull;
+      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
       if (engine == null) {
         warning("Fit engine unavailable while resolving fighter squadron max size for $typeId");
         return null;
       }
-      final output = await engine.emulate(fit: convertToNative(tempFit));
+      final output = await engine.emulate(
+        fit: convertToNative(tempFit, availableSkillTypeIds: availableSkillTypeIds),
+      );
 
       for (final item in output.modules) {
         final slotType = item.slot.slotType;
