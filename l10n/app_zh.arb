@@ -76,6 +76,49 @@
       }
     }
   },
+  "fitPageUnavailableTitle": "配置不可用",
+  "fitPageMissingMessage": "找不到该配置。",
+  "fitPageBrokenMessage": "无法加载该配置。",
+  "fitPageShipUnavailableMessage": "该配置引用了当前数据包中不可用的舰船数据。",
+  "fitPageStatsUnavailableTitle": "属性不可用",
+  "fitPageStatsUnavailableMessage": "在计算恢复期间，您仍然可以查看和编辑该配置。",
+  "fitPageSaveErrorTitle": "更改未保存",
+  "fitPageRetryAction": "重试",
+  "fitPageBackAction": "返回",
+  "fitIssueDialogTitle": "配置问题",
+  "fitIssueMissingDynamic": "{slotName} #{index} 引用了缺失的动态物品数据。",
+  "@fitIssueMissingDynamic": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueMissingItemType": "{slotName} #{index} 引用了当前不可用的物品数据。",
+  "@fitIssueMissingItemType": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueMissingChargeType": "{slotName} #{index} 引用了当前不可用的弹药数据。",
+  "@fitIssueMissingChargeType": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
   "fitTabsCharacter": "角色",
   "fitTabsEquipment": "装备",
   "fitTabsAttributes": "属性",

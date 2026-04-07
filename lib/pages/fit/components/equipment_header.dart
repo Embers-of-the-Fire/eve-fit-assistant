@@ -4,10 +4,12 @@ class _EquipmentTitleRow extends StatelessWidget {
   const _EquipmentTitleRow({
     this.leftActions = const <Widget>[],
     this.rightInfo = const <Widget>[],
+    this.issues = const <_FitIssue>[],
   });
 
   final List<Widget> leftActions;
   final List<Widget> rightInfo;
+  final List<_FitIssue> issues;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -24,12 +26,24 @@ class _EquipmentTitleRow extends StatelessWidget {
         Expanded(
           child: Align(
             alignment: Alignment.centerRight,
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 6,
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: rightInfo,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (issues.isNotEmpty) ...[
+                  _FitIssueTrigger(issues: issues),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: rightInfo,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -39,10 +53,17 @@ class _EquipmentTitleRow extends StatelessWidget {
 }
 
 class _EquipmentHeader extends StatelessWidget {
-  const _EquipmentHeader({required this.title, this.actions});
+  const _EquipmentHeader({
+    required this.title,
+    this.actions,
+    this.issues = const <_FitIssue>[],
+    this.interactiveIssueIndicator = true,
+  });
 
   final String title;
   final List<Widget>? actions;
+  final List<_FitIssue> issues;
+  final bool interactiveIssueIndicator;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -53,6 +74,9 @@ class _EquipmentHeader extends StatelessWidget {
         minTileHeight: 0,
         contentPadding: const .only(top: 10, left: 16, right: 16, bottom: 4),
         title: Text(title),
+        trailing: issues.isEmpty
+            ? null
+            : _FitIssueTrigger(issues: issues, interactive: interactiveIssueIndicator),
       ),
       if (actions?.isNotEmpty ?? false) ...[
         const Divider(height: 8),

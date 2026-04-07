@@ -101,7 +101,7 @@ class FitWrapper {
         return _fighterCategoryFromGroupId(type.groupId) == category;
       }).length;
 
-  Future<int> _resolveDefaultFighterQuantity(FitStorage fit, int typeId, int groupId) async {
+  Future<int?> _resolveDefaultFighterQuantity(FitStorage fit, int typeId, int groupId) async {
     try {
       final tempFighters = fit.body.fighters.toList()
         ..add(
@@ -115,7 +115,11 @@ class FitWrapper {
       final tempFit = fit.copyWith(
         body: fit.body.copyWith(fighters: _normalizeFighters(tempFighters)),
       );
-      final engine = ref.read(nativeFitEngineServiceProvider).engine;
+      final engine = ref.read(nativeFitEngineServiceProvider).engineOrNull;
+      if (engine == null) {
+        warning("Fit engine unavailable while resolving fighter squadron max size for $typeId");
+        return null;
+      }
       final output = await engine.emulate(fit: convertToNative(tempFit));
 
       for (final item in output.modules) {
@@ -132,7 +136,7 @@ class FitWrapper {
       debug(error.toString(), stackTrace: stackTrace);
     }
 
-    return 1;
+    return null;
   }
 
   IList<FitFighterItem> _normalizeFighters(Iterable<FitFighterItem> fighters) =>
@@ -1168,6 +1172,7 @@ class FitWrapper {
 
     final groupId = fit.body.fighters.length;
     final quantity = await _resolveDefaultFighterQuantity(fit, typeId, groupId);
+    if (quantity == null) return;
 
     await wrapped.update((currentFit) {
       final currentShip = ref.read(bundleCollectionGetShipProvider(currentFit.body.shipTypeId));

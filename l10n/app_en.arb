@@ -52,6 +52,59 @@
   "fitCreationPageDialogDeleteFitContent": "Are you sure you want to delete fit {fitName}?",
   "@@@_FIT_PAGE": {},
   "fitPageTitle": "{fitName} - {shipName}",
+  "@fitPageTitle": {
+    "placeholders": {
+      "fitName": {
+        "type": "String"
+      },
+      "shipName": {
+        "type": "String"
+      }
+    }
+  },
+  "fitPageUnavailableTitle": "Fit unavailable",
+  "fitPageMissingMessage": "This fit could not be found.",
+  "fitPageBrokenMessage": "This fit could not be loaded.",
+  "fitPageShipUnavailableMessage": "This fit references ship data that is not available in the current bundle.",
+  "fitPageStatsUnavailableTitle": "Stats unavailable",
+  "fitPageStatsUnavailableMessage": "You can still inspect and edit the fit while calculations recover.",
+  "fitPageSaveErrorTitle": "Changes not saved",
+  "fitPageRetryAction": "Retry",
+  "fitPageBackAction": "Back",
+  "fitIssueDialogTitle": "Fit issues",
+  "fitIssueMissingDynamic": "{slotName} #{index} references missing dynamic item data.",
+  "@fitIssueMissingDynamic": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueMissingItemType": "{slotName} #{index} references item data that is not available.",
+  "@fitIssueMissingItemType": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueMissingChargeType": "{slotName} #{index} references charge data that is not available.",
+  "@fitIssueMissingChargeType": {
+    "placeholders": {
+      "slotName": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      }
+    }
+  },
   "fitTabsCharacter": "Char",
   "fitTabsEquipment": "Equip",
   "fitTabsAttributes": "Attrib",

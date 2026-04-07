@@ -16,10 +16,52 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
   @override
   Widget build(BuildContext context) {
     final fitState = ref.watch(fitProvider(widget.fitId));
-    final emulated = ref.watch(nativeEmulatedShipProvider(widget.fitId));
+    final emulatorState = ref.watch(fitEmulatorServiceProvider(widget.fitId));
+    final emulated = emulatorState.when(
+      notInitialized: () => null,
+      emulating: (previous) => null,
+      error: (message, previous) => null,
+      emulated: (output) => output,
+    );
     final shipInfo = fitState.isInitialized
         ? ref.watch(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId))
         : null;
+
+    if (fitState.hasError) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
+        body: _FitPageErrorState(
+          icon: Icons.error_outline,
+          title: context.l10n.fitPageUnavailableTitle,
+          message: fitState.errorMessage ?? context.l10n.fitPageBrokenMessage,
+          actions: [
+            FilledButton.icon(
+              onPressed: ref.read(fitProvider(widget.fitId).notifier).reload,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.fitPageRetryAction),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (emulatorState.hasError) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
+        body: _FitPageErrorState(
+          icon: Icons.calculate_outlined,
+          title: context.l10n.fitPageStatsUnavailableTitle,
+          message: emulatorState.errorMessage ?? context.l10n.fitPageStatsUnavailableMessage,
+          actions: [
+            FilledButton.icon(
+              onPressed: ref.read(fitEmulatorServiceProvider(widget.fitId).notifier).retry,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.fitPageRetryAction),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (!fitState.isInitialized || emulated == null) {
       return Scaffold(
@@ -33,7 +75,12 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
     if (shipInfo == null) {
       return Scaffold(
         appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
-        body: Center(child: Text("Unknown ship ${fitState.fit.body.shipTypeId}")),
+        body: _FitPageErrorState(
+          icon: Icons.directions_boat_filled_outlined,
+          title: context.l10n.fitPageUnavailableTitle,
+          message: context.l10n.fitPageShipUnavailableMessage,
+          details: "typeId=${fitState.fit.body.shipTypeId}",
+        ),
       );
     }
 
@@ -221,7 +268,11 @@ class _ScreenshotCharacterColumn extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _EquipmentHeader(title: context.l10n.implantSlot),
+        _EquipmentHeader(
+          title: context.l10n.implantSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.implant),
+          interactiveIssueIndicator: false,
+        ),
         for (int slotId = 0; slotId < _maxImplantSlots; slotId++)
           if (implantAssignments.containsKey(slotId))
             _ImplantRow(
@@ -236,7 +287,11 @@ class _ScreenshotCharacterColumn extends ConsumerWidget {
               slotId: slotId,
               interactionOptions: FitInteractionOptions.screenshot,
             ),
-        _EquipmentHeader(title: context.l10n.boosterSlot),
+        _EquipmentHeader(
+          title: context.l10n.boosterSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.booster),
+          interactiveIssueIndicator: false,
+        ),
         if (fit.body.boosters.isEmpty)
           ListTile(title: Text(context.l10n.fitSlotEmpty(slotName: context.l10n.boosterSlot))),
         for (final booster in fit.body.boosters)
@@ -269,7 +324,16 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
         ...fit.body.slots.tacticalMode.match(
           () => const <Widget>[],
           (mode) => [
-            _EquipmentHeader(title: context.l10n.tacticalMode),
+            _EquipmentHeader(
+              title: context.l10n.tacticalMode,
+              issues: _collectFitIssuesForSection(
+                context,
+                ref,
+                fitContext,
+                _FitIssueSection.tacticalMode,
+              ),
+              interactiveIssueIndicator: false,
+            ),
             _AnySlotRow(
               fitContext: fitContext,
               slotIdent: const SlotIdentifier.tacticalMode(),
@@ -287,7 +351,11 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
             ),
           ],
         ),
-        _EquipmentHeader(title: context.l10n.highSlot),
+        _EquipmentHeader(
+          title: context.l10n.highSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.high),
+          interactiveIssueIndicator: false,
+        ),
         ...fit.body.slots.high.mapWithIndex(
           (slot, index) => _AnySlotRow(
             fitContext: fitContext,
@@ -304,7 +372,11 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
             interactionOptions: FitInteractionOptions.screenshot,
           ),
         ),
-        _EquipmentHeader(title: context.l10n.midSlot),
+        _EquipmentHeader(
+          title: context.l10n.midSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.medium),
+          interactiveIssueIndicator: false,
+        ),
         ...fit.body.slots.medium.mapWithIndex(
           (slot, index) => _AnySlotRow(
             fitContext: fitContext,
@@ -321,7 +393,11 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
             interactionOptions: FitInteractionOptions.screenshot,
           ),
         ),
-        _EquipmentHeader(title: context.l10n.lowSlot),
+        _EquipmentHeader(
+          title: context.l10n.lowSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.low),
+          interactiveIssueIndicator: false,
+        ),
         ...fit.body.slots.low.mapWithIndex(
           (slot, index) => _AnySlotRow(
             fitContext: fitContext,
@@ -338,7 +414,11 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
             interactionOptions: FitInteractionOptions.screenshot,
           ),
         ),
-        _EquipmentHeader(title: context.l10n.rigSlot),
+        _EquipmentHeader(
+          title: context.l10n.rigSlot,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.rig),
+          interactiveIssueIndicator: false,
+        ),
         ...fit.body.slots.rig.mapWithIndex(
           (slot, index) => _AnySlotRow(
             fitContext: fitContext,
@@ -355,7 +435,17 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
             interactionOptions: FitInteractionOptions.screenshot,
           ),
         ),
-        if (subsystemSlotCount > 0) _EquipmentHeader(title: context.l10n.subsystemSlot),
+        if (subsystemSlotCount > 0)
+          _EquipmentHeader(
+            title: context.l10n.subsystemSlot,
+            issues: _collectFitIssuesForSection(
+              context,
+              ref,
+              fitContext,
+              _FitIssueSection.subsystem,
+            ),
+            interactiveIssueIndicator: false,
+          ),
         ...SubsystemType.allTypes
             .take(subsystemSlotCount)
             .map(
@@ -374,7 +464,12 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
                 interactionOptions: FitInteractionOptions.screenshot,
               ),
             ),
-        if (fit.body.slots.service.isNotEmpty) _EquipmentHeader(title: context.l10n.serviceSlot),
+        if (fit.body.slots.service.isNotEmpty)
+          _EquipmentHeader(
+            title: context.l10n.serviceSlot,
+            issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.service),
+            interactiveIssueIndicator: false,
+          ),
         ...fit.body.slots.service.mapWithIndex(
           (slot, index) => _AnySlotRow(
             fitContext: fitContext,
@@ -391,7 +486,11 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
             interactionOptions: FitInteractionOptions.screenshot,
           ),
         ),
-        _EquipmentHeader(title: context.l10n.drone),
+        _EquipmentHeader(
+          title: context.l10n.drone,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.drone),
+          interactiveIssueIndicator: false,
+        ),
         if (fit.body.drones.isEmpty)
           ListTile(title: Text(context.l10n.fitSlotEmpty(slotName: context.l10n.drone))),
         for (int index = 0; index < fit.body.drones.length; index++)
@@ -411,7 +510,11 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
             interactionOptions: FitInteractionOptions.screenshot,
           ),
         if (fitContext.ship.fighterTubes > 0) ...[
-          _EquipmentHeader(title: context.l10n.fighter),
+          _EquipmentHeader(
+            title: context.l10n.fighter,
+            issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.fighter),
+            interactiveIssueIndicator: false,
+          ),
           Padding(
             padding: const EdgeInsets.only(left: 10, right: 10, top: 8, bottom: 4),
             child: Row(
