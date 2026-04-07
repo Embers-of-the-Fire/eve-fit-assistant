@@ -340,29 +340,29 @@ native.FitStorage convertToNative(FitStorage fitStorage) {
     ),
     (fitStorage.body.slots.service, native.SlotType.service, "service"),
   ]) {
-    for (final (index, slot) in slotGroup.$1.filterNone().mapWithIndex(
-      (slot, index) => (index, slot),
-    )) {
-      if (!_hasValidDynamicReference(
-        fitStorage,
-        slot.itemId,
-        context: "${slotGroup.$3} slot $index in fit ${fitStorage.metadata.fitId}",
-      )) {
-        continue;
-      }
-      modules.add(
-        native.Module(
-          itemId: slot.itemId.when(item: native.ItemID.item, dynamic: native.ItemID.dynamic_),
-          state: switch (slot.state) {
-            FitItemState.passive => native.State.passive,
-            FitItemState.online => native.State.online,
-            FitItemState.active => native.State.active,
-            FitItemState.overload => native.State.overload,
-          },
-          charge: slot.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
-          slot: native.Slot(slotType: slotGroup.$2, index: index),
-        ),
-      );
+    for (final (index, slot) in slotGroup.$1.mapWithIndex((slot, index) => (index, slot))) {
+      slot.match(() {}, (slot) {
+        if (!_hasValidDynamicReference(
+          fitStorage,
+          slot.itemId,
+          context: "${slotGroup.$3} slot $index in fit ${fitStorage.metadata.fitId}",
+        )) {
+          return;
+        }
+        modules.add(
+          native.Module(
+            itemId: slot.itemId.when(item: native.ItemID.item, dynamic: native.ItemID.dynamic_),
+            state: switch (slot.state) {
+              FitItemState.passive => native.State.passive,
+              FitItemState.online => native.State.online,
+              FitItemState.active => native.State.active,
+              FitItemState.overload => native.State.overload,
+            },
+            charge: slot.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
+            slot: native.Slot(slotType: slotGroup.$2, index: index),
+          ),
+        );
+      });
     }
   }
 
