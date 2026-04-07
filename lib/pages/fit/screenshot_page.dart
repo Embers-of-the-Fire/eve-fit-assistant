@@ -16,10 +16,47 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
   @override
   Widget build(BuildContext context) {
     final fitState = ref.watch(fitProvider(widget.fitId));
+    final emulatorState = ref.watch(fitEmulatorServiceProvider(widget.fitId));
     final emulated = ref.watch(nativeEmulatedShipProvider(widget.fitId));
     final shipInfo = fitState.isInitialized
         ? ref.watch(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId))
         : null;
+
+    if (fitState.hasError) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
+        body: _FitPageErrorState(
+          icon: Icons.error_outline,
+          title: context.l10n.fitPageUnavailableTitle,
+          message: fitState.errorMessage ?? context.l10n.fitPageBrokenMessage,
+          actions: [
+            FilledButton.icon(
+              onPressed: ref.read(fitProvider(widget.fitId).notifier).reload,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.fitPageRetryAction),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (emulatorState.hasError && emulated == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
+        body: _FitPageErrorState(
+          icon: Icons.calculate_outlined,
+          title: context.l10n.fitPageStatsUnavailableTitle,
+          message: emulatorState.errorMessage ?? context.l10n.fitPageStatsUnavailableMessage,
+          actions: [
+            FilledButton.icon(
+              onPressed: ref.read(fitEmulatorServiceProvider(widget.fitId).notifier).retry,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.fitPageRetryAction),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (!fitState.isInitialized || emulated == null) {
       return Scaffold(
@@ -33,7 +70,12 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
     if (shipInfo == null) {
       return Scaffold(
         appBar: AppBar(title: Text(context.l10n.fitScreenshotPageTitle)),
-        body: Center(child: Text("Unknown ship ${fitState.fit.body.shipTypeId}")),
+        body: _FitPageErrorState(
+          icon: Icons.directions_boat_filled_outlined,
+          title: context.l10n.fitPageUnavailableTitle,
+          message: context.l10n.fitPageShipUnavailableMessage,
+          details: "typeId=${fitState.fit.body.shipTypeId}",
+        ),
       );
     }
 

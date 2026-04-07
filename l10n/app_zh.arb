@@ -76,6 +76,15 @@
       }
     }
   },
+  "fitPageUnavailableTitle": "配置不可用",
+  "fitPageMissingMessage": "找不到该配置。",
+  "fitPageBrokenMessage": "无法加载该配置。",
+  "fitPageShipUnavailableMessage": "该配置引用了当前数据包中不可用的舰船数据。",
+  "fitPageStatsUnavailableTitle": "属性不可用",
+  "fitPageStatsUnavailableMessage": "在计算恢复期间，您仍然可以查看和编辑该配置。",
+  "fitPageSaveErrorTitle": "更改未保存",
+  "fitPageRetryAction": "重试",
+  "fitPageBackAction": "返回",
   "fitTabsCharacter": "角色",
   "fitTabsEquipment": "装备",
   "fitTabsAttributes": "属性",

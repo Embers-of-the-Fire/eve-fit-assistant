@@ -8,11 +8,38 @@ class FitDisplayColumns extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final columns = columnCount(context);
+    final fitState = ref.watch(fitProvider(fitContext.fitId));
+    final emulatorState = ref.watch(fitEmulatorServiceProvider(fitContext.fitId));
+    final status = fitState.status;
+    final saveErrorMessage = status.maybeWhen(error: (message) => message, orElse: () => null);
 
     return Padding(
       padding: const .symmetric(horizontal: 6),
       child: Column(
         children: [
+          if (saveErrorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _FitStatusBanner(
+                icon: Icons.save_as_outlined,
+                title: context.l10n.fitPageSaveErrorTitle,
+                message: saveErrorMessage,
+              ),
+            ),
+          if (emulatorState.hasError)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _FitStatusBanner(
+                icon: Icons.calculate_outlined,
+                title: context.l10n.fitPageStatsUnavailableTitle,
+                message: emulatorState.errorMessage ?? context.l10n.fitPageStatsUnavailableMessage,
+                action: FilledButton.tonalIcon(
+                  onPressed: ref.read(fitEmulatorServiceProvider(fitContext.fitId).notifier).retry,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(context.l10n.fitPageRetryAction),
+                ),
+              ),
+            ),
           if (!currentFitSkillPolicy.supportsSkillAwareSimulation)
             const Padding(padding: .only(bottom: 8), child: _FitSkillPolicyBanner()),
           Expanded(
@@ -29,6 +56,36 @@ class FitDisplayColumns extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FitStatusBanner extends StatelessWidget {
+  const _FitStatusBanner({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: ListTile(
+        leading: Icon(icon, color: colorScheme.primary),
+        title: Text(title),
+        subtitle: Text(message),
+        trailing: action,
       ),
     );
   }

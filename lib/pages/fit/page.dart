@@ -96,18 +96,68 @@ class _FitPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fitMetadata = ref.watch(fitRegistryManagerProvider.select((t) => t.fits[fitId]));
     if (fitMetadata == null) {
-      fatal("Unexpected unreachable error: Invalid fit ID", stackTrace: StackTrace.current);
-      throw StateError("Unexpected unreachable: Invalid fit ID $fitId");
+      return Layout(
+        title: context.l10n.fitPageUnavailableTitle,
+        child: _FitPageErrorState(
+          icon: Icons.folder_off_outlined,
+          title: context.l10n.fitPageUnavailableTitle,
+          message: context.l10n.fitPageMissingMessage,
+          actions: [
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back),
+              label: Text(context.l10n.fitPageBackAction),
+            ),
+          ],
+        ),
+      );
     }
     final fit = ref.watch(fitProvider(fitId));
     final ship = ref.watch(bundleCollectionGetTypeProvider(fitMetadata.shipTypeId));
     if (ship == null) {
-      fatal("Unknown ship type: ${fitMetadata.shipTypeId}", stackTrace: StackTrace.current);
-      throw StateError("Unknown ship type: ${fitMetadata.shipTypeId}");
+      error("Unknown ship type for fit $fitId: ${fitMetadata.shipTypeId}");
+      return Layout(
+        title: fitMetadata.name,
+        child: _FitPageErrorState(
+          icon: Icons.directions_boat_filled_outlined,
+          title: context.l10n.fitPageUnavailableTitle,
+          message: context.l10n.fitPageShipUnavailableMessage,
+          details: "typeId=${fitMetadata.shipTypeId}",
+          actions: [
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back),
+              label: Text(context.l10n.fitPageBackAction),
+            ),
+          ],
+        ),
+      );
     }
     final shipName = ref.watch(localizationProvider(ship.typeName.id).select((t) => t ?? ""));
 
     if (!fit.isInitialized) {
+      if (fit.hasError) {
+        return Layout(
+          title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
+          child: _FitPageErrorState(
+            icon: Icons.error_outline,
+            title: context.l10n.fitPageUnavailableTitle,
+            message: fit.errorMessage ?? context.l10n.fitPageBrokenMessage,
+            actions: [
+              FilledButton.icon(
+                onPressed: ref.read(fitProvider(fitId).notifier).reload,
+                icon: const Icon(Icons.refresh),
+                label: Text(context.l10n.fitPageRetryAction),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.arrow_back),
+                label: Text(context.l10n.fitPageBackAction),
+              ),
+            ],
+          ),
+        );
+      }
       return Layout(
         title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
         child: const Center(
@@ -119,8 +169,28 @@ class _FitPage extends ConsumerWidget {
     final shipInfo = ref.watch(bundleCollectionGetShipProvider(fit.fit.body.shipTypeId));
 
     if (shipInfo == null) {
-      fatal("Failed to load ship info: ${fit.fit.body.shipTypeId}", stackTrace: StackTrace.current);
-      throw StateError("Failed to load ship info: ${fit.fit.body.shipTypeId}");
+      error("Failed to load ship info for fit $fitId: ${fit.fit.body.shipTypeId}");
+      return Layout(
+        title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
+        child: _FitPageErrorState(
+          icon: Icons.warning_amber_rounded,
+          title: context.l10n.fitPageUnavailableTitle,
+          message: context.l10n.fitPageShipUnavailableMessage,
+          details: "typeId=${fit.fit.body.shipTypeId}",
+          actions: [
+            FilledButton.icon(
+              onPressed: ref.read(fitProvider(fitId).notifier).reload,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.fitPageRetryAction),
+            ),
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back),
+              label: Text(context.l10n.fitPageBackAction),
+            ),
+          ],
+        ),
+      );
     }
 
     final emulated = ref.watch(nativeEmulatedShipProvider(fitId));
@@ -141,6 +211,70 @@ class _FitPage extends ConsumerWidget {
     return Layout(
       title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
       child: FitDisplayColumns(fitContext: fitContext),
+    );
+  }
+}
+
+class _FitPageErrorState extends StatelessWidget {
+  const _FitPageErrorState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.details,
+    this.actions = const <Widget>[],
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? details;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Material(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 40, color: colorScheme.error),
+                  const SizedBox(height: 16),
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(message, textAlign: TextAlign.center),
+                  if (details != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      details!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                  if (actions.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: actions,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
