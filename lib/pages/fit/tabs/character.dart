@@ -2,7 +2,7 @@ part of "../page.dart";
 
 const _maxImplantSlots = 10;
 
-class _CharacterTab extends StatefulWidget {
+class _CharacterTab extends ConsumerStatefulWidget {
   const _CharacterTab({
     required this.fitContext,
     this.interactionOptions = const FitInteractionOptions(),
@@ -12,10 +12,10 @@ class _CharacterTab extends StatefulWidget {
   final FitInteractionOptions interactionOptions;
 
   @override
-  State<_CharacterTab> createState() => _CharacterTabState();
+  ConsumerState<_CharacterTab> createState() => _CharacterTabState();
 }
 
-class _CharacterTabState extends State<_CharacterTab>
+class _CharacterTabState extends ConsumerState<_CharacterTab>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final TabController _controller;
 
@@ -38,8 +38,30 @@ class _CharacterTabState extends State<_CharacterTab>
   Widget build(BuildContext context) {
     super.build(context);
 
+    final selectedCharacterId = widget.fitContext.fit.body.characterId;
+    final selectedCharacter = ref.watch(
+      characterRegistryManagerProvider.select(
+        (registry) => registry.characters[selectedCharacterId],
+      ),
+    );
+
     return Column(
       children: [
+        ListTile(
+          onTap: widget.interactionOptions.allowMutations
+              ? () => _handleSelectCharacter(context, selectedCharacterId)
+              : null,
+          leading: CircleAvatar(
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: const Icon(Icons.account_circle, size: 30),
+          ),
+          title: Text(_characterDisplayName(context, selectedCharacterId, selectedCharacter)),
+          subtitle: Text(context.l10n.fitTabsCharacter),
+          trailing: widget.interactionOptions.allowMutations
+              ? const Icon(Icons.keyboard_arrow_right)
+              : null,
+        ),
+        const Divider(height: 0),
         TabBar(
           controller: _controller,
           tabs: [
@@ -66,7 +88,64 @@ class _CharacterTabState extends State<_CharacterTab>
       ],
     );
   }
+
+  Future<void> _handleSelectCharacter(BuildContext context, String selectedCharacterId) async {
+    final nextCharacterId = await showDialog<String>(
+      context: context,
+      builder: (context) => _SelectCharacterDialog(selectedCharacterId: selectedCharacterId),
+    );
+    if (nextCharacterId == null || nextCharacterId == selectedCharacterId) {
+      return;
+    }
+    await widget.fitContext.fitWrapper.setCharacter(nextCharacterId);
+  }
 }
+
+class _SelectCharacterDialog extends ConsumerWidget {
+  const _SelectCharacterDialog({required this.selectedCharacterId});
+
+  final String selectedCharacterId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final registry = ref.watch(characterRegistryManagerProvider);
+
+    return AppDialog(
+      title: context.l10n.fitTabsCharacter,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: CharacterRegistryManager.builtInCharacterIds
+              .map((characterId) {
+                final metadata = registry.characters[characterId];
+                final title = _characterDisplayName(context, characterId, metadata);
+                return ListTile(
+                  selected: characterId == selectedCharacterId,
+                  leading: Icon(
+                    characterId == selectedCharacterId
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                  ),
+                  title: Text(title),
+                  onTap: () => Navigator.of(context).pop(characterId),
+                );
+              })
+              .toList(growable: false),
+        ),
+      ),
+    );
+  }
+}
+
+String _characterDisplayName(
+  BuildContext context,
+  String characterId,
+  CharacterMetadata? metadata,
+) => switch (characterId) {
+  predefinedMaxCharacterId => context.l10n.fitSkillProfileAll5,
+  predefinedZeroCharacterId => context.l10n.fitSkillProfileAll0,
+  _ => metadata?.name ?? characterId,
+};
 
 class _CharacterImplantTab extends ConsumerWidget {
   const _CharacterImplantTab({

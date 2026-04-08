@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -293,7 +294,9 @@ class FitEmulatorService extends _$FitEmulatorService {
         return;
       }
 
-      if (fitStorage.body.skillProfile == FitSkillProfile.all5 &&
+      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
+      if (fitStorage.body.characterId == predefinedMaxCharacterId &&
+          availableSkillTypeIds.isEmpty &&
           ref.read(bundleCollectionProvider) == null) {
         debug(
           "Deferring emulation for ${fitStorage.metadata.fitId}: bundle skill definitions are still loading",
@@ -301,11 +304,11 @@ class FitEmulatorService extends _$FitEmulatorService {
         return;
       }
 
-      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
-      final nativeCompatible = convertToNative(
-        fitStorage,
-        availableSkillTypeIds: availableSkillTypeIds,
+      final characterSkills = resolveCharacterSkillsSync(
+        fitStorage.body.characterId,
+        availableSkillTypeIds,
       );
+      final nativeCompatible = convertToNative(fitStorage, characterSkills: characterSkills);
       final emulatedOutput = await engine.emulate(fit: nativeCompatible);
       state = FitEmulatorState.emulated(output: emulatedOutput);
       debug("Finished emulating ${fitStorage.metadata.fitId}");
