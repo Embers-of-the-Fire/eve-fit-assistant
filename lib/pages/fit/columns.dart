@@ -40,10 +40,6 @@ class FitDisplayColumns extends ConsumerWidget {
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _FitSkillPolicyBanner(fitContext: fitContext),
-          ),
           Expanded(
             child: Row(
               children: [
@@ -88,76 +84,6 @@ class _FitStatusBanner extends StatelessWidget {
         title: Text(title),
         subtitle: Text(message),
         trailing: action,
-      ),
-    );
-  }
-}
-
-extension on FitSkillProfile {
-  String localizedName(BuildContext context) => switch (this) {
-    FitSkillProfile.all5 => context.l10n.fitSkillProfileAll5,
-    FitSkillProfile.all0 => context.l10n.fitSkillProfileAll0,
-  };
-}
-
-class _FitSkillPolicyBanner extends StatelessWidget {
-  const _FitSkillPolicyBanner({required this.fitContext});
-
-  final FitContext fitContext;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final skillProfile = fitContext.fit.body.skillProfile;
-
-    return Material(
-      color: colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.info_outline, color: colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    context.l10n.fitSkillPolicyPresetTitle(
-                      profileName: skillProfile.localizedName(context),
-                    ),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(context.l10n.fitSkillPolicyPresetDescription),
-            const SizedBox(height: 12),
-            SegmentedButton<FitSkillProfile>(
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment<FitSkillProfile>(
-                  value: FitSkillProfile.all5,
-                  label: Text(FitSkillProfile.all5.localizedName(context)),
-                ),
-                ButtonSegment<FitSkillProfile>(
-                  value: FitSkillProfile.all0,
-                  label: Text(FitSkillProfile.all0.localizedName(context)),
-                ),
-              ],
-              selected: {skillProfile},
-              onSelectionChanged: (selection) async {
-                final nextProfile = selection.firstOrNull;
-                if (nextProfile == null || nextProfile == skillProfile) {
-                  return;
-                }
-                await fitContext.fitWrapper.setSkillProfile(nextProfile);
-              },
-            ),
-          ],
-        ),
       ),
     );
   }

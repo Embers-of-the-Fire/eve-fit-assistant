@@ -27,6 +27,8 @@ import "package:eve_fit_assistant/pages/fit/components/add_item_dialog.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
+import "package:eve_fit_assistant/storage/character/manager.dart";
+import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";

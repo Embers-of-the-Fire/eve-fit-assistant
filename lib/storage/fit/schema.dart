@@ -3,6 +3,7 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/native/api/storage.dart" as native;
+import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -24,7 +25,7 @@ abstract class FitStorage with _$FitStorage {
     metadata: metadata,
     body: FitStorageBody(
       shipTypeId: ship.typeId,
-      skillProfile: FitSkillProfile.all5,
+      characterId: predefinedMaxCharacterId,
       damageProfile: const FitDamageProfile(
         em: 0.25,
         explosive: 0.25,
@@ -54,7 +55,7 @@ abstract class FitStorage with _$FitStorage {
 abstract class FitStorageBody with _$FitStorageBody {
   const factory FitStorageBody({
     required int shipTypeId,
-    @JsonKey(defaultValue: FitSkillProfile.all5) required FitSkillProfile skillProfile,
+    @JsonKey(readValue: _readCharacterId) required String characterId,
     required FitDamageProfile damageProfile,
     required FitStorageSlots slots,
     required IList<FitDroneItem> drones,
@@ -65,6 +66,13 @@ abstract class FitStorageBody with _$FitStorageBody {
 
   factory FitStorageBody.fromJson(Map<String, dynamic> json) => _$FitStorageBodyFromJson(json);
 }
+
+Object? _readCharacterId(Map<dynamic, dynamic> json, String key) =>
+    json[key] ??
+    switch (json["skillProfile"]) {
+      "all0" => predefinedZeroCharacterId,
+      _ => predefinedMaxCharacterId,
+    };
 
 /// The length of any slot is fixed (or partially fixed, since we have subsystems) for a given ship.
 /// So we can use a list to represent the slots, and use `None` to represent empty slots.
@@ -276,41 +284,6 @@ FitStorage pruneDynamicRegistry(FitStorage fit) {
   );
 }
 
-enum FitSkillPolicy { presetProfiles }
-
-@JsonEnum()
-enum FitSkillProfile { all5, all0 }
-
-const FitSkillPolicy currentFitSkillPolicy = FitSkillPolicy.presetProfiles;
-
-extension FitSkillProfileX on FitSkillProfile {
-  Map<int, int> resolveSkills(Iterable<int> availableSkillTypeIds) {
-    switch (this) {
-      case FitSkillProfile.all0:
-        return const <int, int>{};
-      case FitSkillProfile.all5:
-        final skillTypeIds = availableSkillTypeIds.toList(growable: false);
-        if (skillTypeIds.isEmpty) {
-          throw StateError("All V skill profile requires bundle skill definitions.");
-        }
-        return Map<int, int>.fromEntries(skillTypeIds.map((typeId) => MapEntry(typeId, 5)));
-    }
-  }
-}
-
-extension FitSkillPolicyX on FitSkillPolicy {
-  Map<int, int> resolveSkills(FitStorage fitStorage, Iterable<int> availableSkillTypeIds) =>
-      switch (this) {
-        FitSkillPolicy.presetProfiles => fitStorage.body.skillProfile.resolveSkills(
-          availableSkillTypeIds,
-        ),
-      };
-
-  bool get supportsSkillAwareSimulation => switch (this) {
-    FitSkillPolicy.presetProfiles => true,
-  };
-}
-
 bool _hasValidDynamicReference(
   FitStorage fitStorage,
   FitStorageItemId itemId, {
@@ -342,10 +315,7 @@ int? _resolveNativeTypeId(
   },
 );
 
-native.FitStorage convertToNative(
-  FitStorage fitStorage, {
-  required Iterable<int> availableSkillTypeIds,
-}) {
+native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int> characterSkills}) {
   final validDynamicIds = collectReferencedDynamicItemIds(
     fitStorage,
   ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
@@ -491,7 +461,7 @@ native.FitStorage convertToNative(
       implants: implants,
       boosters: boosters,
     ),
-    skills: currentFitSkillPolicy.resolveSkills(fitStorage, availableSkillTypeIds),
+    skills: characterSkills,
     dynamicItems: Map<int, native.DynamicItem>.fromEntries(
       fitStorage.dynamicRegistry.dynamicItems.entries
           .where((entry) => validDynamicIds.contains(entry.key))
