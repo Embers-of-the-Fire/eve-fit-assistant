@@ -54,6 +54,25 @@ abstract class BundleRegistry with _$BundleRegistry {
 @riverpodSingleton
 class BundleRegistryManager extends _$BundleRegistryManager {
   static String get _bundleRegistryPath => p.join(PathProvider.resourcesPath, "bundles.json");
+
+  static BundleRegistry _normalizeRegistry(BundleRegistry registry) {
+    final bundles = <String, BundleInfo>{
+      for (final entry in registry.bundles.entries)
+        if (Directory(BundleManager.getBundlePath(entry.key)).existsSync()) entry.key: entry.value,
+    }.lock;
+    final selectedBundleId = switch (registry.selectedBundleId) {
+      final bundleId? when bundles.containsKey(bundleId) => bundleId,
+      _ when bundles.isNotEmpty => bundles.keys.first,
+      _ => null,
+    };
+    return registry.copyWith(bundles: bundles, selectedBundleId: selectedBundleId);
+  }
+
+  void _setRegistry(BundleRegistry registry) {
+    _syncToDisk(registry);
+    state = registry;
+  }
+
   @override
   BundleRegistry build() {
     final registryFile = File(_bundleRegistryPath);
@@ -65,7 +84,8 @@ class BundleRegistryManager extends _$BundleRegistryManager {
 
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = BundleRegistry.fromJson(registryJson);
+    final registry = _normalizeRegistry(BundleRegistry.fromJson(registryJson));
+    _syncToDisk(registry);
     return registry;
   }
 
@@ -94,24 +114,28 @@ class BundleRegistryManager extends _$BundleRegistryManager {
   }
 
   void _addBundle(BundleInfo bundle) {
-    final updatedRegistry = state.copyWith(bundles: state.bundles.add(bundle.bundleId, bundle));
-    _syncToDisk(updatedRegistry);
-    state = updatedRegistry;
+    final updatedRegistry = _normalizeRegistry(
+      state.copyWith(
+        bundles: state.bundles.add(bundle.bundleId, bundle),
+        selectedBundleId: bundle.bundleId,
+      ),
+    );
+    _setRegistry(updatedRegistry);
   }
 
   void _removeBundle(String bundleId) {
-    final updatedRegistry = state.copyWith(
-      bundles: state.bundles.remove(bundleId),
-      selectedBundleId: bundleId == state.selectedBundleId ? null : state.selectedBundleId,
+    final updatedRegistry = _normalizeRegistry(
+      state.copyWith(
+        bundles: state.bundles.remove(bundleId),
+        selectedBundleId: bundleId == state.selectedBundleId ? null : state.selectedBundleId,
+      ),
     );
-    _syncToDisk(updatedRegistry);
-    state = updatedRegistry;
+    _setRegistry(updatedRegistry);
   }
 
   void _selectBundle(String bundleId) {
-    final updatedRegistry = state.copyWith(selectedBundleId: bundleId);
-    _syncToDisk(updatedRegistry);
-    state = updatedRegistry;
+    final updatedRegistry = _normalizeRegistry(state.copyWith(selectedBundleId: bundleId));
+    _setRegistry(updatedRegistry);
   }
 
   static BundleRegistrar getRegistrar(String bundleId) {
