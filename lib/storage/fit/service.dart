@@ -101,7 +101,12 @@ class Fit extends _$Fit {
       final decodedFit = decodeFitStorage(json);
       final fit = pruneDynamicRegistry(decodedFit.fit);
       if (decodedFit.didMigrate) {
-        await path.writeAsString(jsonEncode(encodeFitStorage(fit)));
+        try {
+          await path.writeAsString(jsonEncode(encodeFitStorage(fit)));
+        } on Object catch (errorValue, stackTrace) {
+          warning("Failed to rewrite migrated fit $fitId: $errorValue");
+          debug(errorValue.toString(), stackTrace: stackTrace);
+        }
       }
       _mountedFit = fit;
       state = FitServiceState.loaded(
