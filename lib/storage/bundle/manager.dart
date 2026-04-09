@@ -286,6 +286,7 @@ class BundleManager extends _$BundleManager {
   Future<void> removeBundle(String bundleId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
+      final wasSelected = ref.read(bundleRegistryManagerProvider).selectedBundleId == bundleId;
       final targetDir = Directory(getBundlePath(bundleId));
       if (targetDir.existsSync()) {
         await targetDir.delete(recursive: true);
@@ -294,7 +295,9 @@ class BundleManager extends _$BundleManager {
         warning("Bundle directory for $bundleId does not exist");
       }
       ref.read(bundleRegistryManagerProvider.notifier)._removeBundle(bundleId);
-      final _ = ref.refresh(currentBundleProvider);
+      if (wasSelected) {
+        ref.invalidate(bundleServiceProvider);
+      }
       return DateTime.now();
     });
   }
@@ -308,6 +311,7 @@ class BundleManager extends _$BundleManager {
       }
       debug("Select new global bundle $bundleId");
       if (updateRegistry) ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
+      await ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
       return DateTime.now();
     });
   }
