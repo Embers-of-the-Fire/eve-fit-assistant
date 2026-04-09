@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -39,8 +40,7 @@ class FitTextImportException implements Exception {
 class FitTextImporter {
   const FitTextImporter(this.ref);
 
-  static const nativePrefixes = <String>["EFA:", "EFA2:"];
-  static const nativePayloadVersions = <String, int>{"EFA:": 1, "EFA2:": 2};
+  static final _nativePrefixPattern = RegExp(r"^EFA(?:(\d+))?:");
 
   final WidgetRef ref;
 
@@ -55,7 +55,7 @@ class FitTextImporter {
       throw const FitTextImportException(FitTextImportErrorCode.emptyInput);
     }
 
-    if (nativePrefixes.any(text.startsWith)) {
+    if (_nativePrefixPattern.hasMatch(text)) {
       return _parseNative(text);
     }
 
@@ -72,25 +72,27 @@ class FitTextImporter {
 
   FitStorage _parseNative(String text) {
     try {
-      final prefix = nativePrefixes.firstWhere(text.startsWith);
-      final version = nativePayloadVersions[prefix];
-      if (version == null) {
+      final prefixMatch = _nativePrefixPattern.matchAsPrefix(text);
+      if (prefixMatch == null) {
+        throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
+      }
+      final explicitVersion = prefixMatch.group(1);
+      if (explicitVersion != null) {
         throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
       }
 
-      final encoded = text.substring(prefix.length).trim();
+      final encoded = text.substring(prefixMatch.end).trim();
       final compressed = base64Decode(encoded);
       final jsonText = utf8.decode(const GZipDecoder().decodeBytes(compressed));
       final payload = jsonDecode(jsonText) as Map<String, dynamic>;
-      if (payload["version"] != version) {
-        throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
-      }
-
-      final fitJson = payload["fit"];
-      if (fitJson is! Map<String, dynamic>) {
+      try {
+        return decodeNativeFitPayload(payload);
+      } on FitPersistenceException catch (error) {
+        if (error.code == FitPersistenceErrorCode.unsupportedVersion) {
+          throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
+        }
         throw const FitTextImportException(FitTextImportErrorCode.invalidNativePayload);
       }
-      return FitStorage.fromJson(fitJson);
     } on FitTextImportException {
       rethrow;
     } on Object catch (_) {
