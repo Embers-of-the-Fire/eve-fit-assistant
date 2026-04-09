@@ -195,23 +195,31 @@ class BundleService extends _$BundleService {
     final errors = await bundlePathService.validate();
     final registrarPath = File(bundlePathService.getRegistrarPath());
     if (!registrarPath.existsSync()) {
-      state = CurrentBundleStatus.error(errors: errors);
+      if (_pendingBundleId == bundleId) {
+        state = CurrentBundleStatus.error(errors: errors);
+      }
+      return state;
     }
-    final json = jsonDecode(await registrarPath.readAsString());
+
     try {
+      final json = jsonDecode(await registrarPath.readAsString());
       final registrar = BundleRegistrar.fromJson(ensure(json, {}));
-      state = CurrentBundleStatus.loaded(
-        data: BundleMetadata(
-          metadata: registrar,
-          bundleId: bundleId,
-          paths: bundlePathService,
-          lastModified: DateTime.now(),
-        ),
-      );
+      if (_pendingBundleId == bundleId) {
+        state = CurrentBundleStatus.loaded(
+          data: BundleMetadata(
+            metadata: registrar,
+            bundleId: bundleId,
+            paths: bundlePathService,
+            lastModified: DateTime.now(),
+          ),
+        );
+      }
     } catch (e) {
-      state = CurrentBundleStatus.error(
-        errors: errors.add(BundleValidationError.badDescriptor(error: e)),
-      );
+      if (_pendingBundleId == bundleId) {
+        state = CurrentBundleStatus.error(
+          errors: errors.add(BundleValidationError.badDescriptor(error: e)),
+        );
+      }
     }
     return state;
   }
