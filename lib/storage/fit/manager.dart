@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -56,12 +57,16 @@ class FitRegistryManager extends _$FitRegistryManager {
     if (!registryFile.existsSync()) {
       registryFile
         ..createSync(recursive: true)
-        ..writeAsStringSync("{}");
+        ..writeAsStringSync(jsonEncode(encodeFitRegistry(FitRegistry(fits: IMap()))));
     }
 
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = FitRegistry.fromJson(registryJson);
+    final decodedRegistry = decodeFitRegistry(registryJson);
+    if (decodedRegistry.didMigrate) {
+      registryFile.writeAsStringSync(jsonEncode(encodeFitRegistry(decodedRegistry.registry)));
+    }
+    final registry = decodedRegistry.registry;
     return registry;
   }
 
@@ -77,11 +82,15 @@ class FitRegistryManager extends _$FitRegistryManager {
     if (!registryFile.existsSync()) {
       registryFile
         ..createSync(recursive: true)
-        ..writeAsStringSync("{}");
+        ..writeAsStringSync(jsonEncode(encodeFitRegistry(FitRegistry(fits: IMap()))));
     }
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = FitRegistry.fromJson(registryJson);
+    final decodedRegistry = decodeFitRegistry(registryJson);
+    final registry = decodedRegistry.registry;
+    if (decodedRegistry.didMigrate) {
+      registryFile.writeAsStringSync(jsonEncode(encodeFitRegistry(registry)));
+    }
     state = registry;
   }
 
@@ -90,7 +99,7 @@ class FitRegistryManager extends _$FitRegistryManager {
     if (!registryFile.existsSync()) {
       registryFile.createSync(recursive: true);
     }
-    final registryJson = state.toJson();
+    final registryJson = encodeFitRegistry(state);
     final registryContent = jsonEncode(registryJson);
     registryFile.writeAsStringSync(registryContent);
   }
@@ -140,7 +149,7 @@ class FitManager extends _$FitManager {
     final fit = FitStorage.empty(metadata, ship);
     final fitPath = fit.fitStoragePath;
     final path = File(fitPath);
-    final text = jsonEncode(fit.toJson());
+    final text = jsonEncode(encodeFitStorage(fit));
     if (!path.existsSync()) {
       await path.parent.create(recursive: true);
     }
@@ -201,7 +210,7 @@ class FitManager extends _$FitManager {
     final fit = pruneDynamicRegistry(importedFit.copyWith(metadata: metadata));
 
     final path = File(fit.fitStoragePath);
-    final text = jsonEncode(fit.toJson());
+    final text = jsonEncode(encodeFitStorage(fit));
     if (!path.existsSync()) {
       await path.parent.create(recursive: true);
     }
