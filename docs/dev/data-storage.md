@@ -59,8 +59,10 @@ To properly handle and manage states, the application follows these principles:
 - `FitManager`: The overall fit data manager. This provider offers no direct data interface.
 - `FitRegistryManager` > `FitRegistry`: The fit registry manager.
   The registry is stored in `<documents>/fittings/registry.json`.
+  The registry is versioned through the fit persistence layer.
   This provider offers the fit registry data interface.
   The access to operate on the registry is limited to the `FitManager`.
+  See [Fit Storage and Versioning](./fit-storage.md) for the on-disk format.
 
 ### Service Data
 
@@ -74,6 +76,8 @@ To properly handle and manage states, the application follows these principles:
   Use `localization (riverpod)` to access the localized strings.
 - `FitService` > `FitServiceStatus`: The fit service.
   This provider offers the fit service status data interface.
+  Fit files are decoded through the versioned fit persistence layer,
+  and legacy alpha payloads are eagerly normalized when loaded.
   The value might be changed by the `FitManager`.
 - `FitEmulatorService` > `FitEmulatorState`: The wrapper over backend engine service.
   See [this file](../../lib/storage/fit/service.dart) for details.

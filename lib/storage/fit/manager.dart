@@ -5,44 +5,17 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
-import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as p;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 import "package:uuid/uuid.dart";
 
-part "manager.freezed.dart";
 part "manager.g.dart";
-
-@freezed
-abstract class FitMetadata with _$FitMetadata {
-  const factory FitMetadata({
-    required String fitId,
-    required int shipTypeId,
-    required String name,
-
-    /// DateTime.millisecondsSinceEpoch
-    required int lastModified,
-
-    required String description,
-    required String bundleId,
-  }) = _FitMetadata;
-
-  factory FitMetadata.fromJson(Map<String, dynamic> json) => _$FitMetadataFromJson(json);
-}
-
-@freezed
-abstract class FitRegistry with _$FitRegistry {
-  const factory FitRegistry({
-    @JsonKey(defaultValue: IMap.empty) required IMap<String, FitMetadata> fits,
-  }) = _FitRegistry;
-
-  factory FitRegistry.fromJson(Map<String, dynamic> json) => _$FitRegistryFromJson(json);
-}
 
 /// Fit storage is always under global control,
 /// So there's no need to maintain a global singleton outside of the Ref tree.
@@ -50,18 +23,33 @@ abstract class FitRegistry with _$FitRegistry {
 class FitRegistryManager extends _$FitRegistryManager {
   static String get _fitRegistryPath => p.join(PathProvider.fittingsPath, "registry.json");
 
+  static void _rewriteMigratedRegistry(File registryFile, FitRegistry registry) {
+    try {
+      registryFile.writeAsStringSync(jsonEncode(encodeFitRegistry(registry)));
+    } on FileSystemException catch (exception, stackTrace) {
+      warning(
+        "Failed to rewrite migrated fit registry at ${registryFile.path}: $exception",
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   @override
   FitRegistry build() {
     final registryFile = File(_fitRegistryPath);
     if (!registryFile.existsSync()) {
       registryFile
         ..createSync(recursive: true)
-        ..writeAsStringSync("{}");
+        ..writeAsStringSync(jsonEncode(encodeFitRegistry(FitRegistry(fits: IMap()))));
     }
 
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = FitRegistry.fromJson(registryJson);
+    final decodedRegistry = decodeFitRegistry(registryJson);
+    if (decodedRegistry.didMigrate) {
+      _rewriteMigratedRegistry(registryFile, decodedRegistry.registry);
+    }
+    final registry = decodedRegistry.registry;
     return registry;
   }
 
@@ -77,11 +65,15 @@ class FitRegistryManager extends _$FitRegistryManager {
     if (!registryFile.existsSync()) {
       registryFile
         ..createSync(recursive: true)
-        ..writeAsStringSync("{}");
+        ..writeAsStringSync(jsonEncode(encodeFitRegistry(FitRegistry(fits: IMap()))));
     }
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = FitRegistry.fromJson(registryJson);
+    final decodedRegistry = decodeFitRegistry(registryJson);
+    final registry = decodedRegistry.registry;
+    if (decodedRegistry.didMigrate) {
+      _rewriteMigratedRegistry(registryFile, registry);
+    }
     state = registry;
   }
 
@@ -90,7 +82,7 @@ class FitRegistryManager extends _$FitRegistryManager {
     if (!registryFile.existsSync()) {
       registryFile.createSync(recursive: true);
     }
-    final registryJson = state.toJson();
+    final registryJson = encodeFitRegistry(state);
     final registryContent = jsonEncode(registryJson);
     registryFile.writeAsStringSync(registryContent);
   }
@@ -140,7 +132,7 @@ class FitManager extends _$FitManager {
     final fit = FitStorage.empty(metadata, ship);
     final fitPath = fit.fitStoragePath;
     final path = File(fitPath);
-    final text = jsonEncode(fit.toJson());
+    final text = jsonEncode(encodeFitStorage(fit));
     if (!path.existsSync()) {
       await path.parent.create(recursive: true);
     }
@@ -201,7 +193,7 @@ class FitManager extends _$FitManager {
     final fit = pruneDynamicRegistry(importedFit.copyWith(metadata: metadata));
 
     final path = File(fit.fitStoragePath);
-    final text = jsonEncode(fit.toJson());
+    final text = jsonEncode(encodeFitStorage(fit));
     if (!path.existsSync()) {
       await path.parent.create(recursive: true);
     }

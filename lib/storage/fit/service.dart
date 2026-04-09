@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -97,7 +98,16 @@ class Fit extends _$Fit {
       }
       final text = await path.readAsString();
       final json = jsonDecode(text) as Map<String, dynamic>;
-      final fit = pruneDynamicRegistry(FitStorage.fromJson(json));
+      final decodedFit = decodeFitStorage(json);
+      final fit = pruneDynamicRegistry(decodedFit.fit);
+      if (decodedFit.didMigrate) {
+        try {
+          await path.writeAsString(jsonEncode(encodeFitStorage(fit)));
+        } on Object catch (errorValue, stackTrace) {
+          warning("Failed to rewrite migrated fit $fitId: $errorValue");
+          debug(errorValue.toString(), stackTrace: stackTrace);
+        }
+      }
       _mountedFit = fit;
       state = FitServiceState.loaded(
         status: FitServiceStatus.loaded(lastSync: DateTime.now()),
@@ -114,7 +124,7 @@ class Fit extends _$Fit {
   Future<void> _syncToDisk(FitStorage fit, int revision) async {
     _mountedFit = fit;
     final path = File(fit.fitStoragePath);
-    final text = jsonEncode(fit.toJson());
+    final text = jsonEncode(encodeFitStorage(fit));
     try {
       if (!path.existsSync()) {
         await path.parent.create(recursive: true);
@@ -154,7 +164,7 @@ class Fit extends _$Fit {
     }
     try {
       final path = File(fit.fitStoragePath);
-      final text = jsonEncode(fit.toJson());
+      final text = jsonEncode(encodeFitStorage(fit));
       if (!path.existsSync()) {
         path.parent.createSync(recursive: true);
       }

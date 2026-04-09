@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/fit_io/text_export.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -138,7 +139,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     try {
       final path = File(FitStorage.fitStoragePathForId(widget.fitId));
       final text = await path.readAsString();
-      final fit = FitStorage.fromJson(jsonDecode(text) as Map<String, dynamic>);
+      final fit = decodeFitStorage(jsonDecode(text) as Map<String, dynamic>).fit;
       if (!mounted) return;
       setState(() => _fit = fit);
     } on Object catch (error) {
