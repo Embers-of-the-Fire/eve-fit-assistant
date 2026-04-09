@@ -4,7 +4,6 @@ import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/native/api/storage.dart" as native;
 import "package:eve_fit_assistant/storage/character/schema.dart";
-import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -13,6 +12,32 @@ import "package:path/path.dart" as p;
 
 part "schema.freezed.dart";
 part "schema.g.dart";
+
+@freezed
+abstract class FitMetadata with _$FitMetadata {
+  const factory FitMetadata({
+    required String fitId,
+    required int shipTypeId,
+    required String name,
+
+    /// DateTime.millisecondsSinceEpoch
+    required int lastModified,
+
+    required String description,
+    required String bundleId,
+  }) = _FitMetadata;
+
+  factory FitMetadata.fromJson(Map<String, dynamic> json) => _$FitMetadataFromJson(json);
+}
+
+@freezed
+abstract class FitRegistry with _$FitRegistry {
+  const factory FitRegistry({
+    @JsonKey(defaultValue: IMap.empty) required IMap<String, FitMetadata> fits,
+  }) = _FitRegistry;
+
+  factory FitRegistry.fromJson(Map<String, dynamic> json) => _$FitRegistryFromJson(json);
+}
 
 @freezed
 abstract class FitStorage with _$FitStorage {

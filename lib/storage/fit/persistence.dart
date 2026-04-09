@@ -1,4 +1,3 @@
-import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 
 const currentFitStorageVersion = 1;
