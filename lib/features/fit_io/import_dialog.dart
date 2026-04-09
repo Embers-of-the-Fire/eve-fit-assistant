@@ -1,17 +1,29 @@
+import "dart:async";
+
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/fit_io/text_import.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/bundle/guard.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
-Future<void> showFitImportDialog(BuildContext context) => showDialog<void>(
-  context: context,
-  barrierDismissible: false,
-  builder: (context) => const FitImportDialog(),
-);
+Future<void> showFitImportDialog(BuildContext context, WidgetRef ref) async {
+  if (!await ensureUsableBundle(context, ref)) {
+    return;
+  }
+  if (!context.mounted) {
+    return;
+  }
+
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const FitImportDialog(),
+  );
+}
 
 class FitImportDialog extends ConsumerStatefulWidget {
   const FitImportDialog({super.key});
