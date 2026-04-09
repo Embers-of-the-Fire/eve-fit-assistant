@@ -23,6 +23,17 @@ part "manager.g.dart";
 class FitRegistryManager extends _$FitRegistryManager {
   static String get _fitRegistryPath => p.join(PathProvider.fittingsPath, "registry.json");
 
+  static void _rewriteMigratedRegistry(File registryFile, FitRegistry registry) {
+    try {
+      registryFile.writeAsStringSync(jsonEncode(encodeFitRegistry(registry)));
+    } on FileSystemException catch (exception, stackTrace) {
+      warning(
+        "Failed to rewrite migrated fit registry at ${registryFile.path}: $exception",
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   @override
   FitRegistry build() {
     final registryFile = File(_fitRegistryPath);
@@ -36,7 +47,7 @@ class FitRegistryManager extends _$FitRegistryManager {
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
     final decodedRegistry = decodeFitRegistry(registryJson);
     if (decodedRegistry.didMigrate) {
-      registryFile.writeAsStringSync(jsonEncode(encodeFitRegistry(decodedRegistry.registry)));
+      _rewriteMigratedRegistry(registryFile, decodedRegistry.registry);
     }
     final registry = decodedRegistry.registry;
     return registry;
@@ -61,7 +72,7 @@ class FitRegistryManager extends _$FitRegistryManager {
     final decodedRegistry = decodeFitRegistry(registryJson);
     final registry = decodedRegistry.registry;
     if (decodedRegistry.didMigrate) {
-      registryFile.writeAsStringSync(jsonEncode(encodeFitRegistry(registry)));
+      _rewriteMigratedRegistry(registryFile, registry);
     }
     state = registry;
   }
