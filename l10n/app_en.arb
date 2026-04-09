@@ -290,6 +290,65 @@
   "bundleManagerDetailVariantIncremental": "INCREMENTAL",
   "bundleManagerDetailGeneratedAt": "Generated At: ",
   "bundleManagerDetailLoadedAt": "Loaded At: ",
+  "bundleManagerSetupTitle": "Import your first bundle",
+  "bundleManagerSetupDescription": "The app needs one valid data bundle before fitting and related tools can load. Import a bundle archive to get started.",
+  "bundleManagerSelectionTitle": "Select an active bundle",
+  "bundleManagerSelectionDescription": "Choose one of the installed bundles below, or import a newer archive if you need to recover your data.",
+  "bundleManagerLoadingTitle": "Loading bundle",
+  "bundleManagerLoadingDescription": "Preparing bundle {bundleId} for use.",
+  "@bundleManagerLoadingDescription": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerInvalidTitle": "Bundle needs attention",
+  "bundleManagerInvalidDescription": "The selected bundle is missing required files or metadata. Import a valid archive or switch to another installed bundle.",
+  "bundleManagerReadyTitle": "Bundle ready",
+  "bundleManagerReadyDescription": "Active bundle: {bundleId}",
+  "@bundleManagerReadyDescription": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerImportAction": "Import bundle",
+  "bundleManagerErrorMissingPath": "Missing required path: {path}",
+  "@bundleManagerErrorMissingPath": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerErrorExpectFile": "Expected a file at: {fileName}",
+  "@bundleManagerErrorExpectFile": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerErrorExpectDirectory": "Expected a directory at: {dirName}",
+  "@bundleManagerErrorExpectDirectory": {
+    "placeholders": {
+      "dirName": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerErrorBadDescriptor": "Bundle metadata could not be read.",
+  "bundleManagerErrorBadPatch": "Bundle history is invalid: {reason}",
+  "@bundleManagerErrorBadPatch": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerDetailUnavailableMessage": "Bundle details are unavailable until the bundle metadata is repaired or re-imported.",
   "itemDetailTabInfo": "Info",
   "itemDetailTabAttributes": "Attributes",
   "itemDetailTabSkills": "Skills",

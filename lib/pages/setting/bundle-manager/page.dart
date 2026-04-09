@@ -23,25 +23,33 @@ part "bundle_tile.dart";
 class BundleManagerPage extends ConsumerWidget {
   const BundleManagerPage({super.key});
 
+  Future<void> _importBundleArchive(BuildContext context, WidgetRef ref) async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null) return;
+
+    final selected = result.xFiles.first;
+    info("Selected file: ${selected.name}");
+    await ref
+        .read(bundleManagerProvider.notifier)
+        .addBundle(
+          selected.path,
+          confirmOverwrite: () => showConfirmDialog(context, title: "Overwrite?"),
+        );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bundleRegistry = ref.watch(bundleRegistryManagerProvider);
+    final bundleState = ref.watch(bundleServiceProvider);
+    final selectedBundleId = bundleRegistry.selectedBundleId;
+    final selectedBundle = selectedBundleId == null
+        ? null
+        : bundleRegistry.bundles[selectedBundleId];
 
     return Layout(
       title: context.l10n.bundleManagerPageTitle,
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await FilePicker.platform.pickFiles();
-          if (result == null) return;
-          final selected = result.xFiles.first;
-          info("Selected file: ${selected.name}");
-          await ref
-              .read(bundleManagerProvider.notifier)
-              .addBundle(
-                selected.path,
-                confirmOverwrite: () => showConfirmDialog(context, title: "Overwrite?"),
-              );
-        },
+        onPressed: () => _importBundleArchive(context, ref),
         shape: const CircleBorder(),
         child: const Icon(Icons.add),
       ),
@@ -49,13 +57,14 @@ class BundleManagerPage extends ConsumerWidget {
       child: ListView(
         children: [
           const SizedBox(height: 10),
-          if (bundleRegistry.selectedBundleId != null)
-            _BundleTile(
-              bundle: bundleRegistry.bundles[bundleRegistry.selectedBundleId!]!,
-              activated: true,
-            ),
+          _BundleStatusCard(
+            bundleCount: bundleRegistry.bundles.length,
+            state: bundleState,
+            onImportPressed: () => _importBundleArchive(context, ref),
+          ),
+          if (selectedBundle != null) _BundleTile(bundle: selectedBundle, activated: true),
           for (final entry in bundleRegistry.bundles.entries.where(
-            (k) => k.key != bundleRegistry.selectedBundleId,
+            (entry) => entry.key != selectedBundle?.bundleId,
           ))
             _BundleTile(bundle: entry.value),
           const SizedBox(height: 10),
@@ -63,4 +72,113 @@ class BundleManagerPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _BundleStatusCard extends StatelessWidget {
+  const _BundleStatusCard({
+    required this.bundleCount,
+    required this.state,
+    required this.onImportPressed,
+  });
+
+  final int bundleCount;
+  final CurrentBundleStatus state;
+  final VoidCallback onImportPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    final colorScheme = theme.colorScheme;
+    final info = bundleCount == 0
+        ? (
+            icon: Icons.archive_outlined,
+            color: colorScheme.primary,
+            title: context.l10n.bundleManagerSetupTitle,
+            description: context.l10n.bundleManagerSetupDescription,
+            details: const <String>[],
+          )
+        : state.when(
+            notSelected: () => (
+              icon: Icons.archive_outlined,
+              color: colorScheme.secondary,
+              title: context.l10n.bundleManagerSelectionTitle,
+              description: context.l10n.bundleManagerSelectionDescription,
+              details: const <String>[],
+            ),
+            initializing: (bundleId) => (
+              icon: Icons.sync,
+              color: colorScheme.primary,
+              title: context.l10n.bundleManagerLoadingTitle,
+              description: context.l10n.bundleManagerLoadingDescription(bundleId: bundleId),
+              details: const <String>[],
+            ),
+            error: (errors) => (
+              icon: Icons.error_outline,
+              color: colorScheme.error,
+              title: context.l10n.bundleManagerInvalidTitle,
+              description: context.l10n.bundleManagerInvalidDescription,
+              details: errors.map((error) => _formatBundleError(context, error)).toList(),
+            ),
+            loaded: (data) => (
+              icon: Icons.check_circle_outline,
+              color: colorGreen,
+              title: context.l10n.bundleManagerReadyTitle,
+              description: context.l10n.bundleManagerReadyDescription(bundleId: data.bundleId),
+              details: const <String>[],
+            ),
+          );
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(info.icon, color: info.color),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        info.title,
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(info.description, style: theme.textTheme.bodyMedium),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (info.details.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              for (final detail in info.details)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(detail, style: theme.textTheme.bodySmall),
+                ),
+            ],
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: onImportPressed,
+              icon: const Icon(Icons.upload_file),
+              label: Text(context.l10n.bundleManagerImportAction),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatBundleError(BuildContext context, BundleValidationError error) => error.when(
+    missingPath: (path) => context.l10n.bundleManagerErrorMissingPath(path: path),
+    expectFile: (fileName) => context.l10n.bundleManagerErrorExpectFile(fileName: fileName),
+    expectDirectory: (dirName) => context.l10n.bundleManagerErrorExpectDirectory(dirName: dirName),
+    badDescriptor: (_) => context.l10n.bundleManagerErrorBadDescriptor,
+    badPatch: (reason) => context.l10n.bundleManagerErrorBadPatch(reason: reason),
+  );
 }
