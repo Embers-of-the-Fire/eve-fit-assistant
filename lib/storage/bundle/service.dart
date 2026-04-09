@@ -149,6 +149,9 @@ BundleMetadata? currentBundle(Ref ref) => ref.watch(bundleServiceProvider).curre
 /// UI should access this via [`currentBundleProvider`][currentBundle] rather than directly.
 @riverpodSingleton
 class BundleService extends _$BundleService {
+  Future<CurrentBundleStatus>? _pendingLoad;
+  String? _pendingBundleId;
+
   @override
   CurrentBundleStatus build() {
     ref.listen(bundleRegistryManagerProvider.select((value) => value.selectedBundleId), (
@@ -166,6 +169,26 @@ class BundleService extends _$BundleService {
   }
 
   Future<CurrentBundleStatus> loadBundle(String bundleId) async {
+    final pendingLoad = _pendingLoad;
+    if (pendingLoad != null && _pendingBundleId == bundleId) {
+      return pendingLoad;
+    }
+
+    final load = _loadBundle(bundleId);
+    _pendingLoad = load;
+    _pendingBundleId = bundleId;
+
+    try {
+      return await load;
+    } finally {
+      if (identical(_pendingLoad, load)) {
+        _pendingLoad = null;
+        _pendingBundleId = null;
+      }
+    }
+  }
+
+  Future<CurrentBundleStatus> _loadBundle(String bundleId) async {
     state = CurrentBundleStatus.initializing(bundleId: bundleId);
     final bundlePath = p.join(PathProvider.resourcesPath, "bundles", bundleId);
     final bundlePathService = BundleServicePaths(bundlePath);
