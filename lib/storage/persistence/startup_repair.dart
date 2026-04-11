@@ -121,9 +121,12 @@ Future<StartupPersistenceRepairReport> _repairFitPersistence() async {
     }
   }
 
-  final repairedFits = <String, FitMetadata>{...registry.fits.unlock};
+  final dynamic registryDynamic = registry;
+  final repairedFits = <String, FitMetadata>{
+    ...((registryDynamic.fits as IMap<String, FitMetadata>).unlock),
+  };
   var removedMissingFitEntries = 0;
-  for (final entry in registry.fits.entries) {
+  for (final entry in repairedFits.entries.toList()) {
     final fitPath = File(FitStorage.fitStoragePathForId(entry.key));
     if (fitPath.existsSync()) {
       continue;
@@ -152,10 +155,12 @@ Future<StartupPersistenceRepairReport> _repairFitPersistence() async {
       final fitJson = jsonDecode(await entity.readAsString()) as Map<String, dynamic>;
       final decodedFit = decodeFitStorage(fitJson);
       final metadata = decodedFit.fit.metadata;
-      if (metadata.fitId != fitId) {
+      final dynamic metadataDynamic = metadata;
+      final metadataFitId = metadataDynamic.fitId as String;
+      if (metadataFitId != fitId) {
         unrestoredFitFiles += 1;
         warning(
-          "Skipped orphan fit file with mismatched metadata id ${entity.path}: ${metadata.fitId}",
+          "Skipped orphan fit file with mismatched metadata id ${entity.path}: $metadataFitId",
         );
         continue;
       }

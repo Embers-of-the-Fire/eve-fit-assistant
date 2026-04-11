@@ -47,6 +47,59 @@
   "bundleAccessInvalidDescription": "The current data bundle is incomplete or invalid. Import a valid archive or switch bundles before continuing.",
   "bundleAccessReadyDescription": "The active data bundle is ready.",
   "bundleAccessManageAction": "Open Bundle Manager",
+  "startupPersistenceRepairSummary": "Recovered local storage: {details}.",
+  "@startupPersistenceRepairSummary": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "startupPersistenceRepairSummaryWithWarnings": "Recovered local storage: {details}. {unreadableCount} fit files still need manual cleanup.",
+  "@startupPersistenceRepairSummaryWithWarnings": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      },
+      "unreadableCount": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairRebuiltMetadata": "rewrote local metadata",
+  "startupPersistenceRepairRemovedMissingFits": "removed {count} missing fits",
+  "@startupPersistenceRepairRemovedMissingFits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairRestoredFits": "restored {count} saved fits",
+  "@startupPersistenceRepairRestoredFits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairRemovedMissingBundles": "removed {count} missing bundle entries",
+  "@startupPersistenceRepairRemovedMissingBundles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairRestoredBundles": "recovered {count} installed bundles",
+  "@startupPersistenceRepairRestoredBundles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairUpdatedSelectedBundle": "updated the selected bundle",
   "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "App Settings",
   "settingTileBundleManagerTitle": "Data Bundle",
