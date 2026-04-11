@@ -25,7 +25,7 @@ class BundleManagerPage extends ConsumerWidget {
 
   Future<void> _importBundleArchive(BuildContext context, WidgetRef ref) async {
     final result = await FilePicker.platform.pickFiles();
-    if (result == null) return;
+    if (!context.mounted || result == null) return;
 
     final selected = result.xFiles.first;
     info("Selected file: ${selected.name}");
@@ -33,7 +33,10 @@ class BundleManagerPage extends ConsumerWidget {
         .read(bundleManagerProvider.notifier)
         .addBundle(
           selected.path,
-          confirmOverwrite: () => showConfirmDialog(context, title: "Overwrite?"),
+          confirmOverwrite: () async {
+            if (!context.mounted) return false;
+            return showConfirmDialog(context, title: "Overwrite?");
+          },
         );
   }
 
