@@ -133,9 +133,10 @@ class BundleRegistryManager extends _$BundleRegistryManager {
     _setRegistry(updatedRegistry);
   }
 
-  void _selectBundle(String bundleId) {
+  BundleRegistry _selectBundle(String bundleId) {
     final updatedRegistry = _normalizeRegistry(state.copyWith(selectedBundleId: bundleId));
     _setRegistry(updatedRegistry);
+    return updatedRegistry;
   }
 
   static BundleRegistrar getRegistrar(String bundleId) {
@@ -334,8 +335,17 @@ class BundleManager extends _$BundleManager {
         throw Exception("Invalid bundle $bundleId");
       }
       debug("Select new global bundle $bundleId");
-      if (updateRegistry) ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
-      await ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
+      final selectedBundleId = updateRegistry
+          ? ref
+                .read(bundleRegistryManagerProvider.notifier)
+                ._selectBundle(bundleId)
+                .selectedBundleId
+          : bundleId;
+      if (selectedBundleId == null) {
+        ref.invalidate(bundleServiceProvider);
+        return DateTime.now();
+      }
+      await ref.read(bundleServiceProvider.notifier).loadBundle(selectedBundleId);
       return DateTime.now();
     });
   }
