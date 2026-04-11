@@ -1,5 +1,7 @@
 part of "../../../page.dart";
 
+const bool _dynamicItemConversionEnabled = false;
+
 class _AnySlotRow extends StatelessWidget {
   const _AnySlotRow({
     required this.fitContext,
@@ -253,30 +255,29 @@ class _SlotRowDisplay extends ConsumerWidget {
       );
     }
 
-    if (_supportsDynamicItems()) {
-      if (isDynamic) {
-        actions.add(
-          SlidableAction(
-            onPressed: (_) => fitContext.fitWrapper.revertSlotFromDynamic(slotIdent),
-            backgroundColor: Colors.grey,
-            foregroundColor: Colors.white,
-            icon: Icons.cyclone_outlined,
-            label: context.l10n.dynamicRevert,
-            padding: .zero,
-          ),
-        );
-      } else if (_availableDynamicModifierTypeIds(ref).isNotEmpty) {
-        actions.add(
-          SlidableAction(
-            onPressed: (_) => _handleConvertToDynamic(context, ref),
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            icon: Icons.cyclone_outlined,
-            label: context.l10n.dynamicConvert,
-            padding: .zero,
-          ),
-        );
-      }
+    if (isDynamic) {
+      actions.add(
+        SlidableAction(
+          onPressed: (_) => fitContext.fitWrapper.revertSlotFromDynamic(slotIdent),
+          backgroundColor: Colors.grey,
+          foregroundColor: Colors.white,
+          icon: Icons.cyclone_outlined,
+          label: context.l10n.dynamicRevert,
+          padding: .zero,
+        ),
+      );
+    } else if (_supportsDynamicItemConversion() &&
+        _availableDynamicModifierTypeIds(ref).isNotEmpty) {
+      actions.add(
+        SlidableAction(
+          onPressed: (_) => _handleConvertToDynamic(context, ref),
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          icon: Icons.cyclone_outlined,
+          label: context.l10n.dynamicConvert,
+          padding: .zero,
+        ),
+      );
     }
 
     if (_canHaveCharge(ref)) {
@@ -345,7 +346,7 @@ class _SlotRowDisplay extends ConsumerWidget {
       slotIdent is SlotIdentifierLow ||
       slotIdent is SlotIdentifierRig;
 
-  bool _supportsDynamicItems() => _canCopy();
+  bool _supportsDynamicItemConversion() => _dynamicItemConversionEnabled && _canCopy();
 
   List<int> _availableDynamicModifierTypeIds(WidgetRef ref) {
     final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
