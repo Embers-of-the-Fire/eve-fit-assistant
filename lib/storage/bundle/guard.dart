@@ -26,6 +26,7 @@ Future<bool> ensureUsableBundle(BuildContext context, WidgetRef ref) async {
         FilledButton(
           onPressed: () {
             Navigator.of(dialogContext).pop();
+            if (!context.mounted) return;
             unawaited(context.router.push(const BundleManagerRoute()));
           },
           child: Text(context.l10n.bundleAccessManageAction),
