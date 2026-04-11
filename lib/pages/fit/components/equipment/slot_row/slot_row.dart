@@ -1,5 +1,6 @@
 part of "../../../page.dart";
 
+// TODO(dynamic-item-conversion): Re-enable after conversion parity work lands.
 const bool _dynamicItemConversionEnabled = false;
 
 class _AnySlotRow extends StatelessWidget {
