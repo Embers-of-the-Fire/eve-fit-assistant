@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
@@ -7,9 +9,11 @@ import "package:eve_fit_assistant/pages/fit-list/page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/page.dart";
 import "package:eve_fit_assistant/pages/workspace/page.dart";
+import "package:eve_fit_assistant/storage/bundle/guard.dart";
 import "package:eve_fit_assistant/storage/loading_indicator.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 @RoutePage()
 class FrontPage extends StatefulWidget {
@@ -58,13 +62,22 @@ class _FrontPageState extends State<FrontPage> {
         children: pages,
       ),
       // FloatingActionButton: docked in the center (notched BottomAppBar).
-      floatingActionButton: GestureDetector(
-        onDoubleTap: () => showFitImportDialog(context),
-        child: FloatingActionButton(
-          onPressed: () => context.router.push(const FitCreationRoute()),
-          tooltip: loc.workspaceTabActionCreateFitName,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.add),
+      floatingActionButton: Consumer(
+        builder: (context, ref, _) => GestureDetector(
+          onDoubleTap: () => showFitImportDialog(context, ref),
+          child: FloatingActionButton(
+            onPressed: () async {
+              if (!await ensureUsableBundle(context, ref)) {
+                return;
+              }
+              if (context.mounted) {
+                unawaited(context.router.push(const FitCreationRoute()));
+              }
+            },
+            tooltip: loc.workspaceTabActionCreateFitName,
+            shape: const CircleBorder(),
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
       // Center docked so BottomAppBar shows a notch for the FAB.

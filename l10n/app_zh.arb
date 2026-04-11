@@ -41,6 +41,12 @@
   "frontPageTitleSetting": "设置",
   "@@_WORKSPACE_TAB": {},
   "workspaceTabActionCreateFitName": "创建新配置",
+  "bundleAccessRequiredTitle": "需要数据包",
+  "bundleAccessNotSelectedDescription": "在选择活动数据包之前，无法创建或导入配置。",
+  "bundleAccessLoadingDescription": "当前数据包仍在加载中。请等待加载完成后再试。",
+  "bundleAccessInvalidDescription": "当前数据包不完整或无效。请先导入有效归档文件，或切换到其他数据包。",
+  "bundleAccessReadyDescription": "当前活动数据包已就绪。",
+  "bundleAccessManageAction": "打开数据包管理",
   "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "设置",
   "settingTileBundleManagerTitle": "数据包",
@@ -332,6 +338,65 @@
   "bundleManagerDetailVariantIncremental": "增量",
   "bundleManagerDetailGeneratedAt": "生成时间：",
   "bundleManagerDetailLoadedAt": "加载时间：",
+  "bundleManagerSetupTitle": "导入第一个数据包",
+  "bundleManagerSetupDescription": "装配和相关功能需要先加载一个有效的数据包。请先导入数据包归档文件。",
+  "bundleManagerSelectionTitle": "选择活动数据包",
+  "bundleManagerSelectionDescription": "请从下方已安装的数据包中选择一个，或重新导入新的归档文件来恢复数据。",
+  "bundleManagerLoadingTitle": "正在加载数据包",
+  "bundleManagerLoadingDescription": "正在准备数据包 {bundleId}。",
+  "@bundleManagerLoadingDescription": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerInvalidTitle": "数据包需要处理",
+  "bundleManagerInvalidDescription": "当前选中的数据包缺少必要文件或元数据。请导入有效归档，或切换到其他已安装的数据包。",
+  "bundleManagerReadyTitle": "数据包可用",
+  "bundleManagerReadyDescription": "当前活动数据包：{bundleId}",
+  "@bundleManagerReadyDescription": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerImportAction": "导入数据包",
+  "bundleManagerErrorMissingPath": "缺少必要路径：{path}",
+  "@bundleManagerErrorMissingPath": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerErrorExpectFile": "该位置应为文件：{fileName}",
+  "@bundleManagerErrorExpectFile": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerErrorExpectDirectory": "该位置应为目录：{dirName}",
+  "@bundleManagerErrorExpectDirectory": {
+    "placeholders": {
+      "dirName": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerErrorBadDescriptor": "无法读取数据包元数据。",
+  "bundleManagerErrorBadPatch": "数据包历史记录无效：{reason}",
+  "@bundleManagerErrorBadPatch": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleManagerDetailUnavailableMessage": "在修复或重新导入数据包元数据之前，无法显示该数据包详情。",
   "itemDetailTabInfo": "信息",
   "itemDetailTabAttributes": "属性",
   "itemDetailTabSkills": "技能",

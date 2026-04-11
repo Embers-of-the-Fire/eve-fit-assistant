@@ -193,17 +193,29 @@ class BundleService extends _$BundleService {
     final bundlePath = p.join(PathProvider.resourcesPath, "bundles", bundleId);
     final bundlePathService = BundleServicePaths(bundlePath);
     final errors = await bundlePathService.validate();
-    final registrarPath = File(bundlePathService.getRegistrarPath());
-    if (!registrarPath.existsSync()) {
+    if (errors.isNotEmpty) {
       if (_pendingBundleId == bundleId) {
         state = CurrentBundleStatus.error(errors: errors);
       }
       return state;
     }
 
+    final registrarPath = File(bundlePathService.getRegistrarPath());
     try {
       final json = jsonDecode(await registrarPath.readAsString());
       final registrar = BundleRegistrar.fromJson(ensure(json, {}));
+      final registrarErrors = <BundleValidationError>[
+        if (registrar.bundleId != bundleId)
+          const BundleValidationError.badPatch(reason: "Bundle id does not match registrar."),
+        if (registrar.history.isEmpty)
+          const BundleValidationError.badPatch(reason: "Bundle history is empty."),
+      ].lock;
+      if (registrarErrors.isNotEmpty) {
+        if (_pendingBundleId == bundleId) {
+          state = CurrentBundleStatus.error(errors: registrarErrors);
+        }
+        return state;
+      }
       if (_pendingBundleId == bundleId) {
         state = CurrentBundleStatus.loaded(
           data: BundleMetadata(

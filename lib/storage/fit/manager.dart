@@ -119,7 +119,7 @@ class FitManager extends _$FitManager {
     final fitId = generateFitId();
     final bundleInfo = ref.watch(currentBundleProvider.select((t) => t?.metadata));
     if (bundleInfo == null) {
-      throw Exception("No bundle is currently loaded.");
+      throw StateError("A valid bundle must be active before creating a fit.");
     }
     final metadata = FitMetadata(
       fitId: fitId,
@@ -177,7 +177,7 @@ class FitManager extends _$FitManager {
 
     final bundleInfo = ref.watch(currentBundleProvider.select((t) => t?.metadata));
     if (bundleInfo == null) {
-      throw Exception("No bundle is currently loaded.");
+      throw StateError("A valid bundle must be active before importing a fit.");
     }
 
     final fitId = generateFitId();

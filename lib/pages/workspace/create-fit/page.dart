@@ -9,6 +9,8 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/constant/eve.dart" show EveConstCategoryId, EveConstMarketGroupId;
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/bundle/guard.dart";
+import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -24,30 +26,67 @@ class FitCreationPage extends ConsumerWidget {
   const FitCreationPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Layout(
-    title: context.l10n.fitCreationPageTitle,
-    child: EveSelectList(
-      shallPopToSelect: (t) => switch (t) {
-        EveSelectListRootType(typeId: final _) => true,
-        _ => false,
-      },
-      onSelect: (t) => switch (t) {
-        EveSelectListRootType(:final typeId) =>
-          _showShipCreateDialog(context, ref, shipId: typeId).then((f) {
-            if (f != null && context.mounted) {
-              unawaited(context.router.popAndPush(FitRoute(fitId: f)));
-            }
-          }),
-        _ => null,
-      },
-      root:
-          ref.watch(
-            appSettingServiceProvider.select(
-              (t) => t.shipSelectListDisplayVariant == TypeListDisplayVariant.category,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bundleState = ref.watch(bundleServiceProvider);
+    if (!bundleState.isLoaded) {
+      return Layout(
+        title: context.l10n.fitCreationPageTitle,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.archive_outlined, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  context.l10n.bundleAccessRequiredTitle,
+                  style: context.theme.textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  describeBundleAccessState(context, bundleState),
+                  style: context.theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.router.push(const BundleManagerRoute()),
+                  child: Text(context.l10n.bundleAccessManageAction),
+                ),
+              ],
             ),
-          )
-          ? const EveSelectListRoot.category(categoryId: EveConstCategoryId.ship)
-          : const EveSelectListRoot.marketGroup(marketGroupId: EveConstMarketGroupId.ship),
-    ),
-  );
+          ),
+        ),
+      );
+    }
+
+    return Layout(
+      title: context.l10n.fitCreationPageTitle,
+      child: EveSelectList(
+        shallPopToSelect: (t) => switch (t) {
+          EveSelectListRootType(typeId: final _) => true,
+          _ => false,
+        },
+        onSelect: (t) => switch (t) {
+          EveSelectListRootType(:final typeId) =>
+            _showShipCreateDialog(context, ref, shipId: typeId).then((f) {
+              if (f != null && context.mounted) {
+                unawaited(context.router.popAndPush(FitRoute(fitId: f)));
+              }
+            }),
+          _ => null,
+        },
+        root:
+            ref.watch(
+              appSettingServiceProvider.select(
+                (t) => t.shipSelectListDisplayVariant == TypeListDisplayVariant.category,
+              ),
+            )
+            ? const EveSelectListRoot.category(categoryId: EveConstCategoryId.ship)
+            : const EveSelectListRoot.marketGroup(marketGroupId: EveConstMarketGroupId.ship),
+      ),
+    );
+  }
 }

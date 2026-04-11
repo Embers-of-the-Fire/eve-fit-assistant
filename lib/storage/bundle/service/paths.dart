@@ -32,6 +32,7 @@ class BundleServicePaths {
   static const String _manifest = "manifest.json";
   static const String _deletedFiles = "deleted_files.json";
   static const String _registrar = "registrar.json";
+  static const String registrarFileName = _registrar;
   static const String _staticPath = "static";
   static const String _localizationPath = "localization";
   static const String _staticImagesPath = "images";
@@ -71,6 +72,7 @@ class BundleServicePaths {
     final validated = await Future.wait(
       [
         (_descriptor, true),
+        (_registrar, true),
         (_staticPath, false),
         (_localizationPath, false),
         (p.join(_staticPath, _staticNativePath), false),

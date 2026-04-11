@@ -9,9 +9,23 @@ class BundleDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bundleRegistry = ref.watch(bundleRegistryManagerProvider);
-    final bundle = bundleRegistry.bundles[bundleId]!;
+    final bundle = bundleRegistry.bundles[bundleId];
+    if (bundle == null) {
+      return Layout(
+        title: context.l10n.bundleManagerDetailPageTitle,
+        child: Center(child: Text(context.l10n.bundleManagerDetailUnavailableMessage)),
+      );
+    }
+
     final bundleIsSelected = bundleRegistry.selectedBundleId == bundleId;
-    final bundleRegistrar = BundleRegistryManager.getRegistrar(bundleId);
+    BundleRegistrar? bundleRegistrar;
+    Object? registrarError;
+    try {
+      bundleRegistrar = BundleRegistryManager.getRegistrar(bundleId);
+    } on Object catch (error) {
+      registrarError = error;
+    }
+    final registrar = bundleRegistrar;
 
     String formatTs(int ts) =>
         yMMMMdHmsLocalized(context).format(DateTime.fromMillisecondsSinceEpoch(ts).toLocal());
@@ -89,32 +103,39 @@ class BundleDetailPage extends ConsumerWidget {
             ),
 
             const SizedBox(height: 12),
-            Text(
-              context.l10n.bundleManagerDetailSectionTitleLatestPatch,
-              style: context.theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 6),
-            _PatchTile(patch: bundleRegistrar.latest, formatTs: formatTs),
-            const SizedBox(height: 12),
-            Text(
-              context.l10n.bundleManagerDetailSectionTitleHistory,
-              style: context.theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-
-            // History list (visual style references parent page list appearance)
-            Expanded(
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemBuilder: (context, index) {
-                  final patch = bundleRegistrar.history[bundleRegistrar.history.length - 1 - index];
-                  return _PatchTile(patch: patch, formatTs: formatTs);
-                },
-                separatorBuilder: (_, _) => const Divider(),
-                itemCount: bundleRegistrar.history.length,
+            if (registrar == null) ...[
+              const SizedBox(height: 12),
+              Text(context.l10n.bundleManagerDetailUnavailableMessage),
+              if (registrarError != null) ...[
+                const SizedBox(height: 8),
+                Text(registrarError.toString(), style: context.theme.textTheme.bodySmall),
+              ],
+            ] else ...[
+              Text(
+                context.l10n.bundleManagerDetailSectionTitleLatestPatch,
+                style: context.theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
-            ),
+              const SizedBox(height: 6),
+              _PatchTile(patch: registrar.latest, formatTs: formatTs),
+              const SizedBox(height: 12),
+              Text(
+                context.l10n.bundleManagerDetailSectionTitleHistory,
+                style: context.theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemBuilder: (context, index) {
+                    final patch = registrar.history[registrar.history.length - 1 - index];
+                    return _PatchTile(patch: patch, formatTs: formatTs);
+                  },
+                  separatorBuilder: (_, _) => const Divider(),
+                  itemCount: registrar.history.length,
+                ),
+              ),
+            ],
           ],
         ),
       ),

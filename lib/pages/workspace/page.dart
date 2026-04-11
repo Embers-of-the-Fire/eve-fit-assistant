@@ -1,6 +1,9 @@
+import "dart:async";
+
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/bundle/guard.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -23,7 +26,14 @@ class WorkspacePage extends ConsumerWidget {
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabActionCreateFitName,
         icon: Icons.add_circle_outline,
-        onTap: () => context.router.push(const FitCreationRoute()),
+        onTap: () async {
+          if (!await ensureUsableBundle(context, ref)) {
+            return;
+          }
+          if (context.mounted) {
+            unawaited(context.router.push(const FitCreationRoute()));
+          }
+        },
       ),
       _WorkspaceShortcutItem(title: "设置", icon: Icons.settings, onTap: () {}),
       _WorkspaceShortcutItem(title: "Workspace", icon: Icons.workspaces, onTap: () {}),
