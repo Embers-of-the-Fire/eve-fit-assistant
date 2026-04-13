@@ -142,10 +142,7 @@ Future<StartupPersistenceRepairReport> _repairFitPersistence() async {
     }
   }
 
-  final dynamic registryDynamic = registry;
-  final repairedFits = <String, FitMetadata>{
-    ...((registryDynamic.fits as IMap<String, FitMetadata>).unlock),
-  };
+  final repairedFits = <String, FitMetadata>{...registry.fits.unlock};
   var removedMissingFitEntries = 0;
   for (final entry in repairedFits.entries.toList()) {
     final fitPath = File(FitStorage.fitStoragePathForId(entry.key));
@@ -176,8 +173,7 @@ Future<StartupPersistenceRepairReport> _repairFitPersistence() async {
       final fitJson = jsonDecode(await entity.readAsString()) as Map<String, dynamic>;
       final decodedFit = decodeFitStorage(fitJson);
       final metadata = decodedFit.fit.metadata;
-      final dynamic metadataDynamic = metadata;
-      final metadataFitId = metadataDynamic.fitId as String;
+      final metadataFitId = metadata.fitId;
       if (metadataFitId != fitId) {
         unrestoredFitFiles += 1;
         warning(
