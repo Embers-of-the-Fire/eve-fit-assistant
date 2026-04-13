@@ -47,6 +47,60 @@
   "bundleAccessInvalidDescription": "当前数据包不完整或无效。请先导入有效归档文件，或切换到其他数据包。",
   "bundleAccessReadyDescription": "当前活动数据包已就绪。",
   "bundleAccessManageAction": "打开数据包管理",
+  "startupPersistenceRepairSummary": "已恢复本地存储：{details}。",
+  "@startupPersistenceRepairSummary": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "startupPersistenceRepairSummaryWithWarnings": "已恢复本地存储：{details}。仍有 {unreadableCount} 个配置文件需要手动清理。",
+  "@startupPersistenceRepairSummaryWithWarnings": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      },
+      "unreadableCount": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairFoundUnreadableFits": "发现了无法读取的配置文件",
+  "startupPersistenceRepairRebuiltMetadata": "已重写本地元数据",
+  "startupPersistenceRepairRemovedMissingFits": "移除了 {count} 条缺失配置的记录",
+  "@startupPersistenceRepairRemovedMissingFits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairRestoredFits": "恢复了 {count} 条已保存配置的记录",
+  "@startupPersistenceRepairRestoredFits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairRemovedMissingBundles": "移除了 {count} 条缺失数据包的记录",
+  "@startupPersistenceRepairRemovedMissingBundles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairRestoredBundles": "恢复了 {count} 个已安装数据包",
+  "@startupPersistenceRepairRestoredBundles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupPersistenceRepairUpdatedSelectedBundle": "已更新当前选中的数据包",
   "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "设置",
   "settingTileBundleManagerTitle": "数据包",

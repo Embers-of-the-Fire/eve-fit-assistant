@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
@@ -26,6 +27,8 @@ Future<void> initSingletons() async {
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,
   );
+  initErrorBoundary();
+  await repairStartupPersistence();
   GlobalLoading.init();
 }
 
