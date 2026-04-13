@@ -96,7 +96,9 @@ String _formatStartupPersistenceReport(
     if (report.selectedBundleChanged) l10n.startupPersistenceRepairUpdatedSelectedBundle,
   ];
 
-  final detailsText = details.isEmpty
+  final detailsText = details.isEmpty && report.hasWarnings
+      ? l10n.startupPersistenceRepairFoundUnreadableFits
+      : details.isEmpty
       ? l10n.startupPersistenceRepairRebuiltMetadata
       : details.join(", ");
   final summary = l10n.startupPersistenceRepairSummary(details: detailsText);

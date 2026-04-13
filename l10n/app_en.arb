@@ -66,6 +66,7 @@
       }
     }
   },
+  "startupPersistenceRepairFoundUnreadableFits": "detected unreadable fit files",
   "startupPersistenceRepairRebuiltMetadata": "rewrote local metadata",
   "startupPersistenceRepairRemovedMissingFits": "removed {count} missing fits",
   "@startupPersistenceRepairRemovedMissingFits": {
