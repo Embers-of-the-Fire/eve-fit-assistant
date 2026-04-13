@@ -23,11 +23,18 @@ FitBundleCompatibilityNotice? localizeFitBundleCompatibility(
 
   return switch (compatibility.kind) {
     FitBundleCompatibilityKind.compatible => null,
-    FitBundleCompatibilityKind.outdated => FitBundleCompatibilityNotice(
-      title: l10n.fitBundleChangedTitle,
-      message: l10n.fitBundleChangedDescription,
-      label: l10n.fitBundleChangedTitle,
-    ),
+    FitBundleCompatibilityKind.outdated => switch (compatibility.reason) {
+      FitBundleCompatibilityReason.missingComparableRevision => FitBundleCompatibilityNotice(
+        title: l10n.fitBundleLegacyTitle,
+        message: l10n.fitBundleLegacyDescription,
+        label: l10n.fitBundleLegacyTitle,
+      ),
+      _ => FitBundleCompatibilityNotice(
+        title: l10n.fitBundleChangedTitle,
+        message: l10n.fitBundleChangedDescription,
+        label: l10n.fitBundleChangedTitle,
+      ),
+    },
     FitBundleCompatibilityKind.incompatible => FitBundleCompatibilityNotice(
       title: l10n.fitBundleMismatchTitle,
       message: l10n.fitBundleMismatchDescription(

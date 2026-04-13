@@ -128,6 +128,8 @@
   "fitPageShipUnavailableMessage": "This fit references ship data that is not available in the current bundle.",
   "fitBundleChangedTitle": "Bundle changed",
   "fitBundleChangedDescription": "This fit was saved against an older revision of the active bundle. You can inspect and export it, but editing stays disabled until you switch back to a compatible bundle.",
+  "fitBundleLegacyTitle": "Bundle check required",
+  "fitBundleLegacyDescription": "This fit was saved before bundle revision tracking was available. You can inspect and export it, but editing stays disabled until it is reopened from a bundle with current compatibility metadata.",
   "fitBundleMismatchTitle": "Bundle mismatch",
   "fitBundleMismatchDescription": "This fit was saved against bundle {savedBundleId}, but the active bundle is {activeBundleId}. You can inspect and export it, but editing stays disabled.",
   "@fitBundleMismatchDescription": {

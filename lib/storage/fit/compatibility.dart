@@ -9,6 +9,7 @@ enum FitBundleCompatibilityReason {
   none,
   activeBundleUnavailable,
   bundleIdMismatch,
+  missingComparableRevision,
   manifestMismatch,
   generationMismatch,
   buildMismatch,
@@ -61,6 +62,15 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
     return FitBundleCompatibility(
       kind: FitBundleCompatibilityKind.incompatible,
       reason: FitBundleCompatibilityReason.bundleIdMismatch,
+      savedSnapshot: savedSnapshot,
+      activeSnapshot: activeSnapshot,
+    );
+  }
+
+  if (!savedSnapshot.hasComparableRevision) {
+    return FitBundleCompatibility(
+      kind: FitBundleCompatibilityKind.outdated,
+      reason: FitBundleCompatibilityReason.missingComparableRevision,
       savedSnapshot: savedSnapshot,
       activeSnapshot: activeSnapshot,
     );

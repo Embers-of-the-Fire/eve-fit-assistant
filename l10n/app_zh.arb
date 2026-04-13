@@ -142,6 +142,8 @@
   "fitPageShipUnavailableMessage": "该配置引用了当前数据包中不可用的舰船数据。",
   "fitBundleChangedTitle": "数据包已变更",
   "fitBundleChangedDescription": "该配置保存于当前活动数据包的旧版本。您仍可查看和导出该配置，但在切回兼容数据包前将保持只读。",
+  "fitBundleLegacyTitle": "需要重新确认数据包",
+  "fitBundleLegacyDescription": "该配置保存时尚未记录数据包版本信息。您仍可查看和导出该配置，但在使用当前兼容元数据重新打开前将保持只读。",
   "fitBundleMismatchTitle": "数据包不匹配",
   "fitBundleMismatchDescription": "该配置保存于数据包 {savedBundleId}，而当前活动数据包为 {activeBundleId}。您仍可查看和导出该配置，但编辑将保持禁用。",
   "@fitBundleMismatchDescription": {
