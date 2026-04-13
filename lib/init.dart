@@ -27,6 +27,7 @@ Future<void> initSingletons() async {
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,
   );
+  initErrorBoundary();
   await repairStartupPersistence();
   GlobalLoading.init();
 }

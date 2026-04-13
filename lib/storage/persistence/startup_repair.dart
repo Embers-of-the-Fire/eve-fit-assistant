@@ -88,9 +88,28 @@ class StartupPersistenceRepairReporter {
 }
 
 Future<StartupPersistenceRepairReport> repairStartupPersistence() async {
-  final report = (await _repairFitPersistence()).merge(await _repairBundlePersistence());
+  final report = (await _runRepairStep(
+    "fit persistence",
+    _repairFitPersistence,
+  )).merge(await _runRepairStep("bundle persistence", _repairBundlePersistence));
   StartupPersistenceRepairReporter.instance.publish(report);
   return report;
+}
+
+Future<StartupPersistenceRepairReport> _runRepairStep(
+  String stepName,
+  Future<StartupPersistenceRepairReport> Function() repairStep,
+) async {
+  try {
+    return await repairStep();
+  } on Object catch (errorValue, stackTrace) {
+    error(
+      "Startup persistence repair failed during $stepName: $errorValue",
+      stackTrace: stackTrace,
+      error: errorValue,
+    );
+    return const StartupPersistenceRepairReport.empty();
+  }
 }
 
 Future<StartupPersistenceRepairReport> _repairFitPersistence() async {

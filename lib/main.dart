@@ -10,7 +10,6 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 
 void main() async {
   await initSingletons();
-  initErrorBoundary();
   runApp(const ProviderScope(child: MyApp()));
 }
 
