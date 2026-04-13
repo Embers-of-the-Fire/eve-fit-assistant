@@ -239,15 +239,18 @@ Future<StartupPersistenceRepairReport> _repairBundlePersistence() async {
   }
 
   var restoredBundleEntries = 0;
-  if (rewroteRegistry) {
-    for (final bundleId in installedBundleIds) {
-      final info = await _readBundleInfo(bundleId);
-      if (info == null) {
-        continue;
-      }
-      repairedBundles[bundleId] = info;
-      restoredBundleEntries += 1;
+  for (final bundleId in installedBundleIds) {
+    if (repairedBundles.containsKey(bundleId)) {
+      continue;
     }
+
+    final info = await _readBundleInfo(bundleId);
+    if (info == null) {
+      continue;
+    }
+
+    repairedBundles[bundleId] = info;
+    restoredBundleEntries += 1;
   }
 
   final previousSelectedBundleId = registry.selectedBundleId;
@@ -267,7 +270,10 @@ Future<StartupPersistenceRepairReport> _repairBundlePersistence() async {
     bundles: repairedBundles.lock,
     selectedBundleId: selectedBundleId,
   );
-  if (rewroteRegistry || removedMissingBundleEntries > 0 || selectedBundleChanged) {
+  if (rewroteRegistry ||
+      removedMissingBundleEntries > 0 ||
+      restoredBundleEntries > 0 ||
+      selectedBundleChanged) {
     await registryFile.create(recursive: true);
     await registryFile.writeAsString(
       const JsonEncoder.withIndent("  ").convert(repairedRegistry.toJson()),
