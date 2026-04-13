@@ -1,7 +1,7 @@
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 
-const currentFitStorageVersion = 1;
-const currentFitRegistryVersion = 1;
+const currentFitStorageVersion = 2;
+const currentFitRegistryVersion = 2;
 const currentNativeFitPayloadVersion = 1;
 
 enum FitPersistencePayloadKind { fitStorage, fitRegistry, nativeText }
@@ -52,6 +52,13 @@ DecodedFitStorage decodeFitStorage(Map<String, dynamic> json) {
   }
 
   switch (version) {
+    case 1:
+      return DecodedFitStorage(
+        fit: FitStorage.fromJson(
+          _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
+        ),
+        didMigrate: true,
+      );
     case currentFitStorageVersion:
       return DecodedFitStorage(
         fit: FitStorage.fromJson(
@@ -81,6 +88,13 @@ DecodedFitRegistry decodeFitRegistry(Map<String, dynamic> json) {
   }
 
   switch (version) {
+    case 1:
+      return DecodedFitRegistry(
+        registry: FitRegistry.fromJson(
+          _readPayloadMap(json, "registry", kind: FitPersistencePayloadKind.fitRegistry),
+        ),
+        didMigrate: true,
+      );
     case currentFitRegistryVersion:
       return DecodedFitRegistry(
         registry: FitRegistry.fromJson(

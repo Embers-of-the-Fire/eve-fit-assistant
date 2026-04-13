@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
+import "package:eve_fit_assistant/storage/fit/compatibility.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -155,6 +156,9 @@ class Fit extends _$Fit {
 
   Future<void> _mount(String fitId) => _loadFromDisk(fitId);
 
+  FitBundleCompatibility _compatibilityFor(FitStorage fit) =>
+      evaluateFitBundleCompatibility(fit.metadata, ref.read(currentBundleProvider));
+
   void _unmount() {
     debug("Unmounting fit service");
     final fit = _mountedFit;
@@ -180,9 +184,27 @@ class Fit extends _$Fit {
       error("Cannot update fit service: not initialized");
       return;
     }
-    final fit = pruneDynamicRegistry(updater(state.fit)).copyWith(
-      metadata: state.fit.metadata.copyWith(lastModified: DateTime.now().millisecondsSinceEpoch),
+    final currentFit = state.fit;
+    final compatibility = _compatibilityFor(currentFit);
+    if (!compatibility.allowsEditing) {
+      state = FitServiceState.loaded(
+        status: const FitServiceStatus.error(
+          message: "This fit is read-only until its saved bundle matches the active bundle.",
+        ),
+        fit: currentFit,
+      );
+      return;
+    }
+
+    final activeBundle = ref.read(currentBundleProvider);
+    final updatedMetadata = currentFit.metadata.copyWith(
+      lastModified: DateTime.now().millisecondsSinceEpoch,
+      bundleId: activeBundle?.bundleId ?? currentFit.metadata.bundleId,
+      bundleSnapshot: activeBundle == null
+          ? currentFit.metadata.bundleSnapshot
+          : FitBundleSnapshot.fromBundleMetadata(activeBundle),
     );
+    final fit = pruneDynamicRegistry(updater(currentFit)).copyWith(metadata: updatedMetadata);
     _mountedFit = fit;
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);
