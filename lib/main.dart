@@ -17,6 +17,7 @@ class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   static final _appRouter = AppRouter();
+  static final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   // This widget is the root of your application.
   @override
@@ -46,22 +47,27 @@ class MyApp extends ConsumerWidget {
     return MaterialApp.router(
       title: "EVE Fit Assistant",
       theme: theme,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       locale: Locale(ref.watch(localeProvider).name),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: _appRouter.config(),
       builder: (context, child) {
-        final report = StartupPersistenceRepairReporter.instance.consume();
+        final report = StartupPersistenceRepairReporter.instance.peek();
         if (report != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            final messenger = ScaffoldMessenger.maybeOf(context);
+            final messenger = _scaffoldMessengerKey.currentState;
             if (messenger == null) {
+              return;
+            }
+            final consumedReport = StartupPersistenceRepairReporter.instance.consume();
+            if (consumedReport == null) {
               return;
             }
             messenger.showSnackBar(
               SnackBar(
-                content: Text(_formatStartupPersistenceReport(context.l10n, report)),
-                duration: Duration(seconds: report.hasWarnings ? 6 : 4),
+                content: Text(_formatStartupPersistenceReport(context.l10n, consumedReport)),
+                duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
               ),
             );
           });

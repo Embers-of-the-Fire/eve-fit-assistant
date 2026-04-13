@@ -80,6 +80,8 @@ class StartupPersistenceRepairReporter {
     _report = report;
   }
 
+  StartupPersistenceRepairReport? peek() => _report;
+
   StartupPersistenceRepairReport? consume() {
     final report = _report;
     _report = null;
