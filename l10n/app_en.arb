@@ -126,6 +126,22 @@
   "fitPageMissingMessage": "This fit could not be found.",
   "fitPageBrokenMessage": "This fit could not be loaded.",
   "fitPageShipUnavailableMessage": "This fit references ship data that is not available in the current bundle.",
+  "fitBundleChangedTitle": "Bundle changed",
+  "fitBundleChangedDescription": "This fit was saved against an older revision of the active bundle. You can inspect and export it, but editing stays disabled until you switch back to a compatible bundle.",
+  "fitBundleMismatchTitle": "Bundle mismatch",
+  "fitBundleMismatchDescription": "This fit was saved against bundle {savedBundleId}, but the active bundle is {activeBundleId}. You can inspect and export it, but editing stays disabled.",
+  "@fitBundleMismatchDescription": {
+    "placeholders": {
+      "savedBundleId": {
+        "type": "String"
+      },
+      "activeBundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "fitBundleUnavailableTitle": "Bundle unavailable",
+  "fitBundleUnavailableDescription": "No active bundle is loaded, so compatibility cannot be confirmed. Fit editing stays disabled until a bundle is available.",
   "fitPageStatsUnavailableTitle": "Stats unavailable",
   "fitPageStatsUnavailableMessage": "You can still inspect and edit the fit while calculations recover.",
   "fitPageSaveErrorTitle": "Changes not saved",

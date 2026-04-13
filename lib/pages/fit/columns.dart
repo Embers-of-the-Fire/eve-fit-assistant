@@ -1,9 +1,10 @@
 part of "page.dart";
 
 class FitDisplayColumns extends ConsumerWidget {
-  const FitDisplayColumns({required this.fitContext, super.key});
+  const FitDisplayColumns({required this.fitContext, this.compatibilityNotice, super.key});
 
   final FitContext fitContext;
+  final FitBundleCompatibilityNotice? compatibilityNotice;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,6 +18,15 @@ class FitDisplayColumns extends ConsumerWidget {
       padding: const .symmetric(horizontal: 6),
       child: Column(
         children: [
+          if (compatibilityNotice != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _FitStatusBanner(
+                icon: Icons.inventory_2_outlined,
+                title: compatibilityNotice!.title,
+                message: compatibilityNotice!.message,
+              ),
+            ),
           if (saveErrorMessage != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),

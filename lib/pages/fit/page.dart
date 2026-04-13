@@ -29,6 +29,8 @@ import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
+import "package:eve_fit_assistant/storage/fit/compatibility.dart";
+import "package:eve_fit_assistant/storage/fit/compatibility_notice.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
@@ -98,6 +100,8 @@ class _FitPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fitMetadata = ref.watch(fitRegistryManagerProvider.select((t) => t.fits[fitId]));
+    final compatibility = ref.watch(fitBundleCompatibilityProvider(fitId));
+    final compatibilityNotice = localizeFitBundleCompatibility(context.l10n, compatibility);
     if (fitMetadata == null) {
       return Layout(
         title: context.l10n.fitPageUnavailableTitle,
@@ -123,8 +127,8 @@ class _FitPage extends ConsumerWidget {
         title: fitMetadata.name,
         child: _FitPageErrorState(
           icon: Icons.directions_boat_filled_outlined,
-          title: context.l10n.fitPageUnavailableTitle,
-          message: context.l10n.fitPageShipUnavailableMessage,
+          title: compatibilityNotice?.title ?? context.l10n.fitPageUnavailableTitle,
+          message: compatibilityNotice?.message ?? context.l10n.fitPageShipUnavailableMessage,
           details: "typeId=${fitMetadata.shipTypeId}",
           actions: [
             TextButton.icon(
@@ -177,8 +181,8 @@ class _FitPage extends ConsumerWidget {
         title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
         child: _FitPageErrorState(
           icon: Icons.warning_amber_rounded,
-          title: context.l10n.fitPageUnavailableTitle,
-          message: context.l10n.fitPageShipUnavailableMessage,
+          title: compatibilityNotice?.title ?? context.l10n.fitPageUnavailableTitle,
+          message: compatibilityNotice?.message ?? context.l10n.fitPageShipUnavailableMessage,
           details: "typeId=${fit.fit.body.shipTypeId}",
           actions: [
             FilledButton.icon(
@@ -213,7 +217,7 @@ class _FitPage extends ConsumerWidget {
 
     return Layout(
       title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
-      child: FitDisplayColumns(fitContext: fitContext),
+      child: FitDisplayColumns(fitContext: fitContext, compatibilityNotice: compatibilityNotice),
     );
   }
 }
