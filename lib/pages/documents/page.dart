@@ -3,6 +3,7 @@ import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:intl/intl.dart";
@@ -36,7 +37,7 @@ class _DocumentHubPage extends ConsumerStatefulWidget {
 class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
   String? _selectedDocumentId;
 
-  bool _useSplitLayout(BuildContext context) => context.mediaQuery.size.width >= 1000;
+  bool _useSplitLayout(BuildContext context) => supportsThreePaneLayout(context);
 
   @override
   Widget build(BuildContext context) {
