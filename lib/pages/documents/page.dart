@@ -3,6 +3,7 @@ import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/fp.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -103,10 +104,7 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
         DocumentFeedKind.version => context.l10n.documentVersionPageTitle,
       };
     }
-    final selectedEntry = entries.cast<DocumentRecord?>().firstWhere(
-      (entry) => entry?.id == _selectedDocumentId,
-      orElse: () => null,
-    );
+    final selectedEntry = entries.firstWhereOrNull((entry) => entry.id == _selectedDocumentId);
     return selectedEntry?.title ??
         switch (widget.feedKind) {
           DocumentFeedKind.mixed => context.l10n.documentAnnouncementPageTitle,
@@ -122,18 +120,12 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
       if (_selectedDocumentId == null) {
         return null;
       }
-      return entries.cast<DocumentRecord?>().firstWhere(
-        (entry) => entry?.id == _selectedDocumentId,
-        orElse: () => null,
-      );
+      return entries.firstWhereOrNull((entry) => entry.id == _selectedDocumentId);
     }
 
     final preferredId = _selectedDocumentId ?? DocumentStorage.selectedDocumentId(widget.feedKind);
     if (preferredId != null) {
-      final matchedEntry = entries.cast<DocumentRecord?>().firstWhere(
-        (entry) => entry?.id == preferredId,
-        orElse: () => null,
-      );
+      final matchedEntry = entries.firstWhereOrNull((entry) => entry.id == preferredId);
       if (matchedEntry != null) {
         return matchedEntry;
       }
