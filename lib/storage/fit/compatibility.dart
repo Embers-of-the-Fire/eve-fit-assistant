@@ -76,6 +76,15 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
     );
   }
 
+  if (!activeSnapshot.hasComparableRevision) {
+    return FitBundleCompatibility(
+      kind: FitBundleCompatibilityKind.outdated,
+      reason: FitBundleCompatibilityReason.missingComparableRevision,
+      savedSnapshot: savedSnapshot,
+      activeSnapshot: activeSnapshot,
+    );
+  }
+
   if (savedSnapshot.manifestHash case final savedManifestHash?) {
     final activeManifestHash = activeSnapshot.manifestHash;
     if (activeManifestHash != null && savedManifestHash != activeManifestHash) {
