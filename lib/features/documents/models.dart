@@ -1,5 +1,10 @@
 import "dart:convert";
 
+import "package:freezed_annotation/freezed_annotation.dart";
+
+part "models.freezed.dart";
+part "models.g.dart";
+
 enum DocumentEntryKind { announcement, version }
 
 enum DocumentEntrySource { bundled, remote }
@@ -13,137 +18,81 @@ extension DocumentFeedKindStorageKey on DocumentFeedKind {
   };
 }
 
-class DocumentLocalization {
-  const DocumentLocalization({
-    required this.title,
-    required this.summary,
-    this.bodyAssetPath,
-    this.bodyMarkdown,
-  });
+@freezed
+abstract class DocumentLocalization with _$DocumentLocalization {
+  const factory DocumentLocalization({
+    required String title,
+    required String summary,
+    String? bodyAssetPath,
+    String? bodyMarkdown,
+  }) = _DocumentLocalization;
 
-  factory DocumentLocalization.fromJson(Map<String, dynamic> json) => DocumentLocalization(
-    title: json["title"] as String,
-    summary: json["summary"] as String,
-    bodyAssetPath: json["bodyAssetPath"] as String?,
-    bodyMarkdown: json["bodyMarkdown"] as String?,
-  );
-
-  final String title;
-  final String summary;
-  final String? bodyAssetPath;
-  final String? bodyMarkdown;
-
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    "title": title,
-    "summary": summary,
-    if (bodyAssetPath != null) "bodyAssetPath": bodyAssetPath,
-    if (bodyMarkdown != null) "bodyMarkdown": bodyMarkdown,
-  };
+  factory DocumentLocalization.fromJson(Map<String, dynamic> json) =>
+      _$DocumentLocalizationFromJson(json);
 }
 
-class DocumentEntry {
-  const DocumentEntry({
-    required this.id,
-    required this.kind,
-    required this.source,
-    required this.publishedAt,
-    required this.priority,
-    required this.localizations,
-    this.appVersion,
-  });
+@freezed
+abstract class DocumentEntry with _$DocumentEntry {
+  const factory DocumentEntry({
+    required String id,
+    required DocumentEntryKind kind,
+    required DocumentEntrySource source,
+    required DateTime publishedAt,
+    required Map<String, DocumentLocalization> localizations,
+    @Default(0) int priority,
+    String? appVersion,
+  }) = _DocumentEntry;
 
-  factory DocumentEntry.fromJson(Map<String, dynamic> json) {
-    final localizationsJson = json["localizations"] as Map<String, dynamic>;
-    return DocumentEntry(
-      id: json["id"] as String,
-      kind: DocumentEntryKind.values.byName(json["kind"] as String),
-      source: DocumentEntrySource.values.byName(json["source"] as String),
-      publishedAt: DateTime.parse(json["publishedAt"] as String),
-      priority: json["priority"] as int? ?? 0,
-      appVersion: json["appVersion"] as String?,
-      localizations: <String, DocumentLocalization>{
-        for (final MapEntry<String, dynamic> entry in localizationsJson.entries)
-          entry.key: DocumentLocalization.fromJson(entry.value as Map<String, dynamic>),
-      },
-    );
-  }
+  factory DocumentEntry.fromJson(Map<String, dynamic> json) => _$DocumentEntryFromJson(json);
 
-  final String id;
-  final DocumentEntryKind kind;
-  final DocumentEntrySource source;
-  final DateTime publishedAt;
-  final int priority;
-  final String? appVersion;
-  final Map<String, DocumentLocalization> localizations;
+  const DocumentEntry._();
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    "id": id,
-    "kind": kind.name,
-    "source": source.name,
-    "publishedAt": publishedAt.toIso8601String(),
-    "priority": priority,
-    if (appVersion != null) "appVersion": appVersion,
-    "localizations": <String, dynamic>{
-      for (final MapEntry<String, DocumentLocalization> entry in localizations.entries)
-        entry.key: entry.value.toJson(),
-    },
-  };
-
-  DocumentLocalization? resolveLocalization(String localeCode) {
+  ({String localeCode, DocumentLocalization localization})? resolveLocalization(String localeCode) {
     final normalizedCode = localeCode.toLowerCase();
-    return localizations[normalizedCode] ??
-        localizations[normalizedCode.split("_").first] ??
-        localizations["en"] ??
-        localizations["zh"];
+    final languageCode = normalizedCode.split("_").first;
+    final resolvedLocaleCode = switch (normalizedCode) {
+      final code when localizations.containsKey(code) => code,
+      _ when localizations.containsKey(languageCode) => languageCode,
+      _ when localizations.containsKey("en") => "en",
+      _ when localizations.containsKey("zh") => "zh",
+      _ => null,
+    };
+    if (resolvedLocaleCode == null) {
+      return null;
+    }
+    return (localeCode: resolvedLocaleCode, localization: localizations[resolvedLocaleCode]!);
   }
 }
 
-class DocumentCatalog {
-  const DocumentCatalog({required this.version, required this.entries});
+@freezed
+abstract class DocumentCatalog with _$DocumentCatalog {
+  const factory DocumentCatalog({
+    required int version,
+    @Default(<DocumentEntry>[]) List<DocumentEntry> entries,
+  }) = _DocumentCatalog;
 
-  factory DocumentCatalog.empty() => const DocumentCatalog(version: 1, entries: <DocumentEntry>[]);
+  factory DocumentCatalog.empty() => const DocumentCatalog(version: 1);
 
-  factory DocumentCatalog.fromJson(Map<String, dynamic> json) => DocumentCatalog(
-    version: json["version"] as int,
-    entries: ((json["entries"] as List<dynamic>?) ?? const <dynamic>[])
-        .map((entry) => DocumentEntry.fromJson(entry as Map<String, dynamic>))
-        .toList(growable: false),
-  );
+  factory DocumentCatalog.fromJson(Map<String, dynamic> json) => _$DocumentCatalogFromJson(json);
 
   factory DocumentCatalog.fromJsonText(String text) =>
       DocumentCatalog.fromJson(jsonDecode(text) as Map<String, dynamic>);
-
-  final int version;
-  final List<DocumentEntry> entries;
-
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    "version": version,
-    "entries": entries.map((DocumentEntry entry) => entry.toJson()).toList(growable: false),
-  };
 }
 
-class DocumentRecord {
-  const DocumentRecord({
-    required this.id,
-    required this.kind,
-    required this.source,
-    required this.title,
-    required this.summary,
-    required this.markdown,
-    required this.publishedAt,
-    required this.priority,
-    required this.localeCode,
-    this.appVersion,
-  });
+@freezed
+abstract class DocumentRecord with _$DocumentRecord {
+  const factory DocumentRecord({
+    required String id,
+    required DocumentEntryKind kind,
+    required DocumentEntrySource source,
+    required String title,
+    required String summary,
+    required String markdown,
+    required DateTime publishedAt,
+    required int priority,
+    required String localeCode,
+    String? appVersion,
+  }) = _DocumentRecord;
 
-  final String id;
-  final DocumentEntryKind kind;
-  final DocumentEntrySource source;
-  final String title;
-  final String summary;
-  final String markdown;
-  final DateTime publishedAt;
-  final int priority;
-  final String localeCode;
-  final String? appVersion;
+  factory DocumentRecord.fromJson(Map<String, dynamic> json) => _$DocumentRecordFromJson(json);
 }

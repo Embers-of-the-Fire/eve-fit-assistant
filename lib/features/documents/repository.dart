@@ -41,14 +41,15 @@ class DocumentRepository {
 
     final records = <DocumentRecord>[];
     for (final entry in filteredEntries) {
-      final localization = entry.resolveLocalization(localeCode);
-      if (localization == null) {
+      final resolvedLocalization = entry.resolveLocalization(localeCode);
+      if (resolvedLocalization == null) {
         continue;
       }
+      final localization = resolvedLocalization.localization;
       final markdown = await _loadMarkdown(
         entry: entry,
         localization: localization,
-        localeCode: localeCode,
+        localeCode: resolvedLocalization.localeCode,
       );
       records.add(
         DocumentRecord(
@@ -60,7 +61,7 @@ class DocumentRepository {
           markdown: markdown,
           publishedAt: entry.publishedAt,
           priority: entry.priority,
-          localeCode: localeCode,
+          localeCode: resolvedLocalization.localeCode,
           appVersion: entry.appVersion,
         ),
       );
