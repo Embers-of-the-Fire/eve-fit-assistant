@@ -1,4 +1,5 @@
-import "dart:ui";
+import "package:flutter/widgets.dart";
+import "package:markdown_widget/markdown_widget.dart";
 
 const Color primaryBlue = Color(0xFF30B2E6);
 const Color deepBlue = Color(0xFF0C1213);
@@ -17,3 +18,11 @@ const Color colorStatusOnline = Color(0xFFBDBDBD);
 const Color colorStatusPassive = Color(0xFF2D2D2D);
 
 const Color colorActionDelete = Color(0xFFFE4A49);
+
+final MarkdownConfig markdownDarkConfig = MarkdownConfig(
+  configs: const [
+    CodeConfig(
+      style: TextStyle(backgroundColor: Color(0xCCeff1f3), color: Color(0xFF424242)),
+    ),
+  ],
+);

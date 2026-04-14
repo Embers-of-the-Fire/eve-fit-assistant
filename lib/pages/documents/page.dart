@@ -1,4 +1,5 @@
 import "package:auto_route/annotations.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
@@ -189,15 +190,15 @@ class _DocumentListCard extends StatelessWidget {
       context.locale.toString(),
     ).format(entry.publishedAt.toLocal());
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const .only(bottom: 12),
       color: selected ? colorScheme.secondaryContainer : colorScheme.surfaceContainer,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: .circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const .all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: .start,
             children: [
               Wrap(
                 spacing: 8,
@@ -254,12 +255,12 @@ class _DocumentBadge extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: .circular(999),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const .symmetric(horizontal: 10, vertical: 6),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: .min,
           children: [
             Icon(icon, size: 14),
             const SizedBox(width: 6),
@@ -281,10 +282,10 @@ class _DocumentDetailPane extends StatelessWidget {
     if (entry == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const .all(24),
           child: Text(
             context.l10n.documentSelectPrompt,
-            textAlign: TextAlign.center,
+            textAlign: .center,
             style: context.theme.textTheme.titleMedium,
           ),
         ),
@@ -297,12 +298,13 @@ class _DocumentDetailPane extends StatelessWidget {
     final colorScheme = context.theme.colorScheme;
 
     return Column(
+      crossAxisAlignment: .stretch,
       children: [
         const SizedBox(height: 10),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const .symmetric(horizontal: 20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: .start,
             children: [
               Text(entry!.title, style: context.theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
@@ -334,8 +336,12 @@ class _DocumentDetailPane extends StatelessWidget {
         const Divider(height: 24),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(top: 4, right: 20, bottom: 10, left: 20),
-            child: MarkdownWidget(data: entry!.markdown, padding: EdgeInsets.zero),
+            padding: const .only(top: 4, right: 20, bottom: 10, left: 20),
+            child: MarkdownWidget(
+              data: entry!.markdown,
+              padding: .zero,
+              config: markdownDarkConfig,
+            ),
           ),
         ),
       ],
@@ -361,25 +367,25 @@ class _DocumentEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const .symmetric(horizontal: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: .center,
         children: [
           Icon(Icons.inbox_outlined, size: 56, color: context.theme.colorScheme.outline),
           const SizedBox(height: 12),
           Text(
             switch (feedKind) {
-              DocumentFeedKind.mixed => context.l10n.documentAnnouncementEmptyTitle,
-              DocumentFeedKind.version => context.l10n.documentVersionEmptyTitle,
+              .mixed => context.l10n.documentAnnouncementEmptyTitle,
+              .version => context.l10n.documentVersionEmptyTitle,
             },
             style: context.theme.textTheme.titleMedium,
-            textAlign: TextAlign.center,
+            textAlign: .center,
           ),
           const SizedBox(height: 8),
           Text(
             context.l10n.documentEmptyDescription,
             style: context.theme.textTheme.bodyMedium,
-            textAlign: TextAlign.center,
+            textAlign: .center,
           ),
         ],
       ),
@@ -395,7 +401,7 @@ class _DocumentLoadError extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const .symmetric(horizontal: 24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -404,7 +410,7 @@ class _DocumentLoadError extends StatelessWidget {
           Text(
             context.l10n.documentLoadErrorTitle,
             style: context.theme.textTheme.titleMedium,
-            textAlign: TextAlign.center,
+            textAlign: .center,
           ),
           const SizedBox(height: 8),
           Text(
@@ -412,7 +418,7 @@ class _DocumentLoadError extends StatelessWidget {
             style: context.theme.textTheme.bodySmall?.copyWith(
               color: context.theme.colorScheme.onSurfaceVariant,
             ),
-            textAlign: TextAlign.center,
+            textAlign: .center,
           ),
         ],
       ),
