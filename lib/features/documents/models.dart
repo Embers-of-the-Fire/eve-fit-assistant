@@ -106,7 +106,7 @@ class DocumentCatalog {
   factory DocumentCatalog.fromJson(Map<String, dynamic> json) => DocumentCatalog(
     version: json["version"] as int,
     entries: ((json["entries"] as List<dynamic>?) ?? const <dynamic>[])
-        .map((dynamic entry) => DocumentEntry.fromJson(entry as Map<String, dynamic>))
+        .map((entry) => DocumentEntry.fromJson(entry as Map<String, dynamic>))
         .toList(growable: false),
   );
 

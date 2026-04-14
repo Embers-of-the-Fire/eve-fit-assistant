@@ -104,6 +104,27 @@
   "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "App Settings",
   "settingTileBundleManagerTitle": "Data Bundle",
+  "settingTileVersionTitle": "Version",
+  "settingTileVersionSubtitle": "Release notes and changelog",
+  "workspaceTabAnnouncementTitle": "Announcements",
+  "documentAnnouncementPageTitle": "Announcements",
+  "documentVersionPageTitle": "Version",
+  "documentAnnouncementEmptyTitle": "No announcements yet",
+  "documentVersionEmptyTitle": "No version notes yet",
+  "documentEmptyDescription": "Bundled defaults will appear here, and future online updates can be shown separately.",
+  "documentLoadErrorTitle": "Unable to load documents",
+  "documentSelectPrompt": "Select an entry to read its content.",
+  "documentKindAnnouncement": "Announcement",
+  "documentKindVersion": "Version",
+  "documentOpenHint": "Open to read",
+  "documentVersionBadge": "App {version}",
+  "@documentVersionBadge": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "@@@_FIT_CREATION_PAGE": {},
   "fitCreationPageTitle": "Create New Fit",
   "fitCreationPageDialogHint": "New Fit {count}",
