@@ -47,6 +47,7 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: false,
         leading: !splitLayout && _selectedDocumentId != null
             ? IconButton(
                 onPressed: () => setState(() => _selectedDocumentId = null),
@@ -154,7 +155,7 @@ class _DocumentListPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView.builder(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
     itemCount: entries.length,
     itemBuilder: (context, index) {
       final entry = entries[index];
@@ -223,16 +224,6 @@ class _DocumentListCard extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              if (feedKind == DocumentFeedKind.mixed) ...[
-                const SizedBox(height: 12),
-                Text(
-                  context.l10n.documentOpenHint,
-                  style: context.theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -303,23 +294,33 @@ class _DocumentDetailPane extends StatelessWidget {
     final dateText = DateFormat.yMMMMd(
       context.locale.toString(),
     ).format(entry!.publishedAt.toLocal());
+    final colorScheme = context.theme.colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(entry!.title, style: context.theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
+              Text(
+                dateText,
+                style: context.theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _DocumentBadge(label: dateText, icon: Icons.event_available_outlined),
+                  _DocumentBadge(
+                    label: _kindLabel(context, entry!.kind),
+                    icon: _kindIcon(entry!.kind),
+                  ),
                   if (entry!.appVersion != null)
                     _DocumentBadge(
                       label: context.l10n.documentVersionBadge(version: entry!.appVersion!),
@@ -327,16 +328,29 @@ class _DocumentDetailPane extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: MarkdownWidget(data: entry!.markdown, padding: EdgeInsets.zero),
-              ),
             ],
           ),
         ),
-      ),
+        const Divider(height: 24),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4, right: 20, bottom: 10, left: 20),
+            child: MarkdownWidget(data: entry!.markdown, padding: EdgeInsets.zero),
+          ),
+        ),
+      ],
     );
   }
+
+  String _kindLabel(BuildContext context, DocumentEntryKind kind) => switch (kind) {
+    DocumentEntryKind.announcement => context.l10n.documentKindAnnouncement,
+    DocumentEntryKind.version => context.l10n.documentKindVersion,
+  };
+
+  IconData _kindIcon(DocumentEntryKind kind) => switch (kind) {
+    DocumentEntryKind.announcement => Icons.campaign_outlined,
+    DocumentEntryKind.version => Icons.new_releases_outlined,
+  };
 }
 
 class _DocumentEmptyState extends StatelessWidget {

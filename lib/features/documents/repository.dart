@@ -1,6 +1,8 @@
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter/foundation.dart" show FlutterError;
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -111,8 +113,32 @@ class DocumentRepository {
       return DocumentStorage.cachedBody(entry.id, localeCode) ?? localization.summary;
     }
     if (localization.bodyAssetPath case final bodyAssetPath?) {
-      return rootBundle.loadString(bodyAssetPath);
+      return _loadBundledMarkdown(
+        entryId: entry.id,
+        localeCode: localeCode,
+        bodyAssetPath: bodyAssetPath,
+        fallbackMarkdown: localization.summary,
+      );
     }
     return localization.summary;
+  }
+
+  Future<String> _loadBundledMarkdown({
+    required String entryId,
+    required String localeCode,
+    required String bodyAssetPath,
+    required String fallbackMarkdown,
+  }) async {
+    try {
+      return await rootBundle.loadString(bodyAssetPath);
+    } on FlutterError catch (exception, stackTrace) {
+      warning(
+        "Failed to load bundled document asset '$bodyAssetPath' for '$entryId' "
+        "($localeCode): $exception; "
+        "falling back to summary.",
+        stackTrace: stackTrace,
+      );
+      return fallbackMarkdown;
+    }
   }
 }
