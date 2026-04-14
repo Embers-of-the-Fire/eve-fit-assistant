@@ -1,3 +1,12 @@
+---
+id: announcement-welcome-1-0-0
+kind: announcement
+publishedAt: 2026-04-14T00:00:00Z
+tags:
+  - announcement
+  - welcome
+---
+
 # 欢迎使用文档中心
 
 本次更新为公告和版本说明提供了专用入口。

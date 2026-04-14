@@ -1,3 +1,7 @@
+---
+id: announcement-welcome-1-0-0
+---
+
 # Welcome to the document center
 
 This release adds a dedicated place for announcements and version notes.

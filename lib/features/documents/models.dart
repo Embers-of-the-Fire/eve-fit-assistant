@@ -39,8 +39,9 @@ abstract class DocumentEntry with _$DocumentEntry {
     required DocumentEntrySource source,
     required DateTime publishedAt,
     required Map<String, DocumentLocalization> localizations,
-    @Default(0) int priority,
-    String? appVersion,
+    @Default(<String>[]) List<String> tags,
+    String? minAppVer,
+    String? appVer,
   }) = _DocumentEntry;
 
   factory DocumentEntry.fromJson(Map<String, dynamic> json) => _$DocumentEntryFromJson(json);
@@ -89,9 +90,10 @@ abstract class DocumentRecord with _$DocumentRecord {
     required String summary,
     required String markdown,
     required DateTime publishedAt,
-    required int priority,
     required String localeCode,
-    String? appVersion,
+    @Default(<String>[]) List<String> tags,
+    String? minAppVer,
+    String? appVer,
   }) = _DocumentRecord;
 
   factory DocumentRecord.fromJson(Map<String, dynamic> json) => _$DocumentRecordFromJson(json);

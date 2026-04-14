@@ -6,7 +6,7 @@ import "package:flutter/foundation.dart" show FlutterError;
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
-const String _bundledCatalogAssetPath = "assets/content/documents/index.json";
+const String _bundledCatalogAssetPath = "assets/content/documents/generated/index.json";
 
 final documentRepositoryProvider = Provider<DocumentRepository>(
   (Ref ref) => const DocumentRepository(),
@@ -62,9 +62,10 @@ class DocumentRepository {
           summary: localization.summary,
           markdown: markdown,
           publishedAt: entry.publishedAt,
-          priority: entry.priority,
           localeCode: resolvedLocalization.localeCode,
-          appVersion: entry.appVersion,
+          tags: entry.tags,
+          minAppVer: entry.minAppVer,
+          appVer: entry.appVer,
         ),
       );
     }
@@ -73,10 +74,6 @@ class DocumentRepository {
       final publishedAtCompare = right.publishedAt.compareTo(left.publishedAt);
       if (publishedAtCompare != 0) {
         return publishedAtCompare;
-      }
-      final priorityCompare = right.priority.compareTo(left.priority);
-      if (priorityCompare != 0) {
-        return priorityCompare;
       }
       return left.title.compareTo(right.title);
     });

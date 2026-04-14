@@ -102,8 +102,7 @@ flutter:
   assets:
     - assets/images/icons/
     - assets/content/documents/
-    - assets/content/documents/zh/
-    - assets/content/documents/en/
+    - assets/content/documents/generated/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

@@ -13,8 +13,29 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _build_variable_name(any_file: Path, used_names: set[str], root: Path) -> str:
+    relative_parts = any_file.relative_to(root).with_suffix("").parts
+    candidate_parts = [relative_parts[-1]]
+    variable_name = camelcase("-".join(candidate_parts))
+
+    for part in reversed(relative_parts[:-1]):
+        if variable_name not in used_names:
+            break
+        candidate_parts.insert(0, part)
+        variable_name = camelcase("-".join(candidate_parts))
+
+    if variable_name in used_names:
+        message = f"Duplicate asset variable name for '{any_file}'"
+        raise ValueError(message)
+
+    used_names.add(variable_name)
+    return variable_name
+
+
 def codegen_dart() -> list[Path]:
     assets_dir = PROJECT_ROOT
+    asset_names: set[str] = set()
+    image_names: set[str] = set()
 
     with ASSETS_OUT_PATH.open("w", encoding="utf-8") as f:
         f.write(
@@ -28,7 +49,7 @@ def codegen_dart() -> list[Path]:
         for any_file in ASSETS_ROOT.rglob("*"):
             if any_file.is_file():
                 relative_path = any_file.relative_to(assets_dir).as_posix()
-                variable_name = camelcase(any_file.stem)
+                variable_name = _build_variable_name(any_file, asset_names, ASSETS_ROOT)
                 f.write(
                     f'  static const BundleKey {variable_name} = BundleKey("{relative_path}");\n'
                 )
@@ -40,7 +61,7 @@ def codegen_dart() -> list[Path]:
         for any_file in (ASSETS_ROOT / "images").rglob("*"):
             if any_file.is_file():
                 relative_path = any_file.relative_to(assets_dir).as_posix()
-                variable_name = camelcase(any_file.stem)
+                variable_name = _build_variable_name(any_file, image_names, ASSETS_ROOT / "images")
                 f.write(
                     f"  static const ImageProvider {variable_name} ="
                     f' AssetImage("{relative_path}");\n'

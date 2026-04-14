@@ -207,9 +207,9 @@ class _DocumentListCard extends StatelessWidget {
                     label: _kindLabel(context, entry.kind),
                     icon: _kindIcon(entry.kind),
                   ),
-                  if (entry.appVersion != null)
+                  if (entry.appVer != null)
                     _DocumentBadge(
-                      label: context.l10n.documentVersionBadge(version: entry.appVersion!),
+                      label: context.l10n.documentVersionBadge(version: entry.appVer!),
                       icon: Icons.sell_outlined,
                     ),
                   _DocumentBadge(label: dateText, icon: Icons.event_outlined),
@@ -321,9 +321,9 @@ class _DocumentDetailPane extends StatelessWidget {
                     label: _kindLabel(context, entry!.kind),
                     icon: _kindIcon(entry!.kind),
                   ),
-                  if (entry!.appVersion != null)
+                  if (entry!.appVer != null)
                     _DocumentBadge(
-                      label: context.l10n.documentVersionBadge(version: entry!.appVersion!),
+                      label: context.l10n.documentVersionBadge(version: entry!.appVer!),
                       icon: Icons.sell_outlined,
                     ),
                 ],
