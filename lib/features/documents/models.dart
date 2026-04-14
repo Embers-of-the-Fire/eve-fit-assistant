@@ -48,7 +48,7 @@ abstract class DocumentEntry with _$DocumentEntry {
   const DocumentEntry._();
 
   ({String localeCode, DocumentLocalization localization})? resolveLocalization(String localeCode) {
-    final normalizedCode = localeCode.toLowerCase();
+    final normalizedCode = localeCode.toLowerCase().replaceAll("-", "_");
     final languageCode = normalizedCode.split("_").first;
     final resolvedLocaleCode = switch (normalizedCode) {
       final code when localizations.containsKey(code) => code,
