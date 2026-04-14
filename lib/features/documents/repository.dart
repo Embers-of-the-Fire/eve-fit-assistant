@@ -1,0 +1,117 @@
+import "package:eve_fit_assistant/features/documents/models.dart";
+import "package:eve_fit_assistant/features/documents/storage.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter/services.dart" show rootBundle;
+import "package:flutter_riverpod/flutter_riverpod.dart";
+
+const String _bundledCatalogAssetPath = "assets/content/documents/index.json";
+
+final documentRepositoryProvider = Provider<DocumentRepository>(
+  (Ref ref) => const DocumentRepository(),
+);
+
+final documentFeedProvider = FutureProvider.family<List<DocumentRecord>, DocumentFeedKind>((
+  Ref ref,
+  DocumentFeedKind feedKind,
+) async {
+  final locale = ref.watch(localeProvider);
+  final repository = ref.watch(documentRepositoryProvider);
+  return repository.loadFeed(feedKind: feedKind, localeCode: locale.name);
+});
+
+class DocumentRepository {
+  const DocumentRepository();
+
+  Future<List<DocumentRecord>> loadFeed({
+    required DocumentFeedKind feedKind,
+    required String localeCode,
+  }) async {
+    final bundledCatalog = await _loadBundledCatalog();
+    final mergedEntries = _mergeEntries(
+      bundledEntries: bundledCatalog.entries,
+      remoteEntries: DocumentStorage.remoteCatalog.entries,
+    );
+
+    final filteredEntries = mergedEntries.where(
+      (DocumentEntry entry) => switch (feedKind) {
+        DocumentFeedKind.mixed => true,
+        DocumentFeedKind.version => entry.kind == DocumentEntryKind.version,
+      },
+    );
+
+    final records = <DocumentRecord>[];
+    for (final entry in filteredEntries) {
+      final localization = entry.resolveLocalization(localeCode);
+      if (localization == null) {
+        continue;
+      }
+      final markdown = await _loadMarkdown(
+        entry: entry,
+        localization: localization,
+        localeCode: localeCode,
+      );
+      records.add(
+        DocumentRecord(
+          id: entry.id,
+          kind: entry.kind,
+          source: entry.source,
+          title: localization.title,
+          summary: localization.summary,
+          markdown: markdown,
+          publishedAt: entry.publishedAt,
+          priority: entry.priority,
+          localeCode: localeCode,
+          appVersion: entry.appVersion,
+        ),
+      );
+    }
+
+    records.sort((DocumentRecord left, DocumentRecord right) {
+      final publishedAtCompare = right.publishedAt.compareTo(left.publishedAt);
+      if (publishedAtCompare != 0) {
+        return publishedAtCompare;
+      }
+      final priorityCompare = right.priority.compareTo(left.priority);
+      if (priorityCompare != 0) {
+        return priorityCompare;
+      }
+      return left.title.compareTo(right.title);
+    });
+    return records;
+  }
+
+  Future<DocumentCatalog> _loadBundledCatalog() async {
+    final text = await rootBundle.loadString(_bundledCatalogAssetPath);
+    return DocumentCatalog.fromJsonText(text);
+  }
+
+  List<DocumentEntry> _mergeEntries({
+    required List<DocumentEntry> bundledEntries,
+    required List<DocumentEntry> remoteEntries,
+  }) {
+    final entriesById = <String, DocumentEntry>{
+      for (final entry in bundledEntries) entry.id: entry,
+    };
+    for (final entry in remoteEntries) {
+      entriesById[entry.id] = entry;
+    }
+    return entriesById.values.toList(growable: false);
+  }
+
+  Future<String> _loadMarkdown({
+    required DocumentEntry entry,
+    required DocumentLocalization localization,
+    required String localeCode,
+  }) async {
+    if (localization.bodyMarkdown case final markdown?) {
+      return markdown;
+    }
+    if (entry.source == DocumentEntrySource.remote) {
+      return DocumentStorage.cachedBody(entry.id, localeCode) ?? localization.summary;
+    }
+    if (localization.bodyAssetPath case final bodyAssetPath?) {
+      return rootBundle.loadString(bodyAssetPath);
+    }
+    return localization.summary;
+  }
+}

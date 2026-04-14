@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "announcement-welcome-1-0-0",
+      "kind": "announcement",
+      "source": "bundled",
+      "publishedAt": "2026-04-14T00:00:00Z",
+      "priority": 100,
+      "localizations": {
+        "en": {
+          "title": "Welcome to the document center",
+          "summary": "Announcements now support bundled defaults, and the app is ready for future online updates.",
+          "bodyAssetPath": "assets/content/documents/en/announcement-welcome-1-0-0.md"
+        },
+        "zh": {
+          "title": "欢迎使用文档中心",
+          "summary": "公告现在支持随应用内置的默认内容，并为未来在线更新预留了空间。",
+          "bodyAssetPath": "assets/content/documents/zh/announcement-welcome-1-0-0.md"
+        }
+      }
+    },
+    {
+      "id": "version-1-0-0",
+      "kind": "version",
+      "source": "bundled",
+      "publishedAt": "2026-04-14T00:00:00Z",
+      "priority": 90,
+      "appVersion": "1.0.0",
+      "localizations": {
+        "en": {
+          "title": "Version 1.0.0",
+          "summary": "Initial bundled release notes for the new version page and shared announcement viewer.",
+          "bodyAssetPath": "assets/content/documents/en/version-1-0-0.md"
+        },
+        "zh": {
+          "title": "版本 1.0.0",
+          "summary": "用于新版版本页面和共享公告查看器的首批内置更新说明。",
+          "bodyAssetPath": "assets/content/documents/zh/version-1-0-0.md"
+        }
+      }
+    }
+  ]
+}
