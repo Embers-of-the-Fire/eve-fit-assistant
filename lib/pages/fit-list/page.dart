@@ -5,6 +5,8 @@ import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/fit/compatibility.dart";
+import "package:eve_fit_assistant/storage/fit/compatibility_notice.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -79,6 +81,8 @@ class _FitListTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final typeInfo = ref.watch(bundleCollectionGetTypeProvider(metadata.shipTypeId));
+    final compatibility = ref.watch(fitBundleCompatibilityProvider(metadata.fitId));
+    final compatibilityNotice = localizeFitBundleCompatibility(context.l10n, compatibility);
     final metaGroupIcon = typeInfo == null
         ? null
         : ref.watch(
@@ -133,9 +137,27 @@ class _FitListTile extends ConsumerWidget {
             ? const Icon(Icons.help_outline)
             : EveIcon(icon: typeInfo.icon, overlayIcon: metaGroupIcon),
         title: Text(metadata.name),
+        trailing: compatibilityNotice == null
+            ? null
+            : Tooltip(
+                message: compatibilityNotice.message,
+                child: Icon(Icons.warning_amber_rounded, color: context.theme.colorScheme.tertiary),
+              ),
         subtitle: Row(
           children: [
             Expanded(child: TypeNameText(typeId: metadata.shipTypeId)),
+            if (compatibilityNotice != null) ...[
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  compatibilityNotice.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.theme.textTheme.bodySmall?.copyWith(
+                    color: context.theme.colorScheme.tertiary,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(width: 12),
             Text(lastModified),
           ],

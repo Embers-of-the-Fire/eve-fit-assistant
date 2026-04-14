@@ -132,6 +132,7 @@ class FitTextImporter {
         lastModified: 0,
         description: "",
         bundleId: "",
+        bundleSnapshot: const FitBundleSnapshot(bundleId: ""),
       ),
       ship,
     );

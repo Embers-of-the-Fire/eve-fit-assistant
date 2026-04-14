@@ -117,7 +117,7 @@ class FitManager extends _$FitManager {
     }
     info("Creating new fit of type $shipId named $name");
     final fitId = generateFitId();
-    final bundleInfo = ref.watch(currentBundleProvider.select((t) => t?.metadata));
+    final bundleInfo = ref.watch(currentBundleProvider);
     if (bundleInfo == null) {
       throw StateError("A valid bundle must be active before creating a fit.");
     }
@@ -128,6 +128,7 @@ class FitManager extends _$FitManager {
       lastModified: DateTime.now().millisecondsSinceEpoch,
       description: "",
       bundleId: bundleInfo.bundleId,
+      bundleSnapshot: FitBundleSnapshot.fromBundleMetadata(bundleInfo),
     );
     final fit = FitStorage.empty(metadata, ship);
     final fitPath = fit.fitStoragePath;
@@ -175,7 +176,7 @@ class FitManager extends _$FitManager {
       throw Exception(text);
     }
 
-    final bundleInfo = ref.watch(currentBundleProvider.select((t) => t?.metadata));
+    final bundleInfo = ref.watch(currentBundleProvider);
     if (bundleInfo == null) {
       throw StateError("A valid bundle must be active before importing a fit.");
     }
@@ -189,6 +190,7 @@ class FitManager extends _$FitManager {
           : importedFit.metadata.name.trim(),
       lastModified: DateTime.now().millisecondsSinceEpoch,
       bundleId: bundleInfo.bundleId,
+      bundleSnapshot: FitBundleSnapshot.fromBundleMetadata(bundleInfo),
     );
     final fit = pruneDynamicRegistry(importedFit.copyWith(metadata: metadata));
 
