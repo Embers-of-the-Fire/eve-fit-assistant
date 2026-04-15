@@ -9,11 +9,11 @@ enum DocumentEntryKind { announcement, version }
 
 enum DocumentEntrySource { bundled, remote }
 
-enum DocumentFeedKind { mixed, version }
+enum DocumentFeedKind { announcement, version }
 
 extension DocumentFeedKindStorageKey on DocumentFeedKind {
   String get storageKey => switch (this) {
-    DocumentFeedKind.mixed => "mixed",
+    DocumentFeedKind.announcement => "mixed",
     DocumentFeedKind.version => "version",
   };
 }

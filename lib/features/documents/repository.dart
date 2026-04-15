@@ -36,7 +36,7 @@ class DocumentRepository {
 
     final filteredEntries = mergedEntries.where(
       (DocumentEntry entry) => switch (feedKind) {
-        DocumentFeedKind.mixed => true,
+        DocumentFeedKind.announcement => entry.kind == DocumentEntryKind.announcement,
         DocumentFeedKind.version => entry.kind == DocumentEntryKind.version,
       },
     );

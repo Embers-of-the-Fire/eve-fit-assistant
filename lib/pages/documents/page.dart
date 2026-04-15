@@ -16,7 +16,8 @@ class AnnouncementPage extends StatelessWidget {
   const AnnouncementPage({super.key});
 
   @override
-  Widget build(BuildContext context) => const _DocumentHubPage(feedKind: DocumentFeedKind.mixed);
+  Widget build(BuildContext context) =>
+      const _DocumentHubPage(feedKind: DocumentFeedKind.announcement);
 }
 
 @RoutePage()
@@ -102,14 +103,14 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
   String _appBarTitle(BuildContext context, List<DocumentRecord>? entries, bool splitLayout) {
     if (splitLayout || _selectedDocumentId == null || entries == null) {
       return switch (widget.feedKind) {
-        DocumentFeedKind.mixed => context.l10n.documentAnnouncementPageTitle,
+        DocumentFeedKind.announcement => context.l10n.documentAnnouncementPageTitle,
         DocumentFeedKind.version => context.l10n.documentVersionPageTitle,
       };
     }
     final selectedEntry = entries.firstWhereOrNull((entry) => entry.id == _selectedDocumentId);
     return selectedEntry?.title ??
         switch (widget.feedKind) {
-          DocumentFeedKind.mixed => context.l10n.documentAnnouncementPageTitle,
+          DocumentFeedKind.announcement => context.l10n.documentAnnouncementPageTitle,
           DocumentFeedKind.version => context.l10n.documentVersionPageTitle,
         };
   }
@@ -365,7 +366,7 @@ class _DocumentEmptyState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             switch (feedKind) {
-              .mixed => context.l10n.documentAnnouncementEmptyTitle,
+              .announcement => context.l10n.documentAnnouncementEmptyTitle,
               .version => context.l10n.documentVersionEmptyTitle,
             },
             style: context.theme.textTheme.titleMedium,
