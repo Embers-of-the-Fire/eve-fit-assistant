@@ -205,8 +205,8 @@ class _DocumentListCard extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   _DocumentBadge(
-                    label: _kindLabel(context, entry.kind),
-                    icon: _kindIcon(entry.kind),
+                    label: _documentKindLabel(context, entry.kind),
+                    icon: _documentKindIcon(entry.kind),
                   ),
                   if (entry.appVer != null)
                     _DocumentBadge(
@@ -231,17 +231,17 @@ class _DocumentListCard extends StatelessWidget {
       ),
     );
   }
-
-  String _kindLabel(BuildContext context, DocumentEntryKind kind) => switch (kind) {
-    DocumentEntryKind.announcement => context.l10n.documentKindAnnouncement,
-    DocumentEntryKind.version => context.l10n.documentKindVersion,
-  };
-
-  IconData _kindIcon(DocumentEntryKind kind) => switch (kind) {
-    DocumentEntryKind.announcement => Icons.campaign_outlined,
-    DocumentEntryKind.version => Icons.new_releases_outlined,
-  };
 }
+
+String _documentKindLabel(BuildContext context, DocumentEntryKind kind) => switch (kind) {
+  DocumentEntryKind.announcement => context.l10n.documentKindAnnouncement,
+  DocumentEntryKind.version => context.l10n.documentKindVersion,
+};
+
+IconData _documentKindIcon(DocumentEntryKind kind) => switch (kind) {
+  DocumentEntryKind.announcement => Icons.campaign_outlined,
+  DocumentEntryKind.version => Icons.new_releases_outlined,
+};
 
 class _DocumentBadge extends StatelessWidget {
   const _DocumentBadge({required this.label, required this.icon});
@@ -320,8 +320,8 @@ class _DocumentDetailPane extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   _DocumentBadge(
-                    label: _kindLabel(context, entry!.kind),
-                    icon: _kindIcon(entry!.kind),
+                    label: _documentKindLabel(context, entry!.kind),
+                    icon: _documentKindIcon(entry!.kind),
                   ),
                   if (entry!.appVer != null)
                     _DocumentBadge(
@@ -347,16 +347,6 @@ class _DocumentDetailPane extends StatelessWidget {
       ],
     );
   }
-
-  String _kindLabel(BuildContext context, DocumentEntryKind kind) => switch (kind) {
-    DocumentEntryKind.announcement => context.l10n.documentKindAnnouncement,
-    DocumentEntryKind.version => context.l10n.documentKindVersion,
-  };
-
-  IconData _kindIcon(DocumentEntryKind kind) => switch (kind) {
-    DocumentEntryKind.announcement => Icons.campaign_outlined,
-    DocumentEntryKind.version => Icons.new_releases_outlined,
-  };
 }
 
 class _DocumentEmptyState extends StatelessWidget {
