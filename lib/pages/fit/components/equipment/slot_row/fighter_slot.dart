@@ -69,18 +69,26 @@ class _FighterSlotRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final storedFighter = fitContext.fit.body.fighters.getOrNull(slotIdent.index);
     if (storedFighter == null) {
-      return ListTile(title: Text("Unknown Fighter at slot ${slotInfo.index}"));
+      return ListTile(title: Text(context.l10n.fitUnknownFighterAtSlot(slot: slotInfo.index)));
     }
 
     final itemId = slotInfo.slot.itemId;
     final displayTypeId = fitContext.resolveDisplayTypeId(itemId);
     if (displayTypeId == null) {
-      return ListTile(title: Text("Unknown Fighter ${itemId.asId} at slot ${slotInfo.index}"));
+      return ListTile(
+        title: Text(
+          context.l10n.fitUnknownFighterWithIdAtSlot(itemId: itemId.asId, slot: slotInfo.index),
+        ),
+      );
     }
 
     final typeDef = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
     if (typeDef == null) {
-      return ListTile(title: Text("Unknown Fighter $displayTypeId at slot ${slotInfo.index}"));
+      return ListTile(
+        title: Text(
+          context.l10n.fitUnknownFighterWithIdAtSlot(itemId: displayTypeId, slot: slotInfo.index),
+        ),
+      );
     }
 
     final metaGroupIcon = ref.watch(

@@ -99,9 +99,10 @@ class ItemDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
     if (type == null) {
+      final unavailable = context.l10n.fallbackTypeUnavailable(typeId: typeId);
       return Layout(
-        title: "Type $typeId",
-        child: Center(child: Text("Unknown Type[$typeId]")),
+        title: unavailable,
+        child: Center(child: Text(unavailable)),
       );
     }
 

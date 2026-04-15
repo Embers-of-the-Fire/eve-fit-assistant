@@ -85,13 +85,22 @@ class _SlotRow extends ConsumerWidget {
         final displayTypeId = fitContext.resolveDisplayTypeId(slotInfo.slot.itemId);
         if (displayTypeId == null) {
           return ListTile(
-            title: Text("Unknown Item ${slotInfo.slot.itemId.asId} at slot ${slotInfo.index}"),
+            title: Text(
+              context.l10n.fitUnknownItemWithIdAtSlot(
+                itemId: slotInfo.slot.itemId.asId,
+                slot: slotInfo.index,
+              ),
+            ),
           );
         }
 
         final type = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
         if (type == null) {
-          return ListTile(title: Text("Unknown Item $displayTypeId at slot ${slotInfo.index}"));
+          return ListTile(
+            title: Text(
+              context.l10n.fitUnknownItemWithIdAtSlot(itemId: displayTypeId, slot: slotInfo.index),
+            ),
+          );
         }
 
         final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));
@@ -418,7 +427,9 @@ class _DynamicModifierDialog extends ConsumerWidget {
         final modifierTypeId = modifierTypeIds[index];
         final type = ref.watch(bundleCollectionGetTypeProvider(modifierTypeId));
         if (type == null) {
-          return ListTile(title: Text("Unknown Type $modifierTypeId"));
+          return ListTile(
+            title: Text(context.l10n.fallbackTypeUnavailable(typeId: modifierTypeId)),
+          );
         }
 
         final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));

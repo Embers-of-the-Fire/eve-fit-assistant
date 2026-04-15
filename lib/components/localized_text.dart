@@ -1,6 +1,7 @@
 import "package:eve_fit_assistant/data/proto/utils.pb.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -39,7 +40,7 @@ class LocalizedTypeName extends ConsumerWidget {
       bundleCollectionGetTypeProvider(typeId).select((t) => t?.typeName),
     );
     if (typeNameId == null) {
-      return Text("Unknown Type[$typeId]", textAlign: textAlign);
+      return Text(context.l10n.fallbackTypeUnavailable(typeId: typeId), textAlign: textAlign);
     }
     return LocalizedText(localizationKey: typeNameId, textAlign: textAlign);
   }

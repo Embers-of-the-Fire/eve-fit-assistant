@@ -1,6 +1,7 @@
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -26,7 +27,7 @@ class GroupListTile extends ConsumerWidget {
     final groupInfo = ref.watch(bundleCollectionGetGroupProvider(groupId));
 
     if (groupInfo == null) {
-      return ListTile(title: Text("Unknown Group[$groupId]"));
+      return ListTile(title: Text(context.l10n.fallbackGroupUnavailable(groupId: groupId)));
     }
 
     return ListTile(
@@ -51,7 +52,7 @@ class GroupNameText extends ConsumerWidget {
       bundleCollectionGetGroupProvider(groupId).select((t) => t?.groupName),
     );
     if (groupNameId == null) {
-      return Text("Unknown Group[$groupId]");
+      return Text(context.l10n.fallbackGroupUnavailable(groupId: groupId));
     }
     return LocalizedText(localizationKey: groupNameId);
   }
@@ -78,7 +79,9 @@ class CategoryListTile extends ConsumerWidget {
     final categoryInfo = ref.watch(bundleCollectionGetCategoryProvider(categoryId));
 
     if (categoryInfo == null) {
-      return ListTile(title: Text("Unknown Category[$categoryId]"));
+      return ListTile(
+        title: Text(context.l10n.fallbackCategoryUnavailable(categoryId: categoryId)),
+      );
     }
 
     return ListTile(
@@ -103,7 +106,7 @@ class CategoryNameText extends ConsumerWidget {
       bundleCollectionGetCategoryProvider(categoryId).select((t) => t?.categoryName),
     );
     if (categoryNameId == null) {
-      return Text("Unknown Category[$categoryId]");
+      return Text(context.l10n.fallbackCategoryUnavailable(categoryId: categoryId));
     }
     return LocalizedText(localizationKey: categoryNameId);
   }
@@ -130,7 +133,9 @@ class MarketGroupListTile extends ConsumerWidget {
     final marketGroupInfo = ref.watch(bundleCollectionGetMarketGroupProvider(marketGroupId));
 
     if (marketGroupInfo == null) {
-      return ListTile(title: Text("Unknown Market Group[$marketGroupId]"));
+      return ListTile(
+        title: Text(context.l10n.fallbackMarketGroupUnavailable(marketGroupId: marketGroupId)),
+      );
     }
 
     return ListTile(
@@ -159,7 +164,7 @@ class MarketGroupNameText extends ConsumerWidget {
       bundleCollectionGetMarketGroupProvider(marketGroupId).select((t) => t?.marketGroupName),
     );
     if (marketGroupNameId == null) {
-      return Text("Unknown Market Group[$marketGroupId]");
+      return Text(context.l10n.fallbackMarketGroupUnavailable(marketGroupId: marketGroupId));
     }
     return LocalizedText(localizationKey: marketGroupNameId);
   }
@@ -188,7 +193,7 @@ class TypeListTile extends ConsumerWidget {
     final typeInfo = ref.watch(bundleCollectionGetTypeProvider(typeId));
 
     if (typeInfo == null) {
-      return ListTile(title: Text("Unknown Type[$typeId]"));
+      return ListTile(title: Text(context.l10n.fallbackTypeUnavailable(typeId: typeId)));
     }
     final metaGroupIcon = ref.watch(
       bundleCollectionGetMetaGroupProvider(typeInfo.metaGroupId).select((t) => t?.icon),
@@ -219,7 +224,7 @@ class TypeNameText extends ConsumerWidget {
       bundleCollectionGetTypeProvider(typeId).select((t) => t?.typeName),
     );
     if (typeNameId == null) {
-      return Text("Unknown Type[$typeId]");
+      return Text(context.l10n.fallbackTypeUnavailable(typeId: typeId), textAlign: textAlign);
     }
     return LocalizedText(localizationKey: typeNameId, textAlign: textAlign);
   }

@@ -50,7 +50,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
       return _buildRecoveryRow(
         context,
         ref,
-        "Unknown Subsystem ${itemId.asId} at slot ${slotInfo.index}",
+        context.l10n.fitUnknownSubsystemWithIdAtSlot(itemId: itemId.asId, slot: slotInfo.index),
       );
     }
 
@@ -59,7 +59,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
       return _buildRecoveryRow(
         context,
         ref,
-        "Unknown Subsystem $originTypeId at slot ${slotInfo.index}",
+        context.l10n.fitUnknownSubsystemWithIdAtSlot(itemId: originTypeId, slot: slotInfo.index),
       );
     }
 

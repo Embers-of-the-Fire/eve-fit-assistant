@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:file_picker/file_picker.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -51,15 +52,15 @@ class CharacterPage extends ConsumerWidget {
                           (await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
-                              content: const Text("Overwrite?"),
+                              content: Text(context.l10n.bundleImportOverwriteTitle),
                               actions: [
                                 ElevatedButton(
                                   onPressed: () => Navigator.of(context).pop(false),
-                                  child: const Text("No"),
+                                  child: Text(context.l10n.cancel),
                                 ),
                                 ElevatedButton(
                                   onPressed: () => Navigator.of(context).pop(true),
-                                  child: const Text("Yes"),
+                                  child: Text(context.l10n.confirm),
                                 ),
                               ],
                             ),

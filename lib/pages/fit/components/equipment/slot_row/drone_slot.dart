@@ -109,7 +109,7 @@ class _DroneSlotRow extends ConsumerWidget {
       return _buildRecoveryRow(
         context,
         ref,
-        "Unknown Item ${itemId.asId} at slot ${slotInfo.index}",
+        context.l10n.fitUnknownItemWithIdAtSlot(itemId: itemId.asId, slot: slotInfo.index),
       );
     }
 
@@ -118,7 +118,7 @@ class _DroneSlotRow extends ConsumerWidget {
       return _buildRecoveryRow(
         context,
         ref,
-        "Unknown Item $displayTypeId at slot ${slotInfo.index}",
+        context.l10n.fitUnknownItemWithIdAtSlot(itemId: displayTypeId, slot: slotInfo.index),
       );
     }
 
