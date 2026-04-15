@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -22,6 +23,7 @@ class FitBundleCompatibility {
     required this.reason,
     required this.savedSnapshot,
     required this.activeSnapshot,
+    required this.savedBundleInstalled,
   });
 
   const FitBundleCompatibility.compatible({
@@ -32,12 +34,14 @@ class FitBundleCompatibility {
          reason: FitBundleCompatibilityReason.none,
          savedSnapshot: savedSnapshot,
          activeSnapshot: activeSnapshot,
+         savedBundleInstalled: true,
        );
 
   final FitBundleCompatibilityKind kind;
   final FitBundleCompatibilityReason reason;
   final FitBundleSnapshot savedSnapshot;
   final FitBundleSnapshot? activeSnapshot;
+  final bool savedBundleInstalled;
 
   bool get allowsEditing => kind == FitBundleCompatibilityKind.compatible;
   bool get requiresAttention => kind != FitBundleCompatibilityKind.compatible;
@@ -45,8 +49,9 @@ class FitBundleCompatibility {
 
 FitBundleCompatibility evaluateFitBundleCompatibility(
   FitMetadata metadata,
-  BundleMetadata? activeBundle,
-) {
+  BundleMetadata? activeBundle, {
+  required bool savedBundleInstalled,
+}) {
   final savedSnapshot = metadata.bundleSnapshot;
   if (activeBundle == null) {
     return FitBundleCompatibility(
@@ -54,6 +59,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
       reason: FitBundleCompatibilityReason.activeBundleUnavailable,
       savedSnapshot: savedSnapshot,
       activeSnapshot: null,
+      savedBundleInstalled: savedBundleInstalled,
     );
   }
 
@@ -64,6 +70,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
       reason: FitBundleCompatibilityReason.bundleIdMismatch,
       savedSnapshot: savedSnapshot,
       activeSnapshot: activeSnapshot,
+      savedBundleInstalled: savedBundleInstalled,
     );
   }
 
@@ -73,6 +80,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
       reason: FitBundleCompatibilityReason.missingComparableRevision,
       savedSnapshot: savedSnapshot,
       activeSnapshot: activeSnapshot,
+      savedBundleInstalled: savedBundleInstalled,
     );
   }
 
@@ -82,6 +90,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
       reason: FitBundleCompatibilityReason.missingComparableRevision,
       savedSnapshot: savedSnapshot,
       activeSnapshot: activeSnapshot,
+      savedBundleInstalled: savedBundleInstalled,
     );
   }
 
@@ -93,6 +102,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
         reason: FitBundleCompatibilityReason.manifestMismatch,
         savedSnapshot: savedSnapshot,
         activeSnapshot: activeSnapshot,
+        savedBundleInstalled: savedBundleInstalled,
       );
     }
   }
@@ -105,6 +115,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
         reason: FitBundleCompatibilityReason.generationMismatch,
         savedSnapshot: savedSnapshot,
         activeSnapshot: activeSnapshot,
+        savedBundleInstalled: savedBundleInstalled,
       );
     }
   }
@@ -117,6 +128,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
         reason: FitBundleCompatibilityReason.buildMismatch,
         savedSnapshot: savedSnapshot,
         activeSnapshot: activeSnapshot,
+        savedBundleInstalled: savedBundleInstalled,
       );
     }
   }
@@ -129,6 +141,7 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
         reason: FitBundleCompatibilityReason.appVersionMismatch,
         savedSnapshot: savedSnapshot,
         activeSnapshot: activeSnapshot,
+        savedBundleInstalled: savedBundleInstalled,
       );
     }
   }
@@ -149,5 +162,14 @@ final fitBundleCompatibilityProvider = Provider.family<FitBundleCompatibility?, 
   }
 
   final activeBundle = ref.watch(currentBundleProvider);
-  return evaluateFitBundleCompatibility(metadata, activeBundle);
+  final savedBundleInstalled = ref.watch(
+    bundleRegistryManagerProvider.select(
+      (registry) => registry.bundles.containsKey(metadata.bundleSnapshot.bundleId),
+    ),
+  );
+  return evaluateFitBundleCompatibility(
+    metadata,
+    activeBundle,
+    savedBundleInstalled: savedBundleInstalled,
+  );
 });
