@@ -21,7 +21,6 @@ class WorkspacePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Example items to demonstrate localization and different iconography
     final items = <_WorkspaceShortcutItem>[
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabActionCreateFitName,
@@ -40,15 +39,16 @@ class WorkspacePage extends ConsumerWidget {
         icon: Icons.campaign_outlined,
         onTap: () => context.router.push(const AnnouncementRoute()),
       ),
-      _WorkspaceShortcutItem(title: "设置", icon: Icons.settings, onTap: () {}),
-      _WorkspaceShortcutItem(title: "Workspace", icon: Icons.workspaces, onTap: () {}),
-      _WorkspaceShortcutItem(title: "工作区", icon: Icons.workspace_premium, onTap: () {}),
-      _WorkspaceShortcutItem(title: "Files", icon: Icons.folder, onTap: () {}),
-      _WorkspaceShortcutItem(title: "文件", icon: Icons.folder_open, onTap: () {}),
-      _WorkspaceShortcutItem(title: "Analytics", icon: Icons.show_chart, onTap: () {}),
-      _WorkspaceShortcutItem(title: "分析", icon: Icons.bar_chart, onTap: () {}),
-      _WorkspaceShortcutItem(title: "Tools", icon: Icons.build, onTap: () {}),
-      _WorkspaceShortcutItem(title: "工具", icon: Icons.construction, onTap: () {}),
+      _WorkspaceShortcutItem(
+        title: context.l10n.settingTileBundleManagerTitle,
+        icon: Icons.archive_outlined,
+        onTap: () => context.router.push(const BundleManagerRoute()),
+      ),
+      _WorkspaceShortcutItem(
+        title: context.l10n.settingTileAppSettingsTitle,
+        icon: Icons.settings_outlined,
+        onTap: () => context.router.push(const AppSettingsRoute()),
+      ),
     ];
 
     return Padding(
