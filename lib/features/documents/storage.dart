@@ -77,7 +77,11 @@ class DocumentStorage {
     }
     try {
       final content = storageFile.readAsStringSync();
-      final state = DocumentStorageState.fromJson(jsonDecode(content) as Map<String, dynamic>);
+      final payload = jsonDecode(content);
+      if (payload is! Map<String, dynamic>) {
+        return DocumentStorageState.initial();
+      }
+      final state = DocumentStorageState.fromJson(payload);
       if (state.version != currentVersion) {
         return DocumentStorageState.initial();
       }
