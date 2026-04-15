@@ -1,7 +1,5 @@
 {
   "hello": "Hello",
-  "@_COMMON": {},
-  "@@_NO_FORMAT_PLAIN_TEXT": {},
   "delete": "Delete",
   "cancel": "Cancel",
   "ok": "Ok",
@@ -34,13 +32,10 @@
   "drone": "Drone",
   "fighter": "Fighter",
   "charge": "Charge",
-  "@_PAGE_TEXT": {},
-  "@@_FRONT_PAGE": {},
   "frontPageTitleWorkspace": "Workspaces",
   "frontPageTitleFitList": "Fits",
   "frontPageTitleCharacter": "Character",
   "frontPageTitleSetting": "Settings",
-  "@@@_WORKSPACE_TAB": {},
   "workspaceTabActionCreateFitName": "Create Fit",
   "bundleAccessRequiredTitle": "Bundle required",
   "bundleAccessNotSelectedDescription": "Fit creation and import stay disabled until you select an active data bundle.",
@@ -49,60 +44,14 @@
   "bundleAccessReadyDescription": "The active data bundle is ready.",
   "bundleAccessManageAction": "Open Bundle Manager",
   "startupPersistenceRepairSummary": "Recovered local storage: {details}.",
-  "@startupPersistenceRepairSummary": {
-    "placeholders": {
-      "details": {
-        "type": "String"
-      }
-    }
-  },
   "startupPersistenceRepairSummaryWithWarnings": "Recovered local storage: {details}. {unreadableCount} fit files still need manual cleanup.",
-  "@startupPersistenceRepairSummaryWithWarnings": {
-    "placeholders": {
-      "details": {
-        "type": "String"
-      },
-      "unreadableCount": {
-        "type": "int"
-      }
-    }
-  },
   "startupPersistenceRepairFoundUnreadableFits": "detected unreadable fit files",
   "startupPersistenceRepairRebuiltMetadata": "rewrote local metadata",
   "startupPersistenceRepairRemovedMissingFits": "removed {count} missing fits",
-  "@startupPersistenceRepairRemovedMissingFits": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "startupPersistenceRepairRestoredFits": "restored {count} saved fits",
-  "@startupPersistenceRepairRestoredFits": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "startupPersistenceRepairRemovedMissingBundles": "removed {count} missing bundle entries",
-  "@startupPersistenceRepairRemovedMissingBundles": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "startupPersistenceRepairRestoredBundles": "recovered {count} installed bundles",
-  "@startupPersistenceRepairRestoredBundles": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "startupPersistenceRepairUpdatedSelectedBundle": "updated the selected bundle",
-  "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "App Settings",
   "settingTileBundleManagerTitle": "Data Bundle",
   "settingTileVersionTitle": "Version",
@@ -120,31 +69,12 @@
   "documentKindVersion": "Version",
   "documentOpenHint": "Open to read",
   "documentVersionBadge": "App {version}",
-  "@documentVersionBadge": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
-  "@@@_FIT_CREATION_PAGE": {},
   "fitCreationPageTitle": "Create New Fit",
   "fitCreationPageDialogHint": "New Fit {count}",
   "fitCreationPageDialogErrorText": "Please enter fit name.",
   "fitCreationPageDialogDeleteFitTitle": "Delete Fit",
   "fitCreationPageDialogDeleteFitContent": "Are you sure you want to delete fit {fitName}?",
-  "@@@_FIT_PAGE": {},
   "fitPageTitle": "{fitName} - {shipName}",
-  "@fitPageTitle": {
-    "placeholders": {
-      "fitName": {
-        "type": "String"
-      },
-      "shipName": {
-        "type": "String"
-      }
-    }
-  },
   "fitPageUnavailableTitle": "Fit unavailable",
   "fitPageMissingMessage": "This fit could not be found.",
   "fitPageBrokenMessage": "This fit could not be loaded.",
@@ -155,16 +85,6 @@
   "fitBundleLegacyDescription": "This fit was saved before bundle revision tracking was available. You can inspect and export it, but editing stays disabled until it is reopened from a bundle with current compatibility metadata.",
   "fitBundleMismatchTitle": "Bundle mismatch",
   "fitBundleMismatchDescription": "This fit was saved against bundle {savedBundleId}, but the active bundle is {activeBundleId}. You can inspect and export it, but editing stays disabled.",
-  "@fitBundleMismatchDescription": {
-    "placeholders": {
-      "savedBundleId": {
-        "type": "String"
-      },
-      "activeBundleId": {
-        "type": "String"
-      }
-    }
-  },
   "fitBundleUnavailableTitle": "Bundle unavailable",
   "fitBundleUnavailableDescription": "No active bundle is loaded, so compatibility cannot be confirmed. Fit editing stays disabled until a bundle is available.",
   "fitPageStatsUnavailableTitle": "Stats unavailable",
@@ -174,38 +94,8 @@
   "fitPageBackAction": "Back",
   "fitIssueDialogTitle": "Fit issues",
   "fitIssueMissingDynamic": "{slotName} #{index} references missing dynamic item data.",
-  "@fitIssueMissingDynamic": {
-    "placeholders": {
-      "slotName": {
-        "type": "String"
-      },
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "fitIssueMissingItemType": "{slotName} #{index} references item data that is not available.",
-  "@fitIssueMissingItemType": {
-    "placeholders": {
-      "slotName": {
-        "type": "String"
-      },
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "fitIssueMissingChargeType": "{slotName} #{index} references charge data that is not available.",
-  "@fitIssueMissingChargeType": {
-    "placeholders": {
-      "slotName": {
-        "type": "String"
-      },
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "fitTabsCharacter": "Char",
   "fitTabsEquipment": "Equip",
   "fitTabsAttributes": "Attrib",
@@ -213,140 +103,28 @@
   "fitTabsFighter": "Fighter",
   "fitTabsUtils": "Utils",
   "fitSkillPolicyPresetTitle": "Skill profile: {profileName}",
-  "@fitSkillPolicyPresetTitle": {
-    "placeholders": {
-      "profileName": {
-        "type": "String"
-      }
-    }
-  },
   "fitSkillPolicyPresetDescription": "This build uses preset skill profiles instead of real character data.",
   "fitSkillProfileAll5": "All V",
   "fitSkillProfileAll0": "All 0",
   "fitSkillPolicyUnsupportedTitle": "Skill-aware simulation is not available in this build.",
   "fitSkillPolicyUnsupportedDescription": "Fits are simulated without character skill modifiers. Implants and boosters still apply.",
-  "@@@@_FIT_EQUIPMENT_TAB": {},
-  "@@@@_FIT_GENERIC": {},
   "fitAddItemDialogTitle": "Add Item: {slotName}",
   "fitAddItemDialogTitleWithIndex": "Add Item: {slotName} #{index}",
   "fitSlotEmpty": "{slotName} (Empty)",
-  "@fitFighterTabTubeCounter": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "fitActionFill": "Fill",
   "fitActionSet": "Set",
   "fitUnknownImplantAtSlot": "Unknown implant at slot {slot}",
-  "@fitUnknownImplantAtSlot": {
-    "placeholders": {
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownImplant": "Unknown implant {typeId}",
-  "@fitUnknownImplant": {
-    "placeholders": {
-      "typeId": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownBoosterAtSlot": "Unknown booster at slot {slot}",
-  "@fitUnknownBoosterAtSlot": {
-    "placeholders": {
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownBooster": "Unknown booster {typeId}",
-  "@fitUnknownBooster": {
-    "placeholders": {
-      "typeId": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownItemAtSlot": "Item data unavailable at slot {slot}",
-  "@fitUnknownItemAtSlot": {
-    "placeholders": {
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownItemWithIdAtSlot": "Item data unavailable ({itemId}) at slot {slot}",
-  "@fitUnknownItemWithIdAtSlot": {
-    "placeholders": {
-      "itemId": {
-        "type": "int"
-      },
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownFighterAtSlot": "Fighter data unavailable at slot {slot}",
-  "@fitUnknownFighterAtSlot": {
-    "placeholders": {
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownFighterWithIdAtSlot": "Fighter data unavailable ({itemId}) at slot {slot}",
-  "@fitUnknownFighterWithIdAtSlot": {
-    "placeholders": {
-      "itemId": {
-        "type": "int"
-      },
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownShip": "Ship data unavailable ({typeId})",
-  "@fitUnknownShip": {
-    "placeholders": {
-      "typeId": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownSubsystemAtSlot": "Subsystem data unavailable at slot {slot}",
-  "@fitUnknownSubsystemAtSlot": {
-    "placeholders": {
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownSubsystemWithIdAtSlot": "Subsystem data unavailable ({itemId}) at slot {slot}",
-  "@fitUnknownSubsystemWithIdAtSlot": {
-    "placeholders": {
-      "itemId": {
-        "type": "int"
-      },
-      "slot": {
-        "type": "int"
-      }
-    }
-  },
   "fitUnknownTacticalMode": "Tactical mode unavailable ({typeId})",
-  "@fitUnknownTacticalMode": {
-    "placeholders": {
-      "typeId": {
-        "type": "int"
-      }
-    }
-  },
   "fitUtilsNameRequired": "Fit name is required",
   "fitUtilsExportButton": "Export fit",
   "fitUtilsExportImageButton": "Export image",
@@ -378,42 +156,14 @@
   "fitImportErrorInvalidNativePayload": "This EFA export is damaged or incomplete.",
   "fitImportErrorInvalidEft": "This EFT text is invalid or uses sections that are not supported in this release.",
   "fitImportErrorUnknownType": "The current data bundle does not recognize \"{typeName}\".",
-  "@fitImportErrorUnknownType": {
-    "placeholders": {
-      "typeName": {
-        "type": "String"
-      }
-    }
-  },
   "fitImportErrorUnavailableShip": "The ship \"{shipName}\" is not available in the current data bundle.",
-  "@fitImportErrorUnavailableShip": {
-    "placeholders": {
-      "shipName": {
-        "type": "String"
-      }
-    }
-  },
   "fitImportErrorUnavailableData": "Fit import data is not available right now. Try again after the app finishes loading its bundle.",
   "fitImportSuccess": "Imported {fitName}",
-  "@fitImportSuccess": {
-    "placeholders": {
-      "fitName": {
-        "type": "String"
-      }
-    }
-  },
   "fitImportUnknownError": "Unable to import this fit.",
   "fitScreenshotPageTitle": "Fit image export",
   "fitScreenshotSave": "Save image",
   "fitScreenshotShare": "Share image",
   "fitScreenshotSaved": "Saved screenshot to {path}",
-  "@fitScreenshotSaved": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
   "fitScreenshotDamageProfile": "Damage profile",
   "fitScreenshotEquipment": "Equipment",
   "fitScreenshotSupport": "Implants & boosters",
@@ -427,15 +177,12 @@
   "fitScreenshotHullHp": "Hull HP",
   "fitScreenshotCapacitor": "Capacitor",
   "fitScreenshotDroneBandwidth": "Drone bandwidth",
-  "@@@@_FIT_ATTRIBUTE_TAB": {},
   "fitAttributeTabCapacitorStable": "{percent}% Stable",
   "fitFighterAbilityTurret": "Turret",
   "fitFighterAbilityMissiles": "Missiles",
   "fitFighterAbilityVolley": "Volley",
   "fitFighterAbilityBomb": "Bomb",
-  "@@@@_FIT_DRONE_TAB": {},
   "fitDroneTabAddDroneTitle": "Add Drone",
-  "@@@_APP_SETTINGS_PAGE": {},
   "appSettingsPageTitle": "App Settings",
   "appSettingsPageSectionGeneral": "General",
   "appSettingsPageLocaleTitle": "Locale",
@@ -446,7 +193,6 @@
   "appSettingsPageSectionSelectList": "Display List",
   "appSettingsPageShipSelectTypeTitle": "Ship Select List Type",
   "appSettingsPageShipSelectTypeDescription": "The list format used when selecting ships.\nCategory grouping organizes ships based on in-game item categories.\nMarket group grouping organizes ships based on market groups.",
-  "@@@_BUNDLE_MANAGER_PAGE": {},
   "bundleManagerPageTitle": "Bundle Manager",
   "bundleImportOverwriteTitle": "Replace existing bundle?",
   "bundleManagerBundleAppVersion": "App Version: ",
@@ -471,91 +217,21 @@
   "bundleManagerSelectionDescription": "Choose one of the installed bundles below, or import a newer archive if you need to recover your data.",
   "bundleManagerLoadingTitle": "Loading bundle",
   "bundleManagerLoadingDescription": "Preparing bundle {bundleId} for use.",
-  "@bundleManagerLoadingDescription": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
   "bundleManagerInvalidTitle": "Bundle needs attention",
   "bundleManagerInvalidDescription": "The selected bundle is missing required files or metadata. Import a valid archive or switch to another installed bundle.",
   "bundleManagerReadyTitle": "Bundle ready",
   "bundleManagerReadyDescription": "Active bundle: {bundleId}",
-  "@bundleManagerReadyDescription": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
   "bundleManagerImportAction": "Import bundle",
   "bundleManagerErrorMissingPath": "Missing required path: {path}",
-  "@bundleManagerErrorMissingPath": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
   "bundleManagerErrorExpectFile": "Expected a file at: {fileName}",
-  "@bundleManagerErrorExpectFile": {
-    "placeholders": {
-      "fileName": {
-        "type": "String"
-      }
-    }
-  },
   "bundleManagerErrorExpectDirectory": "Expected a directory at: {dirName}",
-  "@bundleManagerErrorExpectDirectory": {
-    "placeholders": {
-      "dirName": {
-        "type": "String"
-      }
-    }
-  },
   "bundleManagerErrorBadDescriptor": "Bundle metadata could not be read.",
   "bundleManagerErrorBadPatch": "Bundle history is invalid: {reason}",
-  "@bundleManagerErrorBadPatch": {
-    "placeholders": {
-      "reason": {
-        "type": "String"
-      }
-    }
-  },
   "bundleManagerDetailUnavailableMessage": "Bundle details are unavailable until the bundle metadata is repaired or re-imported.",
   "fallbackTypeUnavailable": "Item data unavailable ({typeId})",
-  "@fallbackTypeUnavailable": {
-    "placeholders": {
-      "typeId": {
-        "type": "int"
-      }
-    }
-  },
   "fallbackGroupUnavailable": "Group data unavailable ({groupId})",
-  "@fallbackGroupUnavailable": {
-    "placeholders": {
-      "groupId": {
-        "type": "int"
-      }
-    }
-  },
   "fallbackCategoryUnavailable": "Category data unavailable ({categoryId})",
-  "@fallbackCategoryUnavailable": {
-    "placeholders": {
-      "categoryId": {
-        "type": "int"
-      }
-    }
-  },
   "fallbackMarketGroupUnavailable": "Market group unavailable ({marketGroupId})",
-  "@fallbackMarketGroupUnavailable": {
-    "placeholders": {
-      "marketGroupId": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailTabInfo": "Info",
   "itemDetailTabAttributes": "Attributes",
   "itemDetailTabSkills": "Skills",
@@ -569,13 +245,6 @@
   "itemDetailTraitRoleBonuses": "Role Bonuses",
   "itemDetailTraitMiscBonuses": "Misc Bonuses",
   "itemDetailTraitPerLevel": "{skillName} per level",
-  "@itemDetailTraitPerLevel": {
-    "placeholders": {
-      "skillName": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailRequirements": "Requirements",
   "itemDetailFitting": "Fitting",
   "itemDetailSlotClass": "Slot Class",
@@ -588,16 +257,6 @@
   "itemDetailAttributeCurrentValue": "Current Value",
   "itemDetailAttributeDelta": "Delta",
   "itemDetailAttributeBaseAndCurrent": "Base: {base}  Current: {current}",
-  "@itemDetailAttributeBaseAndCurrent": {
-    "placeholders": {
-      "base": {
-        "type": "String"
-      },
-      "current": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailUnavailable": "Unavailable",
   "itemDetailEffectChain": "Effect Chain",
   "itemDetailNoEffectChain": "No fit-aware modifier chain is available for this attribute.",
@@ -611,135 +270,23 @@
   "itemDetailModifierValueTransformed": "Transformed",
   "itemDetailModifierValueAppliedAfterPenalty": "Applied After Penalty",
   "itemDetailModifierEffectivePercent": "{value}% effective",
-  "@itemDetailModifierEffectivePercent": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierSetAttribute": "sets the attribute directly to {value}",
-  "@itemDetailModifierSetAttribute": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierAddsAttribute": "adds {value} to the attribute",
-  "@itemDetailModifierAddsAttribute": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierSubtractsAttribute": "subtracts {value} from the attribute",
-  "@itemDetailModifierSubtractsAttribute": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierIncreaseCurrentValue": "increases the current value by {value}%",
-  "@itemDetailModifierIncreaseCurrentValue": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierReduceCurrentValue": "reduces the current value by {value}%",
-  "@itemDetailModifierReduceCurrentValue": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierIncreaseCurrentValueAfterDivision": "increases the current value by {value}% after division",
-  "@itemDetailModifierIncreaseCurrentValueAfterDivision": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierReduceCurrentValueAfterDivision": "reduces the current value by {value}% after division",
-  "@itemDetailModifierReduceCurrentValueAfterDivision": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierAppliesBonusPercent": "applies a {value}% bonus",
-  "@itemDetailModifierAppliesBonusPercent": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierAppliesReductionPercent": "applies a {value}% reduction",
-  "@itemDetailModifierAppliesReductionPercent": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "itemDetailModifierStackingPenaltyHint": "The stacking penalty reduces the transformed value before application.",
   "itemDetailBuffSource": "Buff {buffId}",
-  "@itemDetailBuffSource": {
-    "placeholders": {
-      "buffId": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailModifierSourceShip": "Ship",
   "itemDetailModifierSourceModule": "Module {index}",
-  "@itemDetailModifierSourceModule": {
-    "placeholders": {
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailModifierSourceImplant": "Implant {index}",
-  "@itemDetailModifierSourceImplant": {
-    "placeholders": {
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailModifierSourceBooster": "Booster {index}",
-  "@itemDetailModifierSourceBooster": {
-    "placeholders": {
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailModifierSourceSkill": "Skill {index}",
-  "@itemDetailModifierSourceSkill": {
-    "placeholders": {
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailModifierSourceCharge": "Charge {index}",
-  "@itemDetailModifierSourceCharge": {
-    "placeholders": {
-      "index": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailModifierSourceCharacter": "Character",
   "itemDetailModifierSourceStructure": "Structure",
   "itemDetailModifierSourceTarget": "Target",
@@ -760,6 +307,5 @@
   "itemDetailEffectCategoryArea": "Area",
   "itemDetailEffectCategoryDungeon": "Dungeon",
   "itemDetailEffectCategorySystem": "System",
-  "@_LOADING_TEXT": {},
   "loadingTextExtractingBundle": "Extracting {archiveName}..."
 }
