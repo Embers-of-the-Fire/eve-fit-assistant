@@ -92,13 +92,17 @@ class _BundleStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = context.theme;
     final colorScheme = theme.colorScheme;
+    final scopeDetails = <String>[
+      context.l10n.bundleManagerAlphaScope,
+      context.l10n.bundleManagerImportSelectionBehavior,
+    ];
     final info = bundleCount == 0
         ? (
             icon: Icons.archive_outlined,
             color: colorScheme.primary,
             title: context.l10n.bundleManagerSetupTitle,
             description: context.l10n.bundleManagerSetupDescription,
-            details: const <String>[],
+            details: scopeDetails,
           )
         : state.when(
             notSelected: () => (
@@ -106,28 +110,31 @@ class _BundleStatusCard extends StatelessWidget {
               color: colorScheme.secondary,
               title: context.l10n.bundleManagerSelectionTitle,
               description: context.l10n.bundleManagerSelectionDescription,
-              details: const <String>[],
+              details: scopeDetails,
             ),
             initializing: (bundleId) => (
               icon: Icons.sync,
               color: colorScheme.primary,
               title: context.l10n.bundleManagerLoadingTitle,
               description: context.l10n.bundleManagerLoadingDescription(bundleId: bundleId),
-              details: const <String>[],
+              details: scopeDetails,
             ),
             error: (errors) => (
               icon: Icons.error_outline,
               color: colorScheme.error,
               title: context.l10n.bundleManagerInvalidTitle,
               description: context.l10n.bundleManagerInvalidDescription,
-              details: errors.map((error) => _formatBundleError(context, error)).toList(),
+              details: [
+                ...scopeDetails,
+                ...errors.map((error) => _formatBundleError(context, error)),
+              ],
             ),
             loaded: (data) => (
               icon: Icons.check_circle_outline,
               color: colorGreen,
               title: context.l10n.bundleManagerReadyTitle,
               description: context.l10n.bundleManagerReadyDescription(bundleId: data.bundleId),
-              details: const <String>[],
+              details: scopeDetails,
             ),
           );
 

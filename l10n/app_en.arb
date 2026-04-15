@@ -213,6 +213,8 @@
   "bundleManagerDetailLoadedAt": "Loaded At: ",
   "bundleManagerSetupTitle": "Import your first bundle",
   "bundleManagerSetupDescription": "The app needs one valid data bundle before fitting and related tools can load. Import a bundle archive to get started.",
+  "bundleManagerAlphaScope": "Alpha scope: you can install multiple bundles, but only one bundle is active across the app at a time.",
+  "bundleManagerImportSelectionBehavior": "Importing a bundle keeps the current active bundle. Select another installed bundle below only when you want to switch the app's data context.",
   "bundleManagerSelectionTitle": "Select an active bundle",
   "bundleManagerSelectionDescription": "Choose one of the installed bundles below, or import a newer archive if you need to recover your data.",
   "bundleManagerLoadingTitle": "Loading bundle",

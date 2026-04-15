@@ -509,6 +509,8 @@
   "bundleManagerDetailLoadedAt": "加载时间：",
   "bundleManagerSetupTitle": "导入第一个数据包",
   "bundleManagerSetupDescription": "装配和相关功能需要先加载一个有效的数据包。请先导入数据包归档文件。",
+  "bundleManagerAlphaScope": "Alpha 范围：应用可以安装多个数据包，但全局同一时间只会启用一个活动数据包。",
+  "bundleManagerImportSelectionBehavior": "导入数据包时会保留当前活动数据包。只有在您确实想切换应用数据上下文时，才需要在下方选择其他已安装数据包。",
   "bundleManagerSelectionTitle": "选择活动数据包",
   "bundleManagerSelectionDescription": "请从下方已安装的数据包中选择一个，或重新导入新的归档文件来恢复数据。",
   "bundleManagerLoadingTitle": "正在加载数据包",
