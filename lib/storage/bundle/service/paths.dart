@@ -28,6 +28,7 @@ String? localizationPath(Ref ref, String locale) =>
 
 class BundleServicePaths {
   const BundleServicePaths(this.bundlePath);
+  static const String fallbackLocalizationLocale = "en";
   static const String _descriptor = "descriptor.json";
   static const String _manifest = "manifest.json";
   static const String _deletedFiles = "deleted_files.json";
@@ -120,8 +121,42 @@ class BundleServicePaths {
     return graphicFile;
   }
 
+  String _buildLocalizationPath(String locale) =>
+      p.join(bundlePath, _localizationPath, "localization_$locale.pb2");
+
+  String? tryGetLocalizationPath(String locale) {
+    final locPath = _buildLocalizationPath(locale);
+    if (!File(locPath).existsSync()) {
+      warning("Locale definition not found [$locale]: $locPath");
+      return null;
+    }
+    return locPath;
+  }
+
+  ({String locale, String path})? resolveLocalizationPath(String locale) {
+    final preferredPath = tryGetLocalizationPath(locale);
+    if (preferredPath != null) {
+      return (locale: locale, path: preferredPath);
+    }
+
+    if (locale == fallbackLocalizationLocale) {
+      return null;
+    }
+
+    final fallbackPath = tryGetLocalizationPath(fallbackLocalizationLocale);
+    if (fallbackPath != null) {
+      warning(
+        "Falling back bundle localization from [$locale] to "
+        "[$fallbackLocalizationLocale]: $fallbackPath",
+      );
+      return (locale: fallbackLocalizationLocale, path: fallbackPath);
+    }
+
+    return null;
+  }
+
   String getLocalizationPath(String locale) {
-    final locPath = p.join(bundlePath, _localizationPath, "localization_$locale.pb2");
+    final locPath = _buildLocalizationPath(locale);
     assert(
       (() {
         final existence = File(locPath).existsSync();
