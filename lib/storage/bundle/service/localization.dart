@@ -17,14 +17,30 @@ abstract class BundleLocalization with _$BundleLocalization {
   const factory BundleLocalization({required String locale, required Localization localization}) =
       _BundleLocalization;
 
-  static Future<BundleLocalization> loadFromPath(String locale, String path) async {
+  static Future<Localization> _readLocalizationFile(String path) async {
     final file = File(path);
     if (!file.existsSync()) {
       throw Exception("Localization file not found: $path");
     }
     final bytes = await file.readAsBytes();
-    final localization = Localization.fromBuffer(bytes);
-    return BundleLocalization(locale: locale, localization: localization);
+    return Localization.fromBuffer(bytes);
+  }
+
+  static Future<BundleLocalization> load({
+    required String locale,
+    required String path,
+    String? fallbackPath,
+  }) async {
+    final primaryLocalization = await _readLocalizationFile(path);
+    final mergedLocalization = Localization();
+
+    if (fallbackPath != null && fallbackPath != path) {
+      final fallbackLocalization = await _readLocalizationFile(fallbackPath);
+      mergedLocalization.localizedStrings.addAll(fallbackLocalization.localizedStrings);
+    }
+
+    mergedLocalization.localizedStrings.addAll(primaryLocalization.localizedStrings);
+    return BundleLocalization(locale: locale, localization: mergedLocalization);
   }
 }
 
@@ -34,11 +50,21 @@ String? localization(Ref ref, int key) =>
 
 @riverpodSingleton
 Future<BundleLocalization> bundleLocalization(Ref ref) {
-  final locale = ref.watch(localeProvider).name;
-  final locPath = ref.watch(localizationPathProvider(locale));
-  if (locPath == null) {
-    error("Localization path not found for locale: $locale");
-    throw Exception("Localization path not found for locale: $locale");
+  final requestedLocale = ref.watch(localeProvider).name;
+  final bundlePaths = ref.watch(bundlePathsProvider);
+  final resolution = bundlePaths?.resolveLocalizationPath(requestedLocale);
+
+  if (resolution == null) {
+    error("Localization path not found for locale: $requestedLocale");
+    throw Exception("Localization path not found for locale: $requestedLocale");
   }
-  return BundleLocalization.loadFromPath(locale, locPath);
+
+  final fallbackPath = bundlePaths?.tryGetLocalizationPath(
+    BundleServicePaths.fallbackLocalizationLocale,
+  );
+  return BundleLocalization.load(
+    locale: resolution.locale,
+    path: resolution.path,
+    fallbackPath: fallbackPath,
+  );
 }
