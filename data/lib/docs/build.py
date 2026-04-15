@@ -33,12 +33,14 @@ GENERATED_ROOT = DOCUMENTS_ROOT / "generated"
 GENERATED_INDEX_PATH = GENERATED_ROOT / "index.json"
 GENERATED_GITIGNORE_PATH = GENERATED_ROOT / ".gitignore"
 GENERATED_GITIGNORE_CONTENT = "*\n!.gitignore\n"
+DOCUMENT_ID_PATTERN = r"^[a-z0-9][a-z0-9_-]*$"
+DOCUMENT_ID_TYPE = Annotated[str, Field(pattern=DOCUMENT_ID_PATTERN)]
 
 
 class ZhDocumentBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: DOCUMENT_ID_TYPE
     publishedAt: DATETIME_TYPE
     tags: list[str] = Field(default_factory=list)
 
@@ -69,7 +71,7 @@ ZH_DOCUMENT_METADATA_ADAPTER.rebuild()
 class LocalizedDocumentStub(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: DOCUMENT_ID_TYPE
 
 
 @dataclass(frozen=True)
@@ -170,8 +172,6 @@ def _load_authored_documents() -> dict[str, dict[str, AuthoredDocumentEntry]]:
                 raise ValueError(message)
 
             metadata = _parse_zh_metadata(file_path, front_matter) if locale == "zh" else None
-            if locale != "zh":
-                _parse_localized_stub(file_path, front_matter)
 
             documents[locale][parsed_document.id] = AuthoredDocumentEntry(
                 document=parsed_document,
@@ -252,15 +252,11 @@ def _parse_localized_document(
     front_matter: dict[str, Any],
     markdown_body: str,
 ) -> ParsedLocalizedDocument:
-    if "id" not in front_matter:
-        message = f"Document '{file_path}' must declare an id in front matter."
-        error(message)
-        raise ValueError(message)
-
+    localized_stub = _parse_localized_stub(file_path, front_matter)
     title, summary, body_markdown = _extract_document_content(file_path, markdown_body)
     return ParsedLocalizedDocument(
         source_path=file_path,
-        id=str(front_matter["id"]),
+        id=localized_stub.id,
         title=title,
         summary=summary,
         body_markdown=body_markdown,
