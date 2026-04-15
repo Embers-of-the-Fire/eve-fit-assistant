@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "models.freezed.dart";
@@ -75,9 +73,6 @@ abstract class DocumentCatalog with _$DocumentCatalog {
   factory DocumentCatalog.empty() => const DocumentCatalog(version: 1);
 
   factory DocumentCatalog.fromJson(Map<String, dynamic> json) => _$DocumentCatalogFromJson(json);
-
-  factory DocumentCatalog.fromJsonText(String text) =>
-      DocumentCatalog.fromJson(jsonDecode(text) as Map<String, dynamic>);
 }
 
 @freezed

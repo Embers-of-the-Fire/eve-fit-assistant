@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
@@ -82,7 +84,7 @@ class DocumentRepository {
 
   Future<DocumentCatalog> _loadBundledCatalog() async {
     final text = await rootBundle.loadString(_bundledCatalogAssetPath);
-    return DocumentCatalog.fromJsonText(text);
+    return DocumentCatalog.fromJson(jsonDecode(text) as Map<String, dynamic>);
   }
 
   List<DocumentEntry> _mergeEntries({
