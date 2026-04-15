@@ -1,5 +1,7 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:isolate";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
@@ -33,6 +35,7 @@ class DocumentStorage {
   static const int currentVersion = 1;
   static const String _storageFileName = "document_storage.json";
   static late DocumentStorageState _state;
+  static Future<void> _pendingSync = Future<void>.value();
 
   static File get storageFile => File(p.join(PathProvider.settingsPath, _storageFileName));
 
@@ -89,9 +92,18 @@ class DocumentStorage {
   }
 
   static void _sync() {
-    if (!storageFile.existsSync()) {
-      storageFile.createSync(recursive: true);
+    final filePath = storageFile.path;
+    final text = jsonEncode(_state.toJson());
+    _pendingSync = _pendingSync
+        .catchError((Object _, StackTrace _) {})
+        .then((_) => Isolate.run(() => _syncToDisk(filePath, text)));
+  }
+
+  static void _syncToDisk(String filePath, String text) {
+    final file = File(filePath);
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
     }
-    storageFile.writeAsStringSync(jsonEncode(_state.toJson()));
+    file.writeAsStringSync(text);
   }
 }
