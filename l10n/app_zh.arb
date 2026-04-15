@@ -302,6 +302,79 @@
       }
     }
   },
+  "fitUnknownItemAtSlot": "槽位 {slot} 的物品数据不可用",
+  "@fitUnknownItemAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownItemWithIdAtSlot": "槽位 {slot} 的物品数据不可用（{itemId}）",
+  "@fitUnknownItemWithIdAtSlot": {
+    "placeholders": {
+      "itemId": {
+        "type": "int"
+      },
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownFighterAtSlot": "槽位 {slot} 的舰载机数据不可用",
+  "@fitUnknownFighterAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownFighterWithIdAtSlot": "槽位 {slot} 的舰载机数据不可用（{itemId}）",
+  "@fitUnknownFighterWithIdAtSlot": {
+    "placeholders": {
+      "itemId": {
+        "type": "int"
+      },
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownShip": "舰船数据不可用（{typeId}）",
+  "@fitUnknownShip": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownSubsystemAtSlot": "槽位 {slot} 的子系统数据不可用",
+  "@fitUnknownSubsystemAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownSubsystemWithIdAtSlot": "槽位 {slot} 的子系统数据不可用（{itemId}）",
+  "@fitUnknownSubsystemWithIdAtSlot": {
+    "placeholders": {
+      "itemId": {
+        "type": "int"
+      },
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownTacticalMode": "战术模式数据不可用（{typeId}）",
+  "@fitUnknownTacticalMode": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
   "fitUtilsNameRequired": "请输入配置名。",
   "fitUtilsExportButton": "导出配置",
   "fitUtilsExportImageButton": "导出图片",
@@ -493,6 +566,38 @@
     }
   },
   "bundleManagerDetailUnavailableMessage": "在修复或重新导入数据包元数据之前，无法显示该数据包详情。",
+  "fallbackTypeUnavailable": "物品数据不可用（{typeId}）",
+  "@fallbackTypeUnavailable": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fallbackGroupUnavailable": "组数据不可用（{groupId}）",
+  "@fallbackGroupUnavailable": {
+    "placeholders": {
+      "groupId": {
+        "type": "int"
+      }
+    }
+  },
+  "fallbackCategoryUnavailable": "分类数据不可用（{categoryId}）",
+  "@fallbackCategoryUnavailable": {
+    "placeholders": {
+      "categoryId": {
+        "type": "int"
+      }
+    }
+  },
+  "fallbackMarketGroupUnavailable": "市场组数据不可用（{marketGroupId}）",
+  "@fallbackMarketGroupUnavailable": {
+    "placeholders": {
+      "marketGroupId": {
+        "type": "int"
+      }
+    }
+  },
   "itemDetailTabInfo": "信息",
   "itemDetailTabAttributes": "属性",
   "itemDetailTabSkills": "技能",

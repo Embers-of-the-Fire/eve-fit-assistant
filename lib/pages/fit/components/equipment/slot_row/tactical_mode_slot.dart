@@ -20,7 +20,9 @@ class _TacticalModeSlotRow extends StatelessWidget {
         .firstOrNull;
     final variant = tacticalModeDef?.variant;
     if (variant == null) {
-      return ListTile(title: Text("Unknown Tactical Mode ${slotInfo.slot.itemId.asId}"));
+      return ListTile(
+        title: Text(context.l10n.fitUnknownTacticalMode(typeId: slotInfo.slot.itemId.asId)),
+      );
     }
     return ListTile(
       onTap: interactionOptions.allowMutations && interactionOptions.allowStateToggle

@@ -274,6 +274,79 @@
       }
     }
   },
+  "fitUnknownItemAtSlot": "Item data unavailable at slot {slot}",
+  "@fitUnknownItemAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownItemWithIdAtSlot": "Item data unavailable ({itemId}) at slot {slot}",
+  "@fitUnknownItemWithIdAtSlot": {
+    "placeholders": {
+      "itemId": {
+        "type": "int"
+      },
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownFighterAtSlot": "Fighter data unavailable at slot {slot}",
+  "@fitUnknownFighterAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownFighterWithIdAtSlot": "Fighter data unavailable ({itemId}) at slot {slot}",
+  "@fitUnknownFighterWithIdAtSlot": {
+    "placeholders": {
+      "itemId": {
+        "type": "int"
+      },
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownShip": "Ship data unavailable ({typeId})",
+  "@fitUnknownShip": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownSubsystemAtSlot": "Subsystem data unavailable at slot {slot}",
+  "@fitUnknownSubsystemAtSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownSubsystemWithIdAtSlot": "Subsystem data unavailable ({itemId}) at slot {slot}",
+  "@fitUnknownSubsystemWithIdAtSlot": {
+    "placeholders": {
+      "itemId": {
+        "type": "int"
+      },
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "fitUnknownTacticalMode": "Tactical mode unavailable ({typeId})",
+  "@fitUnknownTacticalMode": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
   "fitUtilsNameRequired": "Fit name is required",
   "fitUtilsExportButton": "Export fit",
   "fitUtilsExportImageButton": "Export image",
@@ -451,6 +524,38 @@
     }
   },
   "bundleManagerDetailUnavailableMessage": "Bundle details are unavailable until the bundle metadata is repaired or re-imported.",
+  "fallbackTypeUnavailable": "Item data unavailable ({typeId})",
+  "@fallbackTypeUnavailable": {
+    "placeholders": {
+      "typeId": {
+        "type": "int"
+      }
+    }
+  },
+  "fallbackGroupUnavailable": "Group data unavailable ({groupId})",
+  "@fallbackGroupUnavailable": {
+    "placeholders": {
+      "groupId": {
+        "type": "int"
+      }
+    }
+  },
+  "fallbackCategoryUnavailable": "Category data unavailable ({categoryId})",
+  "@fallbackCategoryUnavailable": {
+    "placeholders": {
+      "categoryId": {
+        "type": "int"
+      }
+    }
+  },
+  "fallbackMarketGroupUnavailable": "Market group unavailable ({marketGroupId})",
+  "@fallbackMarketGroupUnavailable": {
+    "placeholders": {
+      "marketGroupId": {
+        "type": "int"
+      }
+    }
+  },
   "itemDetailTabInfo": "Info",
   "itemDetailTabAttributes": "Attributes",
   "itemDetailTabSkills": "Skills",

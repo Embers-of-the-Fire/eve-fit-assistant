@@ -10,7 +10,7 @@ class ShipInfo extends ConsumerWidget {
     final ship = fitContext.ship;
     final shipInfo = ref.watch(bundleCollectionGetTypeProvider(ship.typeId));
     if (shipInfo == null) {
-      return ListTile(title: Text("Unknown Ship ${ship.typeId}"));
+      return ListTile(title: Text(context.l10n.fitUnknownShip(typeId: ship.typeId)));
     }
     return ListTile(
       contentPadding: const .symmetric(horizontal: 16, vertical: 8),
