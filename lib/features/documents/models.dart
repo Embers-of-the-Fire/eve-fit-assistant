@@ -95,6 +95,4 @@ abstract class DocumentRecord with _$DocumentRecord {
     String? minAppVer,
     String? appVer,
   }) = _DocumentRecord;
-
-  factory DocumentRecord.fromJson(Map<String, dynamic> json) => _$DocumentRecordFromJson(json);
 }
