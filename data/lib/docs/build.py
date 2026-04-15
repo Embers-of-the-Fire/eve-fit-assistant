@@ -115,7 +115,7 @@ def build_documents() -> None:
                 "id": document_id,
                 "kind": metadata.kind,
                 "source": "bundled",
-                "publishedAt": metadata.publishedAt.isoformat().replace("+00:00", "Z"),
+                "publishedAt": _serialize_published_at(metadata.publishedAt),
                 "tags": metadata.tags,
                 "minAppVer": getattr(metadata, "minAppVer", None),
                 "appVer": getattr(metadata, "appVer", None),
@@ -139,6 +139,15 @@ def build_documents() -> None:
         encoding="utf-8",
     )
     info(f"Generated document registry: {GENERATED_INDEX_PATH}")
+
+
+def _serialize_published_at(published_at: dt.datetime) -> str:
+    if published_at.tzinfo is None or published_at.utcoffset() is None:
+        message = f"Document publishedAt must include a timezone offset: {published_at.isoformat()}"
+        error(message)
+        raise ValueError(message)
+
+    return published_at.astimezone(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 def _load_authored_documents() -> dict[str, dict[str, AuthoredDocumentEntry]]:
