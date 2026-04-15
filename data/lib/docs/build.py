@@ -164,14 +164,18 @@ def _load_authored_documents() -> dict[str, dict[str, AuthoredDocumentEntry]]:
 
         for file_path in sorted(locale_dir.glob("*.md")):
             front_matter, markdown_body = _parse_front_matter(file_path)
-            parsed_document = _parse_localized_document(file_path, front_matter, markdown_body)
+            metadata = _parse_zh_metadata(file_path, front_matter) if locale == "zh" else None
+            document_id = (
+                metadata.id
+                if metadata is not None
+                else _parse_localized_stub(file_path, front_matter).id
+            )
+            parsed_document = _parse_localized_document(file_path, document_id, markdown_body)
 
             if parsed_document.id in documents[locale]:
                 message = f"Duplicate document id '{parsed_document.id}' in locale '{locale}'."
                 error(message)
                 raise ValueError(message)
-
-            metadata = _parse_zh_metadata(file_path, front_matter) if locale == "zh" else None
 
             documents[locale][parsed_document.id] = AuthoredDocumentEntry(
                 document=parsed_document,
@@ -249,14 +253,13 @@ def _parse_localized_stub(file_path: Path, front_matter: dict[str, Any]) -> Loca
 
 def _parse_localized_document(
     file_path: Path,
-    front_matter: dict[str, Any],
+    document_id: str,
     markdown_body: str,
 ) -> ParsedLocalizedDocument:
-    localized_stub = _parse_localized_stub(file_path, front_matter)
     title, summary, body_markdown = _extract_document_content(file_path, markdown_body)
     return ParsedLocalizedDocument(
         source_path=file_path,
-        id=localized_stub.id,
+        id=document_id,
         title=title,
         summary=summary,
         body_markdown=body_markdown,
