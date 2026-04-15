@@ -224,7 +224,7 @@ class TypeNameText extends ConsumerWidget {
       bundleCollectionGetTypeProvider(typeId).select((t) => t?.typeName),
     );
     if (typeNameId == null) {
-      return Text(context.l10n.fallbackTypeUnavailable(typeId: typeId));
+      return Text(context.l10n.fallbackTypeUnavailable(typeId: typeId), textAlign: textAlign);
     }
     return LocalizedText(localizationKey: typeNameId, textAlign: textAlign);
   }
