@@ -113,6 +113,7 @@
   "documentVersionEmptyTitle": "No version notes yet",
   "documentEmptyDescription": "Bundled defaults will appear here, and future online updates can be shown separately.",
   "documentLoadErrorTitle": "Unable to load documents",
+  "documentLoadErrorDescription": "Try again later or restart the app.",
   "documentSelectPrompt": "Select an entry to read its content.",
   "documentKindAnnouncement": "Announcement",
   "documentKindVersion": "Version",

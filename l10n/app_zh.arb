@@ -113,6 +113,7 @@
   "documentVersionEmptyTitle": "当前没有版本说明",
   "documentEmptyDescription": "内置默认内容会显示在这里，后续在线更新也会通过独立来源展示。",
   "documentLoadErrorTitle": "无法加载文档",
+  "documentLoadErrorDescription": "请稍后重试，或重新启动应用。",
   "documentSelectPrompt": "请选择一条内容以查看详情。",
   "documentKindAnnouncement": "公告",
   "documentKindVersion": "版本",

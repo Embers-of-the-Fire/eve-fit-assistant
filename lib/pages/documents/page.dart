@@ -1,4 +1,5 @@
 import "package:auto_route/annotations.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
@@ -95,7 +96,13 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
           return _DocumentDetailPane(entry: selectedEntry);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => _DocumentLoadError(error: error),
+        error: (errorValue, stackTrace) {
+          error(
+            "Failed to load documents for ${widget.feedKind}: $errorValue",
+            stackTrace: stackTrace,
+          );
+          return const _DocumentLoadError();
+        },
       ),
     );
   }
@@ -385,9 +392,7 @@ class _DocumentEmptyState extends StatelessWidget {
 }
 
 class _DocumentLoadError extends StatelessWidget {
-  const _DocumentLoadError({required this.error});
-
-  final Object error;
+  const _DocumentLoadError();
 
   @override
   Widget build(BuildContext context) => Center(
@@ -405,7 +410,7 @@ class _DocumentLoadError extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            "$error",
+            context.l10n.documentLoadErrorDescription,
             style: context.theme.textTheme.bodySmall?.copyWith(
               color: context.theme.colorScheme.onSurfaceVariant,
             ),
