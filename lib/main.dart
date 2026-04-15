@@ -45,7 +45,7 @@ class MyApp extends ConsumerWidget {
       tabBarTheme: TabBarThemeData(indicatorColor: colorScheme.primary),
     );
     return MaterialApp.router(
-      title: "EVE Fit Assistant",
+      onGenerateTitle: (context) => context.l10n.appTitle,
       theme: theme,
       scaffoldMessengerKey: _scaffoldMessengerKey,
       locale: Locale(ref.watch(localeProvider).name),

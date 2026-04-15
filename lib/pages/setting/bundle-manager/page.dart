@@ -35,7 +35,7 @@ class BundleManagerPage extends ConsumerWidget {
           selected.path,
           confirmOverwrite: () async {
             if (!context.mounted) return false;
-            return showConfirmDialog(context, title: "Overwrite?");
+            return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
           },
         );
   }
