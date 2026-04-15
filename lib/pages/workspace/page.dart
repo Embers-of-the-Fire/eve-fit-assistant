@@ -35,6 +35,11 @@ class WorkspacePage extends ConsumerWidget {
           }
         },
       ),
+      _WorkspaceShortcutItem(
+        title: context.l10n.workspaceTabAnnouncementTitle,
+        icon: Icons.campaign_outlined,
+        onTap: () => context.router.push(const AnnouncementRoute()),
+      ),
       _WorkspaceShortcutItem(title: "设置", icon: Icons.settings, onTap: () {}),
       _WorkspaceShortcutItem(title: "Workspace", icon: Icons.workspaces, onTap: () {}),
       _WorkspaceShortcutItem(title: "工作区", icon: Icons.workspace_premium, onTap: () {}),

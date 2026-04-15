@@ -1,0 +1,23 @@
+---
+id: version-1-0-0
+kind: version
+publishedAt: 2026-04-14T00:00:00Z
+appVer: 1.0.0
+tags:
+  - release-note
+  - version
+---
+
+# 版本 1.0.0
+
+## 新增
+
+- 设置页中的版本入口。
+- 首页中的公告入口卡片。
+- 使用 `markdown_widget` 渲染的内置 Markdown 文档。
+
+## 架构
+
+- 内置默认文档从应用资源中加载。
+- 在线更新预留为独立的存储通道。
+- 文档存储带有版本号，便于后续迁移。

@@ -23,6 +23,12 @@ class SettingPage extends ConsumerWidget {
         title: context.l10n.settingTileBundleManagerTitle,
         onTap: () => context.router.push(const BundleManagerRoute()),
       ),
+      ConfigListTile.item(
+        icon: Icons.new_releases_outlined,
+        title: context.l10n.settingTileVersionTitle,
+        subtitle: context.l10n.settingTileVersionSubtitle,
+        onTap: () => context.router.push(const VersionRoute()),
+      ),
     ],
   );
 }

@@ -873,6 +873,17 @@ def data_cmd(skip: list[str], no_hash: bool):
     asyncio.run(run_generator(descriptor, to_skip, not no_hash))
 
 
+@build.command("docs", aliases=["doc"])
+def build_docs_cmd():
+    """Build bundled document assets."""
+    from data.lib.docs import build_documents
+
+    try:
+        build_documents()
+    except ValueError as exception:
+        raise click.ClickException(str(exception)) from exception
+
+
 @build.command("increment", aliases=["inc", "incremental"])
 @click.argument("baseline_manifest_path", envvar=DEFAULT_WORKSPACE_MANIFEST_ENV_VAR)
 def build_increment_cmd(baseline_manifest_path: str):

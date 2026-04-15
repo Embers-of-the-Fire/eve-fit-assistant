@@ -1,7 +1,17 @@
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/widgets.dart";
 
-int columnCount(BuildContext context) {
+enum ScreenColumnTarget {
+  one(1),
+  two(2),
+  three(3);
+
+  const ScreenColumnTarget(this.count);
+
+  final int count;
+}
+
+ScreenColumnTarget screenColumnTarget(BuildContext context) {
   const tabletMinWidth = 1000;
   const foldableMaxWidth = 900;
   const phoneMaxWidth = 600;
@@ -12,15 +22,19 @@ int columnCount(BuildContext context) {
   final size = context.mediaQuery.size;
   final aspectRatio = size.width / size.height;
 
-  int columns = 1;
-
   if (size.width >= tabletMinWidth || aspectRatio >= tabletAspectRatio) {
-    columns = 3;
-  } else if (aspectRatio >= foldableAspectRatio && aspectRatio <= tabletAspectRatio) {
-    columns = 2;
-  } else if (size.width >= phoneMaxWidth && size.width < foldableMaxWidth) {
-    columns = 2;
+    return ScreenColumnTarget.three;
   }
-
-  return columns;
+  if (aspectRatio >= foldableAspectRatio && aspectRatio <= tabletAspectRatio) {
+    return ScreenColumnTarget.two;
+  }
+  if (size.width >= phoneMaxWidth && size.width < foldableMaxWidth) {
+    return ScreenColumnTarget.two;
+  }
+  return ScreenColumnTarget.one;
 }
+
+int columnCount(BuildContext context) => screenColumnTarget(context).count;
+
+bool supportsThreePaneLayout(BuildContext context) =>
+    screenColumnTarget(context) == ScreenColumnTarget.three;
