@@ -97,14 +97,15 @@ class DocumentStorage {
 
   static void _sync() {
     final filePath = storageFile.path;
-    final text = jsonEncode(_state.toJson());
+    final state = _state;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => Isolate.run(() => _syncToDisk(filePath, text)));
+        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)));
   }
 
-  static void _syncToDisk(String filePath, String text) {
+  static void _syncToDisk(String filePath, DocumentStorageState state) {
     final file = File(filePath);
+    final text = jsonEncode(state.toJson());
     if (!file.existsSync()) {
       file.createSync(recursive: true);
     }
