@@ -86,17 +86,20 @@ class FitDisplayColumns extends ConsumerWidget {
         icon: const Icon(Icons.archive_outlined),
         label: Text(actionLabel),
       ),
-      FitBundleCompatibilityAction.switchToSavedBundle => FilledButton.tonalIcon(
-        onPressed: () {
-          final bundleId = notice.actionBundleId;
-          if (bundleId == null) {
-            return;
-          }
-          unawaited(ref.read(bundleManagerProvider.notifier).selectBundle(bundleId));
-        },
-        icon: const Icon(Icons.swap_horiz),
-        label: Text(actionLabel),
-      ),
+      FitBundleCompatibilityAction.switchToSavedBundle => () {
+        final bundleId = notice.actionBundleId;
+        if (bundleId == null) {
+          throw StateError("Switch-to-saved-bundle action requires an action bundle id.");
+        }
+
+        return FilledButton.tonalIcon(
+          onPressed: () {
+            unawaited(ref.read(bundleManagerProvider.notifier).selectBundle(bundleId));
+          },
+          icon: const Icon(Icons.swap_horiz),
+          label: Text(actionLabel),
+        );
+      }(),
     };
   }
 }
