@@ -1,5 +1,5 @@
 ---
-id: announcement-welcome-1-0-0
+id: announcement-welcome
 ---
 
 # Welcome to the document center

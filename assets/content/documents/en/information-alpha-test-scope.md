@@ -1,5 +1,5 @@
 ---
-id: information-alpha-test-scope-1-0-0
+id: information-alpha-test-scope
 ---
 
 # Alpha tester guide

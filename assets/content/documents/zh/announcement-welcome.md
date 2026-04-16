@@ -1,5 +1,5 @@
 ---
-id: announcement-welcome-1-0-0
+id: announcement-welcome
 kind: announcement
 publishedAt: 2026-04-14T00:00:00Z
 tags:

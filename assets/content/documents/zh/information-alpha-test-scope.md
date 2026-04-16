@@ -1,5 +1,5 @@
 ---
-id: information-alpha-test-scope-1-0-0
+id: information-alpha-test-scope
 kind: information
 publishedAt: 2026-04-16T00:00:00Z
 tags:
