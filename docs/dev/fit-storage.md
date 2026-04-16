@@ -73,8 +73,8 @@ then rewritten immediately in the versioned format.
 
 - Native text import/export lives in [`lib/features/fit_io`](../../lib/features/fit_io).
 - Export currently emits the `EFA:` prefix only.
-- Import recognizes `EFA:` and also recognizes `EFA<int>:` structurally.
-  However, any explicit numeric suffix is rejected as unsupported by the current parser version.
+- Import accepts both the legacy `EFA:` prefix and the explicit `EFA1:` prefix.
+- Explicit numeric prefixes newer than `EFA1:` are rejected as unsupported.
 - The compressed payload inside `EFA:` still contains its own `version` field,
   validated through `decodeNativeFitPayload(...)`.
 
@@ -86,6 +86,7 @@ without tying future native text versions directly to on-disk file versions.
 - There is no multi-step historical migration chain yet.
   The current alpha implementation only normalizes legacy unversioned payloads into version `1` envelopes.
 - Unknown future versions are rejected instead of partially decoded.
+  This applies both to persisted fit payloads and to native text imports with explicit prefixes.
 - Additive compatibility is only relaxed where the current JSON decoding already tolerates extra fields.
 
 ## Suggested Future Extension
