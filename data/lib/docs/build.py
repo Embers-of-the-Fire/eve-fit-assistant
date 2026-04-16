@@ -63,8 +63,11 @@ class ZhVersionDocument(ZhDocumentBase):
     minAppVer: None = None
 
 
+ZhDocumentVariant = ZhAnnouncementDocument | ZhInformationDocument | ZhVersionDocument
+
+
 ZhDocumentMetadata = Annotated[
-    ZhAnnouncementDocument | ZhInformationDocument | ZhVersionDocument,
+    ZhDocumentVariant,
     Field(discriminator="kind"),
 ]
 
@@ -93,7 +96,7 @@ class ParsedLocalizedDocument:
 @dataclass(frozen=True)
 class AuthoredDocumentEntry:
     document: ParsedLocalizedDocument
-    metadata: ZhAnnouncementDocument | ZhInformationDocument | ZhVersionDocument | None = None
+    metadata: ZhDocumentVariant | None = None
 
 
 def build_documents() -> None:
@@ -238,9 +241,7 @@ def _parse_front_matter(file_path: Path) -> tuple[dict[str, Any], str]:
     return data, remaining.lstrip("\n")
 
 
-def _parse_zh_metadata(
-    file_path: Path, front_matter: dict[str, Any]
-) -> ZhAnnouncementDocument | ZhInformationDocument | ZhVersionDocument:
+def _parse_zh_metadata(file_path: Path, front_matter: dict[str, Any]) -> ZhDocumentVariant:
     try:
         return ZH_DOCUMENT_METADATA_ADAPTER.validate_python(front_matter)
     except ValidationError as exception:
