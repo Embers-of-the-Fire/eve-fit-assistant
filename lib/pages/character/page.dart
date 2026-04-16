@@ -4,7 +4,6 @@ import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
-import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:file_picker/file_picker.dart";
 import "package:flutter/material.dart";
@@ -79,7 +78,6 @@ class CharacterPage extends ConsumerWidget {
             onPressed: () async {},
             child: Text("Found ${ref.watch(fitRegistryManagerProvider).fits.length} fits"),
           ),
-          Text(ref.watch(nativeFitEngineServiceProvider).debugOnlyDisplayState),
         ],
       ),
     );

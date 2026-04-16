@@ -305,7 +305,7 @@
   },
   "fitActionFill": "补满",
   "fitActionSet": "设置",
-  "fitUnknownImplantAtSlot": "未知植入体，槽位 {slot}",
+  "fitUnknownImplantAtSlot": "槽位 {slot} 的植入体不可用",
   "@fitUnknownImplantAtSlot": {
     "placeholders": {
       "slot": {
@@ -313,7 +313,7 @@
       }
     }
   },
-  "fitUnknownImplant": "未知植入体 {typeId}",
+  "fitUnknownImplant": "植入体不可用（{typeId}）",
   "@fitUnknownImplant": {
     "placeholders": {
       "typeId": {
@@ -321,7 +321,7 @@
       }
     }
   },
-  "fitUnknownBoosterAtSlot": "未知增效剂，槽位 {slot}",
+  "fitUnknownBoosterAtSlot": "槽位 {slot} 的增效剂不可用",
   "@fitUnknownBoosterAtSlot": {
     "placeholders": {
       "slot": {
@@ -329,7 +329,7 @@
       }
     }
   },
-  "fitUnknownBooster": "未知增效剂 {typeId}",
+  "fitUnknownBooster": "增效剂不可用（{typeId}）",
   "@fitUnknownBooster": {
     "placeholders": {
       "typeId": {
