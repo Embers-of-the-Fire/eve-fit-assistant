@@ -5,6 +5,7 @@ import "dart:io";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
+import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
@@ -156,8 +157,18 @@ class Fit extends _$Fit {
 
   Future<void> _mount(String fitId) => _loadFromDisk(fitId);
 
-  FitBundleCompatibility _compatibilityFor(FitStorage fit) =>
-      evaluateFitBundleCompatibility(fit.metadata, ref.read(currentBundleProvider));
+  FitBundleCompatibility _compatibilityFor(FitStorage fit) => evaluateFitBundleCompatibility(
+    fit.metadata,
+    ref.read(currentBundleProvider),
+    savedBundleAvailability: resolveSavedBundleAvailability(
+      fit.metadata.bundleSnapshot,
+      ref.read(currentBundleProvider),
+      savedBundleInstalled: ref
+          .read(bundleRegistryManagerProvider)
+          .bundles
+          .containsKey(fit.metadata.bundleSnapshot.bundleId),
+    ),
+  );
 
   void _unmount() {
     debug("Unmounting fit service");
@@ -189,7 +200,7 @@ class Fit extends _$Fit {
     if (!compatibility.allowsEditing) {
       state = FitServiceState.loaded(
         status: const FitServiceStatus.error(
-          message: "This fit is read-only until its saved bundle matches the active bundle.",
+          message: "This fit is read-only until a compatible bundle is active.",
         ),
         fit: currentFit,
       );

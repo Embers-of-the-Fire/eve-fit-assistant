@@ -117,7 +117,7 @@ class BundleRegistryManager extends _$BundleRegistryManager {
     final updatedRegistry = _normalizeRegistry(
       state.copyWith(
         bundles: state.bundles.add(bundle.bundleId, bundle),
-        selectedBundleId: bundle.bundleId,
+        selectedBundleId: state.selectedBundleId,
       ),
     );
     _setRegistry(updatedRegistry);

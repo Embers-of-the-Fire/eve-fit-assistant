@@ -25,6 +25,7 @@ class FitDisplayColumns extends ConsumerWidget {
                 icon: Icons.inventory_2_outlined,
                 title: compatibilityNotice!.title,
                 message: compatibilityNotice!.message,
+                action: _buildCompatibilityAction(context, ref, compatibilityNotice!),
               ),
             ),
           if (saveErrorMessage != null)
@@ -66,6 +67,40 @@ class FitDisplayColumns extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Widget? _buildCompatibilityAction(
+    BuildContext context,
+    WidgetRef ref,
+    FitBundleCompatibilityNotice notice,
+  ) {
+    final actionLabel = notice.actionLabel;
+    if (actionLabel == null) {
+      return null;
+    }
+
+    return switch (notice.action) {
+      FitBundleCompatibilityAction.none => null,
+      FitBundleCompatibilityAction.openBundleManager => FilledButton.tonalIcon(
+        onPressed: () => context.router.push(const BundleManagerRoute()),
+        icon: const Icon(Icons.archive_outlined),
+        label: Text(actionLabel),
+      ),
+      FitBundleCompatibilityAction.switchToSavedBundle => () {
+        final bundleId = notice.actionBundleId;
+        if (bundleId == null) {
+          throw StateError("Switch-to-saved-bundle action requires an action bundle id.");
+        }
+
+        return FilledButton.tonalIcon(
+          onPressed: () {
+            unawaited(ref.read(bundleManagerProvider.notifier).selectBundle(bundleId));
+          },
+          icon: const Icon(Icons.swap_horiz),
+          label: Text(actionLabel),
+        );
+      }(),
+    };
   }
 }
 

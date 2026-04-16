@@ -164,9 +164,9 @@
   "fitPageBrokenMessage": "无法加载该配置。",
   "fitPageShipUnavailableMessage": "该配置引用了当前数据包中不可用的舰船数据。",
   "fitBundleChangedTitle": "数据包已变更",
-  "fitBundleChangedDescription": "该配置保存于当前活动数据包的旧版本。您仍可查看和导出该配置，但在切回兼容数据包前将保持只读。",
+  "fitBundleChangedDescription": "该配置保存于当前活动数据包的旧版本。您仍可查看和导出该配置，但在重新导入兼容的数据包版本，或基于当前数据重新创建配置前，将保持只读。",
   "fitBundleLegacyTitle": "需要重新确认数据包",
-  "fitBundleLegacyDescription": "该配置保存时尚未记录数据包版本信息。您仍可查看和导出该配置，但在使用当前兼容元数据重新打开前将保持只读。",
+  "fitBundleLegacyDescription": "该配置保存时尚未记录数据包版本信息。您仍可查看和导出该配置，但在使用兼容数据包重新打开，或基于当前数据包重新创建配置前，将保持只读。",
   "fitBundleMismatchTitle": "数据包不匹配",
   "fitBundleMismatchDescription": "该配置保存于数据包 {savedBundleId}，而当前活动数据包为 {activeBundleId}。您仍可查看和导出该配置，但编辑将保持禁用。",
   "@fitBundleMismatchDescription": {
@@ -179,8 +179,43 @@
       }
     }
   },
+  "fitBundleMismatchSwitchDescription": "该配置保存于数据包 {savedBundleId}，而当前活动数据包为 {activeBundleId}。如需直接编辑该配置，请切回 {savedBundleId}；如果您想在当前数据包下保留一个新的可编辑副本，请先确认当前数据差异，再导出并重新导入该配置。",
+  "@fitBundleMismatchSwitchDescription": {
+    "placeholders": {
+      "savedBundleId": {
+        "type": "String"
+      },
+      "activeBundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "fitBundleMismatchImportDescription": "该配置保存于数据包 {savedBundleId}，而当前活动数据包为 {activeBundleId}。如需直接编辑该配置，请先重新导入数据包 {savedBundleId}；如果您想迁移到当前数据包，请导出后在当前数据包下重新导入。",
+  "@fitBundleMismatchImportDescription": {
+    "placeholders": {
+      "savedBundleId": {
+        "type": "String"
+      },
+      "activeBundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "fitBundleSwitchLabel": "切换数据包后编辑",
+  "fitBundleImportLabel": "重新导入数据包数据",
+  "fitBundleSwitchAction": "切换数据包",
+  "fitBundleOpenManagerAction": "打开数据包管理",
   "fitBundleUnavailableTitle": "数据包不可用",
   "fitBundleUnavailableDescription": "当前没有活动数据包，无法确认兼容性。在数据包可用前，该配置将保持只读。",
+  "fitBundleUnavailableSwitchDescription": "当前没有活动数据包。请选择 {savedBundleId} 后再编辑该配置；如果您暂时不想切换应用的数据上下文，也可以继续只读查看。",
+  "@fitBundleUnavailableSwitchDescription": {
+    "placeholders": {
+      "savedBundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "fitBundleUnavailableImportDescription": "当前没有活动数据包，且该配置对应的已保存数据包尚未安装。请先在数据包管理中导入所需数据，再进行编辑；或者基于当前可用数据包重新创建配置。",
   "fitPageStatsUnavailableTitle": "属性不可用",
   "fitPageStatsUnavailableMessage": "在计算恢复期间，您仍然可以查看和编辑该配置。",
   "fitPageSaveErrorTitle": "更改未保存",
@@ -509,6 +544,8 @@
   "bundleManagerDetailLoadedAt": "加载时间：",
   "bundleManagerSetupTitle": "导入第一个数据包",
   "bundleManagerSetupDescription": "装配和相关功能需要先加载一个有效的数据包。请先导入数据包归档文件。",
+  "bundleManagerAlphaScope": "Alpha 范围：应用可以安装多个数据包，但全局同一时间只会启用一个活动数据包。",
+  "bundleManagerImportSelectionBehavior": "导入数据包时会保留当前活动数据包。只有在您确实想切换应用数据上下文时，才需要在下方选择其他已安装数据包。",
   "bundleManagerSelectionTitle": "选择活动数据包",
   "bundleManagerSelectionDescription": "请从下方已安装的数据包中选择一个，或重新导入新的归档文件来恢复数据。",
   "bundleManagerLoadingTitle": "正在加载数据包",
