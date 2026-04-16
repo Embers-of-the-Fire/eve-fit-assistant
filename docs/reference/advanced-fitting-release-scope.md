@@ -12,6 +12,8 @@ This document records which advanced fitting workflows are included in the initi
 
 - Dynamic item conversion is intentionally deferred for the initial release.
 - Existing dynamic items can still be opened and reverted back to their origin type, but the UI no longer offers conversion into a dynamic item.
+- Tester-facing release notes should not advertise dynamic item conversion until parity work is complete.
+- The alpha UI should keep deferred conversion entry points hidden so testers read the limitation as intentional scope, not as a broken action.
 
 ## Release-safety rationale
 
@@ -22,3 +24,4 @@ This document records which advanced fitting workflows are included in the initi
 
 - Testers can keep exercising advanced charge, fighter, and subsystem workflows without being pushed into unfinished mutator paths.
 - Imported or previously saved fits that already contain dynamic items should remain recoverable because reverting those items is still available.
+- When a fit already contains a dynamic item, the remaining action should be framed as restoring the original item rather than as a partially disabled conversion workflow.

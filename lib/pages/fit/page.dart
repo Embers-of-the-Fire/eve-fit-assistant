@@ -2,7 +2,6 @@ import "dart:async";
 import "dart:io";
 import "dart:ui" as ui;
 
-import "package:auto_route/annotations.dart";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/icon/bordered_rect_avatar.dart";

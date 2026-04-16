@@ -82,7 +82,7 @@ class FitDisplayColumns extends ConsumerWidget {
     return switch (notice.action) {
       FitBundleCompatibilityAction.none => null,
       FitBundleCompatibilityAction.openBundleManager => FilledButton.tonalIcon(
-        onPressed: () => context.router.push(const BundleManagerRoute()),
+        onPressed: () => context.router.pushPath("/setting/bundle-manager"),
         icon: const Icon(Icons.archive_outlined),
         label: Text(actionLabel),
       ),
