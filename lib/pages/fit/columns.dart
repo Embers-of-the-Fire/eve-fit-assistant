@@ -12,7 +12,10 @@ class FitDisplayColumns extends ConsumerWidget {
     final fitState = ref.watch(fitProvider(fitContext.fitId));
     final emulatorState = ref.watch(fitEmulatorServiceProvider(fitContext.fitId));
     final status = fitState.status;
-    final saveErrorMessage = status.maybeWhen(error: (message) => message, orElse: () => null);
+    final saveErrorMessageKey = status.maybeWhen(
+      error: (messageKey) => messageKey,
+      orElse: () => null,
+    );
 
     return Padding(
       padding: const .symmetric(horizontal: 6),
@@ -28,13 +31,13 @@ class FitDisplayColumns extends ConsumerWidget {
                 action: _buildCompatibilityAction(context, ref, compatibilityNotice!),
               ),
             ),
-          if (saveErrorMessage != null)
+          if (saveErrorMessageKey != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _FitStatusBanner(
                 icon: Icons.save_as_outlined,
                 title: context.l10n.fitPageSaveErrorTitle,
-                message: saveErrorMessage,
+                message: localizeFitErrorMessage(context.l10n, saveErrorMessageKey),
               ),
             ),
           if (emulatorState.hasError)
@@ -43,7 +46,10 @@ class FitDisplayColumns extends ConsumerWidget {
               child: _FitStatusBanner(
                 icon: Icons.calculate_outlined,
                 title: context.l10n.fitPageStatsUnavailableTitle,
-                message: emulatorState.errorMessage ?? context.l10n.fitPageStatsUnavailableMessage,
+                message: localizeFitErrorMessage(
+                  context.l10n,
+                  emulatorState.errorMessageKey ?? FitErrorMessageKey.fitStatsUnavailable,
+                ),
                 action: FilledButton.tonalIcon(
                   onPressed: ref.read(fitEmulatorServiceProvider(fitContext.fitId).notifier).retry,
                   icon: const Icon(Icons.refresh),

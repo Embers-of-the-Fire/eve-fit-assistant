@@ -219,6 +219,8 @@
   "fitPageStatsUnavailableTitle": "属性不可用",
   "fitPageStatsUnavailableMessage": "在计算恢复期间，您仍然可以查看和编辑该配置。",
   "fitPageSaveErrorTitle": "更改未保存",
+  "fitPageSaveErrorMessage": "最新的配置更改无法保存。",
+  "fitPageReadOnlyMessage": "在启用兼容的数据包之前，该配置将保持只读。",
   "fitPageRetryAction": "重试",
   "fitPageBackAction": "返回",
   "fitIssueDialogTitle": "配置问题",

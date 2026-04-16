@@ -33,7 +33,10 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
         body: _FitPageErrorState(
           icon: Icons.error_outline,
           title: context.l10n.fitPageUnavailableTitle,
-          message: fitState.errorMessage ?? context.l10n.fitPageBrokenMessage,
+          message: localizeFitErrorMessage(
+            context.l10n,
+            fitState.errorMessageKey ?? FitErrorMessageKey.fitLoadFailed,
+          ),
           actions: [
             FilledButton.icon(
               onPressed: ref.read(fitProvider(widget.fitId).notifier).reload,
@@ -51,7 +54,10 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
         body: _FitPageErrorState(
           icon: Icons.calculate_outlined,
           title: context.l10n.fitPageStatsUnavailableTitle,
-          message: emulatorState.errorMessage ?? context.l10n.fitPageStatsUnavailableMessage,
+          message: localizeFitErrorMessage(
+            context.l10n,
+            emulatorState.errorMessageKey ?? FitErrorMessageKey.fitStatsUnavailable,
+          ),
           actions: [
             FilledButton.icon(
               onPressed: ref.read(fitEmulatorServiceProvider(widget.fitId).notifier).retry,
