@@ -6,6 +6,8 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 
 enum FitBundleCompatibilityKind { compatible, outdated, incompatible, unavailable }
 
+enum FitSavedBundleAvailability { missing, installedIncompatible, installedCompatible }
+
 enum FitBundleCompatibilityReason {
   none,
   activeBundleUnavailable,
@@ -23,7 +25,7 @@ class FitBundleCompatibility {
     required this.reason,
     required this.savedSnapshot,
     required this.activeSnapshot,
-    required this.savedBundleInstalled,
+    required this.savedBundleAvailability,
   });
 
   const FitBundleCompatibility.compatible({
@@ -34,23 +36,135 @@ class FitBundleCompatibility {
          reason: FitBundleCompatibilityReason.none,
          savedSnapshot: savedSnapshot,
          activeSnapshot: activeSnapshot,
-         savedBundleInstalled: true,
+         savedBundleAvailability: FitSavedBundleAvailability.installedCompatible,
        );
 
   final FitBundleCompatibilityKind kind;
   final FitBundleCompatibilityReason reason;
   final FitBundleSnapshot savedSnapshot;
   final FitBundleSnapshot? activeSnapshot;
-  final bool savedBundleInstalled;
+  final FitSavedBundleAvailability savedBundleAvailability;
 
   bool get allowsEditing => kind == FitBundleCompatibilityKind.compatible;
   bool get requiresAttention => kind != FitBundleCompatibilityKind.compatible;
+  bool get savedBundleInstalled => savedBundleAvailability != FitSavedBundleAvailability.missing;
+  bool get savedBundleAllowsEditing =>
+      savedBundleAvailability == FitSavedBundleAvailability.installedCompatible;
+}
+
+FitSavedBundleAvailability evaluateSavedBundleAvailability(
+  FitBundleSnapshot savedSnapshot,
+  FitBundleSnapshot? installedSavedSnapshot,
+) {
+  if (installedSavedSnapshot == null) {
+    return FitSavedBundleAvailability.missing;
+  }
+
+  return _evaluateSnapshotPair(savedSnapshot, installedSavedSnapshot).kind ==
+          FitBundleCompatibilityKind.compatible
+      ? FitSavedBundleAvailability.installedCompatible
+      : FitSavedBundleAvailability.installedIncompatible;
+}
+
+FitSavedBundleAvailability resolveSavedBundleAvailability(
+  FitBundleSnapshot savedSnapshot,
+  BundleMetadata? activeBundle, {
+  required bool savedBundleInstalled,
+}) {
+  if (!savedBundleInstalled) {
+    return FitSavedBundleAvailability.missing;
+  }
+
+  final installedSavedSnapshot = switch (activeBundle) {
+    final bundle? when bundle.bundleId == savedSnapshot.bundleId =>
+      FitBundleSnapshot.fromBundleMetadata(bundle),
+    _ => () {
+      try {
+        final registrar = BundleRegistryManager.getRegistrar(savedSnapshot.bundleId);
+        if (registrar.history.isEmpty) {
+          return null;
+        }
+        return FitBundleSnapshot(
+          bundleId: registrar.bundleId,
+          manifestHash: registrar.latest.manifestHash,
+          gameBuild: registrar.latest.gameBuild,
+          appVersion: registrar.latest.appVersion,
+          generateTimestamp: registrar.latest.generateTimestamp,
+        );
+      } on Object {
+        return null;
+      }
+    }(),
+  };
+
+  return evaluateSavedBundleAvailability(savedSnapshot, installedSavedSnapshot);
+}
+
+({FitBundleCompatibilityKind kind, FitBundleCompatibilityReason reason}) _evaluateSnapshotPair(
+  FitBundleSnapshot savedSnapshot,
+  FitBundleSnapshot activeSnapshot,
+) {
+  if (savedSnapshot.bundleId != activeSnapshot.bundleId) {
+    return (
+      kind: FitBundleCompatibilityKind.incompatible,
+      reason: FitBundleCompatibilityReason.bundleIdMismatch,
+    );
+  }
+
+  if (!savedSnapshot.hasComparableRevision || !activeSnapshot.hasComparableRevision) {
+    return (
+      kind: FitBundleCompatibilityKind.outdated,
+      reason: FitBundleCompatibilityReason.missingComparableRevision,
+    );
+  }
+
+  if (savedSnapshot.manifestHash case final savedManifestHash?) {
+    final activeManifestHash = activeSnapshot.manifestHash;
+    if (activeManifestHash != null && savedManifestHash != activeManifestHash) {
+      return (
+        kind: FitBundleCompatibilityKind.outdated,
+        reason: FitBundleCompatibilityReason.manifestMismatch,
+      );
+    }
+  }
+
+  if (savedSnapshot.generateTimestamp case final savedGenerateTimestamp?) {
+    final activeGenerateTimestamp = activeSnapshot.generateTimestamp;
+    if (activeGenerateTimestamp != null && savedGenerateTimestamp != activeGenerateTimestamp) {
+      return (
+        kind: FitBundleCompatibilityKind.outdated,
+        reason: FitBundleCompatibilityReason.generationMismatch,
+      );
+    }
+  }
+
+  if (savedSnapshot.gameBuild case final savedGameBuild?) {
+    final activeGameBuild = activeSnapshot.gameBuild;
+    if (activeGameBuild != null && savedGameBuild != activeGameBuild) {
+      return (
+        kind: FitBundleCompatibilityKind.outdated,
+        reason: FitBundleCompatibilityReason.buildMismatch,
+      );
+    }
+  }
+
+  if (savedSnapshot.appVersion case final savedAppVersion?) {
+    final activeAppVersion = activeSnapshot.appVersion;
+    if (activeAppVersion != null && savedAppVersion != activeAppVersion) {
+      return (
+        kind: FitBundleCompatibilityKind.outdated,
+        reason: FitBundleCompatibilityReason.appVersionMismatch,
+      );
+    }
+  }
+
+  return (kind: FitBundleCompatibilityKind.compatible, reason: FitBundleCompatibilityReason.none);
 }
 
 FitBundleCompatibility evaluateFitBundleCompatibility(
   FitMetadata metadata,
   BundleMetadata? activeBundle, {
-  required bool savedBundleInstalled,
+  required FitSavedBundleAvailability savedBundleAvailability,
 }) {
   final savedSnapshot = metadata.bundleSnapshot;
   if (activeBundle == null) {
@@ -59,91 +173,20 @@ FitBundleCompatibility evaluateFitBundleCompatibility(
       reason: FitBundleCompatibilityReason.activeBundleUnavailable,
       savedSnapshot: savedSnapshot,
       activeSnapshot: null,
-      savedBundleInstalled: savedBundleInstalled,
+      savedBundleAvailability: savedBundleAvailability,
     );
   }
 
   final activeSnapshot = FitBundleSnapshot.fromBundleMetadata(activeBundle);
-  if (savedSnapshot.bundleId != activeSnapshot.bundleId) {
+  final result = _evaluateSnapshotPair(savedSnapshot, activeSnapshot);
+  if (result.kind != FitBundleCompatibilityKind.compatible) {
     return FitBundleCompatibility(
-      kind: FitBundleCompatibilityKind.incompatible,
-      reason: FitBundleCompatibilityReason.bundleIdMismatch,
+      kind: result.kind,
+      reason: result.reason,
       savedSnapshot: savedSnapshot,
       activeSnapshot: activeSnapshot,
-      savedBundleInstalled: savedBundleInstalled,
+      savedBundleAvailability: savedBundleAvailability,
     );
-  }
-
-  if (!savedSnapshot.hasComparableRevision) {
-    return FitBundleCompatibility(
-      kind: FitBundleCompatibilityKind.outdated,
-      reason: FitBundleCompatibilityReason.missingComparableRevision,
-      savedSnapshot: savedSnapshot,
-      activeSnapshot: activeSnapshot,
-      savedBundleInstalled: savedBundleInstalled,
-    );
-  }
-
-  if (!activeSnapshot.hasComparableRevision) {
-    return FitBundleCompatibility(
-      kind: FitBundleCompatibilityKind.outdated,
-      reason: FitBundleCompatibilityReason.missingComparableRevision,
-      savedSnapshot: savedSnapshot,
-      activeSnapshot: activeSnapshot,
-      savedBundleInstalled: savedBundleInstalled,
-    );
-  }
-
-  if (savedSnapshot.manifestHash case final savedManifestHash?) {
-    final activeManifestHash = activeSnapshot.manifestHash;
-    if (activeManifestHash != null && savedManifestHash != activeManifestHash) {
-      return FitBundleCompatibility(
-        kind: FitBundleCompatibilityKind.outdated,
-        reason: FitBundleCompatibilityReason.manifestMismatch,
-        savedSnapshot: savedSnapshot,
-        activeSnapshot: activeSnapshot,
-        savedBundleInstalled: savedBundleInstalled,
-      );
-    }
-  }
-
-  if (savedSnapshot.generateTimestamp case final savedGenerateTimestamp?) {
-    final activeGenerateTimestamp = activeSnapshot.generateTimestamp;
-    if (activeGenerateTimestamp != null && savedGenerateTimestamp != activeGenerateTimestamp) {
-      return FitBundleCompatibility(
-        kind: FitBundleCompatibilityKind.outdated,
-        reason: FitBundleCompatibilityReason.generationMismatch,
-        savedSnapshot: savedSnapshot,
-        activeSnapshot: activeSnapshot,
-        savedBundleInstalled: savedBundleInstalled,
-      );
-    }
-  }
-
-  if (savedSnapshot.gameBuild case final savedGameBuild?) {
-    final activeGameBuild = activeSnapshot.gameBuild;
-    if (activeGameBuild != null && savedGameBuild != activeGameBuild) {
-      return FitBundleCompatibility(
-        kind: FitBundleCompatibilityKind.outdated,
-        reason: FitBundleCompatibilityReason.buildMismatch,
-        savedSnapshot: savedSnapshot,
-        activeSnapshot: activeSnapshot,
-        savedBundleInstalled: savedBundleInstalled,
-      );
-    }
-  }
-
-  if (savedSnapshot.appVersion case final savedAppVersion?) {
-    final activeAppVersion = activeSnapshot.appVersion;
-    if (activeAppVersion != null && savedAppVersion != activeAppVersion) {
-      return FitBundleCompatibility(
-        kind: FitBundleCompatibilityKind.outdated,
-        reason: FitBundleCompatibilityReason.appVersionMismatch,
-        savedSnapshot: savedSnapshot,
-        activeSnapshot: activeSnapshot,
-        savedBundleInstalled: savedBundleInstalled,
-      );
-    }
   }
 
   return FitBundleCompatibility.compatible(
@@ -161,15 +204,20 @@ final fitBundleCompatibilityProvider = Provider.family<FitBundleCompatibility?, 
     return null;
   }
 
+  final savedSnapshot = metadata.bundleSnapshot;
   final activeBundle = ref.watch(currentBundleProvider);
-  final savedBundleInstalled = ref.watch(
+  final savedBundleAvailability = ref.watch(
     bundleRegistryManagerProvider.select(
-      (registry) => registry.bundles.containsKey(metadata.bundleSnapshot.bundleId),
+      (registry) => resolveSavedBundleAvailability(
+        savedSnapshot,
+        activeBundle,
+        savedBundleInstalled: registry.bundles.containsKey(savedSnapshot.bundleId),
+      ),
     ),
   );
   return evaluateFitBundleCompatibility(
     metadata,
     activeBundle,
-    savedBundleInstalled: savedBundleInstalled,
+    savedBundleAvailability: savedBundleAvailability,
   );
 });

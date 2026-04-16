@@ -53,7 +53,7 @@ FitBundleCompatibilityNotice? localizeFitBundleCompatibility(
         throw StateError("Incompatible fit bundle compatibility requires an active snapshot.");
       }
 
-      return compatibility.savedBundleInstalled
+      return compatibility.savedBundleAllowsEditing
           ? FitBundleCompatibilityNotice(
               title: l10n.fitBundleMismatchTitle,
               message: l10n.fitBundleMismatchSwitchDescription(
@@ -67,17 +67,24 @@ FitBundleCompatibilityNotice? localizeFitBundleCompatibility(
             )
           : FitBundleCompatibilityNotice(
               title: l10n.fitBundleMismatchTitle,
-              message: l10n.fitBundleMismatchImportDescription(
-                savedBundleId: compatibility.savedSnapshot.bundleId,
-                activeBundleId: activeSnapshot.bundleId,
-              ),
-              label: l10n.fitBundleImportLabel,
+              message: compatibility.savedBundleInstalled
+                  ? l10n.fitBundleMismatchDescription(
+                      savedBundleId: compatibility.savedSnapshot.bundleId,
+                      activeBundleId: activeSnapshot.bundleId,
+                    )
+                  : l10n.fitBundleMismatchImportDescription(
+                      savedBundleId: compatibility.savedSnapshot.bundleId,
+                      activeBundleId: activeSnapshot.bundleId,
+                    ),
+              label: compatibility.savedBundleInstalled
+                  ? l10n.fitBundleMismatchTitle
+                  : l10n.fitBundleImportLabel,
               action: FitBundleCompatibilityAction.openBundleManager,
               actionLabel: l10n.fitBundleOpenManagerAction,
             );
     }(),
     FitBundleCompatibilityKind.unavailable =>
-      compatibility.savedBundleInstalled
+      compatibility.savedBundleAllowsEditing
           ? FitBundleCompatibilityNotice(
               title: l10n.fitBundleUnavailableTitle,
               message: l10n.fitBundleUnavailableSwitchDescription(
@@ -90,8 +97,12 @@ FitBundleCompatibilityNotice? localizeFitBundleCompatibility(
             )
           : FitBundleCompatibilityNotice(
               title: l10n.fitBundleUnavailableTitle,
-              message: l10n.fitBundleUnavailableImportDescription,
-              label: l10n.fitBundleImportLabel,
+              message: compatibility.savedBundleInstalled
+                  ? l10n.fitBundleUnavailableDescription
+                  : l10n.fitBundleUnavailableImportDescription,
+              label: compatibility.savedBundleInstalled
+                  ? l10n.fitBundleUnavailableTitle
+                  : l10n.fitBundleImportLabel,
               action: FitBundleCompatibilityAction.openBundleManager,
               actionLabel: l10n.fitBundleOpenManagerAction,
             ),

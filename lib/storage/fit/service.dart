@@ -160,10 +160,14 @@ class Fit extends _$Fit {
   FitBundleCompatibility _compatibilityFor(FitStorage fit) => evaluateFitBundleCompatibility(
     fit.metadata,
     ref.read(currentBundleProvider),
-    savedBundleInstalled: ref
-        .read(bundleRegistryManagerProvider)
-        .bundles
-        .containsKey(fit.metadata.bundleSnapshot.bundleId),
+    savedBundleAvailability: resolveSavedBundleAvailability(
+      fit.metadata.bundleSnapshot,
+      ref.read(currentBundleProvider),
+      savedBundleInstalled: ref
+          .read(bundleRegistryManagerProvider)
+          .bundles
+          .containsKey(fit.metadata.bundleSnapshot.bundleId),
+    ),
   );
 
   void _unmount() {
