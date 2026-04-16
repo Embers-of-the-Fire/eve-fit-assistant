@@ -1,0 +1,43 @@
+name: "使用提问"
+description: "询问用法、行为或其他一般问题"
+title: "[Question]: "
+labels: ["question", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        对于一般帮助、交流或开放性问题，建议优先前往 Discussions 页面。
+        如果你仍希望提交 issue，请尽量提供足够背景，方便维护者快速判断或答复。
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 你的问题
+      description: 你想了解什么？
+      placeholder: 请清晰描述你的问题。
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 问题背景
+      description: 出现这个问题时，你当时在做什么？
+      placeholder: 请描述你的目标、当前流程或困惑点。
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: 已查阅内容
+      description: 请说明你已经看过哪些文档、issue、discussion 或代码。
+      placeholder: 请描述你已经做过的排查或查阅。
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 检查清单
+      options:
+        - label: 我了解一般问题更适合发布在 GitHub Discussions。
+          required: true

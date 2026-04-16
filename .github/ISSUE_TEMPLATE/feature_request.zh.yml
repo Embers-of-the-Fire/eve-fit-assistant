@@ -1,0 +1,58 @@
+name: "功能请求"
+description: "建议一个改进或新功能"
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提出想法。
+        请先说明你遇到的问题，再描述你希望新增的功能。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 这个请求要解决什么用户问题、痛点或缺失流程？
+      placeholder: 请描述你想解决的问题。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望方案
+      description: 你希望看到怎样的行为或功能？
+      placeholder: 请描述你想要的功能。
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案
+      description: 你是否考虑过其他方案或临时绕过方式？
+      placeholder: 可填写替代方案，也可留空。
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 使用场景 / 影响
+      description: 谁会因此受益？为什么这个功能重要？
+      placeholder: 请说明这个功能的价值。
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 原型 / 参考 / 其他补充
+      placeholder: 可附上截图、参考链接或其他说明。
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 检查清单
+      options:
+        - label: 我已搜索过现有 issue，确认不是重复请求。
+          required: true
