@@ -41,6 +41,7 @@ class FitTextImporter {
   const FitTextImporter(this.ref);
 
   static final _nativePrefixPattern = RegExp(r"^EFA(?:(\d+))?:");
+  static const _legacyNativePrefixVersion = 1;
 
   final WidgetRef ref;
 
@@ -77,7 +78,7 @@ class FitTextImporter {
         throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
       }
       final explicitVersion = prefixMatch.group(1);
-      if (explicitVersion != null) {
+      if (explicitVersion != null && int.tryParse(explicitVersion) != _legacyNativePrefixVersion) {
         throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
       }
 
