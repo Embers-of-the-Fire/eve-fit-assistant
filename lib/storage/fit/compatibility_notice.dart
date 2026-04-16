@@ -47,13 +47,18 @@ FitBundleCompatibilityNotice? localizeFitBundleCompatibility(
         actionLabel: l10n.fitBundleOpenManagerAction,
       ),
     },
-    FitBundleCompatibilityKind.incompatible =>
-      compatibility.savedBundleInstalled
+    FitBundleCompatibilityKind.incompatible => () {
+      final activeSnapshot = compatibility.activeSnapshot;
+      if (activeSnapshot == null) {
+        throw StateError("Incompatible fit bundle compatibility requires an active snapshot.");
+      }
+
+      return compatibility.savedBundleInstalled
           ? FitBundleCompatibilityNotice(
               title: l10n.fitBundleMismatchTitle,
               message: l10n.fitBundleMismatchSwitchDescription(
                 savedBundleId: compatibility.savedSnapshot.bundleId,
-                activeBundleId: compatibility.activeSnapshot?.bundleId ?? "-",
+                activeBundleId: activeSnapshot.bundleId,
               ),
               label: l10n.fitBundleSwitchLabel,
               action: FitBundleCompatibilityAction.switchToSavedBundle,
@@ -64,12 +69,13 @@ FitBundleCompatibilityNotice? localizeFitBundleCompatibility(
               title: l10n.fitBundleMismatchTitle,
               message: l10n.fitBundleMismatchImportDescription(
                 savedBundleId: compatibility.savedSnapshot.bundleId,
-                activeBundleId: compatibility.activeSnapshot?.bundleId ?? "-",
+                activeBundleId: activeSnapshot.bundleId,
               ),
               label: l10n.fitBundleImportLabel,
               action: FitBundleCompatibilityAction.openBundleManager,
               actionLabel: l10n.fitBundleOpenManagerAction,
-            ),
+            );
+    }(),
     FitBundleCompatibilityKind.unavailable =>
       compatibility.savedBundleInstalled
           ? FitBundleCompatibilityNotice(
