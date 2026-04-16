@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
@@ -21,10 +22,31 @@ import "package:riverpod_annotation/riverpod_annotation.dart";
 part "service.freezed.dart";
 part "service.g.dart";
 
+enum FitErrorMessageKey {
+  fitLoadFailed,
+  fitLoadMissing,
+  fitSaveFailed,
+  fitReadOnly,
+  fitUnavailable,
+  fitStatsUnavailable,
+  fitCalculationsUnavailable,
+}
+
+String localizeFitErrorMessage(AppLocalizations l10n, FitErrorMessageKey key) => switch (key) {
+  FitErrorMessageKey.fitLoadFailed => l10n.fitPageBrokenMessage,
+  FitErrorMessageKey.fitLoadMissing => l10n.fitPageMissingMessage,
+  FitErrorMessageKey.fitSaveFailed => l10n.fitPageSaveErrorMessage,
+  FitErrorMessageKey.fitReadOnly => l10n.fitPageReadOnlyMessage,
+  FitErrorMessageKey.fitUnavailable => l10n.fitPageBrokenMessage,
+  FitErrorMessageKey.fitStatsUnavailable => l10n.fitPageStatsUnavailableMessage,
+  FitErrorMessageKey.fitCalculationsUnavailable => l10n.fitPageStatsUnavailableMessage,
+};
+
 @freezed
 abstract class FitServiceStatus with _$FitServiceStatus {
   const factory FitServiceStatus.uninitialized() = _FitServiceStatusUninitialized;
-  const factory FitServiceStatus.error({required String message}) = _FitServiceStatusError;
+  const factory FitServiceStatus.error({required FitErrorMessageKey messageKey}) =
+      _FitServiceStatusError;
   const factory FitServiceStatus.syncing() = _FitServiceStatusSyncing;
   const factory FitServiceStatus.loaded({required DateTime lastSync}) = _FitServiceStatusLoaded;
 }
@@ -32,35 +54,45 @@ abstract class FitServiceStatus with _$FitServiceStatus {
 @freezed
 abstract class FitServiceState with _$FitServiceState {
   const factory FitServiceState.notInitialized() = _FitServiceStateNotInitialized;
-  const factory FitServiceState.error({required String message}) = _FitServiceStateError;
+  const factory FitServiceState.error({required FitErrorMessageKey messageKey}) =
+      _FitServiceStateError;
   const factory FitServiceState.loaded({
     required FitServiceStatus status,
     required FitStorage fit,
   }) = _FitServiceStateLoaded;
 
   const FitServiceState._();
-  bool get isInitialized =>
-      when(notInitialized: () => false, error: (message) => false, loaded: (status, fit) => true);
-  bool get hasError =>
-      when(notInitialized: () => false, error: (message) => true, loaded: (status, fit) => false);
-  String? get errorMessage =>
-      when(notInitialized: () => null, error: (message) => message, loaded: (status, fit) => null);
+  bool get isInitialized => when(
+    notInitialized: () => false,
+    error: (messageKey) => false,
+    loaded: (status, fit) => true,
+  );
+  bool get hasError => when(
+    notInitialized: () => false,
+    error: (messageKey) => true,
+    loaded: (status, fit) => false,
+  );
+  FitErrorMessageKey? get errorMessageKey => when(
+    notInitialized: () => null,
+    error: (messageKey) => messageKey,
+    loaded: (status, fit) => null,
+  );
   FitStorage get fit => when(
     notInitialized: () {
       final stackTrace = StackTrace.current;
       error("Invalid fit service access: fit not initialized", stackTrace: stackTrace);
       throw StateError("Fit is unavailable.");
     },
-    error: (message) {
+    error: (messageKey) {
       final stackTrace = StackTrace.current;
-      error("Invalid fit service access: $message", stackTrace: stackTrace);
+      error("Invalid fit service access: ${messageKey.name}", stackTrace: stackTrace);
       throw StateError("Fit is unavailable.");
     },
     loaded: (status, fit) => fit,
   );
   FitServiceStatus get status => when(
     notInitialized: FitServiceStatus.uninitialized,
-    error: (message) => FitServiceStatus.error(message: message),
+    error: (messageKey) => FitServiceStatus.error(messageKey: messageKey),
     loaded: (status, fit) => status,
   );
 }
@@ -82,9 +114,14 @@ class Fit extends _$Fit {
 
   Future<void> reload() => _mount(_fitId);
 
-  void _setLoadError(String fitId, String message, Object errorValue, StackTrace stackTrace) {
+  void _setLoadError(
+    String fitId,
+    FitErrorMessageKey messageKey,
+    Object errorValue,
+    StackTrace stackTrace,
+  ) {
     error("Failed to load fit $fitId: $errorValue", stackTrace: stackTrace);
-    state = FitServiceState.error(message: message);
+    state = FitServiceState.error(messageKey: messageKey);
   }
 
   Future<void> _loadFromDisk(String fitId) async {
@@ -116,10 +153,10 @@ class Fit extends _$Fit {
         fit: fit,
       );
     } on Object catch (errorValue, stackTrace) {
-      final message = path.existsSync()
-          ? "This fit could not be loaded."
-          : "This fit file is missing.";
-      _setLoadError(fitId, message, errorValue, stackTrace);
+      final messageKey = path.existsSync()
+          ? FitErrorMessageKey.fitLoadFailed
+          : FitErrorMessageKey.fitLoadMissing;
+      _setLoadError(fitId, messageKey, errorValue, stackTrace);
     }
   }
 
@@ -141,7 +178,7 @@ class Fit extends _$Fit {
       error("Failed to sync fit ${fit.metadata.fitId}: $errorValue", stackTrace: stackTrace);
       if (revision != _latestSyncRevision) return;
       state = FitServiceState.loaded(
-        status: const FitServiceStatus.error(message: "Failed to save fit changes."),
+        status: const FitServiceStatus.error(messageKey: FitErrorMessageKey.fitSaveFailed),
         fit: fit,
       );
     }
@@ -199,9 +236,7 @@ class Fit extends _$Fit {
     final compatibility = _compatibilityFor(currentFit);
     if (!compatibility.allowsEditing) {
       state = FitServiceState.loaded(
-        status: const FitServiceStatus.error(
-          message: "This fit is read-only until a compatible bundle is active.",
-        ),
+        status: const FitServiceStatus.error(messageKey: FitErrorMessageKey.fitReadOnly),
         fit: currentFit,
       );
       return;
@@ -228,8 +263,10 @@ class FitEmulatorState with _$FitEmulatorState {
   const factory FitEmulatorState.notInitialized() = _FitEmulatorStateNotInitialized;
   const factory FitEmulatorState.emulating({required native.Ship? previous}) =
       _FitEmulatorStateEmulating;
-  const factory FitEmulatorState.error({required String message, required native.Ship? previous}) =
-      _FitEmulatorStateError;
+  const factory FitEmulatorState.error({
+    required FitErrorMessageKey messageKey,
+    required native.Ship? previous,
+  }) = _FitEmulatorStateError;
   const factory FitEmulatorState.emulated({required native.Ship output}) =
       _FitEmulatorStateEmulated;
 
@@ -245,21 +282,21 @@ class FitEmulatorState with _$FitEmulatorState {
   bool get hasError => when(
     notInitialized: () => false,
     emulating: (previous) => false,
-    error: (message, previous) => true,
+    error: (messageKey, previous) => true,
     emulated: (output) => false,
   );
 
-  String? get errorMessage => when(
+  FitErrorMessageKey? get errorMessageKey => when(
     notInitialized: () => null,
     emulating: (previous) => null,
-    error: (message, previous) => message,
+    error: (messageKey, previous) => messageKey,
     emulated: (output) => null,
   );
 
   native.Ship? get emulated => when(
     notInitialized: () => null,
     emulating: (previous) => previous,
-    error: (message, previous) => previous,
+    error: (messageKey, previous) => previous,
     emulated: (output) => output,
   );
 }
@@ -292,7 +329,7 @@ class FitEmulatorService extends _$FitEmulatorService {
         if (!next.isInitialized) {
           state = next.hasError
               ? FitEmulatorState.error(
-                  message: next.errorMessage ?? "This fit is unavailable.",
+                  messageKey: next.errorMessageKey ?? FitErrorMessageKey.fitUnavailable,
                   previous: state.emulated,
                 )
               : const FitEmulatorState.notInitialized();
@@ -325,15 +362,15 @@ class FitEmulatorService extends _$FitEmulatorService {
       final engineState = ref.read(nativeFitEngineServiceProvider);
       final engine = engineState.engineOrNull;
       if (engine == null) {
-        final message = engineState.errorMessage;
-        if (message == null) {
+        final messageKey = engineState.errorMessageKey;
+        if (messageKey == null) {
           debug(
             "Deferring emulation for ${fitStorage.metadata.fitId}: fit engine is still loading",
           );
           return;
         }
-        warning("Failed to emulate ${fitStorage.metadata.fitId}: $message");
-        state = FitEmulatorState.error(message: message, previous: state.emulated);
+        warning("Failed to emulate ${fitStorage.metadata.fitId}: ${messageKey.name}");
+        state = FitEmulatorState.error(messageKey: messageKey, previous: state.emulated);
         return;
       }
 
@@ -361,7 +398,7 @@ class FitEmulatorService extends _$FitEmulatorService {
         stackTrace: stackTrace,
       );
       state = FitEmulatorState.error(
-        message: "Stats are temporarily unavailable for this fit.",
+        messageKey: FitErrorMessageKey.fitStatsUnavailable,
         previous: state.emulated,
       );
     }
@@ -372,7 +409,8 @@ class FitEmulatorService extends _$FitEmulatorService {
 class NativeFitEngineState with _$NativeFitEngineState {
   const factory NativeFitEngineState.notInitialized() = _NativeFitEngineStateNotInitialized;
   const factory NativeFitEngineState.initializing() = _NativeFitEngineStateInitializing;
-  const factory NativeFitEngineState.error({required String message}) = _NativeFitEngineStateError;
+  const factory NativeFitEngineState.error({required FitErrorMessageKey messageKey}) =
+      _NativeFitEngineStateError;
   const factory NativeFitEngineState.initialized({required native_server.FitEngine engine}) =
       _NativeFitEngineStateInitialized;
 
@@ -381,13 +419,13 @@ class NativeFitEngineState with _$NativeFitEngineState {
   String get debugOnlyDisplayState => switch (this) {
     _NativeFitEngineStateInitialized(engine: final _) => "initialized",
     _NativeFitEngineStateInitializing() => "initializing",
-    _NativeFitEngineStateError(:final message) => "error: $message",
+    _NativeFitEngineStateError(:final messageKey) => "error: ${messageKey.name}",
     _NativeFitEngineStateNotInitialized() => "not initialized",
     _ => throw Exception("Unreachable"),
   };
   bool get isInitializing => this is _NativeFitEngineStateInitializing;
-  String? get errorMessage => switch (this) {
-    _NativeFitEngineStateError(:final message) => message,
+  FitErrorMessageKey? get errorMessageKey => switch (this) {
+    _NativeFitEngineStateError(:final messageKey) => messageKey,
     _ => null,
   };
   native_server.FitEngine? get engineOrNull => switch (this) {
@@ -440,7 +478,7 @@ class NativeFitEngineService extends _$NativeFitEngineService {
         stackTrace: stackTrace,
       );
       state = const NativeFitEngineState.error(
-        message: "Fit calculations are temporarily unavailable.",
+        messageKey: FitErrorMessageKey.fitCalculationsUnavailable,
       );
     }
   }

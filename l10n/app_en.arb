@@ -98,6 +98,8 @@
   "fitPageStatsUnavailableTitle": "Stats unavailable",
   "fitPageStatsUnavailableMessage": "You can still inspect and edit the fit while calculations recover.",
   "fitPageSaveErrorTitle": "Changes not saved",
+  "fitPageSaveErrorMessage": "The latest fit changes could not be saved.",
+  "fitPageReadOnlyMessage": "This fit stays read-only until a compatible bundle is active.",
   "fitPageRetryAction": "Retry",
   "fitPageBackAction": "Back",
   "fitIssueDialogTitle": "Fit issues",

@@ -151,7 +151,10 @@ class _FitPage extends ConsumerWidget {
           child: _FitPageErrorState(
             icon: Icons.error_outline,
             title: context.l10n.fitPageUnavailableTitle,
-            message: fit.errorMessage ?? context.l10n.fitPageBrokenMessage,
+            message: localizeFitErrorMessage(
+              context.l10n,
+              fit.errorMessageKey ?? FitErrorMessageKey.fitLoadFailed,
+            ),
             actions: [
               FilledButton.icon(
                 onPressed: ref.read(fitProvider(fitId).notifier).reload,
