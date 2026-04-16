@@ -51,18 +51,28 @@ class ZhAnnouncementDocument(ZhDocumentBase):
     appVer: None = None
 
 
+class ZhInformationDocument(ZhDocumentBase):
+    kind: Literal["information"]
+    minAppVer: str | None = None
+    appVer: None = None
+
+
 class ZhVersionDocument(ZhDocumentBase):
     kind: Literal["version"]
     appVer: str
     minAppVer: None = None
 
 
+ZhDocumentVariant = ZhAnnouncementDocument | ZhInformationDocument | ZhVersionDocument
+
+
 ZhDocumentMetadata = Annotated[
-    ZhAnnouncementDocument | ZhVersionDocument,
+    ZhDocumentVariant,
     Field(discriminator="kind"),
 ]
 
 ZhAnnouncementDocument.model_rebuild()
+ZhInformationDocument.model_rebuild()
 ZhVersionDocument.model_rebuild()
 ZH_DOCUMENT_METADATA_ADAPTER = TypeAdapter(ZhDocumentMetadata)
 ZH_DOCUMENT_METADATA_ADAPTER.rebuild()
@@ -86,7 +96,7 @@ class ParsedLocalizedDocument:
 @dataclass(frozen=True)
 class AuthoredDocumentEntry:
     document: ParsedLocalizedDocument
-    metadata: ZhAnnouncementDocument | ZhVersionDocument | None = None
+    metadata: ZhDocumentVariant | None = None
 
 
 def build_documents() -> None:
@@ -231,9 +241,7 @@ def _parse_front_matter(file_path: Path) -> tuple[dict[str, Any], str]:
     return data, remaining.lstrip("\n")
 
 
-def _parse_zh_metadata(
-    file_path: Path, front_matter: dict[str, Any]
-) -> ZhAnnouncementDocument | ZhVersionDocument:
+def _parse_zh_metadata(file_path: Path, front_matter: dict[str, Any]) -> ZhDocumentVariant:
     try:
         return ZH_DOCUMENT_METADATA_ADAPTER.validate_python(front_matter)
     except ValidationError as exception:

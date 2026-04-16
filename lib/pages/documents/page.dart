@@ -243,11 +243,13 @@ class _DocumentListCard extends StatelessWidget {
 
 String _documentKindLabel(BuildContext context, DocumentEntryKind kind) => switch (kind) {
   DocumentEntryKind.announcement => context.l10n.documentKindAnnouncement,
+  DocumentEntryKind.information => context.l10n.documentKindInformation,
   DocumentEntryKind.version => context.l10n.documentKindVersion,
 };
 
 IconData _documentKindIcon(DocumentEntryKind kind) => switch (kind) {
   DocumentEntryKind.announcement => Icons.campaign_outlined,
+  DocumentEntryKind.information => Icons.info_outline,
   DocumentEntryKind.version => Icons.new_releases_outlined,
 };
 

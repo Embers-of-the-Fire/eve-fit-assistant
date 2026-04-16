@@ -26,6 +26,12 @@ final documentFeedProvider = FutureProvider.family<List<DocumentRecord>, Documen
 class DocumentRepository {
   const DocumentRepository();
 
+  static const Set<DocumentEntryKind> _mixedFeedKinds = <DocumentEntryKind>{
+    DocumentEntryKind.announcement,
+    DocumentEntryKind.information,
+    DocumentEntryKind.version,
+  };
+
   Future<List<DocumentRecord>> loadFeed({
     required DocumentFeedKind feedKind,
     required String localeCode,
@@ -38,7 +44,7 @@ class DocumentRepository {
 
     final filteredEntries = mergedEntries.where(
       (DocumentEntry entry) => switch (feedKind) {
-        DocumentFeedKind.announcement => entry.kind == DocumentEntryKind.announcement,
+        DocumentFeedKind.announcement => _mixedFeedKinds.contains(entry.kind),
         DocumentFeedKind.version => entry.kind == DocumentEntryKind.version,
       },
     );
