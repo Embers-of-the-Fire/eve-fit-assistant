@@ -1,0 +1,43 @@
+name: "Questions"
+description: "Ask a question about usage or behavior"
+title: "[Question]: "
+labels: ["question", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For general help or open-ended discussion, please prefer the Discussions page first.
+        If you are opening an issue anyway, give enough detail so maintainers can redirect or answer efficiently.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What do you want to know?
+      placeholder: Ask your question clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What were you trying to do when this question came up?
+      placeholder: Describe your goal, current workflow, or confusion.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What You Already Checked
+      description: Mention any docs, issues, discussions, or code you already looked at.
+      placeholder: Describe what you already checked.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I understand that GitHub Discussions is the preferred place for general questions.
+          required: true
