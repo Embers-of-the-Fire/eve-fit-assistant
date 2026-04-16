@@ -157,3 +157,11 @@ Agents should read this file before editing code.
 - If editing source that feeds codegen, regenerate outputs instead of hand-editing generated files.
 - Keep changes minimal and consistent with nearby code; this repo already has strong established patterns.
 - Mention any required workspace or `.env` prerequisites when you cannot run backend generation/tests locally.
+
+## Agent Safety and Right Rules
+
+- You **MUST** sign-off on changes using `git commit -s` or include a `Signed-off-by`.
+- You **MUST** include a `Assisted-by` tag following the format:
+  `Assisted-by: [Provider]:[model] [tools]`. For example,
+  `Assisted-by: Claude:claude-opus-4.6 spark fuzz`.
+  Note that trivial tools **MUST** not be included, like `git`, `bash`, `apply_patch`, etc.
