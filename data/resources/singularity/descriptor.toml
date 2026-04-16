@@ -1,0 +1,18 @@
+[paths]
+cache = "cache"
+generated = "generated"
+output = "output"
+
+[metadata]
+start_cfg = "start.ini"
+name = {en = "Singularity", zh = "奇点"}
+identifier = "singularity"
+
+[resources]
+fsd = "fsd"
+resource_index = "resfileindex.txt"
+application_index = "index_singularity.txt"
+patches = "patches"
+
+[services]
+resource_url = "https://{resource_type}.eveonline.com/{resource_url}"

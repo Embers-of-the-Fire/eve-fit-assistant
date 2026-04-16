@@ -33,3 +33,22 @@
       typeId: 35688
     - variant: speed
       typeId: 35687
+
+89808:
+  modes:
+    - variant: defense
+      typeId: 90060
+    - variant: target
+      typeId: 90064
+    - variant: speed
+      typeId: 90062
+
+89807:
+  modes:
+    - variant: defense
+      typeId: 90061
+    - variant: target
+      typeId: 90065
+    - variant: speed
+      typeId: 90063
+
