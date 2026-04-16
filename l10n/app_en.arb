@@ -12,7 +12,7 @@
   "copy": "Copy",
   "share": "Share",
   "dynamicConvert": "Abyssal",
-  "dynamicRevert": "Restore",
+  "dynamicRevert": "Restore original",
   "dynamicSelectTitle": "Select mutaplasmid",
   "enable": "Enable",
   "disable": "Disable",

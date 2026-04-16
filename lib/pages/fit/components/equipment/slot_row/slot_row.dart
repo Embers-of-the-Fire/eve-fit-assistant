@@ -1,6 +1,7 @@
 part of "../../../page.dart";
 
 // TODO(dynamic-item-conversion): Re-enable after conversion parity work lands.
+// Alpha builds intentionally expose restore-only handling for existing dynamic items.
 const bool _dynamicItemConversionEnabled = false;
 
 class _AnySlotRow extends StatelessWidget {
