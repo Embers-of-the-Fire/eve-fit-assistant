@@ -49,12 +49,12 @@ abstract class FitServiceState with _$FitServiceState {
     notInitialized: () {
       final stackTrace = StackTrace.current;
       error("Invalid fit service access: fit not initialized", stackTrace: stackTrace);
-      throw StateError("Fit service not initialized");
+      throw StateError("Fit is unavailable.");
     },
     error: (message) {
       final stackTrace = StackTrace.current;
       error("Invalid fit service access: $message", stackTrace: stackTrace);
-      throw StateError(message);
+      throw StateError("Fit is unavailable.");
     },
     loaded: (status, fit) => fit,
   );
