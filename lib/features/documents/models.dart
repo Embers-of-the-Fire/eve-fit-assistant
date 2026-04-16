@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "models.freezed.dart";
 part "models.g.dart";
 
-enum DocumentEntryKind { announcement, version }
+enum DocumentEntryKind { announcement, information, version }
 
 enum DocumentEntrySource { bundled, remote }
 

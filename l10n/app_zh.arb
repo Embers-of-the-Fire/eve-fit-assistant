@@ -117,6 +117,7 @@
   "documentLoadErrorDescription": "请稍后重试，或重新启动应用。",
   "documentSelectPrompt": "请选择一条内容以查看详情。",
   "documentKindAnnouncement": "公告",
+  "documentKindInformation": "信息",
   "documentKindVersion": "版本",
   "documentOpenHint": "点击查看",
   "documentVersionBadge": "应用 {version}",
