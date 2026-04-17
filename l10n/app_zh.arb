@@ -4,6 +4,7 @@
   "@@_NO_FORMAT_PLAIN_TEXT": {},
   "delete": "删除",
   "cancel": "取消",
+  "close": "关闭",
   "ok": "好的",
   "save": "保存",
   "appTitle": "EVE Fit Assistant",
@@ -850,5 +851,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "@_ANNOUCENEMENT_TEXT": {},
+  "dontShowAgain": "下次不再提示",
+  "showDetails": "显示详情"
 }

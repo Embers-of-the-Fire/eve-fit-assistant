@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from data.lib.constant import ASSETS_ROOT
 from data.lib.log import error
 from data.lib.log import info
+from data.lib.log import warning
 
 
 DATETIME_TYPE = dt.datetime
@@ -47,6 +48,7 @@ class ZhDocumentBase(BaseModel):
 
 class ZhAnnouncementDocument(ZhDocumentBase):
     kind: Literal["announcement"]
+    startup: bool = False
     minAppVer: str | None = None
     appVer: None = None
 
@@ -129,6 +131,7 @@ def build_documents() -> None:
                 "source": "bundled",
                 "publishedAt": _serialize_published_at(metadata.publishedAt),
                 "tags": metadata.tags,
+                "startup": getattr(metadata, "startup", False),
                 "minAppVer": getattr(metadata, "minAppVer", None),
                 "appVer": getattr(metadata, "appVer", None),
                 "localizations": {
@@ -242,12 +245,26 @@ def _parse_front_matter(file_path: Path) -> tuple[dict[str, Any], str]:
 
 
 def _parse_zh_metadata(file_path: Path, front_matter: dict[str, Any]) -> ZhDocumentVariant:
+    normalized_front_matter = _normalize_zh_front_matter(file_path, front_matter)
     try:
-        return ZH_DOCUMENT_METADATA_ADAPTER.validate_python(front_matter)
+        return ZH_DOCUMENT_METADATA_ADAPTER.validate_python(normalized_front_matter)
     except ValidationError as exception:
         message = f"Invalid zh document metadata in '{file_path}': {exception}"
         error(message)
         raise ValueError(message) from exception
+
+
+def _normalize_zh_front_matter(file_path: Path, front_matter: dict[str, Any]) -> dict[str, Any]:
+    kind = front_matter.get("kind")
+    if kind == "announcement" or "startup" not in front_matter:
+        return front_matter
+
+    warning(
+        f"Document '{file_path}' sets 'startup' on a non-announcement entry; ignoring the field."
+    )
+    normalized_front_matter = dict(front_matter)
+    normalized_front_matter.pop("startup")
+    return normalized_front_matter
 
 
 def _parse_localized_stub(file_path: Path, front_matter: dict[str, Any]) -> LocalizedDocumentStub:

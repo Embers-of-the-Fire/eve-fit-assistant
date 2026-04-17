@@ -38,6 +38,7 @@ abstract class DocumentEntry with _$DocumentEntry {
     required DateTime publishedAt,
     required Map<String, DocumentLocalization> localizations,
     @Default(<String>[]) List<String> tags,
+    @Default(false) bool startup,
     String? minAppVer,
     String? appVer,
   }) = _DocumentEntry;
@@ -87,6 +88,7 @@ abstract class DocumentRecord with _$DocumentRecord {
     required DateTime publishedAt,
     required String localeCode,
     @Default(<String>[]) List<String> tags,
+    @Default(false) bool startup,
     String? minAppVer,
     String? appVer,
   }) = _DocumentRecord;

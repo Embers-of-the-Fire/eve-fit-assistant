@@ -18,6 +18,7 @@ abstract class DocumentStorageState with _$DocumentStorageState {
     required DocumentCatalog remoteCatalog,
     @Default(<String, String>{}) Map<String, String> cachedBodies,
     @Default(<String, String>{}) Map<String, String> selectedDocumentIds,
+    @Default(<String>[]) List<String> dismissedStartupAnnouncementIds,
   }) = _DocumentStorageState;
 
   factory DocumentStorageState.initial() => DocumentStorageState(
@@ -55,6 +56,23 @@ class DocumentStorage {
         ..._state.selectedDocumentIds,
         kind.storageKey: documentId,
       },
+    );
+    _sync();
+  }
+
+  static bool isStartupAnnouncementDismissed(String documentId) =>
+      _state.dismissedStartupAnnouncementIds.contains(documentId);
+
+  static void dismissStartupAnnouncement(String documentId) {
+    if (isStartupAnnouncementDismissed(documentId)) {
+      return;
+    }
+
+    _state = _state.copyWith(
+      dismissedStartupAnnouncementIds: <String>[
+        ..._state.dismissedStartupAnnouncementIds,
+        documentId,
+      ],
     );
     _sync();
   }
