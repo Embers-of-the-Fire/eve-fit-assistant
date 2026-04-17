@@ -123,7 +123,7 @@ class BundleRegistryManager extends _$BundleRegistryManager {
     _setRegistry(updatedRegistry);
   }
 
-  void _removeBundle(String bundleId) {
+  BundleRegistry _removeBundle(String bundleId) {
     final updatedRegistry = _normalizeRegistry(
       state.copyWith(
         bundles: state.bundles.remove(bundleId),
@@ -131,6 +131,7 @@ class BundleRegistryManager extends _$BundleRegistryManager {
       ),
     );
     _setRegistry(updatedRegistry);
+    return updatedRegistry;
   }
 
   BundleRegistry _selectBundle(String bundleId) {
@@ -311,7 +312,7 @@ class BundleManager extends _$BundleManager {
   Future<void> removeBundle(String bundleId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final wasSelected = ref.read(bundleRegistryManagerProvider).selectedBundleId == bundleId;
+      final activeBundleId = ref.read(currentBundleProvider)?.bundleId;
       final targetDir = Directory(getBundlePath(bundleId));
       if (targetDir.existsSync()) {
         await targetDir.delete(recursive: true);
@@ -319,9 +320,17 @@ class BundleManager extends _$BundleManager {
       } else {
         warning("Bundle directory for $bundleId does not exist");
       }
-      ref.read(bundleRegistryManagerProvider.notifier)._removeBundle(bundleId);
-      if (wasSelected) {
-        ref.invalidate(bundleServiceProvider);
+
+      final updatedRegistry = ref
+          .read(bundleRegistryManagerProvider.notifier)
+          ._removeBundle(bundleId);
+      if (activeBundleId == bundleId) {
+        final replacementBundleId = updatedRegistry.selectedBundleId;
+        if (replacementBundleId == null) {
+          ref.read(bundleServiceProvider.notifier).clearSelection();
+        } else {
+          await ref.read(bundleServiceProvider.notifier).loadBundle(replacementBundleId);
+        }
       }
       return DateTime.now();
     });
@@ -335,17 +344,11 @@ class BundleManager extends _$BundleManager {
         throw Exception("Invalid bundle $bundleId");
       }
       debug("Select new global bundle $bundleId");
-      final selectedBundleId = updateRegistry
-          ? ref
-                .read(bundleRegistryManagerProvider.notifier)
-                ._selectBundle(bundleId)
-                .selectedBundleId
-          : bundleId;
-      if (selectedBundleId == null) {
-        ref.invalidate(bundleServiceProvider);
-        return DateTime.now();
+
+      await ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
+      if (updateRegistry) {
+        ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
       }
-      await ref.read(bundleServiceProvider.notifier).loadBundle(selectedBundleId);
       return DateTime.now();
     });
   }

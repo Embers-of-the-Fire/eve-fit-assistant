@@ -162,9 +162,25 @@ class BundleService extends _$BundleService {
   CurrentBundleStatus build() {
     final selectedBundleId = ref.read(bundleRegistryManagerProvider).selectedBundleId;
     if (selectedBundleId != null) {
-      unawaited(loadBundle(selectedBundleId));
+      unawaited(
+        Future<void>(() async {
+          try {
+            await loadBundle(selectedBundleId);
+          } on Object {
+            // Startup keeps the service state as the source of truth.
+          }
+        }),
+      );
     }
     return const CurrentBundleStatus.notSelected();
+  }
+
+  void clearSelection() {
+    _mountedBundle = null;
+    _pendingBundleId = null;
+    _pendingLoad = null;
+    _loadGeneration++;
+    state = const CurrentBundleStatus.notSelected();
   }
 
   Future<CurrentBundleStatus> loadBundle(String bundleId) async {

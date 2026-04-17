@@ -52,14 +52,19 @@ String? localization(Ref ref, int key) =>
 Future<BundleLocalization> bundleLocalization(Ref ref) {
   final requestedLocale = ref.watch(localeProvider).name;
   final bundlePaths = ref.watch(bundlePathsProvider);
-  final resolution = bundlePaths?.resolveLocalizationPath(requestedLocale);
-
-  if (resolution == null) {
-    error("Localization path not found for locale: $requestedLocale");
-    throw Exception("Localization path not found for locale: $requestedLocale");
+  if (bundlePaths == null) {
+    debug("Bundle localization unavailable while no bundle paths are active");
+    return Future.value(BundleLocalization(locale: requestedLocale, localization: Localization()));
   }
 
-  final fallbackPath = bundlePaths?.tryGetLocalizationPath(
+  final resolution = bundlePaths.resolveLocalizationPath(requestedLocale);
+
+  if (resolution == null) {
+    warning("Localization path not found for locale: $requestedLocale");
+    return Future.value(BundleLocalization(locale: requestedLocale, localization: Localization()));
+  }
+
+  final fallbackPath = bundlePaths.tryGetLocalizationPath(
     BundleServicePaths.fallbackLocalizationLocale,
   );
   return BundleLocalization.load(
