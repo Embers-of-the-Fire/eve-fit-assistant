@@ -2,7 +2,7 @@
 id: alpha-bug-report
 kind: announcement
 publishedAt: 2024-04-16T00:00:00Z
-tag:
+tags:
   - announcement
 ---
 

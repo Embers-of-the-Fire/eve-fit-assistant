@@ -1,6 +1,7 @@
 ---
 id: announcement-welcome
 kind: announcement
+startup: true
 publishedAt: 2026-04-14T00:00:00Z
 tags:
   - announcement
