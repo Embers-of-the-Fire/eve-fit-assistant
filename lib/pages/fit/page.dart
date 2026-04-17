@@ -105,12 +105,14 @@ class _FitPage extends ConsumerWidget {
     final fitMetadata = ref.watch(fitRegistryManagerProvider.select((t) => t.fits[fitId]));
     final compatibility = ref.watch(fitBundleCompatibilityProvider(fitId));
     final compatibilityNotice = localizeFitBundleCompatibility(context.l10n, compatibility);
+    final bundleManagerState = ref.watch(bundleManagerProvider);
     final bundleState = ref.watch(bundleServiceProvider);
     final activeBundle = ref.watch(currentBundleProvider);
     final pendingBundleId = bundleState.isInitializing
         ? ref.read(bundleServiceProvider.notifier).pendingBundleId ?? bundleState.bundleId
         : null;
     final showBundleSwitchOverlay = bundleState.isInitializing && activeBundle != null;
+    final isBundleSwitching = bundleManagerState.isLoading || bundleState.isInitializing;
     if (fitMetadata == null) {
       return Layout(
         title: context.l10n.fitPageUnavailableTitle,
@@ -131,7 +133,7 @@ class _FitPage extends ConsumerWidget {
     final fit = ref.watch(fitProvider(fitId));
     final ship = ref.watch(bundleCollectionGetTypeProvider(fitMetadata.shipTypeId));
     if (ship == null) {
-      if (bundleState.isInitializing) {
+      if (isBundleSwitching) {
         return Layout(
           title: fitMetadata.name,
           child: const Center(
@@ -143,7 +145,9 @@ class _FitPage extends ConsumerWidget {
         );
       }
 
-      error("Unknown ship type for fit $fitId: ${fitMetadata.shipTypeId}");
+      if (compatibilityNotice == null) {
+        error("Unknown ship type for fit $fitId: ${fitMetadata.shipTypeId}");
+      }
       return Layout(
         title: fitMetadata.name,
         child: _FitPageErrorState(
@@ -200,7 +204,21 @@ class _FitPage extends ConsumerWidget {
     final shipInfo = ref.watch(bundleCollectionGetShipProvider(fit.fit.body.shipTypeId));
 
     if (shipInfo == null) {
-      error("Failed to load ship info for fit $fitId: ${fit.fit.body.shipTypeId}");
+      if (isBundleSwitching) {
+        return Layout(
+          title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
+          child: const Center(
+            child: SizedBox(
+              height: 40,
+              child: LoadingIndicator(indicatorType: Indicator.lineScale),
+            ),
+          ),
+        );
+      }
+
+      if (compatibilityNotice == null) {
+        error("Failed to load ship info for fit $fitId: ${fit.fit.body.shipTypeId}");
+      }
       return Layout(
         title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
         child: _FitPageErrorState(
