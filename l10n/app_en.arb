@@ -2,6 +2,7 @@
   "hello": "Hello",
   "delete": "Delete",
   "cancel": "Cancel",
+  "close": "Close",
   "ok": "Ok",
   "save": "Save",
   "appTitle": "EVE Fit Assistant",
@@ -320,5 +321,7 @@
   "itemDetailEffectCategoryArea": "Area",
   "itemDetailEffectCategoryDungeon": "Dungeon",
   "itemDetailEffectCategorySystem": "System",
-  "loadingTextExtractingBundle": "Extracting {archiveName}..."
+  "loadingTextExtractingBundle": "Extracting {archiveName}...",
+  "dontShowAgain": "Don't show again.",
+  "showDetails": "Show Details"
 }

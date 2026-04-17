@@ -16,9 +16,6 @@ Future<void> showAnnouncementDialog(
   AnnouncementDialogPersistenceCallback? onPersistPreference,
   bool barrierDismissible = true,
   bool initialDontShowAgain = true,
-  String closeButtonLabel = "Close",
-  String showDetailButtonLabel = "Show detail",
-  String dontShowAgainLabel = "Don't show again",
 }) => showDialog<void>(
   context: context,
   barrierDismissible: barrierDismissible,
@@ -28,9 +25,6 @@ Future<void> showAnnouncementDialog(
     onShowDetail: onShowDetail,
     onPersistPreference: onPersistPreference,
     initialDontShowAgain: initialDontShowAgain,
-    closeButtonLabel: closeButtonLabel,
-    showDetailButtonLabel: showDetailButtonLabel,
-    dontShowAgainLabel: dontShowAgainLabel,
   ),
 );
 
@@ -42,9 +36,6 @@ class AnnouncementDialog extends StatefulWidget {
     this.onShowDetail,
     this.onPersistPreference,
     this.initialDontShowAgain = true,
-    this.closeButtonLabel = "Close",
-    this.showDetailButtonLabel = "Show detail",
-    this.dontShowAgainLabel = "Don't show again",
   });
 
   final String title;
@@ -52,9 +43,6 @@ class AnnouncementDialog extends StatefulWidget {
   final AnnouncementDialogDetailCallback? onShowDetail;
   final AnnouncementDialogPersistenceCallback? onPersistPreference;
   final bool initialDontShowAgain;
-  final String closeButtonLabel;
-  final String showDetailButtonLabel;
-  final String dontShowAgainLabel;
 
   @override
   State<AnnouncementDialog> createState() => _AnnouncementDialogState();
@@ -94,7 +82,7 @@ class _AnnouncementDialogState extends State<AnnouncementDialog> {
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
                 onChanged: (value) => setState(() => _dontShowAgain = value ?? false),
-                title: Text(widget.dontShowAgainLabel, style: context.theme.textTheme.bodyMedium),
+                title: Text(context.l10n.dontShowAgain, style: context.theme.textTheme.bodyMedium),
               ),
             ),
           ],
@@ -103,12 +91,10 @@ class _AnnouncementDialogState extends State<AnnouncementDialog> {
     ),
     actions: [
       if (widget.onShowDetail != null)
-        OutlinedButton(onPressed: _handleClose, child: Text(widget.closeButtonLabel)),
+        OutlinedButton(onPressed: _handleClose, child: Text(context.l10n.close)),
       ElevatedButton(
         onPressed: widget.onShowDetail == null ? _handleClose : _handleShowDetail,
-        child: Text(
-          widget.onShowDetail == null ? widget.closeButtonLabel : widget.showDetailButtonLabel,
-        ),
+        child: Text(widget.onShowDetail == null ? context.l10n.close : context.l10n.showDetails),
       ),
     ],
   );
