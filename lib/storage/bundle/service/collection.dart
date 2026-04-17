@@ -193,13 +193,18 @@ class BundleCollectionService extends _$BundleCollectionService {
   @override
   BundleCollectionStatus build() {
     ref.listen(bundleServiceProvider, (prev, next) async {
-      if (!next.isLoaded) {
-        state = const BundleCollectionStatus.notInitialized();
+      if (next.isLoaded) {
+        info("Loading bundle collection");
+        ref.read(bundleLocalizationProvider);
+        await _loadCollection();
         return;
       }
-      info("Loading bundle collection");
-      ref.read(bundleLocalizationProvider);
-      await _loadCollection();
+
+      if (next.isInitializing) {
+        return;
+      }
+
+      state = const BundleCollectionStatus.notInitialized();
     });
     return const BundleCollectionStatus.notInitialized();
   }
