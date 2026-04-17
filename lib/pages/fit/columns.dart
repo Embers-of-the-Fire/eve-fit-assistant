@@ -99,8 +99,17 @@ class FitDisplayColumns extends ConsumerWidget {
         }
 
         return FilledButton.tonalIcon(
-          onPressed: () {
-            unawaited(ref.read(bundleManagerProvider.notifier).selectBundle(bundleId));
+          onPressed: () async {
+            try {
+              await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
+            } on Object {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Could not switch bundles. Keeping the current bundle."),
+                ),
+              );
+            }
           },
           icon: const Icon(Icons.swap_horiz),
           label: Text(actionLabel),

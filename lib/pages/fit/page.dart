@@ -27,6 +27,7 @@ import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/fit/components/add_item_dialog.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
+import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
@@ -104,6 +105,12 @@ class _FitPage extends ConsumerWidget {
     final fitMetadata = ref.watch(fitRegistryManagerProvider.select((t) => t.fits[fitId]));
     final compatibility = ref.watch(fitBundleCompatibilityProvider(fitId));
     final compatibilityNotice = localizeFitBundleCompatibility(context.l10n, compatibility);
+    final bundleState = ref.watch(bundleServiceProvider);
+    final activeBundle = ref.watch(currentBundleProvider);
+    final pendingBundleId = bundleState.isInitializing
+        ? ref.read(bundleServiceProvider.notifier).pendingBundleId ?? bundleState.bundleId
+        : null;
+    final showBundleSwitchOverlay = bundleState.isInitializing && activeBundle != null;
     if (fitMetadata == null) {
       return Layout(
         title: context.l10n.fitPageUnavailableTitle,
@@ -124,6 +131,18 @@ class _FitPage extends ConsumerWidget {
     final fit = ref.watch(fitProvider(fitId));
     final ship = ref.watch(bundleCollectionGetTypeProvider(fitMetadata.shipTypeId));
     if (ship == null) {
+      if (bundleState.isInitializing) {
+        return Layout(
+          title: fitMetadata.name,
+          child: const Center(
+            child: SizedBox(
+              height: 40,
+              child: LoadingIndicator(indicatorType: Indicator.lineScale),
+            ),
+          ),
+        );
+      }
+
       error("Unknown ship type for fit $fitId: ${fitMetadata.shipTypeId}");
       return Layout(
         title: fitMetadata.name,
@@ -222,7 +241,64 @@ class _FitPage extends ConsumerWidget {
 
     return Layout(
       title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
-      child: FitDisplayColumns(fitContext: fitContext, compatibilityNotice: compatibilityNotice),
+      child: Stack(
+        children: [
+          FitDisplayColumns(fitContext: fitContext, compatibilityNotice: compatibilityNotice),
+          if (showBundleSwitchOverlay)
+            _FitBundleSwitchOverlay(pendingBundleId: pendingBundleId ?? activeBundle.bundleId),
+        ],
+      ),
+    );
+  }
+}
+
+class _FitBundleSwitchOverlay extends StatelessWidget {
+  const _FitBundleSwitchOverlay({required this.pendingBundleId});
+
+  final String pendingBundleId;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.theme.colorScheme;
+
+    return Positioned.fill(
+      child: ColoredBox(
+        color: colorScheme.scrim.withValues(alpha: 0.28),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 320),
+            child: Material(
+              color: colorScheme.surface,
+              elevation: 8,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      height: 36,
+                      width: 36,
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.l10n.bundleManagerLoadingTitle,
+                      style: context.theme.textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      context.l10n.bundleManagerLoadingDescription(bundleId: pendingBundleId),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

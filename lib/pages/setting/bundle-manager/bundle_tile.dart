@@ -1,9 +1,10 @@
 part of "page.dart";
 
 class _BundleTile extends ConsumerWidget {
-  const _BundleTile({required this.bundle, this.activated = false});
+  const _BundleTile({required this.bundle, this.activated = false, this.pending = false});
   final BundleInfo bundle;
   final bool activated;
+  final bool pending;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Card(
@@ -15,7 +16,7 @@ class _BundleTile extends ConsumerWidget {
       child: Row(
         children: [
           ClickableCircleAvatar(
-            onTap: (!activated).then(
+            onTap: (!(activated || pending)).then(
               () =>
                   () => unawaited(
                     ref.read(bundleManagerProvider.notifier).selectBundle(bundle.bundleId),
@@ -38,6 +39,14 @@ class _BundleTile extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (pending) ...[
+                  const SizedBox(width: 8),
+                  const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ],
                 const SizedBox(width: 8),
                 Container(
                   padding: const .symmetric(horizontal: 8, vertical: 2),
@@ -84,34 +93,38 @@ class _BundleTile extends ConsumerWidget {
           IconButton(
             icon: Icon(Icons.delete, color: context.theme.colorScheme.error),
             tooltip: context.l10n.delete,
-            onPressed: () async {
-              final remove = await showConfirmDialog(
-                context,
-                title: context.l10n.bundleManagerDeleteBundleConfirmTitle,
-                content: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: context.l10n.bundleManagerDeleteBundleConfirmContent(
-                          bundleId: bundle.bundleId,
+            onPressed: pending
+                ? null
+                : () async {
+                    final remove = await showConfirmDialog(
+                      context,
+                      title: context.l10n.bundleManagerDeleteBundleConfirmTitle,
+                      content: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: context.l10n.bundleManagerDeleteBundleConfirmContent(
+                                bundleId: bundle.bundleId,
+                              ),
+                            ),
+                            if (bundle.bundleId == ref.read(currentBundleProvider)?.bundleId ||
+                                pending) ...[
+                              const TextSpan(text: "\n\n"),
+                              TextSpan(
+                                text: context.l10n.bundleManagerDeleteBundleInUseWarning,
+                                style: TextStyle(color: context.theme.colorScheme.error),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      if (bundle.bundleId ==
-                          ref.read(bundleRegistryManagerProvider).selectedBundleId) ...[
-                        const TextSpan(text: "\n\n"),
-                        TextSpan(
-                          text: context.l10n.bundleManagerDeleteBundleInUseWarning,
-                          style: TextStyle(color: context.theme.colorScheme.error),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-              if (remove) {
-                unawaited(ref.read(bundleManagerProvider.notifier).removeBundle(bundle.bundleId));
-              }
-            },
+                    );
+                    if (remove) {
+                      unawaited(
+                        ref.read(bundleManagerProvider.notifier).removeBundle(bundle.bundleId),
+                      );
+                    }
+                  },
           ),
           IconButton(
             icon: Icon(Icons.info_outline, color: context.theme.colorScheme.primary),

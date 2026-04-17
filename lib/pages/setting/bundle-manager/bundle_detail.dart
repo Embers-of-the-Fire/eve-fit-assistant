@@ -9,6 +9,7 @@ class BundleDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bundleRegistry = ref.watch(bundleRegistryManagerProvider);
+    final activeBundleId = ref.watch(currentBundleProvider)?.bundleId;
     final bundle = bundleRegistry.bundles[bundleId];
     if (bundle == null) {
       return Layout(
@@ -17,7 +18,7 @@ class BundleDetailPage extends ConsumerWidget {
       );
     }
 
-    final bundleIsSelected = bundleRegistry.selectedBundleId == bundleId;
+    final bundleIsSelected = activeBundleId == bundleId;
     BundleRegistrar? bundleRegistrar;
     Object? registrarError;
     try {
