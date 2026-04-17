@@ -308,22 +308,34 @@ native.Ship? nativeEmulatedShip(Ref ref, String fitId) =>
 @riverpod
 class FitEmulatorService extends _$FitEmulatorService {
   late String _fitId;
+  int _emulationGeneration = 0;
 
   void _scheduleEmulationForCurrentFit() {
     final fitState = ref.read(fitProvider(_fitId));
     if (!fitState.isInitialized) return;
-    unawaited(Future(() => emulate(fitState.fit)));
+    final emulationGeneration = ++_emulationGeneration;
+    unawaited(
+      Future<void>(() async {
+        if (!ref.mounted || _emulationGeneration != emulationGeneration) {
+          return;
+        }
+        await emulate(fitState.fit, emulationGeneration: emulationGeneration);
+      }),
+    );
   }
 
   @override
   FitEmulatorState build(String fitId) {
     _fitId = fitId;
-    // Register listener for subsequent changes. Do NOT synchronously call
-    // `emulate` from the listener when `fireImmediately` would trigger it
-    // during `build` (that can cause `state` to be mutated before the
-    // notifier is fully initialized). Instead defer actual emulation to a
-    // microtask.
     ref
+      ..onDispose(() {
+        _emulationGeneration++;
+      })
+      // Register listener for subsequent changes. Do NOT synchronously call
+      // `emulate` from the listener when `fireImmediately` would trigger it
+      // during `build` (that can cause `state` to be mutated before the
+      // notifier is fully initialized). Instead defer actual emulation to a
+      // microtask.
       ..listen<FitServiceState>(fitProvider(fitId), (prev, next) {
         if (prev == next) return;
         if (!next.isInitialized) {
@@ -352,10 +364,16 @@ class FitEmulatorService extends _$FitEmulatorService {
   Future<void> retry() async {
     final fitState = ref.read(fitProvider(_fitId));
     if (!fitState.isInitialized) return;
-    await emulate(fitState.fit);
+    final emulationGeneration = ++_emulationGeneration;
+    await emulate(fitState.fit, emulationGeneration: emulationGeneration);
   }
 
-  Future<void> emulate(FitStorage fitStorage) async {
+  Future<void> emulate(FitStorage fitStorage, {int? emulationGeneration}) async {
+    final activeGeneration = emulationGeneration ?? ++_emulationGeneration;
+    if (!ref.mounted || _emulationGeneration != activeGeneration) {
+      return;
+    }
+
     state = state.emulating;
     debug("Started emulating ${fitStorage.metadata.fitId}");
     try {
@@ -390,9 +408,15 @@ class FitEmulatorService extends _$FitEmulatorService {
       );
       final nativeCompatible = convertToNative(fitStorage, characterSkills: characterSkills);
       final emulatedOutput = await engine.emulate(fit: nativeCompatible);
+      if (!ref.mounted || _emulationGeneration != activeGeneration) {
+        return;
+      }
       state = FitEmulatorState.emulated(output: emulatedOutput);
       debug("Finished emulating ${fitStorage.metadata.fitId}");
     } on Object catch (errorValue, stackTrace) {
+      if (!ref.mounted || _emulationGeneration != activeGeneration) {
+        return;
+      }
       error(
         "Failed to emulate fit ${fitStorage.metadata.fitId}: $errorValue",
         stackTrace: stackTrace,

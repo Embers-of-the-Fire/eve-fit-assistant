@@ -107,12 +107,18 @@ class _FitPage extends ConsumerWidget {
     final compatibilityNotice = localizeFitBundleCompatibility(context.l10n, compatibility);
     final bundleManagerState = ref.watch(bundleManagerProvider);
     final bundleState = ref.watch(bundleServiceProvider);
+    final bundleCollectionLoading = ref.watch(
+      bundleCollectionServiceProvider.select(
+        (status) => status.maybeWhen(loading: () => true, orElse: () => false),
+      ),
+    );
     final activeBundle = ref.watch(currentBundleProvider);
     final pendingBundleId = bundleState.isInitializing
         ? ref.read(bundleServiceProvider.notifier).pendingBundleId ?? bundleState.bundleId
         : null;
     final showBundleSwitchOverlay = bundleState.isInitializing && activeBundle != null;
-    final isBundleSwitching = bundleManagerState.isLoading || bundleState.isInitializing;
+    final isBundleSwitching =
+        bundleManagerState.isLoading || bundleState.isInitializing || bundleCollectionLoading;
     if (fitMetadata == null) {
       return Layout(
         title: context.l10n.fitPageUnavailableTitle,
