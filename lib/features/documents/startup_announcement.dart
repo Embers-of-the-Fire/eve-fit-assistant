@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/announcement_dialog.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
@@ -32,9 +31,16 @@ final startupAnnouncementProvider = FutureProvider<DocumentRecord?>((Ref ref) as
 });
 
 class StartupAnnouncementGate extends ConsumerStatefulWidget {
-  const StartupAnnouncementGate({required this.child, super.key});
+  const StartupAnnouncementGate({
+    required this.appRouter,
+    required this.child,
+    required this.navigatorKey,
+    super.key,
+  });
 
+  final AppRouter appRouter;
   final Widget child;
+  final GlobalKey<NavigatorState> navigatorKey;
 
   @override
   ConsumerState<StartupAnnouncementGate> createState() => _StartupAnnouncementGateState();
@@ -61,17 +67,18 @@ class _StartupAnnouncementGateState extends ConsumerState<StartupAnnouncementGat
 
   Future<void> _showStartupAnnouncement() async {
     final entry = await _loadStartupAnnouncement();
-    if (!mounted || entry == null) {
+    final navigator = widget.navigatorKey.currentState;
+    if (!mounted || navigator == null || !navigator.mounted || entry == null) {
       return;
     }
 
     await showAnnouncementDialog(
-      context,
+      navigator.context,
       title: entry.title,
       informationText: entry.summary,
       onShowDetail: () async {
         DocumentStorage.saveSelectedDocumentId(DocumentFeedKind.announcement, entry.id);
-        await context.router.push(const AnnouncementRoute());
+        await widget.appRouter.push(const AnnouncementRoute());
       },
       onPersistPreference: ({required bool dontShowAgain}) {
         if (!dontShowAgain) {

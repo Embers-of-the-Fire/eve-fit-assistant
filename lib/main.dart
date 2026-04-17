@@ -73,7 +73,11 @@ class MyApp extends ConsumerWidget {
             );
           });
         }
-        return StartupAnnouncementGate(child: initBuilder(context, child));
+        return StartupAnnouncementGate(
+          appRouter: _appRouter,
+          navigatorKey: _appRouter.navigatorKey,
+          child: initBuilder(context, child),
+        );
       },
     );
   }

@@ -231,6 +231,8 @@ class _NavItem extends StatelessWidget {
                       padding: const .only(top: 2),
                       child: Text(
                         label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         style: selectedLabelStyle.copyWith(
                           color: iconColor,
