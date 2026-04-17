@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/features/documents/startup_announcement.dart";
 import "package:eve_fit_assistant/init.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
@@ -72,7 +73,7 @@ class MyApp extends ConsumerWidget {
             );
           });
         }
-        return initBuilder(context, child);
+        return StartupAnnouncementGate(child: initBuilder(context, child));
       },
     );
   }
