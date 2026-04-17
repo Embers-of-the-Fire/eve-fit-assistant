@@ -15,7 +15,7 @@ Future<void> showAnnouncementDialog(
   AnnouncementDialogDetailCallback? onShowDetail,
   AnnouncementDialogPersistenceCallback? onPersistPreference,
   bool barrierDismissible = true,
-  bool initialDontShowAgain = true,
+  bool initialDontShowAgain = false,
 }) => showDialog<void>(
   context: context,
   barrierDismissible: barrierDismissible,
@@ -35,7 +35,7 @@ class AnnouncementDialog extends StatefulWidget {
     super.key,
     this.onShowDetail,
     this.onPersistPreference,
-    this.initialDontShowAgain = true,
+    this.initialDontShowAgain = false,
   });
 
   final String title;
