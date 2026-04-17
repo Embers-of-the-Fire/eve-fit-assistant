@@ -184,7 +184,7 @@ class BundleCollectionService extends _$BundleCollectionService {
   @override
   BundleCollectionStatus build() {
     ref.listen(currentBundleProvider, (prev, next) {
-      unawaited(_handleBundleChange(next));
+      unawaited(Future<void>(() => _handleBundleChange(next)));
     }, fireImmediately: true);
     return const BundleCollectionStatus.notInitialized();
   }
