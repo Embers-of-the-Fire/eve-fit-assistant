@@ -79,12 +79,23 @@ class _AnnouncementDialogState extends State<AnnouncementDialog> {
           ),
           if (widget.onPersistPreference != null) ...[
             const SizedBox(height: 16),
-            CheckboxListTile(
-              value: _dontShowAgain,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              onChanged: (value) => setState(() => _dontShowAgain = value ?? false),
-              title: Text(widget.dontShowAgainLabel),
+            Theme(
+              data: context.theme.copyWith(
+                checkboxTheme: context.theme.checkboxTheme.copyWith(
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              child: CheckboxListTile(
+                value: _dontShowAgain,
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (value) => setState(() => _dontShowAgain = value ?? false),
+                title: Text(widget.dontShowAgainLabel, style: context.theme.textTheme.bodyMedium),
+              ),
             ),
           ],
         ],
