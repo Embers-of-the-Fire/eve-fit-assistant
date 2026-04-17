@@ -72,6 +72,7 @@ class DocumentRepository {
           publishedAt: entry.publishedAt,
           localeCode: resolvedLocalization.localeCode,
           tags: entry.tags,
+          startup: entry.startup,
           minAppVer: entry.minAppVer,
           appVer: entry.appVer,
         ),

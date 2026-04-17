@@ -47,6 +47,7 @@ class ZhDocumentBase(BaseModel):
 
 class ZhAnnouncementDocument(ZhDocumentBase):
     kind: Literal["announcement"]
+    startup: bool = False
     minAppVer: str | None = None
     appVer: None = None
 
@@ -129,6 +130,7 @@ def build_documents() -> None:
                 "source": "bundled",
                 "publishedAt": _serialize_published_at(metadata.publishedAt),
                 "tags": metadata.tags,
+                "startup": getattr(metadata, "startup", False),
                 "minAppVer": getattr(metadata, "minAppVer", None),
                 "appVer": getattr(metadata, "appVer", None),
                 "localizations": {
