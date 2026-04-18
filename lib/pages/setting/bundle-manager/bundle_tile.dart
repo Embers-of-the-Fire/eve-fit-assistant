@@ -107,8 +107,7 @@ class _BundleTile extends ConsumerWidget {
                                 bundleId: bundle.bundleId,
                               ),
                             ),
-                            if (bundle.bundleId == ref.read(currentBundleProvider)?.bundleId ||
-                                pending) ...[
+                            if (activated || pending) ...[
                               const TextSpan(text: "\n\n"),
                               TextSpan(
                                 text: context.l10n.bundleManagerDeleteBundleInUseWarning,
