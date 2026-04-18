@@ -240,13 +240,14 @@ class BundleService extends _$BundleService {
         throw _BundleLoadFailure(registrarErrors);
       }
       if (_isCurrentLoad(bundleId, loadGeneration)) {
-        _mountedBundle = BundleMetadata(
+        final nextMountedBundle = BundleMetadata(
           metadata: registrar,
           bundleId: bundleId,
           paths: bundlePathService,
           lastModified: DateTime.now(),
         );
-        state = CurrentBundleStatus.loaded(data: _mountedBundle!);
+        _mountedBundle = nextMountedBundle;
+        state = CurrentBundleStatus.loaded(data: nextMountedBundle);
       }
     } on _BundleLoadFailure {
       rethrow;
