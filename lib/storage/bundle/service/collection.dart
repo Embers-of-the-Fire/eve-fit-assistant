@@ -190,6 +190,8 @@ class BundleCollectionService extends _$BundleCollectionService {
   }
 
   Future<void> _handleBundleChange(BundleMetadata? next) async {
+    int? loadGeneration;
+
     try {
       if (next == null) {
         _invalidateLoads();
@@ -211,16 +213,21 @@ class BundleCollectionService extends _$BundleCollectionService {
         }),
       );
 
-      final loadGeneration = _nextLoadGeneration();
+      loadGeneration = _nextLoadGeneration();
       await _loadCollection(
         bundleId: next.bundleId,
         filePath: next.paths.getCollectionPath(),
         loadGeneration: loadGeneration,
       );
     } catch (e, stackTrace) {
-      _invalidateLoads();
+      final activeBundle = next;
       error("Failed to update bundle collection state", error: e, stackTrace: stackTrace);
-      state = const BundleCollectionStatus.notInitialized();
+      if (activeBundle != null &&
+          loadGeneration != null &&
+          _isCurrentLoad(activeBundle.bundleId, loadGeneration)) {
+        _invalidateLoads();
+        state = const BundleCollectionStatus.notInitialized();
+      }
     }
   }
 
