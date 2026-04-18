@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
@@ -166,7 +167,12 @@ class BundleService extends _$BundleService {
         Future<void>(() async {
           try {
             await loadBundle(selectedBundleId);
-          } on Object {
+          } on Object catch (errorValue, stackTrace) {
+            error(
+              "Failed to load selected bundle during startup: $selectedBundleId",
+              error: errorValue,
+              stackTrace: stackTrace,
+            );
             // Startup keeps the service state as the source of truth.
           }
         }),
