@@ -139,7 +139,7 @@ class CurrentBundleStatus with _$CurrentBundleStatus {
 }
 
 /// Access the currently loaded bundle data.
-/// Throws if no bundle is loaded.
+/// Returns `null` if no bundle is loaded.
 @riverpodSingleton
 BundleMetadata? currentBundle(Ref ref) {
   ref.watch(bundleServiceProvider);
