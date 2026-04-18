@@ -92,6 +92,7 @@
   "fitBundleSwitchLabel": "Switch bundle to edit",
   "fitBundleImportLabel": "Re-import bundle data",
   "fitBundleSwitchAction": "Switch bundle",
+  "fitBundleSwitchErrorMessage": "Could not switch bundles. Keeping the current bundle.",
   "fitBundleOpenManagerAction": "Open bundle manager",
   "fitBundleUnavailableTitle": "Bundle unavailable",
   "fitBundleUnavailableDescription": "No active bundle is loaded, so compatibility cannot be confirmed. Fit editing stays disabled until a bundle is available.",
