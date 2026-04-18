@@ -5,23 +5,23 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "click>=8.3.0",
+    "click>=8.3.2",
     "click-aliases>=1.0.5",
     "colorama>=0.4.6",
-    "python-dotenv>=1.1.1",
+    "python-dotenv>=1.2.2",
     "convert",
-    "pydantic>=2.11.9",
-    "aiohttp>=3.12.15",
+    "pydantic>=2.13.2",
+    "aiohttp>=3.13.5",
     "aiofiles>=25.1.0",
-    "tenacity>=9.1.2",
-    "watchfiles>=1.1.0",
+    "tenacity>=9.1.4",
+    "watchfiles>=1.1.1",
     "case-converter>=1.2.0",
 ]
 
 [dependency-groups]
 dev = [
     "matplotlib>=3.10.8",
-    "ruff>=0.13.2",
+    "ruff>=0.15.11",
 ]
 
 [tool.uv.sources]
