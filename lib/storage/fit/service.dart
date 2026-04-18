@@ -335,7 +335,7 @@ class FitEmulatorService extends _$FitEmulatorService {
       // `emulate` from the listener when `fireImmediately` would trigger it
       // during `build` (that can cause `state` to be mutated before the
       // notifier is fully initialized). Instead defer actual emulation to a
-      // microtask.
+      // later event-loop task.
       ..listen<FitServiceState>(fitProvider(fitId), (prev, next) {
         if (prev == next) return;
         if (!next.isInitialized) {
