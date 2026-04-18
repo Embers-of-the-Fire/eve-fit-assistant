@@ -310,6 +310,10 @@ class FitEmulatorService extends _$FitEmulatorService {
   late String _fitId;
   int _emulationGeneration = 0;
 
+  void _invalidatePendingEmulations() {
+    _emulationGeneration++;
+  }
+
   void _scheduleEmulationForCurrentFit() {
     final fitState = ref.read(fitProvider(_fitId));
     if (!fitState.isInitialized) return;
@@ -328,9 +332,7 @@ class FitEmulatorService extends _$FitEmulatorService {
   FitEmulatorState build(String fitId) {
     _fitId = fitId;
     ref
-      ..onDispose(() {
-        _emulationGeneration++;
-      })
+      ..onDispose(_invalidatePendingEmulations)
       // Register listener for subsequent changes. Do NOT synchronously call
       // `emulate` from the listener when `fireImmediately` would trigger it
       // during `build` (that can cause `state` to be mutated before the
@@ -339,6 +341,7 @@ class FitEmulatorService extends _$FitEmulatorService {
       ..listen<FitServiceState>(fitProvider(fitId), (prev, next) {
         if (prev == next) return;
         if (!next.isInitialized) {
+          _invalidatePendingEmulations();
           state = next.hasError
               ? FitEmulatorState.error(
                   messageKey: next.errorMessageKey ?? FitErrorMessageKey.fitUnavailable,
@@ -364,7 +367,8 @@ class FitEmulatorService extends _$FitEmulatorService {
   Future<void> retry() async {
     final fitState = ref.read(fitProvider(_fitId));
     if (!fitState.isInitialized) return;
-    final emulationGeneration = ++_emulationGeneration;
+    _invalidatePendingEmulations();
+    final emulationGeneration = _emulationGeneration;
     await emulate(fitState.fit, emulationGeneration: emulationGeneration);
   }
 
