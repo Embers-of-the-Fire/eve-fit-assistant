@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
@@ -15,7 +16,6 @@ import "package:eve_fit_assistant/data/proto/type_materials.pb.dart";
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
-import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -34,17 +34,8 @@ abstract class BundleCollectionStatus with _$BundleCollectionStatus {
 
   const BundleCollectionStatus._();
 
-  BundleCollectionProxy? get collection => when(
-    notInitialized: () {
-      error("BundleCollection is not initialized", stackTrace: StackTrace.current);
-      return null;
-    },
-    loading: () {
-      error("BundleCollection is loading", stackTrace: StackTrace.current);
-      return null;
-    },
-    loaded: (collection) => collection,
-  );
+  BundleCollectionProxy? get collection =>
+      maybeWhen(loaded: (collection) => collection, orElse: () => null);
 }
 
 class BundleCollectionProxy {
@@ -188,36 +179,106 @@ Slots? bundleCollectionGetSlots(Ref ref) =>
 
 @riverpodSingleton
 class BundleCollectionService extends _$BundleCollectionService {
-  static bool _isLoading = false;
+  int _loadGeneration = 0;
 
   @override
   BundleCollectionStatus build() {
-    ref.listen(bundleServiceProvider, (prev, next) async {
-      if (!next.isLoaded) {
-        state = const BundleCollectionStatus.notInitialized();
-        return;
-      }
-      info("Loading bundle collection");
-      ref.read(bundleLocalizationProvider);
-      await _loadCollection();
-    });
+    ref.listen(currentBundleProvider, (prev, next) {
+      unawaited(Future<void>(() => _handleBundleChange(next)));
+    }, fireImmediately: true);
     return const BundleCollectionStatus.notInitialized();
   }
 
-  Future<void> _loadCollection() async {
-    // Load guard to prevent multiple simultaneous loads
-    if (_isLoading) return;
-    _isLoading = true;
-    state = const BundleCollectionStatus.loading();
-    final filePath = ref.read(bundlePathsProvider)?.getCollectionPath() ?? "";
-    final file = File(filePath);
-    if (!file.existsSync()) {
-      _isLoading = false;
+  Future<void> _handleBundleChange(BundleMetadata? next) async {
+    int? loadGeneration;
+
+    try {
+      if (next == null) {
+        _invalidateLoads();
+        state = const BundleCollectionStatus.notInitialized();
+        return;
+      }
+
+      info("Loading bundle collection");
+      unawaited(
+        Future<void>(() async {
+          try {
+            await ref.read(bundleLocalizationProvider.future);
+          } on Object catch (error, stackTrace) {
+            warning(
+              "Failed to warm bundle localization for bundle: ${next.bundleId}: $error",
+              stackTrace: stackTrace,
+            );
+          }
+        }),
+      );
+
+      loadGeneration = _nextLoadGeneration();
+      await _loadCollection(
+        bundleId: next.bundleId,
+        filePath: next.paths.getCollectionPath(),
+        loadGeneration: loadGeneration,
+      );
+    } catch (e, stackTrace) {
+      final activeBundle = next;
+      error("Failed to update bundle collection state", error: e, stackTrace: stackTrace);
+      if (activeBundle != null &&
+          loadGeneration != null &&
+          _isCurrentLoad(activeBundle.bundleId, loadGeneration)) {
+        _invalidateLoads();
+        state = const BundleCollectionStatus.notInitialized();
+      }
+    }
+  }
+
+  Future<void> _loadCollection({
+    required String bundleId,
+    required String filePath,
+    required int loadGeneration,
+  }) async {
+    if (!_isCurrentLoad(bundleId, loadGeneration)) {
       return;
     }
-    final bytes = await file.readAsBytes();
-    final collection = Collection.fromBuffer(bytes);
-    _isLoading = false;
-    state = BundleCollectionStatus.loaded(BundleCollectionProxy(collection));
+
+    state = const BundleCollectionStatus.loading();
+    final file = File(filePath);
+    if (!file.existsSync()) {
+      warning("Collection path not found for bundle: $bundleId");
+      if (_isCurrentLoad(bundleId, loadGeneration)) {
+        state = const BundleCollectionStatus.notInitialized();
+      }
+      return;
+    }
+
+    try {
+      final bytes = await file.readAsBytes();
+      final collection = Collection.fromBuffer(bytes);
+      if (!_isCurrentLoad(bundleId, loadGeneration)) {
+        info("Discarding stale bundle collection for bundle: $bundleId");
+        return;
+      }
+
+      state = BundleCollectionStatus.loaded(BundleCollectionProxy(collection));
+    } catch (e, stackTrace) {
+      error(
+        "Failed to load bundle collection for bundle: $bundleId",
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (_isCurrentLoad(bundleId, loadGeneration)) {
+        state = const BundleCollectionStatus.notInitialized();
+      }
+    }
+  }
+
+  int _nextLoadGeneration() => ++_loadGeneration;
+
+  void _invalidateLoads() {
+    _loadGeneration++;
+  }
+
+  bool _isCurrentLoad(String bundleId, int loadGeneration) {
+    final activeBundleId = ref.read(currentBundleProvider)?.bundleId;
+    return _loadGeneration == loadGeneration && activeBundleId == bundleId;
   }
 }

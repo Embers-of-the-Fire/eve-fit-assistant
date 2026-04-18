@@ -206,6 +206,7 @@
   "fitBundleSwitchLabel": "切换数据包后编辑",
   "fitBundleImportLabel": "重新导入数据包数据",
   "fitBundleSwitchAction": "切换数据包",
+  "fitBundleSwitchErrorMessage": "无法切换数据包。将保留当前数据包。",
   "fitBundleOpenManagerAction": "打开数据包管理",
   "fitBundleUnavailableTitle": "数据包不可用",
   "fitBundleUnavailableDescription": "当前没有活动数据包，无法确认兼容性。在数据包可用前，该配置将保持只读。",

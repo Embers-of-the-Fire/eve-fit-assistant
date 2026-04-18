@@ -2,14 +2,13 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
-import "package:eve_fit_assistant/utils/fp.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as p;
@@ -141,63 +140,93 @@ class CurrentBundleStatus with _$CurrentBundleStatus {
 }
 
 /// Access the currently loaded bundle data.
-/// Throws if no bundle is loaded.
+/// Returns `null` if no bundle is loaded.
 @riverpodSingleton
-BundleMetadata? currentBundle(Ref ref) => ref.watch(bundleServiceProvider).currentData.nullable;
+BundleMetadata? currentBundle(Ref ref) {
+  ref.watch(bundleServiceProvider);
+  return ref.read(bundleServiceProvider.notifier).currentBundleData;
+}
 
 /// Serves bundle data.
 /// UI should access this via [`currentBundleProvider`][currentBundle] rather than directly.
 @riverpodSingleton
 class BundleService extends _$BundleService {
   Future<CurrentBundleStatus>? _pendingLoad;
+  BundleMetadata? _mountedBundle;
   String? _pendingBundleId;
+  int _loadGeneration = 0;
+
+  BundleMetadata? get currentBundleData => _mountedBundle;
+  String? get pendingBundleId => _pendingBundleId;
 
   @override
   CurrentBundleStatus build() {
-    ref.listen(bundleRegistryManagerProvider.select((value) => value.selectedBundleId), (
-      prev,
-      next,
-    ) {
-      if (next == prev) return;
-      if (next == null) {
-        state = const CurrentBundleStatus.notSelected();
-        return;
-      }
-      unawaited(loadBundle(next));
-    }, fireImmediately: true);
+    final selectedBundleId = ref.read(bundleRegistryManagerProvider).selectedBundleId;
+    if (selectedBundleId != null) {
+      unawaited(
+        Future<void>(() async {
+          try {
+            await loadBundle(selectedBundleId);
+          } on Object catch (errorValue, stackTrace) {
+            error(
+              "Failed to load selected bundle during startup: $selectedBundleId",
+              error: errorValue,
+              stackTrace: stackTrace,
+            );
+            // Startup keeps the service state as the source of truth.
+          }
+        }),
+      );
+    }
     return const CurrentBundleStatus.notSelected();
   }
 
+  void clearSelection() {
+    _mountedBundle = null;
+    _pendingBundleId = null;
+    _pendingLoad = null;
+    _loadGeneration++;
+    state = const CurrentBundleStatus.notSelected();
+  }
+
   Future<CurrentBundleStatus> loadBundle(String bundleId) async {
+    final mountedBundle = _mountedBundle;
+    if (mountedBundle != null && mountedBundle.bundleId == bundleId && _pendingBundleId == null) {
+      state = CurrentBundleStatus.loaded(data: mountedBundle);
+      return state;
+    }
+
     final pendingLoad = _pendingLoad;
     if (pendingLoad != null && _pendingBundleId == bundleId) {
       return pendingLoad;
     }
 
-    final load = _loadBundle(bundleId);
+    final loadGeneration = ++_loadGeneration;
+    final load = _loadBundle(bundleId, loadGeneration: loadGeneration);
     _pendingLoad = load;
     _pendingBundleId = bundleId;
+    state = CurrentBundleStatus.initializing(bundleId: bundleId);
 
     try {
       return await load;
     } finally {
-      if (identical(_pendingLoad, load)) {
+      if (identical(_pendingLoad, load) && _loadGeneration == loadGeneration) {
         _pendingLoad = null;
         _pendingBundleId = null;
       }
     }
   }
 
-  Future<CurrentBundleStatus> _loadBundle(String bundleId) async {
-    state = CurrentBundleStatus.initializing(bundleId: bundleId);
+  Future<CurrentBundleStatus> _loadBundle(String bundleId, {required int loadGeneration}) async {
+    final mountedBundle = _mountedBundle;
     final bundlePath = p.join(PathProvider.resourcesPath, "bundles", bundleId);
     final bundlePathService = BundleServicePaths(bundlePath);
     final errors = await bundlePathService.validate();
     if (errors.isNotEmpty) {
-      if (_pendingBundleId == bundleId) {
-        state = CurrentBundleStatus.error(errors: errors);
+      if (_isCurrentLoad(bundleId, loadGeneration)) {
+        _restoreMountedBundleOrError(mountedBundle, errors);
       }
-      return state;
+      throw _BundleLoadFailure(errors);
     }
 
     final registrarPath = File(bundlePathService.getRegistrarPath());
@@ -211,30 +240,55 @@ class BundleService extends _$BundleService {
           const BundleValidationError.badPatch(reason: "Bundle history is empty."),
       ].lock;
       if (registrarErrors.isNotEmpty) {
-        if (_pendingBundleId == bundleId) {
-          state = CurrentBundleStatus.error(errors: registrarErrors);
+        if (_isCurrentLoad(bundleId, loadGeneration)) {
+          _restoreMountedBundleOrError(mountedBundle, registrarErrors);
         }
-        return state;
+        throw _BundleLoadFailure(registrarErrors);
       }
-      if (_pendingBundleId == bundleId) {
-        state = CurrentBundleStatus.loaded(
-          data: BundleMetadata(
-            metadata: registrar,
-            bundleId: bundleId,
-            paths: bundlePathService,
-            lastModified: DateTime.now(),
-          ),
+      if (_isCurrentLoad(bundleId, loadGeneration)) {
+        final nextMountedBundle = BundleMetadata(
+          metadata: registrar,
+          bundleId: bundleId,
+          paths: bundlePathService,
+          lastModified: DateTime.now(),
         );
+        _mountedBundle = nextMountedBundle;
+        state = CurrentBundleStatus.loaded(data: nextMountedBundle);
       }
+    } on _BundleLoadFailure {
+      rethrow;
     } catch (e) {
-      if (_pendingBundleId == bundleId) {
-        state = CurrentBundleStatus.error(
-          errors: errors.add(BundleValidationError.badDescriptor(error: e)),
-        );
+      final descriptorErrors = errors.add(BundleValidationError.badDescriptor(error: e));
+      if (_isCurrentLoad(bundleId, loadGeneration)) {
+        _restoreMountedBundleOrError(mountedBundle, descriptorErrors);
       }
+      throw _BundleLoadFailure(descriptorErrors);
     }
     return state;
   }
+
+  bool _isCurrentLoad(String bundleId, int loadGeneration) =>
+      _pendingBundleId == bundleId && _loadGeneration == loadGeneration;
+
+  void _restoreMountedBundleOrError(
+    BundleMetadata? mountedBundle,
+    IList<BundleValidationError> errors,
+  ) {
+    if (mountedBundle != null) {
+      _mountedBundle = mountedBundle;
+      state = CurrentBundleStatus.loaded(data: mountedBundle);
+      return;
+    }
+
+    _mountedBundle = null;
+    state = CurrentBundleStatus.error(errors: errors);
+  }
+}
+
+class _BundleLoadFailure implements Exception {
+  const _BundleLoadFailure(this.errors);
+
+  final IList<BundleValidationError> errors;
 }
 
 @freezed

@@ -44,10 +44,11 @@ class BundleManagerPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bundleRegistry = ref.watch(bundleRegistryManagerProvider);
     final bundleState = ref.watch(bundleServiceProvider);
-    final selectedBundleId = bundleRegistry.selectedBundleId;
-    final selectedBundle = selectedBundleId == null
-        ? null
-        : bundleRegistry.bundles[selectedBundleId];
+    final activeBundleId = ref.watch(currentBundleProvider)?.bundleId;
+    final pendingBundleId = bundleState.isInitializing
+        ? ref.read(bundleServiceProvider.notifier).pendingBundleId ?? bundleState.bundleId
+        : null;
+    final activeBundle = activeBundleId == null ? null : bundleRegistry.bundles[activeBundleId];
 
     return Layout(
       title: context.l10n.bundleManagerPageTitle,
@@ -62,14 +63,21 @@ class BundleManagerPage extends ConsumerWidget {
           const SizedBox(height: 10),
           _BundleStatusCard(
             bundleCount: bundleRegistry.bundles.length,
+            activeBundleId: activeBundleId,
+            pendingBundleId: pendingBundleId,
             state: bundleState,
             onImportPressed: () => _importBundleArchive(context, ref),
           ),
-          if (selectedBundle != null) _BundleTile(bundle: selectedBundle, activated: true),
+          if (activeBundle != null)
+            _BundleTile(
+              bundle: activeBundle,
+              activated: true,
+              pending: pendingBundleId == activeBundle.bundleId,
+            ),
           for (final entry in bundleRegistry.bundles.entries.where(
-            (entry) => entry.key != selectedBundle?.bundleId,
+            (entry) => entry.key != activeBundle?.bundleId,
           ))
-            _BundleTile(bundle: entry.value),
+            _BundleTile(bundle: entry.value, pending: pendingBundleId == entry.key),
           const SizedBox(height: 10),
         ],
       ),
@@ -80,11 +88,15 @@ class BundleManagerPage extends ConsumerWidget {
 class _BundleStatusCard extends StatelessWidget {
   const _BundleStatusCard({
     required this.bundleCount,
+    required this.activeBundleId,
+    required this.pendingBundleId,
     required this.state,
     required this.onImportPressed,
   });
 
   final int bundleCount;
+  final String? activeBundleId;
+  final String? pendingBundleId;
   final CurrentBundleStatus state;
   final VoidCallback onImportPressed;
 
@@ -117,7 +129,11 @@ class _BundleStatusCard extends StatelessWidget {
               color: colorScheme.primary,
               title: context.l10n.bundleManagerLoadingTitle,
               description: context.l10n.bundleManagerLoadingDescription(bundleId: bundleId),
-              details: scopeDetails,
+              details: [
+                ...scopeDetails,
+                if (activeBundleId != null)
+                  context.l10n.bundleManagerReadyDescription(bundleId: activeBundleId!),
+              ],
             ),
             error: (errors) => (
               icon: Icons.error_outline,
