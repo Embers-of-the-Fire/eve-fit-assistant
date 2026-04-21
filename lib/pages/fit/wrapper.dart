@@ -58,6 +58,29 @@ class FitWrapper {
 
   int _allocateDynamicItemId(FitStorage fit) => allocateDynamicItemId(fit);
 
+  FitDynamicItem? _dynamicItemForId(FitStorage fit, int dynamicId) =>
+      fit.dynamicRegistry.dynamicItems[dynamicId];
+
+  FitStorage _storeDynamicItem(FitStorage fit, FitDynamicItem dynamicItem) => fit.copyWith(
+    dynamicRegistry: fit.dynamicRegistry.copyWith(
+      dynamicItems: fit.dynamicRegistry.dynamicItems.add(dynamicItem.dynamicItemId, dynamicItem),
+    ),
+  );
+
+  FitStorage? _updateDynamicItem(
+    FitStorage fit,
+    int dynamicId,
+    FitDynamicItem Function(FitDynamicItem dynamicItem) updater,
+  ) {
+    final dynamicItem = _dynamicItemForId(fit, dynamicId);
+    if (dynamicItem == null) {
+      warning("Missing dynamic item $dynamicId while updating fit item");
+      return null;
+    }
+
+    return _storeDynamicItem(fit, updater(dynamicItem));
+  }
+
   (FitStorage, FitStorageItemId) _cloneStorageItemId(FitStorage fit, FitStorageItemId itemId) =>
       itemId.when(
         item: (id) => (fit, FitStorageItemId.item(id: id)),
@@ -68,7 +91,10 @@ class FitWrapper {
             return (fit, FitStorageItemId.dynamic(dynamicId: dynamicId));
           }
 
-          return (fit, FitStorageItemId.dynamic(dynamicId: dynamicItem.dynamicItemId));
+          final clonedDynamicId = _allocateDynamicItemId(fit);
+          final clonedDynamicItem = dynamicItem.copyWith(dynamicItemId: clonedDynamicId);
+          final updatedFit = _storeDynamicItem(fit, clonedDynamicItem);
+          return (updatedFit, FitStorageItemId.dynamic(dynamicId: clonedDynamicId));
         },
       );
 
@@ -597,6 +623,62 @@ class FitWrapper {
       return updateSlot(updatedFit, targetIdent, (_) => Option.of(clonedSlot));
     });
   }
+
+  Future<void> setDynamicAttributeFactor(int dynamicItemId, int attributeId, double factor) =>
+      wrapped.update((fit) {
+        final updatedFit = _updateDynamicItem(
+          fit,
+          dynamicItemId,
+          (dynamicItem) => dynamicItem.copyWith(
+            dynamicAttributes: dynamicItem.dynamicAttributes.add(attributeId, factor),
+          ),
+        );
+        return updatedFit ?? fit;
+      });
+
+  Future<void> resetDynamicAttributes(int dynamicItemId) => wrapped.update((fit) {
+    final updatedFit = _updateDynamicItem(
+      fit,
+      dynamicItemId,
+      (dynamicItem) => dynamicItem.copyWith(
+        dynamicAttributes: IMap.fromEntries(
+          dynamicItem.dynamicAttributes.keys.map((attributeId) => MapEntry(attributeId, 1.0)),
+        ),
+      ),
+    );
+    return updatedFit ?? fit;
+  });
+
+  Future<void> randomizeDynamicAttributes(int dynamicItemId) => wrapped.update((fit) {
+    final dynamicItem = _dynamicItemForId(fit, dynamicItemId);
+    if (dynamicItem == null) {
+      warning("Missing dynamic item $dynamicItemId while randomizing fit item");
+      return fit;
+    }
+
+    final dynamicMutator = ref.read(bundleCollectionProvider)?.getDynamicMutator(
+      dynamicItem.modifierTypeId,
+    );
+    if (dynamicMutator == null) {
+      warning(
+        "Missing dynamic mutator ${dynamicItem.modifierTypeId} while randomizing fit item $dynamicItemId",
+      );
+      return fit;
+    }
+
+    return _storeDynamicItem(
+      fit,
+      dynamicItem.copyWith(
+        dynamicAttributes: IMap.fromEntries(
+          dynamicMutator.attributes.entries.map((entry) {
+            final range = entry.value;
+            final factor = range.min + (math.Random().nextDouble() * (range.max - range.min));
+            return MapEntry(entry.key, factor);
+          }),
+        ),
+      ),
+    );
+  });
 
   Future<void> convertSlotToDynamic(
     SlotIdentifier slotIdent,
