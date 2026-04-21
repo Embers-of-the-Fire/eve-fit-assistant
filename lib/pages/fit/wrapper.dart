@@ -642,7 +642,9 @@ class FitWrapper {
       dynamicItemId,
       (dynamicItem) => dynamicItem.copyWith(
         dynamicAttributes: IMap.fromEntries(
-          dynamicItem.dynamicAttributes.keys.map((attributeId) => MapEntry(attributeId, 1.0)),
+          dynamicItem.dynamicAttributes.keys.map(
+            (attributeId) => MapEntry<int, double>(attributeId, 1),
+          ),
         ),
       ),
     );

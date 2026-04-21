@@ -1,3 +1,6 @@
+import "dart:async";
+import "dart:math";
+
 import "package:eve_fit_assistant/components/description_text.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
@@ -5,6 +8,7 @@ import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
+import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
 import "package:eve_fit_assistant/data/proto/fit.pb.dart" show Slots;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/data/proto/utils.pb.dart" show LocalizationID;
@@ -16,13 +20,15 @@ import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 const List<int> _requiredSkillAttributeIds = [182, 183, 184, 1285, 1289, 1290];
 const List<int> _requiredSkillLevelAttributeIds = [277, 278, 279, 1286, 1287, 1288];
-const int _itemDetailTabCount = 3;
+const int _baseItemDetailTabCount = 3;
 const int _attributeDetailTabCount = 2;
+final _random = Random();
 
 enum ItemDetailFitObjectKind { hull, module, implant, booster }
 
@@ -116,6 +122,10 @@ class ItemDetailPage extends ConsumerWidget {
         _resolveNativeItem(ship, reference),
       _ => null,
     };
+    final dynamicEditor = switch ((fitReference, fit?.isInitialized ?? false)) {
+      (final ItemDetailFitReference reference?, true) => _resolveDynamicEditor(ref, fit!.fit, reference),
+      _ => null,
+    };
 
     final attributes = _collectInspectableAttributes(ref, type, resolvedItem);
     final description = type.hasDescription() ? _resolveLocalization(ref, type.description) : null;
@@ -126,6 +136,7 @@ class ItemDetailPage extends ConsumerWidget {
         typeId: typeId,
         type: type,
         fitReference: fitReference,
+        dynamicEditor: dynamicEditor,
         description: description,
         attributes: attributes,
         resolvedItem: resolvedItem,
@@ -139,6 +150,7 @@ class _ItemDetailColumns extends StatelessWidget {
     required this.typeId,
     required this.type,
     required this.fitReference,
+    required this.dynamicEditor,
     required this.description,
     required this.attributes,
     required this.resolvedItem,
@@ -147,16 +159,16 @@ class _ItemDetailColumns extends StatelessWidget {
   final int typeId;
   final pb_types.Type type;
   final ItemDetailFitReference? fitReference;
+  final _DynamicEditorContext? dynamicEditor;
   final String? description;
   final List<_InspectableAttribute> attributes;
   final native.Item? resolvedItem;
 
   @override
   Widget build(BuildContext context) {
-    final paneCount = switch (columnCount(context)) {
-      >= _itemDetailTabCount => _itemDetailTabCount,
-      final count => count,
-    };
+    final tabCount = _itemDetailTabCount(dynamicEditor != null);
+    final columns = columnCount(context);
+    final paneCount = columns >= tabCount ? tabCount : columns;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -170,6 +182,7 @@ class _ItemDetailColumns extends StatelessWidget {
                 typeId: typeId,
                 type: type,
                 fitReference: fitReference,
+                dynamicEditor: dynamicEditor,
                 description: description,
                 attributes: attributes,
               ),
@@ -187,6 +200,7 @@ class _ItemDetailTabPane extends StatefulWidget {
     required this.typeId,
     required this.type,
     required this.fitReference,
+    required this.dynamicEditor,
     required this.description,
     required this.attributes,
   });
@@ -195,6 +209,7 @@ class _ItemDetailTabPane extends StatefulWidget {
   final int typeId;
   final pb_types.Type type;
   final ItemDetailFitReference? fitReference;
+  final _DynamicEditorContext? dynamicEditor;
   final String? description;
   final List<_InspectableAttribute> attributes;
 
@@ -204,16 +219,25 @@ class _ItemDetailTabPane extends StatefulWidget {
 
 class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+  late TabController _tabController;
+
+  int get _tabCount => _itemDetailTabCount(widget.dynamicEditor != null);
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      initialIndex: widget.initialIndex,
-      length: _itemDetailTabCount,
-      vsync: this,
-    );
+    _tabController = TabController(initialIndex: widget.initialIndex, length: _tabCount, vsync: this);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ItemDetailTabPane oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previousCount = _itemDetailTabCount(oldWidget.dynamicEditor != null);
+    if (previousCount == _tabCount) return;
+
+    final nextIndex = _tabController.index.clamp(0, _tabCount - 1);
+    _tabController.dispose();
+    _tabController = TabController(initialIndex: nextIndex, length: _tabCount, vsync: this);
   }
 
   @override
@@ -230,6 +254,7 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
         labelPadding: EdgeInsets.zero,
         tabs: [
           Tab(text: context.l10n.itemDetailTabInfo),
+          if (widget.dynamicEditor != null) const Tab(text: "Dynamic"),
           Tab(text: context.l10n.itemDetailTabAttributes),
           Tab(text: context.l10n.itemDetailTabSkills),
         ],
@@ -244,6 +269,8 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
               fitReference: widget.fitReference,
               description: widget.description,
             ),
+            if (widget.dynamicEditor != null)
+              _DynamicAttributeTabContent(dynamicEditor: widget.dynamicEditor!),
             _AttributeTabContent(
               typeId: widget.typeId,
               fitReference: widget.fitReference,
@@ -402,6 +429,415 @@ class AttributeDetailPage extends ConsumerWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _DynamicAttributeTabContent extends ConsumerWidget {
+  const _DynamicAttributeTabContent({required this.dynamicEditor});
+
+  final _DynamicEditorContext dynamicEditor;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fitState = ref.watch(fitProvider(dynamicEditor.fitId));
+    if (!fitState.isInitialized) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          _SectionCard(title: "Dynamic", child: Text("Dynamic item data is not available yet.")),
+        ],
+      );
+    }
+
+    final dynamicItem = fitState.fit.dynamicRegistry.dynamicItems[dynamicEditor.dynamicItemId];
+    if (dynamicItem == null) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          _SectionCard(title: "Dynamic", child: Text("This fit no longer references dynamic item data.")),
+        ],
+      );
+    }
+
+    final fitNotifier = ref.read(fitProvider(dynamicEditor.fitId).notifier);
+    final rows = dynamicEditor.dynamicMutator.attributes.entries.toList()
+      ..sort((left, right) => left.key.compareTo(right.key));
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionCard(
+          title: "Dynamic",
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _ValueChip(
+                    label: "Base Item",
+                    value: _resolveLocalization(ref, dynamicEditor.originType.typeName) ??
+                        "Type ${dynamicEditor.originType.typeId}",
+                  ),
+                  _ValueChip(
+                    label: "Mutator",
+                    value: _resolveLocalization(ref, dynamicEditor.modifierType.typeName) ??
+                        "Type ${dynamicEditor.modifierType.typeId}",
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => fitNotifier.update((fit) {
+                      final item = fit.dynamicRegistry.dynamicItems[dynamicEditor.dynamicItemId];
+                      if (item == null) return fit;
+                      return fit.copyWith(
+                        dynamicRegistry: fit.dynamicRegistry.copyWith(
+                          dynamicItems: fit.dynamicRegistry.dynamicItems.add(
+                            dynamicEditor.dynamicItemId,
+                            item.copyWith(
+                              dynamicAttributes: IMap.fromEntries(
+                                item.dynamicAttributes.keys.map(
+                                  (attributeId) => MapEntry<int, double>(attributeId, 1),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    icon: const Icon(Icons.restore),
+                    label: const Text("Reset"),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: () => fitNotifier.update((fit) {
+                      final item = fit.dynamicRegistry.dynamicItems[dynamicEditor.dynamicItemId];
+                      if (item == null) return fit;
+                      return fit.copyWith(
+                        dynamicRegistry: fit.dynamicRegistry.copyWith(
+                          dynamicItems: fit.dynamicRegistry.dynamicItems.add(
+                            dynamicEditor.dynamicItemId,
+                            item.copyWith(
+                              dynamicAttributes: IMap.fromEntries(
+                                dynamicEditor.dynamicMutator.attributes.entries.map((entry) {
+                                  final range = entry.value;
+                                  final factor =
+                                      range.min + ((range.max - range.min) * _random.nextDouble());
+                                  return MapEntry(entry.key, factor);
+                                }),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    icon: const Icon(Icons.casino_outlined),
+                    label: const Text("Reroll"),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              for (final entry in rows)
+                () {
+                  final attribute = ref.watch(bundleCollectionGetDogmaAttributeProvider(entry.key));
+                  return _DynamicAttributeEditorRow(
+                    dynamicItemId: dynamicEditor.dynamicItemId,
+                    attributeId: entry.key,
+                    attribute: attribute,
+                    displayName: _attributeDisplayName(ref, attribute) ?? "Attribute ${entry.key}",
+                    baseValue: _staticAttributeValue(dynamicEditor.originType, entry.key),
+                    factor: dynamicItem.dynamicAttributes[entry.key] ?? 1.0,
+                    minFactor: entry.value.min,
+                    maxFactor: entry.value.max,
+                    fitId: dynamicEditor.fitId,
+                  );
+                }(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DynamicAttributeEditorRow extends ConsumerStatefulWidget {
+  const _DynamicAttributeEditorRow({
+    required this.dynamicItemId,
+    required this.attributeId,
+    required this.attribute,
+    required this.displayName,
+    required this.baseValue,
+    required this.factor,
+    required this.minFactor,
+    required this.maxFactor,
+    required this.fitId,
+  });
+
+  final int dynamicItemId;
+  final int attributeId;
+  final DogmaAttribute? attribute;
+  final String displayName;
+  final double? baseValue;
+  final double factor;
+  final double minFactor;
+  final double maxFactor;
+  final String fitId;
+
+  @override
+  ConsumerState<_DynamicAttributeEditorRow> createState() => _DynamicAttributeEditorRowState();
+}
+
+class _DynamicAttributeEditorRowState extends ConsumerState<_DynamicAttributeEditorRow> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode = FocusNode()..addListener(_handleFocusChange);
+    _syncController();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DynamicAttributeEditorRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus &&
+        (oldWidget.factor != widget.factor || oldWidget.baseValue != widget.baseValue)) {
+      _syncController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_handleFocusChange)
+      ..dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChange() {
+    if (_focusNode.hasFocus) return;
+    unawaited(_commitValue());
+  }
+
+  void _syncController([double? factor]) {
+    final baseValue = widget.baseValue;
+    if (baseValue == null) {
+      _controller.text = "";
+      return;
+    }
+    _controller.text = _formatDynamicValue(baseValue * (factor ?? widget.factor));
+  }
+
+  Future<void> _commitValue() async {
+    final baseValue = widget.baseValue;
+    if (baseValue == null || baseValue == 0) {
+      _syncController();
+      return;
+    }
+
+    final parsedValue = double.tryParse(_controller.text.trim());
+    if (parsedValue == null) {
+      _syncController();
+      return;
+    }
+
+    final minValue = baseValue * widget.minFactor;
+    final maxValue = baseValue * widget.maxFactor;
+    final clampedValue = parsedValue.clamp(
+      minValue < maxValue ? minValue : maxValue,
+      minValue < maxValue ? maxValue : minValue,
+    );
+    final nextFactor = clampedValue / baseValue;
+    _syncController(nextFactor);
+
+    final fitNotifier = ref.read(fitProvider(widget.fitId).notifier);
+    await fitNotifier.update((fit) {
+      final dynamicItem = fit.dynamicRegistry.dynamicItems[widget.dynamicItemId];
+      if (dynamicItem == null) return fit;
+      return fit.copyWith(
+        dynamicRegistry: fit.dynamicRegistry.copyWith(
+          dynamicItems: fit.dynamicRegistry.dynamicItems.add(
+            widget.dynamicItemId,
+            dynamicItem.copyWith(
+              dynamicAttributes: dynamicItem.dynamicAttributes.add(widget.attributeId, nextFactor),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseValue = widget.baseValue;
+    if (baseValue == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: _SectionCard(
+          title: widget.displayName,
+          child: Text("Base attribute data is unavailable for ${widget.attributeId}."),
+        ),
+      );
+    }
+
+    final currentValue = baseValue * widget.factor;
+    final minValue = baseValue * widget.minFactor;
+    final maxValue = baseValue * widget.maxFactor;
+    final lowTone = _attributeDeltaTone(
+      attribute: widget.attribute,
+      baseValue: baseValue,
+      currentValue: minValue,
+    );
+    final leftValue = lowTone == _ValueTone.negative ? minValue : maxValue;
+    final rightValue = leftValue == minValue ? maxValue : minValue;
+    final currentTone = _attributeDeltaTone(
+      attribute: widget.attribute,
+      baseValue: baseValue,
+      currentValue: currentValue,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(widget.displayName, style: context.theme.textTheme.titleSmall),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  textAlign: TextAlign.end,
+                  decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+                  onSubmitted: (_) => _commitValue(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _formatDynamicValue(leftValue),
+                  style: context.theme.textTheme.labelMedium?.copyWith(color: Colors.red.shade700),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  _formatDynamicValue(currentValue),
+                  textAlign: TextAlign.center,
+                  style: context.theme.textTheme.labelMedium?.copyWith(
+                    color: _toneColor(context, currentTone),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  _formatDynamicValue(rightValue),
+                  textAlign: TextAlign.end,
+                  style: context.theme.textTheme.labelMedium?.copyWith(
+                    color: Colors.green.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _DynamicAttributeRatioBar(
+            factor: widget.factor,
+            minFactor: widget.minFactor,
+            maxFactor: widget.maxFactor,
+            tone: currentTone,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DynamicAttributeRatioBar extends StatelessWidget {
+  const _DynamicAttributeRatioBar({
+    required this.factor,
+    required this.minFactor,
+    required this.maxFactor,
+    required this.tone,
+  });
+
+  final double factor;
+  final double minFactor;
+  final double maxFactor;
+  final _ValueTone? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (tone) {
+      _ValueTone.positive => Colors.green.shade700,
+      _ValueTone.negative => Colors.red.shade700,
+      null => context.theme.colorScheme.outline,
+    };
+    final normalized = factor == 1
+        ? 0.5
+        : factor > 1
+        ? 0.5 + ((factor - 1) / ((maxFactor - 1).abs() * 2)).clamp(0.0, 0.5)
+        : 0.5 - ((1 - factor) / ((1 - minFactor).abs() * 2)).clamp(0.0, 0.5);
+
+    return SizedBox(
+      height: 10,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final center = width / 2;
+          final position = normalized * width;
+          final left = position < center ? position : center;
+          final right = position > center ? position : center;
+
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: context.theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Center(
+                    child: Container(width: 1, color: context.theme.colorScheme.onSurface),
+                  ),
+                ),
+                Positioned(
+                  left: left,
+                  width: right - left,
+                  top: 0,
+                  bottom: 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -1373,6 +1809,22 @@ class _InspectableAttribute {
   final DogmaUnit? unit;
 }
 
+class _DynamicEditorContext {
+  const _DynamicEditorContext({
+    required this.fitId,
+    required this.dynamicItemId,
+    required this.originType,
+    required this.modifierType,
+    required this.dynamicMutator,
+  });
+
+  final String fitId;
+  final int dynamicItemId;
+  final pb_types.Type originType;
+  final pb_types.Type modifierType;
+  final pb_dynamic.DynamicMutator dynamicMutator;
+}
+
 class _ModifierValueDisplay {
   const _ModifierValueDisplay({required this.primary, this.secondary, this.explanation});
 
@@ -1382,6 +1834,74 @@ class _ModifierValueDisplay {
 }
 
 enum _ValueTone { positive, negative }
+
+int _itemDetailTabCount(bool hasDynamicEditor) =>
+    _baseItemDetailTabCount + (hasDynamicEditor ? 1 : 0);
+
+_DynamicEditorContext? _resolveDynamicEditor(
+  WidgetRef ref,
+  FitStorage fit,
+  ItemDetailFitReference reference,
+) {
+  if (reference.kind != ItemDetailFitObjectKind.module || reference.inspectCharge) {
+    return null;
+  }
+
+  final index = reference.index;
+  final slotType = reference.slotType;
+  if (index == null || slotType == null) {
+    return null;
+  }
+
+  final slot = _resolveStoredModule(fit, slotType, index);
+  final dynamicId = slot?.itemId.dynamicIdOrNull;
+  if (dynamicId == null) {
+    return null;
+  }
+
+  final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
+  if (dynamicItem == null) {
+    return null;
+  }
+
+  final dynamicMutator = ref.watch(bundleCollectionProvider)?.getDynamicMutator(
+    dynamicItem.modifierTypeId,
+  );
+  final originType = ref.watch(bundleCollectionGetTypeProvider(dynamicItem.originTypeId));
+  final modifierType = ref.watch(bundleCollectionGetTypeProvider(dynamicItem.modifierTypeId));
+  if (dynamicMutator == null || originType == null || modifierType == null) {
+    return null;
+  }
+
+  return _DynamicEditorContext(
+    fitId: fit.metadata.fitId,
+    dynamicItemId: dynamicId,
+    originType: originType,
+    modifierType: modifierType,
+    dynamicMutator: dynamicMutator,
+  );
+}
+
+FitModuleItem? _resolveStoredModule(FitStorage fit, native.OutSlotType slotType, int index) =>
+    switch (slotType) {
+      native.OutSlotType_High() => fit.body.slots.high.getOrNull(index)?.toNullable(),
+      native.OutSlotType_Medium() => fit.body.slots.medium.getOrNull(index)?.toNullable(),
+      native.OutSlotType_Low() => fit.body.slots.low.getOrNull(index)?.toNullable(),
+      native.OutSlotType_Rig() => fit.body.slots.rig.getOrNull(index)?.toNullable(),
+      native.OutSlotType_SubSystem() => fit.body.slots.subsystem.getOrNull(index)?.toNullable(),
+      native.OutSlotType_Service() => fit.body.slots.service.getOrNull(index)?.toNullable(),
+      _ => null,
+    };
+
+String _formatDynamicValue(double value) {
+  if (value.abs() >= 1000) {
+    return value.toStringAsFixed(1);
+  }
+  if (value.abs() >= 100) {
+    return value.toStringAsFixed(2);
+  }
+  return value.toStringAsFixed(3);
+}
 
 String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) => switch (localization) {
   null => null,
