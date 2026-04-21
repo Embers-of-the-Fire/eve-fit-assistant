@@ -649,7 +649,7 @@
   "itemDetailDynamicBaseItem": "基础物品",
   "itemDetailDynamicMutator": "深渊物质",
   "itemDetailDynamicReset": "重置",
-  "itemDetailDynamicReroll": "重随",
+  "itemDetailDynamicReroll": "重新随机",
   "itemDetailDynamicBaseAttributeUnavailable": "属性 {attributeId} 的基础数据不可用。",
   "@itemDetailDynamicBaseAttributeUnavailable": {
     "placeholders": {
