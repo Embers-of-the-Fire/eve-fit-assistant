@@ -250,6 +250,21 @@
   "itemDetailTabInfo": "Info",
   "itemDetailTabAttributes": "Attributes",
   "itemDetailTabSkills": "Skills",
+  "itemDetailTabDynamic": "Dynamic",
+  "itemDetailDynamicUnavailable": "Dynamic item data is not available yet.",
+  "itemDetailDynamicMissing": "This fit no longer references dynamic item data.",
+  "itemDetailDynamicBaseItem": "Base Item",
+  "itemDetailDynamicMutator": "Mutator",
+  "itemDetailDynamicReset": "Reset",
+  "itemDetailDynamicReroll": "Reroll",
+  "itemDetailDynamicBaseAttributeUnavailable": "Base attribute data is unavailable for {attributeId}.",
+  "@itemDetailDynamicBaseAttributeUnavailable": {
+    "placeholders": {
+      "attributeId": {
+        "type": "int"
+      }
+    }
+  },
   "itemDetailDescription": "Description",
   "itemDetailClassification": "Classification",
   "itemDetailTypeId": "Type ID",
