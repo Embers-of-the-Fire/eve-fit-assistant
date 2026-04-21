@@ -658,9 +658,9 @@ class FitWrapper {
       return fit;
     }
 
-    final dynamicMutator = ref.read(bundleCollectionProvider)?.getDynamicMutator(
-      dynamicItem.modifierTypeId,
-    );
+    final dynamicMutator = ref
+        .read(bundleCollectionProvider)
+        ?.getDynamicMutator(dynamicItem.modifierTypeId);
     if (dynamicMutator == null) {
       warning(
         "Missing dynamic mutator ${dynamicItem.modifierTypeId} while randomizing fit item $dynamicItemId",

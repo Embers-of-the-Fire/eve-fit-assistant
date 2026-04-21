@@ -643,6 +643,21 @@
   "itemDetailTabInfo": "信息",
   "itemDetailTabAttributes": "属性",
   "itemDetailTabSkills": "技能",
+  "itemDetailTabDynamic": "动态",
+  "itemDetailDynamicUnavailable": "动态物品数据暂不可用。",
+  "itemDetailDynamicMissing": "当前装配已不再引用该动态物品数据。",
+  "itemDetailDynamicBaseItem": "基础物品",
+  "itemDetailDynamicMutator": "深渊物质",
+  "itemDetailDynamicReset": "重置",
+  "itemDetailDynamicReroll": "重随",
+  "itemDetailDynamicBaseAttributeUnavailable": "属性 {attributeId} 的基础数据不可用。",
+  "@itemDetailDynamicBaseAttributeUnavailable": {
+    "placeholders": {
+      "attributeId": {
+        "type": "int"
+      }
+    }
+  },
   "itemDetailDescription": "描述",
   "itemDetailClassification": "分类",
   "itemDetailTypeId": "类型 ID",

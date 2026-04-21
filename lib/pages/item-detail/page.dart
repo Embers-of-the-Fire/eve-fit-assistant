@@ -123,7 +123,11 @@ class ItemDetailPage extends ConsumerWidget {
       _ => null,
     };
     final dynamicEditor = switch ((fitReference, fit?.isInitialized ?? false)) {
-      (final ItemDetailFitReference reference?, true) => _resolveDynamicEditor(ref, fit!.fit, reference),
+      (final ItemDetailFitReference reference?, true) => _resolveDynamicEditor(
+        ref,
+        fit!.fit,
+        reference,
+      ),
       _ => null,
     };
 
@@ -226,7 +230,11 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(initialIndex: widget.initialIndex, length: _tabCount, vsync: this);
+    _tabController = TabController(
+      initialIndex: widget.initialIndex,
+      length: _tabCount,
+      vsync: this,
+    );
   }
 
   @override
@@ -254,7 +262,7 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
         labelPadding: EdgeInsets.zero,
         tabs: [
           Tab(text: context.l10n.itemDetailTabInfo),
-          if (widget.dynamicEditor != null) const Tab(text: "Dynamic"),
+          if (widget.dynamicEditor != null) Tab(text: context.l10n.itemDetailTabDynamic),
           Tab(text: context.l10n.itemDetailTabAttributes),
           Tab(text: context.l10n.itemDetailTabSkills),
         ],
@@ -444,8 +452,11 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
     if (!fitState.isInitialized) {
       return ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
-          _SectionCard(title: "Dynamic", child: Text("Dynamic item data is not available yet.")),
+        children: [
+          _SectionCard(
+            title: context.l10n.itemDetailTabDynamic,
+            child: Text(context.l10n.itemDetailDynamicUnavailable),
+          ),
         ],
       );
     }
@@ -454,8 +465,11 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
     if (dynamicItem == null) {
       return ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
-          _SectionCard(title: "Dynamic", child: Text("This fit no longer references dynamic item data.")),
+        children: [
+          _SectionCard(
+            title: context.l10n.itemDetailTabDynamic,
+            child: Text(context.l10n.itemDetailDynamicMissing),
+          ),
         ],
       );
     }
@@ -468,7 +482,7 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       children: [
         _SectionCard(
-          title: "Dynamic",
+          title: context.l10n.itemDetailTabDynamic,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -477,13 +491,15 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
                 runSpacing: 12,
                 children: [
                   _ValueChip(
-                    label: "Base Item",
-                    value: _resolveLocalization(ref, dynamicEditor.originType.typeName) ??
+                    label: context.l10n.itemDetailDynamicBaseItem,
+                    value:
+                        _resolveLocalization(ref, dynamicEditor.originType.typeName) ??
                         "Type ${dynamicEditor.originType.typeId}",
                   ),
                   _ValueChip(
-                    label: "Mutator",
-                    value: _resolveLocalization(ref, dynamicEditor.modifierType.typeName) ??
+                    label: context.l10n.itemDetailDynamicMutator,
+                    value:
+                        _resolveLocalization(ref, dynamicEditor.modifierType.typeName) ??
                         "Type ${dynamicEditor.modifierType.typeId}",
                   ),
                 ],
@@ -512,7 +528,7 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
                       );
                     }),
                     icon: const Icon(Icons.restore),
-                    label: const Text("Reset"),
+                    label: Text(context.l10n.itemDetailDynamicReset),
                   ),
                   const SizedBox(width: 12),
                   FilledButton.icon(
@@ -538,7 +554,7 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
                       );
                     }),
                     icon: const Icon(Icons.casino_outlined),
-                    label: const Text("Reroll"),
+                    label: Text(context.l10n.itemDetailDynamicReroll),
                   ),
                 ],
               ),
@@ -684,7 +700,9 @@ class _DynamicAttributeEditorRowState extends ConsumerState<_DynamicAttributeEdi
         padding: const EdgeInsets.only(bottom: 16),
         child: _SectionCard(
           title: widget.displayName,
-          child: Text("Base attribute data is unavailable for ${widget.attributeId}."),
+          child: Text(
+            context.l10n.itemDetailDynamicBaseAttributeUnavailable(attributeId: widget.attributeId),
+          ),
         ),
       );
     }
@@ -830,7 +848,10 @@ class _DynamicAttributeRatioBar extends StatelessWidget {
                   top: 0,
                   bottom: 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
                   ),
                 ),
               ],
@@ -1864,9 +1885,9 @@ _DynamicEditorContext? _resolveDynamicEditor(
     return null;
   }
 
-  final dynamicMutator = ref.watch(bundleCollectionProvider)?.getDynamicMutator(
-    dynamicItem.modifierTypeId,
-  );
+  final dynamicMutator = ref
+      .watch(bundleCollectionProvider)
+      ?.getDynamicMutator(dynamicItem.modifierTypeId);
   final originType = ref.watch(bundleCollectionGetTypeProvider(dynamicItem.originTypeId));
   final modifierType = ref.watch(bundleCollectionGetTypeProvider(dynamicItem.modifierTypeId));
   if (dynamicMutator == null || originType == null || modifierType == null) {
