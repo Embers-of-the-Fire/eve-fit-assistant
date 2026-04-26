@@ -24,6 +24,7 @@ DART_ROOT = PROJECT_ROOT / "lib"
 
 ASSETS_OUT_PATH = DART_ROOT / "constant" / "assets_generated.dart"
 EVE_ATTR_OUT_PATH = DART_ROOT / "constant" / "eve_attr_generated.dart"
+EVE_DOGMA_UNIT_OUT_PATH = DART_ROOT / "constant" / "eve_dogma_unit_generated.dart"
 
 HIGH_SLOT_ATTR = 14
 MEDIUM_SLOT_ATTR = 13

@@ -1,3 +1,4 @@
+part "eve_dogma_unit_generated.dart";
 part "eve_attr_generated.dart";
 
 class EveConstCategoryId {

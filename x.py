@@ -301,6 +301,18 @@ def __get_workspace(name) -> Path:
     return ws.descriptor
 
 
+def __get_current_workspace_descriptor() -> WorkspaceConfig:
+    name = data.lib.config.WORKSPACE_CACHE.current_workspace
+    if not name:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
+        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
+        exit(1)
+
+    ws = __get_workspace(name)
+    info(f"Resolving workspace: {name} ({ws})")
+    return WorkspaceConfig.load_from_descriptor(ws)
+
+
 @workspace.command()
 @click.argument("name")
 def default(name: str):
@@ -530,6 +542,27 @@ def gen_l10n(ctx: click.Context, watch: bool):
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Localization generation completed successfully.")
     )
+
+    if ctx.obj.get("format_source", False):
+        ctx.invoke(format_cmd)
+
+
+@generate.group("values", cls=ClickAliasedGroup)
+def generate_values():
+    """Generate value-dependent code from the selected workspace."""
+
+
+@generate_values.command("dogma-units")
+@click.pass_context
+def dogma_units_cmd(ctx: click.Context):
+    """Generate dogma unit ID constants."""
+    from data.lib.codegen.dogma_unit_id import codegen_dart
+
+    files = asyncio.run(codegen_dart(__get_current_workspace_descriptor()))
+    for file in files:
+        click.echo(f"  Modified {file}")
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dogma unit ID generation completed."))
 
     if ctx.obj.get("format_source", False):
         ctx.invoke(format_cmd)
