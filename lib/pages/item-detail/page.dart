@@ -989,13 +989,13 @@ class _AttributeOverviewContent extends ConsumerWidget {
               label: context.l10n.itemDetailAttributeBaseValue,
               value: staticValue == null
                   ? context.l10n.itemDetailUnavailable
-                  : formatDogmaUnitValue(context, ref, unit, staticValue!),
+                  : _formatItemDetailDogmaValue(context, ref, unit, staticValue!),
             ),
             _ValueChip(
               label: context.l10n.itemDetailAttributeCurrentValue,
               value: current?.value == null
                   ? context.l10n.itemDetailUnavailable
-                  : formatDogmaUnitValue(context, ref, unit, current!.value!),
+                  : _formatItemDetailDogmaValue(context, ref, unit, current!.value!),
               tone: current?.value == null
                   ? null
                   : staticValue == null
@@ -1375,7 +1375,7 @@ class _AttributesList extends ConsumerWidget {
                   ),
             title: Text(attribute.displayName),
             trailing: Text(
-              formatDogmaUnitValue(
+              _formatItemDetailDogmaValue(
                 context,
                 ref,
                 attribute.unit,
@@ -1939,6 +1939,34 @@ String? _attributeDisplayName(WidgetRef ref, DogmaAttribute? attribute) {
   return null;
 }
 
+String _formatItemDetailDogmaValue(
+  BuildContext context,
+  WidgetRef ref,
+  DogmaUnit? unit,
+  double value, {
+  DogmaUnitSignMode signMode = DogmaUnitSignMode.none,
+}) => formatDogmaUnitValue(
+  context,
+  ref,
+  unit,
+  value,
+  signMode: signMode,
+  resolveGroupId: (groupId) => _resolveGroupName(ref, groupId),
+  resolveTypeId: (typeId) => _resolveTypeName(ref, typeId),
+  resolveAttributeId: (attributeId) => _resolveAttributeName(ref, attributeId),
+);
+
+String? _resolveGroupName(WidgetRef ref, int groupId) {
+  final group = ref.watch(bundleCollectionGetGroupProvider(groupId));
+  if (group == null) return null;
+  return _resolveLocalization(ref, group.groupName);
+}
+
+String? _resolveAttributeName(WidgetRef ref, int attributeId) {
+  final attribute = ref.watch(bundleCollectionGetDogmaAttributeProvider(attributeId));
+  return _attributeDisplayName(ref, attribute);
+}
+
 _ValueTone? _attributeDeltaTone({
   required DogmaAttribute? attribute,
   required double baseValue,
@@ -2318,7 +2346,7 @@ String _traitEntryMarkup(WidgetRef ref, BuildContext context, pb_types.Type_Trai
   final unit = entry.hasUnitId()
       ? ref.watch(bundleCollectionGetDogmaUnitProvider(entry.unitId))
       : null;
-  return "${formatDogmaUnitValue(context, ref, unit, entry.bonus)} $text";
+  return "${_formatItemDetailDogmaValue(context, ref, unit, entry.bonus)} $text";
 }
 
 String? _resolveTypeName(WidgetRef ref, int typeId) {

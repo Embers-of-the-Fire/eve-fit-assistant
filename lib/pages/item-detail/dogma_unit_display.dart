@@ -11,12 +11,17 @@ const double _metersPerAu = 149597870700;
 
 enum DogmaUnitSignMode { none, positive }
 
+typedef DogmaUnitIdResolver = String? Function(int id);
+
 String formatDogmaUnitValue(
   BuildContext context,
   WidgetRef ref,
   DogmaUnit? unit,
   double value, {
   DogmaUnitSignMode signMode = DogmaUnitSignMode.none,
+  DogmaUnitIdResolver? resolveGroupId,
+  DogmaUnitIdResolver? resolveTypeId,
+  DogmaUnitIdResolver? resolveAttributeId,
 }) {
   if (unit == null) {
     return _formatAdaptiveNumber(context, value, maxDecimalDigits: 3, signMode: signMode);
@@ -62,7 +67,10 @@ String formatDogmaUnitValue(
     112 => _formatWithUnit(context, value, "rad/s", decimalDigits: 3, signMode: signMode),
     113 => _formatWithUnit(context, value, "HP", decimalDigits: 2, signMode: signMode),
     114 => _formatWithUnit(context, value, "GJ", decimalDigits: 2, signMode: signMode),
-    115 || 116 || 119 || 143 => _formatInteger(context, value, signMode: signMode),
+    115 => _formatResolvedId(context, value, resolveGroupId, signMode: signMode),
+    116 => _formatResolvedId(context, value, resolveTypeId, signMode: signMode),
+    119 => _formatResolvedId(context, value, resolveAttributeId, signMode: signMode),
+    143 => _formatInteger(context, value, signMode: signMode),
     117 => _formatSizeClass(context, value),
     118 || 138 => _formatWithUnit(
       context,
@@ -235,6 +243,20 @@ String _formatSex(BuildContext context, double value) => switch (value.round()) 
   3 => context.l10n.dogmaUnitSexFemale,
   _ => context.l10n.dogmaUnitSexUnknown(value: _formatInteger(context, value)),
 };
+
+String _formatResolvedId(
+  BuildContext context,
+  double value,
+  DogmaUnitIdResolver? resolveId, {
+  required DogmaUnitSignMode signMode,
+}) {
+  final id = value.round();
+  if (value.isFinite && value == id.toDouble()) {
+    final resolved = resolveId?.call(id)?.trim();
+    if (resolved?.isNotEmpty ?? false) return resolved!;
+  }
+  return _formatInteger(context, value, signMode: signMode);
+}
 
 String _formatPrefixedUnit(
   BuildContext context,
