@@ -2122,10 +2122,11 @@ String _formatCompactNumber(double value) {
   if (abs >= 100) return value.toStringAsFixed(1);
   if (abs >= 10) return value.toStringAsFixed(2);
   if (abs >= 1) {
-    return value
-        .toStringAsFixed(3)
-        .replaceFirst(RegExp(r"\.0+$"), "")
-        .replaceFirst(RegExp(r"(\.[0-9]*?)0+$"), r"$1");
+    var formatted = value.toStringAsFixed(3);
+    while (formatted.contains(".") && formatted.endsWith("0")) {
+      formatted = formatted.substring(0, formatted.length - 1);
+    }
+    return formatted.endsWith(".") ? formatted.substring(0, formatted.length - 1) : formatted;
   }
   return value.toStringAsPrecision(4);
 }
