@@ -332,15 +332,7 @@ def default(name: str):
 @click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
 def inspect_json(pretty: bool):
     """Resolve the workspace configurations and print in JSON format."""
-    name = data.lib.config.WORKSPACE_CACHE.current_workspace
-    if not name:
-        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
-        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
-        exit(1)
-
-    ws = __get_workspace(name)
-    info(f"Resolving workspace: {name} ({ws})")
-    descriptor = WorkspaceConfig.load_from_descriptor(ws)
+    descriptor = __get_current_workspace_descriptor()
     click.echo(descriptor.model_dump_json(indent=4 if pretty else None))
 
 
@@ -893,17 +885,7 @@ def data_cmd(skip: list[str], no_hash: bool):
         click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
         exit(1)
 
-    name = data.lib.config.WORKSPACE_CACHE.current_workspace
-    if not name:
-        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
-        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
-        exit(1)
-
-    ws = __get_workspace(name)
-    info(f"Resolving workspace: {name} ({ws})")
-    descriptor = WorkspaceConfig.load_from_descriptor(ws)
-
-    asyncio.run(run_generator(descriptor, to_skip, not no_hash))
+    asyncio.run(run_generator(__get_current_workspace_descriptor(), to_skip, not no_hash))
 
 
 @build.command("docs", aliases=["doc"])
@@ -923,18 +905,8 @@ def build_increment_cmd(baseline_manifest_path: str):
     """Build incremental patch bundle."""
     from data.lib.workspace.build_increment import build_increment_bundle
 
-    name = data.lib.config.WORKSPACE_CACHE.current_workspace
-    if not name:
-        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
-        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
-        exit(1)
-
-    ws = __get_workspace(name)
-    info(f"Resolving workspace: {name} ({ws})")
-    descriptor = WorkspaceConfig.load_from_descriptor(ws)
-
     baseline_manifest = Path(baseline_manifest_path)
-    build_increment_bundle(descriptor, baseline_manifest)
+    build_increment_bundle(__get_current_workspace_descriptor(), baseline_manifest)
 
 
 @cli.group(cls=ClickAliasedGroup)
