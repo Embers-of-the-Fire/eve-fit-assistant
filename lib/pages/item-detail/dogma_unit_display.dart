@@ -1,5 +1,6 @@
 import "dart:math" as math;
 
+import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -27,30 +28,139 @@ String formatDogmaUnitValue(
     return _formatAdaptiveNumber(context, value, maxDecimalDigits: 3, signMode: signMode);
   }
 
-  return switch (unit.dogmaUnitId) {
-    1 => _formatDistance(context, value, signMode: signMode),
-    2 => _formatWithUnit(context, value, "kg", decimalDigits: 0, signMode: signMode),
-    3 || 123 => _formatSeconds(context, value, signMode: signMode),
-    4 => _formatWithUnit(context, value, "A", decimalDigits: 2, signMode: signMode),
-    5 => _formatWithUnit(context, value, "K", decimalDigits: 2, signMode: signMode),
-    6 => _formatWithUnit(context, value, "mol", decimalDigits: 2, signMode: signMode),
-    7 => _formatWithUnit(context, value, "cd", decimalDigits: 2, signMode: signMode),
-    8 => _formatWithUnit(context, value, "m2", decimalDigits: 2, signMode: signMode),
-    9 => _formatWithUnit(context, value, "m3", decimalDigits: 2, signMode: signMode),
-    10 => _formatSpeed(context, value, signMode: signMode),
-    11 => _formatWithUnit(context, value, "m/s^2", decimalDigits: 2, signMode: signMode),
-    12 => _formatWithUnit(context, value, "m^-1", decimalDigits: 2, signMode: signMode),
-    13 => _formatWithUnit(context, value, "kg/m3", decimalDigits: 2, signMode: signMode),
-    14 => _formatWithUnit(context, value, "m3/kg", decimalDigits: 2, signMode: signMode),
-    15 => _formatWithUnit(context, value, "A/m2", decimalDigits: 2, signMode: signMode),
-    16 => _formatWithUnit(context, value, "A/m", decimalDigits: 2, signMode: signMode),
-    17 => _formatWithUnit(context, value, "mol/m3", decimalDigits: 2, signMode: signMode),
-    18 => _formatWithUnit(context, value, "cd/m2", decimalDigits: 2, signMode: signMode),
-    19 => _formatWithUnit(context, value, "kg/kg", decimalDigits: 2, signMode: signMode),
-    101 => _formatMilliseconds(context, value, signMode: signMode),
-    102 => _formatWithUnit(context, value, "mm", decimalDigits: 0, signMode: signMode),
-    103 => _formatWithUnit(context, value, "MPa", decimalDigits: 2, signMode: signMode),
-    104 => _formatWithUnit(
+  return switch (EveDogmaUnitId.fromId(unit.dogmaUnitId)) {
+    EveDogmaUnitId.length => _formatDistance(context, value, signMode: signMode),
+    EveDogmaUnitId.mass => _formatWithUnit(
+      context,
+      value,
+      "kg",
+      decimalDigits: 0,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.time ||
+    EveDogmaUnitId.trueTime => _formatSeconds(context, value, signMode: signMode),
+    EveDogmaUnitId.electricCurrent => _formatWithUnit(
+      context,
+      value,
+      "A",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.temperature => _formatWithUnit(
+      context,
+      value,
+      "K",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.amountOfSubstance => _formatWithUnit(
+      context,
+      value,
+      "mol",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.luminousIntensity => _formatWithUnit(
+      context,
+      value,
+      "cd",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.area => _formatWithUnit(
+      context,
+      value,
+      "m2",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.volume => _formatWithUnit(
+      context,
+      value,
+      "m3",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.speed => _formatSpeed(context, value, signMode: signMode),
+    EveDogmaUnitId.acceleration => _formatWithUnit(
+      context,
+      value,
+      "m/s^2",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.waveNumber => _formatWithUnit(
+      context,
+      value,
+      "m^-1",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.massDensity => _formatWithUnit(
+      context,
+      value,
+      "kg/m3",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.specificVolume => _formatWithUnit(
+      context,
+      value,
+      "m3/kg",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.currentDensity => _formatWithUnit(
+      context,
+      value,
+      "A/m2",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.magneticFieldStrength => _formatWithUnit(
+      context,
+      value,
+      "A/m",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.amountOfSubstanceConcentration => _formatWithUnit(
+      context,
+      value,
+      "mol/m3",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.luminance => _formatWithUnit(
+      context,
+      value,
+      "cd/m2",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.massFraction => _formatWithUnit(
+      context,
+      value,
+      "kg/kg",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.milliseconds => _formatMilliseconds(context, value, signMode: signMode),
+    EveDogmaUnitId.millimeters => _formatWithUnit(
+      context,
+      value,
+      "mm",
+      decimalDigits: 0,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.megaPascals => _formatWithUnit(
+      context,
+      value,
+      "MPa",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.multiplier => _formatWithUnit(
       context,
       value,
       "x",
@@ -58,64 +168,172 @@ String formatDogmaUnitValue(
       signMode: signMode,
       spaceBeforeUnit: false,
     ),
-    105 => _formatPercent(context, value, signMode: signMode),
-    106 => _formatWithUnit(context, value, "tf", decimalDigits: 2, signMode: signMode),
-    107 => _formatWithUnit(context, value, "MW", decimalDigits: 2, signMode: signMode),
-    108 => _formatPercent(context, (1 - value) * 100, signMode: signMode),
-    109 => _formatPercent(context, (value - 1) * 100, signMode: DogmaUnitSignMode.positive),
-    111 => _formatPercent(context, (1 - value) * 100, signMode: signMode),
-    112 => _formatWithUnit(context, value, "rad/s", decimalDigits: 3, signMode: signMode),
-    113 => _formatWithUnit(context, value, "HP", decimalDigits: 2, signMode: signMode),
-    114 => _formatWithUnit(context, value, "GJ", decimalDigits: 2, signMode: signMode),
-    115 => _formatResolvedId(context, value, resolveGroupId, signMode: signMode),
-    116 => _formatResolvedId(context, value, resolveTypeId, signMode: signMode),
-    119 => _formatResolvedId(context, value, resolveAttributeId, signMode: signMode),
-    143 => _formatInteger(context, value, signMode: signMode),
-    117 => _formatSizeClass(context, value),
-    118 || 138 => _formatWithUnit(
+    EveDogmaUnitId.percentage => _formatPercent(context, value, signMode: signMode),
+    EveDogmaUnitId.teraflops => _formatWithUnit(
+      context,
+      value,
+      "tf",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.megaWatts => _formatWithUnit(
+      context,
+      value,
+      "MW",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.inverseAbsolutePercent => _formatPercent(
+      context,
+      (1 - value) * 100,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.modifierPercent => _formatPercent(
+      context,
+      (value - 1) * 100,
+      signMode: DogmaUnitSignMode.positive,
+    ),
+    EveDogmaUnitId.inversedModifierPercent => _formatPercent(
+      context,
+      (1 - value) * 100,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.radiansSecond => _formatWithUnit(
+      context,
+      value,
+      "rad/s",
+      decimalDigits: 3,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.hitpoints => _formatWithUnit(
+      context,
+      value,
+      "HP",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.capacitorUnits => _formatWithUnit(
+      context,
+      value,
+      "GJ",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.groupId => _formatResolvedId(context, value, resolveGroupId, signMode: signMode),
+    EveDogmaUnitId.typeId => _formatResolvedId(context, value, resolveTypeId, signMode: signMode),
+    EveDogmaUnitId.attributeId => _formatResolvedId(
+      context,
+      value,
+      resolveAttributeId,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.datetime => _formatInteger(context, value, signMode: signMode),
+    EveDogmaUnitId.sizeclass => _formatSizeClass(context, value),
+    EveDogmaUnitId.oreUnits || EveDogmaUnitId.units => _formatWithUnit(
       context,
       value,
       dogmaUnitLabel(ref, unit),
       decimalDigits: 0,
       signMode: signMode,
     ),
-    120 => _formatWithUnit(
+    EveDogmaUnitId.attributePoints => _formatWithUnit(
       context,
       value,
       dogmaUnitLabel(ref, unit),
       decimalDigits: 0,
       signMode: signMode,
     ),
-    121 => _formatPercent(context, value, signMode: signMode),
-    122 => _formatInteger(context, value, signMode: signMode),
-    124 => _formatPercent(context, value, signMode: signMode),
-    125 => _formatWithUnit(context, value, "N", decimalDigits: 0, signMode: signMode),
-    126 => _formatWithUnit(context, value, "ly", decimalDigits: 2, signMode: signMode),
-    127 => _formatPercent(context, value * 100, signMode: signMode),
-    128 => _formatWithUnit(context, value, "Mbit/s", decimalDigits: 0, signMode: signMode),
-    129 => _formatHours(context, value, signMode: signMode),
-    133 => _formatWithUnit(context, value, "ISK", decimalDigits: 2, signMode: signMode),
-    134 => _formatWithUnit(context, value, "m3/h", decimalDigits: 0, signMode: signMode),
-    135 => _formatWithUnit(context, value, "AU", decimalDigits: 3, signMode: signMode),
-    136 => _formatPrefixedUnit(context, ref, unit, value, decimalDigits: 0, signMode: signMode),
-    137 => value == 0 ? context.l10n.itemDetailBooleanFalse : context.l10n.itemDetailBooleanTrue,
-    139 => _formatAdaptiveNumber(
+    EveDogmaUnitId.realPercent => _formatPercent(context, value, signMode: signMode),
+    EveDogmaUnitId.fittingSlots => _formatInteger(context, value, signMode: signMode),
+    EveDogmaUnitId.modifierRelativePercent => _formatPercent(context, value, signMode: signMode),
+    EveDogmaUnitId.newton => _formatWithUnit(
+      context,
+      value,
+      "N",
+      decimalDigits: 0,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.lightYear => _formatWithUnit(
+      context,
+      value,
+      "ly",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.absolutePercent => _formatPercent(context, value * 100, signMode: signMode),
+    EveDogmaUnitId.droneBandwidth => _formatWithUnit(
+      context,
+      value,
+      "Mbit/s",
+      decimalDigits: 0,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.hours => _formatHours(context, value, signMode: signMode),
+    EveDogmaUnitId.money => _formatWithUnit(
+      context,
+      value,
+      "ISK",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.logisticalCapacity => _formatWithUnit(
+      context,
+      value,
+      "m3/h",
+      decimalDigits: 0,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.astronomicalUnit => _formatWithUnit(
+      context,
+      value,
+      "AU",
+      decimalDigits: 3,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.slot => _formatPrefixedUnit(
+      context,
+      ref,
+      unit,
+      value,
+      decimalDigits: 0,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.boolean =>
+      value == 0 ? context.l10n.itemDetailBooleanFalse : context.l10n.itemDetailBooleanTrue,
+    EveDogmaUnitId.bonus => _formatAdaptiveNumber(
       context,
       value,
       maxDecimalDigits: 2,
       signMode: DogmaUnitSignMode.positive,
     ),
-    140 => _formatPrefixedUnit(context, ref, unit, value, decimalDigits: 0, signMode: signMode),
-    141 => _formatWithUnit(
+    EveDogmaUnitId.level => _formatPrefixedUnit(
+      context,
+      ref,
+      unit,
+      value,
+      decimalDigits: 0,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.hardpoints => _formatWithUnit(
       context,
       value,
       dogmaUnitLabel(ref, unit),
       decimalDigits: 0,
       signMode: signMode,
     ),
-    142 => _formatSex(context, value),
-    144 => _formatWithUnit(context, value, "AU/s", decimalDigits: 2, signMode: signMode),
-    205 => _formatPercent(context, value, signMode: DogmaUnitSignMode.positive),
+    EveDogmaUnitId.sex => _formatSex(context, value),
+    EveDogmaUnitId.warpSpeed => _formatWithUnit(
+      context,
+      value,
+      "AU/s",
+      decimalDigits: 2,
+      signMode: signMode,
+    ),
+    EveDogmaUnitId.modifierRealPercent => _formatPercent(
+      context,
+      value,
+      signMode: DogmaUnitSignMode.positive,
+    ),
     _ => _formatFallbackValue(context, ref, unit, value, signMode: signMode),
   };
 }
@@ -139,18 +357,19 @@ String formatDogmaUnitDelta(
     );
   }
 
-  return switch (unit.dogmaUnitId) {
-    108 || 111 => _formatPercent(
+  return switch (EveDogmaUnitId.fromId(unit.dogmaUnitId)) {
+    EveDogmaUnitId.inverseAbsolutePercent ||
+    EveDogmaUnitId.inversedModifierPercent => _formatPercent(
       context,
       (1 - currentValue) * 100 - (1 - baseValue) * 100,
       signMode: DogmaUnitSignMode.positive,
     ),
-    109 => _formatPercent(
+    EveDogmaUnitId.modifierPercent => _formatPercent(
       context,
       (currentValue - 1) * 100 - (baseValue - 1) * 100,
       signMode: DogmaUnitSignMode.positive,
     ),
-    127 => _formatPercent(
+    EveDogmaUnitId.absolutePercent => _formatPercent(
       context,
       currentValue * 100 - baseValue * 100,
       signMode: DogmaUnitSignMode.positive,
@@ -165,12 +384,20 @@ String formatDogmaUnitDelta(
   };
 }
 
-bool isBooleanDogmaUnit(DogmaUnit? unit) => unit?.dogmaUnitId == 137;
+bool isBooleanDogmaUnit(DogmaUnit? unit) => _dogmaUnitId(unit) == EveDogmaUnitId.boolean;
 
-bool canFormatDogmaUnitDelta(DogmaUnit? unit) => switch (unit?.dogmaUnitId) {
-  115 || 116 || 117 || 119 || 137 || 142 => false,
+bool canFormatDogmaUnitDelta(DogmaUnit? unit) => switch (_dogmaUnitId(unit)) {
+  EveDogmaUnitId.groupId ||
+  EveDogmaUnitId.typeId ||
+  EveDogmaUnitId.sizeclass ||
+  EveDogmaUnitId.attributeId ||
+  EveDogmaUnitId.boolean ||
+  EveDogmaUnitId.sex => false,
   _ => true,
 };
+
+EveDogmaUnitId? _dogmaUnitId(DogmaUnit? unit) =>
+    unit == null ? null : EveDogmaUnitId.fromId(unit.dogmaUnitId);
 
 String dogmaUnitLabel(WidgetRef ref, DogmaUnit unit) {
   final localized = unit.hasDisplayName()
