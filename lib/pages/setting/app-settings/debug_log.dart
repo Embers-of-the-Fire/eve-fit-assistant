@@ -20,7 +20,7 @@ class _DebugLogTileState extends ConsumerState<DebugLogTile> {
 
   @override
   Widget build(BuildContext context) => SwitchListTile(
-    secondary: const Icon(FontAwesomeIcons.terminal),
+    secondary: const FaIcon(FontAwesomeIcons.terminal),
     title: Text.rich(
       TextSpan(
         children: [

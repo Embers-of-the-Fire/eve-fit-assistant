@@ -24,7 +24,7 @@ class BundleManagerPage extends ConsumerWidget {
   const BundleManagerPage({super.key});
 
   Future<void> _importBundleArchive(BuildContext context, WidgetRef ref) async {
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.pickFiles();
     if (!context.mounted || result == null) return;
 
     final selected = result.xFiles.first;

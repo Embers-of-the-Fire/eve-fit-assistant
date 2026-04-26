@@ -161,7 +161,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
 
   Future<void> _handleShare() async {
     await _runExportAction((fit, result) async {
-      await Share.share(result.text, subject: fit.metadata.name);
+      await SharePlus.instance.share(ShareParams(text: result.text, subject: fit.metadata.name));
     }, onErrorMessage: context.l10n.fitExportShareError);
   }
 
