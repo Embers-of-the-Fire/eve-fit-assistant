@@ -2125,7 +2125,7 @@ String _formatCompactNumber(double value) {
     return value
         .toStringAsFixed(3)
         .replaceFirst(RegExp(r"\.0+$"), "")
-        .replaceFirst(RegExp(r"(\.[0-9]*?)0+$"), r"\1");
+        .replaceFirst(RegExp(r"(\.[0-9]*?)0+$"), r"$1");
   }
   return value.toStringAsPrecision(4);
 }
