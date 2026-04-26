@@ -14,6 +14,7 @@ import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/data/proto/utils.pb.dart" show LocalizationID;
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
+import "package:eve_fit_assistant/pages/item-detail/dogma_unit_display.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -988,13 +989,13 @@ class _AttributeOverviewContent extends ConsumerWidget {
               label: context.l10n.itemDetailAttributeBaseValue,
               value: staticValue == null
                   ? context.l10n.itemDetailUnavailable
-                  : _formatAttributeValue(context, ref, attribute, unit, staticValue!),
+                  : formatDogmaUnitValue(context, ref, unit, staticValue!),
             ),
             _ValueChip(
               label: context.l10n.itemDetailAttributeCurrentValue,
               value: current?.value == null
                   ? context.l10n.itemDetailUnavailable
-                  : _formatAttributeValue(context, ref, attribute, unit, current!.value!),
+                  : formatDogmaUnitValue(context, ref, unit, current!.value!),
               tone: current?.value == null
                   ? null
                   : staticValue == null
@@ -1005,15 +1006,15 @@ class _AttributeOverviewContent extends ConsumerWidget {
                       currentValue: current!.value!,
                     ),
             ),
-            if (staticValue != null && current?.value != null && !_isBooleanUnit(ref, unit))
+            if (staticValue != null && current?.value != null && !isBooleanDogmaUnit(unit))
               _ValueChip(
                 label: context.l10n.itemDetailAttributeDelta,
-                value: _formatSignedValue(
+                value: formatDogmaUnitDelta(
                   context,
                   ref,
-                  attribute,
                   unit,
-                  current!.value! - staticValue!,
+                  baseValue: staticValue!,
+                  currentValue: current!.value!,
                 ),
                 tone: _attributeDeltaTone(
                   attribute: attribute,
@@ -1191,7 +1192,7 @@ class _TraitCard extends ConsumerWidget {
                   const Text("- "),
                   Expanded(
                     child: DescriptionText(
-                      text: _traitEntryMarkup(ref, entry),
+                      text: _traitEntryMarkup(ref, context, entry),
                       style: context.theme.textTheme.bodyMedium,
                     ),
                   ),
@@ -1374,10 +1375,9 @@ class _AttributesList extends ConsumerWidget {
                   ),
             title: Text(attribute.displayName),
             trailing: Text(
-              _formatAttributeValue(
+              formatDogmaUnitValue(
                 context,
                 ref,
-                attribute.attribute,
                 attribute.unit,
                 attribute.currentValue ?? attribute.staticValue,
               ),
@@ -2088,49 +2088,6 @@ List<_InspectableAttribute> _collectInspectableAttributes(
   return attributes;
 }
 
-String _formatAttributeValue(
-  BuildContext context,
-  WidgetRef ref,
-  DogmaAttribute? attribute,
-  DogmaUnit? unit,
-  double value,
-) {
-  final formatted = _formatCompactNumber(value);
-  if (unit == null) return formatted;
-
-  final unitLabel = _unitLabel(ref, unit);
-  final normalizedUnit = unitLabel.toLowerCase();
-  if (unitLabel.contains("%") || normalizedUnit.contains("percent")) {
-    return "${_formatCompactNumber(value)}%";
-  }
-  if (_isBooleanUnit(ref, unit)) {
-    return value == 0 ? context.l10n.itemDetailBooleanFalse : context.l10n.itemDetailBooleanTrue;
-  }
-  if (unitLabel.isEmpty) return formatted;
-  return "$formatted $unitLabel";
-}
-
-String _unitLabel(WidgetRef ref, DogmaUnit unit) {
-  final localizedUnit = unit.hasDisplayName() ? _resolveLocalization(ref, unit.displayName) : null;
-  return localizedUnit?.trim().isNotEmpty ?? false ? localizedUnit! : unit.name;
-}
-
-bool _isBooleanUnit(WidgetRef ref, DogmaUnit? unit) {
-  if (unit == null) return false;
-  return _unitLabel(ref, unit).toLowerCase() == "bool";
-}
-
-String _formatSignedValue(
-  BuildContext context,
-  WidgetRef ref,
-  DogmaAttribute? attribute,
-  DogmaUnit? unit,
-  double value,
-) {
-  final prefix = value >= 0 ? "+" : "";
-  return "$prefix${_formatAttributeValue(context, ref, attribute, unit, value)}";
-}
-
 String _formatCompactNumber(double value) {
   final abs = value.abs();
   if (abs >= 1000) return value.toStringAsFixed(0);
@@ -2354,21 +2311,14 @@ String _traitSectionSkillLabel(WidgetRef ref, BuildContext context, int skillTyp
   return localized.replaceFirst(skillName, '<a href="showinfo:$skillTypeId">$skillName</a>');
 }
 
-String _traitEntryMarkup(WidgetRef ref, pb_types.Type_TraitEntry entry) {
+String _traitEntryMarkup(WidgetRef ref, BuildContext context, pb_types.Type_TraitEntry entry) {
   final text = _resolveLocalization(ref, entry.text) ?? "LOC[${entry.text.id}]";
   if (!entry.hasBonus()) return text;
 
   final unit = entry.hasUnitId()
       ? ref.watch(bundleCollectionGetDogmaUnitProvider(entry.unitId))
       : null;
-  if (unit == null) return "${_formatCompactNumber(entry.bonus)} $text";
-  final unitLabel = unit.hasDisplayName()
-      ? _resolveLocalization(ref, unit.displayName) ?? unit.name
-      : unit.name;
-  if (unitLabel.contains("%") || unitLabel.toLowerCase().contains("percent")) {
-    return "${_formatCompactNumber(entry.bonus)}% $text";
-  }
-  return "${_formatCompactNumber(entry.bonus)} $unitLabel $text";
+  return "${formatDogmaUnitValue(context, ref, unit, entry.bonus)} $text";
 }
 
 String? _resolveTypeName(WidgetRef ref, int typeId) {
