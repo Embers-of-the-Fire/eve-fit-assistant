@@ -1943,14 +1943,12 @@ String _formatItemDetailDogmaValue(
   BuildContext context,
   WidgetRef ref,
   DogmaUnit? unit,
-  double value, {
-  DogmaUnitSignMode signMode = DogmaUnitSignMode.none,
-}) => formatDogmaUnitValue(
+  double value,
+) => formatDogmaUnitValue(
   context,
   ref,
   unit,
   value,
-  signMode: signMode,
   resolveGroupId: (groupId) => _resolveGroupName(ref, groupId),
   resolveTypeId: (typeId) => _resolveTypeName(ref, typeId),
   resolveAttributeId: (attributeId) => _resolveAttributeName(ref, attributeId),
