@@ -127,6 +127,8 @@ String formatDogmaUnitDelta(
   required double baseValue,
   required double currentValue,
 }) {
+  if (!canFormatDogmaUnitDelta(unit)) return "";
+
   if (unit == null) {
     return formatDogmaUnitValue(
       context,
@@ -164,6 +166,11 @@ String formatDogmaUnitDelta(
 }
 
 bool isBooleanDogmaUnit(DogmaUnit? unit) => unit?.dogmaUnitId == 137;
+
+bool canFormatDogmaUnitDelta(DogmaUnit? unit) => switch (unit?.dogmaUnitId) {
+  115 || 116 || 117 || 119 || 137 || 142 => false,
+  _ => true,
+};
 
 String dogmaUnitLabel(WidgetRef ref, DogmaUnit unit) {
   final localized = unit.hasDisplayName()

@@ -1006,7 +1006,7 @@ class _AttributeOverviewContent extends ConsumerWidget {
                       currentValue: current!.value!,
                     ),
             ),
-            if (staticValue != null && current?.value != null && !isBooleanDogmaUnit(unit))
+            if (staticValue != null && current?.value != null && canFormatDogmaUnitDelta(unit))
               _ValueChip(
                 label: context.l10n.itemDetailAttributeDelta,
                 value: formatDogmaUnitDelta(
