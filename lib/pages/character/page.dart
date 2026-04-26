@@ -39,7 +39,7 @@ class CharacterPage extends ConsumerWidget {
               if (ref.read(bundleServiceProvider).isLoaded) {
                 info("Loaded!");
               }
-              final result = await FilePicker.platform.pickFiles();
+              final result = await FilePicker.pickFiles();
               if (result != null) {
                 final selected = result.xFiles.first;
                 info("Selected file: ${selected.name}");

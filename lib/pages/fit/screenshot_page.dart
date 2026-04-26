@@ -164,7 +164,9 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
         fitContext: fitContext,
         directoryPath: PathProvider.tempPath,
       );
-      await Share.shareXFiles([XFile(file.path)], subject: fitContext.fit.metadata.name);
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: fitContext.fit.metadata.name),
+      );
     });
   }
 

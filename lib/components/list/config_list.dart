@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 
 class ConfigListView extends StatelessWidget {
   const ConfigListView({required this.children, super.key});
+
   final List<ConfigListTile> children;
 
   @override
@@ -35,7 +36,7 @@ sealed class ConfigListTile extends StatelessWidget {
 
   const factory ConfigListTile.item({
     required String title,
-    IconData? icon,
+    Widget icon,
     String? subtitle,
     void Function()? onTap,
   }) = _ConfigListTileItem;
@@ -68,9 +69,13 @@ class _ConfigListTileTitle extends ConfigListTile {
 }
 
 class _ConfigListTileItem extends ConfigListTile {
-  const _ConfigListTileItem({required this.title, this.icon, this.subtitle, this.onTap})
-    : super._();
-  final IconData? icon;
+  const _ConfigListTileItem({
+    required this.title,
+    this.icon = const SizedBox.shrink(),
+    this.subtitle,
+    this.onTap,
+  }) : super._();
+  final Widget icon;
   final String title;
   final String? subtitle;
 
@@ -80,7 +85,7 @@ class _ConfigListTileItem extends ConfigListTile {
   Widget build(BuildContext context) => ColoredBox(
     color: context.theme.colorScheme.surfaceContainer,
     child: ListTile(
-      leading: icon != null ? Icon(icon) : const SizedBox.shrink(),
+      leading: icon,
       title: Text(title),
       subtitle: subtitle != null ? Text(subtitle!) : null,
       trailing: onTap.optional.map((_) => const Icon(Icons.chevron_right)).nullable,

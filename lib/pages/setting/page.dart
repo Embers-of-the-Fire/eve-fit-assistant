@@ -14,17 +14,17 @@ class SettingPage extends ConsumerWidget {
     children: [
       const ConfigListTile.space(20),
       ConfigListTile.item(
-        icon: Icons.settings,
+        icon: const Icon(Icons.settings),
         title: context.l10n.settingTileAppSettingsTitle,
         onTap: () => context.router.push(const AppSettingsRoute()),
       ),
       ConfigListTile.item(
-        icon: FontAwesomeIcons.box,
+        icon: const FaIcon(FontAwesomeIcons.box),
         title: context.l10n.settingTileBundleManagerTitle,
         onTap: () => context.router.push(const BundleManagerRoute()),
       ),
       ConfigListTile.item(
-        icon: Icons.new_releases_outlined,
+        icon: const Icon(Icons.new_releases_outlined),
         title: context.l10n.settingTileVersionTitle,
         subtitle: context.l10n.settingTileVersionSubtitle,
         onTap: () => context.router.push(const VersionRoute()),
