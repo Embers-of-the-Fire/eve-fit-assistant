@@ -121,7 +121,8 @@ async def codegen_dart(config: WorkspaceConfig) -> list[Path]:
     for unit_id, dogma_unit_def in sorted(dogma_units.items()):
         unit_name = str(dogma_unit_def.get("name", f"Unit {unit_id}"))
         enum_name = _enum_name(unit_name, unit_id)
-        if prior_unit_id := used_names.get(enum_name):
+        if enum_name in used_names:
+            prior_unit_id = used_names[enum_name]
             raise ValueError(
                 f"Duplicate dogma unit enum name '{enum_name}' for {prior_unit_id} and {unit_id}"
             )
