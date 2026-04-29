@@ -64,9 +64,21 @@ class CharacterPage extends ConsumerWidget {
   }
 
   Future<void> _createCharacter(BuildContext context, WidgetRef ref) async {
-    final character = await ref
-        .read(characterRegistryManagerProvider.notifier)
-        .createCharacter(name: context.l10n.characterNewProfileName);
+    CharacterStorage character;
+    try {
+      character = await ref
+          .read(characterRegistryManagerProvider.notifier)
+          .createCharacter(name: context.l10n.characterNewProfileName);
+    } on Object catch (errorValue, stackTrace) {
+      error("Failed to create character profile", error: errorValue, stackTrace: stackTrace);
+      if (context.mounted) {
+        _showCharacterActionError(
+          context,
+          context.l10n.characterCreateProfileError(message: errorValue.toString()),
+        );
+      }
+      return;
+    }
     if (!context.mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -166,12 +178,28 @@ class _CharacterProfileTile extends ConsumerWidget {
   ) async {
     switch (action) {
       case _CharacterProfileAction.clone:
-        final cloned = await ref
-            .read(characterRegistryManagerProvider.notifier)
-            .cloneCharacter(
-              characterId,
-              name: context.l10n.characterClonedProfileName(name: title),
+        CharacterStorage cloned;
+        try {
+          cloned = await ref
+              .read(characterRegistryManagerProvider.notifier)
+              .cloneCharacter(
+                characterId,
+                name: context.l10n.characterClonedProfileName(name: title),
+              );
+        } on Object catch (errorValue, stackTrace) {
+          error(
+            "Failed to clone character $characterId",
+            error: errorValue,
+            stackTrace: stackTrace,
+          );
+          if (context.mounted) {
+            _showCharacterActionError(
+              context,
+              context.l10n.characterCloneProfileError(name: title, message: errorValue.toString()),
             );
+          }
+          return;
+        }
         if (!context.mounted) return;
         await Navigator.of(context).push<void>(
           MaterialPageRoute(
@@ -215,12 +243,9 @@ class _CharacterProfileTile extends ConsumerWidget {
     } on Object catch (errorValue, stackTrace) {
       error("Failed to delete character $characterId", error: errorValue, stackTrace: stackTrace);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.characterDeleteProfileError(name: title, message: errorValue.toString()),
-          ),
-        ),
+      _showCharacterActionError(
+        context,
+        context.l10n.characterDeleteProfileError(name: title, message: errorValue.toString()),
       );
     }
   }
@@ -243,6 +268,10 @@ String characterDisplayName(
   predefinedZeroCharacterId => context.l10n.fitSkillProfileAll0,
   _ => metadata?.name ?? characterId,
 };
+
+void _showCharacterActionError(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
 
 class CharacterEditPage extends ConsumerStatefulWidget {
   const CharacterEditPage({required this.characterId, super.key});

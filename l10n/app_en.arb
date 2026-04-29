@@ -40,11 +40,30 @@
   "characterBuiltInProfiles": "Built-in profiles",
   "characterCustomProfiles": "Custom profiles",
   "characterCreateProfile": "Create profile",
+  "characterCreateProfileError": "Could not create profile: {message}",
+  "@characterCreateProfileError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "characterNewProfileName": "New Character",
   "characterClonedProfileName": "{name} Copy",
   "@characterClonedProfileName": {
     "placeholders": {
       "name": {
+        "type": "String"
+      }
+    }
+  },
+  "characterCloneProfileError": "Could not clone {name}: {message}",
+  "@characterCloneProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
         "type": "String"
       }
     }

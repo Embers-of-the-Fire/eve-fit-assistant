@@ -44,11 +44,30 @@
   "characterBuiltInProfiles": "内置档案",
   "characterCustomProfiles": "自定义档案",
   "characterCreateProfile": "创建档案",
+  "characterCreateProfileError": "无法创建档案：{message}",
+  "@characterCreateProfileError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "characterNewProfileName": "新角色",
   "characterClonedProfileName": "{name} 副本",
   "@characterClonedProfileName": {
     "placeholders": {
       "name": {
+        "type": "String"
+      }
+    }
+  },
+  "characterCloneProfileError": "无法复制 {name}：{message}",
+  "@characterCloneProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
         "type": "String"
       }
     }
