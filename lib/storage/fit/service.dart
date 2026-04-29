@@ -408,9 +408,12 @@ class FitEmulatorService extends _$FitEmulatorService {
         return;
       }
 
-      final characterSkills = ref
+      final characterSkills = await ref
           .read(characterRegistryManagerProvider.notifier)
-          .resolveCharacterSkillsSync(fitStorage.body.characterId, availableSkillTypeIds);
+          .resolveCharacterSkills(fitStorage.body.characterId, availableSkillTypeIds);
+      if (!ref.mounted || _emulationGeneration != activeGeneration) {
+        return;
+      }
       final nativeCompatible = convertToNative(fitStorage, characterSkills: characterSkills);
       final emulatedOutput = await engine.emulate(fit: nativeCompatible);
       if (!ref.mounted || _emulationGeneration != activeGeneration) {

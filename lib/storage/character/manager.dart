@@ -102,34 +102,19 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     _scheduleRegistrySync();
   }
 
-  CharacterStorage? tryLoadCharacterSync(String characterId) {
-    final path = File(CharacterStorage.characterStoragePathForId(characterId));
-    if (!path.existsSync()) {
-      return null;
-    }
-
-    final text = path.readAsStringSync();
-    final json = jsonDecode(text) as Map<String, dynamic>;
-    return CharacterStorage.fromJson(json);
-  }
-
   Future<CharacterStorage?> tryLoadCharacter(String characterId) async {
     final path = File(CharacterStorage.characterStoragePathForId(characterId));
-    if (!path.existsSync()) {
-      return null;
+    final String text;
+    try {
+      text = await path.readAsString();
+    } on FileSystemException catch (exception) {
+      if (exception.osError?.errorCode == 2) {
+        return null;
+      }
+      rethrow;
     }
-
-    final text = await path.readAsString();
     final json = jsonDecode(text) as Map<String, dynamic>;
     return CharacterStorage.fromJson(json);
-  }
-
-  CharacterStorage loadCharacterSync(String characterId) {
-    final character = tryLoadCharacterSync(characterId);
-    if (character == null) {
-      throw StateError("Character file does not exist: $characterId");
-    }
-    return character;
   }
 
   Future<CharacterStorage> loadCharacter(String characterId) async {
@@ -140,10 +125,10 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     return character;
   }
 
-  Map<int, int> resolveCharacterSkillsSync(
+  Future<Map<int, int>> resolveCharacterSkills(
     String characterId,
     Iterable<int> availableSkillTypeIds,
-  ) {
+  ) async {
     final skillTypeIds = availableSkillTypeIds.toList(growable: false);
     final skills = switch (characterId) {
       predefinedMaxCharacterId => Map<int, int>.fromEntries(
@@ -152,7 +137,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       predefinedZeroCharacterId => Map<int, int>.fromEntries(
         skillTypeIds.map((typeId) => MapEntry(typeId, 0)),
       ),
-      _ => tryLoadCharacterSync(characterId)?.skills ?? const <int, int>{},
+      _ => (await tryLoadCharacter(characterId))?.skills ?? const <int, int>{},
     };
 
     if (skillTypeIds.isEmpty) {
