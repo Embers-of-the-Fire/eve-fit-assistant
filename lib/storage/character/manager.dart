@@ -64,7 +64,11 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   static String generateCharacterId() => _idGenerator.v4();
 
-  static int _normalizeSkillLevel(int level) => level.clamp(0, 5).toInt();
+  static int _normalizeSkillLevel(int level) {
+    if (level < 0) return 0;
+    if (level > 5) return 5;
+    return level;
+  }
 
   @override
   CharacterRegistry build() {
@@ -195,7 +199,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     }
 
     final path = File(CharacterStorage.characterStoragePathForId(characterId));
-    if (await path.exists()) {
+    if (path.existsSync()) {
       await path.delete();
     }
     state = state.copyWith(characters: state.characters.remove(characterId));
