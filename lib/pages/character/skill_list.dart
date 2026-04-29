@@ -125,6 +125,9 @@ class _SkillListTile extends StatelessWidget {
 class _SkillLevelIndicator extends StatelessWidget {
   const _SkillLevelIndicator({required this.level, this.onTapLevel});
 
+  static const double _hitTargetSize = 44;
+  static const double _pipSize = 18;
+
   final int level;
   final ValueChanged<int>? onTapLevel;
 
@@ -139,8 +142,8 @@ class _SkillLevelIndicator extends StatelessWidget {
       final borderColor = trained ? color : Theme.of(context).dividerColor;
       final pip = AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        width: 18,
-        height: 18,
+        width: _pipSize,
+        height: _pipSize,
         decoration: BoxDecoration(
           color: trained ? color : Colors.transparent,
           border: Border.all(color: borderColor),
@@ -151,10 +154,18 @@ class _SkillLevelIndicator extends StatelessWidget {
       if (onTapLevel == null) {
         return pip;
       }
-      return InkWell(
-        onTap: () => onTapLevel!(skillLevel),
-        borderRadius: BorderRadius.circular(4),
-        child: pip,
+      return Semantics(
+        label: "Skill level $skillLevel",
+        button: true,
+        selected: trained,
+        child: InkWell(
+          onTap: () => onTapLevel!(skillLevel),
+          borderRadius: BorderRadius.circular(_hitTargetSize / 2),
+          child: SizedBox.square(
+            dimension: _hitTargetSize,
+            child: Center(child: pip),
+          ),
+        ),
       );
     }),
   );
