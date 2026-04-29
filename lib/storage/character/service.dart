@@ -150,10 +150,10 @@ class CharacterService extends _$CharacterService {
     }
   }
 
-  Future<void> update(CharacterStorage Function(CharacterStorage) updater) async {
+  Future<bool> update(CharacterStorage Function(CharacterStorage) updater) async {
     if (!state.isInitialized) {
       error("Cannot update character service: not initialized");
-      return;
+      return false;
     }
     final character = updater(state.character);
     state = CharacterServiceState.loaded(
@@ -162,11 +162,12 @@ class CharacterService extends _$CharacterService {
     );
     final savedCharacter = await _saveCharacter(character, touch: true);
     if (savedCharacter == null) {
-      return;
+      return false;
     }
     state = CharacterServiceState.loaded(
       status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
       character: savedCharacter,
     );
+    return true;
   }
 }

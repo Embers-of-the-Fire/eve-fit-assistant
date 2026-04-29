@@ -483,9 +483,12 @@ class _CharacterProfileInfoTabState extends ConsumerState<_CharacterProfileInfoT
 
     final name = _nameController.text.trim();
     final description = _descriptionController.text.trim();
-    await ref
+    final saved = await ref
         .read(characterServiceProvider.notifier)
         .update((character) => character.copyWith(name: name, description: description));
+    if (!saved) {
+      return;
+    }
     if (!mounted) return;
     setState(() => _editing = false);
   }
