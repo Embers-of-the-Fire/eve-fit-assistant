@@ -680,6 +680,29 @@
   "itemDetailSlotClass": "槽位类别",
   "itemDetailBooleanFalse": "否",
   "itemDetailBooleanTrue": "是",
+  "dogmaUnitSizeSmall": "小型",
+  "dogmaUnitSizeMedium": "中型",
+  "dogmaUnitSizeLarge": "大型",
+  "dogmaUnitSizeXLarge": "超大型",
+  "dogmaUnitSizeUnknown": "尺寸 {value}",
+  "@dogmaUnitSizeUnknown": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "dogmaUnitSexMale": "男性",
+  "dogmaUnitSexUnisex": "中性",
+  "dogmaUnitSexFemale": "女性",
+  "dogmaUnitSexUnknown": "性别 {value}",
+  "@dogmaUnitSexUnknown": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "itemDetailAttributes": "属性",
   "itemDetailAttributeOverview": "属性概览",
   "itemDetailAttributeType": "物品",

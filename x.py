@@ -301,6 +301,18 @@ def __get_workspace(name) -> Path:
     return ws.descriptor
 
 
+def __get_current_workspace_descriptor() -> WorkspaceConfig:
+    name = data.lib.config.WORKSPACE_CACHE.current_workspace
+    if not name:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
+        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
+        exit(1)
+
+    ws = __get_workspace(name)
+    info(f"Resolving workspace: {name} ({ws})")
+    return WorkspaceConfig.load_from_descriptor(ws)
+
+
 @workspace.command()
 @click.argument("name")
 def default(name: str):
@@ -320,15 +332,7 @@ def default(name: str):
 @click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
 def inspect_json(pretty: bool):
     """Resolve the workspace configurations and print in JSON format."""
-    name = data.lib.config.WORKSPACE_CACHE.current_workspace
-    if not name:
-        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
-        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
-        exit(1)
-
-    ws = __get_workspace(name)
-    info(f"Resolving workspace: {name} ({ws})")
-    descriptor = WorkspaceConfig.load_from_descriptor(ws)
+    descriptor = __get_current_workspace_descriptor()
     click.echo(descriptor.model_dump_json(indent=4 if pretty else None))
 
 
@@ -530,6 +534,27 @@ def gen_l10n(ctx: click.Context, watch: bool):
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Localization generation completed successfully.")
     )
+
+    if ctx.obj.get("format_source", False):
+        ctx.invoke(format_cmd)
+
+
+@generate.group("values", cls=ClickAliasedGroup)
+def generate_values():
+    """Generate value-dependent code from the selected workspace."""
+
+
+@generate_values.command("dogma-units")
+@click.pass_context
+def dogma_units_cmd(ctx: click.Context):
+    """Generate dogma unit ID constants."""
+    from data.lib.codegen.dogma_unit_id import codegen_dart
+
+    files = asyncio.run(codegen_dart(__get_current_workspace_descriptor()))
+    for file in files:
+        click.echo(f"  Modified {file}")
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dogma unit ID generation completed."))
 
     if ctx.obj.get("format_source", False):
         ctx.invoke(format_cmd)
@@ -860,17 +885,7 @@ def data_cmd(skip: list[str], no_hash: bool):
         click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
         exit(1)
 
-    name = data.lib.config.WORKSPACE_CACHE.current_workspace
-    if not name:
-        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
-        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
-        exit(1)
-
-    ws = __get_workspace(name)
-    info(f"Resolving workspace: {name} ({ws})")
-    descriptor = WorkspaceConfig.load_from_descriptor(ws)
-
-    asyncio.run(run_generator(descriptor, to_skip, not no_hash))
+    asyncio.run(run_generator(__get_current_workspace_descriptor(), to_skip, not no_hash))
 
 
 @build.command("docs", aliases=["doc"])
@@ -890,18 +905,8 @@ def build_increment_cmd(baseline_manifest_path: str):
     """Build incremental patch bundle."""
     from data.lib.workspace.build_increment import build_increment_bundle
 
-    name = data.lib.config.WORKSPACE_CACHE.current_workspace
-    if not name:
-        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
-        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
-        exit(1)
-
-    ws = __get_workspace(name)
-    info(f"Resolving workspace: {name} ({ws})")
-    descriptor = WorkspaceConfig.load_from_descriptor(ws)
-
     baseline_manifest = Path(baseline_manifest_path)
-    build_increment_bundle(descriptor, baseline_manifest)
+    build_increment_bundle(__get_current_workspace_descriptor(), baseline_manifest)
 
 
 @cli.group(cls=ClickAliasedGroup)
