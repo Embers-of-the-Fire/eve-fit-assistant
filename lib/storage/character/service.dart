@@ -1,6 +1,4 @@
 import "dart:async";
-import "dart:convert";
-import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
@@ -66,14 +64,9 @@ class CharacterService extends _$CharacterService {
       warning("Character service already initialized, force loading");
     }
     state = const CharacterServiceState.notInitialized();
-    final path = File(CharacterStorage.characterStoragePathForId(characterId));
-    if (!path.existsSync()) {
-      error("Character file does not exist: ${path.path}");
-      throw StateError("Character file does not exist: ${path.path}");
-    }
-    final text = await path.readAsString();
-    final json = jsonDecode(text) as Map<String, dynamic>;
-    final character = CharacterStorage.fromJson(json);
+    final character = await ref
+        .read(characterRegistryManagerProvider.notifier)
+        .loadCharacter(characterId);
     state = CharacterServiceState.loaded(
       status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
       character: character,
@@ -86,20 +79,20 @@ class CharacterService extends _$CharacterService {
       return;
     }
     final character = state.character;
+    if (CharacterRegistryManager.isBuiltInCharacterId(character.characterId)) {
+      return;
+    }
     state = CharacterServiceState.loaded(
       status: const CharacterServiceStatus.syncing(),
       character: character,
     );
-    final path = File(character.characterStoragePath);
-    final text = jsonEncode(character.toJson());
-    if (!path.existsSync()) {
-      await path.parent.create(recursive: true);
-    }
-    await path.writeAsString(text);
+    final savedCharacter = await ref
+        .read(characterRegistryManagerProvider.notifier)
+        .saveCharacter(character, touch: false);
     if (setState) {
       state = CharacterServiceState.loaded(
         status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
-        character: state.character,
+        character: savedCharacter,
       );
     }
   }
@@ -118,24 +111,17 @@ class CharacterService extends _$CharacterService {
       error("Cannot update character service: not initialized");
       return;
     }
-    final character = updater(
-      state.character,
-    ).copyWith(lastModified: DateTime.now().millisecondsSinceEpoch);
+    final character = updater(state.character);
     state = CharacterServiceState.loaded(
       status: const CharacterServiceStatus.syncing(),
       character: character,
     );
-    ref
+    final savedCharacter = await ref
         .read(characterRegistryManagerProvider.notifier)
-        .updateFit(
-          CharacterMetadata(
-            characterId: character.characterId,
-            name: character.name,
-            description: character.description,
-            lastModified: character.lastModified,
-            bundleId: character.bundleId,
-          ),
-        );
-    await _syncToDisk(setState: false);
+        .saveCharacter(character);
+    state = CharacterServiceState.loaded(
+      status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
+      character: savedCharacter,
+    );
   }
 }

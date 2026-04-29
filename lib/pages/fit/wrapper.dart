@@ -146,10 +146,9 @@ class FitWrapper {
       );
       final engine = ref.read(nativeFitEngineServiceProvider).engineOrNull;
       final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
-      final characterSkills = resolveCharacterSkillsSync(
-        tempFit.body.characterId,
-        availableSkillTypeIds,
-      );
+      final characterSkills = ref
+          .read(characterRegistryManagerProvider.notifier)
+          .resolveCharacterSkillsSync(tempFit.body.characterId, availableSkillTypeIds);
       if (engine == null) {
         warning("Fit engine unavailable while resolving fighter squadron max size for $typeId");
         return null;
