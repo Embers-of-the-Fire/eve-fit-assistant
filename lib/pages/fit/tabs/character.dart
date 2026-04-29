@@ -109,30 +109,61 @@ class _SelectCharacterDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final registry = ref.watch(characterRegistryManagerProvider);
+    final customCharacters =
+        registry.characters.values
+            .where(
+              (metadata) => !CharacterRegistryManager.isBuiltInCharacterId(metadata.characterId),
+            )
+            .toList()
+          ..sort((left, right) => right.lastModified.compareTo(left.lastModified));
 
     return AppDialog(
       title: context.l10n.fitTabsCharacter,
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: CharacterRegistryManager.builtInCharacterIds
-              .map((characterId) {
-                final metadata = registry.characters[characterId];
-                final title = _characterDisplayName(context, characterId, metadata);
-                return ListTile(
-                  selected: characterId == selectedCharacterId,
-                  leading: Icon(
-                    characterId == selectedCharacterId
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                  ),
-                  title: Text(title),
-                  onTap: () => Navigator.of(context).pop(characterId),
-                );
-              })
-              .toList(growable: false),
+          children: [
+            for (final characterId in CharacterRegistryManager.builtInCharacterIds)
+              _SelectCharacterTile(
+                characterId: characterId,
+                metadata: registry.characters[characterId],
+                selectedCharacterId: selectedCharacterId,
+              ),
+            if (customCharacters.isNotEmpty) const Divider(height: 0),
+            for (final metadata in customCharacters)
+              _SelectCharacterTile(
+                characterId: metadata.characterId,
+                metadata: metadata,
+                selectedCharacterId: selectedCharacterId,
+              ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _SelectCharacterTile extends StatelessWidget {
+  const _SelectCharacterTile({
+    required this.characterId,
+    required this.metadata,
+    required this.selectedCharacterId,
+  });
+
+  final String characterId;
+  final CharacterMetadata? metadata;
+  final String selectedCharacterId;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _characterDisplayName(context, characterId, metadata);
+    return ListTile(
+      selected: characterId == selectedCharacterId,
+      leading: Icon(
+        characterId == selectedCharacterId ? Icons.radio_button_checked : Icons.radio_button_off,
+      ),
+      title: Text(title),
+      onTap: () => Navigator.of(context).pop(characterId),
     );
   }
 }

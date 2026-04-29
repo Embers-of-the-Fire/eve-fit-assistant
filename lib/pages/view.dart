@@ -4,6 +4,7 @@ import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/fit_io/import_dialog.dart";
+import "package:eve_fit_assistant/pages/character/page.dart";
 import "package:eve_fit_assistant/pages/fit-list/page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/page.dart";
@@ -38,12 +39,14 @@ class _FrontPageState extends State<FrontPage> {
     final pageTitles = [
       loc.frontPageTitleWorkspace,
       loc.frontPageTitleFitList,
+      loc.frontPageTitleCharacter,
       loc.frontPageTitleSetting,
     ];
-    const pages = <Widget>[WorkspacePage(), FitListPage(), SettingPage()];
+    const pages = <Widget>[WorkspacePage(), FitListPage(), CharacterPage(), SettingPage()];
     const pageIcons = <IconData>[
       Icons.dashboard_rounded,
       Icons.list_alt_rounded,
+      Icons.account_circle_rounded,
       Icons.settings_rounded,
     ];
 
@@ -114,15 +117,6 @@ class _FrontPageState extends State<FrontPage> {
                               .then((_) => setState(() => _currentIndex = idx)),
                         ),
                         const Expanded(child: SizedBox()),
-                        const Expanded(child: SizedBox()),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        const Expanded(child: SizedBox()),
                         _NavItem(
                           index: 1,
                           icon: pageIcons[1],
@@ -136,12 +130,33 @@ class _FrontPageState extends State<FrontPage> {
                               )
                               .then((_) => setState(() => _currentIndex = idx)),
                         ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
                         const Expanded(child: SizedBox()),
                         _NavItem(
                           index: 2,
                           icon: pageIcons[2],
                           label: pageTitles[2],
                           selected: _currentIndex == 2,
+                          onTap: (idx) => _pageController
+                              .animateToPage(
+                                idx,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              )
+                              .then((_) => setState(() => _currentIndex = idx)),
+                        ),
+                        const Expanded(child: SizedBox()),
+                        _NavItem(
+                          index: 3,
+                          icon: pageIcons[3],
+                          label: pageTitles[3],
+                          selected: _currentIndex == 3,
                           onTap: (idx) => _pageController
                               .animateToPage(
                                 idx,
