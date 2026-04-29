@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -58,7 +59,11 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   static String get _characterRegistryPath => p.join(PathProvider.charactersPath, "registry.json");
 
   static const builtInCharacterIds = <String>[predefinedMaxCharacterId, predefinedZeroCharacterId];
+  static const _registrySyncDebounce = Duration(milliseconds: 300);
   static const _idGenerator = Uuid();
+
+  Timer? _registrySyncTimer;
+  Future<void> _pendingRegistrySync = Future<void>.value();
 
   static bool isBuiltInCharacterId(String characterId) => builtInCharacterIds.contains(characterId);
 
@@ -72,6 +77,10 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   @override
   CharacterRegistry build() {
+    ref.onDispose(() {
+      _registrySyncTimer?.cancel();
+      unawaited(_queueRegistrySync());
+    });
     final bundleId = ref.watch(currentBundleProvider)?.bundleId ?? "";
     final skillTypeIds = ref.watch(bundleCollectionSkillTypeIdsProvider);
     final registryFile = File(_characterRegistryPath);
@@ -90,7 +99,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   void updateCharacter(CharacterMetadata metadata) {
     debug("Update character ${metadata.characterId} in ${metadata.bundleId}");
     state = state.copyWith(characters: state.characters.add(metadata.characterId, metadata));
-    _syncToDisk();
+    _scheduleRegistrySync();
   }
 
   CharacterStorage? tryLoadCharacterSync(String characterId) {
@@ -203,7 +212,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       await path.delete();
     }
     state = state.copyWith(characters: state.characters.remove(characterId));
-    _syncToDisk();
+    await _flushRegistrySync();
   }
 
   // ignore: unused_element
@@ -220,14 +229,39 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     state = registry;
   }
 
-  void _syncToDisk() {
+  void _scheduleRegistrySync() {
+    _registrySyncTimer?.cancel();
+    _registrySyncTimer = Timer(_registrySyncDebounce, () {
+      _registrySyncTimer = null;
+      unawaited(_queueRegistrySync());
+    });
+  }
+
+  Future<void> _flushRegistrySync() async {
+    _registrySyncTimer?.cancel();
+    _registrySyncTimer = null;
+    await _queueRegistrySync();
+  }
+
+  Future<void> _queueRegistrySync() {
+    final registry = state;
+    _pendingRegistrySync = _pendingRegistrySync
+        .catchError((Object errorValue, StackTrace stackTrace) {
+          warning("Previous character registry sync failed: $errorValue");
+          debug(errorValue.toString(), stackTrace: stackTrace);
+        })
+        .then((_) => _syncRegistryToDisk(registry));
+    return _pendingRegistrySync;
+  }
+
+  Future<void> _syncRegistryToDisk(CharacterRegistry registry) async {
     final registryFile = File(_characterRegistryPath);
     if (!registryFile.existsSync()) {
       registryFile.createSync(recursive: true);
     }
-    final registryJson = state.toJson();
+    final registryJson = registry.toJson();
     final registryContent = jsonEncode(registryJson);
-    registryFile.writeAsStringSync(registryContent);
+    await registryFile.writeAsString(registryContent);
   }
 
   Future<void> _writeCharacter(CharacterStorage character) async {
@@ -255,6 +289,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     );
     await _writeCharacter(character);
     updateCharacter(CharacterMetadata.fromCharacter(character));
+    await _flushRegistrySync();
     return character;
   }
 
