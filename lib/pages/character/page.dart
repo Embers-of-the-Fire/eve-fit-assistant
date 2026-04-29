@@ -276,11 +276,22 @@ class _CharacterEditPageState extends ConsumerState<CharacterEditPage>
     final characterState = ref.watch(characterServiceProvider);
     final loadedCharacter = characterState.isInitialized ? characterState.character : null;
     final character = loadedCharacter?.characterId == widget.characterId ? loadedCharacter : null;
+    final errorMessage = characterState.status.maybeWhen(
+      error: (message) => message,
+      orElse: () => null,
+    );
 
     if (character == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(context.l10n.loading)),
-        body: const Center(child: CircularProgressIndicator()),
+        appBar: AppBar(title: Text(context.l10n.frontPageTitleCharacter)),
+        body: Center(
+          child: errorMessage == null
+              ? const CircularProgressIndicator()
+              : Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(errorMessage, textAlign: TextAlign.center),
+                ),
+        ),
       );
     }
 
