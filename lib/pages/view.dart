@@ -130,6 +130,7 @@ class _FrontPageState extends State<FrontPage> {
                               )
                               .then((_) => setState(() => _currentIndex = idx)),
                         ),
+                        const Expanded(child: SizedBox()),
                       ],
                     ),
                   ),

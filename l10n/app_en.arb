@@ -67,6 +67,17 @@
       }
     }
   },
+  "characterDeleteProfileError": "Could not delete {name}: {message}",
+  "@characterDeleteProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "characterProfileInfoTab": "Info",
   "characterProfileNameLabel": "Character name",
   "characterProfileDescriptionLabel": "Description",

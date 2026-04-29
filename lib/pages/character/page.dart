@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/pages/character/skill_list.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
@@ -209,7 +210,19 @@ class _CharacterProfileTile extends ConsumerWidget {
         false;
     if (!confirmed) return;
 
-    await ref.read(characterRegistryManagerProvider.notifier).deleteCharacter(characterId);
+    try {
+      await ref.read(characterRegistryManagerProvider.notifier).deleteCharacter(characterId);
+    } on Object catch (errorValue, stackTrace) {
+      error("Failed to delete character $characterId", error: errorValue, stackTrace: stackTrace);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.characterDeleteProfileError(name: title, message: errorValue.toString()),
+          ),
+        ),
+      );
+    }
   }
 
   void _edit(BuildContext context) {

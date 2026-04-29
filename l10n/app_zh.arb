@@ -71,6 +71,17 @@
       }
     }
   },
+  "characterDeleteProfileError": "无法删除 {name}：{message}",
+  "@characterDeleteProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "characterProfileInfoTab": "信息",
   "characterProfileNameLabel": "角色名称",
   "characterProfileDescriptionLabel": "备注",
