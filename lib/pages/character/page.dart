@@ -372,7 +372,7 @@ class _CharacterEditPageState extends ConsumerState<CharacterEditPage>
     final current = ref.read(characterServiceProvider).character;
     final currentLevel = current.skills[skillTypeId] ?? 0;
     final nextLevel = currentLevel == level ? 0 : level;
-    await ref.read(characterServiceProvider.notifier).update((character) {
+    final saved = await ref.read(characterServiceProvider.notifier).update((character) {
       final skills = Map<int, int>.from(character.skills);
       if (nextLevel == 0) {
         skills.remove(skillTypeId);
@@ -381,6 +381,17 @@ class _CharacterEditPageState extends ConsumerState<CharacterEditPage>
       }
       return character.copyWith(skills: skills);
     });
+    if (saved) {
+      return;
+    }
+    if (!mounted) return;
+    final message = ref
+        .read(characterServiceProvider)
+        .status
+        .maybeWhen(error: (message) => message, orElse: () => null);
+    if (message != null) {
+      _showCharacterActionError(context, message);
+    }
   }
 }
 
