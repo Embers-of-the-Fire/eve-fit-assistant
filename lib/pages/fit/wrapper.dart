@@ -1281,6 +1281,15 @@ class FitWrapper {
           currentFit.body.fighters.length >= currentShip.fighterTubes) {
         return currentFit;
       }
+      if (category != null) {
+        final categoryLimit = _fighterCategoryLimit(
+          ref.read(nativeEmulatedShipProvider(fitId)),
+          category,
+        );
+        if (categoryLimit > 0 && _fighterCategoryCount(currentFit, category) >= categoryLimit) {
+          return currentFit;
+        }
+      }
 
       final fighters = currentFit.body.fighters.toList()
         ..add(
