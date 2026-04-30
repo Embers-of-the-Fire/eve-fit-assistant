@@ -307,9 +307,10 @@ class _CharacterEditPageState extends ConsumerState<CharacterEditPage>
   }
 
   Future<void> _mountCharacter() async {
-    await ref.read(characterServiceProvider.notifier).mount(widget.characterId);
+    final characterService = ref.read(characterServiceProvider.notifier);
+    await characterService.mount(widget.characterId);
     if (_disposed) {
-      await ref.read(characterServiceProvider.notifier).unmount();
+      await characterService.unmount();
     }
   }
 
