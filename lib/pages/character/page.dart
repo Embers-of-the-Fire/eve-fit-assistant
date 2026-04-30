@@ -499,6 +499,14 @@ class _CharacterProfileInfoTabState extends ConsumerState<_CharacterProfileInfoT
         .read(characterServiceProvider.notifier)
         .update((character) => character.copyWith(name: name, description: description));
     if (!saved) {
+      if (!mounted) return;
+      final message = ref
+          .read(characterServiceProvider)
+          .status
+          .maybeWhen(error: (message) => message, orElse: () => null);
+      if (message != null) {
+        _showCharacterActionError(context, message);
+      }
       return;
     }
     if (!mounted) return;
