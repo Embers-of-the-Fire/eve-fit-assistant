@@ -1280,7 +1280,10 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
                         : TypeNameText(typeId: widget.requirement.skillTypeId),
                   ),
                   const SizedBox(width: 12),
-                  _LevelPips(level: widget.requirement.level),
+                  _LevelPips(
+                    level: widget.requirement.level,
+                    alphaMaxLevel: skillType?.alphaMaxLevel,
+                  ),
                 ],
               ),
             ),
@@ -1787,24 +1790,27 @@ class _EffectValueText extends StatelessWidget {
 }
 
 class _LevelPips extends StatelessWidget {
-  const _LevelPips({required this.level});
+  const _LevelPips({required this.level, this.alphaMaxLevel});
 
   final int level;
+  final int? alphaMaxLevel;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: List.generate(5, (index) {
-      final active = index < level;
+      final skillLevel = index + 1;
+      final active = skillLevel <= level;
+      final unavailableToAlpha = alphaMaxLevel != null && skillLevel > alphaMaxLevel!;
+      final color = unavailableToAlpha ? Colors.orange.shade700 : context.theme.colorScheme.primary;
+      final borderColor = active || unavailableToAlpha ? color : context.theme.colorScheme.outline;
       return Container(
         width: 16,
         height: 16,
         margin: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
-          color: active ? context.theme.colorScheme.primary : Colors.transparent,
-          border: Border.all(
-            color: active ? context.theme.colorScheme.primary : context.theme.colorScheme.outline,
-          ),
+          color: active ? color : Colors.transparent,
+          border: Border.all(color: borderColor),
           borderRadius: BorderRadius.circular(2),
         ),
       );
