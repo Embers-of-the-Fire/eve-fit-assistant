@@ -55,6 +55,7 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
               return _SkillListTile(
                 skill: skill,
                 level: widget.skills[skill.typeId] ?? 0,
+                alphaMaxLevel: skill.alphaMaxLevel,
                 onTapLevel: widget.onTapLevel == null
                     ? null
                     : (level) => widget.onTapLevel!(skill.typeId, level),
@@ -108,27 +109,38 @@ class _SkillGroupFilter extends StatelessWidget {
 }
 
 class _SkillListTile extends StatelessWidget {
-  const _SkillListTile({required this.skill, required this.level, this.onTapLevel});
+  const _SkillListTile({
+    required this.skill,
+    required this.level,
+    required this.alphaMaxLevel,
+    this.onTapLevel,
+  });
 
   final pb_types.Type skill;
   final int level;
+  final int alphaMaxLevel;
   final ValueChanged<int>? onTapLevel;
 
   @override
   Widget build(BuildContext context) => ListTile(
     title: TypeNameText(typeId: skill.typeId),
-    trailing: _SkillLevelIndicator(level: level, onTapLevel: onTapLevel),
+    trailing: _SkillLevelIndicator(
+      level: level,
+      alphaMaxLevel: alphaMaxLevel,
+      onTapLevel: onTapLevel,
+    ),
     onLongPress: () => showItemDetailPage(context, typeId: skill.typeId),
   );
 }
 
 class _SkillLevelIndicator extends StatelessWidget {
-  const _SkillLevelIndicator({required this.level, this.onTapLevel});
+  const _SkillLevelIndicator({required this.level, required this.alphaMaxLevel, this.onTapLevel});
 
   static const double _hitTargetSize = 44;
   static const double _pipSize = 18;
 
   final int level;
+  final int alphaMaxLevel;
   final ValueChanged<int>? onTapLevel;
 
   @override
@@ -138,8 +150,11 @@ class _SkillLevelIndicator extends StatelessWidget {
     children: List.generate(5, (index) {
       final skillLevel = index + 1;
       final trained = skillLevel <= level;
-      final color = Theme.of(context).colorScheme.primary;
-      final borderColor = trained ? color : Theme.of(context).dividerColor;
+      final unavailableToAlpha = skillLevel > alphaMaxLevel;
+      final color = unavailableToAlpha
+          ? Colors.orange.shade700
+          : Theme.of(context).colorScheme.primary;
+      final borderColor = trained || unavailableToAlpha ? color : Theme.of(context).dividerColor;
       final pip = AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         width: _pipSize,
