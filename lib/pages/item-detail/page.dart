@@ -991,21 +991,18 @@ class _AttributeOverviewContent extends ConsumerWidget {
                   ? context.l10n.itemDetailUnavailable
                   : _formatItemDetailDogmaValue(context, ref, unit, staticValue!),
             ),
-            _ValueChip(
-              label: context.l10n.itemDetailAttributeCurrentValue,
-              value: current?.value == null
-                  ? context.l10n.itemDetailUnavailable
-                  : _formatItemDetailDogmaValue(context, ref, unit, current!.value!),
-              tone: current?.value == null
-                  ? null
-                  : staticValue == null
-                  ? null
-                  : _attributeDeltaTone(
-                      attribute: attribute,
-                      baseValue: staticValue!,
-                      currentValue: current!.value!,
-                    ),
-            ),
+            if (current?.value != null)
+              _ValueChip(
+                label: context.l10n.itemDetailAttributeCurrentValue,
+                value: _formatItemDetailDogmaValue(context, ref, unit, current!.value!),
+                tone: staticValue == null
+                    ? null
+                    : _attributeDeltaTone(
+                        attribute: attribute,
+                        baseValue: staticValue!,
+                        currentValue: current!.value!,
+                      ),
+              ),
             if (staticValue != null && current?.value != null && canFormatDogmaUnitDelta(unit))
               _ValueChip(
                 label: context.l10n.itemDetailAttributeDelta,
