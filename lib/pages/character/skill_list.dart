@@ -155,7 +155,9 @@ class _SkillLevelIndicator extends StatelessWidget {
       final color = unavailableToAlpha
           ? colorSkillAlphaLimited
           : Theme.of(context).colorScheme.primary;
-      final borderColor = trained || unavailableToAlpha ? color : Theme.of(context).dividerColor;
+      final borderColor = trained || unavailableToAlpha
+          ? color
+          : Theme.of(context).colorScheme.outline;
       final pip = AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         width: _pipSize,
