@@ -1,5 +1,27 @@
 part of "../../../page.dart";
 
+bool Function(EveSelectListRoot) _buildSubsystemValidator({
+  required WidgetRef ref,
+  required FitContext fitContext,
+  required SlotIdentifier slotIdent,
+  required SubsystemType type,
+}) {
+  final baseValidator = slotIdent.validator(ref);
+
+  return (node) {
+    if (!baseValidator(node)) return false;
+
+    if (node is EveSelectListRootType) {
+      final subsystemDef = ref.read(bundleCollectionGetSubsystemProvider(node.typeId));
+      if (subsystemDef == null) return false;
+      if (subsystemDef.subsystemType != type.protoEnum) return false;
+      if (subsystemDef.shipTypeId != fitContext.ship.typeId) return false;
+    }
+
+    return true;
+  };
+}
+
 class _EmptySlotRow extends ConsumerWidget {
   const _EmptySlotRow({
     required this.slotIdent,
@@ -12,34 +34,6 @@ class _EmptySlotRow extends ConsumerWidget {
   final _EmptySlotInfo slotInfo;
   final FitContext fitContext;
   final FitInteractionOptions interactionOptions;
-
-  /// Build a custom validator for subsystem slots that checks:
-  /// The subsystem type matches the slot index (CORE=0, DEFENSIVE=1, OFFENSIVE=2, PROPULSION=3)
-  ///
-  /// This validator ensures that subsystems are installed in the correct slots according to
-  /// the T3 cruiser subsystem layout where each of the 4 slots is dedicated to a specific subsystem type.
-  bool Function(EveSelectListRoot) _buildSubsystemValidator(WidgetRef ref, SubsystemType type) {
-    final baseValidator = slotIdent.validator(ref);
-
-    return (node) {
-      // First check base validator
-      if (!baseValidator(node)) return false;
-
-      // Additional checks for subsystem type nodes
-      if (node is EveSelectListRootType) {
-        final subsystemDef = ref.watch(bundleCollectionGetSubsystemProvider(node.typeId));
-        if (subsystemDef == null) return false;
-
-        // Check if subsystem type matches the slot index
-        if (subsystemDef.subsystemType != type.protoEnum) return false;
-
-        // Check if subsystem is compatible with the current ship
-        if (subsystemDef.shipTypeId != fitContext.ship.typeId) return false;
-      }
-
-      return true;
-    };
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -59,7 +53,12 @@ class _EmptySlotRow extends ConsumerWidget {
 
     // Build appropriate validator - use custom one for subsystems
     final validator = slotIdent is SlotIdentifierSubsystem
-        ? _buildSubsystemValidator(ref, (slotIdent as SlotIdentifierSubsystem).type)
+        ? _buildSubsystemValidator(
+            ref: ref,
+            fitContext: fitContext,
+            slotIdent: slotIdent,
+            type: (slotIdent as SlotIdentifierSubsystem).type,
+          )
         : slotIdent.validator(ref);
 
     return ListTile(

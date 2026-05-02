@@ -1392,7 +1392,9 @@ class FitWrapper {
     Subsystem? Function(int typeId) resolve,
   ) {
     final installed = fit.body.slots.subsystem
-        .map((opt) => opt.toNullable()?.itemId.asId)
+        .map((opt) => opt.toNullable()?.itemId)
+        .whereType<FitStorageItemId>()
+        .map((itemId) => _resolveOriginTypeId(fit, itemId))
         .whereType<int>()
         .toList();
 

@@ -16,6 +16,37 @@ class _SubsystemSlotRow extends ConsumerWidget {
   Future<void> _handleRemoveSubsystem(WidgetRef ref) =>
       fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref);
 
+  Future<void> _handleReplaceSubsystem(BuildContext context, WidgetRef ref) async {
+    final typeId = await showAddItemDialog(
+      context: context,
+      title: slotIdent.localizedAddItemDialogTitle(context),
+      initialMarketGroupId: slotIdent.baseMarketGroupId,
+      validator: _buildSubsystemValidator(
+        ref: ref,
+        fitContext: fitContext,
+        slotIdent: slotIdent,
+        type: slotIdent.type,
+      ),
+    );
+    if (typeId == null) return;
+    await fitContext.fitWrapper.equipSlot(slotIdent, typeId, ref);
+  }
+
+  ActionPane _buildReplaceActionPane(BuildContext context, WidgetRef ref) => ActionPane(
+    extentRatio: 0.15,
+    motion: const StretchMotion(),
+    children: [
+      SlidableAction(
+        onPressed: (_) => _handleReplaceSubsystem(context, ref),
+        backgroundColor: Colors.grey.shade200,
+        foregroundColor: Colors.black,
+        icon: Icons.change_circle_outlined,
+        label: context.l10n.edit,
+        padding: .zero,
+      ),
+    ],
+  );
+
   Widget _buildRecoveryRow(BuildContext context, WidgetRef ref, String title) {
     final content = ListTile(title: Text(title));
     if (!interactionOptions.allowMutations) {
@@ -23,6 +54,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
     }
 
     return Slidable(
+      startActionPane: _buildReplaceActionPane(context, ref),
       endActionPane: ActionPane(
         extentRatio: 0.15,
         motion: const StretchMotion(),
@@ -115,6 +147,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
     }
 
     return Slidable(
+      startActionPane: _buildReplaceActionPane(context, ref),
       endActionPane: ActionPane(
         extentRatio: 0.15,
         motion: const StretchMotion(),
