@@ -12,7 +12,7 @@ bool Function(EveSelectListRoot) _buildSubsystemValidator({
     if (!baseValidator(node)) return false;
 
     if (node is EveSelectListRootType) {
-      final subsystemDef = ref.watch(bundleCollectionGetSubsystemProvider(node.typeId));
+      final subsystemDef = ref.read(bundleCollectionGetSubsystemProvider(node.typeId));
       if (subsystemDef == null) return false;
       if (subsystemDef.subsystemType != type.protoEnum) return false;
       if (subsystemDef.shipTypeId != fitContext.ship.typeId) return false;
