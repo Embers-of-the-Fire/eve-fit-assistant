@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
 import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
@@ -1802,7 +1803,7 @@ class _LevelPips extends StatelessWidget {
       final skillLevel = index + 1;
       final active = skillLevel <= level;
       final unavailableToAlpha = alphaMaxLevel != null && skillLevel > alphaMaxLevel!;
-      final color = unavailableToAlpha ? Colors.orange.shade700 : context.theme.colorScheme.primary;
+      final color = unavailableToAlpha ? colorSkillAlphaLimited : context.theme.colorScheme.primary;
       final borderColor = active || unavailableToAlpha ? color : context.theme.colorScheme.outline;
       return Container(
         width: 16,

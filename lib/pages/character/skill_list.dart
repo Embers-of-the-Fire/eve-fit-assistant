@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/groups.pb.dart" as pb_groups;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
@@ -152,7 +153,7 @@ class _SkillLevelIndicator extends StatelessWidget {
       final trained = skillLevel <= level;
       final unavailableToAlpha = skillLevel > alphaMaxLevel;
       final color = unavailableToAlpha
-          ? Colors.orange.shade700
+          ? colorSkillAlphaLimited
           : Theme.of(context).colorScheme.primary;
       final borderColor = trained || unavailableToAlpha ? color : Theme.of(context).dividerColor;
       final pip = AnimatedContainer(
