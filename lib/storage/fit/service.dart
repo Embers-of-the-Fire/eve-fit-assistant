@@ -9,7 +9,7 @@ import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
-import "package:eve_fit_assistant/storage/character/schema.dart";
+import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
@@ -359,6 +359,10 @@ class FitEmulatorService extends _$FitEmulatorService {
       ..listen(bundleCollectionSkillTypeIdsProvider, (prev, next) {
         if (prev == next) return;
         _scheduleEmulationForCurrentFit();
+      })
+      ..listen(characterRegistryManagerProvider, (prev, next) {
+        if (prev == next) return;
+        _scheduleEmulationForCurrentFit();
       });
 
     return const FitEmulatorState.notInitialized();
@@ -397,19 +401,19 @@ class FitEmulatorService extends _$FitEmulatorService {
       }
 
       final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
-      if (fitStorage.body.characterId == predefinedMaxCharacterId &&
-          availableSkillTypeIds.isEmpty &&
-          ref.read(bundleCollectionProvider) == null) {
+      if (availableSkillTypeIds.isEmpty && ref.read(bundleCollectionProvider) == null) {
         debug(
           "Deferring emulation for ${fitStorage.metadata.fitId}: bundle skill definitions are still loading",
         );
         return;
       }
 
-      final characterSkills = resolveCharacterSkillsSync(
-        fitStorage.body.characterId,
-        availableSkillTypeIds,
-      );
+      final characterSkills = await ref
+          .read(characterRegistryManagerProvider.notifier)
+          .resolveCharacterSkills(fitStorage.body.characterId, availableSkillTypeIds);
+      if (!ref.mounted || _emulationGeneration != activeGeneration) {
+        return;
+      }
       final nativeCompatible = convertToNative(fitStorage, characterSkills: characterSkills);
       final emulatedOutput = await engine.emulate(fit: nativeCompatible);
       if (!ref.mounted || _emulationGeneration != activeGeneration) {

@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -29,6 +30,14 @@ abstract class CharacterMetadata with _$CharacterMetadata {
     required String bundleId,
   }) = _CharacterMetadata;
 
+  factory CharacterMetadata.fromCharacter(CharacterStorage character) => CharacterMetadata(
+    characterId: character.characterId,
+    name: character.name,
+    description: character.description,
+    lastModified: character.lastModified,
+    bundleId: character.bundleId,
+  );
+
   factory CharacterMetadata.fromJson(Map<String, dynamic> json) =>
       _$CharacterMetadataFromJson(json);
 }
@@ -43,16 +52,35 @@ abstract class CharacterRegistry with _$CharacterRegistry {
       _$CharacterRegistryFromJson(json);
 }
 
-/// Fit storage is always under global control,
-/// So there's no need to maintain a global singleton outside of the Ref tree.
+/// Character storage is always under global control,
+/// so profile persistence stays behind this manager.
 @riverpodSingleton
 class CharacterRegistryManager extends _$CharacterRegistryManager {
   static String get _characterRegistryPath => p.join(PathProvider.charactersPath, "registry.json");
 
   static const builtInCharacterIds = <String>[predefinedMaxCharacterId, predefinedZeroCharacterId];
+  static const _registrySyncDebounce = Duration(milliseconds: 300);
+  static const _idGenerator = Uuid();
+
+  Timer? _registrySyncTimer;
+  Future<void> _pendingRegistrySync = Future<void>.value();
+
+  static bool isBuiltInCharacterId(String characterId) => builtInCharacterIds.contains(characterId);
+
+  static String generateCharacterId() => _idGenerator.v4();
+
+  static int _normalizeSkillLevel(int level) {
+    if (level < 0) return 0;
+    if (level > 5) return 5;
+    return level;
+  }
 
   @override
   CharacterRegistry build() {
+    ref.onDispose(() {
+      _registrySyncTimer?.cancel();
+      unawaited(_queueRegistrySync());
+    });
     final bundleId = ref.watch(currentBundleProvider)?.bundleId ?? "";
     final skillTypeIds = ref.watch(bundleCollectionSkillTypeIdsProvider);
     final registryFile = File(_characterRegistryPath);
@@ -68,10 +96,108 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     return _ensureBuiltInCharacters(registry, bundleId: bundleId, skillTypeIds: skillTypeIds);
   }
 
-  void updateFit(CharacterMetadata metadata) {
+  void updateCharacter(CharacterMetadata metadata) {
     debug("Update character ${metadata.characterId} in ${metadata.bundleId}");
     state = state.copyWith(characters: state.characters.add(metadata.characterId, metadata));
-    _syncToDisk();
+    _scheduleRegistrySync();
+  }
+
+  Future<CharacterStorage?> tryLoadCharacter(String characterId) async {
+    final path = File(CharacterStorage.characterStoragePathForId(characterId));
+    final String text;
+    try {
+      text = await path.readAsString();
+    } on FileSystemException catch (exception) {
+      if (exception.osError?.errorCode == 2) {
+        return null;
+      }
+      rethrow;
+    }
+    final json = jsonDecode(text) as Map<String, dynamic>;
+    return CharacterStorage.fromJson(json);
+  }
+
+  Future<CharacterStorage> loadCharacter(String characterId) async {
+    final character = await tryLoadCharacter(characterId);
+    if (character == null) {
+      throw StateError("Character file does not exist: $characterId");
+    }
+    return character;
+  }
+
+  Future<Map<int, int>> resolveCharacterSkills(
+    String characterId,
+    Iterable<int> availableSkillTypeIds,
+  ) async {
+    final skillTypeIds = availableSkillTypeIds.toList(growable: false);
+    final skills = switch (characterId) {
+      predefinedMaxCharacterId => Map<int, int>.fromEntries(
+        skillTypeIds.map((typeId) => MapEntry(typeId, 5)),
+      ),
+      predefinedZeroCharacterId => Map<int, int>.fromEntries(
+        skillTypeIds.map((typeId) => MapEntry(typeId, 0)),
+      ),
+      _ => (await tryLoadCharacter(characterId))?.skills ?? const <int, int>{},
+    };
+
+    if (skillTypeIds.isEmpty) {
+      return skills.map((typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level)));
+    }
+
+    return Map<int, int>.fromEntries(
+      skillTypeIds.map((typeId) => MapEntry(typeId, _normalizeSkillLevel(skills[typeId] ?? 0))),
+    );
+  }
+
+  Future<CharacterStorage> createCharacter({
+    required String name,
+    String description = "",
+    String baseCharacterId = predefinedMaxCharacterId,
+  }) async {
+    final baseCharacter = await loadCharacter(baseCharacterId);
+    return _createCharacterFromSkills(
+      name: name,
+      description: description,
+      skills: baseCharacter.skills,
+    );
+  }
+
+  Future<CharacterStorage> cloneCharacter(String characterId, {String? name}) async {
+    final baseCharacter = await loadCharacter(characterId);
+    return _createCharacterFromSkills(
+      name: name ?? "${baseCharacter.name} Copy",
+      description: baseCharacter.description,
+      skills: baseCharacter.skills,
+    );
+  }
+
+  Future<CharacterStorage> saveCharacter(CharacterStorage character, {bool touch = true}) async {
+    if (isBuiltInCharacterId(character.characterId)) {
+      throw StateError("Built-in characters cannot be modified: ${character.characterId}");
+    }
+
+    final savedCharacter = character.copyWith(
+      lastModified: touch ? DateTime.now().millisecondsSinceEpoch : character.lastModified,
+      skills: character.skills.map(
+        (typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level)),
+      ),
+    );
+    await _writeCharacter(savedCharacter);
+    updateCharacter(CharacterMetadata.fromCharacter(savedCharacter));
+    return savedCharacter;
+  }
+
+  Future<void> deleteCharacter(String characterId) async {
+    if (isBuiltInCharacterId(characterId)) {
+      throw StateError("Built-in characters cannot be deleted: $characterId");
+    }
+
+    final path = File(CharacterStorage.characterStoragePathForId(characterId));
+    if (path.existsSync()) {
+      await path.delete();
+    }
+    state = state.copyWith(characters: state.characters.remove(characterId));
+    await _flushRegistrySync();
   }
 
   // ignore: unused_element
@@ -88,14 +214,68 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     state = registry;
   }
 
-  void _syncToDisk() {
+  void _scheduleRegistrySync() {
+    _registrySyncTimer?.cancel();
+    _registrySyncTimer = Timer(_registrySyncDebounce, () {
+      _registrySyncTimer = null;
+      unawaited(_queueRegistrySync());
+    });
+  }
+
+  Future<void> _flushRegistrySync() async {
+    _registrySyncTimer?.cancel();
+    _registrySyncTimer = null;
+    await _queueRegistrySync();
+  }
+
+  Future<void> _queueRegistrySync() {
+    final registry = state;
+    _pendingRegistrySync = _pendingRegistrySync
+        .catchError((Object errorValue, StackTrace stackTrace) {
+          warning("Previous character registry sync failed: $errorValue");
+          debug(errorValue.toString(), stackTrace: stackTrace);
+        })
+        .then((_) => _syncRegistryToDisk(registry));
+    return _pendingRegistrySync;
+  }
+
+  Future<void> _syncRegistryToDisk(CharacterRegistry registry) async {
     final registryFile = File(_characterRegistryPath);
     if (!registryFile.existsSync()) {
       registryFile.createSync(recursive: true);
     }
-    final registryJson = state.toJson();
+    final registryJson = registry.toJson();
     final registryContent = jsonEncode(registryJson);
-    registryFile.writeAsStringSync(registryContent);
+    await registryFile.writeAsString(registryContent);
+  }
+
+  Future<void> _writeCharacter(CharacterStorage character) async {
+    final path = File(character.characterStoragePath);
+    if (!path.existsSync()) {
+      await path.parent.create(recursive: true);
+    }
+    await path.writeAsString(jsonEncode(character.toJson()));
+  }
+
+  Future<CharacterStorage> _createCharacterFromSkills({
+    required String name,
+    required String description,
+    required Map<int, int> skills,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final bundleId = ref.read(currentBundleProvider)?.bundleId ?? "";
+    final character = CharacterStorage(
+      characterId: generateCharacterId(),
+      name: name,
+      description: description,
+      lastModified: now,
+      bundleId: bundleId,
+      skills: skills.map((typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level))),
+    );
+    await _writeCharacter(character);
+    updateCharacter(CharacterMetadata.fromCharacter(character));
+    await _flushRegistrySync();
+    return character;
   }
 
   CharacterRegistry _ensureBuiltInCharacters(
@@ -125,7 +305,9 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
         predefinedMaxCharacterId => Map<int, int>.fromEntries(
           skillTypeIds.map((typeId) => MapEntry(typeId, 5)),
         ),
-        predefinedZeroCharacterId => const <int, int>{},
+        predefinedZeroCharacterId => Map<int, int>.fromEntries(
+          skillTypeIds.map((typeId) => MapEntry(typeId, 0)),
+        ),
         _ => const <int, int>{},
       };
 

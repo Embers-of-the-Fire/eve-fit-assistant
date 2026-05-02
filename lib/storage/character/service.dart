@@ -1,6 +1,4 @@
 import "dart:async";
-import "dart:convert";
-import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
@@ -26,6 +24,8 @@ abstract class CharacterServiceStatus with _$CharacterServiceStatus {
 @freezed
 abstract class CharacterServiceState with _$CharacterServiceState {
   const factory CharacterServiceState.notInitialized() = _CharacterServiceStateNotInitialized;
+  const factory CharacterServiceState.error({required CharacterServiceStatus status}) =
+      _CharacterServiceStateError;
   const factory CharacterServiceState.loaded({
     required CharacterServiceStatus status,
     required CharacterStorage character,
@@ -33,17 +33,31 @@ abstract class CharacterServiceState with _$CharacterServiceState {
 
   const CharacterServiceState._();
 
-  bool get isInitialized => when(notInitialized: () => false, loaded: (status, character) => true);
+  bool get isInitialized => when(
+    notInitialized: () => false,
+    error: (status) => false,
+    loaded: (status, character) => true,
+  );
   CharacterStorage get character => when(
     notInitialized: () {
       final stackTrace = StackTrace.current;
       error("Invalid character service access: character not initialized", stackTrace: stackTrace);
       throw StateError("Character service not initialized");
     },
+    error: (status) {
+      final message = status.maybeWhen(
+        error: (message) => message,
+        orElse: () => "Character service error",
+      );
+      final stackTrace = StackTrace.current;
+      error("Invalid character service access: $message", stackTrace: stackTrace);
+      throw StateError(message);
+    },
     loaded: (status, character) => character,
   );
   CharacterServiceStatus get status => when(
     notInitialized: CharacterServiceStatus.uninitialized,
+    error: (status) => status,
     loaded: (status, character) => status,
   );
 }
@@ -66,41 +80,63 @@ class CharacterService extends _$CharacterService {
       warning("Character service already initialized, force loading");
     }
     state = const CharacterServiceState.notInitialized();
-    final path = File(CharacterStorage.characterStoragePathForId(characterId));
-    if (!path.existsSync()) {
-      error("Character file does not exist: ${path.path}");
-      throw StateError("Character file does not exist: ${path.path}");
+    try {
+      final character = await ref
+          .read(characterRegistryManagerProvider.notifier)
+          .loadCharacter(characterId);
+      state = CharacterServiceState.loaded(
+        status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
+        character: character,
+      );
+    } on Object catch (errorValue, stackTrace) {
+      final message = "Failed to load character $characterId: $errorValue";
+      error(message, stackTrace: stackTrace);
+      state = CharacterServiceState.error(status: CharacterServiceStatus.error(message: message));
     }
-    final text = await path.readAsString();
-    final json = jsonDecode(text) as Map<String, dynamic>;
-    final character = CharacterStorage.fromJson(json);
-    state = CharacterServiceState.loaded(
-      status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
-      character: character,
-    );
   }
 
-  Future<void> _syncToDisk({bool setState = true}) async {
+  Future<bool> _syncToDisk({bool setState = true}) async {
     if (!state.isInitialized) {
       error("Cannot sync character service: not initialized");
-      return;
+      return false;
     }
     final character = state.character;
+    if (CharacterRegistryManager.isBuiltInCharacterId(character.characterId)) {
+      return true;
+    }
     state = CharacterServiceState.loaded(
       status: const CharacterServiceStatus.syncing(),
       character: character,
     );
-    final path = File(character.characterStoragePath);
-    final text = jsonEncode(character.toJson());
-    if (!path.existsSync()) {
-      await path.parent.create(recursive: true);
+    final savedCharacter = await _saveCharacter(character, touch: false);
+    if (savedCharacter == null) {
+      return false;
     }
-    await path.writeAsString(text);
     if (setState) {
       state = CharacterServiceState.loaded(
         status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
-        character: state.character,
+        character: savedCharacter,
       );
+    }
+    return true;
+  }
+
+  Future<CharacterStorage?> _saveCharacter(
+    CharacterStorage character, {
+    required bool touch,
+  }) async {
+    try {
+      return await ref
+          .read(characterRegistryManagerProvider.notifier)
+          .saveCharacter(character, touch: touch);
+    } on Object catch (errorValue, stackTrace) {
+      final message = "Failed to save character ${character.characterId}: $errorValue";
+      error(message, stackTrace: stackTrace);
+      state = CharacterServiceState.loaded(
+        status: CharacterServiceStatus.error(message: message),
+        character: character,
+      );
+      return null;
     }
   }
 
@@ -109,33 +145,29 @@ class CharacterService extends _$CharacterService {
   }
 
   Future<void> unmount() async {
-    await _syncToDisk();
-    state = const CharacterServiceState.notInitialized();
+    if (await _syncToDisk()) {
+      state = const CharacterServiceState.notInitialized();
+    }
   }
 
-  Future<void> update(CharacterStorage Function(CharacterStorage) updater) async {
+  Future<bool> update(CharacterStorage Function(CharacterStorage) updater) async {
     if (!state.isInitialized) {
       error("Cannot update character service: not initialized");
-      return;
+      return false;
     }
-    final character = updater(
-      state.character,
-    ).copyWith(lastModified: DateTime.now().millisecondsSinceEpoch);
+    final character = updater(state.character);
     state = CharacterServiceState.loaded(
       status: const CharacterServiceStatus.syncing(),
       character: character,
     );
-    ref
-        .read(characterRegistryManagerProvider.notifier)
-        .updateFit(
-          CharacterMetadata(
-            characterId: character.characterId,
-            name: character.name,
-            description: character.description,
-            lastModified: character.lastModified,
-            bundleId: character.bundleId,
-          ),
-        );
-    await _syncToDisk(setState: false);
+    final savedCharacter = await _saveCharacter(character, touch: true);
+    if (savedCharacter == null) {
+      return false;
+    }
+    state = CharacterServiceState.loaded(
+      status: CharacterServiceStatus.loaded(lastSync: DateTime.now()),
+      character: savedCharacter,
+    );
+    return true;
   }
 }

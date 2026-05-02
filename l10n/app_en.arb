@@ -37,6 +37,71 @@
   "frontPageTitleFitList": "Fits",
   "frontPageTitleCharacter": "Character",
   "frontPageTitleSetting": "Settings",
+  "characterBuiltInProfiles": "Built-in profiles",
+  "characterCustomProfiles": "Custom profiles",
+  "characterCreateProfile": "Create profile",
+  "characterCreateProfileError": "Could not create profile: {message}",
+  "@characterCreateProfileError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "characterNewProfileName": "New Character",
+  "characterClonedProfileName": "{name} Copy",
+  "@characterClonedProfileName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "characterCloneProfileError": "Could not clone {name}: {message}",
+  "@characterCloneProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "characterNoCustomProfiles": "No custom profiles yet. Create one from All V to start editing local skills.",
+  "characterLastModified": "Modified {time}",
+  "@characterLastModified": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "characterDeleteProfileTitle": "Delete profile",
+  "characterDeleteProfileContent": "Delete {name}? Fits using this profile will keep the profile id until you choose another one.",
+  "@characterDeleteProfileContent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "characterDeleteProfileError": "Could not delete {name}: {message}",
+  "@characterDeleteProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "characterProfileInfoTab": "Info",
+  "characterProfileNameLabel": "Character name",
+  "characterProfileDescriptionLabel": "Description",
+  "characterProfileNameRequired": "Please enter a character name.",
+  "characterSkillAllGroups": "All skill groups",
   "workspaceTabActionCreateFitName": "Create Fit",
   "bundleAccessRequiredTitle": "Bundle required",
   "bundleAccessNotSelectedDescription": "Fit creation and import stay disabled until you select an active data bundle.",

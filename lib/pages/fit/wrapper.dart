@@ -144,12 +144,15 @@ class FitWrapper {
       final tempFit = fit.copyWith(
         body: fit.body.copyWith(fighters: _normalizeFighters(tempFighters)),
       );
+      final characterId = tempFit.body.characterId;
       final engine = ref.read(nativeFitEngineServiceProvider).engineOrNull;
       final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
-      final characterSkills = resolveCharacterSkillsSync(
-        tempFit.body.characterId,
-        availableSkillTypeIds,
-      );
+      final characterSkills = await ref
+          .read(characterRegistryManagerProvider.notifier)
+          .resolveCharacterSkills(characterId, availableSkillTypeIds);
+      if (ref.read(fitProvider(fitId)).fit.body.characterId != characterId) {
+        return null;
+      }
       if (engine == null) {
         warning("Fit engine unavailable while resolving fighter squadron max size for $typeId");
         return null;
@@ -157,6 +160,9 @@ class FitWrapper {
       final output = await engine.emulate(
         fit: convertToNative(tempFit, characterSkills: characterSkills),
       );
+      if (ref.read(fitProvider(fitId)).fit.body.characterId != characterId) {
+        return null;
+      }
 
       for (final item in output.modules) {
         final slotType = item.slot.slotType;
@@ -1270,8 +1276,19 @@ class FitWrapper {
 
     await wrapped.update((currentFit) {
       final currentShip = ref.read(bundleCollectionGetShipProvider(currentFit.body.shipTypeId));
-      if (currentShip == null || currentFit.body.fighters.length >= currentShip.fighterTubes) {
+      if (currentFit.body.characterId != fit.body.characterId ||
+          currentShip == null ||
+          currentFit.body.fighters.length >= currentShip.fighterTubes) {
         return currentFit;
+      }
+      if (category != null) {
+        final categoryLimit = _fighterCategoryLimit(
+          ref.read(nativeEmulatedShipProvider(fitId)),
+          category,
+        );
+        if (categoryLimit > 0 && _fighterCategoryCount(currentFit, category) >= categoryLimit) {
+          return currentFit;
+        }
       }
 
       final fighters = currentFit.body.fighters.toList()

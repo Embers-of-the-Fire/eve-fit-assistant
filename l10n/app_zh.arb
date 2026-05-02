@@ -41,6 +41,71 @@
   "frontPageTitleFitList": "配置",
   "frontPageTitleCharacter": "角色",
   "frontPageTitleSetting": "设置",
+  "characterBuiltInProfiles": "内置档案",
+  "characterCustomProfiles": "自定义档案",
+  "characterCreateProfile": "创建档案",
+  "characterCreateProfileError": "无法创建档案：{message}",
+  "@characterCreateProfileError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "characterNewProfileName": "新角色",
+  "characterClonedProfileName": "{name} 副本",
+  "@characterClonedProfileName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "characterCloneProfileError": "无法复制 {name}：{message}",
+  "@characterCloneProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "characterNoCustomProfiles": "还没有自定义档案。可以先从全 5 创建一个本地技能档案。",
+  "characterLastModified": "修改于 {time}",
+  "@characterLastModified": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "characterDeleteProfileTitle": "删除档案",
+  "characterDeleteProfileContent": "删除 {name}？使用该档案的配置会保留档案 ID，直到你选择其他档案。",
+  "@characterDeleteProfileContent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "characterDeleteProfileError": "无法删除 {name}：{message}",
+  "@characterDeleteProfileError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "characterProfileInfoTab": "信息",
+  "characterProfileNameLabel": "角色名称",
+  "characterProfileDescriptionLabel": "备注",
+  "characterProfileNameRequired": "请输入角色名称。",
+  "characterSkillAllGroups": "全部技能组",
   "@@_WORKSPACE_TAB": {},
   "workspaceTabActionCreateFitName": "创建新配置",
   "bundleAccessRequiredTitle": "需要数据包",
