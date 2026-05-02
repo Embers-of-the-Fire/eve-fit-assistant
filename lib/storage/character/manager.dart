@@ -58,7 +58,11 @@ abstract class CharacterRegistry with _$CharacterRegistry {
 class CharacterRegistryManager extends _$CharacterRegistryManager {
   static String get _characterRegistryPath => p.join(PathProvider.charactersPath, "registry.json");
 
-  static const builtInCharacterIds = <String>[predefinedMaxCharacterId, predefinedZeroCharacterId];
+  static const builtInCharacterIds = <String>[
+    predefinedMaxCharacterId,
+    predefinedAlphaMaxCharacterId,
+    predefinedZeroCharacterId,
+  ];
   static const _registrySyncDebounce = Duration(milliseconds: 300);
   static const _idGenerator = Uuid();
 
@@ -82,7 +86,9 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       unawaited(_queueRegistrySync());
     });
     final bundleId = ref.watch(currentBundleProvider)?.bundleId ?? "";
+    final collection = ref.watch(bundleCollectionProvider);
     final skillTypeIds = ref.watch(bundleCollectionSkillTypeIdsProvider);
+    final alphaSkillLevels = _alphaSkillLevels(collection, skillTypeIds);
     final registryFile = File(_characterRegistryPath);
     if (!registryFile.existsSync()) {
       registryFile
@@ -93,7 +99,12 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
     final registry = CharacterRegistry.fromJson(registryJson);
-    return _ensureBuiltInCharacters(registry, bundleId: bundleId, skillTypeIds: skillTypeIds);
+    return _ensureBuiltInCharacters(
+      registry,
+      bundleId: bundleId,
+      skillTypeIds: skillTypeIds,
+      alphaSkillLevels: alphaSkillLevels,
+    );
   }
 
   void updateCharacter(CharacterMetadata metadata) {
@@ -130,9 +141,13 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     Iterable<int> availableSkillTypeIds,
   ) async {
     final skillTypeIds = availableSkillTypeIds.toList(growable: false);
+    final alphaSkillLevels = _alphaSkillLevels(ref.read(bundleCollectionProvider), skillTypeIds);
     final skills = switch (characterId) {
       predefinedMaxCharacterId => Map<int, int>.fromEntries(
         skillTypeIds.map((typeId) => MapEntry(typeId, 5)),
+      ),
+      predefinedAlphaMaxCharacterId => Map<int, int>.fromEntries(
+        skillTypeIds.map((typeId) => MapEntry(typeId, alphaSkillLevels[typeId] ?? 0)),
       ),
       predefinedZeroCharacterId => Map<int, int>.fromEntries(
         skillTypeIds.map((typeId) => MapEntry(typeId, 0)),
@@ -147,6 +162,20 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     return Map<int, int>.fromEntries(
       skillTypeIds.map((typeId) => MapEntry(typeId, _normalizeSkillLevel(skills[typeId] ?? 0))),
     );
+  }
+
+  static IMap<int, int> _alphaSkillLevels(
+    BundleCollectionProxy? collection,
+    Iterable<int> skillTypeIds,
+  ) {
+    if (collection == null) {
+      return const <int, int>{}.lock;
+    }
+    final skillTypeIdSet = skillTypeIds.toSet();
+    return <int, int>{
+      for (final type in collection.allTypes)
+        if (skillTypeIdSet.contains(type.typeId)) type.typeId: type.alphaMaxLevel,
+    }.lock;
   }
 
   Future<CharacterStorage> createCharacter({
@@ -282,6 +311,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     CharacterRegistry registry, {
     required String bundleId,
     required Iterable<int> skillTypeIds,
+    required IMap<int, int> alphaSkillLevels,
   }) {
     var nextRegistry = registry;
 
@@ -290,6 +320,13 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
         characterId: predefinedMaxCharacterId,
         name: "All V",
         description: "Built-in max skill profile",
+        lastModified: 0,
+        bundleId: bundleId,
+      ),
+      CharacterMetadata(
+        characterId: predefinedAlphaMaxCharacterId,
+        name: "Alpha Max",
+        description: "Built-in Alpha clone max skill profile",
         lastModified: 0,
         bundleId: bundleId,
       ),
@@ -304,6 +341,9 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       final skills = switch (metadata.characterId) {
         predefinedMaxCharacterId => Map<int, int>.fromEntries(
           skillTypeIds.map((typeId) => MapEntry(typeId, 5)),
+        ),
+        predefinedAlphaMaxCharacterId => Map<int, int>.fromEntries(
+          skillTypeIds.map((typeId) => MapEntry(typeId, alphaSkillLevels[typeId] ?? 0)),
         ),
         predefinedZeroCharacterId => Map<int, int>.fromEntries(
           skillTypeIds.map((typeId) => MapEntry(typeId, 0)),

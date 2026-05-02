@@ -183,6 +183,7 @@
   "fitSkillPolicyPresetTitle": "Skill profile: {profileName}",
   "fitSkillPolicyPresetDescription": "This build uses preset skill profiles instead of real character data.",
   "fitSkillProfileAll5": "All V",
+  "fitSkillProfileAlphaMax": "Alpha Max",
   "fitSkillProfileAll0": "All 0",
   "fitSkillPolicyUnsupportedTitle": "Skill-aware simulation is not available in this build.",
   "fitSkillPolicyUnsupportedDescription": "Fits are simulated without character skill modifiers. Implants and boosters still apply.",
