@@ -18,44 +18,31 @@ class _AddChargeDialog extends ConsumerWidget {
 
   final List<int> chargeGroups;
 
+  bool _isSupportedChargeNode(WidgetRef ref, EveSelectListRoot node) => switch (node) {
+    EveSelectListRootType(:final typeId) => switch (ref.read(
+      bundleCollectionGetTypeProvider(typeId),
+    )) {
+      null => false,
+      final type => chargeGroups.contains(type.groupId),
+    },
+    EveSelectListRootGroup(:final groupId) => chargeGroups.contains(groupId),
+    _ => true,
+  };
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final types = ref.watch(bundleCollectionGetAllTypesProvider);
-    final groupedTypes = <int, List<int>>{for (final groupId in chargeGroups) groupId: <int>[]};
-
-    for (final type in types) {
-      if (groupedTypes.containsKey(type.groupId)) {
-        groupedTypes[type.groupId]!.add(type.typeId);
-      }
-    }
-
-    for (final entries in groupedTypes.values) {
-      entries.sort();
-    }
-
-    return AppDialog(
-      title: context.l10n.fitAddItemDialogTitle(slotName: context.l10n.charge),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final groupId in chargeGroups) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: GroupNameText(groupId: groupId),
-              ),
-              ...groupedTypes[groupId]!.map(
-                (typeId) => TypeListTile(
-                  typeId: typeId,
-                  onTap: () => Navigator.of(context).pop(typeId),
-                  onLongPress: () => showItemDetailPage(context, typeId: typeId),
-                ),
-              ),
-            ],
-          ],
-        ),
+  Widget build(BuildContext context, WidgetRef ref) => AppDialog(
+    title: context.l10n.fitAddItemDialogTitle(slotName: context.l10n.charge),
+    content: SizedBox(
+      width: double.maxFinite,
+      child: EveSelectList(
+        root: const EveSelectListRoot.marketGroup(marketGroupId: EveConstMarketGroupId.charge),
+        validator: (node) => _isSupportedChargeNode(ref, node),
+        shallPopToSelect: (node) => node is EveSelectListRootType,
+        onSelect: (node) => switch (node) {
+          EveSelectListRootType(:final typeId) => Navigator.of(context).pop(typeId),
+          _ => {},
+        },
       ),
-    );
-  }
+    ),
+  );
 }
