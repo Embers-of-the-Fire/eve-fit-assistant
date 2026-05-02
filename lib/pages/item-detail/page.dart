@@ -1265,10 +1265,12 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
                     width: 24,
                     height: 24,
                     child: hasChildren
-                        ? InkResponse(
-                            onTap: () => setState(() => _expanded = !_expanded),
-                            radius: 16,
-                            child: Icon(
+                        ? IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+                            onPressed: () => setState(() => _expanded = !_expanded),
+                            icon: Icon(
                               _expanded ? Icons.expand_more : Icons.chevron_right,
                               size: 18,
                             ),
