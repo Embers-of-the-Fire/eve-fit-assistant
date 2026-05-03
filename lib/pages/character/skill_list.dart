@@ -56,7 +56,7 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
               return _SkillListTile(
                 skill: skill,
                 level: widget.skills[skill.typeId] ?? 0,
-                alphaMaxLevel: skill.alphaMaxLevel,
+                alphaMaxLevel: skill.hasAlphaMaxLevel() ? skill.alphaMaxLevel : null,
                 onTapLevel: widget.onTapLevel == null
                     ? null
                     : (level) => widget.onTapLevel!(skill.typeId, level),
@@ -113,13 +113,13 @@ class _SkillListTile extends StatelessWidget {
   const _SkillListTile({
     required this.skill,
     required this.level,
-    required this.alphaMaxLevel,
+    this.alphaMaxLevel,
     this.onTapLevel,
   });
 
   final pb_types.Type skill;
   final int level;
-  final int alphaMaxLevel;
+  final int? alphaMaxLevel;
   final ValueChanged<int>? onTapLevel;
 
   @override
@@ -135,13 +135,13 @@ class _SkillListTile extends StatelessWidget {
 }
 
 class _SkillLevelIndicator extends StatelessWidget {
-  const _SkillLevelIndicator({required this.level, required this.alphaMaxLevel, this.onTapLevel});
+  const _SkillLevelIndicator({required this.level, this.alphaMaxLevel, this.onTapLevel});
 
   static const double _hitTargetSize = 44;
   static const double _pipSize = 18;
 
   final int level;
-  final int alphaMaxLevel;
+  final int? alphaMaxLevel;
   final ValueChanged<int>? onTapLevel;
 
   @override
@@ -151,7 +151,7 @@ class _SkillLevelIndicator extends StatelessWidget {
     children: List.generate(5, (index) {
       final skillLevel = index + 1;
       final trained = skillLevel <= level;
-      final unavailableToAlpha = skillLevel > alphaMaxLevel;
+      final unavailableToAlpha = alphaMaxLevel != null && skillLevel > alphaMaxLevel!;
       final color = unavailableToAlpha
           ? colorSkillAlphaLimited
           : Theme.of(context).colorScheme.primary;

@@ -1285,7 +1285,9 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
                   const SizedBox(width: 12),
                   _LevelPips(
                     level: widget.requirement.level,
-                    alphaMaxLevel: skillType?.alphaMaxLevel,
+                    alphaMaxLevel: skillType?.hasAlphaMaxLevel() ?? false
+                        ? skillType!.alphaMaxLevel
+                        : null,
                   ),
                 ],
               ),
