@@ -2,7 +2,7 @@
 id: version-alpha-0-0-0
 kind: version
 publishedAt: 2026-04-14T00:00:00Z
-appVer: 1.0.0
+appVer: 0.0.0
 tags:
   - release-note
   - version
