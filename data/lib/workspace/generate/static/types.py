@@ -80,6 +80,16 @@ class TypeDef(BaseModel):
         return pb
 
 
+class CloneGradeSkill(BaseModel):
+    typeID: int
+    level: int = Field(ge=0, le=5)
+
+
+class CloneGradeDef(BaseModel):
+    skills: list[CloneGradeSkill]
+    internalDescription: str
+
+
 def _extract_required_skills(dogma_attributes: list[DogmaAttributeItem]) -> list[tuple[int, int]]:
     attr_map = {attr.attributeID: attr.value for attr in dogma_attributes}
     requirements: list[tuple[int, int]] = []
@@ -150,11 +160,44 @@ async def _load_info_bubble_traits(data: GeneratorDatasource) -> dict[int, TypeT
     return {int(type_id): TypeTraitRaw.model_validate(value) for type_id, value in traits.items()}
 
 
+def _normalize_clone_grade_skills(skills: list[CloneGradeSkill]) -> tuple[tuple[int, int], ...]:
+    return tuple(sorted((skill.typeID, skill.level) for skill in skills))
+
+
+async def _load_alpha_skill_levels(data: GeneratorDatasource) -> dict[int, int]:
+    node = data.resources.res.get_resource("res:/staticdata/clonegrades.static")
+    await node.download()
+    path = node.local_path
+    if path is None:
+        raise RuntimeError("Failed to resolve clonegrades.static local path")
+
+    with sqlite3.connect(path) as connection:
+        rows = connection.execute('SELECT "key", "value" FROM "cache"').fetchall()
+
+    if not rows:
+        raise RuntimeError("Failed to load clonegrades.static cache rows")
+
+    first_key, first_value = rows[0]
+    first_grade = CloneGradeDef.model_validate_json(first_value)
+    first_skills = _normalize_clone_grade_skills(first_grade.skills)
+
+    for key, value in rows[1:]:
+        grade = CloneGradeDef.model_validate_json(value)
+        if _normalize_clone_grade_skills(grade.skills) != first_skills:
+            error(
+                "Clone grade skills differ from the first cache row; "
+                f"alpha max levels are generated from {first_key!r}, but {key!r} differs."
+            )
+
+    return {skill.typeID: skill.level for skill in first_grade.skills}
+
+
 async def generate(data: GeneratorDatasource, collection):
     info("Generating types...")
     types = await data.resources.fsd.get("types")
     type_dogma = await data.resources.fsd.get("typedogma")
     traits = await _load_info_bubble_traits(data)
+    alpha_skill_levels = await _load_alpha_skill_levels(data)
 
     cnt = 0
     for type_id, type_def in types.items():
@@ -166,6 +209,9 @@ async def generate(data: GeneratorDatasource, collection):
 
         cnt += 1
         pb = validated.to_pb()
+        alpha_max_level = alpha_skill_levels.get(validated.typeID)
+        if alpha_max_level is not None:
+            pb.alpha_max_level = alpha_max_level
 
         dogma_def = type_dogma.get(type_id)
         if dogma_def is not None:

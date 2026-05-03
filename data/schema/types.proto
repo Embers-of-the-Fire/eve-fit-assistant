@@ -48,4 +48,5 @@ message Type {
   repeated SkillRequirement required_skills = 10;
   repeated DogmaAttributeValue dogma_attributes = 11;
   repeated TraitSection trait_sections = 12;
+  optional uint32 alpha_max_level = 13;
 }

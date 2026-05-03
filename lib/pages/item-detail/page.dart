@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
 import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
@@ -1259,17 +1260,19 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
                 children: [
                   SizedBox(
                     width: 24,
+                    height: 24,
                     child: hasChildren
                         ? IconButton(
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(width: 24, height: 24),
                             onPressed: () => setState(() => _expanded = !_expanded),
                             icon: Icon(
                               _expanded ? Icons.expand_more : Icons.chevron_right,
                               size: 18,
                             ),
                           )
-                        : const SizedBox.shrink(),
+                        : null,
                   ),
                   Expanded(
                     child: skillType == null
@@ -1277,7 +1280,12 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
                         : TypeNameText(typeId: widget.requirement.skillTypeId),
                   ),
                   const SizedBox(width: 12),
-                  _LevelPips(level: widget.requirement.level),
+                  _LevelPips(
+                    level: widget.requirement.level,
+                    alphaMaxLevel: skillType?.hasAlphaMaxLevel() ?? false
+                        ? skillType!.alphaMaxLevel
+                        : null,
+                  ),
                 ],
               ),
             ),
@@ -1784,24 +1792,27 @@ class _EffectValueText extends StatelessWidget {
 }
 
 class _LevelPips extends StatelessWidget {
-  const _LevelPips({required this.level});
+  const _LevelPips({required this.level, this.alphaMaxLevel});
 
   final int level;
+  final int? alphaMaxLevel;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: List.generate(5, (index) {
-      final active = index < level;
+      final skillLevel = index + 1;
+      final active = skillLevel <= level;
+      final unavailableToAlpha = alphaMaxLevel != null && skillLevel > alphaMaxLevel!;
+      final color = unavailableToAlpha ? colorSkillAlphaLimited : context.theme.colorScheme.primary;
+      final borderColor = active || unavailableToAlpha ? color : context.theme.colorScheme.outline;
       return Container(
         width: 16,
         height: 16,
         margin: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
-          color: active ? context.theme.colorScheme.primary : Colors.transparent,
-          border: Border.all(
-            color: active ? context.theme.colorScheme.primary : context.theme.colorScheme.outline,
-          ),
+          color: active ? color : Colors.transparent,
+          border: Border.all(color: borderColor),
           borderRadius: BorderRadius.circular(2),
         ),
       );

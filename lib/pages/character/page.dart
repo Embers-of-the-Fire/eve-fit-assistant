@@ -265,6 +265,7 @@ String characterDisplayName(
   CharacterMetadata? metadata,
 ) => switch (characterId) {
   predefinedMaxCharacterId => context.l10n.fitSkillProfileAll5,
+  predefinedAlphaMaxCharacterId => context.l10n.fitSkillProfileAlphaMax,
   predefinedZeroCharacterId => context.l10n.fitSkillProfileAll0,
   _ => metadata?.name ?? characterId,
 };

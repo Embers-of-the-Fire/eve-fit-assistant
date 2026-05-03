@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/groups.pb.dart" as pb_groups;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
@@ -55,6 +56,7 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
               return _SkillListTile(
                 skill: skill,
                 level: widget.skills[skill.typeId] ?? 0,
+                alphaMaxLevel: skill.hasAlphaMaxLevel() ? skill.alphaMaxLevel : null,
                 onTapLevel: widget.onTapLevel == null
                     ? null
                     : (level) => widget.onTapLevel!(skill.typeId, level),
@@ -108,27 +110,38 @@ class _SkillGroupFilter extends StatelessWidget {
 }
 
 class _SkillListTile extends StatelessWidget {
-  const _SkillListTile({required this.skill, required this.level, this.onTapLevel});
+  const _SkillListTile({
+    required this.skill,
+    required this.level,
+    this.alphaMaxLevel,
+    this.onTapLevel,
+  });
 
   final pb_types.Type skill;
   final int level;
+  final int? alphaMaxLevel;
   final ValueChanged<int>? onTapLevel;
 
   @override
   Widget build(BuildContext context) => ListTile(
     title: TypeNameText(typeId: skill.typeId),
-    trailing: _SkillLevelIndicator(level: level, onTapLevel: onTapLevel),
+    trailing: _SkillLevelIndicator(
+      level: level,
+      alphaMaxLevel: alphaMaxLevel,
+      onTapLevel: onTapLevel,
+    ),
     onLongPress: () => showItemDetailPage(context, typeId: skill.typeId),
   );
 }
 
 class _SkillLevelIndicator extends StatelessWidget {
-  const _SkillLevelIndicator({required this.level, this.onTapLevel});
+  const _SkillLevelIndicator({required this.level, this.alphaMaxLevel, this.onTapLevel});
 
   static const double _hitTargetSize = 44;
   static const double _pipSize = 18;
 
   final int level;
+  final int? alphaMaxLevel;
   final ValueChanged<int>? onTapLevel;
 
   @override
@@ -138,8 +151,13 @@ class _SkillLevelIndicator extends StatelessWidget {
     children: List.generate(5, (index) {
       final skillLevel = index + 1;
       final trained = skillLevel <= level;
-      final color = Theme.of(context).colorScheme.primary;
-      final borderColor = trained ? color : Theme.of(context).dividerColor;
+      final unavailableToAlpha = alphaMaxLevel != null && skillLevel > alphaMaxLevel!;
+      final color = unavailableToAlpha
+          ? colorSkillAlphaLimited
+          : Theme.of(context).colorScheme.primary;
+      final borderColor = trained || unavailableToAlpha
+          ? color
+          : Theme.of(context).colorScheme.outline;
       final pip = AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         width: _pipSize,

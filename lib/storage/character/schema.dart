@@ -7,6 +7,7 @@ part "schema.freezed.dart";
 part "schema.g.dart";
 
 const predefinedMaxCharacterId = "predefined_all_5";
+const predefinedAlphaMaxCharacterId = "predefined_alpha_max";
 const predefinedZeroCharacterId = "predefined_all_0";
 
 @freezed

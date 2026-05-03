@@ -341,6 +341,7 @@
   },
   "fitSkillPolicyPresetDescription": "当前构建使用预设技能档案，而不是真实角色数据。",
   "fitSkillProfileAll5": "全 5",
+  "fitSkillProfileAlphaMax": "Alpha 最高",
   "fitSkillProfileAll0": "全 0",
   "fitSkillPolicyUnsupportedTitle": "当前构建暂不支持技能感知模拟。",
   "fitSkillPolicyUnsupportedDescription": "当前配置模拟不会应用角色技能修正。植入体和增效剂仍然生效。",
