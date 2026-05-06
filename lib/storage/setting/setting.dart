@@ -1,5 +1,6 @@
 import "dart:convert";
 import "dart:io";
+import "dart:ui" as ui;
 
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -16,7 +17,7 @@ part "setting.g.dart";
 @freezed
 abstract class AppSetting with _$AppSetting {
   const factory AppSetting({
-    @JsonKey(unknownEnumValue: Locale.zh, defaultValue: Locale.zh) required Locale locale,
+    @JsonKey(unknownEnumValue: Locale.zh) required Locale locale,
     @JsonKey(defaultValue: false) required bool enableDebugLog,
     @JsonKey(
       unknownEnumValue: TypeListDisplayVariant.marketGroup,
@@ -68,7 +69,15 @@ class AppSettingService extends _$AppSettingService {
     } else {
       json = {};
     }
-    final setting = AppSetting.fromJson(json);
+    final setting = AppSetting.fromJson({"locale": _defaultLocale().name, ...json});
     _appSetting = setting;
+  }
+
+  static Locale _defaultLocale() {
+    final platformLocale = ui.PlatformDispatcher.instance.locale;
+    return switch (platformLocale.languageCode) {
+      "en" => Locale.en,
+      _ => Locale.zh,
+    };
   }
 }
