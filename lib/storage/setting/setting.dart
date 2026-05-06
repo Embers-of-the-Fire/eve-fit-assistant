@@ -76,8 +76,8 @@ class AppSettingService extends _$AppSettingService {
   static Locale _defaultLocale() {
     final platformLocale = ui.PlatformDispatcher.instance.locale;
     return switch (platformLocale.languageCode) {
-      "en" => Locale.en,
-      _ => Locale.zh,
+      "zh" => Locale.zh,
+      _ => Locale.en,
     };
   }
 }
