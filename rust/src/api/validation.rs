@@ -204,10 +204,8 @@ fn validate_fit_targets(context: &ValidationContext<'_>, issues: &mut Vec<Valida
             .filter(|&type_id| type_id != 0)
             .collect::<Vec<_>>();
 
-        let group_matches = groups
-            .iter()
-            .any(|&group_id| group_id == ship_type.group_id);
-        let type_matches = types.iter().any(|&type_id| type_id == fit.fit.ship_type_id);
+        let group_matches = groups.contains(&ship_type.group_id);
+        let type_matches = types.contains(&fit.fit.ship_type_id);
         if group_matches || type_matches || (groups.is_empty() && types.is_empty()) {
             continue;
         }
