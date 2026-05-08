@@ -132,6 +132,13 @@ impl FitStorage {
     pub(crate) fn get_container(&self) -> &FitContainer {
         &self.container
     }
+
+    pub(crate) fn dynamic_item_base_type_id(&self, dynamic_item_id: i32) -> Option<i32> {
+        self.container
+            .dynamic
+            .get(&dynamic_item_id)
+            .map(|dynamic_item| dynamic_item.base_type)
+    }
 }
 
 impl State {

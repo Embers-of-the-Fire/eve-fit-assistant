@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 
-use crate::api::storage::{DamageProfile, ItemID};
+use crate::api::{
+    storage::{DamageProfile, ItemID},
+    validation::ValidationIssue,
+};
 
 #[derive(Debug, Clone)]
 pub struct Item {
     pub item_id: ItemID,
     pub slot: OutSlot,
     pub charge: Option<Box<Item>>,
+    pub state: EffectCategory,
     pub attributes: HashMap<i32, Attribute>,
     pub effects: Vec<i32>,
 }
@@ -79,6 +83,7 @@ impl Item {
             },
             slot: OutSlot::from_native(native.slot),
             charge: native.charge.map(|c| Box::new(Item::from_native(*c))),
+            state: EffectCategory::from_native(native.state),
             attributes: native
                 .attributes
                 .into_iter()
@@ -270,6 +275,8 @@ pub struct Ship {
     // not implemented yet
     pub structure: Item,
     pub target: Item,
+
+    pub validation_issues: Vec<ValidationIssue>,
 }
 
 impl Ship {
@@ -284,6 +291,7 @@ impl Ship {
             damage_profile: DamageProfile::from_native(native.damage_profile),
             structure: Item::from_native(native.structure),
             target: Item::from_native(native.target),
+            validation_issues: Vec::new(),
         }
     }
 }
