@@ -17,7 +17,7 @@ part "setting.g.dart";
 @freezed
 abstract class AppSetting with _$AppSetting {
   const factory AppSetting({
-    @JsonKey(unknownEnumValue: Locale.zh) required Locale locale,
+    @JsonKey(unknownEnumValue: Locale.en) required Locale locale,
     @JsonKey(defaultValue: false) required bool enableDebugLog,
     @JsonKey(
       unknownEnumValue: TypeListDisplayVariant.marketGroup,
