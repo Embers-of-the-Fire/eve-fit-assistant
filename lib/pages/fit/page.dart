@@ -25,6 +25,7 @@ import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
+import "package:eve_fit_assistant/native/api/validation.dart" as native_validation;
 import "package:eve_fit_assistant/pages/fit/components/add_item_dialog.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
