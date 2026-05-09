@@ -13,6 +13,7 @@ const EFFECT_TURRET: i32 = 42;
 const ATTR_LAUNCHER: i32 = 101;
 const ATTR_TURRET: i32 = 102;
 const ATTR_CHARGE_SIZE: i32 = 128;
+const ATTR_CHARGE_RATE: i32 = 56;
 const ATTR_VOLUME: i32 = 161;
 const ATTR_AMMO_CAPACITY: i32 = 38;
 const ATTR_MAX_ACTIVE: i32 = 763;
@@ -348,7 +349,7 @@ fn validate_charges(context: &ValidationContext<'_>, issues: &mut Vec<Validation
                     }
                 }
             }
-        } else if ammo_capacity.is_some() && item_accepts_charge(item) {
+        } else if ammo_capacity.is_some() && item_consumes_charge(item) {
             issues.push(ValidationIssue {
                 slot_type,
                 index: item.slot.index,
@@ -483,6 +484,11 @@ fn max_active_limit(item: &Item) -> Option<usize> {
 
 fn item_accepts_charge(item: &Item) -> bool {
     !item_accepted_charge_groups(item).is_empty()
+}
+
+fn item_consumes_charge(item: &Item) -> bool {
+    item_accepts_charge(item)
+        && item_attribute(item, ATTR_CHARGE_RATE).is_some_and(|value| value > 0.0)
 }
 
 fn item_accepted_charge_groups(item: &Item) -> Vec<i32> {
