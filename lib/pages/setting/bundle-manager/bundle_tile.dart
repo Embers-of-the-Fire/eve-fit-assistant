@@ -27,62 +27,55 @@ class _BundleTile extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(
-                    bundle.bundleId,
-                    style: context.theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: activated.thenSome(colorGreen),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (pending) ...[
-                  const SizedBox(width: 8),
-                  const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ],
-                const SizedBox(width: 8),
-                Container(
-                  padding: const .symmetric(horizontal: 8, vertical: 2),
-                  child: Text(
-                    bundle.region,
-                    style: context.theme.textTheme.labelSmall?.copyWith(
-                      color: context.theme.colorScheme.secondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          context.l10n.bundleManagerBundleAppVersion,
-                          style: context.theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                    Flexible(
+                      child: Text(
+                        bundle.bundleId,
+                        style: context.theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: activated.thenSome(colorGreen),
                         ),
-                        Text(bundle.version, style: context.theme.textTheme.bodyMedium),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    Row(
-                      children: [
-                        Text(
-                          context.l10n.bundleManagerBundleBuild,
-                          style: context.theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                    if (pending) ...[
+                      const SizedBox(width: 8),
+                      const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const .symmetric(horizontal: 8, vertical: 2),
+                      child: Text(
+                        bundle.region,
+                        style: context.theme.textTheme.labelSmall?.copyWith(
+                          color: context.theme.colorScheme.secondary,
+                          fontWeight: FontWeight.w500,
                         ),
-                        Text(bundle.build, style: context.theme.textTheme.bodyMedium),
-                      ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 2,
+                  children: [
+                    _BundleMetadataText(
+                      label: context.l10n.bundleManagerBundleAppVersion,
+                      value: bundle.version,
+                    ),
+                    _BundleMetadataText(
+                      label: context.l10n.bundleManagerBundleBuild,
+                      value: bundle.build,
                     ),
                   ],
                 ),
@@ -133,5 +126,26 @@ class _BundleTile extends ConsumerWidget {
         ],
       ),
     ),
+  );
+}
+
+class _BundleMetadataText extends StatelessWidget {
+  const _BundleMetadataText({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      children: [
+        TextSpan(
+          text: label,
+          style: context.theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        TextSpan(text: value),
+      ],
+    ),
+    style: context.theme.textTheme.bodyMedium,
   );
 }

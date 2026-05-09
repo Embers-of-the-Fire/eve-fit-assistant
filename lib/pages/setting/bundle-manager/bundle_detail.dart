@@ -48,52 +48,46 @@ class BundleDetailPage extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          bundle.bundleId,
-                          style: context.theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: bundleIsSelected.thenSome(colorGreen),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const .symmetric(horizontal: 8, vertical: 2),
-                        child: Text(
-                          bundle.region,
-                          style: context.theme.textTheme.labelSmall?.copyWith(
-                            color: context.theme.colorScheme.secondary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                context.l10n.bundleManagerBundleAppVersion,
-                                style: context.theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          Flexible(
+                            child: Text(
+                              bundle.bundleId,
+                              style: context.theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: bundleIsSelected.thenSome(colorGreen),
                               ),
-                              Text(bundle.version, style: context.theme.textTheme.bodyMedium),
-                            ],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                context.l10n.bundleManagerBundleBuild,
-                                style: context.theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const .symmetric(horizontal: 8, vertical: 2),
+                            child: Text(
+                              bundle.region,
+                              style: context.theme.textTheme.labelSmall?.copyWith(
+                                color: context.theme.colorScheme.secondary,
                               ),
-                              Text(bundle.build, style: context.theme.textTheme.bodyMedium),
-                            ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 2,
+                        children: [
+                          _BundleMetadataText(
+                            label: context.l10n.bundleManagerBundleAppVersion,
+                            value: bundle.version,
+                          ),
+                          _BundleMetadataText(
+                            label: context.l10n.bundleManagerBundleBuild,
+                            value: bundle.build,
                           ),
                         ],
                       ),
