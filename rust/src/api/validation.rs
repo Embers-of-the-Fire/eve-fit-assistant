@@ -62,6 +62,7 @@ pub enum ValidationIssueKind {
 pub enum ValidationErrorKey {
     IncompatibleChargeSize { expected: u8, actual: u8 },
     IncompatibleChargeCapacity { max: f64, actual: f64 },
+    IncompatibleChargeGroup { expected: Vec<i32>, actual: i32 },
     TooMuchTurret { expected: u8, actual: u8 },
     TooMuchLauncher { expected: u8, actual: u8 },
     ConflictItem { group_id: i32 },
@@ -329,6 +330,24 @@ fn validate_charges(context: &ValidationContext<'_>, issues: &mut Vec<Validation
                     }
                 }
             }
+
+            let expected_groups = item_accepted_charge_groups(item);
+            if !expected_groups.is_empty() {
+                if let Some(actual) = item_group_id(context, charge) {
+                    if !expected_groups.contains(&actual) {
+                        issues.push(ValidationIssue {
+                            slot_type,
+                            index: item.slot.index,
+                            kind: ValidationIssueKind::Error(
+                                ValidationErrorKey::IncompatibleChargeGroup {
+                                    expected: expected_groups,
+                                    actual,
+                                },
+                            ),
+                        });
+                    }
+                }
+            }
         } else if ammo_capacity.is_some() && item_accepts_charge(item) {
             issues.push(ValidationIssue {
                 slot_type,
@@ -446,9 +465,15 @@ fn item_attribute(item: &Item, attribute_id: i32) -> Option<f64> {
 }
 
 fn item_accepts_charge(item: &Item) -> bool {
+    !item_accepted_charge_groups(item).is_empty()
+}
+
+fn item_accepted_charge_groups(item: &Item) -> Vec<i32> {
     ATTR_CHARGE_GROUPS
         .iter()
-        .any(|attribute_id| item_attribute(item, *attribute_id).is_some_and(|value| value != 0.0))
+        .filter_map(|attribute_id| item_attribute(item, *attribute_id).map(|value| value as i32))
+        .filter(|&group_id| group_id != 0)
+        .collect()
 }
 
 fn booster_slot(type_id: i32, info: &dyn InfoProvider) -> Option<i32> {

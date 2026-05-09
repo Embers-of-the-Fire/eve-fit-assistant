@@ -246,6 +246,15 @@ _FitIssue _localizeValidationError(
         actual: actual.toStringAsMaxDecimals(1),
       ),
     ),
+  native_validation.ValidationErrorKey_IncompatibleChargeGroup(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueIncompatibleChargeGroup,
+      details: context.l10n.fitIssueIncompatibleChargeGroupDetails(
+        expected: expected.map((groupId) => _localizedGroupName(ref, groupId)).join(", "),
+        actual: _localizedGroupName(ref, actual),
+      ),
+    ),
   native_validation.ValidationErrorKey_TooMuchTurret(:final expected, :final actual) => _FitIssue(
     severity: _FitIssueSeverity.error,
     title: context.l10n.fitIssueTooMuchTurret,

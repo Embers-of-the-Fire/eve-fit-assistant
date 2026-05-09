@@ -341,6 +341,14 @@
       "actual": { "type": "String" }
     }
   },
+  "fitIssueIncompatibleChargeGroup": "该装备不接受此弹药类型。",
+  "fitIssueIncompatibleChargeGroupDetails": "期望弹药分组：{expected}；实际分组：{actual}。",
+  "@fitIssueIncompatibleChargeGroupDetails": {
+    "placeholders": {
+      "expected": { "type": "String" },
+      "actual": { "type": "String" }
+    }
+  },
   "fitIssueTooMuchTurret": "炮台数量过多。",
   "fitIssueTooMuchTurretDetails": "最大数量：{expected}；实际数量：{actual}。",
   "@fitIssueTooMuchTurretDetails": {

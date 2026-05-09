@@ -178,6 +178,8 @@
   "fitIssueIncompatibleChargeSizeDetails": "Expected {expected}; actual {actual}.",
   "fitIssueIncompatibleChargeCapacity": "Charge volume exceeds module capacity.",
   "fitIssueIncompatibleChargeCapacityDetails": "Maximum {max} m³; actual {actual} m³.",
+  "fitIssueIncompatibleChargeGroup": "Charge type is not accepted by this module.",
+  "fitIssueIncompatibleChargeGroupDetails": "Expected charge group: {expected}; actual {actual}.",
   "fitIssueTooMuchTurret": "Too many turrets fitted.",
   "fitIssueTooMuchTurretDetails": "Maximum {expected}; actual {actual}.",
   "fitIssueTooMuchLauncher": "Too many launchers fitted.",
