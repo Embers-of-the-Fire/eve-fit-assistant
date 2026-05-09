@@ -359,31 +359,42 @@ fn validate_charges(context: &ValidationContext<'_>, issues: &mut Vec<Validation
 }
 
 fn validate_max_active_groups(context: &ValidationContext<'_>, issues: &mut Vec<ValidationIssue>) {
-    let mut groups: HashMap<i32, u8> = HashMap::new();
+    let mut counts: HashMap<i32, usize> = HashMap::new();
+    let mut limits: HashMap<i32, usize> = HashMap::new();
     for item in context
         .ship
         .modules
         .iter()
         .filter(|item| is_primary_module_slot(item) && item_is_active(item))
-        .filter(|item| item_attribute(item, ATTR_MAX_ACTIVE).is_some_and(|value| value == 1.0))
     {
-        if let Some(group_id) = item_group_id(context, item) {
-            *groups.entry(group_id).or_default() += 1;
-        }
+        let Some(limit) = max_active_limit(item) else {
+            continue;
+        };
+        let Some(group_id) = item_group_id(context, item) else {
+            continue;
+        };
+        *counts.entry(group_id).or_default() += 1;
+        limits
+            .entry(group_id)
+            .and_modify(|current| *current = (*current).min(limit))
+            .or_insert(limit);
     }
-    groups.retain(|_, count| *count > 1);
+
+    counts.retain(|group_id, count| limits.get(group_id).is_some_and(|limit| *count > *limit));
 
     for item in context
         .ship
         .modules
         .iter()
         .filter(|item| is_primary_module_slot(item) && item_is_active(item))
-        .filter(|item| item_attribute(item, ATTR_MAX_ACTIVE).is_some_and(|value| value == 1.0))
     {
+        if max_active_limit(item).is_none() {
+            continue;
+        }
         let Some(group_id) = item_group_id(context, item) else {
             continue;
         };
-        if !groups.contains_key(&group_id) {
+        if !counts.contains_key(&group_id) {
             continue;
         }
         let Some(slot_type) = output_validation_slot_type(item) else {
@@ -462,6 +473,12 @@ fn item_attribute(item: &Item, attribute_id: i32) -> Option<f64> {
     item.attributes
         .get(&attribute_id)
         .map(|attribute| attribute.value.unwrap_or(attribute.base_value))
+}
+
+fn max_active_limit(item: &Item) -> Option<usize> {
+    item_attribute(item, ATTR_MAX_ACTIVE)
+        .map(|value| value as usize)
+        .filter(|&limit| limit > 0)
 }
 
 fn item_accepts_charge(item: &Item) -> bool {
