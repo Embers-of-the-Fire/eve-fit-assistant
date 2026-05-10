@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/pages/character/skill_list.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
@@ -9,6 +10,7 @@ import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/datetime.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:flutter_slidable/flutter_slidable.dart";
 
 class CharacterPage extends ConsumerWidget {
   const CharacterPage({super.key});
@@ -107,8 +109,6 @@ class _CharacterSectionHeader extends StatelessWidget {
   );
 }
 
-enum _CharacterProfileAction { clone, edit, delete }
-
 class _CharacterProfileTile extends ConsumerWidget {
   const _CharacterProfileTile({
     required this.characterId,
@@ -123,7 +123,7 @@ class _CharacterProfileTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final title = characterDisplayName(context, characterId, metadata);
-    return ListTile(
+    final content = ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Icon(canEdit ? Icons.account_circle : Icons.verified_user_outlined),
@@ -131,28 +131,52 @@ class _CharacterProfileTile extends ConsumerWidget {
       title: Text(title),
       subtitle: _subtitle(context),
       onTap: canEdit ? () => _edit(context) : null,
-      trailing: PopupMenuButton<_CharacterProfileAction>(
-        onSelected: (action) => _handleAction(context, ref, action, title),
-        itemBuilder: (context) => [
-          PopupMenuItem(
-            value: _CharacterProfileAction.clone,
-            child: ListTile(leading: const Icon(Icons.copy), title: Text(context.l10n.copy)),
-          ),
-          if (canEdit)
-            PopupMenuItem(
-              value: _CharacterProfileAction.edit,
-              child: ListTile(leading: const Icon(Icons.edit), title: Text(context.l10n.edit)),
-            ),
-          if (canEdit)
-            PopupMenuItem(
-              value: _CharacterProfileAction.delete,
-              child: ListTile(
-                leading: const Icon(Icons.delete_forever),
-                title: Text(context.l10n.delete),
-              ),
-            ),
-        ],
+    );
+
+    final startActions = [
+      SlidableAction(
+        onPressed: (_) => _clone(context, ref, title),
+        backgroundColor: Colors.grey.shade200,
+        foregroundColor: Colors.black,
+        icon: Icons.copy,
+        label: context.l10n.copy,
+        padding: EdgeInsets.zero,
       ),
+      if (canEdit)
+        SlidableAction(
+          onPressed: (_) => _edit(context),
+          backgroundColor: context.theme.colorScheme.secondaryContainer,
+          foregroundColor: context.theme.colorScheme.onSecondaryContainer,
+          icon: Icons.edit,
+          label: context.l10n.edit,
+          padding: EdgeInsets.zero,
+        ),
+    ];
+
+    return Slidable(
+      key: ValueKey(characterId),
+      startActionPane: ActionPane(
+        extentRatio: 0.15 * startActions.length,
+        motion: const StretchMotion(),
+        children: startActions,
+      ),
+      endActionPane: canEdit
+          ? ActionPane(
+              extentRatio: 0.15,
+              motion: const StretchMotion(),
+              children: [
+                SlidableAction(
+                  onPressed: (_) => _delete(context, ref, title),
+                  backgroundColor: colorActionDelete,
+                  foregroundColor: Colors.white,
+                  icon: Icons.delete,
+                  label: context.l10n.delete,
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            )
+          : null,
+      child: content,
     );
   }
 
@@ -170,50 +194,26 @@ class _CharacterProfileTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleAction(
-    BuildContext context,
-    WidgetRef ref,
-    _CharacterProfileAction action,
-    String title,
-  ) async {
-    switch (action) {
-      case _CharacterProfileAction.clone:
-        CharacterStorage cloned;
-        try {
-          cloned = await ref
-              .read(characterRegistryManagerProvider.notifier)
-              .cloneCharacter(
-                characterId,
-                name: context.l10n.characterClonedProfileName(name: title),
-              );
-        } on Object catch (errorValue, stackTrace) {
-          error(
-            "Failed to clone character $characterId",
-            error: errorValue,
-            stackTrace: stackTrace,
-          );
-          if (context.mounted) {
-            _showCharacterActionError(
-              context,
-              context.l10n.characterCloneProfileError(name: title, message: errorValue.toString()),
-            );
-          }
-          return;
-        }
-        if (!context.mounted) return;
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute(
-            builder: (context) => CharacterEditPage(characterId: cloned.characterId),
-          ),
+  Future<void> _clone(BuildContext context, WidgetRef ref, String title) async {
+    CharacterStorage cloned;
+    try {
+      cloned = await ref
+          .read(characterRegistryManagerProvider.notifier)
+          .cloneCharacter(characterId, name: context.l10n.characterClonedProfileName(name: title));
+    } on Object catch (errorValue, stackTrace) {
+      error("Failed to clone character $characterId", error: errorValue, stackTrace: stackTrace);
+      if (context.mounted) {
+        _showCharacterActionError(
+          context,
+          context.l10n.characterCloneProfileError(name: title, message: errorValue.toString()),
         );
-        return;
-      case _CharacterProfileAction.edit:
-        _edit(context);
-        return;
-      case _CharacterProfileAction.delete:
-        await _delete(context, ref, title);
-        return;
+      }
+      return;
     }
+    if (!context.mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (context) => CharacterEditPage(characterId: cloned.characterId)),
+    );
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref, String title) async {
