@@ -10,6 +10,10 @@ const predefinedMaxCharacterId = "predefined_all_5";
 const predefinedAlphaMaxCharacterId = "predefined_alpha_max";
 const predefinedZeroCharacterId = "predefined_all_0";
 
+const predefinedMaxSkillProfileId = "all_5";
+const predefinedAlphaMaxSkillProfileId = "alpha_max";
+const predefinedZeroSkillProfileId = "all_0";
+
 @freezed
 abstract class CharacterStorage with _$CharacterStorage {
   const factory CharacterStorage({

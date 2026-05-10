@@ -65,6 +65,7 @@ class BundleCollectionProxy {
   Subsystem? getSubsystem(int typeId) => _collection.subsystems[typeId];
   Iterable<Subsystem> get allSubsystems => _collection.subsystems.values;
   Slots get slots => _collection.slots;
+  Map<int, int>? getSkillProfile(String profileId) => _collection.skillProfiles[profileId]?.skills;
   pb_dynamic.DynamicMutator? getDynamicMutator(int modifierTypeId) =>
       _collection.dynamicMutators[modifierTypeId];
   pb_dynamic.DynamicTypeOptions? getDynamicTypeOptions(int baseTypeId) =>

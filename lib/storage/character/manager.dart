@@ -8,7 +8,6 @@ import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
-import "package:eve_fit_assistant/utils/skill.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as p;
@@ -89,7 +88,6 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final bundleId = ref.watch(currentBundleProvider)?.bundleId ?? "";
     final collection = ref.watch(bundleCollectionProvider);
     final skillTypeIds = ref.watch(bundleCollectionSkillTypeIdsProvider);
-    final alphaSkillLevels = _alphaSkillLevels(collection, skillTypeIds);
     final registryFile = File(_characterRegistryPath);
     if (!registryFile.existsSync()) {
       registryFile
@@ -104,7 +102,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       registry,
       bundleId: bundleId,
       skillTypeIds: skillTypeIds,
-      alphaSkillLevels: alphaSkillLevels,
+      collection: collection,
     );
   }
 
@@ -142,16 +140,11 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     Iterable<int> availableSkillTypeIds,
   ) async {
     final skillTypeIds = availableSkillTypeIds.toList(growable: false);
-    final alphaSkillLevels = _alphaSkillLevels(ref.read(bundleCollectionProvider), skillTypeIds);
-    final skills = switch (characterId) {
-      predefinedMaxCharacterId => Map<int, int>.fromEntries(
-        skillTypeIds.map((typeId) => MapEntry(typeId, 5)),
-      ),
-      predefinedAlphaMaxCharacterId => Map<int, int>.fromEntries(
-        skillTypeIds.map((typeId) => MapEntry(typeId, alphaSkillLevels[typeId] ?? 0)),
-      ),
-      predefinedZeroCharacterId => Map<int, int>.fromEntries(
-        skillTypeIds.map((typeId) => MapEntry(typeId, 0)),
+    final skills = switch (_skillProfileIdForCharacter(characterId)) {
+      final profileId? => _resolveBundleSkillProfile(
+        ref.read(bundleCollectionProvider),
+        profileId,
+        skillTypeIds,
       ),
       _ => (await tryLoadCharacter(characterId))?.skills ?? const <int, int>{},
     };
@@ -165,18 +158,20 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     );
   }
 
-  static IMap<int, int> _alphaSkillLevels(
+  static String? _skillProfileIdForCharacter(String characterId) => switch (characterId) {
+    predefinedMaxCharacterId => predefinedMaxSkillProfileId,
+    predefinedAlphaMaxCharacterId => predefinedAlphaMaxSkillProfileId,
+    predefinedZeroCharacterId => predefinedZeroSkillProfileId,
+    _ => null,
+  };
+
+  static Map<int, int> _resolveBundleSkillProfile(
     BundleCollectionProxy? collection,
+    String profileId,
     Iterable<int> skillTypeIds,
   ) {
-    if (collection == null) {
-      return const <int, int>{}.lock;
-    }
-    final skillTypeIdSet = skillTypeIds.toSet();
-    return <int, int>{
-      for (final type in collection.allTypes)
-        if (skillTypeIdSet.contains(type.typeId)) type.typeId: type.alphaCloneMaxLevel,
-    }.lock;
+    final profileSkills = collection?.getSkillProfile(profileId) ?? const <int, int>{};
+    return <int, int>{for (final typeId in skillTypeIds) typeId: profileSkills[typeId] ?? 0};
   }
 
   Future<CharacterStorage> createCharacter({
@@ -312,7 +307,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     CharacterRegistry registry, {
     required String bundleId,
     required Iterable<int> skillTypeIds,
-    required IMap<int, int> alphaSkillLevels,
+    required BundleCollectionProxy? collection,
   }) {
     var nextRegistry = registry;
 
@@ -339,18 +334,10 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
         bundleId: bundleId,
       ),
     ]) {
-      final skills = switch (metadata.characterId) {
-        predefinedMaxCharacterId => Map<int, int>.fromEntries(
-          skillTypeIds.map((typeId) => MapEntry(typeId, 5)),
-        ),
-        predefinedAlphaMaxCharacterId => Map<int, int>.fromEntries(
-          skillTypeIds.map((typeId) => MapEntry(typeId, alphaSkillLevels[typeId] ?? 0)),
-        ),
-        predefinedZeroCharacterId => Map<int, int>.fromEntries(
-          skillTypeIds.map((typeId) => MapEntry(typeId, 0)),
-        ),
-        _ => const <int, int>{},
-      };
+      final profileId = _skillProfileIdForCharacter(metadata.characterId);
+      final skills = profileId == null
+          ? const <int, int>{}
+          : _resolveBundleSkillProfile(collection, profileId, skillTypeIds);
 
       final character = CharacterStorage(
         characterId: metadata.characterId,
