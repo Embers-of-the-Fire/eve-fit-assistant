@@ -219,6 +219,7 @@ async def generate(data: GeneratorDatasource, collection):
     traits = await _load_info_bubble_traits(data)
     skill_group_ids = await _load_skill_group_ids(data)
     alpha_skill_levels = await _load_alpha_skill_levels(data)
+    skill_type_ids: list[int] = []
 
     cnt = 0
     for type_id, type_def in types.items():
@@ -254,5 +255,15 @@ async def generate(data: GeneratorDatasource, collection):
 
         _apply_traits(pb, traits.get(type_id))
         collection.types[type_id].CopyFrom(pb)
+        if alpha_max_level is not None:
+            skill_type_ids.append(validated.typeID)
+
+    for skill_type_id in sorted(skill_type_ids):
+        collection.skill_profiles["all_5"].skills[skill_type_id] = 5
+        collection.skill_profiles["alpha_max"].skills[skill_type_id] = alpha_skill_levels.get(
+            skill_type_id,
+            0,
+        )
+        collection.skill_profiles["all_0"].skills[skill_type_id] = 0
 
     info(f"Generated {cnt} types")
