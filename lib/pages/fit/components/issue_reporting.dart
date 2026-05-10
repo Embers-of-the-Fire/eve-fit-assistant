@@ -154,8 +154,214 @@ List<_FitIssue> _collectFitIssuesForSection(
       }
   }
 
+  issues.addAll(_collectNativeValidationIssuesForSection(context, ref, fitContext, section));
+
   return issues;
 }
+
+List<_FitIssue> _collectFitIssuesForSlot(
+  BuildContext context,
+  WidgetRef ref,
+  FitContext fitContext,
+  SlotIdentifier slotIdent,
+) {
+  final slotType = _validationSlotTypeForIdentifier(slotIdent);
+  if (slotType == null) return const [];
+
+  return _collectNativeValidationIssues(
+    context,
+    ref,
+    fitContext,
+    slotType: slotType,
+    index: switch (slotIdent) {
+      SlotIdentifierBooster(:final slotId) => slotId,
+      _ => slotIdent.asIndexed,
+    },
+  );
+}
+
+List<_FitIssue> _collectNativeValidationIssuesForSection(
+  BuildContext context,
+  WidgetRef ref,
+  FitContext fitContext,
+  _FitIssueSection section,
+) {
+  final slotType = _validationSlotTypeForSection(section);
+  if (slotType == null) return const [];
+
+  return _collectNativeValidationIssues(context, ref, fitContext, slotType: slotType, index: null);
+}
+
+List<_FitIssue> _collectNativeValidationIssues(
+  BuildContext context,
+  WidgetRef ref,
+  FitContext fitContext, {
+  required native_validation.ValidationSlotType slotType,
+  required int? index,
+}) {
+  final validationIssues = fitContext.emulated?.validationIssues ?? const [];
+
+  return validationIssues
+      .where((issue) => issue.slotType == slotType && issue.index == index)
+      .map((issue) => _localizeNativeValidationIssue(context, ref, issue))
+      .toList();
+}
+
+_FitIssue _localizeNativeValidationIssue(
+  BuildContext context,
+  WidgetRef ref,
+  native_validation.ValidationIssue issue,
+) => switch (issue.kind) {
+  native_validation.ValidationIssueKind_Error(:final field0) => _localizeValidationError(
+    context,
+    ref,
+    field0,
+  ),
+  native_validation.ValidationIssueKind_Warning(:final field0) => _localizeValidationWarning(
+    context,
+    field0,
+  ),
+};
+
+_FitIssue _localizeValidationError(
+  BuildContext context,
+  WidgetRef ref,
+  native_validation.ValidationErrorKey key,
+) => switch (key) {
+  native_validation.ValidationErrorKey_IncompatibleChargeSize(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueIncompatibleChargeSize,
+      details: context.l10n.fitIssueIncompatibleChargeSizeDetails(
+        expected: _sizeName(context, expected),
+        actual: _sizeName(context, actual),
+      ),
+    ),
+  native_validation.ValidationErrorKey_IncompatibleChargeCapacity(:final max, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueIncompatibleChargeCapacity,
+      details: context.l10n.fitIssueIncompatibleChargeCapacityDetails(
+        max: max.toStringAsMaxDecimals(1),
+        actual: actual.toStringAsMaxDecimals(1),
+      ),
+    ),
+  native_validation.ValidationErrorKey_IncompatibleChargeGroup(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueIncompatibleChargeGroup,
+      details: context.l10n.fitIssueIncompatibleChargeGroupDetails(
+        expected: expected.map((groupId) => _localizedGroupName(ref, groupId)).join(", "),
+        actual: _localizedGroupName(ref, actual),
+      ),
+    ),
+  native_validation.ValidationErrorKey_TooMuchTurret(:final expected, :final actual) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueTooMuchTurret,
+    details: context.l10n.fitIssueTooMuchTurretDetails(expected: expected, actual: actual),
+  ),
+  native_validation.ValidationErrorKey_TooMuchLauncher(:final expected, :final actual) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueTooMuchLauncher,
+    details: context.l10n.fitIssueTooMuchLauncherDetails(expected: expected, actual: actual),
+  ),
+  native_validation.ValidationErrorKey_ConflictItem(:final groupId) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueConflictItem,
+    details: context.l10n.fitIssueConflictItemDetails(groupName: _localizedGroupName(ref, groupId)),
+  ),
+  native_validation.ValidationErrorKey_DuplicateBooster(:final slot) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueDuplicateBooster,
+    details: context.l10n.fitIssueDuplicateBoosterDetails(slot: slot),
+  ),
+  native_validation.ValidationErrorKey_IncompatibleShipGroup(:final expected) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueIncompatibleShipGroup,
+    details: context.l10n.fitIssueIncompatibleShipGroupDetails(
+      expected: expected.map((groupId) => _localizedGroupName(ref, groupId)).join(", "),
+    ),
+  ),
+  native_validation.ValidationErrorKey_IncompatibleShipType(:final expected) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueIncompatibleShipType,
+    details: context.l10n.fitIssueIncompatibleShipTypeDetails(
+      expected: expected.map((typeId) => _localizedTypeName(ref, typeId)).join(", "),
+    ),
+  ),
+  native_validation.ValidationErrorKey_IncompatibleRigSize(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueIncompatibleRigSize,
+      details: context.l10n.fitIssueIncompatibleRigSizeDetails(
+        expected: _sizeName(context, expected),
+        actual: _sizeName(context, actual),
+      ),
+    ),
+};
+
+_FitIssue _localizeValidationWarning(
+  BuildContext context,
+  native_validation.ValidationWarningKey key,
+) => switch (key) {
+  native_validation.ValidationWarningKey.missingCharge => _FitIssue(
+    severity: _FitIssueSeverity.warning,
+    title: context.l10n.fitIssueMissingCharge,
+    details: "",
+  ),
+};
+
+native_validation.ValidationSlotType? _validationSlotTypeForSection(_FitIssueSection section) =>
+    switch (section) {
+      _FitIssueSection.tacticalMode => native_validation.ValidationSlotType.tacticalMode,
+      _FitIssueSection.high => native_validation.ValidationSlotType.high,
+      _FitIssueSection.medium => native_validation.ValidationSlotType.medium,
+      _FitIssueSection.low => native_validation.ValidationSlotType.low,
+      _FitIssueSection.rig => native_validation.ValidationSlotType.rig,
+      _FitIssueSection.subsystem => native_validation.ValidationSlotType.subSystem,
+      _FitIssueSection.service => native_validation.ValidationSlotType.service,
+      _FitIssueSection.drone => native_validation.ValidationSlotType.drone,
+      _FitIssueSection.fighter => native_validation.ValidationSlotType.fighter,
+      _FitIssueSection.implant => native_validation.ValidationSlotType.implant,
+      _FitIssueSection.booster => native_validation.ValidationSlotType.booster,
+    };
+
+native_validation.ValidationSlotType? _validationSlotTypeForIdentifier(SlotIdentifier slotIdent) =>
+    switch (slotIdent) {
+      SlotIdentifierHigh() => native_validation.ValidationSlotType.high,
+      SlotIdentifierMedium() => native_validation.ValidationSlotType.medium,
+      SlotIdentifierLow() => native_validation.ValidationSlotType.low,
+      SlotIdentifierRig() => native_validation.ValidationSlotType.rig,
+      SlotIdentifierSubsystem() => native_validation.ValidationSlotType.subSystem,
+      SlotIdentifierTacticalMode() => native_validation.ValidationSlotType.tacticalMode,
+      SlotIdentifierService() => native_validation.ValidationSlotType.service,
+      SlotIdentifierDrone() => native_validation.ValidationSlotType.drone,
+      SlotIdentifierFighter() => native_validation.ValidationSlotType.fighter,
+      SlotIdentifierImplant() => native_validation.ValidationSlotType.implant,
+      SlotIdentifierBooster() => native_validation.ValidationSlotType.booster,
+    };
+
+String _localizedGroupName(WidgetRef ref, int groupId) {
+  final group = ref.watch(bundleCollectionGetGroupProvider(groupId));
+  if (group == null) return "$groupId";
+
+  return ref.watch(localizationProvider(group.groupName.id).select((name) => name ?? "$groupId"));
+}
+
+String _localizedTypeName(WidgetRef ref, int typeId) {
+  final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+  if (type == null) return "$typeId";
+
+  return ref.watch(localizationProvider(type.typeName.id).select((name) => name ?? "$typeId"));
+}
+
+String _sizeName(BuildContext context, int size) => switch (size) {
+  1 => context.l10n.dogmaUnitSizeSmall,
+  2 => context.l10n.dogmaUnitSizeMedium,
+  3 => context.l10n.dogmaUnitSizeLarge,
+  4 => context.l10n.dogmaUnitSizeXLarge,
+  _ => context.l10n.dogmaUnitSizeUnknown(value: "$size"),
+};
 
 class _FitIssueTrigger extends StatelessWidget {
   const _FitIssueTrigger({required this.issues, this.interactive = true});
@@ -187,7 +393,7 @@ class _FitIssueTrigger extends StatelessWidget {
                                   : Icons.warning_amber_rounded,
                             ),
                             title: Text(issue.title),
-                            subtitle: Text(issue.details),
+                            subtitle: issue.details.isEmpty ? null : Text(issue.details),
                           ),
                         )
                         .toList(),

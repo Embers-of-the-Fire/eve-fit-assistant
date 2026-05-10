@@ -1,7 +1,7 @@
 use eve_fit_os::{calculate::calculate, protobuf::Database};
 use flutter_rust_bridge::frb;
 
-use crate::api::{output::Ship, storage::FitStorage};
+use crate::api::{output::Ship, storage::FitStorage, validation::validate_fit};
 
 pub struct FitEngine {
     data: FitEngineData,
@@ -16,7 +16,9 @@ impl FitEngine {
     #[frb]
     pub fn emulate(&self, fit: &FitStorage) -> Ship {
         let out = calculate(fit.get_container(), &self.data.database);
-        Ship::from_native(out)
+        let mut ship = Ship::from_native(out);
+        ship.validation_issues = validate_fit(fit, &ship, &self.data.database);
+        ship
     }
 }
 

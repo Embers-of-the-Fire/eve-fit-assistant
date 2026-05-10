@@ -188,6 +188,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     final metaGroupIcon = ref.watch(
       bundleCollectionGetMetaGroupProvider(itemType.metaGroupId).select((t) => t?.icon),
     );
+    final slotIssues = _collectFitIssuesForSlot(context, ref, fitContext, slotIdent);
 
     final content = ListTile(
       leading: StateIcon.rect(
@@ -199,6 +200,7 @@ class _SlotRowDisplay extends ConsumerWidget {
       subtitle: subtitleWidgets.isEmpty
           ? null
           : Column(crossAxisAlignment: CrossAxisAlignment.start, children: subtitleWidgets),
+      trailing: slotIssues.isEmpty ? null : _FitIssueTrigger(issues: slotIssues),
       onTap: interactionOptions.allowInspect
           ? () => showItemDetailPage(
               context,

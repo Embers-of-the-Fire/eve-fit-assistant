@@ -343,6 +343,12 @@ class _ImplantRow extends ConsumerWidget {
     final metaGroupIcon = ref.watch(
       bundleCollectionGetMetaGroupProvider(typeDef.metaGroupId).select((t) => t?.icon),
     );
+    final slotIssues = _collectFitIssuesForSlot(
+      context,
+      ref,
+      fitContext,
+      SlotIdentifier.implant(index: slotId),
+    );
 
     final content = ListTile(
       leading: StateIcon.rect(
@@ -353,7 +359,16 @@ class _ImplantRow extends ConsumerWidget {
         child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
       ),
       title: LocalizedTypeName(typeId: itemId.asId),
-      trailing: Text("${slotId + 1}"),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (slotIssues.isNotEmpty) ...[
+            _FitIssueTrigger(issues: slotIssues),
+            const SizedBox(width: 6),
+          ],
+          Text("${slotId + 1}"),
+        ],
+      ),
       onLongPress: interactionOptions.allowInspect
           ? () => showItemDetailPage(
               context,
@@ -460,6 +475,12 @@ class _BoosterRow extends ConsumerWidget {
     final metaGroupIcon = ref.watch(
       bundleCollectionGetMetaGroupProvider(typeDef.metaGroupId).select((t) => t?.icon),
     );
+    final slotIssues = _collectFitIssuesForSlot(
+      context,
+      ref,
+      fitContext,
+      SlotIdentifier.booster(slotId: slotId),
+    );
 
     final content = ListTile(
       leading: StateIcon.rect(
@@ -471,6 +492,7 @@ class _BoosterRow extends ConsumerWidget {
       ),
       title: LocalizedTypeName(typeId: itemId.asId),
       subtitle: Text("${context.l10n.boosterSlot} $slotId"),
+      trailing: slotIssues.isEmpty ? null : _FitIssueTrigger(issues: slotIssues),
       onTap: interactionOptions.allowInspect
           ? () => showItemDetailPage(
               context,
