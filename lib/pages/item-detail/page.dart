@@ -22,6 +22,7 @@ import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
+import "package:eve_fit_assistant/utils/skill.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -1282,9 +1283,7 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
                   const SizedBox(width: 12),
                   _LevelPips(
                     level: widget.requirement.level,
-                    alphaMaxLevel: skillType?.hasAlphaMaxLevel() ?? false
-                        ? skillType!.alphaMaxLevel
-                        : null,
+                    alphaMaxLevel: skillType?.alphaCloneMaxLevel,
                   ),
                 ],
               ),

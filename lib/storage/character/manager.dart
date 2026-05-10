@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:eve_fit_assistant/utils/skill.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as p;
@@ -174,7 +175,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final skillTypeIdSet = skillTypeIds.toSet();
     return <int, int>{
       for (final type in collection.allTypes)
-        if (skillTypeIdSet.contains(type.typeId)) type.typeId: type.alphaMaxLevel,
+        if (skillTypeIdSet.contains(type.typeId)) type.typeId: type.alphaCloneMaxLevel,
     }.lock;
   }
 
