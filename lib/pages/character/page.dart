@@ -140,7 +140,7 @@ class _CharacterProfileTile extends ConsumerWidget {
         foregroundColor: Colors.black,
         icon: Icons.copy,
         label: context.l10n.copy,
-        padding: .zero,
+        padding: EdgeInsets.zero,
       ),
       if (canEdit)
         SlidableAction(
@@ -149,7 +149,7 @@ class _CharacterProfileTile extends ConsumerWidget {
           foregroundColor: context.theme.colorScheme.onSecondaryContainer,
           icon: Icons.edit,
           label: context.l10n.edit,
-          padding: .zero,
+          padding: EdgeInsets.zero,
         ),
     ];
 
@@ -171,7 +171,7 @@ class _CharacterProfileTile extends ConsumerWidget {
                   foregroundColor: Colors.white,
                   icon: Icons.delete,
                   label: context.l10n.delete,
-                  padding: .zero,
+                  padding: EdgeInsets.zero,
                 ),
               ],
             )
