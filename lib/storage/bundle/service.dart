@@ -4,8 +4,10 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/data/proto/collections.pb.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
+import "package:eve_fit_assistant/storage/bundle/skill_profiles.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -245,6 +247,13 @@ class BundleService extends _$BundleService {
         }
         throw _BundleLoadFailure(registrarErrors);
       }
+      final collectionErrors = await _validateCollection(bundlePathService.getCollectionPath());
+      if (collectionErrors.isNotEmpty) {
+        if (_isCurrentLoad(bundleId, loadGeneration)) {
+          _restoreMountedBundleOrError(mountedBundle, collectionErrors);
+        }
+        throw _BundleLoadFailure(collectionErrors);
+      }
       if (_isCurrentLoad(bundleId, loadGeneration)) {
         final nextMountedBundle = BundleMetadata(
           metadata: registrar,
@@ -269,6 +278,25 @@ class BundleService extends _$BundleService {
 
   bool _isCurrentLoad(String bundleId, int loadGeneration) =>
       _pendingBundleId == bundleId && _loadGeneration == loadGeneration;
+
+  Future<IList<BundleValidationError>> _validateCollection(String collectionPath) async {
+    try {
+      final collection = Collection.fromBuffer(await File(collectionPath).readAsBytes());
+      final missingProfileIds = requiredBundleSkillProfileIds
+          .where((profileId) => !collection.skillProfiles.containsKey(profileId))
+          .toIList();
+      if (missingProfileIds.isNotEmpty) {
+        return [
+          BundleValidationError.badPatch(
+            reason: "Bundle collection is missing skill profiles: ${missingProfileIds.join(", ")}",
+          ),
+        ].lock;
+      }
+      return const IList.empty();
+    } on Object catch (e) {
+      return [BundleValidationError.badDescriptor(error: e)].lock;
+    }
+  }
 
   void _restoreMountedBundleOrError(
     BundleMetadata? mountedBundle,

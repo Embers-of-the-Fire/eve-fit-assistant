@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/bundle/skill_profiles.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
