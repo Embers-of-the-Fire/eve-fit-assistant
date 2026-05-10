@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 _REQUIRED_SKILL_ATTRIBUTE_IDS = [182, 183, 184, 1285, 1289, 1290]
 _REQUIRED_SKILL_LEVEL_ATTRIBUTE_IDS = [277, 278, 279, 1286, 1287, 1288]
+_SKILL_CATEGORY_ID = 16
 
 
 class TypeDogmaDef(BaseModel):
@@ -78,6 +79,11 @@ class TypeDef(BaseModel):
             pb.description.CopyFrom(loc(self.descriptionID))
 
         return pb
+
+
+class GroupCategoryDef(BaseModel):
+    groupID: int
+    categoryID: int
 
 
 class CloneGradeSkill(BaseModel):
@@ -160,6 +166,20 @@ async def _load_info_bubble_traits(data: GeneratorDatasource) -> dict[int, TypeT
     return {int(type_id): TypeTraitRaw.model_validate(value) for type_id, value in traits.items()}
 
 
+async def _load_skill_group_ids(data: GeneratorDatasource) -> set[int]:
+    groups = await data.resources.fsd.get("groups")
+    skill_group_ids: set[int] = set()
+    for group_id, group_def in groups.items():
+        try:
+            validated = GroupCategoryDef.model_validate(group_def)
+        except Exception as e:
+            error(f"Failed to validate group {group_id} for skill alpha levels: {e}")
+            continue
+        if validated.categoryID == _SKILL_CATEGORY_ID:
+            skill_group_ids.add(validated.groupID)
+    return skill_group_ids
+
+
 def _normalize_clone_grade_skills(skills: list[CloneGradeSkill]) -> tuple[tuple[int, int], ...]:
     return tuple(sorted((skill.typeID, skill.level) for skill in skills))
 
@@ -197,6 +217,7 @@ async def generate(data: GeneratorDatasource, collection):
     types = await data.resources.fsd.get("types")
     type_dogma = await data.resources.fsd.get("typedogma")
     traits = await _load_info_bubble_traits(data)
+    skill_group_ids = await _load_skill_group_ids(data)
     alpha_skill_levels = await _load_alpha_skill_levels(data)
 
     cnt = 0
@@ -209,9 +230,8 @@ async def generate(data: GeneratorDatasource, collection):
 
         cnt += 1
         pb = validated.to_pb()
-        alpha_max_level = alpha_skill_levels.get(validated.typeID)
-        if alpha_max_level is not None:
-            pb.alpha_max_level = alpha_max_level
+        if validated.groupID in skill_group_ids:
+            pb.alpha_max_level = alpha_skill_levels.get(validated.typeID, 0)
 
         dogma_def = type_dogma.get(type_id)
         if dogma_def is not None:

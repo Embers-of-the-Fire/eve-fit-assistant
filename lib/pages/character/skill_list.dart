@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/skill.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -56,7 +57,7 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
               return _SkillListTile(
                 skill: skill,
                 level: widget.skills[skill.typeId] ?? 0,
-                alphaMaxLevel: skill.hasAlphaMaxLevel() ? skill.alphaMaxLevel : null,
+                alphaMaxLevel: skill.alphaCloneMaxLevel,
                 onTapLevel: widget.onTapLevel == null
                     ? null
                     : (level) => widget.onTapLevel!(skill.typeId, level),
