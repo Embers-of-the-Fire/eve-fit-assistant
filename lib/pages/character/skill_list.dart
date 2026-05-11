@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
@@ -151,8 +153,13 @@ class _SkillGroupGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      const columnCount = 4;
+      const minTileWidth = 88.0;
+      const maxColumnCount = 6;
       const spacing = 8.0;
+      final columnCount = math.max(
+        1,
+        math.min(maxColumnCount, constraints.maxWidth ~/ minTileWidth),
+      );
       final tileWidth = (constraints.maxWidth - spacing * (columnCount - 1)) / columnCount;
       return Wrap(
         spacing: spacing,
