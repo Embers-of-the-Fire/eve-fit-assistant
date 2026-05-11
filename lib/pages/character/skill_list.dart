@@ -22,6 +22,10 @@ class CharacterSkillList extends ConsumerStatefulWidget {
 
 class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
     with AutomaticKeepAliveClientMixin {
+  static const double _filterHeaderHeight = 60;
+
+  final ExpansibleController _controller = ExpansibleController();
+
   int? _selectedGroupId;
 
   @override
@@ -40,30 +44,41 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
       return _selectedGroupId == null || type.groupId == _selectedGroupId;
     }).toList()..sort((left, right) => left.typeId.compareTo(right.typeId));
 
-    return Column(
+    return Stack(
       children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _controller.collapse,
+          child: Column(
+            children: [
+              const SizedBox(height: _filterHeaderHeight),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(right: 10),
+                  itemCount: skills.length,
+                  itemBuilder: (context, index) {
+                    final skill = skills[index];
+                    return _SkillListTile(
+                      skill: skill,
+                      level: widget.skills[skill.typeId] ?? 0,
+                      alphaMaxLevel: skill.alphaCloneMaxLevel,
+                      onTapLevel: widget.onTapLevel == null
+                          ? null
+                          : (level) => widget.onTapLevel!(skill.typeId, level),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
         _SkillGroupFilter(
+          controller: _controller,
           groups: groups,
           selectedGroupId: _selectedGroupId,
           onSelect: (groupId) => setState(() {
             _selectedGroupId = groupId == _selectedGroupId ? null : groupId;
           }),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: skills.length,
-            itemBuilder: (context, index) {
-              final skill = skills[index];
-              return _SkillListTile(
-                skill: skill,
-                level: widget.skills[skill.typeId] ?? 0,
-                alphaMaxLevel: skill.alphaCloneMaxLevel,
-                onTapLevel: widget.onTapLevel == null
-                    ? null
-                    : (level) => widget.onTapLevel!(skill.typeId, level),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -75,6 +90,49 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
 
 class _SkillGroupFilter extends StatelessWidget {
   const _SkillGroupFilter({
+    required this.controller,
+    required this.groups,
+    required this.selectedGroupId,
+    required this.onSelect,
+  });
+
+  final ExpansibleController controller;
+  final List<pb_groups.Group> groups;
+  final int? selectedGroupId;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).scaffoldBackgroundColor;
+    final shape = Border(bottom: BorderSide(color: Theme.of(context).dividerColor));
+    return ExpansionTile(
+      controller: controller,
+      backgroundColor: color,
+      collapsedBackgroundColor: color,
+      title: selectedGroupId == null
+          ? Text(context.l10n.characterSkillAllGroups)
+          : GroupNameText(groupId: selectedGroupId!),
+      shape: shape,
+      collapsedShape: shape,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: _SkillGroupGrid(
+            groups: groups,
+            selectedGroupId: selectedGroupId,
+            onSelect: (groupId) {
+              controller.collapse();
+              onSelect(groupId);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkillGroupGrid extends StatelessWidget {
+  const _SkillGroupGrid({
     required this.groups,
     required this.selectedGroupId,
     required this.onSelect,
@@ -85,28 +143,58 @@ class _SkillGroupFilter extends StatelessWidget {
   final ValueChanged<int> onSelect;
 
   @override
-  Widget build(BuildContext context) => ExpansionTile(
-    title: selectedGroupId == null
-        ? Text(context.l10n.characterSkillAllGroups)
-        : GroupNameText(groupId: selectedGroupId!),
-    childrenPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    children: [
-      Align(
-        alignment: Alignment.centerLeft,
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final group in groups)
-              ChoiceChip(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      const columnCount = 4;
+      const spacing = 8.0;
+      final tileWidth = (constraints.maxWidth - spacing * (columnCount - 1)) / columnCount;
+      return Wrap(
+        spacing: spacing,
+        runSpacing: spacing,
+        children: [
+          for (final group in groups)
+            SizedBox(
+              width: tileWidth,
+              child: _SkillGroupCard(
+                groupId: group.groupId,
                 selected: group.groupId == selectedGroupId,
-                label: GroupNameText(groupId: group.groupId),
-                onSelected: (_) => onSelect(group.groupId),
+                onTap: () => onSelect(group.groupId),
               ),
-          ],
+            ),
+        ],
+      );
+    },
+  );
+}
+
+class _SkillGroupCard extends StatelessWidget {
+  const _SkillGroupCard({required this.groupId, required this.selected, this.onTap});
+
+  final int groupId;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: EdgeInsets.symmetric(horizontal: selected ? 3 : 4, vertical: selected ? 3 : 4),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
+            width: selected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
         ),
+        alignment: Alignment.center,
+        child: Center(child: GroupNameText(groupId: groupId)),
       ),
-    ],
+    ),
   );
 }
 
