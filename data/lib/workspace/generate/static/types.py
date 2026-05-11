@@ -255,7 +255,7 @@ async def generate(data: GeneratorDatasource, collection):
 
         _apply_traits(pb, traits.get(type_id))
         collection.types[type_id].CopyFrom(pb)
-        if alpha_max_level is not None:
+        if validated.groupID in skill_group_ids:
             skill_type_ids.append(validated.typeID)
 
     for skill_type_id in sorted(skill_type_ids):
