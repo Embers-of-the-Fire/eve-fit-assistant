@@ -243,7 +243,7 @@ class _SkillListTile extends StatelessWidget {
 class _SkillLevelIndicator extends StatelessWidget {
   const _SkillLevelIndicator({required this.level, this.alphaMaxLevel, this.onTapLevel});
 
-  static const double _hitTargetSize = 32;
+  static const double _hitTargetSize = 48;
   static const double _pipSize = 16;
 
   final int level;
