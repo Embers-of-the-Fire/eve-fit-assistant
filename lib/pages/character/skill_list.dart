@@ -226,6 +226,7 @@ class _SkillListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
+    onTap: () => showItemDetailPage(context, typeId: skill.typeId),
     onLongPress: () => showItemDetailPage(context, typeId: skill.typeId),
     child: Padding(
       padding: const EdgeInsets.only(top: 5, bottom: 5, left: 25, right: 10),
