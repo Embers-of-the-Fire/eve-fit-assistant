@@ -32,6 +32,12 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
   bool get wantKeepAlive => true;
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
 
