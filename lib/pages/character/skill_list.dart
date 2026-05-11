@@ -212,22 +212,26 @@ class _SkillListTile extends StatelessWidget {
   final ValueChanged<int>? onTapLevel;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    title: TypeNameText(typeId: skill.typeId),
-    trailing: _SkillLevelIndicator(
-      level: level,
-      alphaMaxLevel: alphaMaxLevel,
-      onTapLevel: onTapLevel,
-    ),
+  Widget build(BuildContext context) => InkWell(
     onLongPress: () => showItemDetailPage(context, typeId: skill.typeId),
+    child: Padding(
+      padding: const EdgeInsets.only(top: 5, bottom: 5, left: 25, right: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: TypeNameText(typeId: skill.typeId)),
+          _SkillLevelIndicator(level: level, alphaMaxLevel: alphaMaxLevel, onTapLevel: onTapLevel),
+        ],
+      ),
+    ),
   );
 }
 
 class _SkillLevelIndicator extends StatelessWidget {
   const _SkillLevelIndicator({required this.level, this.alphaMaxLevel, this.onTapLevel});
 
-  static const double _hitTargetSize = 44;
-  static const double _pipSize = 18;
+  static const double _hitTargetSize = 32;
+  static const double _pipSize = 16;
 
   final int level;
   final int? alphaMaxLevel;
@@ -239,22 +243,18 @@ class _SkillLevelIndicator extends StatelessWidget {
     spacing: 6,
     children: List.generate(5, (index) {
       final skillLevel = index + 1;
-      final trained = skillLevel <= level;
       final unavailableToAlpha = alphaMaxLevel != null && skillLevel > alphaMaxLevel!;
       final color = unavailableToAlpha
           ? colorSkillAlphaLimited
           : Theme.of(context).colorScheme.primary;
-      final borderColor = trained || unavailableToAlpha
-          ? color
-          : Theme.of(context).colorScheme.outline;
+      final trained = skillLevel <= level;
       final pip = AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         width: _pipSize,
         height: _pipSize,
         decoration: BoxDecoration(
           color: trained ? color : Colors.transparent,
-          border: Border.all(color: borderColor),
-          borderRadius: BorderRadius.circular(4),
+          border: trained ? null : Border.all(color: color),
         ),
       );
 
