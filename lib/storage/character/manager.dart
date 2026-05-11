@@ -29,6 +29,8 @@ abstract class CharacterMetadata with _$CharacterMetadata {
     required int lastModified,
 
     required String bundleId,
+    @JsonKey(readValue: readCharacterBundleSnapshot)
+    required CharacterBundleSnapshot bundleSnapshot,
   }) = _CharacterMetadata;
 
   factory CharacterMetadata.fromCharacter(CharacterStorage character) => CharacterMetadata(
@@ -37,6 +39,7 @@ abstract class CharacterMetadata with _$CharacterMetadata {
     description: character.description,
     lastModified: character.lastModified,
     bundleId: character.bundleId,
+    bundleSnapshot: character.bundleSnapshot,
   );
 
   factory CharacterMetadata.fromJson(Map<String, dynamic> json) =>
@@ -69,6 +72,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   Timer? _registrySyncTimer;
   Future<void> _pendingRegistrySync = Future<void>.value();
+  final Set<String> _reportedBundleWarnings = <String>{};
 
   static bool isBuiltInCharacterId(String characterId) => builtInCharacterIds.contains(characterId);
 
@@ -86,9 +90,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       _registrySyncTimer?.cancel();
       unawaited(_queueRegistrySync());
     });
-    final bundleId = ref.watch(currentBundleProvider)?.bundleId ?? "";
-    final collection = ref.watch(bundleCollectionProvider);
-    final skillTypeIds = ref.watch(bundleCollectionSkillTypeIdsProvider);
+    final activeBundle = ref.watch(currentBundleProvider);
     final registryFile = File(_characterRegistryPath);
     if (!registryFile.existsSync()) {
       registryFile
@@ -99,12 +101,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
     final registry = CharacterRegistry.fromJson(registryJson);
-    return _ensureBuiltInCharacters(
-      registry,
-      bundleId: bundleId,
-      skillTypeIds: skillTypeIds,
-      collection: collection,
-    );
+    return _ensureBuiltInCharacters(registry, activeBundle: activeBundle);
   }
 
   void updateCharacter(CharacterMetadata metadata) {
@@ -114,6 +111,10 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   }
 
   Future<CharacterStorage?> tryLoadCharacter(String characterId) async {
+    if (isBuiltInCharacterId(characterId)) {
+      return _loadBuiltInCharacter(characterId);
+    }
+
     final path = File(CharacterStorage.characterStoragePathForId(characterId));
     final String text;
     try {
@@ -125,7 +126,9 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       rethrow;
     }
     final json = jsonDecode(text) as Map<String, dynamic>;
-    return CharacterStorage.fromJson(json);
+    final character = CharacterStorage.fromJson(json);
+    _warnIfBundleNeedsAttention(character, context: "loading character");
+    return character;
   }
 
   Future<CharacterStorage> loadCharacter(String characterId) async {
@@ -141,14 +144,23 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     Iterable<int> availableSkillTypeIds,
   ) async {
     final skillTypeIds = availableSkillTypeIds.toList(growable: false);
-    final skills = switch (_skillProfileIdForCharacter(characterId)) {
-      final profileId? => _resolveBundleSkillProfile(
+    final profileId = _skillProfileIdForCharacter(characterId);
+    final Map<int, int> skills;
+    if (profileId == null) {
+      final character = await tryLoadCharacter(characterId);
+      if (character == null) {
+        skills = const <int, int>{};
+      } else {
+        _warnIfBundleNeedsAttention(character, context: "resolving character skills");
+        skills = character.skills;
+      }
+    } else {
+      skills = _resolveBundleSkillProfile(
         ref.read(bundleCollectionProvider),
         profileId,
         skillTypeIds,
-      ),
-      _ => (await tryLoadCharacter(characterId))?.skills ?? const <int, int>{},
-    };
+      );
+    }
 
     if (skillTypeIds.isEmpty) {
       return skills.map((typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level)));
@@ -202,8 +214,14 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       throw StateError("Built-in characters cannot be modified: ${character.characterId}");
     }
 
+    _warnIfBundleNeedsAttention(character, context: "saving character");
+    final activeBundle = ref.read(currentBundleProvider);
     final savedCharacter = character.copyWith(
       lastModified: touch ? DateTime.now().millisecondsSinceEpoch : character.lastModified,
+      bundleId: activeBundle?.bundleId ?? character.bundleId,
+      bundleSnapshot: activeBundle == null
+          ? character.bundleSnapshot
+          : CharacterBundleSnapshot.fromBundleMetadata(activeBundle),
       skills: character.skills.map(
         (typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level)),
       ),
@@ -237,7 +255,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
     final registry = CharacterRegistry.fromJson(registryJson);
-    state = registry;
+    state = _ensureBuiltInCharacters(registry, activeBundle: ref.read(currentBundleProvider));
   }
 
   void _scheduleRegistrySync() {
@@ -270,7 +288,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     if (!registryFile.existsSync()) {
       registryFile.createSync(recursive: true);
     }
-    final registryJson = registry.toJson();
+    final registryJson = _registryForDisk(registry).toJson();
     final registryContent = jsonEncode(registryJson);
     await registryFile.writeAsString(registryContent);
   }
@@ -289,13 +307,15 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     required Map<int, int> skills,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final bundleId = ref.read(currentBundleProvider)?.bundleId ?? "";
+    final activeBundle = ref.read(currentBundleProvider);
+    final bundleSnapshot = _bundleSnapshotFor(activeBundle);
     final character = CharacterStorage(
       characterId: generateCharacterId(),
       name: name,
       description: description,
       lastModified: now,
-      bundleId: bundleId,
+      bundleId: bundleSnapshot.bundleId,
+      bundleSnapshot: bundleSnapshot,
       skills: skills.map((typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level))),
     );
     await _writeCharacter(character);
@@ -306,69 +326,215 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   CharacterRegistry _ensureBuiltInCharacters(
     CharacterRegistry registry, {
-    required String bundleId,
-    required Iterable<int> skillTypeIds,
-    required BundleCollectionProxy? collection,
+    required BundleMetadata? activeBundle,
   }) {
     var nextRegistry = registry;
 
-    for (final metadata in [
+    for (final metadata in _builtInMetadata(activeBundle)) {
+      nextRegistry = nextRegistry.copyWith(
+        characters: nextRegistry.characters.add(metadata.characterId, metadata),
+      );
+    }
+
+    return nextRegistry;
+  }
+
+  CharacterStorage? _loadBuiltInCharacter(String characterId) {
+    final metadata = _builtInMetadata(
+      ref.read(currentBundleProvider),
+    ).where((metadata) => metadata.characterId == characterId).firstOrNull;
+    if (metadata == null) {
+      return null;
+    }
+
+    final profileId = _skillProfileIdForCharacter(characterId);
+    final skills = profileId == null
+        ? const <int, int>{}
+        : _resolveBundleSkillProfile(
+            ref.read(bundleCollectionProvider),
+            profileId,
+            ref.read(bundleCollectionSkillTypeIdsProvider),
+          );
+
+    return CharacterStorage(
+      characterId: metadata.characterId,
+      name: metadata.name,
+      description: metadata.description,
+      lastModified: metadata.lastModified,
+      bundleId: metadata.bundleId,
+      bundleSnapshot: metadata.bundleSnapshot,
+      skills: skills,
+    );
+  }
+
+  static Iterable<CharacterMetadata> _builtInMetadata(BundleMetadata? activeBundle) {
+    final bundleSnapshot = _bundleSnapshotFor(activeBundle);
+    return [
       CharacterMetadata(
         characterId: predefinedMaxCharacterId,
         name: "All V",
         description: "Built-in max skill profile",
         lastModified: 0,
-        bundleId: bundleId,
+        bundleId: bundleSnapshot.bundleId,
+        bundleSnapshot: bundleSnapshot,
       ),
       CharacterMetadata(
         characterId: predefinedAlphaMaxCharacterId,
         name: "Alpha Max",
         description: "Built-in Alpha clone max skill profile",
         lastModified: 0,
-        bundleId: bundleId,
+        bundleId: bundleSnapshot.bundleId,
+        bundleSnapshot: bundleSnapshot,
       ),
       CharacterMetadata(
         characterId: predefinedZeroCharacterId,
         name: "All 0",
         description: "Built-in zero skill profile",
         lastModified: 0,
-        bundleId: bundleId,
+        bundleId: bundleSnapshot.bundleId,
+        bundleSnapshot: bundleSnapshot,
       ),
-    ]) {
-      final profileId = _skillProfileIdForCharacter(metadata.characterId);
-      final skills = profileId == null
-          ? const <int, int>{}
-          : _resolveBundleSkillProfile(collection, profileId, skillTypeIds);
-
-      final character = CharacterStorage(
-        characterId: metadata.characterId,
-        name: metadata.name,
-        description: metadata.description,
-        lastModified: metadata.lastModified,
-        bundleId: metadata.bundleId,
-        skills: skills,
-      );
-      final path = File(character.characterStoragePath);
-      if (!path.existsSync()) {
-        path.parent.createSync(recursive: true);
-      }
-      path.writeAsStringSync(jsonEncode(character.toJson()));
-      nextRegistry = nextRegistry.copyWith(
-        characters: nextRegistry.characters.add(metadata.characterId, metadata),
-      );
-    }
-
-    final changed = nextRegistry.characters != registry.characters;
-    if (changed) {
-      final registryFile = File(_characterRegistryPath);
-      if (!registryFile.existsSync()) {
-        registryFile.createSync(recursive: true);
-      }
-      registryFile.writeAsStringSync(jsonEncode(nextRegistry.toJson()));
-    }
-
-    return nextRegistry;
+    ];
   }
+
+  static CharacterBundleSnapshot _bundleSnapshotFor(BundleMetadata? activeBundle) =>
+      activeBundle == null
+      ? const CharacterBundleSnapshot(bundleId: "")
+      : CharacterBundleSnapshot.fromBundleMetadata(activeBundle);
+
+  static CharacterRegistry _registryForDisk(CharacterRegistry registry) => registry.copyWith(
+    characters: registry.characters.removeWhere(
+      (characterId, _) => isBuiltInCharacterId(characterId),
+    ),
+  );
+
+  void _warnIfBundleNeedsAttention(CharacterStorage character, {required String context}) {
+    final compatibility = _evaluateCharacterBundleCompatibility(
+      character.bundleSnapshot,
+      ref.read(currentBundleProvider),
+    );
+    if (compatibility.kind == _CharacterBundleCompatibilityKind.compatible) {
+      return;
+    }
+
+    final activeBundleId = compatibility.activeSnapshot?.bundleId ?? "<none>";
+    final warningKey = [
+      character.characterId,
+      character.bundleSnapshot.bundleId,
+      activeBundleId,
+      compatibility.kind.name,
+      compatibility.reason.name,
+    ].join(":");
+    if (!_reportedBundleWarnings.add(warningKey)) {
+      return;
+    }
+
+    warning(
+      "Character ${character.characterId} was saved against bundle "
+      "${character.bundleSnapshot.bundleId}, but active bundle is $activeBundleId "
+      "(${compatibility.reason.name}) while $context.",
+    );
+  }
+}
+
+enum _CharacterBundleCompatibilityKind { compatible, outdated, incompatible, unavailable }
+
+enum _CharacterBundleCompatibilityReason {
+  none,
+  activeBundleUnavailable,
+  bundleIdMismatch,
+  missingComparableRevision,
+  manifestMismatch,
+  generationMismatch,
+  buildMismatch,
+  appVersionMismatch,
+}
+
+({
+  _CharacterBundleCompatibilityKind kind,
+  _CharacterBundleCompatibilityReason reason,
+  CharacterBundleSnapshot? activeSnapshot,
+})
+_evaluateCharacterBundleCompatibility(
+  CharacterBundleSnapshot savedSnapshot,
+  BundleMetadata? activeBundle,
+) {
+  if (activeBundle == null) {
+    return (
+      kind: _CharacterBundleCompatibilityKind.unavailable,
+      reason: _CharacterBundleCompatibilityReason.activeBundleUnavailable,
+      activeSnapshot: null,
+    );
+  }
+
+  final activeSnapshot = CharacterBundleSnapshot.fromBundleMetadata(activeBundle);
+  final result = _evaluateCharacterSnapshotPair(savedSnapshot, activeSnapshot);
+  return (kind: result.kind, reason: result.reason, activeSnapshot: activeSnapshot);
+}
+
+({_CharacterBundleCompatibilityKind kind, _CharacterBundleCompatibilityReason reason})
+_evaluateCharacterSnapshotPair(
+  CharacterBundleSnapshot savedSnapshot,
+  CharacterBundleSnapshot activeSnapshot,
+) {
+  if (savedSnapshot.bundleId != activeSnapshot.bundleId) {
+    return (
+      kind: _CharacterBundleCompatibilityKind.incompatible,
+      reason: _CharacterBundleCompatibilityReason.bundleIdMismatch,
+    );
+  }
+
+  if (!savedSnapshot.hasComparableRevision || !activeSnapshot.hasComparableRevision) {
+    return (
+      kind: _CharacterBundleCompatibilityKind.outdated,
+      reason: _CharacterBundleCompatibilityReason.missingComparableRevision,
+    );
+  }
+
+  if (savedSnapshot.manifestHash case final savedManifestHash?) {
+    final activeManifestHash = activeSnapshot.manifestHash;
+    if (activeManifestHash != null && savedManifestHash != activeManifestHash) {
+      return (
+        kind: _CharacterBundleCompatibilityKind.outdated,
+        reason: _CharacterBundleCompatibilityReason.manifestMismatch,
+      );
+    }
+  }
+
+  if (savedSnapshot.generateTimestamp case final savedGenerateTimestamp?) {
+    final activeGenerateTimestamp = activeSnapshot.generateTimestamp;
+    if (activeGenerateTimestamp != null && savedGenerateTimestamp != activeGenerateTimestamp) {
+      return (
+        kind: _CharacterBundleCompatibilityKind.outdated,
+        reason: _CharacterBundleCompatibilityReason.generationMismatch,
+      );
+    }
+  }
+
+  if (savedSnapshot.gameBuild case final savedGameBuild?) {
+    final activeGameBuild = activeSnapshot.gameBuild;
+    if (activeGameBuild != null && savedGameBuild != activeGameBuild) {
+      return (
+        kind: _CharacterBundleCompatibilityKind.outdated,
+        reason: _CharacterBundleCompatibilityReason.buildMismatch,
+      );
+    }
+  }
+
+  if (savedSnapshot.appVersion case final savedAppVersion?) {
+    final activeAppVersion = activeSnapshot.appVersion;
+    if (activeAppVersion != null && savedAppVersion != activeAppVersion) {
+      return (
+        kind: _CharacterBundleCompatibilityKind.outdated,
+        reason: _CharacterBundleCompatibilityReason.appVersionMismatch,
+      );
+    }
+  }
+
+  return (
+    kind: _CharacterBundleCompatibilityKind.compatible,
+    reason: _CharacterBundleCompatibilityReason.none,
+  );
 }
 
 @riverpodSingleton
