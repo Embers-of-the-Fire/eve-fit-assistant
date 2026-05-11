@@ -24,8 +24,6 @@ class CharacterSkillList extends ConsumerStatefulWidget {
 
 class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
     with AutomaticKeepAliveClientMixin {
-  static const double _filterHeaderHeight = 60;
-
   final ExpansibleController _controller = ExpansibleController();
 
   int? _selectedGroupId;
@@ -52,34 +50,8 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
       return _selectedGroupId == null || type.groupId == _selectedGroupId;
     }).toList()..sort((left, right) => left.typeId.compareTo(right.typeId));
 
-    return Stack(
+    return Column(
       children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _controller.collapse,
-          child: Column(
-            children: [
-              const SizedBox(height: _filterHeaderHeight),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(right: 10),
-                  itemCount: skills.length,
-                  itemBuilder: (context, index) {
-                    final skill = skills[index];
-                    return _SkillListTile(
-                      skill: skill,
-                      level: widget.skills[skill.typeId] ?? 0,
-                      alphaMaxLevel: skill.alphaCloneMaxLevel,
-                      onTapLevel: widget.onTapLevel == null
-                          ? null
-                          : (level) => widget.onTapLevel!(skill.typeId, level),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
         _SkillGroupFilter(
           controller: _controller,
           groups: groups,
@@ -87,6 +59,27 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
           onSelect: (groupId) => setState(() {
             _selectedGroupId = groupId == _selectedGroupId ? null : groupId;
           }),
+        ),
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _controller.collapse,
+            child: ListView.builder(
+              padding: const EdgeInsets.only(right: 10),
+              itemCount: skills.length,
+              itemBuilder: (context, index) {
+                final skill = skills[index];
+                return _SkillListTile(
+                  skill: skill,
+                  level: widget.skills[skill.typeId] ?? 0,
+                  alphaMaxLevel: skill.alphaCloneMaxLevel,
+                  onTapLevel: widget.onTapLevel == null
+                      ? null
+                      : (level) => widget.onTapLevel!(skill.typeId, level),
+                );
+              },
+            ),
+          ),
         ),
       ],
     );
