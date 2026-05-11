@@ -155,11 +155,19 @@ BundleMetadata? currentBundle(Ref ref) {
 class BundleService extends _$BundleService {
   Future<CurrentBundleStatus>? _pendingLoad;
   BundleMetadata? _mountedBundle;
+  Collection? _mountedCollection;
   String? _pendingBundleId;
   int _loadGeneration = 0;
 
   BundleMetadata? get currentBundleData => _mountedBundle;
   String? get pendingBundleId => _pendingBundleId;
+
+  Collection? collectionForBundle(String bundleId) {
+    if (_mountedBundle?.bundleId != bundleId) {
+      return null;
+    }
+    return _mountedCollection;
+  }
 
   @override
   CurrentBundleStatus build() {
@@ -185,6 +193,7 @@ class BundleService extends _$BundleService {
 
   void clearSelection() {
     _mountedBundle = null;
+    _mountedCollection = null;
     _pendingBundleId = null;
     _pendingLoad = null;
     _loadGeneration++;
@@ -247,12 +256,14 @@ class BundleService extends _$BundleService {
         }
         throw _BundleLoadFailure(registrarErrors);
       }
-      final collectionErrors = await _validateCollection(bundlePathService.getCollectionPath());
-      if (collectionErrors.isNotEmpty) {
+      final collectionResult = await _loadAndValidateCollection(
+        bundlePathService.getCollectionPath(),
+      );
+      if (collectionResult.errors.isNotEmpty) {
         if (_isCurrentLoad(bundleId, loadGeneration)) {
-          _restoreMountedBundleOrError(mountedBundle, collectionErrors);
+          _restoreMountedBundleOrError(mountedBundle, collectionResult.errors);
         }
-        throw _BundleLoadFailure(collectionErrors);
+        throw _BundleLoadFailure(collectionResult.errors);
       }
       if (_isCurrentLoad(bundleId, loadGeneration)) {
         final nextMountedBundle = BundleMetadata(
@@ -262,6 +273,7 @@ class BundleService extends _$BundleService {
           lastModified: DateTime.now(),
         );
         _mountedBundle = nextMountedBundle;
+        _mountedCollection = collectionResult.collection;
         state = CurrentBundleStatus.loaded(data: nextMountedBundle);
       }
     } on _BundleLoadFailure {
@@ -279,22 +291,27 @@ class BundleService extends _$BundleService {
   bool _isCurrentLoad(String bundleId, int loadGeneration) =>
       _pendingBundleId == bundleId && _loadGeneration == loadGeneration;
 
-  Future<IList<BundleValidationError>> _validateCollection(String collectionPath) async {
+  Future<({Collection? collection, IList<BundleValidationError> errors})>
+  _loadAndValidateCollection(String collectionPath) async {
     try {
       final collection = Collection.fromBuffer(await File(collectionPath).readAsBytes());
       final missingProfileIds = requiredBundleSkillProfileIds
           .where((profileId) => !collection.skillProfiles.containsKey(profileId))
           .toIList();
       if (missingProfileIds.isNotEmpty) {
-        return [
-          BundleValidationError.badPatch(
-            reason: "Bundle collection is missing skill profiles: ${missingProfileIds.join(", ")}",
-          ),
-        ].lock;
+        return (
+          collection: null,
+          errors: [
+            BundleValidationError.badPatch(
+              reason:
+                  "Bundle collection is missing skill profiles: ${missingProfileIds.join(", ")}",
+            ),
+          ].lock,
+        );
       }
-      return const IList.empty();
+      return (collection: collection, errors: const IList<BundleValidationError>.empty());
     } on Object catch (e) {
-      return [BundleValidationError.badDescriptor(error: e)].lock;
+      return (collection: null, errors: [BundleValidationError.badDescriptor(error: e)].lock);
     }
   }
 
@@ -309,6 +326,7 @@ class BundleService extends _$BundleService {
     }
 
     _mountedBundle = null;
+    _mountedCollection = null;
     state = CurrentBundleStatus.error(errors: errors);
   }
 }

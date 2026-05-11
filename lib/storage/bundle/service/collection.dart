@@ -242,6 +242,12 @@ class BundleCollectionService extends _$BundleCollectionService {
     }
 
     state = const BundleCollectionStatus.loading();
+    final cachedCollection = ref.read(bundleServiceProvider.notifier).collectionForBundle(bundleId);
+    if (cachedCollection != null) {
+      state = BundleCollectionStatus.loaded(BundleCollectionProxy(cachedCollection));
+      return;
+    }
+
     final file = File(filePath);
     if (!file.existsSync()) {
       warning("Collection path not found for bundle: $bundleId");
