@@ -65,6 +65,7 @@ class BundleCollectionProxy {
   Subsystem? getSubsystem(int typeId) => _collection.subsystems[typeId];
   Iterable<Subsystem> get allSubsystems => _collection.subsystems.values;
   Slots get slots => _collection.slots;
+  Map<int, int>? getSkillProfile(String profileId) => _collection.skillProfiles[profileId]?.skills;
   pb_dynamic.DynamicMutator? getDynamicMutator(int modifierTypeId) =>
       _collection.dynamicMutators[modifierTypeId];
   pb_dynamic.DynamicTypeOptions? getDynamicTypeOptions(int baseTypeId) =>
@@ -241,6 +242,12 @@ class BundleCollectionService extends _$BundleCollectionService {
     }
 
     state = const BundleCollectionStatus.loading();
+    final cachedCollection = ref.read(bundleServiceProvider.notifier).collectionForBundle(bundleId);
+    if (cachedCollection != null) {
+      state = BundleCollectionStatus.loaded(BundleCollectionProxy(cachedCollection));
+      return;
+    }
+
     final file = File(filePath);
     if (!file.existsSync()) {
       warning("Collection path not found for bundle: $bundleId");

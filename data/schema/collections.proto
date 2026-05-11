@@ -13,6 +13,10 @@ import "types.proto";
 import "fit.proto";
 
 message Collection {
+  message SkillProfile {
+    map<uint32, uint32> skills = 1;
+  }
+
   map<uint32, types.Type> types = 1;
   map<uint32, type_materials.TypeMaterial> type_materials = 2;
   map<uint32, categories.Category> categories = 3;
@@ -28,4 +32,5 @@ message Collection {
   required fit.Slots slots = 11;
   map<uint32, dynamic.DynamicMutator> dynamic_mutators = 12;
   map<uint32, dynamic.DynamicTypeOptions> dynamic_type_options = 13;
+  map<string, SkillProfile> skill_profiles = 14;
 }

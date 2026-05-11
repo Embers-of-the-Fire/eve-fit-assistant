@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 _REQUIRED_SKILL_ATTRIBUTE_IDS = [182, 183, 184, 1285, 1289, 1290]
 _REQUIRED_SKILL_LEVEL_ATTRIBUTE_IDS = [277, 278, 279, 1286, 1287, 1288]
 _SKILL_CATEGORY_ID = 16
+_PREDEFINED_MAX_SKILL_PROFILE_ID = "all_5"
+_PREDEFINED_ALPHA_MAX_SKILL_PROFILE_ID = "alpha_max"
+_PREDEFINED_ZERO_SKILL_PROFILE_ID = "all_0"
 
 
 class TypeDogmaDef(BaseModel):
@@ -219,6 +222,7 @@ async def generate(data: GeneratorDatasource, collection):
     traits = await _load_info_bubble_traits(data)
     skill_group_ids = await _load_skill_group_ids(data)
     alpha_skill_levels = await _load_alpha_skill_levels(data)
+    skill_type_ids: list[int] = []
 
     cnt = 0
     for type_id, type_def in types.items():
@@ -254,5 +258,17 @@ async def generate(data: GeneratorDatasource, collection):
 
         _apply_traits(pb, traits.get(type_id))
         collection.types[type_id].CopyFrom(pb)
+        if validated.groupID in skill_group_ids:
+            skill_type_ids.append(validated.typeID)
+
+    for skill_type_id in sorted(skill_type_ids):
+        collection.skill_profiles[_PREDEFINED_MAX_SKILL_PROFILE_ID].skills[skill_type_id] = 5
+        collection.skill_profiles[_PREDEFINED_ALPHA_MAX_SKILL_PROFILE_ID].skills[skill_type_id] = (
+            alpha_skill_levels.get(
+                skill_type_id,
+                0,
+            )
+        )
+        collection.skill_profiles[_PREDEFINED_ZERO_SKILL_PROFILE_ID].skills[skill_type_id] = 0
 
     info(f"Generated {cnt} types")
