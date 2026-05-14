@@ -187,6 +187,7 @@ class _SkillGroupCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
+        constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
         padding: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
           border: Border.all(
@@ -221,14 +222,21 @@ class _SkillListTile extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
     onTap: () => showItemDetailPage(context, typeId: skill.typeId),
     onLongPress: () => showItemDetailPage(context, typeId: skill.typeId),
-    child: Padding(
-      padding: const EdgeInsets.only(top: 5, bottom: 5, left: 25, right: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(child: TypeNameText(typeId: skill.typeId)),
-          _SkillLevelIndicator(level: level, alphaMaxLevel: alphaMaxLevel, onTapLevel: onTapLevel),
-        ],
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 5, bottom: 5, left: 25, right: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(child: TypeNameText(typeId: skill.typeId)),
+            _SkillLevelIndicator(
+              level: level,
+              alphaMaxLevel: alphaMaxLevel,
+              onTapLevel: onTapLevel,
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -237,7 +245,7 @@ class _SkillListTile extends StatelessWidget {
 class _SkillLevelIndicator extends StatelessWidget {
   const _SkillLevelIndicator({required this.level, this.alphaMaxLevel, this.onTapLevel});
 
-  static const double _hitTargetSize = 48;
+  static const double _hitTargetSize = kMinInteractiveDimension;
   static const double _pipSize = 16;
 
   final int level;
