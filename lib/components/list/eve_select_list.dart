@@ -3,6 +3,7 @@ import "package:eve_fit_assistant/components/list/select_list.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -93,6 +94,9 @@ class EveSelectList extends ConsumerWidget {
       validator: validator,
       shallSelect: shallPopToSelect,
       onSelect: onSelect,
+      returnBehavior: ref.watch(
+        appSettingServiceProvider.select((setting) => setting.typeListReturnBehavior),
+      ),
       breadcrumbBuilder: (node) =>
           Padding(padding: const .symmetric(horizontal: 4), child: _displayNode(node)),
       itemBuilder: (node, onTap) => node.when(
