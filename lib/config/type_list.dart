@@ -9,3 +9,11 @@ enum TypeListDisplayVariant {
   @JsonValue("market-group")
   marketGroup,
 }
+
+@JsonEnum(alwaysCreate: true)
+enum TypeListReturnBehavior {
+  @JsonValue("exit")
+  exit,
+  @JsonValue("previous-page")
+  previousPage,
+}
