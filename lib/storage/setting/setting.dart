@@ -24,6 +24,11 @@ abstract class AppSetting with _$AppSetting {
       defaultValue: TypeListDisplayVariant.marketGroup,
     )
     required TypeListDisplayVariant shipSelectListDisplayVariant,
+    @JsonKey(
+      unknownEnumValue: TypeListReturnBehavior.previousPage,
+      defaultValue: TypeListReturnBehavior.previousPage,
+    )
+    required TypeListReturnBehavior typeListReturnBehavior,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);

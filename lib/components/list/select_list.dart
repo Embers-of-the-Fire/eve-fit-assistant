@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/config/type_list.dart";
 import "package:flutter/material.dart";
 import "package:flutter_breadcrumb/flutter_breadcrumb.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -30,6 +31,7 @@ class SelectList<R> extends ConsumerStatefulWidget {
     this.validator,
     this.shallSelect,
     this.onSelect,
+    this.returnBehavior = TypeListReturnBehavior.previousPage,
   });
 
   /// The initial root node to display.
@@ -55,6 +57,9 @@ class SelectList<R> extends ConsumerStatefulWidget {
 
   /// Callback when a node is selected (and not drilled into).
   final void Function(R node)? onSelect;
+
+  /// Controls how system back behaves inside nested list levels.
+  final TypeListReturnBehavior returnBehavior;
 
   @override
   ConsumerState<SelectList<R>> createState() => _SelectListState<R>();
@@ -176,6 +181,14 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
     _loadChildrenForCurrentRoot();
   }
 
+  void _popPreviousRoot() {
+    if (_history.isEmpty) return;
+    setState(() {
+      _currentRoot = _history.removeLast();
+    });
+    _loadChildrenForCurrentRoot();
+  }
+
   Widget _buildBreadcrumbItem(R node) => widget.breadcrumbBuilder(node);
 
   List<BreadCrumbItem> _buildBreadcrumbItems() {
@@ -189,37 +202,46 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
     return items;
   }
 
+  bool get _canPopRoute => widget.returnBehavior == TypeListReturnBehavior.exit || _history.isEmpty;
+
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Container(
-        width: double.infinity,
-        padding: const .symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+  Widget build(BuildContext context) => PopScope(
+    canPop: _canPopRoute,
+    onPopInvokedWithResult: (didPop, _) {
+      if (didPop || _canPopRoute) return;
+      _popPreviousRoot();
+    },
+    child: Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const .symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+          ),
+          child: BreadCrumb(
+            items: _buildBreadcrumbItems(),
+            divider: const Icon(Icons.chevron_right, size: 18),
+            overflow: ScrollableOverflow(keepLastDivider: true),
+          ),
         ),
-        child: BreadCrumb(
-          items: _buildBreadcrumbItems(),
-          divider: const Icon(Icons.chevron_right, size: 18),
-          overflow: ScrollableOverflow(keepLastDivider: true),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _children.length,
+            itemBuilder: (ctx, i) {
+              final node = _children[i];
+              return widget.itemBuilder(node, () {
+                final shallSelect = widget.shallSelect?.call(node) ?? false;
+                if (shallSelect) {
+                  widget.onSelect?.call(node);
+                  return;
+                }
+                _pushRoot(node);
+              });
+            },
+          ),
         ),
-      ),
-      Expanded(
-        child: ListView.builder(
-          itemCount: _children.length,
-          itemBuilder: (ctx, i) {
-            final node = _children[i];
-            return widget.itemBuilder(node, () {
-              final shallSelect = widget.shallSelect?.call(node) ?? false;
-              if (shallSelect) {
-                widget.onSelect?.call(node);
-                return;
-              }
-              _pushRoot(node);
-            });
-          },
-        ),
-      ),
-    ],
+      ],
+    ),
   );
 }

@@ -29,6 +29,7 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(LocaleTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionSelectList),
         const ConfigListTile.custom(ShipCreateListTile()),
+        const ConfigListTile.custom(ListReturnBehaviorTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
         const ConfigListTile.custom(DebugLogTile()),
       ],
