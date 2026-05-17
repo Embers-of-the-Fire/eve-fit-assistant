@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/pages/setting/bundle-manager/page.dart";
 import "package:eve_fit_assistant/pages/view.dart";
 import "package:eve_fit_assistant/pages/workspace/create-fit/page.dart";
+import "package:eve_fit_assistant/storage/bundle/impact.dart";
 import "package:flutter/material.dart";
 
 part "router.gr.dart";

@@ -45,16 +45,19 @@ Future<bool> confirmBundleImpactWarning(
 
 @RoutePage()
 class BundleImpactDetailPage extends ConsumerWidget {
-  const BundleImpactDetailPage({required this.bundleId, super.key});
+  const BundleImpactDetailPage({required this.bundleId, this.report, super.key});
 
   final String bundleId;
+  final BundleImpactReport? report;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final report = ref.watch(bundleSwitchImpactProvider(bundleId));
+    final routeReport = report;
+    final BundleImpactReport detailReport =
+        routeReport ?? ref.watch(bundleSwitchImpactProvider(bundleId));
     return Layout(
       title: context.l10n.bundleImpactDetailPageTitle,
-      child: _BundleImpactDetailList(report: report),
+      child: _BundleImpactDetailList(report: detailReport),
     );
   }
 }
@@ -110,7 +113,9 @@ class _BundleImpactWarningDialogState extends State<_BundleImpactWarningDialog> 
           context.nav.pop(
             BundleImpactWarningResult(continueAction: false, dontShowAgain: _dontShowAgain),
           );
-          unawaited(context.router.push(BundleImpactDetailRoute(bundleId: bundleId)));
+          unawaited(
+            context.router.push(BundleImpactDetailRoute(bundleId: bundleId, report: widget.report)),
+          );
         },
         child: Text(context.l10n.showDetails),
       ),
