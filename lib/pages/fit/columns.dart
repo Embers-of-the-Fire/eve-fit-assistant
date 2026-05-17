@@ -100,6 +100,11 @@ class FitDisplayColumns extends ConsumerWidget {
 
         return FilledButton.tonalIcon(
           onPressed: () async {
+            final report = ref.read(bundleSwitchImpactProvider(bundleId));
+            final confirmed = await confirmBundleImpactWarning(context, ref, report);
+            if (!confirmed) {
+              return;
+            }
             await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
             if (!context.mounted) return;
 

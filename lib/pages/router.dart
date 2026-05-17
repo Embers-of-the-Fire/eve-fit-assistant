@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/pages/setting/bundle-manager/page.dart";
 import "package:eve_fit_assistant/pages/view.dart";
 import "package:eve_fit_assistant/pages/workspace/create-fit/page.dart";
+import "package:eve_fit_assistant/storage/bundle/impact.dart";
 import "package:flutter/material.dart";
 
 part "router.gr.dart";
@@ -22,6 +23,7 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/version", page: VersionRoute.page),
     AutoRoute(path: "/setting/bundle-manager", page: BundleManagerRoute.page),
     AutoRoute(path: "/setting/bundle-manager/:bundleId", page: BundleDetailRoute.page),
+    AutoRoute(path: "/setting/bundle-manager/:bundleId/impact", page: BundleImpactDetailRoute.page),
     AutoRoute(path: "/announcement", page: AnnouncementRoute.page),
     AutoRoute(path: "/fitting/current", page: FitRoute.page),
   ];
