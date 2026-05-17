@@ -18,9 +18,7 @@ class _BundleTile extends ConsumerWidget {
           ClickableCircleAvatar(
             onTap: (!(activated || pending)).then(
               () =>
-                  () => unawaited(
-                    ref.read(bundleManagerProvider.notifier).selectBundle(bundle.bundleId),
-                  ),
+                  () => unawaited(_selectBundleWithImpactWarning(context, ref, bundle.bundleId)),
             ),
             backgroundColor: activated.thenSome(colorGreen),
             child: Icon(Icons.archive, color: context.theme.colorScheme.onPrimaryContainer),
@@ -127,6 +125,19 @@ class _BundleTile extends ConsumerWidget {
       ),
     ),
   );
+
+  Future<void> _selectBundleWithImpactWarning(
+    BuildContext context,
+    WidgetRef ref,
+    String bundleId,
+  ) async {
+    final report = ref.read(bundleSwitchImpactProvider(bundleId));
+    final confirmed = await confirmBundleImpactWarning(context, ref, report);
+    if (!confirmed) {
+      return;
+    }
+    await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
+  }
 }
 
 class _BundleMetadataText extends StatelessWidget {
