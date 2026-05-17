@@ -3,8 +3,11 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/bundle/impact.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
+import "package:eve_fit_assistant/storage/character/manager.dart";
+import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/utils/extract.dart";
 import "package:eve_fit_assistant/utils/file.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -237,7 +240,11 @@ class BundleManager extends _$BundleManager {
     );
   }
 
-  Future<void> addBundle(String bundlePath, {Future<bool> Function()? confirmOverwrite}) async {
+  Future<void> addBundle(
+    String bundlePath, {
+    Future<bool> Function()? confirmOverwrite,
+    Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+  }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       late final _PreparedBundleArtifact artifact;
@@ -260,6 +267,36 @@ class BundleManager extends _$BundleManager {
         if (descriptor.isIncremental) {
           final registrar = await _readRegistrar(targetDir);
           _validateIncrementalCompatibility(descriptor, registrar);
+          final patchHasPayload = await _incrementalPatchHasPayload(
+            bundleCachePath,
+            artifact.deletedFiles,
+          );
+          if (patchHasPayload) {
+            final report = analyzeBundleImpact(
+              fitRegistry: ref.read(fitRegistryManagerProvider),
+              characterRegistry: ref.read(characterRegistryManagerProvider),
+              target: BundleImpactTarget(
+                kind: BundleImpactTargetKind.incrementalImport,
+                sourceBundle: BundleMetadata(
+                  bundleId: bundleId,
+                  paths: BundleServicePaths(targetDir.path),
+                  lastModified: DateTime.now(),
+                  metadata: registrar,
+                ),
+                targetBundle: bundleMetadataFromDescriptor(
+                  descriptor: descriptor,
+                  registrar: registrar,
+                  paths: BundleServicePaths(targetDir.path),
+                ),
+                incrementalPatchHasPayload: true,
+              ),
+            );
+            final confirmed = await confirmIncrementalImpact?.call(report) ?? true;
+            if (!confirmed) {
+              info("Aborting incremental bundle import for $bundleId");
+              return DateTime.now();
+            }
+          }
           info("Importing incremental bundle $bundleId: $descriptor");
           await deletePaths(targetDir, artifact.deletedFiles);
           final deletedFilesPath = File(
@@ -307,6 +344,28 @@ class BundleManager extends _$BundleManager {
 
       return DateTime.now();
     });
+  }
+
+  static Future<bool> _incrementalPatchHasPayload(
+    Directory bundleCachePath,
+    IList<String> deletedFiles,
+  ) async {
+    if (deletedFiles.isNotEmpty) {
+      return true;
+    }
+    await for (final entity in bundleCachePath.list(recursive: true, followLinks: false)) {
+      if (entity is! File) {
+        continue;
+      }
+      final relativePath = p.relative(entity.path, from: bundleCachePath.path);
+      if (relativePath == "descriptor.json" ||
+          relativePath == "manifest.json" ||
+          relativePath == "deleted_files.json") {
+        continue;
+      }
+      return true;
+    }
+    return false;
   }
 
   Future<void> removeBundle(String bundleId) async {

@@ -37,6 +37,7 @@ class BundleManagerPage extends ConsumerWidget {
         .read(bundleManagerProvider.notifier)
         .addBundle(
           selected.path,
+          confirmIncrementalImpact: (report) => confirmBundleImpactWarning(context, ref, report),
           confirmOverwrite: () async {
             if (!context.mounted) return false;
             return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
