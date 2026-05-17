@@ -24,6 +24,7 @@ abstract class AppSetting with _$AppSetting {
       defaultValue: TypeListDisplayVariant.marketGroup,
     )
     required TypeListDisplayVariant shipSelectListDisplayVariant,
+    @JsonKey(defaultValue: true) required bool showBundleImpactWarnings,
     @JsonKey(
       unknownEnumValue: TypeListReturnBehavior.previousPage,
       defaultValue: TypeListReturnBehavior.previousPage,
