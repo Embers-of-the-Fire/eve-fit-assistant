@@ -21,6 +21,7 @@ Please use the configuration files to configure the tool, or pass parameters dir
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import subprocess
@@ -725,6 +726,14 @@ def remote_config():
     """Remote mock configuration commands."""
 
 
+def __redact_remote_config(config: dict[str, object]) -> dict[str, object]:
+    redacted = dict(config)
+    for key in ("minio_access_key", "minio_secret_key"):
+        if key in redacted:
+            redacted[key] = "<redacted>"
+    return redacted
+
+
 @remote_config.command("display")
 @click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
 def remote_config_display(pretty: bool):
@@ -737,7 +746,7 @@ def remote_config_display(pretty: bool):
     static_origin_url = f"http://{remote_cfg.host}:{remote_cfg.static_port}"
     minio_origin_url = f"http://{remote_cfg.host}:{remote_cfg.minio_port}/{remote_cfg.minio_bucket}"
     payload = {
-        "remote": remote_cfg.model_dump(mode="json"),
+        "remote": __redact_remote_config(remote_cfg.model_dump(mode="json")),
         "resolved": {
             "developerRoot": str(paths.root),
             "mockOriginPath": str(origin_path),
@@ -754,8 +763,6 @@ def remote_config_display(pretty: bool):
             ),
         },
     }
-    import json
-
     click.echo(json.dumps(payload, indent=4 if pretty else None))
 
 
