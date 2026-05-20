@@ -58,6 +58,7 @@ app.*.map.json
 # dev-specific configurations
 .env
 .efa.cache
+cache/
 
 # rust
 /target
@@ -68,4 +69,3 @@ __pycache__/
 # nix
 /.direnv
 .envrc
-

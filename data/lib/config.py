@@ -19,6 +19,7 @@ import tomllib
 from typing import Any
 
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import ValidationError
 
@@ -77,6 +78,8 @@ class ProjectConfiguration(BaseModel):
 
 
 class DeveloperPaths(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
     root: ProjectPath = Field(default="cache")
     log: str = Field(default="log")
     workspaces: str = Field(default="workspaces")
@@ -105,11 +108,15 @@ class DeveloperWorkspace(BaseModel):
 
 
 class DeveloperBuild(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
     skip_hash: bool = Field(default=False)
     baseline: ProjectPath | None = Field(default=None)
 
 
 class DeveloperNative(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
     fsd_format: str = Field(default="msgpack")
     fsd_binary_dir: ProjectPath | None = Field(default=None)
     fsd_loc_en_dir: ProjectPath | None = Field(default=None)
