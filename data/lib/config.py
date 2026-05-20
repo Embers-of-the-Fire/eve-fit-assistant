@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import tomllib
 
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -131,8 +132,8 @@ class DeveloperRemote(BaseModel):
     minio_bucket: str = Field(default="efa-dev")
     minio_access_key: str = Field(default="minioadmin")
     minio_secret_key: str = Field(default="minioadmin")
-    mock_origin_dir: ProjectPath = Field(default="remote/mock-origin")
-    minio_data_dir: ProjectPath = Field(default="remote/minio-data")
+    mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))
+    minio_data_dir: Path = Field(default=Path("remote/minio-data"))
 
 
 class DeveloperConfiguration(BaseModel):
