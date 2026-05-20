@@ -30,3 +30,23 @@ fsd_format = "msgpack"
 fsd_binary_dir = "data/resources/tranquility/fsd"
 fsd_loc_en_dir = "cache/workspaces/tranquility/index-cache/resources/localizationfsd/localization_fsd_en-us.pickle"
 output_dir = "cache/workspaces/tranquility/native"
+
+[remote]
+# Settings used by `./x remote` to materialize and launch local remote mocks.
+resource_root = "efa/v1"
+channel = "alpha"
+
+# Static HTTP mock defaults.
+host = "127.0.0.1"
+static_port = 8765
+
+# MinIO mock defaults. These credentials are for local development only.
+minio_port = 9000
+minio_console_port = 9001
+minio_bucket = "efa-dev"
+minio_access_key = "minioadmin"
+minio_secret_key = "minioadmin"
+
+# Paths are resolved relative to [paths].root unless absolute.
+mock_origin_dir = "remote/mock-origin"
+minio_data_dir = "remote/minio-data"
