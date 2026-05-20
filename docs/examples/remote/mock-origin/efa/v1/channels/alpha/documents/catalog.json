@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "entries": [
+    {
+      "id": "remote-announcement-2026-05-maintenance",
+      "kind": "announcement",
+      "source": "remote",
+      "publishedAt": "2026-05-20T00:00:00Z",
+      "tags": ["announcement", "mock"],
+      "startup": true,
+      "minAppVer": "0.0.1",
+      "appVer": null,
+      "localizations": {
+        "en": {
+          "title": "Remote mock maintenance notice",
+          "summary": "A mock remote announcement served from the local origin.",
+          "bodyPath": "documents/body/en/remote-announcement-2026-05-maintenance.md"
+        },
+        "zh": {
+          "title": "远程模拟维护公告",
+          "summary": "一条由本地源提供的远程公告模拟内容。",
+          "bodyPath": "documents/body/zh/remote-announcement-2026-05-maintenance.md"
+        }
+      }
+    },
+    {
+      "id": "version-alpha-0-0-2",
+      "kind": "version",
+      "source": "remote",
+      "publishedAt": "2026-05-20T00:00:00Z",
+      "tags": ["version", "mock"],
+      "startup": false,
+      "minAppVer": null,
+      "appVer": "0.0.2",
+      "localizations": {
+        "en": {
+          "title": "Version 0.0.2 remote notes",
+          "summary": "A mock remote version note for launcher validation.",
+          "bodyPath": "documents/body/en/version-alpha-0-0-2.md"
+        },
+        "zh": {
+          "title": "版本 0.0.2 远程说明",
+          "summary": "用于启动器验证的远程版本说明模拟内容。",
+          "bodyPath": "documents/body/zh/version-alpha-0-0-2.md"
+        }
+      }
+    }
+  ]
+}

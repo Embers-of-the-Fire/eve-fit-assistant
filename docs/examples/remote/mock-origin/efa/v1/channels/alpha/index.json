@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-20T00:00:00Z",
+  "minClientApi": 1,
+  "channel": "alpha",
+  "region": "global",
+  "documents": {
+    "catalogPath": "channels/alpha/documents/catalog.json",
+    "revision": "docs-mock-20260520"
+  },
+  "app": {
+    "releasesPath": "channels/alpha/app/releases.json",
+    "revision": "app-mock-0.0.2"
+  },
+  "bundles": {
+    "catalogPath": "channels/alpha/bundles/catalog.json",
+    "revision": "bundles-mock-empty"
+  }
+}
