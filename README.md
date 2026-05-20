@@ -246,7 +246,7 @@ Important rules:
 
 - Full bundles are standalone; incremental patches are not.
 - An incremental patch can only be imported onto an installed bundle with the matching baseline manifest.
-- If you run `./x build data --no-hash` or set `EFA_SKIP_FULL_MANIFEST_UPDATE=true`, the build will not produce a usable baseline manifest for patch generation.
+- If you run `./x build data --no-hash`, set `build.skip_hash = true` in `efa.dev.toml`, or set the legacy `EFA_SKIP_FULL_MANIFEST_UPDATE=true` environment variable, the build will not produce a usable baseline manifest for patch generation.
 - Always keep the manifest that was published with the last accepted bundle state; that is the input for the next patch build.
 
 #### Hack through workspace management
