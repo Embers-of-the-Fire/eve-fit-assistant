@@ -365,7 +365,7 @@ Field semantics:
 - `artifactSha256`: bundle archive SHA-256 digest.
 - `manifestPath`: relative path to the bundle manifest snapshot.
 - `manifestHash`: SHA-256 digest of the bundle manifest snapshot.
-- `baseBundleId`: required installed bundle id for incremental artifacts.
+- `baseBundleId`: bundle id that must already be installed before applying an incremental artifact.
 - `baseManifestHash`: required installed manifest hash for incremental artifacts.
 
 Bundle download and import behavior is outside this contract, but `artifactSize` and
