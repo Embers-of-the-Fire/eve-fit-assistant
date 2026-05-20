@@ -12,6 +12,7 @@
         inherit system;
         config = {
           allowUnfree = true;
+          permittedInsecurePackages = [ "minio-2025-10-15T17-29-55Z" ];
           android_sdk.accept_license = true;
         };
       };
