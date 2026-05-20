@@ -21,10 +21,15 @@ Please use the configuration files to configure the tool, or pass parameters dir
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 import shutil
+import subprocess
 import sys
+import time
 
 from pathlib import Path
+from urllib.request import urlopen
 
 import click
 
@@ -87,6 +92,57 @@ def __execute_command(cmd: list, title: str, capture_stdout: bool = False) -> st
     global DRY_RUN
 
     return execute_command(cmd, title, DRY_RUN, capture_stdout)
+
+
+def __resolve_dev_path(path: Path) -> Path:
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    if path.is_absolute():
+        return path
+    return data.lib.config.DEV_CONFIGURATION.paths.root / path
+
+
+def __resource_root(value: str) -> str:
+    return value.strip("/")
+
+
+def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: str) -> str:
+    return (
+        f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel}/index.json"
+    )
+
+
+def __wait_for_http(url: str, timeout_seconds: float = 20.0) -> None:
+    deadline = time.monotonic() + timeout_seconds
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            with urlopen(url, timeout=1.0):
+                return
+        except Exception as exception:
+            last_error = exception
+            time.sleep(0.25)
+
+    message = f"Timed out waiting for {url}"
+    if last_error is not None:
+        message += f": {last_error}"
+    raise click.ClickException(message)
+
+
+def __run_foreground(process: subprocess.Popen[str], interrupted_message: str) -> None:
+    try:
+        return_code = process.wait()
+    except KeyboardInterrupt:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        click.echo(styled([Style.BRIGHT, Fore.YELLOW], interrupted_message))
+        return
+
+    if return_code != 0:
+        raise click.ClickException(f"Remote mock process exited with status {return_code}.")
 
 
 @click.group(
@@ -658,6 +714,267 @@ def dev_env_write_backend():
     lines = [f"{key}={value}" for key, value in values.items()]
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Wrote backend env: ") + str(env_path))
+
+
+@cli.group(cls=ClickAliasedGroup)
+def remote():
+    """Remote mock and publishing helper commands."""
+
+
+@remote.group("config", cls=ClickAliasedGroup)
+def remote_config():
+    """Remote mock configuration commands."""
+
+
+def __redact_remote_config(config: dict[str, object]) -> dict[str, object]:
+    redacted = dict(config)
+    for key in ("minio_access_key", "minio_secret_key"):
+        if key in redacted:
+            redacted[key] = "<redacted>"
+    return redacted
+
+
+@remote_config.command("display")
+@click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
+def remote_config_display(pretty: bool):
+    """Print effective remote developer configuration."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    paths = data.lib.config.DEV_CONFIGURATION.paths
+    origin_path = __resolve_dev_path(remote_cfg.mock_origin_dir)
+    minio_data_path = __resolve_dev_path(remote_cfg.minio_data_dir)
+    static_origin_url = f"http://{remote_cfg.host}:{remote_cfg.static_port}"
+    minio_origin_url = f"http://{remote_cfg.host}:{remote_cfg.minio_port}/{remote_cfg.minio_bucket}"
+    payload = {
+        "remote": __redact_remote_config(remote_cfg.model_dump(mode="json")),
+        "resolved": {
+            "developerRoot": str(paths.root),
+            "mockOriginPath": str(origin_path),
+            "minioDataPath": str(minio_data_path),
+            "staticIndexUrl": __remote_channel_index_url(
+                origin_url=static_origin_url,
+                resource_root=remote_cfg.resource_root,
+                channel=remote_cfg.channel,
+            ),
+            "minioIndexUrl": __remote_channel_index_url(
+                origin_url=minio_origin_url,
+                resource_root=remote_cfg.resource_root,
+                channel=remote_cfg.channel,
+            ),
+        },
+    }
+    click.echo(json.dumps(payload, indent=4 if pretty else None))
+
+
+@remote.group(cls=ClickAliasedGroup)
+def mock():
+    """Remote mock origin commands."""
+
+
+def __materialize_remote_mock(origin_dir: Path, clean: bool) -> None:
+    source_dir = PROJECT_ROOT / "docs" / "examples" / "remote" / "mock-origin"
+    if not source_dir.exists():
+        raise click.ClickException(f"Missing remote mock fixture directory: {source_dir}")
+
+    if clean and origin_dir.exists():
+        shutil.rmtree(origin_dir)
+
+    origin_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source_dir, origin_dir, dirs_exist_ok=True)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Materialized remote mock origin: ") + str(origin_dir)
+    )
+
+
+@mock.command("materialize")
+@click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--clean", is_flag=True, default=False, help="Remove the origin directory first.")
+def remote_mock_materialize(origin_dir: Path | None, clean: bool):
+    """Copy committed remote mock fixtures into the configured origin directory."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
+    __materialize_remote_mock(resolved_origin_dir, clean)
+
+
+def __start_static_remote_mock(host: str, port: int, origin_dir: Path) -> None:
+    python = get_command("python3")
+    command = [
+        python,
+        "-m",
+        "http.server",
+        str(port),
+        "--bind",
+        host,
+        "--directory",
+        str(origin_dir),
+    ]
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + " ".join(command))
+    if DRY_RUN:
+        return
+    process = subprocess.Popen(command, text=True)
+    __run_foreground(process, "\nStatic remote mock interrupted by user.")
+
+
+def __start_minio_remote_mock(
+    *,
+    host: str,
+    port: int,
+    console_port: int,
+    origin_dir: Path,
+    data_dir: Path,
+    bucket: str,
+    access_key: str,
+    secret_key: str,
+    clean_bucket: bool,
+) -> None:
+    data_dir.mkdir(parents=True, exist_ok=True)
+    endpoint = f"http://{host}:{port}"
+    console_endpoint = f"http://{host}:{console_port}"
+    command = [
+        "minio",
+        "server",
+        str(data_dir),
+        "--address",
+        f"{host}:{port}",
+        "--console-address",
+        f"{host}:{console_port}",
+    ]
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + " ".join(command))
+    if DRY_RUN:
+        return
+
+    minio = get_command("minio")
+    mc = get_command("mc")
+    command[0] = minio
+    env = os.environ.copy()
+    env["MINIO_ROOT_USER"] = access_key
+    env["MINIO_ROOT_PASSWORD"] = secret_key
+    process = subprocess.Popen(command, env=env, text=True)
+    try:
+        __wait_for_http(f"{endpoint}/minio/health/ready")
+        alias_name = "efa-remote-mock"
+        setup_commands = [
+            [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
+            [mc, "mb", "--ignore-existing", "-p", f"{alias_name}/{bucket}"],
+        ]
+        if clean_bucket:
+            setup_commands.append([mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}"])
+        setup_commands.append([mc, "anonymous", "set", "download", f"{alias_name}/{bucket}"])
+        setup_commands.append(
+            [mc, "mirror", "--overwrite", str(origin_dir), f"{alias_name}/{bucket}"]
+        )
+        for setup_command in setup_commands:
+            __execute_command(setup_command, "MINIO MOCK SETUP")
+
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO console: ") + console_endpoint)
+        __run_foreground(process, "\nMinIO remote mock interrupted by user.")
+    except Exception:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        raise
+
+
+@mock.command("launch")
+@click.option(
+    "--backend",
+    type=click.Choice(["static", "minio"], case_sensitive=False),
+    default="static",
+    show_default=True,
+)
+@click.option("--host", default=None, help="Override remote mock host.")
+@click.option("--port", type=int, default=None, help="Override static or MinIO API port.")
+@click.option("--console-port", type=int, default=None, help="Override MinIO console port.")
+@click.option("--bucket", default=None, help="Override MinIO bucket name.")
+@click.option("--access-key", default=None, help="Override MinIO access key.")
+@click.option("--secret-key", default=None, help="Override MinIO secret key.")
+@click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+@click.option("--channel", default=None, help="Override remote channel.")
+@click.option(
+    "--no-materialize", is_flag=True, default=False, help="Do not refresh origin fixtures."
+)
+@click.option(
+    "--clean-origin", is_flag=True, default=False, help="Clean origin before materializing."
+)
+@click.option(
+    "--clean-bucket", is_flag=True, default=False, help="Clean MinIO bucket before mirroring."
+)
+def remote_mock_launch(
+    backend: str,
+    host: str | None,
+    port: int | None,
+    console_port: int | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    origin_dir: Path | None,
+    data_dir: Path | None,
+    resource_root: str | None,
+    channel: str | None,
+    no_materialize: bool,
+    clean_origin: bool,
+    clean_bucket: bool,
+):
+    """Launch a local remote mock through static HTTP or MinIO."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_host = host or remote_cfg.host
+    resolved_resource_root = resource_root or remote_cfg.resource_root
+    resolved_channel = channel or remote_cfg.channel
+    resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
+
+    if not no_materialize:
+        __materialize_remote_mock(resolved_origin_dir, clean_origin)
+    elif not resolved_origin_dir.exists():
+        raise click.ClickException(f"Remote mock origin does not exist: {resolved_origin_dir}")
+
+    if backend.lower() == "static":
+        resolved_port = port or remote_cfg.static_port
+        origin_url = f"http://{resolved_host}:{resolved_port}"
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
+            + __remote_channel_index_url(
+                origin_url=origin_url,
+                resource_root=resolved_resource_root,
+                channel=resolved_channel,
+            )
+        )
+        __start_static_remote_mock(resolved_host, resolved_port, resolved_origin_dir)
+        return
+
+    resolved_port = port or remote_cfg.minio_port
+    resolved_console_port = console_port or remote_cfg.minio_console_port
+    resolved_bucket = bucket or remote_cfg.minio_bucket
+    resolved_access_key = access_key or remote_cfg.minio_access_key
+    resolved_secret_key = secret_key or remote_cfg.minio_secret_key
+    resolved_data_dir = __resolve_dev_path(data_dir or remote_cfg.minio_data_dir)
+    origin_url = f"http://{resolved_host}:{resolved_port}/{resolved_bucket}"
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
+        + __remote_channel_index_url(
+            origin_url=origin_url,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO data path: ") + str(resolved_data_dir))
+    __start_minio_remote_mock(
+        host=resolved_host,
+        port=resolved_port,
+        console_port=resolved_console_port,
+        origin_dir=resolved_origin_dir,
+        data_dir=resolved_data_dir,
+        bucket=resolved_bucket,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+        clean_bucket=clean_bucket,
+    )
 
 
 @cli.group(aliases=["env"], cls=ClickAliasedGroup)

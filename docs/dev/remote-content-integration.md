@@ -128,3 +128,72 @@ Remote content integration should preserve these local metadata responsibilities
   after bundle switches or patches.
 - Bundle archives and installed bundle directories remain data assets, not app binary or runtime code
   updates.
+
+## Local Remote Mock Launcher
+
+The repository provides a local mock origin for manual remote endpoint integration. The mock provides
+the storage layout; app-side consumption is implemented by the follow-up remote sync work.
+
+Committed fixture source:
+
+```text
+docs/examples/remote/mock-origin/
+```
+
+Runtime origin output defaults to:
+
+```text
+cache/remote/mock-origin/
+```
+
+Materialize the mock fixture tree:
+
+```bash
+./x remote mock materialize
+```
+
+Launch a static HTTP mock:
+
+```bash
+./x remote mock launch --backend static
+```
+
+Default channel index URL:
+
+```text
+http://127.0.0.1:8765/efa/v1/channels/alpha/index.json
+```
+
+Launch an S3-compatible MinIO mock:
+
+```bash
+./x remote mock launch --backend minio
+```
+
+Default MinIO channel index URL:
+
+```text
+http://127.0.0.1:9000/efa-dev/efa/v1/channels/alpha/index.json
+```
+
+Inspect effective remote mock configuration:
+
+```bash
+./x remote config display --pretty
+```
+
+The launcher reads defaults from `efa.dev.toml`, with CLI arguments taking precedence for a single
+invocation. Configure the default ports, bucket, credentials, channel, resource root, mock origin
+directory, and MinIO data directory in the `[remote]` section of `efa.dev.toml`. The default MinIO
+data directory is `cache/remote/minio-data/`, so object storage persists across launcher restarts.
+
+Useful overrides:
+
+```bash
+./x remote mock launch --backend static --port 8876
+./x remote mock launch --backend minio --port 9100 --console-port 9101 --bucket efa-test
+./x remote mock launch --backend minio --data-dir cache/remote/alternate-minio
+```
+
+The mock launcher uses local development credentials only. Production R2, OSS, or S3-compatible
+credentials belong in release tooling and must not be shipped in the app.

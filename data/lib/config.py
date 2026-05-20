@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import tomllib
 
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -119,11 +120,28 @@ class DeveloperNative(BaseModel):
     output_dir: ProjectPath | None = Field(default=None)
 
 
+class DeveloperRemote(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
+    resource_root: str = Field(default="efa/v1")
+    channel: str = Field(default="alpha")
+    host: str = Field(default="127.0.0.1")
+    static_port: int = Field(default=8765)
+    minio_port: int = Field(default=9000)
+    minio_console_port: int = Field(default=9001)
+    minio_bucket: str = Field(default="efa-dev")
+    minio_access_key: str = Field(default="minioadmin")
+    minio_secret_key: str = Field(default="minioadmin")
+    mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))
+    minio_data_dir: Path = Field(default=Path("remote/minio-data"))
+
+
 class DeveloperConfiguration(BaseModel):
     paths: DeveloperPaths = Field(default_factory=DeveloperPaths)
     workspace: DeveloperWorkspace = Field(default_factory=DeveloperWorkspace)
     build: DeveloperBuild = Field(default_factory=DeveloperBuild)
     native: DeveloperNative = Field(default_factory=DeveloperNative)
+    remote: DeveloperRemote = Field(default_factory=DeveloperRemote)
 
     @staticmethod
     def load_from_global():

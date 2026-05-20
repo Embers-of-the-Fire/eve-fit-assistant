@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "releases": [
+    {
+      "platform": "android",
+      "channel": "alpha",
+      "appVersion": "0.0.2",
+      "buildNumber": 2,
+      "publishedAt": "2026-05-20T00:00:00Z",
+      "minimumSupportedVersion": "0.0.1",
+      "releaseNoteDocumentId": "version-alpha-0-0-2",
+      "downloadUrl": null,
+      "sha256": null
+    }
+  ]
+}

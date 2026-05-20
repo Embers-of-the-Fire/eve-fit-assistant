@@ -470,22 +470,28 @@ efa/v1/bundles/**
 
 ## Local Mock Layout
 
-Local static mocks should use the same object layout as production storage:
+Local static mocks should use the same object layout as production storage. The committed fixture
+source lives under:
 
 ```text
-temp/remote-content-integration/mock-origin/efa/v1/channels/alpha/index.json
-temp/remote-content-integration/mock-origin/efa/v1/channels/alpha/documents/catalog.json
-temp/remote-content-integration/mock-origin/efa/v1/channels/alpha/app/releases.json
-temp/remote-content-integration/mock-origin/efa/v1/channels/alpha/bundles/catalog.json
-temp/remote-content-integration/mock-origin/efa/v1/documents/body/en/example.md
-temp/remote-content-integration/mock-origin/efa/v1/bundles/tranquility/example.zip
-temp/remote-content-integration/mock-origin/efa/v1/bundles/tranquility/example.manifest.json
+docs/examples/remote/mock-origin/
+```
+
+`./x remote mock materialize` copies that fixture tree into the developer mock origin directory.
+With the default `efa.dev.toml` values, the runtime layout is:
+
+```text
+cache/remote/mock-origin/efa/v1/channels/alpha/index.json
+cache/remote/mock-origin/efa/v1/channels/alpha/documents/catalog.json
+cache/remote/mock-origin/efa/v1/channels/alpha/app/releases.json
+cache/remote/mock-origin/efa/v1/channels/alpha/bundles/catalog.json
+cache/remote/mock-origin/efa/v1/documents/body/en/remote-announcement-2026-05-maintenance.md
 ```
 
 Static HTTP mock endpoint:
 
 ```bash
-python3 -m http.server 8765 --directory temp/remote-content-integration/mock-origin
+./x remote mock launch --backend static
 ```
 
 Channel index URL:
@@ -496,9 +502,19 @@ http://127.0.0.1:8765/efa/v1/channels/alpha/index.json
 
 MinIO-style bucket endpoint:
 
+```bash
+./x remote mock launch --backend minio
+```
+
+Channel index URL:
+
 ```text
 http://127.0.0.1:9000/efa-dev/efa/v1/channels/alpha/index.json
 ```
+
+The MinIO object store persists under the configured developer data directory. With the default
+configuration this is `cache/remote/minio-data/`. Change `[paths].root` or
+`[remote].minio_data_dir` in `efa.dev.toml` to move that persistent store.
 
 ## Compatibility And Evolution
 
