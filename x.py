@@ -37,7 +37,9 @@ from watchfiles import awatch
 
 from data.lib.codegen import CODEGEN_DART
 from data.lib.constant import DEFAULT_WORKSPACE_MANIFEST_ENV_VAR
+from data.lib.constant import DEV_CONFIG_PATH
 from data.lib.constant import I18N_ROOT
+from data.lib.constant import NATIVE_LIB_ROOT
 from data.lib.constant import PROJECT_ROOT
 from data.lib.constant import SKIP_FULL_MANIFEST_UPDATE_ENV_VAR
 from data.lib.etc.codeart import generate_codeart
@@ -560,9 +562,86 @@ def dogma_units_cmd(ctx: click.Context):
         ctx.invoke(format_cmd)
 
 
+def __env_install():
+    protoc_gen_dart = get_command("protoc-gen-dart")
+    if protoc_gen_dart is None:
+        click.echo(
+            styled([Style.BRIGHT, Fore.RED], "Warning: ") + "protoc-gen-dart not found, installing"
+        )
+        dart = get_command("dart")
+        __execute_command(
+            [dart, "pub", "global", "activate", "protoc_plugin"], "DART ACTIVATE OUTPUT"
+        )
+
+    uv = get_command("uv")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync")
+    __execute_command([uv, "sync"], "UV SYNC OUTPUT")
+
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub get")
+    __execute_command([flutter, "pub", "get"], "FLUTTER PUB GET OUTPUT")
+
+
+@cli.group(cls=ClickAliasedGroup)
+def dev():
+    """Developer environment commands."""
+
+
+@dev.command("init-cfg")
+def dev_init_cfg():
+    """Create efa.dev.toml from the example template."""
+    if DEV_CONFIG_PATH.exists():
+        click.echo(
+            styled([Style.BRIGHT, Fore.YELLOW], "Warning: ") + "efa.dev.toml already exists."
+        )
+        return
+
+    template = PROJECT_ROOT / "efa.dev.example.toml"
+    shutil.copyfile(template, DEV_CONFIG_PATH)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Created developer config: ") + str(DEV_CONFIG_PATH)
+    )
+
+
+@dev.group(cls=ClickAliasedGroup)
+def env():
+    """Developer environment setup commands."""
+
+
+@env.command("install")
+def dev_env_install():
+    """Install all tools in the current environment."""
+    __env_install()
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment setup completed successfully."))
+
+
+@env.command("write-backend")
+def dev_env_write_backend():
+    """Write rust/lib/eve-fit-os/.env from efa.dev.toml."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    native = data.lib.config.DEV_CONFIGURATION.native
+
+    values = {
+        "FSD_FORMAT": native.fsd_format,
+        "FSD_BINARY_DIR": native.fsd_binary_dir,
+        "FSD_LOC_EN_DIR": native.fsd_loc_en_dir,
+        "OUTPUT_DIR": native.output_dir,
+    }
+    missing = [key for key, value in values.items() if value is None]
+    if len(missing) > 0:
+        raise click.ClickException(
+            "Missing native developer config value(s): " + ", ".join(sorted(missing))
+        )
+
+    env_path = NATIVE_LIB_ROOT / ".env"
+    lines = [f"{key}={value}" for key, value in values.items()]
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Wrote backend env: ") + str(env_path))
+
+
 @cli.group(aliases=["env"], cls=ClickAliasedGroup)
 def environment():
-    """Environment related commands."""
+    """Environment related commands. Prefer `x dev env`."""
 
 
 @environment.command(
@@ -805,26 +884,8 @@ def add(ctx: click.Context, python, rust, dart, dry_run):
 
 @environment.command()
 def install():
-    """Install all tools in the current environment."""
-
-    protoc_gen_dart = get_command("protoc-gen-dart")
-    if protoc_gen_dart is None:
-        click.echo(
-            styled([Style.BRIGHT, Fore.RED], "Warning: ") + "protoc-gen-dart not found, installing"
-        )
-        dart = get_command("dart")
-        __execute_command(
-            [dart, "pub", "global", "activate", "protoc_plugin"], "DART ACTIVATE OUTPUT"
-        )
-
-    uv = get_command("uv")
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync")
-    __execute_command([uv, "sync"], "UV SYNC OUTPUT")
-
-    flutter = get_command("flutter")
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub get")
-    __execute_command([flutter, "pub", "get"], "FLUTTER PUB GET OUTPUT")
-
+    """Install all tools in the current environment. Prefer `x dev env install`."""
+    __env_install()
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment setup completed successfully."))
 
 
@@ -873,6 +934,9 @@ def data_cmd(skip: list[str], no_hash: bool):
     """Build data files."""
     from data.lib.workspace.generate import run_generator
 
+    if not no_hash:
+        no_hash = data.lib.config.DEV_CONFIGURATION.build.skip_hash
+
     to_skip = set()
     for it in skip:
         for i in it.split(","):
@@ -900,12 +964,20 @@ def build_docs_cmd():
 
 
 @build.command("increment", aliases=["inc", "incremental"])
-@click.argument("baseline_manifest_path", envvar=DEFAULT_WORKSPACE_MANIFEST_ENV_VAR)
-def build_increment_cmd(baseline_manifest_path: str):
+@click.argument("baseline_manifest_path", required=False, envvar=DEFAULT_WORKSPACE_MANIFEST_ENV_VAR)
+def build_increment_cmd(baseline_manifest_path: str | None):
     """Build incremental patch bundle."""
     from data.lib.workspace.build_increment import build_increment_bundle
 
-    baseline_manifest = Path(baseline_manifest_path)
+    if baseline_manifest_path is None:
+        baseline_manifest = data.lib.config.DEV_CONFIGURATION.build.baseline
+        if baseline_manifest is None:
+            raise click.ClickException(
+                "Missing baseline manifest. Pass one as an argument or set build.baseline in efa.dev.toml."
+            )
+    else:
+        baseline_manifest = Path(baseline_manifest_path)
+
     build_increment_bundle(__get_current_workspace_descriptor(), baseline_manifest)
 
 
