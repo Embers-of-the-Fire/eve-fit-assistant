@@ -114,7 +114,7 @@ zip path to `BundleManager.addBundle(...)` rather than duplicate the import path
 It validates expected bundle paths, reads `registrar.json`, loads `static/collection.pb2`, and
 exposes `BundleMetadata` to the rest of the app.
 
-The global bundle registry is stored in `<settingsPath>/bundles.json`. Importing a bundle registers
+The global bundle registry is stored in `<resourcesPath>/bundles.json`. Importing a bundle registers
 it but does not automatically switch the active bundle when another bundle is already selected.
 
 ## Local Metadata To Preserve
