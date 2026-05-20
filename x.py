@@ -582,6 +582,20 @@ def __env_install():
     __execute_command([flutter, "pub", "get"], "FLUTTER PUB GET OUTPUT")
 
 
+def __env_upgrade():
+    uv = get_command("uv")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync --upgrade")
+    __execute_command([uv, "sync", "--upgrade"], "UV UPGRADE OUTPUT")
+
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub upgrade")
+    __execute_command([flutter, "pub", "upgrade"], "FLUTTER PUB UPGRADE OUTPUT")
+
+    cargo = get_command("cargo")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "cargo update")
+    __execute_command([cargo, "update"], "CARGO UPDATE OUTPUT")
+
+
 @cli.group(cls=ClickAliasedGroup)
 def dev():
     """Developer environment commands."""
@@ -615,6 +629,13 @@ def dev_env_install():
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment setup completed successfully."))
 
 
+@env.command("upgrade", aliases=["update"])
+def dev_env_upgrade():
+    """Upgrade all tools in the current environment."""
+    __env_upgrade()
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment upgrade completed successfully."))
+
+
 @env.command("write-backend")
 def dev_env_write_backend():
     """Write rust/lib/eve-fit-os/.env from efa.dev.toml."""
@@ -644,11 +665,12 @@ def environment():
     """Environment related commands. Prefer `x dev env`."""
 
 
-@environment.command(
+@env.command(
+    "add",
     context_settings={
         "ignore_unknown_options": True,
         "allow_extra_args": True,
-    }
+    },
 )
 @click.option(
     "--python",
@@ -662,7 +684,7 @@ def environment():
     "--rs",
     is_flag=True,
     default=False,
-    help="Treat all arguments as python packages.\nThis will forward the command to `uv add`.",
+    help="Treat all arguments as rust packages.\nThis will forward the command to `cargo add`.",
 )
 @click.option(
     "--dart",
@@ -670,11 +692,11 @@ def environment():
     "--fl",
     is_flag=True,
     default=False,
-    help="Treat all arguments as python packages.\nThis will forward the command to `uv add`.",
+    help="Treat all arguments as dart packages.\nThis will forward the command to `flutter pub add`.",
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show the command without executing.")
 @click.pass_context
-def add(ctx: click.Context, python, rust, dart, dry_run):
+def dev_env_add(ctx: click.Context, python, rust, dart, dry_run):
     """Add new tool to the current environment.
 
     This command accept the following syntax:
@@ -882,6 +904,41 @@ def add(ctx: click.Context, python, rust, dart, dry_run):
         )
 
 
+@environment.command(
+    context_settings={
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    }
+)
+@click.option(
+    "--python",
+    "--py",
+    is_flag=True,
+    default=False,
+    help="Treat all arguments as python packages.\nThis will forward the command to `uv add`.",
+)
+@click.option(
+    "--rust",
+    "--rs",
+    is_flag=True,
+    default=False,
+    help="Treat all arguments as rust packages.\nThis will forward the command to `cargo add`.",
+)
+@click.option(
+    "--dart",
+    "--flutter",
+    "--fl",
+    is_flag=True,
+    default=False,
+    help="Treat all arguments as dart packages.\nThis will forward the command to `flutter pub add`.",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Show the command without executing.")
+@click.pass_context
+def add(ctx: click.Context, python, rust, dart, dry_run):
+    """Add new tool to the current environment. Prefer `x dev env add`."""
+    dev_env_add.callback(python, rust, dart, dry_run)
+
+
 @environment.command()
 def install():
     """Install all tools in the current environment. Prefer `x dev env install`."""
@@ -891,20 +948,8 @@ def install():
 
 @environment.command(aliases=["update"])
 def upgrade():
-    """Upgrade all tools in the current environment."""
-
-    uv = get_command("uv")
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync --upgrade")
-    __execute_command([uv, "sync", "--upgrade"], "UV UPGRADE OUTPUT")
-
-    flutter = get_command("flutter")
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub upgrade")
-    __execute_command([flutter, "pub", "upgrade"], "FLUTTER PUB UPGRADE OUTPUT")
-
-    cargo = get_command("cargo")
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "cargo update")
-    __execute_command([cargo, "update"], "CARGO UPDATE OUTPUT")
-
+    """Upgrade all tools in the current environment. Prefer `x dev env upgrade`."""
+    __env_upgrade()
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment upgrade completed successfully."))
 
 
