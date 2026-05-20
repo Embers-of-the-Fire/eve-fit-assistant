@@ -81,26 +81,22 @@ class DeveloperPaths(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
     root: ProjectPath = Field(default="cache")
-    log: str = Field(default="log")
-    workspaces: str = Field(default="workspaces")
-    generated: str = Field(default="generated")
-    output: str = Field(default="output")
 
     @property
     def log_path(self) -> ProjectPath:
-        return self.root / self.log
+        return self.root / "log"
 
     def workspace_root_path(self, workspace_id: str) -> ProjectPath:
-        return self.root / self.workspaces / workspace_id
+        return self.root / "workspaces" / workspace_id
 
     def workspace_cache_path(self, workspace_id: str) -> ProjectPath:
         return self.workspace_root_path(workspace_id)
 
     def workspace_generated_path(self, workspace_id: str) -> ProjectPath:
-        return self.workspace_root_path(workspace_id) / self.generated
+        return self.workspace_root_path(workspace_id) / "generated"
 
     def workspace_output_path(self, workspace_id: str) -> ProjectPath:
-        return self.workspace_root_path(workspace_id) / self.output
+        return self.workspace_root_path(workspace_id) / "output"
 
 
 class DeveloperWorkspace(BaseModel):

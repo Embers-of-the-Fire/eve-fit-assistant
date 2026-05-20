@@ -6,18 +6,12 @@
 [paths]
 # `root` is the parent directory for local mutable project state.
 # Relative paths are resolved against the project root.
+# The subdirectory layout is fixed:
+# - `log` stores Python logs.
+# - `workspaces/<workspace>` stores per-workspace cache files.
+# - `workspaces/<workspace>/generated` stores generated bundle content.
+# - `workspaces/<workspace>/output` stores built bundle archives.
 root = "cache"
-
-# `log` is stored under `paths.root`.
-log = "log"
-
-# `workspaces` is the parent directory for per-workspace local state.
-# For example, Tranquility cache files are stored under `cache/workspaces/tranquility`.
-workspaces = "workspaces"
-
-# `generated` and `output` are per-workspace subdirectories.
-generated = "generated"
-output = "output"
 
 [workspace]
 # Default workspace used by `./x` when `.efa.cache` has no saved default.

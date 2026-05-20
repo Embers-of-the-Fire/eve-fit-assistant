@@ -107,9 +107,11 @@ The `efa.config.toml` is checked in, which means changing server
 support is also viewed as a breaking change.
 The `efa.dev.toml` is private local configuration and must not be checked in.
 It owns local mutable paths such as logs and workspace build/cache output.
+Only `paths.root` is configurable; the sub-root layout is fixed.
 For example, if `efa.dev.toml` sets `paths.root = "cache"`, then workspace
 state is placed under `./cache/workspaces/tranquility`,
-`./cache/workspaces/serenity`, and so on.
+`./cache/workspaces/serenity`, and so on, while logs are placed under
+`./cache/log`.
 
 **Important**:
 The backend engine, `eve-fit-os` still uses `.env` files to generate
