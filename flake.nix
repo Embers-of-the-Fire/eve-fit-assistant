@@ -66,6 +66,8 @@
           pkg-config
           cmake
           ninja
+          minio
+          minio-client
           clang
           llvmPackages.libclang
           protobuf
