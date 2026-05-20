@@ -60,10 +60,16 @@ Field semantics:
 - `channel`: content stream selected by the client.
 - `region`: optional content or deployment filter, such as `global` or `cn`.
 
+URL joining must be deterministic. Clients and publishers should treat `originUrl` as the only
+component allowed to carry an optional trailing slash, then trim any trailing slash before appending
+`resourceRoot` and relative paths. `resourceRoot` and all relative payload paths must not start with
+`/`. This avoids double-slash paths such as `https://updates.example.com//efa/v1/...`, which can be
+resolved differently by strict object storage backends, CDNs, and HTTP clients.
+
 The effective channel index URL is:
 
 ```text
-<originUrl>/<resourceRoot>/channels/<channel>/index.json
+<trimTrailingSlash(originUrl)>/<resourceRoot>channels/<channel>/index.json
 ```
 
 Example:
