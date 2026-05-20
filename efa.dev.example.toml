@@ -1,0 +1,38 @@
+# EFA local developer configuration example
+# This file is for local paths, private settings, and developer shortcuts.
+# Copy this file to `efa.dev.toml` and adjust values for your machine.
+# The real `efa.dev.toml` is ignored by Git and should not be checked in.
+
+[paths]
+# `root` is the parent directory for local mutable project state.
+# Relative paths are resolved against the project root.
+root = "cache"
+
+# `log` is stored under `paths.root`.
+log = "log"
+
+# `workspaces` is the parent directory for per-workspace local state.
+# For example, Tranquility cache files are stored under `cache/workspaces/tranquility`.
+workspaces = "workspaces"
+
+# `generated` and `output` are per-workspace subdirectories.
+generated = "generated"
+output = "output"
+
+[workspace]
+# Default workspace used by `./x` when `.efa.cache` has no saved default.
+default = "tranquility"
+
+[build]
+# Shortcut default for `./x build data --no-hash`.
+skip_hash = false
+
+# Shortcut default for `./x build increment <baseline>`.
+baseline = "cache/workspaces/tranquility/output/bundle_manifest.json"
+
+[native]
+# Settings used to generate the backend `.env` file for local Rust tooling.
+fsd_format = "msgpack"
+fsd_binary_dir = "data/resources/tranquility/fsd"
+fsd_loc_en_dir = "cache/workspaces/tranquility/index-cache/resources/localizationfsd/localization_fsd_en-us.pickle"
+output_dir = "cache/workspaces/tranquility/native"
