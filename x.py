@@ -719,6 +719,13 @@ def dev_env_add(ctx: click.Context, python, rust, dart, dry_run):
         If not specified, the package won't be installed.
     """
 
+    if dry_run:
+        click.echo(
+            styled([Style.BRIGHT, Fore.YELLOW], "Warning: ")
+            + "--dry-run is not supported for env add; no package manager command was executed."
+        )
+        return
+
     if len(list(filter(None, [python, rust, dart]))) > 1:
         click.echo(
             styled([Style.BRIGHT, Fore.RED], "Invalid usage: ")
