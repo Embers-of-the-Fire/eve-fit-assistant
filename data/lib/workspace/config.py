@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tomllib
 
-from pathlib import Path  # noqa:TC003
+from pathlib import Path
 from typing import Annotated
 from typing import Literal
 
@@ -10,24 +10,29 @@ from pydantic import BaseModel
 from pydantic import BeforeValidator
 from pydantic import Field
 
+import data.lib.config
+
 from data.lib.log import error
 from data.lib.log import warning
 from data.lib.validator import validate_url_template
 
 
 class WorkspacePaths(BaseModel):
-    cache: Path
-    generated: Path
-    output: Path
+    cache: Path = Field(default_factory=Path)
+    generated: Path = Field(default_factory=Path)
+    output: Path = Field(default_factory=Path)
 
-    def resolve(self, descriptor_root: Path, no_check: bool = False):
-        if not self.cache.is_absolute():
-            self.cache = (descriptor_root / self.cache).resolve()
-        if not self.generated.is_absolute():
-            self.generated = (descriptor_root / self.generated).resolve()
-        if not self.output.is_absolute():
-            self.output = (descriptor_root / self.output).resolve()
+    @staticmethod
+    def from_dev_config(workspace_id: str) -> WorkspacePaths:
+        data.lib.config.DeveloperConfiguration.ensure_loaded()
+        paths = data.lib.config.DEV_CONFIGURATION.paths
+        return WorkspacePaths(
+            cache=paths.workspace_cache_path(workspace_id),
+            generated=paths.workspace_generated_path(workspace_id),
+            output=paths.workspace_output_path(workspace_id),
+        )
 
+    def ensure_exists(self, no_check: bool = False):
         if no_check:
             return
 
@@ -139,7 +144,7 @@ class WorkspaceServices(BaseModel):
 
 class WorkspaceConfig(BaseModel):
     ignore: bool = Field(default=False)
-    paths: WorkspacePaths
+    paths: WorkspacePaths = Field(default_factory=WorkspacePaths)
     metadata: WorkspaceMetadata
     resources: WorkspaceResources
     services: WorkspaceServices
@@ -170,6 +175,7 @@ class WorkspaceConfig(BaseModel):
         return workspace_config
 
     def resolve(self, descriptor_root: Path, no_check: bool = False):
-        self.paths.resolve(descriptor_root, no_check)
         self.metadata.resolve(descriptor_root, no_check)
+        self.paths = WorkspacePaths.from_dev_config(self.metadata.identifier)
+        self.paths.ensure_exists(no_check)
         self.resources.resolve(descriptor_root, no_check)

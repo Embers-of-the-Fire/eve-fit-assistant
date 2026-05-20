@@ -10,19 +10,6 @@
 # Default: `false`
 ignore = true
 
-[paths]
-# The `paths` section defines the file paths for the resource.
-# You can use absolute paths or paths relative to the **resource directory**.
-
-# The directory to store downloaded files.
-cache = "cache"
-
-# The directory to store generated files.
-generated = "generated"
-
-# The directory to store final bundled files.
-output = "output"
-
 [metadata]
 # The `metadata` section contains additional information about the resource.
 # This information is required and will be used by the bundler and the application.

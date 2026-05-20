@@ -5,6 +5,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 CONFIG_PATH = PROJECT_ROOT / "efa.config.toml"
+DEV_CONFIG_PATH = PROJECT_ROOT / "efa.dev.toml"
 CACHE_CONFIG_PATH = PROJECT_ROOT / ".efa.cache"
 ASSETS_ROOT = PROJECT_ROOT / "assets"
 

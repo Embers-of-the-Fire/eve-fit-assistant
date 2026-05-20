@@ -6,6 +6,9 @@ used when developing EFA locally.
 
 The config file should be `<project root>/efa.config.toml`.
 See `<project root>/efa.config.example.toml` for more information.
+
+The optional developer config file should be `<project root>/efa.dev.toml`.
+See `<project root>/efa.dev.example.toml` for more information.
 """
 
 from __future__ import annotations
@@ -16,16 +19,19 @@ import tomllib
 from typing import Any
 
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import ValidationError
 
 from data.lib.constant import CACHE_CONFIG_PATH
 from data.lib.constant import CONFIG_PATH
+from data.lib.constant import DEV_CONFIG_PATH
 from data.lib.localization import LocalizationModel  # noqa:TC001
 from data.lib.validator import ProjectPath  # noqa:TC001
 
 
 CONFIGURATION: ProjectConfiguration | None = None
+DEV_CONFIGURATION: DeveloperConfiguration | None = None
 WORKSPACE_CACHE: WorkspaceCache | None = None
 
 
@@ -71,6 +77,77 @@ class ProjectConfiguration(BaseModel):
             ProjectConfiguration.load_from_global()
 
 
+class DeveloperPaths(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
+    root: ProjectPath = Field(default="cache")
+
+    @property
+    def log_path(self) -> ProjectPath:
+        return self.root / "log"
+
+    def workspace_root_path(self, workspace_id: str) -> ProjectPath:
+        return self.root / "workspaces" / workspace_id
+
+    def workspace_cache_path(self, workspace_id: str) -> ProjectPath:
+        return self.workspace_root_path(workspace_id)
+
+    def workspace_generated_path(self, workspace_id: str) -> ProjectPath:
+        return self.workspace_root_path(workspace_id) / "generated"
+
+    def workspace_output_path(self, workspace_id: str) -> ProjectPath:
+        return self.workspace_root_path(workspace_id) / "output"
+
+
+class DeveloperWorkspace(BaseModel):
+    default: str | None = Field(default=None)
+
+
+class DeveloperBuild(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
+    skip_hash: bool = Field(default=False)
+    baseline: ProjectPath | None = Field(default=None)
+
+
+class DeveloperNative(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
+    fsd_format: str = Field(default="msgpack")
+    fsd_binary_dir: ProjectPath | None = Field(default=None)
+    fsd_loc_en_dir: ProjectPath | None = Field(default=None)
+    output_dir: ProjectPath | None = Field(default=None)
+
+
+class DeveloperConfiguration(BaseModel):
+    paths: DeveloperPaths = Field(default_factory=DeveloperPaths)
+    workspace: DeveloperWorkspace = Field(default_factory=DeveloperWorkspace)
+    build: DeveloperBuild = Field(default_factory=DeveloperBuild)
+    native: DeveloperNative = Field(default_factory=DeveloperNative)
+
+    @staticmethod
+    def load_from_global():
+        cfg = {}
+        try:
+            with open(DEV_CONFIG_PATH, "rb") as cfg_f:
+                cfg = tomllib.load(cfg_f)
+        except FileNotFoundError:
+            pass
+
+        try:
+            global DEV_CONFIGURATION
+            DEV_CONFIGURATION = DeveloperConfiguration.model_validate(cfg)
+        except ValidationError as e:
+            print(f"Invalid developer configuration format: {e!r}")
+            raise
+
+    @staticmethod
+    def ensure_loaded():
+        global DEV_CONFIGURATION
+        if DEV_CONFIGURATION is None:
+            DeveloperConfiguration.load_from_global()
+
+
 class WorkspaceCache(BaseModel):
     default_workspace: str | None = Field(default=None)
 
@@ -92,6 +169,10 @@ class WorkspaceCache(BaseModel):
         try:
             global WORKSPACE_CACHE
             WORKSPACE_CACHE = WorkspaceCache.model_validate(cache)
+            DeveloperConfiguration.ensure_loaded()
+            if WORKSPACE_CACHE.default_workspace is None:
+                WORKSPACE_CACHE.default_workspace = DEV_CONFIGURATION.workspace.default
+                WORKSPACE_CACHE.current_workspace = WORKSPACE_CACHE.default_workspace
         except ValidationError as e:
             print(f"Invalid cache format: {e!r}")
             raise

@@ -41,14 +41,14 @@ LOGGER = logging.getLogger("EFA")
 
 if len(LOGGER.handlers) == 0:
     data.lib.config.ProjectConfiguration.ensure_loaded()
-    if not data.lib.config.CONFIGURATION.paths.log.exists():
-        data.lib.config.CONFIGURATION.paths.log.mkdir(parents=True, exist_ok=True)
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    log_path = data.lib.config.DEV_CONFIGURATION.paths.log_path
+    if not log_path.exists():
+        log_path.mkdir(parents=True, exist_ok=True)
 
     LOGGER.setLevel(logging.DEBUG)
     log_filename = f"{time.strftime('%Y%m%d-%H%M%S')}.log"
-    file_handler = logging.FileHandler(
-        data.lib.config.CONFIGURATION.paths.log / log_filename, mode="w", encoding="utf-8"
-    )
+    file_handler = logging.FileHandler(log_path / log_filename, mode="w", encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
 
     console_handler = logging.StreamHandler(sys.stderr)
