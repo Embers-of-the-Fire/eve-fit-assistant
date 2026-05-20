@@ -57,6 +57,7 @@ app.*.map.json
 
 # dev-specific configurations
 .env
+efa.dev.toml
 .efa.cache
 cache/
 

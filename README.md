@@ -85,42 +85,55 @@ uv sync          # init python
 Before building the app, you need to do some configuration.
 
 The app uses multiple configurations files to manage the build.
-There're mainly two types of configuration files:
+There're mainly three types of configuration files:
 
 - Toml files, which are checked in the repo.
   These files are used to configure the build process regardless
   of the environment.
+- Dev Toml files, which are not checked in the repo.
+  These files configure local paths, private settings, and developer shortcuts.
 - Env files, which are not checked in the repo.
-  These files are used to configure the build process,
-  but vary in different environments.
+  These files are kept for tools that still read dotenv files directly.
 
 Any configuration file comes with a template file:
 
 - `.env` -> `.env.example`
 - `efa.config.toml` -> `efa.config.example.toml`
+- `efa.dev.toml` -> `efa.dev.example.toml`
 - `data/resources/*/descriptor.toml` -> `data/resources/example/descriptor.toml`.
 
 **Version Control**:
 The `efa.config.toml` is checked in, which means changing server
 support is also viewed as a breaking change.
+The `efa.dev.toml` is private local configuration and must not be checked in.
+It owns local mutable paths such as logs and workspace build/cache output.
+For example, if `efa.dev.toml` sets `paths.root = "cache"`, then workspace
+state is placed under `./cache/workspaces/tranquility`,
+`./cache/workspaces/serenity`, and so on.
 
 **Important**:
-The backend engine, `eve-fit-os` uses `.env` files to generate
+The backend engine, `eve-fit-os` still uses `.env` files to generate
 data and compile the rust code.
 However, that project is not configured to support multi-datasource.
 To solve this problem, the build CI/CD will internally write some
 variables to the environment when building the backend.
 But, as the LSP and linter need to build the backend too,
-you need to manually write mock variables to your local `.env` file.
+you need local mock variables for backend builds.
+Set the `[native]` section in `efa.dev.toml`, then run:
+
+```bash
+./x dev env write-backend
+```
+
 For this project, we suggest you to use the `tranquility` datasource
-for local development, which means the `rust/lib/eve-fit-os/.env` file
-should look like this:
+for local development, which means the generated `rust/lib/eve-fit-os/.env`
+file should look like this:
 
 ```env
-FSD_BINARY_DIR=/home/admin/develop/eve-fit-assistant/data/resources/tranquility/fsd
+FSD_BINARY_DIR=/home/admin/develop/eve-fit-assistant/eve-fit-assistant/data/resources/tranquility/fsd
 FSD_FORMAT=msgpack
-FSD_LOC_EN_DIR=/home/admin/develop/data/bundle-cache/tq/index-cache/resources/localizationfsd/localization_fsd_en-us.pickle
-OUTPUT_DIR=/home/admin/develop/eve-fit-assistant/data/resources/tranquility/out
+FSD_LOC_EN_DIR=/home/admin/develop/eve-fit-assistant/eve-fit-assistant/cache/workspaces/tranquility/index-cache/resources/localizationfsd/localization_fsd_en-us.pickle
+OUTPUT_DIR=/home/admin/develop/eve-fit-assistant/eve-fit-assistant/cache/workspaces/tranquility/native
 ```
 
 ### Build
@@ -170,6 +183,9 @@ For example, you can run `./x lint` to lint the whole project.
 
 Common manager commands:
 
+- `./x dev init-cfg`: copy `efa.dev.example.toml` to `efa.dev.toml`.
+- `./x dev env install`: install project dependencies for local development.
+- `./x dev env write-backend`: generate the backend `.env` from `efa.dev.toml`.
 - `./x lint`: run the canonical fix, lint, and format pass.
 - `./x format`: format project sources without lint checks.
 - `./x generate all -f`: regenerate protobuf, Rust bridge, Dart generated files,
@@ -188,14 +204,14 @@ you can add a new subcommand to the manager instead.
 
 ### Dev-Only Environment
 
-You can set some environment variables to simplify the development process.
-It's strongly not recommended to use these variables in production builds.
+You can set local developer defaults in `efa.dev.toml` to simplify the development process.
+It's strongly not recommended to use these values in production builds.
 
-See [`.env.example`](./.env.example) for more information.
+See [`efa.dev.example.toml`](./efa.dev.example.toml) for more information.
 
-- `EFA_SKIP_FULL_MANIFEST_UPDATE`: A shortcut env-var for `x build data --no-hash`.
+- `build.skip_hash`: A shortcut default for `x build data --no-hash`.
   This disables snapshot manifest generation, so incremental patch bundles cannot be produced from that build output.
-- `EFA_DEFAULT_WORKSPACE_MANIFEST`: A shortcut env-var for `x build inc <BASELINE_MANIFEST>`.
+- `build.baseline`: A shortcut default for `x build inc <BASELINE_MANIFEST>`.
   This sets the default baseline manifest path used for incremental patch builds.
 
 Full data builds now emit `bundle_manifest.json` beside the bundle archive.
