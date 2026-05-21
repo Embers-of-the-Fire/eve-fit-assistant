@@ -18,6 +18,7 @@ part "setting.g.dart";
 abstract class RemoteContentSetting with _$RemoteContentSetting {
   const factory RemoteContentSetting({
     @Default(false) bool enabled,
+    @Default(false) bool exposed,
     @Default("") String originUrl,
     @Default("efa/v1/") String resourceRoot,
     @Default("alpha") String channel,
