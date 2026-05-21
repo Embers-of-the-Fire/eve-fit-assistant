@@ -694,6 +694,24 @@
   "appSettingsPageShipSelectTypeDescription": "选择舰船时使用的列表格式。\n按组别分类会按照游戏中的物品组进行分类。\n按市场组别分类会按照市场中的分组进行分类。",
   "appSettingsPageListReturnBehaviorTitle": "列表返回行为",
   "appSettingsPageListReturnBehaviorDescription": "选择在嵌套选择列表中触发系统返回时的行为。返回上一级会先回到上一个列表层级，然后再关闭列表；退出列表会直接关闭选择器。",
+  "appSettingsPageSectionRemoteContent": "远程内容",
+  "appSettingsPageRemoteContentEnabledTitle": "启用远程内容",
+  "appSettingsPageRemoteContentEnabledDescription": "当运行时同步可用时，允许应用从配置的远程源发现文档、版本和数据包元数据。",
+  "appSettingsPageRemoteContentEndpointTitle": "远程内容端点",
+  "appSettingsPageRemoteContentEndpointDescription": "源：{origin}\n根路径：{resourceRoot}\n频道：{channel}\n区域：{region}",
+  "@appSettingsPageRemoteContentEndpointDescription": {
+    "placeholders": {
+      "origin": { "type": "String" },
+      "resourceRoot": { "type": "String" },
+      "channel": { "type": "String" },
+      "region": { "type": "String" }
+    }
+  },
+  "appSettingsPageRemoteContentNotSet": "未设置",
+  "appSettingsPageRemoteContentOriginUrlLabel": "源 URL",
+  "appSettingsPageRemoteContentResourceRootLabel": "资源根路径",
+  "appSettingsPageRemoteContentChannelLabel": "频道",
+  "appSettingsPageRemoteContentRegionLabel": "区域",
   "appSettingsPageSectionDeveloper": "开发者选项",
   "appSettingsPageDebugLogTitle": "启用调试日志",
   "appSettingsPageDebugLogDescription": "启用调试日志后，应用将会输出所有日志到日志目录中。\n建议仅当开发者要求开启此功能时才开启。",

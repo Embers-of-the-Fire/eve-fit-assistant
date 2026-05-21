@@ -33,7 +33,6 @@ abstract class AppSetting with _$AppSetting {
   const factory AppSetting({
     @JsonKey(unknownEnumValue: Locale.en) required Locale locale,
     @JsonKey(defaultValue: false) required bool enableDebugLog,
-    @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @JsonKey(
       unknownEnumValue: TypeListDisplayVariant.marketGroup,
       defaultValue: TypeListDisplayVariant.marketGroup,
@@ -45,6 +44,7 @@ abstract class AppSetting with _$AppSetting {
       defaultValue: TypeListReturnBehavior.previousPage,
     )
     required TypeListReturnBehavior typeListReturnBehavior,
+    @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);

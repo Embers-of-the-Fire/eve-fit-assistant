@@ -326,6 +326,24 @@
   "appSettingsPageShipSelectTypeDescription": "The list format used when selecting ships.\nCategory grouping organizes ships based on in-game item categories.\nMarket group grouping organizes ships based on market groups.",
   "appSettingsPageListReturnBehaviorTitle": "List Back Action",
   "appSettingsPageListReturnBehaviorDescription": "Choose what the system back action does inside nested selector lists. Previous Page steps back through list groups before closing. Exit List closes the selector immediately.",
+  "appSettingsPageSectionRemoteContent": "Remote Content",
+  "appSettingsPageRemoteContentEnabledTitle": "Enable Remote Content",
+  "appSettingsPageRemoteContentEnabledDescription": "Allow the app to discover documents, releases, and bundle metadata from a configured remote origin when runtime sync is available.",
+  "appSettingsPageRemoteContentEndpointTitle": "Remote Content Endpoint",
+  "appSettingsPageRemoteContentEndpointDescription": "Origin: {origin}\nRoot: {resourceRoot}\nChannel: {channel}\nRegion: {region}",
+  "@appSettingsPageRemoteContentEndpointDescription": {
+    "placeholders": {
+      "origin": { "type": "String" },
+      "resourceRoot": { "type": "String" },
+      "channel": { "type": "String" },
+      "region": { "type": "String" }
+    }
+  },
+  "appSettingsPageRemoteContentNotSet": "Not set",
+  "appSettingsPageRemoteContentOriginUrlLabel": "Origin URL",
+  "appSettingsPageRemoteContentResourceRootLabel": "Resource Root",
+  "appSettingsPageRemoteContentChannelLabel": "Channel",
+  "appSettingsPageRemoteContentRegionLabel": "Region",
   "bundleManagerPageTitle": "Bundle Manager",
   "bundleImportOverwriteTitle": "Replace existing bundle?",
   "bundleManagerBundleAppVersion": "App Version: ",

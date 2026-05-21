@@ -16,6 +16,7 @@ import "package:font_awesome_flutter/font_awesome_flutter.dart";
 part "debug_log.dart";
 part "impact_warning.dart";
 part "locale.dart";
+part "remote_content.dart";
 part "select_list.dart";
 
 @RoutePage()
@@ -34,6 +35,9 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(ListReturnBehaviorTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionBundle),
         const ConfigListTile.custom(BundleImpactWarningTile()),
+        ConfigListTile.title(context.l10n.appSettingsPageSectionRemoteContent),
+        const ConfigListTile.custom(RemoteContentEnabledTile()),
+        const ConfigListTile.custom(RemoteContentEndpointTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
         const ConfigListTile.custom(DebugLogTile()),
       ],
