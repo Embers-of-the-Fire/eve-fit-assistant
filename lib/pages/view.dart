@@ -11,20 +11,23 @@ import "package:eve_fit_assistant/pages/setting/page.dart";
 import "package:eve_fit_assistant/pages/workspace/page.dart";
 import "package:eve_fit_assistant/storage/bundle/guard.dart";
 import "package:eve_fit_assistant/storage/loading_indicator.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 @RoutePage()
-class FrontPage extends StatefulWidget {
+class FrontPage extends ConsumerStatefulWidget {
   const FrontPage({super.key});
 
   @override
-  State<FrontPage> createState() => _FrontPageState();
+  ConsumerState<FrontPage> createState() => _FrontPageState();
 }
 
-class _FrontPageState extends State<FrontPage> {
+class _FrontPageState extends ConsumerState<FrontPage> {
+  static const int _settingsUnlockTapCount = 5;
   int _currentIndex = 0;
+  int _settingsTapCount = 0;
   final PageController _pageController = PageController();
 
   @override
@@ -108,13 +111,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[0],
                           label: pageTitles[0],
                           selected: _currentIndex == 0,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                         _NavItem(
@@ -122,13 +119,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[1],
                           label: pageTitles[1],
                           selected: _currentIndex == 1,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                       ],
@@ -144,13 +135,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[2],
                           label: pageTitles[2],
                           selected: _currentIndex == 2,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                         _NavItem(
@@ -158,13 +143,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[3],
                           label: pageTitles[3],
                           selected: _currentIndex == 3,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                       ],
@@ -176,6 +155,30 @@ class _FrontPageState extends State<FrontPage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _selectPage(int index) {
+    if (index == 3 && !ref.read(appSettingServiceProvider).remoteContent.exposed) {
+      _settingsTapCount += 1;
+      if (_settingsTapCount >= _settingsUnlockTapCount) {
+        ref
+            .read(appSettingServiceProvider.notifier)
+            .update((setting) => setting.copyWith.remoteContent(exposed: true));
+      }
+    }
+    unawaited(
+      _pageController
+          .animateToPage(
+            index,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          )
+          .then((_) {
+            if (mounted) {
+              setState(() => _currentIndex = index);
+            }
+          }),
     );
   }
 }

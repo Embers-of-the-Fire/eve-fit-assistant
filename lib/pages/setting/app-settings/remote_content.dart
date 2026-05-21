@@ -1,4 +1,54 @@
-part of "page.dart";
+import "dart:async";
+
+import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+
+@RoutePage()
+class RemoteContentSettingsPage extends ConsumerWidget {
+  const RemoteContentSettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Layout(
+    title: context.l10n.appSettingsPageSectionRemoteContent,
+    child: const ConfigListView(
+      children: [
+        ConfigListTile.custom(RemoteContentPanelVisibleTile()),
+        ConfigListTile.custom(RemoteContentEnabledTile()),
+        ConfigListTile.custom(RemoteContentEndpointTile()),
+      ],
+    ),
+  );
+}
+
+class RemoteContentPanelVisibleTile extends ConsumerWidget {
+  const RemoteContentPanelVisibleTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final exposed = ref.watch(
+      appSettingServiceProvider.select((setting) => setting.remoteContent.exposed),
+    );
+    return SwitchListTile(
+      secondary: const Icon(Icons.visibility_off_outlined),
+      title: Text(context.l10n.appSettingsPageRemoteContentPanelVisibleTitle),
+      subtitle: Text(context.l10n.appSettingsPageRemoteContentPanelVisibleDescription),
+      value: exposed,
+      onChanged: (value) {
+        ref
+            .read(appSettingServiceProvider.notifier)
+            .update((setting) => setting.copyWith.remoteContent(exposed: value));
+        if (!value) {
+          unawaited(context.router.maybePop());
+        }
+      },
+    );
+  }
+}
 
 class RemoteContentEnabledTile extends ConsumerWidget {
   const RemoteContentEnabledTile({super.key});
