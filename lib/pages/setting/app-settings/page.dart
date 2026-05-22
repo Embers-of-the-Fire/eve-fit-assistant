@@ -1,4 +1,6 @@
-import "package:auto_route/annotations.dart";
+import "dart:async";
+
+import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/info_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
@@ -6,6 +8,7 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/components/list/dropdown_list_tile.dart";
 import "package:eve_fit_assistant/config/locale.dart" show Locale;
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
@@ -14,6 +17,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 part "debug_log.dart";
+part "developer_remote_content.dart";
 part "impact_warning.dart";
 part "locale.dart";
 part "select_list.dart";
@@ -36,6 +40,13 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(BundleImpactWarningTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
         const ConfigListTile.custom(DebugLogTile()),
+        const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
+        ConfigListTile.item(
+          icon: const Icon(Icons.cloud_sync_outlined),
+          title: context.l10n.appSettingsPageRemoteContentOpenTitle,
+          subtitle: context.l10n.appSettingsPageRemoteContentOpenDescription,
+          onTap: () => unawaited(_openRemoteContentSettings(context)),
+        ),
       ],
     ),
   );

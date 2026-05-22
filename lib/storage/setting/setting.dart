@@ -15,6 +15,21 @@ part "setting.freezed.dart";
 part "setting.g.dart";
 
 @freezed
+abstract class RemoteContentSetting with _$RemoteContentSetting {
+  const factory RemoteContentSetting({
+    @Default(false) bool enabled,
+    @Default(false) bool exposed,
+    @Default("") String originUrl,
+    @Default("efa/v1/") String resourceRoot,
+    @Default("alpha") String channel,
+    @Default("global") String region,
+  }) = _RemoteContentSetting;
+
+  factory RemoteContentSetting.fromJson(Map<String, dynamic> json) =>
+      _$RemoteContentSettingFromJson(json);
+}
+
+@freezed
 abstract class AppSetting with _$AppSetting {
   const factory AppSetting({
     @JsonKey(unknownEnumValue: Locale.en) required Locale locale,
@@ -30,6 +45,7 @@ abstract class AppSetting with _$AppSetting {
       defaultValue: TypeListReturnBehavior.previousPage,
     )
     required TypeListReturnBehavior typeListReturnBehavior,
+    @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);

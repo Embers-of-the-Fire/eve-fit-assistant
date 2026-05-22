@@ -108,13 +108,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[0],
                           label: pageTitles[0],
                           selected: _currentIndex == 0,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                         _NavItem(
@@ -122,13 +116,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[1],
                           label: pageTitles[1],
                           selected: _currentIndex == 1,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                       ],
@@ -144,13 +132,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[2],
                           label: pageTitles[2],
                           selected: _currentIndex == 2,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                         _NavItem(
@@ -158,13 +140,7 @@ class _FrontPageState extends State<FrontPage> {
                           icon: pageIcons[3],
                           label: pageTitles[3],
                           selected: _currentIndex == 3,
-                          onTap: (idx) => _pageController
-                              .animateToPage(
-                                idx,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              )
-                              .then((_) => setState(() => _currentIndex = idx)),
+                          onTap: _selectPage,
                         ),
                         const Expanded(child: SizedBox()),
                       ],
@@ -175,6 +151,16 @@ class _FrontPageState extends State<FrontPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _selectPage(int index) {
+    unawaited(
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       ),
     );
   }
