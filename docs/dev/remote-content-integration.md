@@ -187,6 +187,33 @@ invocation. Configure the default ports, bucket, credentials, channel, resource 
 directory, and MinIO data directory in the `[remote]` section of `efa.dev.toml`. The default MinIO
 data directory is `cache/remote/minio-data/`, so object storage persists across launcher restarts.
 
+Upload a materialized mock origin to an already running MinIO or S3-compatible endpoint:
+
+```bash
+./x remote publish upload --target minio
+```
+
+The upload command uses the same `[remote]` defaults as the mock launcher. It configures the `mc`
+alias, creates the bucket if needed, optionally enables anonymous downloads, uploads shared content
+first, uploads channel catalogs next, and uploads `index.json` last so clients never observe an index
+before referenced content exists.
+
+Useful publishing overrides:
+
+```bash
+./x remote publish upload --target minio --endpoint http://127.0.0.1:9000 --bucket efa-dev
+./x remote publish upload --target s3 --endpoint https://example-r2-or-oss-endpoint --bucket efa-prod --private
+./x --dry-run remote publish upload --target minio
+```
+
+The publishing defaults can be configured in `efa.dev.toml`:
+
+```toml
+[remote]
+publish_alias = "efa-remote-publish"
+publish_public_download = true
+```
+
 Useful overrides:
 
 ```bash
