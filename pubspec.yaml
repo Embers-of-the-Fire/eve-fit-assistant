@@ -18,7 +18,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # of the product and file versions while build-number is used as the build suffix.
 
 # 0.x.yymmdd
-version: 0.28.260515+260515
+version: 0.28.260521+260521
 
 environment:
   sdk: ^3.11.0
