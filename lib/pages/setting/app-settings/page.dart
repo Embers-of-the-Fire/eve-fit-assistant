@@ -19,11 +19,19 @@ part "locale.dart";
 part "select_list.dart";
 
 @RoutePage()
-class AppSettingsPage extends ConsumerWidget {
+class AppSettingsPage extends ConsumerStatefulWidget {
   const AppSettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Layout(
+  ConsumerState<AppSettingsPage> createState() => _AppSettingsPageState();
+}
+
+class _AppSettingsPageState extends ConsumerState<AppSettingsPage> {
+  static const int _remoteContentUnlockTapCount = 5;
+  int _developerTapCount = 0;
+
+  @override
+  Widget build(BuildContext context) => Layout(
     title: context.l10n.appSettingsPageTitle,
     child: ConfigListView(
       children: [
@@ -34,9 +42,28 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(ListReturnBehaviorTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionBundle),
         const ConfigListTile.custom(BundleImpactWarningTile()),
-        ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
+        ConfigListTile.custom(
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _unlockRemoteContentSettings,
+            child: ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
+          ),
+        ),
         const ConfigListTile.custom(DebugLogTile()),
       ],
     ),
   );
+
+  void _unlockRemoteContentSettings() {
+    final remoteContent = ref.read(appSettingServiceProvider).remoteContent;
+    if (remoteContent.exposed) {
+      return;
+    }
+    _developerTapCount += 1;
+    if (_developerTapCount >= _remoteContentUnlockTapCount) {
+      ref
+          .read(appSettingServiceProvider.notifier)
+          .update((setting) => setting.copyWith.remoteContent(exposed: true));
+    }
+  }
 }

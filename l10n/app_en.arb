@@ -329,7 +329,7 @@
   "appSettingsPageListReturnBehaviorDescription": "Choose what the system back action does inside nested selector lists. Previous Page steps back through list groups before closing. Exit List closes the selector immediately.",
   "appSettingsPageSectionRemoteContent": "Remote Content",
   "appSettingsPageRemoteContentPanelVisibleTitle": "Show Remote Content Settings",
-  "appSettingsPageRemoteContentPanelVisibleDescription": "Turn this off to hide the Remote Content entry from Settings. Tap Settings five times to show it again.",
+  "appSettingsPageRemoteContentPanelVisibleDescription": "Turn this off to hide the Remote Content entry from Settings. Tap the Developer title in App Settings five times to show it again.",
   "appSettingsPageRemoteContentEnabledTitle": "Enable Remote Content",
   "appSettingsPageRemoteContentEnabledDescription": "Allow the app to discover documents, releases, and bundle metadata from a configured remote origin when runtime sync is available.",
   "appSettingsPageRemoteContentEndpointTitle": "Remote Content Endpoint",
