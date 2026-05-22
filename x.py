@@ -170,6 +170,19 @@ def __validate_remote_channel(channel: str) -> str:
     return normalized
 
 
+def __validate_mc_target_segment(value: str, label: str) -> str:
+    normalized = value.strip()
+    if (
+        not normalized
+        or normalized.startswith("-")
+        or "/" in normalized
+        or ".." in normalized
+        or any(character.isspace() for character in normalized)
+    ):
+        raise click.ClickException(f"Invalid remote publish {label}: {value!r}")
+    return normalized
+
+
 def __execute_command_redacted(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
     if DRY_RUN:
         info(f"[Dry-Run] {title}: " + " ".join(redacted_cmd))
@@ -221,13 +234,13 @@ def __publish_remote_origin_to_s3(
         raise click.ClickException(f"Remote publish source path is not a directory: {source_dir}")
     if not endpoint.strip():
         raise click.ClickException("Remote publish endpoint must not be empty.")
-    if not bucket.strip():
-        raise click.ClickException("Remote publish bucket must not be empty.")
     if not access_key:
         raise click.ClickException("Remote publish access key must not be empty.")
     if not secret_key:
         raise click.ClickException("Remote publish secret key must not be empty.")
 
+    resolved_bucket = __validate_mc_target_segment(bucket, "bucket")
+    resolved_alias = __validate_mc_target_segment(alias_name, "alias")
     resolved_resource_root = __validate_remote_resource_root(resource_root)
     resolved_channel = __validate_remote_channel(channel)
     root_dir = source_dir / resolved_resource_root
@@ -237,11 +250,11 @@ def __publish_remote_origin_to_s3(
         raise click.ClickException(f"Remote publish channel index does not exist: {index_path}")
 
     mc = get_command("mc")
-    bucket_target = f"{alias_name}/{bucket}"
+    bucket_target = f"{resolved_alias}/{resolved_bucket}"
     redacted = "<redacted>"
     __execute_command_redacted(
-        [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
-        [mc, "alias", "set", alias_name, endpoint, redacted, redacted],
+        [mc, "alias", "set", resolved_alias, endpoint, access_key, secret_key],
+        [mc, "alias", "set", resolved_alias, endpoint, redacted, redacted],
         "REMOTE PUBLISH ALIAS",
     )
     __execute_command([mc, "mb", "--ignore-existing", bucket_target], "REMOTE PUBLISH")
@@ -281,7 +294,7 @@ def __publish_remote_origin_to_s3(
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
         + __remote_channel_index_url(
-            origin_url=__remote_origin_url(endpoint=endpoint, bucket=bucket),
+            origin_url=__remote_origin_url(endpoint=endpoint, bucket=resolved_bucket),
             resource_root=resolved_resource_root,
             channel=resolved_channel,
         )
