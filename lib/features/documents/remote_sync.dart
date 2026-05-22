@@ -173,6 +173,11 @@ class RemoteDocumentSyncService {
     final cachedBodies = <String, String>{};
     for (final MapEntry<String, dynamic> item in rawLocalizations.entries) {
       final localeCode = _normalizeLocaleCode(item.key);
+      if (localizations.containsKey(localeCode)) {
+        throw RemoteDocumentSyncException(
+          "Remote document '$documentId' has duplicate locale '$localeCode'.",
+        );
+      }
       if (item.value is! Map<String, dynamic>) {
         throw RemoteDocumentSyncException(
           "Remote document '$documentId' localization '$localeCode' is invalid.",
