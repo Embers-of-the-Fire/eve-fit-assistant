@@ -80,14 +80,14 @@ class DocumentStorage {
   static DocumentCatalog get remoteCatalog => _state.remoteCatalog;
 
   static String? cachedBody(String documentId, String localeCode) =>
-      _state.cachedBodies[_cacheKey(documentId, localeCode)];
+      _state.cachedBodies[cacheKey(documentId, localeCode)];
 
   static void replaceRemoteCatalog(DocumentCatalog catalog, Map<String, String> cachedBodies) {
     _state = _state.copyWith(remoteCatalog: catalog, cachedBodies: cachedBodies);
     _sync();
   }
 
-  static String _cacheKey(String documentId, String localeCode) => "$documentId::$localeCode";
+  static String cacheKey(String documentId, String localeCode) => "$documentId::$localeCode";
 
   static DocumentStorageState _readState() {
     if (!storageFile.existsSync()) {
