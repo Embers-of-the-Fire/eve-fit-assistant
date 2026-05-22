@@ -52,10 +52,7 @@ class RemoteDocumentSyncService {
   }
 
   Future<Map<String, dynamic>> _fetchJson(Uri uri) async {
-    final response = await _dio.getUri<Object>(
-      uri,
-      options: Options(responseType: ResponseType.plain),
-    );
+    final response = await _getUri<Object>(uri);
     final data = response.data;
     final Object? decoded = switch (data) {
       final String text => jsonDecode(text),
@@ -194,11 +191,24 @@ class RemoteDocumentSyncService {
   }
 
   Future<String> _fetchText(Uri uri) async {
-    final response = await _dio.getUri<String>(
-      uri,
-      options: Options(responseType: ResponseType.plain),
-    );
+    final response = await _getUri<String>(uri);
     return response.data ?? "";
+  }
+
+  Future<Response<T>> _getUri<T>(Uri uri) async {
+    try {
+      return await _dio.getUri<T>(uri, options: Options(responseType: ResponseType.plain));
+    } on DioException catch (exception) {
+      final response = exception.response;
+      final status = response?.statusCode;
+      final body = response?.data?.toString();
+      final bodySnippet = body == null || body.length <= 300 ? body : body.substring(0, 300);
+      throw RemoteDocumentSyncException(
+        "Remote request failed for $uri"
+        "${status == null ? "" : " with HTTP $status"}"
+        "${bodySnippet == null || bodySnippet.isEmpty ? "" : ": $bodySnippet"}",
+      );
+    }
   }
 }
 
