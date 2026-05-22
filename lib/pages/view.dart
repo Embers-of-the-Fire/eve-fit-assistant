@@ -157,17 +157,11 @@ class _FrontPageState extends State<FrontPage> {
 
   void _selectPage(int index) {
     unawaited(
-      _pageController
-          .animateToPage(
-            index,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          )
-          .then((_) {
-            if (mounted) {
-              setState(() => _currentIndex = index);
-            }
-          }),
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ),
     );
   }
 }
