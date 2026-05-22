@@ -1,10 +1,12 @@
 // Init helpers for the package
 
+import "dart:async";
 import "dart:ui";
 
 import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/features/documents/remote_sync.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
@@ -58,4 +60,5 @@ void initWithRef(WidgetRef ref) {
     ..read(bundleManagerProvider)
     ..read(bundleCollectionServiceProvider)
     ..read(nativeFitEngineServiceProvider);
+  unawaited(ref.read(remoteDocumentSyncServiceProvider).sync());
 }
