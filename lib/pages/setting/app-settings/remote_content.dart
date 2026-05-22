@@ -36,7 +36,7 @@ class RemoteContentPanelVisibleTile extends ConsumerWidget {
     return SwitchListTile(
       secondary: const Icon(Icons.visibility_off_outlined),
       title: Text(context.l10n.appSettingsPageRemoteContentPanelVisibleTitle),
-      subtitle: Text(context.l10n.appSettingsPageRemoteContentPanelVisibleDescription),
+      subtitle: Text(context.l10n.appSettingsPageRemoteContentVisibleDescription),
       value: exposed,
       onChanged: (value) {
         ref
