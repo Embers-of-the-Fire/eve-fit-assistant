@@ -164,6 +164,19 @@ Default channel index URL:
 http://127.0.0.1:8765/efa/v1/channels/alpha/index.json
 ```
 
+When the app runs inside the Android emulator, configure the app with the emulator host alias instead
+of `localhost` or `127.0.0.1`:
+
+```text
+http://10.0.2.2:8765
+```
+
+Android emulator channel index URL:
+
+```text
+http://10.0.2.2:8765/efa/v1/channels/alpha/index.json
+```
+
 Launch an S3-compatible MinIO mock:
 
 ```bash
@@ -174,6 +187,12 @@ Default MinIO channel index URL:
 
 ```text
 http://127.0.0.1:9000/efa-dev/efa/v1/channels/alpha/index.json
+```
+
+Android emulator MinIO origin URL:
+
+```text
+http://10.0.2.2:9000/efa-dev
 ```
 
 Inspect effective remote mock configuration:
