@@ -111,6 +111,10 @@ def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: 
     )
 
 
+def __remote_origin_url(*, endpoint: str, bucket: str) -> str:
+    return f"{endpoint.rstrip('/')}/{bucket}"
+
+
 def __wait_for_http(url: str, timeout_seconds: float = 20.0) -> None:
     deadline = time.monotonic() + timeout_seconds
     last_error: Exception | None = None
@@ -143,6 +147,145 @@ def __run_foreground(process: subprocess.Popen[str], interrupted_message: str) -
 
     if return_code != 0:
         raise click.ClickException(f"Remote mock process exited with status {return_code}.")
+
+
+def __validate_remote_resource_root(resource_root: str) -> str:
+    normalized = resource_root.strip().strip("/")
+    parts = normalized.split("/")
+    if (
+        not normalized
+        or resource_root.strip().startswith("/")
+        or ".." in parts
+        or any(part == "" for part in parts)
+        or "://" in normalized
+    ):
+        raise click.ClickException(f"Invalid remote resource root: {resource_root!r}")
+    return normalized
+
+
+def __validate_remote_channel(channel: str) -> str:
+    normalized = channel.strip()
+    if not normalized or "/" in normalized or ".." in normalized or "%2e" in normalized.lower():
+        raise click.ClickException(f"Invalid remote channel: {channel!r}")
+    return normalized
+
+
+def __execute_command_redacted(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
+    if DRY_RUN:
+        info(f"[Dry-Run] {title}: " + " ".join(redacted_cmd))
+        return
+
+    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if out.returncode != 0:
+        message = f"Failed to execute command [{out.returncode}]: " + " ".join(redacted_cmd)
+        stderr = (out.stderr or "").strip()
+        if stderr:
+            message += f"\n{stderr}"
+        raise click.ClickException(message)
+
+
+def __publish_optional_tree(mc: str, source: Path, target: str) -> None:
+    if not source.exists():
+        warning(f"Remote publish source tree does not exist, skipping: {source}")
+        return
+    if not source.is_dir():
+        raise click.ClickException(f"Remote publish source tree is not a directory: {source}")
+    __execute_command([mc, "mirror", "--overwrite", str(source), target], "REMOTE PUBLISH")
+
+
+def __publish_optional_file(mc: str, source: Path, target: str) -> None:
+    if not source.exists():
+        warning(f"Remote publish source file does not exist, skipping: {source}")
+        return
+    if not source.is_file():
+        raise click.ClickException(f"Remote publish source path is not a file: {source}")
+    __execute_command([mc, "cp", str(source), target], "REMOTE PUBLISH")
+
+
+def __publish_remote_origin_to_s3(
+    *,
+    source_dir: Path,
+    endpoint: str,
+    bucket: str,
+    access_key: str,
+    secret_key: str,
+    alias_name: str,
+    resource_root: str,
+    channel: str,
+    clean_bucket: bool,
+    public_download: bool,
+) -> None:
+    if not source_dir.exists():
+        raise click.ClickException(f"Remote publish source directory does not exist: {source_dir}")
+    if not source_dir.is_dir():
+        raise click.ClickException(f"Remote publish source path is not a directory: {source_dir}")
+    if not endpoint.strip():
+        raise click.ClickException("Remote publish endpoint must not be empty.")
+    if not bucket.strip():
+        raise click.ClickException("Remote publish bucket must not be empty.")
+    if not access_key:
+        raise click.ClickException("Remote publish access key must not be empty.")
+    if not secret_key:
+        raise click.ClickException("Remote publish secret key must not be empty.")
+
+    resolved_resource_root = __validate_remote_resource_root(resource_root)
+    resolved_channel = __validate_remote_channel(channel)
+    root_dir = source_dir / resolved_resource_root
+    channel_dir = root_dir / "channels" / resolved_channel
+    index_path = channel_dir / "index.json"
+    if not index_path.exists() or not index_path.is_file():
+        raise click.ClickException(f"Remote publish channel index does not exist: {index_path}")
+
+    mc = get_command("mc")
+    bucket_target = f"{alias_name}/{bucket}"
+    redacted = "<redacted>"
+    __execute_command_redacted(
+        [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
+        [mc, "alias", "set", alias_name, endpoint, redacted, redacted],
+        "REMOTE PUBLISH ALIAS",
+    )
+    __execute_command([mc, "mb", "--ignore-existing", bucket_target], "REMOTE PUBLISH")
+    if clean_bucket:
+        __execute_command([mc, "rm", "--recursive", "--force", bucket_target], "REMOTE PUBLISH")
+    if public_download:
+        __execute_command([mc, "anonymous", "set", "download", bucket_target], "REMOTE PUBLISH")
+
+    target_root = f"{bucket_target}/{resolved_resource_root}"
+    __publish_optional_tree(
+        mc,
+        root_dir / "documents" / "body",
+        f"{target_root}/documents/body",
+    )
+    __publish_optional_tree(mc, root_dir / "bundles", f"{target_root}/bundles")
+
+    target_channel = f"{target_root}/channels/{resolved_channel}"
+    __publish_optional_file(
+        mc,
+        channel_dir / "documents" / "catalog.json",
+        f"{target_channel}/documents/catalog.json",
+    )
+    __publish_optional_file(
+        mc,
+        channel_dir / "app" / "releases.json",
+        f"{target_channel}/app/releases.json",
+    )
+    __publish_optional_file(
+        mc,
+        channel_dir / "bundles" / "catalog.json",
+        f"{target_channel}/bundles/catalog.json",
+    )
+    __execute_command([mc, "cp", str(index_path), f"{target_channel}/index.json"], "REMOTE PUBLISH")
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Uploaded remote origin: ") + str(source_dir))
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Target bucket: ") + bucket_target)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
+        + __remote_channel_index_url(
+            origin_url=__remote_origin_url(endpoint=endpoint, bucket=bucket),
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+    )
 
 
 @click.group(
@@ -767,6 +910,72 @@ def remote_config_display(pretty: bool):
 
 
 @remote.group(cls=ClickAliasedGroup)
+def publish():
+    """Remote content publishing commands."""
+
+
+@publish.command("upload")
+@click.option(
+    "--target",
+    type=click.Choice(["minio", "s3"], case_sensitive=False),
+    default="minio",
+    show_default=True,
+    help="S3-compatible upload target preset.",
+)
+@click.option("--source-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+@click.option("--channel", default=None, help="Override remote channel.")
+@click.option("--clean", is_flag=True, default=False, help="Clean bucket before publishing.")
+@click.option(
+    "--public-download/--private",
+    default=None,
+    help="Configure anonymous bucket downloads after upload.",
+)
+def remote_publish_upload(
+    target: str,
+    source_dir: Path | None,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    resource_root: str | None,
+    channel: str | None,
+    clean: bool,
+    public_download: bool | None,
+):
+    """Upload a local remote origin to S3-compatible object storage."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_source_dir = __resolve_dev_path(source_dir or remote_cfg.mock_origin_dir)
+    resolved_endpoint = endpoint
+    if resolved_endpoint is None and target.lower() == "minio":
+        resolved_endpoint = f"http://{remote_cfg.host}:{remote_cfg.minio_port}"
+    if resolved_endpoint is None:
+        raise click.ClickException("Remote publish endpoint is required for non-MinIO targets.")
+
+    __publish_remote_origin_to_s3(
+        source_dir=resolved_source_dir,
+        endpoint=resolved_endpoint,
+        bucket=bucket or remote_cfg.minio_bucket,
+        access_key=access_key or remote_cfg.minio_access_key,
+        secret_key=secret_key or remote_cfg.minio_secret_key,
+        alias_name=alias_name or remote_cfg.publish_alias,
+        resource_root=resource_root or remote_cfg.resource_root,
+        channel=channel or remote_cfg.channel,
+        clean_bucket=clean,
+        public_download=(
+            remote_cfg.publish_public_download if public_download is None else public_download
+        ),
+    )
+
+
+@remote.group(cls=ClickAliasedGroup)
 def mock():
     """Remote mock origin commands."""
 
@@ -826,7 +1035,11 @@ def __start_minio_remote_mock(
     bucket: str,
     access_key: str,
     secret_key: str,
+    alias_name: str,
+    resource_root: str,
+    channel: str,
     clean_bucket: bool,
+    public_download: bool,
 ) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     endpoint = f"http://{host}:{port}"
@@ -845,7 +1058,6 @@ def __start_minio_remote_mock(
         return
 
     minio = get_command("minio")
-    mc = get_command("mc")
     command[0] = minio
     env = os.environ.copy()
     env["MINIO_ROOT_USER"] = access_key
@@ -853,19 +1065,18 @@ def __start_minio_remote_mock(
     process = subprocess.Popen(command, env=env, text=True)
     try:
         __wait_for_http(f"{endpoint}/minio/health/ready")
-        alias_name = "efa-remote-mock"
-        setup_commands = [
-            [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
-            [mc, "mb", "--ignore-existing", "-p", f"{alias_name}/{bucket}"],
-        ]
-        if clean_bucket:
-            setup_commands.append([mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}"])
-        setup_commands.append([mc, "anonymous", "set", "download", f"{alias_name}/{bucket}"])
-        setup_commands.append(
-            [mc, "mirror", "--overwrite", str(origin_dir), f"{alias_name}/{bucket}"]
+        __publish_remote_origin_to_s3(
+            source_dir=origin_dir,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            alias_name=alias_name,
+            resource_root=resource_root,
+            channel=channel,
+            clean_bucket=clean_bucket,
+            public_download=public_download,
         )
-        for setup_command in setup_commands:
-            __execute_command(setup_command, "MINIO MOCK SETUP")
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO console: ") + console_endpoint)
         __run_foreground(process, "\nMinIO remote mock interrupted by user.")
@@ -892,6 +1103,7 @@ def __start_minio_remote_mock(
 @click.option("--bucket", default=None, help="Override MinIO bucket name.")
 @click.option("--access-key", default=None, help="Override MinIO access key.")
 @click.option("--secret-key", default=None, help="Override MinIO secret key.")
+@click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
 @click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
 @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
 @click.option("--resource-root", default=None, help="Override remote resource root.")
@@ -913,6 +1125,7 @@ def remote_mock_launch(
     bucket: str | None,
     access_key: str | None,
     secret_key: str | None,
+    alias_name: str | None,
     origin_dir: Path | None,
     data_dir: Path | None,
     resource_root: str | None,
@@ -973,7 +1186,11 @@ def remote_mock_launch(
         bucket=resolved_bucket,
         access_key=resolved_access_key,
         secret_key=resolved_secret_key,
+        alias_name=alias_name or remote_cfg.publish_alias,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
         clean_bucket=clean_bucket,
+        public_download=remote_cfg.publish_public_download,
     )
 
 

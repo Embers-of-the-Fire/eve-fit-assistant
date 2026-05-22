@@ -134,6 +134,8 @@ class DeveloperRemote(BaseModel):
     minio_secret_key: str = Field(default="minioadmin")
     mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))
     minio_data_dir: Path = Field(default=Path("remote/minio-data"))
+    publish_alias: str = Field(default="efa-remote-publish")
+    publish_public_download: bool = Field(default=True)
 
 
 class DeveloperConfiguration(BaseModel):

@@ -50,3 +50,7 @@ minio_secret_key = "minioadmin"
 # Paths are resolved relative to [paths].root unless absolute.
 mock_origin_dir = "remote/mock-origin"
 minio_data_dir = "remote/minio-data"
+
+# S3-compatible publishing defaults used by `./x remote publish upload`.
+publish_alias = "efa-remote-publish"
+publish_public_download = true
