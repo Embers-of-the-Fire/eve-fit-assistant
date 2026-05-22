@@ -452,6 +452,13 @@ Recommended publishing order:
    efa/v1/channels/<channel>/index.json
    ```
 
+The repository helper follows this order when uploading a local origin to MinIO or another
+S3-compatible endpoint:
+
+```bash
+./x remote publish upload --target minio
+```
+
 Recommended cache policy:
 
 ```text
