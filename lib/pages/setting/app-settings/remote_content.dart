@@ -76,18 +76,18 @@ class RemoteContentEndpointTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final config = ref.watch(appSettingServiceProvider.select((setting) => setting.remoteContent));
-    final origin = config.originUrl.isEmpty
-        ? context.l10n.appSettingsPageRemoteContentNotSet
-        : config.originUrl;
+    final notSet = context.l10n.appSettingsPageRemoteContentNotSet;
+    String endpointValue(String value) => value.isEmpty ? notSet : value;
+
     return ListTile(
       leading: const Icon(Icons.link_outlined),
       title: Text(context.l10n.appSettingsPageRemoteContentEndpointTitle),
       subtitle: Text(
         context.l10n.appSettingsPageRemoteContentEndpointDescription(
-          origin: origin,
-          resourceRoot: config.resourceRoot,
-          channel: config.channel,
-          region: config.region,
+          origin: endpointValue(config.originUrl),
+          resourceRoot: endpointValue(config.resourceRoot),
+          channel: endpointValue(config.channel),
+          region: endpointValue(config.region),
         ),
       ),
       trailing: const Icon(Icons.chevron_right),
