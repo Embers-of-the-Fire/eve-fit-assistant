@@ -339,14 +339,6 @@
   "appSettingsPageRemoteContentEnabledDescription": "Allow the app to discover documents, releases, and bundle metadata from a configured remote origin when runtime sync is available.",
   "appSettingsPageRemoteContentEndpointTitle": "Remote Content Endpoint",
   "appSettingsPageRemoteContentEndpointDescription": "Origin: {origin}\nRoot: {resourceRoot}\nChannel: {channel}\nRegion: {region}",
-  "@appSettingsPageRemoteContentEndpointDescription": {
-    "placeholders": {
-      "origin": { "type": "String" },
-      "resourceRoot": { "type": "String" },
-      "channel": { "type": "String" },
-      "region": { "type": "String" }
-    }
-  },
   "appSettingsPageRemoteContentNotSet": "Not set",
   "appSettingsPageRemoteContentOriginUrlLabel": "Origin URL",
   "appSettingsPageRemoteContentResourceRootLabel": "Resource Root",
