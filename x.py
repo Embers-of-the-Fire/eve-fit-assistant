@@ -262,6 +262,8 @@ def __publish_remote_origin_to_s3(
         __execute_command([mc, "rm", "--recursive", "--force", bucket_target], "REMOTE PUBLISH")
     if public_download:
         __execute_command([mc, "anonymous", "set", "download", bucket_target], "REMOTE PUBLISH")
+    else:
+        __execute_command([mc, "anonymous", "set", "none", bucket_target], "REMOTE PUBLISH")
 
     target_root = f"{bucket_target}/{resolved_resource_root}"
     __publish_optional_tree(
