@@ -404,6 +404,109 @@
   "bundleRemoteSectionDescription": "Discover compatible bundle archives from the configured remote content endpoint. Downloads start only after you choose one.",
   "bundleRemoteRefreshAction": "Refresh remote bundles",
   "bundleRemoteEmpty": "No compatible remote bundles are available.",
+  "bundleRemoteChecking": "Checking the remote bundle catalog...",
+  "bundleRemoteCatalogMissing": "The remote index does not advertise a bundle catalog for this channel.",
+  "bundleRemoteCatalogEmpty": "The remote bundle catalog is empty.",
+  "bundleRemoteAlternativesOnly": "Remote bundles are available, but none is preferred over the current installed state. Review the alternatives before downloading.",
+  "bundleRemoteCurrent": "The installed bundle already matches the latest compatible remote artifact.",
+  "bundleRemoteNoImportable": "Remote bundle metadata was found, but no artifact can be imported on this device right now.",
+  "bundleRemoteReviewAction": "Review bundles",
+  "bundleRemoteDownloadRecommendedAction": "Download recommended",
+  "bundleRemoteSelectionPageTitle": "Remote Bundles",
+  "bundleRemoteDisabled": "Remote content is disabled. Enable it in Remote Content settings before reviewing remote bundles.",
+  "bundleRemoteRecommendedCount": "Recommended: {count}",
+  "@bundleRemoteRecommendedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteAvailableCount": "Available: {count}",
+  "@bundleRemoteAvailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteInstalledCount": "Installed: {count}",
+  "@bundleRemoteInstalledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteUnavailableCount": "Unavailable: {count}",
+  "@bundleRemoteUnavailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteRecommendedSection": "Recommended",
+  "bundleRemoteRecommendedSectionDescription": "Best next downloads for each bundle based on installed manifest metadata.",
+  "bundleRemoteAvailableSection": "Available alternatives",
+  "bundleRemoteAvailableSectionDescription": "Importable full bundles or patches that are not the top recommendation.",
+  "bundleRemoteInstalledSection": "Already installed",
+  "bundleRemoteInstalledSectionDescription": "Remote artifacts that match an installed bundle manifest.",
+  "bundleRemoteUnavailableSection": "Unavailable",
+  "bundleRemoteUnavailableSectionDescription": "Artifacts that cannot be imported because app version or installed base metadata does not match.",
+  "bundleRemoteSelectionSummaryTitle": "Selection guidance",
+  "bundleRemoteSelectionSummaryDescription": "Incremental patches are preferred when they match the installed base manifest. Full bundles remain available for new installs or replacements.",
+  "bundleRemoteRecommendationIncremental": "Recommended incremental update for {bundleId}.",
+  "@bundleRemoteRecommendationIncremental": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteRecommendationFullInstall": "Recommended full bundle for new install: {bundleId}.",
+  "@bundleRemoteRecommendationFullInstall": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteRecommendationFullReplacement": "No matching incremental path is available; use the full replacement for {bundleId}.",
+  "@bundleRemoteRecommendationFullReplacement": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteRecommendedFallback": "Recommended remote bundle.",
+  "bundleRemoteAvailableDescription": "This artifact can be downloaded and imported.",
+  "bundleRemoteInstalledDescription": "This artifact already matches the installed manifest.",
+  "bundleRemoteUnknownAppVersion": "unknown",
+  "bundleRemoteUnavailableAppVersion": "Requires app version {requiredVersion}; current app is {currentVersion}.",
+  "@bundleRemoteUnavailableAppVersion": {
+    "placeholders": {
+      "requiredVersion": {
+        "type": "String"
+      },
+      "currentVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteUnavailableMissingIncrementalMetadata": "Incremental artifact is missing base bundle metadata.",
+  "bundleRemoteUnavailableBaseNotInstalled": "Install base bundle {bundleId} before applying this incremental patch.",
+  "@bundleRemoteUnavailableBaseNotInstalled": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteUnavailableInstalledManifestMissing": "Installed bundle metadata does not record a manifest hash.",
+  "bundleRemoteUnavailableBaseManifestMismatch": "Installed manifest does not match this incremental patch base. Use a full bundle instead.",
+  "bundleRemoteUnavailableUnknown": "This artifact cannot be imported right now.",
   "bundleRemoteError": "Remote bundle discovery failed: {message}",
   "@bundleRemoteError": {
     "placeholders": {

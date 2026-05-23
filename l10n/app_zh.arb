@@ -931,6 +931,109 @@
   "bundleRemoteSectionDescription": "从已配置的远程内容端点发现兼容的数据包归档。只有在您选择后才会开始下载。",
   "bundleRemoteRefreshAction": "刷新远程数据包",
   "bundleRemoteEmpty": "没有可用的兼容远程数据包。",
+  "bundleRemoteChecking": "正在检查远程数据包目录……",
+  "bundleRemoteCatalogMissing": "远程索引未在此频道提供数据包目录。",
+  "bundleRemoteCatalogEmpty": "远程数据包目录为空。",
+  "bundleRemoteAlternativesOnly": "存在可用的远程数据包，但当前安装状态下没有首选项。请先检查备选项再下载。",
+  "bundleRemoteCurrent": "已安装的数据包已经匹配最新兼容的远程产物。",
+  "bundleRemoteNoImportable": "已找到远程数据包元数据，但当前设备暂时没有可导入的产物。",
+  "bundleRemoteReviewAction": "检查数据包",
+  "bundleRemoteDownloadRecommendedAction": "下载推荐项",
+  "bundleRemoteSelectionPageTitle": "远程数据包",
+  "bundleRemoteDisabled": "远程内容已禁用。请先在远程内容设置中启用，再检查远程数据包。",
+  "bundleRemoteRecommendedCount": "推荐：{count}",
+  "@bundleRemoteRecommendedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteAvailableCount": "可用：{count}",
+  "@bundleRemoteAvailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteInstalledCount": "已安装：{count}",
+  "@bundleRemoteInstalledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteUnavailableCount": "不可用：{count}",
+  "@bundleRemoteUnavailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleRemoteRecommendedSection": "推荐",
+  "bundleRemoteRecommendedSectionDescription": "根据已安装清单元数据，为每个数据包选择的最佳后续下载。",
+  "bundleRemoteAvailableSection": "可用备选",
+  "bundleRemoteAvailableSectionDescription": "可导入但不是首选推荐的完整数据包或补丁。",
+  "bundleRemoteInstalledSection": "已安装",
+  "bundleRemoteInstalledSectionDescription": "与已安装数据包清单匹配的远程产物。",
+  "bundleRemoteUnavailableSection": "不可用",
+  "bundleRemoteUnavailableSectionDescription": "由于应用版本或本地基线元数据不匹配，当前无法导入的产物。",
+  "bundleRemoteSelectionSummaryTitle": "选择建议",
+  "bundleRemoteSelectionSummaryDescription": "当增量补丁匹配已安装基线清单时，会优先推荐增量补丁。完整数据包仍可用于新安装或替换安装。",
+  "bundleRemoteRecommendationIncremental": "推荐为 {bundleId} 使用增量更新。",
+  "@bundleRemoteRecommendationIncremental": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteRecommendationFullInstall": "推荐完整安装数据包：{bundleId}。",
+  "@bundleRemoteRecommendationFullInstall": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteRecommendationFullReplacement": "当前没有匹配的增量路径；请使用 {bundleId} 的完整替换包。",
+  "@bundleRemoteRecommendationFullReplacement": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteRecommendedFallback": "推荐的远程数据包。",
+  "bundleRemoteAvailableDescription": "此产物可以下载并导入。",
+  "bundleRemoteInstalledDescription": "此产物已经匹配已安装清单。",
+  "bundleRemoteUnknownAppVersion": "未知",
+  "bundleRemoteUnavailableAppVersion": "需要应用版本 {requiredVersion}；当前应用为 {currentVersion}。",
+  "@bundleRemoteUnavailableAppVersion": {
+    "placeholders": {
+      "requiredVersion": {
+        "type": "String"
+      },
+      "currentVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteUnavailableMissingIncrementalMetadata": "增量产物缺少基线数据包元数据。",
+  "bundleRemoteUnavailableBaseNotInstalled": "请先安装基线数据包 {bundleId}，再应用此增量补丁。",
+  "@bundleRemoteUnavailableBaseNotInstalled": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteUnavailableInstalledManifestMissing": "已安装数据包元数据没有记录清单哈希。",
+  "bundleRemoteUnavailableBaseManifestMismatch": "已安装清单与此增量补丁基线不匹配。请改用完整数据包。",
+  "bundleRemoteUnavailableUnknown": "此产物当前无法导入。",
   "bundleRemoteError": "远程数据包发现失败：{message}",
   "@bundleRemoteError": {
     "placeholders": {
