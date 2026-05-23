@@ -437,27 +437,35 @@ class BundleManager extends _$BundleManager {
         ),
       );
       await dio.downloadUri(uri, targetFile.path);
+
+      final actualSize = await targetFile.length();
+      if (actualSize != artifact.artifactSize) {
+        throw StateError(
+          "Remote bundle size mismatch: expected ${artifact.artifactSize}, got $actualSize.",
+        );
+      }
+
+      final actualHash = (await sha256.bind(targetFile.openRead()).first).toString();
+      if (actualHash != artifact.artifactSha256) {
+        throw StateError(
+          "Remote bundle SHA-256 mismatch: expected ${artifact.artifactSha256}, got $actualHash.",
+        );
+      }
     } on DioException catch (exception) {
       final response = exception.response;
       final status = response?.statusCode;
+      if (targetFile.existsSync()) {
+        await targetFile.delete();
+      }
       throw StateError(
         "Remote bundle download failed for $uri"
         "${status == null ? "" : " with HTTP $status"}.",
       );
-    }
-
-    final actualSize = await targetFile.length();
-    if (actualSize != artifact.artifactSize) {
-      throw StateError(
-        "Remote bundle size mismatch: expected ${artifact.artifactSize}, got $actualSize.",
-      );
-    }
-
-    final actualHash = (await sha256.bind(targetFile.openRead()).first).toString();
-    if (actualHash != artifact.artifactSha256) {
-      throw StateError(
-        "Remote bundle SHA-256 mismatch: expected ${artifact.artifactSha256}, got $actualHash.",
-      );
+    } catch (_) {
+      if (targetFile.existsSync()) {
+        await targetFile.delete();
+      }
+      rethrow;
     }
     return targetFile.path;
   }
