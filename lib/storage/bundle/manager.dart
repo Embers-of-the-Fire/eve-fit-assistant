@@ -1,13 +1,18 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:crypto/crypto.dart";
+import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/storage/bundle/impact.dart";
+import "package:eve_fit_assistant/storage/bundle/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/extract.dart";
 import "package:eve_fit_assistant/utils/file.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -155,6 +160,7 @@ class BundleRegistryManager extends _$BundleRegistryManager {
 class BundleManager extends _$BundleManager {
   static String get _bundleBasePath => p.join(PathProvider.resourcesPath, "bundles");
   static String get _bundleCachePath => p.join(PathProvider.cacheResourcesPath, "bundles");
+  static String get _remoteDownloadCachePath => p.join(_bundleCachePath, "remote");
 
   @override
   Future<DateTime> build() async {
@@ -344,6 +350,95 @@ class BundleManager extends _$BundleManager {
 
       return DateTime.now();
     });
+  }
+
+  Future<void> addRemoteBundle(
+    RemoteBundleArtifact artifact, {
+    Future<bool> Function()? confirmOverwrite,
+    Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final config = ref.read(appSettingServiceProvider).remoteContent;
+      if (!config.enabled) {
+        throw StateError("Remote content is disabled.");
+      }
+
+      _validateRemoteIncrementalCompatibility(artifact);
+      final endpoint = RemoteContentEndpoint.fromSetting(config);
+      final artifactUri = endpoint.resolvePayloadUri(artifact.artifactPath);
+      final localPath = await _downloadRemoteArtifact(artifact, artifactUri);
+      try {
+        await addBundle(
+          localPath,
+          confirmOverwrite: confirmOverwrite,
+          confirmIncrementalImpact: confirmIncrementalImpact,
+        );
+      } finally {
+        final file = File(localPath);
+        if (file.existsSync()) {
+          await file.delete();
+        }
+      }
+      return DateTime.now();
+    });
+  }
+
+  void _validateRemoteIncrementalCompatibility(RemoteBundleArtifact artifact) {
+    if (!artifact.isIncremental) {
+      return;
+    }
+    final baseBundleId = artifact.baseBundleId;
+    final baseManifestHash = artifact.baseManifestHash;
+    if (baseBundleId == null || baseManifestHash == null) {
+      throw StateError("Remote incremental bundle is missing base metadata.");
+    }
+    final registrar = BundleRegistryManager.getRegistrar(baseBundleId);
+    final installedManifestHash = registrar.latest.manifestHash;
+    if (installedManifestHash == null) {
+      throw StateError("Installed bundle is missing manifest hash metadata.");
+    }
+    if (installedManifestHash != baseManifestHash) {
+      throw StateError(
+        "Remote incremental bundle base manifest mismatch: "
+        "$baseManifestHash != $installedManifestHash",
+      );
+    }
+  }
+
+  Future<String> _downloadRemoteArtifact(RemoteBundleArtifact artifact, Uri uri) async {
+    final cacheDir = Directory(_remoteDownloadCachePath);
+    await cacheDir.create(recursive: true);
+    final targetFile = File(p.join(cacheDir.path, "${artifact.artifactId}.zip"));
+    if (targetFile.existsSync()) {
+      await targetFile.delete();
+    }
+
+    try {
+      await Dio().downloadUri(uri, targetFile.path);
+    } on DioException catch (exception) {
+      final response = exception.response;
+      final status = response?.statusCode;
+      throw StateError(
+        "Remote bundle download failed for $uri"
+        "${status == null ? "" : " with HTTP $status"}.",
+      );
+    }
+
+    final actualSize = await targetFile.length();
+    if (actualSize != artifact.artifactSize) {
+      throw StateError(
+        "Remote bundle size mismatch: expected ${artifact.artifactSize}, got $actualSize.",
+      );
+    }
+
+    final actualHash = (await sha256.bind(targetFile.openRead()).first).toString();
+    if (actualHash != artifact.artifactSha256) {
+      throw StateError(
+        "Remote bundle SHA-256 mismatch: expected ${artifact.artifactSha256}, got $actualHash.",
+      );
+    }
+    return targetFile.path;
   }
 
   static Future<bool> _incrementalPatchHasPayload(
