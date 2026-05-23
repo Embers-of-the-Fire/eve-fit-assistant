@@ -108,6 +108,20 @@ For incremental imports:
 Remote bundle download work should download and verify an archive first, then pass the verified local
 zip path to `BundleManager.addBundle(...)` rather than duplicate the import path.
 
+The app-side remote bundle path implemented for the v1 contract is:
+
+- `RemoteBundleCatalogManager` reads the configured remote content endpoint, fetches the channel
+  `index.json`, and then fetches `bundles/catalog.json` when advertised.
+- Remote artifacts are filtered by the current app version from `pubspec.yaml` and installed bundle
+  registrar state. Endpoint `region` is storage/S3 deployment metadata and is not a bundle filter.
+- Compatible incremental artifacts are sorted before full artifacts when their `baseManifestHash`
+  matches the installed bundle registrar's latest `manifestHash`.
+- `BundleManager.addRemoteBundle(...)` downloads a selected archive into the resource cache,
+  verifies byte size and SHA-256, then calls `BundleManager.addBundle(...)` with the same overwrite
+  and incremental impact confirmations used by local file imports.
+- Successfully imported remote archives are removed from the download cache. Local bundle usage
+  remains available when discovery or download fails.
+
 ## Bundle Loading
 
 `BundleService` in `lib/storage/bundle/service.dart` loads the currently selected installed bundle.
@@ -201,6 +215,52 @@ Inspect effective remote mock configuration:
 ./x remote config display --pretty
 ```
 
+Prepare a localized remote announcement in the configured mock origin before publishing:
+
+```bash
+./x remote prepare announcement \
+  --zh docs/drafts/update.zh.md \
+  --en docs/drafts/update.en.md \
+  --id remote-announcement-2026-05-data-update \
+  --title-zh "数据更新公告" \
+  --title-en "Data update notice" \
+  --summary-zh "本次更新包含最新 EVE 数据。" \
+  --summary-en "This update includes the latest EVE data."
+```
+
+Announcement preparation copies the Markdown bodies into the canonical remote object layout, creates
+or updates the document catalog, and always ensures the channel index advertises the document catalog.
+The generated announcement is scoped to the current app version through `minAppVer` by default. Pass
+`--all-app-ver` to write `minAppVer: null`. Existing announcement ids or body files are rejected by
+default; pass `--replace` only for intentional corrections.
+
+Prepare bundle artifacts in the same origin after running the data build:
+
+```bash
+./x remote prepare bundle \
+  --full cache/workspaces/tranquility/output/tranquility.zip \
+  --manifest cache/workspaces/tranquility/output/bundle_manifest.json \
+  --artifact-id tranquility-tq-2863052-full
+```
+
+When a previous published manifest is available, generate an incremental patch and prepare both
+artifacts together:
+
+```bash
+./x build increment releases/tranquility-tq-2862000.manifest.json
+./x remote prepare bundle \
+  --full cache/workspaces/tranquility/output/tranquility.zip \
+  --manifest cache/workspaces/tranquility/output/bundle_manifest.json \
+  --artifact-id tranquility-tq-2863052-full \
+  --increment cache/workspaces/tranquility/output/tranquility_increment.zip \
+  --increment-artifact-id tranquility-tq-2862000-to-2863052-increment
+```
+
+Bundle preparation reads `descriptor.json` from each zip, computes artifact size and SHA-256 values,
+copies immutable artifacts into `bundles/<bundle-id>/`, updates `bundles/catalog.json`, and always
+ensures the channel index advertises the bundle catalog. Duplicate artifact ids or existing artifact
+files are rejected by default; pass `--replace` only for local mock corrections.
+
 The launcher reads defaults from `efa.dev.toml`, with CLI arguments taking precedence for a single
 invocation. Configure the default ports, bucket, credentials, channel, resource root, mock origin
 directory, and MinIO data directory in the `[remote]` section of `efa.dev.toml`. The default MinIO
@@ -243,3 +303,34 @@ Useful overrides:
 
 The mock launcher uses local development credentials only. Production R2, OSS, or S3-compatible
 credentials belong in release tooling and must not be shipped in the app.
+
+## Remote Bundle Mock Artifacts
+
+The committed mock bundle catalog is intentionally empty because real generated bundle archives are
+large and workspace-specific. To test remote bundle downloads locally:
+
+1. Generate a full bundle for a configured workspace:
+
+   ```bash
+   ./x build data
+   ```
+
+2. Copy the generated zip and manifest into the mock origin layout, for example:
+
+   ```text
+   cache/remote/mock-origin/efa/v1/bundles/<bundle-id>/<artifact-id>.zip
+   cache/remote/mock-origin/efa/v1/bundles/<bundle-id>/<artifact-id>.manifest.json
+   ```
+
+3. Edit `cache/remote/mock-origin/efa/v1/channels/alpha/bundles/catalog.json` with the artifact
+   metadata from the generated descriptor, zip byte size, zip SHA-256, manifest path, and manifest
+   hash.
+
+4. Launch the static mock with `--no-materialize` so the edited runtime catalog is preserved:
+
+   ```bash
+   ./x remote mock launch --backend static --no-materialize
+   ```
+
+The app will list the artifact only when the catalog `appVersion` matches the running app version.
+Artifact `gameRegion` is displayed as bundle metadata but is not used for client-side filtering.
