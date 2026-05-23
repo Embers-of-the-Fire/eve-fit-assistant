@@ -1,16 +1,48 @@
 part of "page.dart";
 
 @RoutePage()
-class BundleDetailPage extends ConsumerWidget {
+class BundleDetailPage extends ConsumerStatefulWidget {
   const BundleDetailPage({required this.bundleId, super.key});
 
   final String bundleId;
 
   @override
+  ConsumerState<BundleDetailPage> createState() => _BundleDetailPageState();
+}
+
+class _BundleDetailPageState extends ConsumerState<BundleDetailPage> {
+  AsyncValue<BundleVerificationReport?> verificationState =
+      const AsyncValue<BundleVerificationReport?>.data(null);
+
+  Future<void> _verifyBundle(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: context.l10n.bundleVerificationConfirmTitle,
+      content: Text(context.l10n.bundleVerificationConfirmMessage),
+    );
+    if (!confirmed || !context.mounted) {
+      return;
+    }
+
+    setState(() {
+      verificationState = const AsyncValue<BundleVerificationReport?>.loading();
+    });
+    final result = await AsyncValue.guard(
+      () => const BundleVerificationService().verifyInstalledBundle(widget.bundleId),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      verificationState = result;
+    });
+  }
+
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bundleRegistry = ref.watch(bundleRegistryManagerProvider);
     final activeBundleId = ref.watch(currentBundleProvider)?.bundleId;
-    final bundle = bundleRegistry.bundles[bundleId];
+    final bundle = bundleRegistry.bundles[widget.bundleId];
     if (bundle == null) {
       return Layout(
         title: context.l10n.bundleManagerDetailPageTitle,
@@ -18,11 +50,11 @@ class BundleDetailPage extends ConsumerWidget {
       );
     }
 
-    final bundleIsSelected = activeBundleId == bundleId;
+    final bundleIsSelected = activeBundleId == widget.bundleId;
     BundleRegistrar? bundleRegistrar;
     Object? registrarError;
     try {
-      bundleRegistrar = BundleRegistryManager.getRegistrar(bundleId);
+      bundleRegistrar = BundleRegistryManager.getRegistrar(widget.bundleId);
     } on Object catch (error) {
       registrarError = error;
     }
@@ -113,6 +145,12 @@ class BundleDetailPage extends ConsumerWidget {
               const SizedBox(height: 6),
               _PatchTile(patch: registrar.latest, formatTs: formatTs),
               const SizedBox(height: 12),
+              _BundleVerificationCard(
+                state: verificationState,
+                onVerifyPressed: () => _verifyBundle(context),
+                formatTs: (time) => yMMMMdHmsLocalized(context).format(time.toLocal()),
+              ),
+              const SizedBox(height: 12),
               Text(
                 context.l10n.bundleManagerDetailSectionTitleHistory,
                 style: context.theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -137,6 +175,171 @@ class BundleDetailPage extends ConsumerWidget {
     );
   }
 }
+
+class _BundleVerificationCard extends StatelessWidget {
+  const _BundleVerificationCard({
+    required this.state,
+    required this.onVerifyPressed,
+    required this.formatTs,
+  });
+
+  final AsyncValue<BundleVerificationReport?> state;
+  final VoidCallback onVerifyPressed;
+  final String Function(DateTime) formatTs;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    final report = state.valueOrNull;
+    final status = report?.status;
+    final color = switch (status) {
+      BundleVerificationStatus.valid => colorGreen,
+      BundleVerificationStatus.warning => theme.colorScheme.tertiary,
+      BundleVerificationStatus.invalid => theme.colorScheme.error,
+      null => theme.colorScheme.secondary,
+    };
+    final icon = switch (status) {
+      BundleVerificationStatus.valid => Icons.verified_outlined,
+      BundleVerificationStatus.warning => Icons.warning_amber_outlined,
+      BundleVerificationStatus.invalid => Icons.error_outline,
+      null => Icons.fact_check_outlined,
+    };
+    final title = switch (status) {
+      BundleVerificationStatus.valid => context.l10n.bundleVerificationValid,
+      BundleVerificationStatus.warning => context.l10n.bundleVerificationWarning,
+      BundleVerificationStatus.invalid => context.l10n.bundleVerificationInvalid,
+      null => context.l10n.bundleVerificationNeverRun,
+    };
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.l10n.bundleVerificationTitle,
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: state.isLoading ? null : onVerifyPressed,
+                  icon: state.isLoading
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_arrow),
+                  label: Text(context.l10n.bundleVerificationAction),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(title, style: theme.textTheme.bodyMedium?.copyWith(color: color)),
+            if (report != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                context.l10n.bundleVerificationCheckedAt(formatTs(report.checkedAt)),
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              _BundleVerificationSummary(report: report),
+              if (report.issues.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                for (final issue in report.issues.take(8))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      _formatVerificationIssue(context, issue),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                if (report.issues.length > 8)
+                  Text(
+                    context.l10n.bundleVerificationMoreIssues(report.issues.length - 8),
+                    style: theme.textTheme.bodySmall,
+                  ),
+              ],
+            ],
+            state.whenOrNull(
+                  error: (error, _) => Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(error.toString(), style: theme.textTheme.bodySmall),
+                  ),
+                ) ??
+                const SizedBox.shrink(),
+            const SizedBox(height: 6),
+            Text(
+              context.l10n.bundleVerificationRemoteRepairUnavailable,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BundleVerificationSummary extends StatelessWidget {
+  const _BundleVerificationSummary({required this.report});
+
+  final BundleVerificationReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final summaries = <String>[
+      context.l10n.bundleVerificationMissingFiles(
+        report.countIssues<BundleVerificationMissingFile>(),
+      ),
+      context.l10n.bundleVerificationHashMismatches(
+        report.countIssues<BundleVerificationHashMismatch>(),
+      ),
+      context.l10n.bundleVerificationSizeMismatches(
+        report.countIssues<BundleVerificationSizeMismatch>(),
+      ),
+      context.l10n.bundleVerificationExtraFiles(report.countIssues<BundleVerificationExtraFile>()),
+    ];
+    return Wrap(
+      spacing: 12,
+      runSpacing: 4,
+      children: [
+        for (final summary in summaries) Text(summary, style: context.theme.textTheme.bodySmall),
+      ],
+    );
+  }
+}
+
+String _formatVerificationIssue(BuildContext context, BundleVerificationIssue issue) =>
+    switch (issue) {
+      BundleVerificationMissingManifest(:final path) =>
+        context.l10n.bundleVerificationIssueMissingManifest(path),
+      BundleVerificationInvalidManifest(:final path, :final error) =>
+        context.l10n.bundleVerificationIssueInvalidManifest(path, error),
+      BundleVerificationManifestHashMissing() =>
+        context.l10n.bundleVerificationIssueManifestHashMissing,
+      BundleVerificationManifestHashMismatch(:final expected, :final actual) =>
+        context.l10n.bundleVerificationIssueManifestHashMismatch(expected, actual),
+      BundleVerificationUnsafeManifestPath(:final path) =>
+        context.l10n.bundleVerificationIssueUnsafeManifestPath(path),
+      BundleVerificationMissingFile(:final path) => context.l10n.bundleVerificationIssueMissingFile(
+        path,
+      ),
+      BundleVerificationSizeMismatch(:final path, :final expected, :final actual) =>
+        context.l10n.bundleVerificationIssueSizeMismatch(path, expected, actual),
+      BundleVerificationHashMismatch(:final path, :final expected, :final actual) =>
+        context.l10n.bundleVerificationIssueHashMismatch(path, expected, actual),
+      BundleVerificationExtraFile(:final path) => context.l10n.bundleVerificationIssueExtraFile(
+        path,
+      ),
+      BundleVerificationReadError(:final path, :final error) =>
+        context.l10n.bundleVerificationIssueReadError(path, error),
+    };
 
 class _PatchTile extends StatelessWidget {
   const _PatchTile({required this.patch, required this.formatTs});
