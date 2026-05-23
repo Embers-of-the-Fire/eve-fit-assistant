@@ -161,6 +161,9 @@ class BundleManager extends _$BundleManager {
   static String get _bundleBasePath => p.join(PathProvider.resourcesPath, "bundles");
   static String get _bundleCachePath => p.join(PathProvider.cacheResourcesPath, "bundles");
   static String get _remoteDownloadCachePath => p.join(_bundleCachePath, "remote");
+  static const Duration _remoteDownloadConnectTimeout = Duration(seconds: 30);
+  static const Duration _remoteDownloadSendTimeout = Duration(seconds: 30);
+  static const Duration _remoteDownloadReceiveTimeout = Duration(minutes: 5);
 
   @override
   Future<DateTime> build() async {
@@ -426,7 +429,14 @@ class BundleManager extends _$BundleManager {
     }
 
     try {
-      await Dio().downloadUri(uri, targetFile.path);
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: _remoteDownloadConnectTimeout,
+          sendTimeout: _remoteDownloadSendTimeout,
+          receiveTimeout: _remoteDownloadReceiveTimeout,
+        ),
+      );
+      await dio.downloadUri(uri, targetFile.path);
     } on DioException catch (exception) {
       final response = exception.response;
       final status = response?.statusCode;
