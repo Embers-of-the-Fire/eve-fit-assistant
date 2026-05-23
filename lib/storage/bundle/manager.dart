@@ -252,104 +252,116 @@ class BundleManager extends _$BundleManager {
     Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
   }) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      late final _PreparedBundleArtifact artifact;
-      try {
-        artifact = await _prepareBundleArtifact(bundlePath);
-      } catch (e) {
-        warning("Invalid bundle artifact: $e", stackTrace: StackTrace.current);
-        return DateTime.now();
-      }
+    state = await AsyncValue.guard(
+      () => _addBundleFromPath(
+        bundlePath,
+        confirmOverwrite: confirmOverwrite,
+        confirmIncrementalImpact: confirmIncrementalImpact,
+      ),
+    );
+  }
 
-      final bundleCachePath = artifact.cachePath;
-      final descriptor = artifact.descriptor;
-      final bundleId = descriptor.bundleId;
-      final baseDir = Directory(_bundleBasePath);
-      if (!baseDir.existsSync()) {
-        await baseDir.create(recursive: true);
-      }
-      final targetDir = Directory(getBundlePath(bundleId));
-      if (targetDir.existsSync()) {
-        if (descriptor.isIncremental) {
-          final registrar = await _readRegistrar(targetDir);
-          _validateIncrementalCompatibility(descriptor, registrar);
-          final patchHasPayload = await _incrementalPatchHasPayload(
-            bundleCachePath,
-            artifact.deletedFiles,
-          );
-          if (patchHasPayload) {
-            final report = analyzeBundleImpact(
-              fitRegistry: ref.read(fitRegistryManagerProvider),
-              characterRegistry: ref.read(characterRegistryManagerProvider),
-              target: BundleImpactTarget(
-                kind: BundleImpactTargetKind.incrementalImport,
-                sourceBundle: BundleMetadata(
-                  bundleId: bundleId,
-                  paths: BundleServicePaths(targetDir.path),
-                  lastModified: DateTime.now(),
-                  metadata: registrar,
-                ),
-                targetBundle: bundleMetadataFromDescriptor(
-                  descriptor: descriptor,
-                  registrar: registrar,
-                  paths: BundleServicePaths(targetDir.path),
-                ),
-                incrementalPatchHasPayload: true,
+  Future<DateTime> _addBundleFromPath(
+    String bundlePath, {
+    Future<bool> Function()? confirmOverwrite,
+    Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+  }) async {
+    late final _PreparedBundleArtifact artifact;
+    try {
+      artifact = await _prepareBundleArtifact(bundlePath);
+    } catch (e) {
+      warning("Invalid bundle artifact: $e", stackTrace: StackTrace.current);
+      throw StateError("Invalid bundle artifact: $e");
+    }
+
+    final bundleCachePath = artifact.cachePath;
+    final descriptor = artifact.descriptor;
+    final bundleId = descriptor.bundleId;
+    final baseDir = Directory(_bundleBasePath);
+    if (!baseDir.existsSync()) {
+      await baseDir.create(recursive: true);
+    }
+    final targetDir = Directory(getBundlePath(bundleId));
+    if (targetDir.existsSync()) {
+      if (descriptor.isIncremental) {
+        final registrar = await _readRegistrar(targetDir);
+        _validateIncrementalCompatibility(descriptor, registrar);
+        final patchHasPayload = await _incrementalPatchHasPayload(
+          bundleCachePath,
+          artifact.deletedFiles,
+        );
+        if (patchHasPayload) {
+          final report = analyzeBundleImpact(
+            fitRegistry: ref.read(fitRegistryManagerProvider),
+            characterRegistry: ref.read(characterRegistryManagerProvider),
+            target: BundleImpactTarget(
+              kind: BundleImpactTargetKind.incrementalImport,
+              sourceBundle: BundleMetadata(
+                bundleId: bundleId,
+                paths: BundleServicePaths(targetDir.path),
+                lastModified: DateTime.now(),
+                metadata: registrar,
               ),
-            );
-            final confirmed = await confirmIncrementalImpact?.call(report) ?? true;
-            if (!confirmed) {
-              info("Aborting incremental bundle import for $bundleId");
-              return DateTime.now();
-            }
-          }
-          info("Importing incremental bundle $bundleId: $descriptor");
-          await deletePaths(targetDir, artifact.deletedFiles);
-          final deletedFilesPath = File(
-            BundleServicePaths.deletedFilesPathFromExternalBundle(bundleCachePath.path),
+              targetBundle: bundleMetadataFromDescriptor(
+                descriptor: descriptor,
+                registrar: registrar,
+                paths: BundleServicePaths(targetDir.path),
+              ),
+              incrementalPatchHasPayload: true,
+            ),
           );
-          if (deletedFilesPath.existsSync()) {
-            await deletedFilesPath.delete();
-          }
-          await copyRecursive(bundleCachePath, targetDir);
-          await _writeRegistrar(targetDir, registrar.pushPatch(descriptor));
-        } else {
-          warning("Target bundle output dir $bundleId exists!");
-          final willOverwrite = await confirmOverwrite?.call() ?? false;
-          if (willOverwrite) {
-            info("Overwriting existing bundle $bundleId");
-            await targetDir.delete(recursive: true);
-            await bundleCachePath.rename(targetDir.path);
-            await _writeRegistrar(targetDir, BundleRegistrar.empty(bundleId).pushPatch(descriptor));
-          } else {
-            info("Aborting bundle import for $bundleId");
+          final confirmed = await confirmIncrementalImpact?.call(report) ?? true;
+          if (!confirmed) {
+            info("Aborting incremental bundle import for $bundleId");
             return DateTime.now();
           }
         }
-      } else {
-        if (descriptor.isIncremental) {
-          throw StateError("Cannot import incremental bundle without an installed base bundle.");
+        info("Importing incremental bundle $bundleId: $descriptor");
+        await deletePaths(targetDir, artifact.deletedFiles);
+        final deletedFilesPath = File(
+          BundleServicePaths.deletedFilesPathFromExternalBundle(bundleCachePath.path),
+        );
+        if (deletedFilesPath.existsSync()) {
+          await deletedFilesPath.delete();
         }
-        await bundleCachePath.rename(targetDir.path);
-        await _writeRegistrar(targetDir, BundleRegistrar.empty(bundleId).pushPatch(descriptor));
+        await copyRecursive(bundleCachePath, targetDir);
+        await _writeRegistrar(targetDir, registrar.pushPatch(descriptor));
+      } else {
+        warning("Target bundle output dir $bundleId exists!");
+        final willOverwrite = await confirmOverwrite?.call() ?? false;
+        if (willOverwrite) {
+          info("Overwriting existing bundle $bundleId");
+          await targetDir.delete(recursive: true);
+          await bundleCachePath.rename(targetDir.path);
+          await _writeRegistrar(targetDir, BundleRegistrar.empty(bundleId).pushPatch(descriptor));
+        } else {
+          info("Aborting bundle import for $bundleId");
+          return DateTime.now();
+        }
       }
+    } else {
+      if (descriptor.isIncremental) {
+        throw StateError("Cannot import incremental bundle without an installed base bundle.");
+      }
+      await bundleCachePath.rename(targetDir.path);
+      await _writeRegistrar(targetDir, BundleRegistrar.empty(bundleId).pushPatch(descriptor));
+    }
 
-      info("Successfully imported bundle $bundleId: $descriptor");
+    info("Successfully imported bundle $bundleId: $descriptor");
 
-      ref
-          .read(bundleRegistryManagerProvider.notifier)
-          ._addBundle(
-            BundleInfo(
-              bundleId: descriptor.bundleId,
-              version: descriptor.appVersion,
-              build: descriptor.gameBuild,
-              region: descriptor.gameRegion,
-            ),
-          );
-      ref.invalidate(bundleServiceProvider);
+    ref
+        .read(bundleRegistryManagerProvider.notifier)
+        ._addBundle(
+          BundleInfo(
+            bundleId: descriptor.bundleId,
+            version: descriptor.appVersion,
+            build: descriptor.gameBuild,
+            region: descriptor.gameRegion,
+          ),
+        );
+    ref.invalidate(bundleServiceProvider);
 
-      return DateTime.now();
-    });
+    return DateTime.now();
   }
 
   Future<void> addRemoteBundle(
@@ -369,7 +381,7 @@ class BundleManager extends _$BundleManager {
       final artifactUri = endpoint.resolvePayloadUri(artifact.artifactPath);
       final localPath = await _downloadRemoteArtifact(artifact, artifactUri);
       try {
-        await addBundle(
+        return await _addBundleFromPath(
           localPath,
           confirmOverwrite: confirmOverwrite,
           confirmIncrementalImpact: confirmIncrementalImpact,
@@ -380,7 +392,6 @@ class BundleManager extends _$BundleManager {
           await file.delete();
         }
       }
-      return DateTime.now();
     });
   }
 
