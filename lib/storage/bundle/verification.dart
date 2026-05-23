@@ -3,9 +3,11 @@ import "dart:io";
 
 import "package:crypto/crypto.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
+import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter/foundation.dart";
 import "package:path/path.dart" as p;
 
 const Set<String> _ignoredExtraBundleFiles = <String>{
@@ -189,9 +191,20 @@ class BundleVerificationReport {
 class BundleVerificationService {
   const BundleVerificationService();
 
+  @visibleForTesting
+  Future<BundleVerificationReport> verifyBundleDirectory(String bundleId, Directory bundleRoot) =>
+      _verifyBundleDirectory(bundleId, bundleRoot);
+
   Future<BundleVerificationReport> verifyInstalledBundle(String bundleId) async {
-    final checkedAt = DateTime.now();
     final bundleRoot = Directory(BundleManager.getBundlePath(bundleId));
+    return _verifyBundleDirectory(bundleId, bundleRoot);
+  }
+
+  Future<BundleVerificationReport> _verifyBundleDirectory(
+    String bundleId,
+    Directory bundleRoot,
+  ) async {
+    final checkedAt = DateTime.now();
     final paths = BundleServicePaths(bundleRoot.path);
     final manifestFile = File(paths.getManifestPath());
     final issues = <BundleVerificationIssue>[];
@@ -222,7 +235,7 @@ class BundleVerificationService {
       );
     }
 
-    _verifyManifestHash(bundleId, manifestContent, issues);
+    _verifyManifestHash(bundleId, bundleRoot, manifestContent, issues);
     await _verifyManifestEntries(bundleRoot, manifest, issues);
     await _verifyExtraFiles(bundleRoot, manifest, issues);
 
@@ -231,11 +244,14 @@ class BundleVerificationService {
 
   void _verifyManifestHash(
     String bundleId,
+    Directory bundleRoot,
     String manifestContent,
     List<BundleVerificationIssue> issues,
   ) {
+    final registrarPath = BundleServicePaths(bundleRoot.path).getRegistrarPath();
     try {
-      final expected = BundleRegistryManager.getRegistrar(bundleId).latest.manifestHash;
+      final content = jsonDecode(File(registrarPath).readAsStringSync());
+      final expected = BundleRegistrar.fromJson(ensure(content, {})).latest.manifestHash;
       if (expected == null || expected.isEmpty) {
         issues.add(const BundleVerificationManifestHashMissing());
         return;
@@ -245,12 +261,7 @@ class BundleVerificationService {
         issues.add(BundleVerificationManifestHashMismatch(expected: expected, actual: actual));
       }
     } on Object catch (error) {
-      issues.add(
-        BundleVerificationReadError(
-          path: BundleServicePaths(BundleManager.getBundlePath(bundleId)).getRegistrarPath(),
-          error: error.toString(),
-        ),
-      );
+      issues.add(BundleVerificationReadError(path: registrarPath, error: error.toString()));
     }
   }
 
