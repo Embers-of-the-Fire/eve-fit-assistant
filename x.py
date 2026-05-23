@@ -250,6 +250,14 @@ def __read_zip_json(zip_path: Path, member_name: str) -> dict[str, object]:
         raise click.ClickException(
             f"Bundle archive is missing {member_name}: {zip_path}"
         ) from exception
+    except UnicodeDecodeError as exception:
+        raise click.ClickException(
+            f"Bundle archive {member_name} is not valid UTF-8: {zip_path}"
+        ) from exception
+    except json.JSONDecodeError as exception:
+        raise click.ClickException(
+            f"Invalid JSON in bundle archive {member_name}: {zip_path}: {exception.msg}"
+        ) from exception
     except zipfile.BadZipFile as exception:
         raise click.ClickException(f"Invalid bundle archive: {zip_path}") from exception
     if not isinstance(payload, dict):
