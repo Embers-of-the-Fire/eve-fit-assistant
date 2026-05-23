@@ -21,6 +21,7 @@ Please use the configuration files to configure the tool, or pass parameters dir
 from __future__ import annotations
 
 import asyncio
+import datetime
 import json
 import os
 import shutil
@@ -29,6 +30,7 @@ import sys
 import time
 
 from pathlib import Path
+from urllib.parse import unquote
 from urllib.request import urlopen
 
 import click
@@ -168,6 +170,47 @@ def __validate_remote_channel(channel: str) -> str:
     if not normalized or "/" in normalized or ".." in normalized or "%2e" in normalized.lower():
         raise click.ClickException(f"Invalid remote channel: {channel!r}")
     return normalized
+
+
+def __validate_remote_document_id(document_id: str) -> str:
+    normalized = document_id.strip()
+    if not normalized or "/" in normalized or ".." in normalized or ".." in unquote(normalized):
+        raise click.ClickException(f"Invalid remote document id: {document_id!r}")
+    return normalized
+
+
+def __utc_timestamp() -> str:
+    return (
+        datetime.datetime.now(datetime.UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def __read_current_app_version() -> str:
+    pubspec_path = PROJECT_ROOT / "pubspec.yaml"
+    for line in pubspec_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("version:"):
+            return stripped.removeprefix("version:").strip()
+    raise click.ClickException(f"Unable to read app version from {pubspec_path}")
+
+
+def __read_json_object(path: Path, default: dict[str, object]) -> dict[str, object]:
+    if not path.exists():
+        return dict(default)
+    if not path.is_file():
+        raise click.ClickException(f"JSON path is not a file: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise click.ClickException(f"JSON payload must be an object: {path}")
+    return payload
+
+
+def __write_json_object(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def __validate_mc_target_segment(value: str, label: str) -> str:
@@ -922,6 +965,179 @@ def remote_config_display(pretty: bool):
         },
     }
     click.echo(json.dumps(payload, indent=4 if pretty else None))
+
+
+@remote.group(cls=ClickAliasedGroup)
+def prepare():
+    """Prepare local remote content payloads before publishing."""
+
+
+@prepare.command("announcement")
+@click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
+@click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
+@click.option("--id", "document_id", required=True, help="Remote document id to create.")
+@click.option("--title-zh", required=True, help="Chinese announcement title.")
+@click.option("--title-en", required=True, help="English announcement title.")
+@click.option("--summary-zh", required=True, help="Chinese announcement summary.")
+@click.option("--summary-en", required=True, help="English announcement summary.")
+@click.option("--published-at", default=None, help="UTC ISO timestamp. Defaults to now.")
+@click.option("--min-app-ver", default=None, help="Minimum app version. Defaults to current app.")
+@click.option(
+    "--all-app-ver",
+    is_flag=True,
+    default=False,
+    help="Publish for all app versions by writing minAppVer as null.",
+)
+@click.option("--startup/--no-startup", default=True, show_default=True)
+@click.option(
+    "--tag", "tags", multiple=True, help="Announcement tag. Can be passed multiple times."
+)
+@click.option(
+    "--replace",
+    is_flag=True,
+    default=False,
+    help="Allow replacing an existing announcement entry and body files.",
+)
+@click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+@click.option("--channel", default=None, help="Override remote channel.")
+def remote_prepare_announcement(
+    zh_path: Path,
+    en_path: Path,
+    document_id: str,
+    title_zh: str,
+    title_en: str,
+    summary_zh: str,
+    summary_en: str,
+    published_at: str | None,
+    min_app_ver: str | None,
+    all_app_ver: bool,
+    startup: bool,
+    tags: tuple[str, ...],
+    replace: bool,
+    origin_dir: Path | None,
+    resource_root: str | None,
+    channel: str | None,
+):
+    """Prepare a localized remote startup announcement."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    if all_app_ver and min_app_ver is not None:
+        raise click.ClickException("--all-app-ver cannot be used together with --min-app-ver.")
+    if not zh_path.is_file():
+        raise click.ClickException(f"Chinese Markdown file does not exist: {zh_path}")
+    if not en_path.is_file():
+        raise click.ClickException(f"English Markdown file does not exist: {en_path}")
+
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_document_id = __validate_remote_document_id(document_id)
+    resolved_published_at = published_at or __utc_timestamp()
+    resolved_min_app_ver = None if all_app_ver else (min_app_ver or __read_current_app_version())
+    resolved_tags = list(tags or ("announcement",))
+
+    root_dir = resolved_origin_dir / resolved_resource_root
+    channel_dir = root_dir / "channels" / resolved_channel
+    catalog_path = channel_dir / "documents" / "catalog.json"
+    index_path = channel_dir / "index.json"
+    zh_body_path = root_dir / "documents" / "body" / "zh" / f"{resolved_document_id}.md"
+    en_body_path = root_dir / "documents" / "body" / "en" / f"{resolved_document_id}.md"
+
+    catalog = __read_json_object(
+        catalog_path,
+        {
+            "schemaVersion": 1,
+            "version": 1,
+            "entries": [],
+        },
+    )
+    entries = catalog.get("entries")
+    if not isinstance(entries, list):
+        raise click.ClickException(
+            f"Remote document catalog entries must be a list: {catalog_path}"
+        )
+
+    existing_indexes = [
+        index
+        for index, entry in enumerate(entries)
+        if isinstance(entry, dict) and entry.get("id") == resolved_document_id
+    ]
+    if existing_indexes and not replace:
+        raise click.ClickException(
+            "Remote announcement already exists; pass --replace to overwrite: "
+            f"{resolved_document_id}"
+        )
+    for path in (zh_body_path, en_body_path):
+        if path.exists() and not replace:
+            raise click.ClickException(
+                f"Remote announcement body already exists; pass --replace to overwrite: {path}"
+            )
+
+    zh_body_path.parent.mkdir(parents=True, exist_ok=True)
+    en_body_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(zh_path, zh_body_path)
+    shutil.copyfile(en_path, en_body_path)
+
+    entry = {
+        "id": resolved_document_id,
+        "kind": "announcement",
+        "source": "remote",
+        "publishedAt": resolved_published_at,
+        "tags": resolved_tags,
+        "startup": startup,
+        "minAppVer": resolved_min_app_ver,
+        "appVer": None,
+        "localizations": {
+            "en": {
+                "title": title_en,
+                "summary": summary_en,
+                "bodyPath": f"documents/body/en/{resolved_document_id}.md",
+            },
+            "zh": {
+                "title": title_zh,
+                "summary": summary_zh,
+                "bodyPath": f"documents/body/zh/{resolved_document_id}.md",
+            },
+        },
+    }
+    if existing_indexes:
+        entries[existing_indexes[0]] = entry
+    else:
+        entries.append(entry)
+    __write_json_object(catalog_path, catalog)
+
+    index = __read_json_object(
+        index_path,
+        {
+            "schemaVersion": 1,
+            "minClientApi": 1,
+            "channel": resolved_channel,
+            "region": "global",
+        },
+    )
+    generated_at = __utc_timestamp()
+    index["generatedAt"] = generated_at
+    index["schemaVersion"] = index.get("schemaVersion", 1)
+    index["minClientApi"] = index.get("minClientApi", 1)
+    index["channel"] = resolved_channel
+    documents = index.get("documents")
+    if not isinstance(documents, dict):
+        documents = {}
+    documents["catalogPath"] = f"channels/{resolved_channel}/documents/catalog.json"
+    documents["revision"] = (
+        f"docs-{generated_at.replace('-', '').replace(':', '')}-{resolved_document_id}"
+    )
+    index["documents"] = documents
+    __write_json_object(index_path, index)
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Prepared remote announcement: ") + resolved_document_id
+    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Catalog: ") + str(catalog_path))
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Index: ") + str(index_path))
 
 
 @remote.group(cls=ClickAliasedGroup)

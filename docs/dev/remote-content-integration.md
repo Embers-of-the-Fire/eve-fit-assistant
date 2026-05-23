@@ -215,6 +215,25 @@ Inspect effective remote mock configuration:
 ./x remote config display --pretty
 ```
 
+Prepare a localized remote announcement in the configured mock origin before publishing:
+
+```bash
+./x remote prepare announcement \
+  --zh docs/drafts/update.zh.md \
+  --en docs/drafts/update.en.md \
+  --id remote-announcement-2026-05-data-update \
+  --title-zh "数据更新公告" \
+  --title-en "Data update notice" \
+  --summary-zh "本次更新包含最新 EVE 数据。" \
+  --summary-en "This update includes the latest EVE data."
+```
+
+Announcement preparation copies the Markdown bodies into the canonical remote object layout, creates
+or updates the document catalog, and always ensures the channel index advertises the document catalog.
+The generated announcement is scoped to the current app version through `minAppVer` by default. Pass
+`--all-app-ver` to write `minAppVer: null`. Existing announcement ids or body files are rejected by
+default; pass `--replace` only for intentional corrections.
+
 The launcher reads defaults from `efa.dev.toml`, with CLI arguments taking precedence for a single
 invocation. Configure the default ports, bucket, credentials, channel, resource root, mock origin
 directory, and MinIO data directory in the `[remote]` section of `efa.dev.toml`. The default MinIO
