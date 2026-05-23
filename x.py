@@ -218,7 +218,10 @@ def __read_json_object(path: Path, default: dict[str, object]) -> dict[str, obje
         return dict(default)
     if not path.is_file():
         raise click.ClickException(f"JSON path is not a file: {path}")
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exception:
+        raise click.ClickException(f"Invalid JSON in {path}: {exception.msg}") from exception
     if not isinstance(payload, dict):
         raise click.ClickException(f"JSON payload must be an object: {path}")
     return payload
