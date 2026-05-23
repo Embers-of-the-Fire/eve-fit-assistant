@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/impact.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
+import "package:eve_fit_assistant/storage/bundle/verification.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/datetime.dart";
