@@ -234,6 +234,33 @@ The generated announcement is scoped to the current app version through `minAppV
 `--all-app-ver` to write `minAppVer: null`. Existing announcement ids or body files are rejected by
 default; pass `--replace` only for intentional corrections.
 
+Prepare bundle artifacts in the same origin after running the data build:
+
+```bash
+./x remote prepare bundle \
+  --full cache/workspaces/tranquility/output/tranquility.zip \
+  --manifest cache/workspaces/tranquility/output/bundle_manifest.json \
+  --artifact-id tranquility-tq-2863052-full
+```
+
+When a previous published manifest is available, generate an incremental patch and prepare both
+artifacts together:
+
+```bash
+./x build increment releases/tranquility-tq-2862000.manifest.json
+./x remote prepare bundle \
+  --full cache/workspaces/tranquility/output/tranquility.zip \
+  --manifest cache/workspaces/tranquility/output/bundle_manifest.json \
+  --artifact-id tranquility-tq-2863052-full \
+  --increment cache/workspaces/tranquility/output/tranquility_increment.zip \
+  --increment-artifact-id tranquility-tq-2862000-to-2863052-increment
+```
+
+Bundle preparation reads `descriptor.json` from each zip, computes artifact size and SHA-256 values,
+copies immutable artifacts into `bundles/<bundle-id>/`, updates `bundles/catalog.json`, and always
+ensures the channel index advertises the bundle catalog. Duplicate artifact ids or existing artifact
+files are rejected by default; pass `--replace` only for local mock corrections.
+
 The launcher reads defaults from `efa.dev.toml`, with CLI arguments taking precedence for a single
 invocation. Configure the default ports, bucket, credentials, channel, resource root, mock origin
 directory, and MinIO data directory in the `[remote]` section of `efa.dev.toml`. The default MinIO

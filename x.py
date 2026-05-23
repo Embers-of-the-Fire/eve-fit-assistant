@@ -22,12 +22,14 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
 import time
+import zipfile
 
 from pathlib import Path
 from urllib.parse import unquote
@@ -179,6 +181,20 @@ def __validate_remote_document_id(document_id: str) -> str:
     return normalized
 
 
+def __validate_remote_artifact_id(artifact_id: str) -> str:
+    normalized = artifact_id.strip()
+    if (
+        not normalized
+        or normalized.startswith("-")
+        or "/" in normalized
+        or ".." in normalized
+        or ".." in unquote(normalized)
+        or any(character.isspace() for character in normalized)
+    ):
+        raise click.ClickException(f"Invalid remote bundle artifact id: {artifact_id!r}")
+    return normalized
+
+
 def __utc_timestamp() -> str:
     return (
         datetime.datetime.now(datetime.UTC)
@@ -211,6 +227,33 @@ def __read_json_object(path: Path, default: dict[str, object]) -> dict[str, obje
 def __write_json_object(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def __file_sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def __read_zip_json(zip_path: Path, member_name: str) -> dict[str, object]:
+    if not zip_path.is_file():
+        raise click.ClickException(f"Bundle archive does not exist: {zip_path}")
+    try:
+        with zipfile.ZipFile(zip_path) as archive, archive.open(member_name) as f:
+            payload = json.loads(f.read().decode("utf-8"))
+    except KeyError as exception:
+        raise click.ClickException(
+            f"Bundle archive is missing {member_name}: {zip_path}"
+        ) from exception
+    except zipfile.BadZipFile as exception:
+        raise click.ClickException(f"Invalid bundle archive: {zip_path}") from exception
+    if not isinstance(payload, dict):
+        raise click.ClickException(
+            f"Bundle archive {member_name} must be a JSON object: {zip_path}"
+        )
+    return payload
 
 
 def __validate_mc_target_segment(value: str, label: str) -> str:
@@ -1137,6 +1180,261 @@ def remote_prepare_announcement(
         styled([Style.BRIGHT, Fore.GREEN], "Prepared remote announcement: ") + resolved_document_id
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Catalog: ") + str(catalog_path))
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Index: ") + str(index_path))
+
+
+def __require_bundle_descriptor_string(
+    descriptor: dict[str, object],
+    key: str,
+    bundle_path: Path,
+) -> str:
+    value = descriptor.get(key)
+    if not isinstance(value, str) or not value:
+        raise click.ClickException(
+            f"Bundle descriptor is missing string field {key}: {bundle_path}"
+        )
+    return value
+
+
+def __bundle_artifact_entry(
+    *,
+    archive_path: Path,
+    manifest_path: Path,
+    artifact_id: str,
+    variant: str,
+    descriptor: dict[str, object],
+    artifact_relative_path: str,
+    manifest_relative_path: str,
+) -> dict[str, object]:
+    manifest_hash = descriptor.get("manifestHash")
+    if not isinstance(manifest_hash, str) or not manifest_hash:
+        manifest_hash = __file_sha256(manifest_path)
+
+    entry: dict[str, object] = {
+        "artifactId": artifact_id,
+        "bundleId": __require_bundle_descriptor_string(descriptor, "bundleId", archive_path),
+        "variant": variant,
+        "appVersion": __require_bundle_descriptor_string(descriptor, "appVersion", archive_path),
+        "gameVersion": __require_bundle_descriptor_string(descriptor, "gameVersion", archive_path),
+        "gameBuild": __require_bundle_descriptor_string(descriptor, "gameBuild", archive_path),
+        "gameRegion": __require_bundle_descriptor_string(descriptor, "gameRegion", archive_path),
+        "gameBranch": __require_bundle_descriptor_string(descriptor, "gameBranch", archive_path),
+        "gameServer": __require_bundle_descriptor_string(descriptor, "gameServer", archive_path),
+        "generatedAt": __utc_timestamp(),
+        "artifactPath": artifact_relative_path,
+        "artifactSize": archive_path.stat().st_size,
+        "artifactSha256": __file_sha256(archive_path),
+        "manifestPath": manifest_relative_path,
+        "manifestHash": manifest_hash,
+    }
+    if variant == "incremental":
+        entry["baseBundleId"] = __require_bundle_descriptor_string(
+            descriptor, "baseBundleId", archive_path
+        )
+        entry["baseManifestHash"] = __require_bundle_descriptor_string(
+            descriptor, "baseManifestHash", archive_path
+        )
+    return entry
+
+
+def __stage_remote_bundle_file(source: Path, target: Path, replace: bool) -> None:
+    if not source.is_file():
+        raise click.ClickException(f"Bundle preparation source file does not exist: {source}")
+    if target.exists() and not replace:
+        raise click.ClickException(
+            f"Remote bundle artifact already exists; pass --replace to overwrite: {target}"
+        )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, target)
+
+
+def __upsert_remote_bundle_entry(
+    entries: list[object],
+    entry: dict[str, object],
+    replace: bool,
+) -> None:
+    artifact_id = entry["artifactId"]
+    existing_indexes = [
+        index
+        for index, existing in enumerate(entries)
+        if isinstance(existing, dict) and existing.get("artifactId") == artifact_id
+    ]
+    if existing_indexes and not replace:
+        raise click.ClickException(
+            f"Remote bundle artifact already exists; pass --replace to overwrite: {artifact_id}"
+        )
+    if existing_indexes:
+        entries[existing_indexes[0]] = entry
+    else:
+        entries.append(entry)
+
+
+@prepare.command("bundle")
+@click.option("--full", "full_path", type=click.Path(path_type=Path), required=True)
+@click.option("--manifest", "manifest_path", type=click.Path(path_type=Path), required=True)
+@click.option("--artifact-id", required=True, help="Artifact id for the full bundle.")
+@click.option("--increment", "increment_path", type=click.Path(path_type=Path), default=None)
+@click.option(
+    "--increment-artifact-id",
+    default=None,
+    help="Artifact id for the incremental bundle. Required with --increment.",
+)
+@click.option(
+    "--replace",
+    is_flag=True,
+    default=False,
+    help="Allow replacing existing artifact catalog entries and files.",
+)
+@click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+@click.option("--channel", default=None, help="Override remote channel.")
+def remote_prepare_bundle(
+    full_path: Path,
+    manifest_path: Path,
+    artifact_id: str,
+    increment_path: Path | None,
+    increment_artifact_id: str | None,
+    replace: bool,
+    origin_dir: Path | None,
+    resource_root: str | None,
+    channel: str | None,
+):
+    """Prepare remote bundle catalog entries and artifact files."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    if increment_path is not None and increment_artifact_id is None:
+        raise click.ClickException("--increment-artifact-id is required when --increment is used.")
+    if increment_path is None and increment_artifact_id is not None:
+        raise click.ClickException("--increment-artifact-id requires --increment.")
+    if not manifest_path.is_file():
+        raise click.ClickException(f"Bundle manifest file does not exist: {manifest_path}")
+
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_artifact_id = __validate_remote_artifact_id(artifact_id)
+
+    full_descriptor = __read_zip_json(full_path, "descriptor.json")
+    if full_descriptor.get("isIncremental") is True:
+        raise click.ClickException(f"Full bundle archive must not be incremental: {full_path}")
+    bundle_id = __require_bundle_descriptor_string(full_descriptor, "bundleId", full_path)
+
+    root_dir = resolved_origin_dir / resolved_resource_root
+    channel_dir = root_dir / "channels" / resolved_channel
+    catalog_path = channel_dir / "bundles" / "catalog.json"
+    index_path = channel_dir / "index.json"
+    bundle_dir = root_dir / "bundles" / bundle_id
+
+    full_zip_relative_path = f"bundles/{bundle_id}/{resolved_artifact_id}.zip"
+    full_manifest_relative_path = f"bundles/{bundle_id}/{resolved_artifact_id}.manifest.json"
+    full_zip_target = root_dir / full_zip_relative_path
+    full_manifest_target = root_dir / full_manifest_relative_path
+    files_to_stage = [
+        (full_path, full_zip_target),
+        (manifest_path, full_manifest_target),
+    ]
+
+    prepared_entries = [
+        __bundle_artifact_entry(
+            archive_path=full_path,
+            manifest_path=manifest_path,
+            artifact_id=resolved_artifact_id,
+            variant="full",
+            descriptor=full_descriptor,
+            artifact_relative_path=full_zip_relative_path,
+            manifest_relative_path=full_manifest_relative_path,
+        )
+    ]
+
+    if increment_path is not None and increment_artifact_id is not None:
+        resolved_increment_artifact_id = __validate_remote_artifact_id(increment_artifact_id)
+        increment_descriptor = __read_zip_json(increment_path, "descriptor.json")
+        if increment_descriptor.get("isIncremental") is not True:
+            raise click.ClickException(
+                f"Incremental bundle archive must declare isIncremental: {increment_path}"
+            )
+        increment_bundle_id = __require_bundle_descriptor_string(
+            increment_descriptor, "bundleId", increment_path
+        )
+        if increment_bundle_id != bundle_id:
+            raise click.ClickException(
+                f"Incremental bundle id does not match full bundle: {increment_bundle_id} != {bundle_id}"
+            )
+        increment_base_bundle_id = __require_bundle_descriptor_string(
+            increment_descriptor, "baseBundleId", increment_path
+        )
+        if increment_base_bundle_id != bundle_id:
+            raise click.ClickException(
+                "Incremental base bundle id does not match full bundle: "
+                f"{increment_base_bundle_id} != {bundle_id}"
+            )
+        __require_bundle_descriptor_string(increment_descriptor, "baseManifestHash", increment_path)
+
+        increment_relative_path = f"bundles/{bundle_id}/{resolved_increment_artifact_id}.zip"
+        increment_target = root_dir / increment_relative_path
+        files_to_stage.append((increment_path, increment_target))
+        prepared_entries.append(
+            __bundle_artifact_entry(
+                archive_path=increment_path,
+                manifest_path=manifest_path,
+                artifact_id=resolved_increment_artifact_id,
+                variant="incremental",
+                descriptor=increment_descriptor,
+                artifact_relative_path=increment_relative_path,
+                manifest_relative_path=full_manifest_relative_path,
+            )
+        )
+
+    catalog = __read_json_object(
+        catalog_path,
+        {
+            "schemaVersion": 1,
+            "artifacts": [],
+        },
+    )
+    entries = catalog.get("artifacts")
+    if not isinstance(entries, list):
+        raise click.ClickException(
+            f"Remote bundle catalog artifacts must be a list: {catalog_path}"
+        )
+    prepared_artifact_ids = [entry["artifactId"] for entry in prepared_entries]
+    if len(set(prepared_artifact_ids)) != len(prepared_artifact_ids):
+        raise click.ClickException(
+            "Remote bundle artifact ids must be unique within one preparation."
+        )
+    for entry in prepared_entries:
+        __upsert_remote_bundle_entry(entries, entry, replace)
+    for source, target in files_to_stage:
+        __stage_remote_bundle_file(source, target, replace)
+    __write_json_object(catalog_path, catalog)
+
+    index = __read_json_object(
+        index_path,
+        {
+            "schemaVersion": 1,
+            "minClientApi": 1,
+            "channel": resolved_channel,
+            "region": "global",
+        },
+    )
+    generated_at = __utc_timestamp()
+    index["generatedAt"] = generated_at
+    index["schemaVersion"] = index.get("schemaVersion", 1)
+    index["minClientApi"] = index.get("minClientApi", 1)
+    index["channel"] = resolved_channel
+    bundles = index.get("bundles")
+    if not isinstance(bundles, dict):
+        bundles = {}
+    bundles["catalogPath"] = f"channels/{resolved_channel}/bundles/catalog.json"
+    bundles["revision"] = f"bundles-{generated_at.replace('-', '').replace(':', '')}-{bundle_id}"
+    index["bundles"] = bundles
+    __write_json_object(index_path, index)
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Prepared remote bundle: ") + bundle_id)
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Catalog: ") + str(catalog_path))
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Bundle artifacts: ") + str(bundle_dir))
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Index: ") + str(index_path))
 
 
