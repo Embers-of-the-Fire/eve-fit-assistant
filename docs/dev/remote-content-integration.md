@@ -112,10 +112,16 @@ The app-side remote bundle path implemented for the v1 contract is:
 
 - `RemoteBundleCatalogManager` reads the configured remote content endpoint, fetches the channel
   `index.json`, and then fetches `bundles/catalog.json` when advertised.
-- Remote artifacts are filtered by the current app version from `pubspec.yaml` and installed bundle
-  registrar state. Endpoint `region` is storage/S3 deployment metadata and is not a bundle filter.
-- Compatible incremental artifacts are sorted before full artifacts when their `baseManifestHash`
-  matches the installed bundle registrar's latest `manifestHash`.
+- Remote artifacts are classified against the current app version from `pubspec.yaml` and installed
+  bundle registrar state. Endpoint `region` is storage/S3 deployment metadata and is not a bundle
+  filter.
+- The bundle manager summarizes the catalog as recommended, available, already installed, or
+  unavailable. The nested remote bundle page keeps unavailable artifacts visible with the reason so a
+  user can distinguish app-version mismatch, missing base bundle, missing manifest hash, and base
+  manifest mismatch cases.
+- Compatible incremental artifacts are preferred before full artifacts when their `baseManifestHash`
+  matches the installed bundle registrar's latest `manifestHash`. Full artifacts remain the fallback
+  recommendation for new installs or replacements when no matching incremental path exists.
 - `BundleManager.addRemoteBundle(...)` downloads a selected archive into the resource cache,
   verifies byte size and SHA-256, then calls `BundleManager.addBundle(...)` with the same overwrite
   and incremental impact confirmations used by local file imports.

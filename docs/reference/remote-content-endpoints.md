@@ -378,7 +378,13 @@ Client behavior used by EVE Fit Assistant:
 - Full artifacts are eligible for explicit user-triggered import when the app version matches.
 - Incremental artifacts are eligible only when an installed bundle registrar records the matching
   latest `manifestHash` for the artifact `baseManifestHash`.
-- Compatible incremental artifacts are presented before full artifacts.
+- The client classifies artifacts as recommended, available, already installed, or unavailable.
+- Compatible incremental artifacts are recommended before full artifacts.
+- Full artifacts remain available and can become the recommendation for new installs or when no
+  matching incremental path exists for the installed manifest.
+- Unavailable artifacts remain visible in the remote bundle review page with local reason text for
+  app-version mismatch, missing incremental metadata, missing base bundle, missing installed manifest
+  hash, or base manifest mismatch.
 - The client verifies downloaded archive byte size and SHA-256 before import.
 - Import uses the same local bundle import path and does not silently switch the active bundle.
 - Endpoint `region` is storage/deployment metadata only; `gameRegion` remains artifact metadata and
