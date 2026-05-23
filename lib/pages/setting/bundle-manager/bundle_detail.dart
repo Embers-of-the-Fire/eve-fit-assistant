@@ -194,7 +194,6 @@ class _BundleVerificationCard extends StatelessWidget {
       AsyncData(value: final value) => value,
       _ => null,
     };
-    final status = report?.status;
     final color = switch (report) {
       BundleVerificationReport(status: BundleVerificationStatus.valid) => colorGreen,
       BundleVerificationReport(status: BundleVerificationStatus.warning) =>
