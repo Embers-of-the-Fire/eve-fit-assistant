@@ -146,11 +146,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         await _fetchJson(endpoint.resolvePayloadUri(catalogPath)),
       );
       final appVersion = await _readAppVersion();
-      final compatible = _selectCompatibleArtifacts(
-        catalog.artifacts,
-        endpoint: endpoint,
-        appVersion: appVersion,
-      );
+      final compatible = _selectCompatibleArtifacts(catalog.artifacts, appVersion: appVersion);
       info("Discovered ${compatible.length} compatible remote bundle artifacts.");
       return RemoteBundleCatalogState(enabled: true, loaded: true, compatible: compatible);
     } on Object catch (exception, stackTrace) {
@@ -185,7 +181,6 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
 
   IList<RemoteBundleArtifact> _selectCompatibleArtifacts(
     IList<RemoteBundleArtifact> artifacts, {
-    required RemoteContentEndpoint endpoint,
     required String appVersion,
   }) {
     final registry = ref.read(bundleRegistryManagerProvider);
@@ -200,7 +195,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
 
     final compatible =
         artifacts
-            .where((artifact) => _artifactMatchesEnvironment(artifact, endpoint, appVersion))
+            .where((artifact) => _artifactMatchesEnvironment(artifact, appVersion))
             .where((artifact) => _artifactMatchesInstalledState(artifact, installedRegistrars))
             .toList(growable: false)
           ..sort((a, b) {
@@ -213,11 +208,8 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     return compatible.lock;
   }
 
-  bool _artifactMatchesEnvironment(
-    RemoteBundleArtifact artifact,
-    RemoteContentEndpoint endpoint,
-    String appVersion,
-  ) => artifact.appVersion == appVersion && artifact.gameRegion == endpoint.region;
+  bool _artifactMatchesEnvironment(RemoteBundleArtifact artifact, String appVersion) =>
+      artifact.appVersion == appVersion;
 
   bool _artifactMatchesInstalledState(
     RemoteBundleArtifact artifact,

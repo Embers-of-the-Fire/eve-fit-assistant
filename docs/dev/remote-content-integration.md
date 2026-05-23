@@ -112,8 +112,8 @@ The app-side remote bundle path implemented for the v1 contract is:
 
 - `RemoteBundleCatalogManager` reads the configured remote content endpoint, fetches the channel
   `index.json`, and then fetches `bundles/catalog.json` when advertised.
-- Remote artifacts are filtered by the current app version from `pubspec.yaml`, configured remote
-  region, and installed bundle registrar state.
+- Remote artifacts are filtered by the current app version from `pubspec.yaml` and installed bundle
+  registrar state. Endpoint `region` is storage/S3 deployment metadata and is not a bundle filter.
 - Compatible incremental artifacts are sorted before full artifacts when their `baseManifestHash`
   matches the installed bundle registrar's latest `manifestHash`.
 - `BundleManager.addRemoteBundle(...)` downloads a selected archive into the resource cache,
@@ -286,5 +286,5 @@ large and workspace-specific. To test remote bundle downloads locally:
    ./x remote mock launch --backend static --no-materialize
    ```
 
-The app will list the artifact only when the catalog `appVersion` matches the running app version and
-`gameRegion` matches the configured remote content region.
+The app will list the artifact only when the catalog `appVersion` matches the running app version.
+Artifact `gameRegion` is displayed as bundle metadata but is not used for client-side filtering.

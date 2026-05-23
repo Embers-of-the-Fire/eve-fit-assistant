@@ -58,7 +58,8 @@ Field semantics:
   mock origin. It may include a bucket path, such as a MinIO bucket prefix.
 - `resourceRoot`: versioned resource prefix. For v1, this is `efa/v1/`.
 - `channel`: content stream selected by the client.
-- `region`: optional content or deployment filter, such as `global` or `cn`.
+- `region`: optional storage or S3-compatible deployment region metadata, such as `global`, `cn`,
+  or a provider-specific region name. It is not a bundle artifact compatibility filter.
 
 URL joining must be deterministic. Clients and publishers should treat `originUrl` as the only
 component allowed to carry an optional trailing slash, then trim any trailing slash before appending
@@ -171,7 +172,7 @@ Field semantics:
 - `generatedAt`: UTC timestamp for the index generation time.
 - `minClientApi`: minimum client remote-content API version required to consume this index.
 - `channel`: channel represented by this index. It must match the requested channel.
-- `region`: optional region represented by this index.
+- `region`: optional storage or deployment region represented by this index.
 - `documents`: optional document catalog section.
 - `documents.catalogPath`: relative path to the channel document catalog.
 - `documents.revision`: opaque document catalog revision for diagnostics and cache decisions.
@@ -374,12 +375,14 @@ import.
 
 Client behavior used by EVE Fit Assistant:
 
-- Full artifacts are eligible for explicit user-triggered import when app version and region match.
+- Full artifacts are eligible for explicit user-triggered import when the app version matches.
 - Incremental artifacts are eligible only when an installed bundle registrar records the matching
   latest `manifestHash` for the artifact `baseManifestHash`.
 - Compatible incremental artifacts are presented before full artifacts.
 - The client verifies downloaded archive byte size and SHA-256 before import.
 - Import uses the same local bundle import path and does not silently switch the active bundle.
+- Endpoint `region` is storage/deployment metadata only; `gameRegion` remains artifact metadata and
+  is not used as a client-side compatibility filter.
 
 ## Path Safety Rules
 
