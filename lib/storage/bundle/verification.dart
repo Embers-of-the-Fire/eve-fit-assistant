@@ -321,7 +321,9 @@ class BundleVerificationService {
     BundleSnapshotManifest manifest,
     List<BundleVerificationIssue> issues,
   ) async {
-    final manifestPaths = manifest.files.map((entry) => p.posix.normalize(entry.path)).toSet();
+    final manifestPaths = manifest.files
+        .map((entry) => p.posix.normalize(entry.path.replaceAll(r"\", "/")))
+        .toSet();
     await for (final entity in bundleRoot.list(recursive: true, followLinks: false)) {
       if (entity is! File) {
         continue;

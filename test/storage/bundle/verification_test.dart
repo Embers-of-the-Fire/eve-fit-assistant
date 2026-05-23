@@ -94,13 +94,34 @@ void main() {
       expect(report.countIssues<BundleVerificationManifestHashMissing>(), 1);
       expect(report.countIssues<BundleVerificationReadError>(), 0);
     });
+
+    test("does not report extra files for backslash manifest paths", () async {
+      await _writeBundle(
+        bundleDir,
+        files: {r"static\data.txt": "healthy"},
+        filePathOverrides: {r"static\data.txt": "static/data.txt"},
+      );
+
+      final report = await const BundleVerificationService().verifyBundleDirectory(
+        "test-bundle",
+        bundleDir,
+      );
+
+      expect(report.status, BundleVerificationStatus.valid);
+      expect(report.countIssues<BundleVerificationExtraFile>(), 0);
+    });
   });
 }
 
-Future<void> _writeBundle(Directory bundleDir, {required Map<String, String> files}) async {
+Future<void> _writeBundle(
+  Directory bundleDir, {
+  required Map<String, String> files,
+  Map<String, String> filePathOverrides = const <String, String>{},
+}) async {
   final manifestFiles = <Map<String, Object>>[];
   for (final entry in files.entries) {
-    final file = File(p.joinAll(<String>[bundleDir.path, ...entry.key.split("/")]));
+    final filePath = filePathOverrides[entry.key] ?? entry.key;
+    final file = File(p.joinAll(<String>[bundleDir.path, ...filePath.split("/")]));
     await file.parent.create(recursive: true);
     await file.writeAsString(entry.value);
     manifestFiles.add({
