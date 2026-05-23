@@ -39,7 +39,7 @@ class _BundleDetailPageState extends ConsumerState<BundleDetailPage> {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final bundleRegistry = ref.watch(bundleRegistryManagerProvider);
     final activeBundleId = ref.watch(currentBundleProvider)?.bundleId;
     final bundle = bundleRegistry.bundles[widget.bundleId];
@@ -190,24 +190,32 @@ class _BundleVerificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
-    final report = state.valueOrNull;
+    final report = switch (state) {
+      AsyncData(value: final value) => value,
+      _ => null,
+    };
     final status = report?.status;
-    final color = switch (status) {
-      BundleVerificationStatus.valid => colorGreen,
-      BundleVerificationStatus.warning => theme.colorScheme.tertiary,
-      BundleVerificationStatus.invalid => theme.colorScheme.error,
+    final color = switch (report) {
+      BundleVerificationReport(status: BundleVerificationStatus.valid) => colorGreen,
+      BundleVerificationReport(status: BundleVerificationStatus.warning) =>
+        theme.colorScheme.tertiary,
+      BundleVerificationReport(status: BundleVerificationStatus.invalid) => theme.colorScheme.error,
       null => theme.colorScheme.secondary,
     };
-    final icon = switch (status) {
-      BundleVerificationStatus.valid => Icons.verified_outlined,
-      BundleVerificationStatus.warning => Icons.warning_amber_outlined,
-      BundleVerificationStatus.invalid => Icons.error_outline,
+    final icon = switch (report) {
+      BundleVerificationReport(status: BundleVerificationStatus.valid) => Icons.verified_outlined,
+      BundleVerificationReport(status: BundleVerificationStatus.warning) =>
+        Icons.warning_amber_outlined,
+      BundleVerificationReport(status: BundleVerificationStatus.invalid) => Icons.error_outline,
       null => Icons.fact_check_outlined,
     };
-    final title = switch (status) {
-      BundleVerificationStatus.valid => context.l10n.bundleVerificationValid,
-      BundleVerificationStatus.warning => context.l10n.bundleVerificationWarning,
-      BundleVerificationStatus.invalid => context.l10n.bundleVerificationInvalid,
+    final title = switch (report) {
+      BundleVerificationReport(status: BundleVerificationStatus.valid) =>
+        context.l10n.bundleVerificationValid,
+      BundleVerificationReport(status: BundleVerificationStatus.warning) =>
+        context.l10n.bundleVerificationWarning,
+      BundleVerificationReport(status: BundleVerificationStatus.invalid) =>
+        context.l10n.bundleVerificationInvalid,
       null => context.l10n.bundleVerificationNeverRun,
     };
 
@@ -245,7 +253,7 @@ class _BundleVerificationCard extends StatelessWidget {
             if (report != null) ...[
               const SizedBox(height: 4),
               Text(
-                context.l10n.bundleVerificationCheckedAt(formatTs(report.checkedAt)),
+                context.l10n.bundleVerificationCheckedAt(time: formatTs(report.checkedAt)),
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: 8),
@@ -262,7 +270,7 @@ class _BundleVerificationCard extends StatelessWidget {
                   ),
                 if (report.issues.length > 8)
                   Text(
-                    context.l10n.bundleVerificationMoreIssues(report.issues.length - 8),
+                    context.l10n.bundleVerificationMoreIssues(count: report.issues.length - 8),
                     style: theme.textTheme.bodySmall,
                   ),
               ],
@@ -295,15 +303,17 @@ class _BundleVerificationSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final summaries = <String>[
       context.l10n.bundleVerificationMissingFiles(
-        report.countIssues<BundleVerificationMissingFile>(),
+        count: report.countIssues<BundleVerificationMissingFile>(),
       ),
       context.l10n.bundleVerificationHashMismatches(
-        report.countIssues<BundleVerificationHashMismatch>(),
+        count: report.countIssues<BundleVerificationHashMismatch>(),
       ),
       context.l10n.bundleVerificationSizeMismatches(
-        report.countIssues<BundleVerificationSizeMismatch>(),
+        count: report.countIssues<BundleVerificationSizeMismatch>(),
       ),
-      context.l10n.bundleVerificationExtraFiles(report.countIssues<BundleVerificationExtraFile>()),
+      context.l10n.bundleVerificationExtraFiles(
+        count: report.countIssues<BundleVerificationExtraFile>(),
+      ),
     ];
     return Wrap(
       spacing: 12,
@@ -318,27 +328,38 @@ class _BundleVerificationSummary extends StatelessWidget {
 String _formatVerificationIssue(BuildContext context, BundleVerificationIssue issue) =>
     switch (issue) {
       BundleVerificationMissingManifest(:final path) =>
-        context.l10n.bundleVerificationIssueMissingManifest(path),
+        context.l10n.bundleVerificationIssueMissingManifest(path: path),
       BundleVerificationInvalidManifest(:final path, :final error) =>
-        context.l10n.bundleVerificationIssueInvalidManifest(path, error),
+        context.l10n.bundleVerificationIssueInvalidManifest(path: path, error: error),
       BundleVerificationManifestHashMissing() =>
         context.l10n.bundleVerificationIssueManifestHashMissing,
       BundleVerificationManifestHashMismatch(:final expected, :final actual) =>
-        context.l10n.bundleVerificationIssueManifestHashMismatch(expected, actual),
+        context.l10n.bundleVerificationIssueManifestHashMismatch(
+          expected: expected,
+          actual: actual,
+        ),
       BundleVerificationUnsafeManifestPath(:final path) =>
-        context.l10n.bundleVerificationIssueUnsafeManifestPath(path),
+        context.l10n.bundleVerificationIssueUnsafeManifestPath(path: path),
       BundleVerificationMissingFile(:final path) => context.l10n.bundleVerificationIssueMissingFile(
-        path,
+        path: path,
       ),
       BundleVerificationSizeMismatch(:final path, :final expected, :final actual) =>
-        context.l10n.bundleVerificationIssueSizeMismatch(path, expected, actual),
+        context.l10n.bundleVerificationIssueSizeMismatch(
+          path: path,
+          expected: expected,
+          actual: actual,
+        ),
       BundleVerificationHashMismatch(:final path, :final expected, :final actual) =>
-        context.l10n.bundleVerificationIssueHashMismatch(path, expected, actual),
+        context.l10n.bundleVerificationIssueHashMismatch(
+          path: path,
+          expected: expected,
+          actual: actual,
+        ),
       BundleVerificationExtraFile(:final path) => context.l10n.bundleVerificationIssueExtraFile(
-        path,
+        path: path,
       ),
       BundleVerificationReadError(:final path, :final error) =>
-        context.l10n.bundleVerificationIssueReadError(path, error),
+        context.l10n.bundleVerificationIssueReadError(path: path, error: error),
     };
 
 class _PatchTile extends StatelessWidget {
