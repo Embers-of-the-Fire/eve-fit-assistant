@@ -249,6 +249,11 @@ class BundleVerificationService {
     List<BundleVerificationIssue> issues,
   ) {
     final registrarPath = BundleServicePaths(bundleRoot.path).getRegistrarPath();
+    if (!File(registrarPath).existsSync()) {
+      issues.add(const BundleVerificationManifestHashMissing());
+      return;
+    }
+
     try {
       final content = jsonDecode(File(registrarPath).readAsStringSync());
       final expected = BundleRegistrar.fromJson(ensure(content, {})).latest.manifestHash;
@@ -260,8 +265,8 @@ class BundleVerificationService {
       if (actual != expected) {
         issues.add(BundleVerificationManifestHashMismatch(expected: expected, actual: actual));
       }
-    } on Object catch (error) {
-      issues.add(BundleVerificationReadError(path: registrarPath, error: error.toString()));
+    } on Object {
+      issues.add(const BundleVerificationManifestHashMissing());
     }
   }
 

@@ -80,6 +80,20 @@ void main() {
         "static/extra.txt",
       );
     });
+
+    test("reports missing registrar metadata as a warning", () async {
+      await _writeBundle(bundleDir, files: {"static/data.txt": "healthy"});
+      await File(p.join(bundleDir.path, BundleServicePaths.registrarFileName)).delete();
+
+      final report = await const BundleVerificationService().verifyBundleDirectory(
+        "test-bundle",
+        bundleDir,
+      );
+
+      expect(report.status, BundleVerificationStatus.warning);
+      expect(report.countIssues<BundleVerificationManifestHashMissing>(), 1);
+      expect(report.countIssues<BundleVerificationReadError>(), 0);
+    });
   });
 }
 
