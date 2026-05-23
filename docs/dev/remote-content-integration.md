@@ -108,6 +108,20 @@ For incremental imports:
 Remote bundle download work should download and verify an archive first, then pass the verified local
 zip path to `BundleManager.addBundle(...)` rather than duplicate the import path.
 
+The app-side remote bundle path implemented for the v1 contract is:
+
+- `RemoteBundleCatalogManager` reads the configured remote content endpoint, fetches the channel
+  `index.json`, and then fetches `bundles/catalog.json` when advertised.
+- Remote artifacts are filtered by the current app version from `pubspec.yaml`, configured remote
+  region, and installed bundle registrar state.
+- Compatible incremental artifacts are sorted before full artifacts when their `baseManifestHash`
+  matches the installed bundle registrar's latest `manifestHash`.
+- `BundleManager.addRemoteBundle(...)` downloads a selected archive into the resource cache,
+  verifies byte size and SHA-256, then calls `BundleManager.addBundle(...)` with the same overwrite
+  and incremental impact confirmations used by local file imports.
+- Successfully imported remote archives are removed from the download cache. Local bundle usage
+  remains available when discovery or download fails.
+
 ## Bundle Loading
 
 `BundleService` in `lib/storage/bundle/service.dart` loads the currently selected installed bundle.
@@ -243,3 +257,34 @@ Useful overrides:
 
 The mock launcher uses local development credentials only. Production R2, OSS, or S3-compatible
 credentials belong in release tooling and must not be shipped in the app.
+
+## Remote Bundle Mock Artifacts
+
+The committed mock bundle catalog is intentionally empty because real generated bundle archives are
+large and workspace-specific. To test remote bundle downloads locally:
+
+1. Generate a full bundle for a configured workspace:
+
+   ```bash
+   ./x build data
+   ```
+
+2. Copy the generated zip and manifest into the mock origin layout, for example:
+
+   ```text
+   cache/remote/mock-origin/efa/v1/bundles/<bundle-id>/<artifact-id>.zip
+   cache/remote/mock-origin/efa/v1/bundles/<bundle-id>/<artifact-id>.manifest.json
+   ```
+
+3. Edit `cache/remote/mock-origin/efa/v1/channels/alpha/bundles/catalog.json` with the artifact
+   metadata from the generated descriptor, zip byte size, zip SHA-256, manifest path, and manifest
+   hash.
+
+4. Launch the static mock with `--no-materialize` so the edited runtime catalog is preserved:
+
+   ```bash
+   ./x remote mock launch --backend static --no-materialize
+   ```
+
+The app will list the artifact only when the catalog `appVersion` matches the running app version and
+`gameRegion` matches the configured remote content region.

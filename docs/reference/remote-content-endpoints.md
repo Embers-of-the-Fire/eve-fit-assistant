@@ -372,6 +372,15 @@ Bundle download and import behavior is outside this contract, but `artifactSize`
 `artifactSha256` are part of the v1 metadata contract so downloaded archives can be verified before
 import.
 
+Client behavior used by EVE Fit Assistant:
+
+- Full artifacts are eligible for explicit user-triggered import when app version and region match.
+- Incremental artifacts are eligible only when an installed bundle registrar records the matching
+  latest `manifestHash` for the artifact `baseManifestHash`.
+- Compatible incremental artifacts are presented before full artifacts.
+- The client verifies downloaded archive byte size and SHA-256 before import.
+- Import uses the same local bundle import path and does not silently switch the active bundle.
+
 ## Path Safety Rules
 
 Relative paths advertised by v1 JSON payloads must resolve inside the configured `resourceRoot`.
