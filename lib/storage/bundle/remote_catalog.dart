@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
+import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -136,14 +137,14 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
 
     try {
       final endpoint = RemoteContentEndpoint.fromSetting(config);
-      final index = await _fetchJson(endpoint.indexUri);
+      final index = await fetchRemoteJson(_dio, endpoint.indexUri);
       final catalogPath = _readBundleCatalogPath(index, endpoint.channel);
       if (catalogPath == null) {
         return const RemoteBundleCatalogState(enabled: true, loaded: true);
       }
 
       final catalog = RemoteBundleCatalog.fromJson(
-        await _fetchJson(endpoint.resolvePayloadUri(catalogPath)),
+        await fetchRemoteJson(_dio, endpoint.resolvePayloadUri(catalogPath)),
       );
       final appVersion = await _readAppVersion();
       final compatible = _selectCompatibleArtifacts(catalog.artifacts, appVersion: appVersion);
@@ -228,36 +229,6 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
   }
 
   int _variantSortOrder(RemoteBundleArtifact artifact) => artifact.isIncremental ? 0 : 1;
-
-  Future<Map<String, dynamic>> _fetchJson(Uri uri) async {
-    final response = await _getUri<Object>(uri, ResponseType.plain);
-    final data = response.data;
-    final Object? decoded = switch (data) {
-      final String text => jsonDecode(text),
-      final Map<String, dynamic> map => map,
-      _ => throw RemoteContentException("Remote JSON response is not an object: $uri"),
-    };
-    if (decoded is! Map<String, dynamic>) {
-      throw RemoteContentException("Remote JSON response is not an object: $uri");
-    }
-    return decoded;
-  }
-
-  Future<Response<T>> _getUri<T>(Uri uri, ResponseType responseType) async {
-    try {
-      return await _dio.getUri<T>(uri, options: Options(responseType: responseType));
-    } on DioException catch (exception) {
-      final response = exception.response;
-      final status = response?.statusCode;
-      final body = response?.data?.toString();
-      final bodySnippet = body == null || body.length <= 300 ? body : body.substring(0, 300);
-      throw RemoteContentException(
-        "Remote request failed for $uri"
-        "${status == null ? "" : " with HTTP $status"}"
-        "${bodySnippet == null || bodySnippet.isEmpty ? "" : ": $bodySnippet"}",
-      );
-    }
-  }
 
   Future<String> _readAppVersion() async {
     final pubspec = await rootBundle.loadString(_packageVersionAsset);

@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:convert";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -7,6 +6,7 @@ import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
+import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -30,14 +30,14 @@ class RemoteDocumentSyncService {
 
     try {
       final endpoint = RemoteContentEndpoint.fromSetting(config);
-      final index = await _fetchJson(endpoint.indexUri);
+      final index = await fetchRemoteJson(_dio, endpoint.indexUri);
       final documentCatalogPath = _readDocumentCatalogPath(index, endpoint.channel);
       if (documentCatalogPath == null) {
         return false;
       }
 
       final catalogUri = endpoint.resolvePayloadUri(documentCatalogPath);
-      final catalogPayload = await _fetchJson(catalogUri);
+      final catalogPayload = await fetchRemoteJson(_dio, catalogUri);
       final parsedCatalog = await _parseCatalog(catalogPayload, endpoint);
       DocumentStorage.replaceRemoteCatalog(parsedCatalog.catalog, parsedCatalog.cachedBodies);
       _ref.invalidate(documentFeedProvider);
@@ -47,20 +47,6 @@ class RemoteDocumentSyncService {
       warning("Remote document sync failed: $exception", stackTrace: stackTrace);
       return false;
     }
-  }
-
-  Future<Map<String, dynamic>> _fetchJson(Uri uri) async {
-    final response = await _getUri<Object>(uri);
-    final data = response.data;
-    final Object? decoded = switch (data) {
-      final String text => jsonDecode(text),
-      final Map<String, dynamic> map => map,
-      _ => throw RemoteContentException("Remote JSON response is not an object: $uri"),
-    };
-    if (decoded is! Map<String, dynamic>) {
-      throw RemoteContentException("Remote JSON response is not an object: $uri");
-    }
-    return decoded;
   }
 
   String? _readDocumentCatalogPath(Map<String, dynamic> index, String expectedChannel) {
@@ -194,24 +180,8 @@ class RemoteDocumentSyncService {
   }
 
   Future<String> _fetchText(Uri uri) async {
-    final response = await _getUri<String>(uri);
+    final response = await getRemoteUri<String>(_dio, uri);
     return response.data ?? "";
-  }
-
-  Future<Response<T>> _getUri<T>(Uri uri) async {
-    try {
-      return await _dio.getUri<T>(uri, options: Options(responseType: ResponseType.plain));
-    } on DioException catch (exception) {
-      final response = exception.response;
-      final status = response?.statusCode;
-      final body = response?.data?.toString();
-      final bodySnippet = body == null || body.length <= 300 ? body : body.substring(0, 300);
-      throw RemoteContentException(
-        "Remote request failed for $uri"
-        "${status == null ? "" : " with HTTP $status"}"
-        "${bodySnippet == null || bodySnippet.isEmpty ? "" : ": $bodySnippet"}",
-      );
-    }
   }
 }
 
