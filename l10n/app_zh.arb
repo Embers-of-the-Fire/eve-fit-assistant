@@ -758,22 +758,148 @@
   "bundleVerificationInvalid": "校验发现数据包完整性问题。",
   "bundleVerificationNeverRun": "尚未执行校验。",
   "bundleVerificationCheckedAt": "校验时间：{time}",
+  "@bundleVerificationCheckedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationMissingFiles": "缺失：{count}",
+  "@bundleVerificationMissingFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "bundleVerificationHashMismatches": "哈希不匹配：{count}",
+  "@bundleVerificationHashMismatches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "bundleVerificationSizeMismatches": "大小不匹配：{count}",
+  "@bundleVerificationSizeMismatches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "bundleVerificationExtraFiles": "额外文件：{count}",
+  "@bundleVerificationExtraFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "bundleVerificationMoreIssues": "另有 {count} 个问题",
+  "@bundleVerificationMoreIssues": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "bundleVerificationRemoteRepairUnavailable": "在可用的远程数据包元数据实现前，暂不支持远程修复。",
   "bundleVerificationIssueMissingManifest": "缺少清单：{path}",
+  "@bundleVerificationIssueMissingManifest": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationIssueInvalidManifest": "清单无效 {path}：{error}",
+  "@bundleVerificationIssueInvalidManifest": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationIssueManifestHashMissing": "安装记录中没有最新清单哈希。",
   "bundleVerificationIssueManifestHashMismatch": "清单哈希不匹配：应为 {expected}，实际为 {actual}",
+  "@bundleVerificationIssueManifestHashMismatch": {
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationIssueUnsafeManifestPath": "清单路径不安全：{path}",
+  "@bundleVerificationIssueUnsafeManifestPath": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationIssueMissingFile": "缺少文件：{path}",
+  "@bundleVerificationIssueMissingFile": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationIssueSizeMismatch": "文件大小不匹配 {path}：应为 {expected}，实际为 {actual}",
+  "@bundleVerificationIssueSizeMismatch": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "expected": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
   "bundleVerificationIssueHashMismatch": "文件哈希不匹配 {path}：应为 {expected}，实际为 {actual}",
+  "@bundleVerificationIssueHashMismatch": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationIssueExtraFile": "额外文件：{path}",
+  "@bundleVerificationIssueExtraFile": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationIssueReadError": "读取失败 {path}：{error}",
+  "@bundleVerificationIssueReadError": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "bundleManagerSetupTitle": "导入第一个数据包",
   "bundleManagerSetupDescription": "装配和相关功能需要先加载一个有效的数据包。请先导入数据包归档文件。",
   "bundleManagerAlphaScope": "Alpha 范围：应用可以安装多个数据包，但全局同一时间只会启用一个活动数据包。",
