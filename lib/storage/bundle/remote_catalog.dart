@@ -18,6 +18,18 @@ const String _packageVersionAsset = "pubspec.yaml";
 
 enum RemoteBundleArtifactVariant { full, incremental }
 
+enum RemoteBundleCandidateState { recommended, available, installed, unavailable }
+
+enum RemoteBundleCandidateRecommendation { incrementalUpdate, fullInstall, fullReplacement }
+
+enum RemoteBundleCandidateUnavailableReason {
+  appVersionMismatch,
+  missingIncrementalMetadata,
+  baseBundleNotInstalled,
+  installedManifestMissing,
+  baseManifestMismatch,
+}
+
 @freezed
 abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
   const factory RemoteBundleArtifact({
@@ -106,15 +118,56 @@ abstract class RemoteBundleCatalog with _$RemoteBundleCatalog {
 }
 
 @freezed
+abstract class RemoteBundleCandidate with _$RemoteBundleCandidate {
+  const factory RemoteBundleCandidate({
+    required RemoteBundleArtifact artifact,
+    required RemoteBundleCandidateState state,
+    RemoteBundleCandidateRecommendation? recommendation,
+    RemoteBundleCandidateUnavailableReason? unavailableReason,
+    String? installedManifestHash,
+  }) = _RemoteBundleCandidate;
+
+  const RemoteBundleCandidate._();
+
+  bool get canImport =>
+      state == RemoteBundleCandidateState.recommended ||
+      state == RemoteBundleCandidateState.available;
+}
+
+@freezed
 abstract class RemoteBundleCatalogState with _$RemoteBundleCatalogState {
   const factory RemoteBundleCatalogState({
     @Default(false) bool enabled,
     @Default(false) bool loaded,
-    @Default(IList<RemoteBundleArtifact>.empty()) IList<RemoteBundleArtifact> compatible,
+    @Default(false) bool catalogAvailable,
+    String? appVersion,
+    @Default(IList<RemoteBundleCandidate>.empty()) IList<RemoteBundleCandidate> candidates,
     String? error,
   }) = _RemoteBundleCatalogState;
 
   const RemoteBundleCatalogState._();
+
+  IList<RemoteBundleCandidate> get recommended => candidates
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.recommended)
+      .toIList();
+
+  IList<RemoteBundleCandidate> get available => candidates
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.available)
+      .toIList();
+
+  IList<RemoteBundleCandidate> get installed => candidates
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.installed)
+      .toIList();
+
+  IList<RemoteBundleCandidate> get unavailable => candidates
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.unavailable)
+      .toIList();
+
+  IList<RemoteBundleCandidate> get importable =>
+      candidates.where((candidate) => candidate.canImport).toIList();
+
+  IList<RemoteBundleArtifact> get compatible =>
+      importable.map((candidate) => candidate.artifact).toIList();
 
   bool get hasCompatibleArtifacts => compatible.isNotEmpty;
 }
@@ -146,9 +199,18 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         await fetchRemoteJson(_dio, endpoint.resolvePayloadUri(catalogPath)),
       );
       final appVersion = await _readAppVersion();
-      final compatible = _selectCompatibleArtifacts(catalog.artifacts, appVersion: appVersion);
-      info("Discovered ${compatible.length} compatible remote bundle artifacts.");
-      return RemoteBundleCatalogState(enabled: true, loaded: true, compatible: compatible);
+      final candidates = _selectBundleCandidates(catalog.artifacts, appVersion: appVersion);
+      info(
+        "Discovered ${candidates.where((candidate) => candidate.canImport).length} "
+        "compatible remote bundle artifacts.",
+      );
+      return RemoteBundleCatalogState(
+        enabled: true,
+        loaded: true,
+        catalogAvailable: true,
+        appVersion: appVersion,
+        candidates: candidates,
+      );
     } on Object catch (exception, stackTrace) {
       warning("Remote bundle catalog sync failed: $exception", stackTrace: stackTrace);
       return RemoteBundleCatalogState(enabled: true, loaded: true, error: exception.toString());
@@ -179,7 +241,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     return readRemoteRequiredString(bundles, "catalogPath");
   }
 
-  IList<RemoteBundleArtifact> _selectCompatibleArtifacts(
+  IList<RemoteBundleCandidate> _selectBundleCandidates(
     IList<RemoteBundleArtifact> artifacts, {
     required String appVersion,
   }) {
@@ -193,39 +255,169 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       }
     }
 
-    final compatible =
-        artifacts
-            .where((artifact) => _artifactMatchesEnvironment(artifact, appVersion))
-            .where((artifact) => _artifactMatchesInstalledState(artifact, installedRegistrars))
+    final candidates = [
+      for (final artifact in artifacts)
+        _candidateForArtifact(
+          artifact,
+          appVersion: appVersion,
+          installedRegistrars: installedRegistrars,
+        ),
+    ];
+    final recommendations = _recommendCandidates(candidates, installedRegistrars);
+    final selected =
+        candidates
+            .map(
+              (candidate) => recommendations.contains(candidate)
+                  ? candidate.copyWith(
+                      state: RemoteBundleCandidateState.recommended,
+                      recommendation: _recommendationFor(candidate, installedRegistrars),
+                    )
+                  : candidate,
+            )
             .toList(growable: false)
-          ..sort((a, b) {
-            final variantOrder = _variantSortOrder(a).compareTo(_variantSortOrder(b));
-            if (variantOrder != 0) {
-              return variantOrder;
-            }
-            return b.generatedAt.compareTo(a.generatedAt);
-          });
-    return compatible.lock;
+          ..sort(_compareCandidates);
+    return selected.lock;
   }
 
-  bool _artifactMatchesEnvironment(RemoteBundleArtifact artifact, String appVersion) =>
-      artifact.appVersion == appVersion;
-
-  bool _artifactMatchesInstalledState(
-    RemoteBundleArtifact artifact,
-    Map<String, BundleRegistrar> installedRegistrars,
-  ) {
-    if (artifact.isFull) {
-      return true;
+  RemoteBundleCandidate _candidateForArtifact(
+    RemoteBundleArtifact artifact, {
+    required String appVersion,
+    required Map<String, BundleRegistrar> installedRegistrars,
+  }) {
+    if (artifact.appVersion != appVersion) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.unavailable,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.appVersionMismatch,
+      );
     }
+
+    final installedRegistrar = installedRegistrars[artifact.bundleId];
+    final installedManifestHash = installedRegistrar?.latest.manifestHash;
+    if (installedManifestHash == artifact.manifestHash) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.installed,
+        installedManifestHash: installedManifestHash,
+      );
+    }
+
+    if (artifact.isFull) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.available,
+        installedManifestHash: installedManifestHash,
+      );
+    }
+
     final baseBundleId = artifact.baseBundleId;
     final baseManifestHash = artifact.baseManifestHash;
     if (baseBundleId == null || baseManifestHash == null) {
-      return false;
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.unavailable,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.missingIncrementalMetadata,
+      );
     }
     final registrar = installedRegistrars[baseBundleId];
-    return registrar?.latest.manifestHash == baseManifestHash;
+    if (registrar == null) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.unavailable,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.baseBundleNotInstalled,
+      );
+    }
+
+    final baseInstalledManifestHash = registrar.latest.manifestHash;
+    if (baseInstalledManifestHash == artifact.manifestHash) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.installed,
+        installedManifestHash: baseInstalledManifestHash,
+      );
+    }
+    if (baseInstalledManifestHash == null) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.unavailable,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.installedManifestMissing,
+      );
+    }
+    if (baseInstalledManifestHash != baseManifestHash) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.unavailable,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.baseManifestMismatch,
+        installedManifestHash: baseInstalledManifestHash,
+      );
+    }
+
+    return RemoteBundleCandidate(
+      artifact: artifact,
+      state: RemoteBundleCandidateState.available,
+      installedManifestHash: baseInstalledManifestHash,
+    );
   }
+
+  Set<RemoteBundleCandidate> _recommendCandidates(
+    List<RemoteBundleCandidate> candidates,
+    Map<String, BundleRegistrar> installedRegistrars,
+  ) {
+    final byBundleId = <String, List<RemoteBundleCandidate>>{};
+    for (final candidate in candidates.where((candidate) => candidate.canImport)) {
+      byBundleId.putIfAbsent(candidate.artifact.bundleId, () => []).add(candidate);
+    }
+
+    final recommendations = <RemoteBundleCandidate>{};
+    for (final bundleCandidates in byBundleId.values) {
+      bundleCandidates.sort(_compareImportableCandidates);
+      recommendations.add(bundleCandidates.first);
+    }
+    return recommendations;
+  }
+
+  RemoteBundleCandidateRecommendation _recommendationFor(
+    RemoteBundleCandidate candidate,
+    Map<String, BundleRegistrar> installedRegistrars,
+  ) {
+    if (candidate.artifact.isIncremental) {
+      return RemoteBundleCandidateRecommendation.incrementalUpdate;
+    }
+    if (installedRegistrars.containsKey(candidate.artifact.bundleId)) {
+      return RemoteBundleCandidateRecommendation.fullReplacement;
+    }
+    return RemoteBundleCandidateRecommendation.fullInstall;
+  }
+
+  int _compareCandidates(RemoteBundleCandidate a, RemoteBundleCandidate b) {
+    final stateOrder = _candidateStateSortOrder(a).compareTo(_candidateStateSortOrder(b));
+    if (stateOrder != 0) {
+      return stateOrder;
+    }
+    return _compareArtifacts(a.artifact, b.artifact);
+  }
+
+  int _compareImportableCandidates(RemoteBundleCandidate a, RemoteBundleCandidate b) =>
+      _compareArtifacts(a.artifact, b.artifact);
+
+  int _compareArtifacts(RemoteBundleArtifact a, RemoteBundleArtifact b) {
+    final variantOrder = _variantSortOrder(a).compareTo(_variantSortOrder(b));
+    if (variantOrder != 0) {
+      return variantOrder;
+    }
+    final generatedOrder = b.generatedAt.compareTo(a.generatedAt);
+    if (generatedOrder != 0) {
+      return generatedOrder;
+    }
+    return a.artifactId.compareTo(b.artifactId);
+  }
+
+  int _candidateStateSortOrder(RemoteBundleCandidate candidate) => switch (candidate.state) {
+    RemoteBundleCandidateState.recommended => 0,
+    RemoteBundleCandidateState.available => 1,
+    RemoteBundleCandidateState.installed => 2,
+    RemoteBundleCandidateState.unavailable => 3,
+  };
 
   int _variantSortOrder(RemoteBundleArtifact artifact) => artifact.isIncremental ? 0 : 1;
 
