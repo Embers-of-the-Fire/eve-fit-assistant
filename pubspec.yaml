@@ -38,6 +38,7 @@ dependencies:
   animated_tree_view: ^2.3.0
   archive: ^4.0.7
   auto_route: ^11.1.0
+  crypto: ^3.0.7
   date_format: ^2.0.9
   dio: ^5.9.1
   fast_immutable_collections: ^11.1.0
