@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
@@ -11,6 +9,7 @@ import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/services.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
+import "package:yaml/yaml.dart";
 
 part "remote_catalog.freezed.dart";
 part "remote_catalog.g.dart";
@@ -232,10 +231,11 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
 
   Future<String> _readAppVersion() async {
     final pubspec = await rootBundle.loadString(_packageVersionAsset);
-    for (final line in const LineSplitter().convert(pubspec)) {
-      final trimmed = line.trim();
-      if (trimmed.startsWith("version:")) {
-        return trimmed.substring("version:".length).trim();
+    final yaml = loadYaml(pubspec);
+    if (yaml is YamlMap) {
+      final version = yaml["version"];
+      if (version is String && version.trim().isNotEmpty) {
+        return version.trim();
       }
     }
     throw const RemoteContentException("Unable to read app version from pubspec.yaml.");
