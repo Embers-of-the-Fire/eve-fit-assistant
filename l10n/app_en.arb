@@ -400,6 +400,54 @@
   "bundleManagerReadyTitle": "Bundle ready",
   "bundleManagerReadyDescription": "Active bundle: {bundleId}",
   "bundleManagerImportAction": "Import bundle",
+  "bundleRemoteSectionTitle": "Remote bundles",
+  "bundleRemoteSectionDescription": "Discover compatible bundle archives from the configured remote content endpoint. Downloads start only after you choose one.",
+  "bundleRemoteRefreshAction": "Refresh remote bundles",
+  "bundleRemoteEmpty": "No compatible remote bundles are available.",
+  "bundleRemoteError": "Remote bundle discovery failed: {message}",
+  "@bundleRemoteError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactDescription": "{variant} bundle {bundleId} · build {gameBuild} · {gameServer}",
+  "@bundleRemoteArtifactDescription": {
+    "placeholders": {
+      "variant": {
+        "type": "String"
+      },
+      "bundleId": {
+        "type": "String"
+      },
+      "gameBuild": {
+        "type": "String"
+      },
+      "gameServer": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteDownloadAction": "Download",
+  "bundleRemoteImportConfirmTitle": "Download remote bundle?",
+  "bundleRemoteImportConfirmDescription": "Download, verify, and import {artifactId}? The active bundle will not switch automatically.",
+  "@bundleRemoteImportConfirmDescription": {
+    "placeholders": {
+      "artifactId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteImportSucceeded": "Remote bundle imported.",
+  "bundleRemoteImportFailed": "Remote bundle import failed: {message}",
+  "@bundleRemoteImportFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "bundleManagerErrorMissingPath": "Missing required path: {path}",
   "bundleManagerErrorExpectFile": "Expected a file at: {fileName}",
   "bundleManagerErrorExpectDirectory": "Expected a directory at: {dirName}",

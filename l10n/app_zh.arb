@@ -927,6 +927,54 @@
     }
   },
   "bundleManagerImportAction": "导入数据包",
+  "bundleRemoteSectionTitle": "远程数据包",
+  "bundleRemoteSectionDescription": "从已配置的远程内容端点发现兼容的数据包归档。只有在您选择后才会开始下载。",
+  "bundleRemoteRefreshAction": "刷新远程数据包",
+  "bundleRemoteEmpty": "没有可用的兼容远程数据包。",
+  "bundleRemoteError": "远程数据包发现失败：{message}",
+  "@bundleRemoteError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactDescription": "{variant}数据包 {bundleId} · 构建 {gameBuild} · {gameServer}",
+  "@bundleRemoteArtifactDescription": {
+    "placeholders": {
+      "variant": {
+        "type": "String"
+      },
+      "bundleId": {
+        "type": "String"
+      },
+      "gameBuild": {
+        "type": "String"
+      },
+      "gameServer": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteDownloadAction": "下载",
+  "bundleRemoteImportConfirmTitle": "要下载远程数据包吗？",
+  "bundleRemoteImportConfirmDescription": "下载、校验并导入 {artifactId}？当前活动数据包不会自动切换。",
+  "@bundleRemoteImportConfirmDescription": {
+    "placeholders": {
+      "artifactId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteImportSucceeded": "远程数据包已导入。",
+  "bundleRemoteImportFailed": "远程数据包导入失败：{message}",
+  "@bundleRemoteImportFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "bundleManagerErrorMissingPath": "缺少必要路径：{path}",
   "@bundleManagerErrorMissingPath": {
     "placeholders": {
