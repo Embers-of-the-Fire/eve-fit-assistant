@@ -137,6 +137,10 @@ class _BundleImpactWarningDialogState extends State<_BundleImpactWarningDialog> 
           context.l10n.bundleImpactIncrementalWarningDescription(
             bundleId: report.target.targetBundle.bundleId,
           ),
+        BundleImpactTargetKind.fullReplacementImport =>
+          context.l10n.bundleImpactIncrementalWarningDescription(
+            bundleId: report.target.targetBundle.bundleId,
+          ),
       };
 }
 

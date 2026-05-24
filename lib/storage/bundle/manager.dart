@@ -170,7 +170,7 @@ class BundleRegistryManager extends _$BundleRegistryManager {
     registryFile.writeAsStringSync(registryContent);
   }
 
-  void _addBundle(BundleInfo bundle) {
+  BundleRegistry _addBundle(BundleInfo bundle) {
     final updatedRegistry = _normalizeRegistry(
       state.copyWith(
         bundles: state.bundles.add(bundle.bundleId, bundle),
@@ -178,6 +178,7 @@ class BundleRegistryManager extends _$BundleRegistryManager {
       ),
     );
     _setRegistry(updatedRegistry);
+    return updatedRegistry;
   }
 
   BundleRegistry _removeBundle(String bundleId) {
@@ -313,10 +314,32 @@ class BundleManager extends _$BundleManager {
     );
   }
 
+  static BundleDescriptor _descriptorForImport(
+    BundleDescriptor descriptor,
+    RemoteBundleArtifact? remoteArtifact,
+  ) {
+    if (remoteArtifact == null) {
+      return descriptor;
+    }
+    if (remoteArtifact.bundleId != descriptor.bundleId) {
+      throw StateError(
+        "Remote bundle id mismatch: ${remoteArtifact.bundleId} != ${descriptor.bundleId}",
+      );
+    }
+    if (remoteArtifact.manifestHash != descriptor.manifestHash && descriptor.manifestHash != null) {
+      throw StateError(
+        "Remote bundle manifest hash mismatch: "
+        "${remoteArtifact.manifestHash} != ${descriptor.manifestHash}",
+      );
+    }
+    return descriptor.copyWith(manifestHash: remoteArtifact.manifestHash);
+  }
+
   Future<void> addBundle(
     String bundlePath, {
     Future<bool> Function()? confirmOverwrite,
     Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+    Future<bool> Function(BundleImpactReport report)? confirmReplacementImpact,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
@@ -324,6 +347,7 @@ class BundleManager extends _$BundleManager {
         bundlePath,
         confirmOverwrite: confirmOverwrite,
         confirmIncrementalImpact: confirmIncrementalImpact,
+        confirmReplacementImpact: confirmReplacementImpact,
       ),
     );
   }
@@ -332,6 +356,7 @@ class BundleManager extends _$BundleManager {
     String bundlePath, {
     Future<bool> Function()? confirmOverwrite,
     Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+    Future<bool> Function(BundleImpactReport report)? confirmReplacementImpact,
     RemoteBundleArtifact? remoteArtifact,
     RemoteBundleImportProgressCallback? onRemoteProgress,
   }) async {
@@ -362,13 +387,14 @@ class BundleManager extends _$BundleManager {
     }
 
     final bundleCachePath = artifact.cachePath;
-    final descriptor = artifact.descriptor;
+    final descriptor = _descriptorForImport(artifact.descriptor, remoteArtifact);
     final bundleId = descriptor.bundleId;
     final baseDir = Directory(_bundleBasePath);
     if (!baseDir.existsSync()) {
       await baseDir.create(recursive: true);
     }
     final targetDir = Directory(getBundlePath(bundleId));
+    final wasActiveBundle = ref.read(currentBundleProvider)?.bundleId == bundleId;
     reportRemoteProgress(RemoteBundleImportStage.importing, bundleId: bundleId);
     if (targetDir.existsSync()) {
       if (descriptor.isIncremental) {
@@ -418,8 +444,34 @@ class BundleManager extends _$BundleManager {
         await _writeRegistrar(targetDir, registrar.pushPatch(descriptor));
       } else {
         warning("Target bundle output dir $bundleId exists!");
+        final registrar = await _readRegistrar(targetDir);
         final willOverwrite = await confirmOverwrite?.call() ?? false;
         if (willOverwrite) {
+          final report = analyzeBundleImpact(
+            fitRegistry: ref.read(fitRegistryManagerProvider),
+            characterRegistry: ref.read(characterRegistryManagerProvider),
+            target: BundleImpactTarget(
+              kind: BundleImpactTargetKind.fullReplacementImport,
+              sourceBundle: BundleMetadata(
+                bundleId: bundleId,
+                paths: BundleServicePaths(targetDir.path),
+                lastModified: DateTime.now(),
+                metadata: registrar,
+              ),
+              targetBundle: bundleMetadataFromDescriptor(
+                descriptor: descriptor,
+                registrar: BundleRegistrar.empty(bundleId),
+                paths: BundleServicePaths(targetDir.path),
+              ),
+            ),
+          );
+          final impactConfirmed = await confirmReplacementImpact?.call(report) ?? true;
+          if (!impactConfirmed) {
+            info("Aborting bundle replacement for $bundleId");
+            reportRemoteProgress(RemoteBundleImportStage.cancelled, bundleId: bundleId);
+            return DateTime.now();
+          }
+
           info("Overwriting existing bundle $bundleId");
           await targetDir.delete(recursive: true);
           await bundleCachePath.rename(targetDir.path);
@@ -441,7 +493,7 @@ class BundleManager extends _$BundleManager {
     info("Successfully imported bundle $bundleId: $descriptor");
 
     reportRemoteProgress(RemoteBundleImportStage.refreshingRegistry, bundleId: bundleId);
-    ref
+    final updatedRegistry = ref
         .read(bundleRegistryManagerProvider.notifier)
         ._addBundle(
           BundleInfo(
@@ -451,7 +503,15 @@ class BundleManager extends _$BundleManager {
             region: descriptor.gameRegion,
           ),
         );
-    ref.invalidate(bundleServiceProvider);
+    if (wasActiveBundle || updatedRegistry.selectedBundleId == bundleId) {
+      final loaded = await ref
+          .read(bundleServiceProvider.notifier)
+          .loadBundle(bundleId, forceReload: true);
+      final activeBundle = loaded.currentData.toNullable();
+      if (activeBundle != null) {
+        ref.read(characterRegistryManagerProvider.notifier).refreshBuiltInCharacters(activeBundle);
+      }
+    }
     reportRemoteProgress(RemoteBundleImportStage.completed, bundleId: bundleId);
 
     return DateTime.now();
@@ -461,6 +521,7 @@ class BundleManager extends _$BundleManager {
     RemoteBundleArtifact artifact, {
     Future<bool> Function()? confirmOverwrite,
     Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+    Future<bool> Function(BundleImpactReport report)? confirmReplacementImpact,
     RemoteBundleImportProgressCallback? onProgress,
   }) async {
     state = const AsyncValue.loading();
@@ -504,6 +565,7 @@ class BundleManager extends _$BundleManager {
           localPath,
           confirmOverwrite: confirmOverwrite,
           confirmIncrementalImpact: confirmIncrementalImpact,
+          confirmReplacementImpact: confirmReplacementImpact,
           remoteArtifact: artifact,
           onRemoteProgress: onProgress,
         );
@@ -659,7 +721,15 @@ class BundleManager extends _$BundleManager {
         if (replacementBundleId == null) {
           ref.read(bundleServiceProvider.notifier).clearSelection();
         } else {
-          await ref.read(bundleServiceProvider.notifier).loadBundle(replacementBundleId);
+          final loaded = await ref
+              .read(bundleServiceProvider.notifier)
+              .loadBundle(replacementBundleId);
+          final activeBundle = loaded.currentData.toNullable();
+          if (activeBundle != null) {
+            ref
+                .read(characterRegistryManagerProvider.notifier)
+                .refreshBuiltInCharacters(activeBundle);
+          }
         }
       }
       return DateTime.now();
@@ -675,7 +745,14 @@ class BundleManager extends _$BundleManager {
       }
       debug("Select new global bundle $bundleId");
 
-      await ref.read(bundleServiceProvider.notifier).loadBundle(bundleId);
+      final forceReload = ref.read(currentBundleProvider)?.bundleId == bundleId;
+      final loaded = await ref
+          .read(bundleServiceProvider.notifier)
+          .loadBundle(bundleId, forceReload: forceReload);
+      final activeBundle = loaded.currentData.toNullable();
+      if (activeBundle != null) {
+        ref.read(characterRegistryManagerProvider.notifier).refreshBuiltInCharacters(activeBundle);
+      }
       if (updateRegistry) {
         ref.read(bundleRegistryManagerProvider.notifier)._selectBundle(bundleId);
       }

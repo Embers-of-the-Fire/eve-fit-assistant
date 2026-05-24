@@ -10,7 +10,7 @@ import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "impact.g.dart";
 
-enum BundleImpactTargetKind { switchBundle, incrementalImport }
+enum BundleImpactTargetKind { switchBundle, incrementalImport, fullReplacementImport }
 
 enum BundleImpactReason {
   bundleIdMismatch,
@@ -108,8 +108,9 @@ BundleImpactReport analyzeBundleImpact({
     fits: impactedFits,
     characters: impactedCharacters,
     bundleDataImpacted:
-        target.kind == BundleImpactTargetKind.incrementalImport &&
-        target.incrementalPatchHasPayload,
+        (target.kind == BundleImpactTargetKind.incrementalImport &&
+            target.incrementalPatchHasPayload) ||
+        target.kind == BundleImpactTargetKind.fullReplacementImport,
   );
 }
 
