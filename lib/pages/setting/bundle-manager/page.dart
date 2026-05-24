@@ -17,7 +17,6 @@ import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/datetime.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
-import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:file_picker/file_picker.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -25,6 +24,49 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 part "bundle_detail.dart";
 part "bundle_tile.dart";
 part "impact_warning.dart";
+part "remote_bundle_selection.dart";
+
+Future<void> _importRemoteBundle(
+  BuildContext context,
+  WidgetRef ref,
+  RemoteBundleArtifact artifact,
+) async {
+  final confirmed = await showConfirmDialog(
+    context,
+    title: context.l10n.bundleRemoteImportConfirmTitle,
+    content: Text(
+      context.l10n.bundleRemoteImportConfirmDescription(artifactId: artifact.artifactId),
+    ),
+  );
+  if (!confirmed || !context.mounted) {
+    return;
+  }
+
+  await ref
+      .read(bundleManagerProvider.notifier)
+      .addRemoteBundle(
+        artifact,
+        confirmIncrementalImpact: (report) => confirmBundleImpactWarning(context, ref, report),
+        confirmOverwrite: () async {
+          if (!context.mounted) return false;
+          return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
+        },
+      );
+  ref.invalidate(remoteBundleCatalogManagerProvider);
+  if (!context.mounted) {
+    return;
+  }
+  ref
+      .read(bundleManagerProvider)
+      .whenOrNull(
+        error: (error, _) => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.bundleRemoteImportFailed(message: error.toString()))),
+        ),
+        data: (_) => ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.bundleRemoteImportSucceeded))),
+      );
+}
 
 @RoutePage()
 class BundleManagerPage extends ConsumerWidget {
@@ -45,50 +87,6 @@ class BundleManagerPage extends ConsumerWidget {
             if (!context.mounted) return false;
             return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
           },
-        );
-  }
-
-  Future<void> _importRemoteBundle(
-    BuildContext context,
-    WidgetRef ref,
-    RemoteBundleArtifact artifact,
-  ) async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: context.l10n.bundleRemoteImportConfirmTitle,
-      content: Text(
-        context.l10n.bundleRemoteImportConfirmDescription(artifactId: artifact.artifactId),
-      ),
-    );
-    if (!confirmed || !context.mounted) {
-      return;
-    }
-
-    await ref
-        .read(bundleManagerProvider.notifier)
-        .addRemoteBundle(
-          artifact,
-          confirmIncrementalImpact: (report) => confirmBundleImpactWarning(context, ref, report),
-          confirmOverwrite: () async {
-            if (!context.mounted) return false;
-            return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
-          },
-        );
-    ref.invalidate(remoteBundleCatalogManagerProvider);
-    if (!context.mounted) {
-      return;
-    }
-    ref
-        .read(bundleManagerProvider)
-        .whenOrNull(
-          error: (error, _) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.bundleRemoteImportFailed(message: error.toString())),
-            ),
-          ),
-          data: (_) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(context.l10n.bundleRemoteImportSucceeded))),
         );
   }
 
@@ -124,7 +122,6 @@ class BundleManagerPage extends ConsumerWidget {
           _RemoteBundleSection(
             state: remoteCatalog,
             onRefreshPressed: () => ref.invalidate(remoteBundleCatalogManagerProvider),
-            onImportPressed: (artifact) => _importRemoteBundle(context, ref, artifact),
           ),
           if (activeBundle != null)
             _BundleTile(
@@ -267,19 +264,14 @@ class _BundleStatusCard extends StatelessWidget {
   );
 }
 
-class _RemoteBundleSection extends StatelessWidget {
-  const _RemoteBundleSection({
-    required this.state,
-    required this.onRefreshPressed,
-    required this.onImportPressed,
-  });
+class _RemoteBundleSection extends ConsumerWidget {
+  const _RemoteBundleSection({required this.state, required this.onRefreshPressed});
 
   final AsyncValue<RemoteBundleCatalogState> state;
   final VoidCallback onRefreshPressed;
-  final void Function(RemoteBundleArtifact artifact) onImportPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final value = switch (state) {
       AsyncData(value: final data) => data,
       _ => null,
@@ -289,7 +281,8 @@ class _RemoteBundleSection extends StatelessWidget {
     }
 
     final theme = context.theme;
-    final artifacts = value?.compatible ?? const IList<RemoteBundleArtifact>.empty();
+    final firstRecommended = value?.recommended.firstOrNull;
+    final summary = _remoteBundleSummary(context, state, value);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Padding(
@@ -333,55 +326,273 @@ class _RemoteBundleSection extends StatelessWidget {
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
               ),
             ],
-            if (!state.isLoading && artifacts.isEmpty && value?.error == null) ...[
+            if (summary != null) ...[
               const SizedBox(height: 8),
-              Text(context.l10n.bundleRemoteEmpty, style: theme.textTheme.bodySmall),
+              Text(summary, style: theme.textTheme.bodySmall),
             ],
-            if (artifacts.isNotEmpty) ...[
+            if (value != null && value.error == null && value.candidates.isNotEmpty) ...[
               const SizedBox(height: 12),
-              for (final artifact in artifacts)
-                _RemoteBundleArtifactTile(
-                  artifact: artifact,
-                  onImportPressed: () => onImportPressed(artifact),
-                ),
+              _RemoteBundleCounts(state: value),
             ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: value == null
+                      ? null
+                      : () => context.router.push(const RemoteBundleSelectionRoute()),
+                  icon: const Icon(Icons.manage_search_outlined),
+                  label: Text(context.l10n.bundleRemoteReviewAction),
+                ),
+                if (firstRecommended != null)
+                  FilledButton.icon(
+                    onPressed: () => _importRemoteBundle(context, ref, firstRecommended.artifact),
+                    icon: const Icon(Icons.download),
+                    label: Text(context.l10n.bundleRemoteDownloadRecommendedAction),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
+
+  String? _remoteBundleSummary(
+    BuildContext context,
+    AsyncValue<RemoteBundleCatalogState> asyncState,
+    RemoteBundleCatalogState? state,
+  ) {
+    final providerError = switch (asyncState) {
+      AsyncError(error: final error) => error,
+      _ => null,
+    };
+    if (providerError != null) {
+      return context.l10n.bundleRemoteError(message: providerError.toString());
+    }
+    if (asyncState.isLoading) {
+      return context.l10n.bundleRemoteChecking;
+    }
+    if (state == null || state.error != null) {
+      return null;
+    }
+    if (!state.catalogAvailable) {
+      return context.l10n.bundleRemoteCatalogMissing;
+    }
+    if (state.candidates.isEmpty) {
+      return context.l10n.bundleRemoteCatalogEmpty;
+    }
+    final firstRecommended = state.recommended.firstOrNull;
+    if (firstRecommended != null) {
+      return _formatRemoteCandidateStatus(
+        context,
+        firstRecommended,
+        currentAppVersion: state.appVersion,
+      );
+    }
+    if (state.importable.isNotEmpty) {
+      return context.l10n.bundleRemoteAlternativesOnly;
+    }
+    if (state.installed.isNotEmpty) {
+      return context.l10n.bundleRemoteCurrent;
+    }
+    final firstUnavailable = state.unavailable.firstOrNull;
+    if (firstUnavailable != null) {
+      return _formatRemoteCandidateStatus(
+        context,
+        firstUnavailable,
+        currentAppVersion: state.appVersion,
+      );
+    }
+    return context.l10n.bundleRemoteNoImportable;
+  }
+}
+
+class _RemoteBundleCounts extends StatelessWidget {
+  const _RemoteBundleCounts({required this.state});
+
+  final RemoteBundleCatalogState state;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      _RemoteBundleCountChip(
+        label: context.l10n.bundleRemoteRecommendedCount(count: state.recommended.length),
+        icon: Icons.auto_awesome_outlined,
+      ),
+      _RemoteBundleCountChip(
+        label: context.l10n.bundleRemoteAvailableCount(count: state.available.length),
+        icon: Icons.download_outlined,
+      ),
+      _RemoteBundleCountChip(
+        label: context.l10n.bundleRemoteInstalledCount(count: state.installed.length),
+        icon: Icons.verified_outlined,
+      ),
+      _RemoteBundleCountChip(
+        label: context.l10n.bundleRemoteUnavailableCount(count: state.unavailable.length),
+        icon: Icons.block_outlined,
+      ),
+    ],
+  );
+}
+
+class _RemoteBundleCountChip extends StatelessWidget {
+  const _RemoteBundleCountChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) =>
+      Chip(avatar: Icon(icon, size: 16), label: Text(label), visualDensity: VisualDensity.compact);
+}
+
+String _formatRemoteCandidateStatus(
+  BuildContext context,
+  RemoteBundleCandidate candidate, {
+  required String? currentAppVersion,
+}) {
+  final artifact = candidate.artifact;
+  return switch (candidate.state) {
+    RemoteBundleCandidateState.recommended => switch (candidate.recommendation) {
+      RemoteBundleCandidateRecommendation.incrementalUpdate =>
+        context.l10n.bundleRemoteRecommendationIncremental(bundleId: artifact.bundleId),
+      RemoteBundleCandidateRecommendation.fullInstall =>
+        context.l10n.bundleRemoteRecommendationFullInstall(bundleId: artifact.bundleId),
+      RemoteBundleCandidateRecommendation.fullReplacement =>
+        context.l10n.bundleRemoteRecommendationFullReplacement(bundleId: artifact.bundleId),
+      null => context.l10n.bundleRemoteRecommendedFallback,
+    },
+    RemoteBundleCandidateState.available => context.l10n.bundleRemoteAvailableDescription,
+    RemoteBundleCandidateState.installed => context.l10n.bundleRemoteInstalledDescription,
+    RemoteBundleCandidateState.unavailable => _formatRemoteCandidateUnavailableReason(
+      context,
+      candidate,
+      currentAppVersion: currentAppVersion,
+    ),
+  };
+}
+
+String _formatRemoteCandidateUnavailableReason(
+  BuildContext context,
+  RemoteBundleCandidate candidate, {
+  required String? currentAppVersion,
+}) {
+  final artifact = candidate.artifact;
+  return switch (candidate.unavailableReason) {
+    RemoteBundleCandidateUnavailableReason.appVersionMismatch =>
+      context.l10n.bundleRemoteUnavailableAppVersion(
+        requiredVersion: artifact.appVersion,
+        currentVersion: currentAppVersion ?? context.l10n.bundleRemoteUnknownAppVersion,
+      ),
+    RemoteBundleCandidateUnavailableReason.missingIncrementalMetadata =>
+      context.l10n.bundleRemoteUnavailableMissingIncrementalMetadata,
+    RemoteBundleCandidateUnavailableReason.baseBundleNotInstalled =>
+      context.l10n.bundleRemoteUnavailableBaseNotInstalled(
+        bundleId: artifact.baseBundleId ?? artifact.bundleId,
+      ),
+    RemoteBundleCandidateUnavailableReason.installedManifestMissing =>
+      context.l10n.bundleRemoteUnavailableInstalledManifestMissing,
+    RemoteBundleCandidateUnavailableReason.baseManifestMismatch =>
+      context.l10n.bundleRemoteUnavailableBaseManifestMismatch,
+    null => context.l10n.bundleRemoteUnavailableUnknown,
+  };
 }
 
 class _RemoteBundleArtifactTile extends StatelessWidget {
-  const _RemoteBundleArtifactTile({required this.artifact, required this.onImportPressed});
+  const _RemoteBundleArtifactTile({
+    required this.candidate,
+    required this.currentAppVersion,
+    required this.onImportPressed,
+  });
 
-  final RemoteBundleArtifact artifact;
+  final RemoteBundleCandidate candidate;
+  final String? currentAppVersion;
   final VoidCallback onImportPressed;
 
   @override
   Widget build(BuildContext context) {
+    final artifact = candidate.artifact;
+    final theme = context.theme;
     final variant = artifact.isIncremental
         ? context.l10n.bundleManagerDetailVariantIncremental
         : context.l10n.bundleManagerDetailVariantFull;
-    return Card(
+    final status = _formatRemoteCandidateStatus(
+      context,
+      candidate,
+      currentAppVersion: currentAppVersion,
+    );
+    final canShowAction = candidate.canImport && MediaQuery.sizeOf(context).width >= 420;
+    final content = Card(
       margin: const EdgeInsets.only(top: 8),
       child: ListTile(
-        leading: Icon(artifact.isIncremental ? Icons.update : Icons.archive_outlined),
+        leading: Icon(
+          _remoteCandidateIcon(candidate),
+          color: _remoteCandidateColor(context, candidate),
+        ),
         title: Text(artifact.artifactId, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          context.l10n.bundleRemoteArtifactDescription(
-            variant: variant,
-            bundleId: artifact.bundleId,
-            gameBuild: artifact.gameBuild,
-            gameServer: artifact.gameServer,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.bundleRemoteArtifactDescription(
+                variant: variant,
+                bundleId: artifact.bundleId,
+                gameBuild: artifact.gameBuild,
+                gameServer: artifact.gameServer,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(status, style: theme.textTheme.bodySmall),
+          ],
+        ),
+        trailing: canShowAction
+            ? FilledButton.tonalIcon(
+                onPressed: onImportPressed,
+                icon: const Icon(Icons.download),
+                label: Text(context.l10n.bundleRemoteDownloadAction),
+              )
+            : null,
+      ),
+    );
+    if (!candidate.canImport || canShowAction) {
+      return content;
+    }
+    return Column(
+      children: [
+        content,
+        Padding(
+          padding: const EdgeInsets.only(left: 8, right: 8, bottom: 4),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: onImportPressed,
+              icon: const Icon(Icons.download),
+              label: Text(context.l10n.bundleRemoteDownloadAction),
+            ),
           ),
         ),
-        trailing: FilledButton.tonalIcon(
-          onPressed: onImportPressed,
-          icon: const Icon(Icons.download),
-          label: Text(context.l10n.bundleRemoteDownloadAction),
-        ),
-      ),
+      ],
     );
   }
 }
+
+IconData _remoteCandidateIcon(RemoteBundleCandidate candidate) => switch (candidate.state) {
+  RemoteBundleCandidateState.recommended => Icons.auto_awesome_outlined,
+  RemoteBundleCandidateState.available =>
+    candidate.artifact.isIncremental ? Icons.update : Icons.archive_outlined,
+  RemoteBundleCandidateState.installed => Icons.verified_outlined,
+  RemoteBundleCandidateState.unavailable => Icons.block_outlined,
+};
+
+Color _remoteCandidateColor(BuildContext context, RemoteBundleCandidate candidate) =>
+    switch (candidate.state) {
+      RemoteBundleCandidateState.recommended => context.theme.colorScheme.primary,
+      RemoteBundleCandidateState.available => context.theme.colorScheme.secondary,
+      RemoteBundleCandidateState.installed => colorGreen,
+      RemoteBundleCandidateState.unavailable => context.theme.colorScheme.error,
+    };

@@ -24,6 +24,7 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/remote-content", page: RemoteContentSettingsRoute.page),
     AutoRoute(path: "/setting/version", page: VersionRoute.page),
     AutoRoute(path: "/setting/bundle-manager", page: BundleManagerRoute.page),
+    AutoRoute(path: "/setting/bundle-manager/remote", page: RemoteBundleSelectionRoute.page),
     AutoRoute(path: "/setting/bundle-manager/:bundleId", page: BundleDetailRoute.page),
     AutoRoute(path: "/setting/bundle-manager/:bundleId/impact", page: BundleImpactDetailRoute.page),
     AutoRoute(path: "/announcement", page: AnnouncementRoute.page),

@@ -112,10 +112,25 @@ The app-side remote bundle path implemented for the v1 contract is:
 
 - `RemoteBundleCatalogManager` reads the configured remote content endpoint, fetches the channel
   `index.json`, and then fetches `bundles/catalog.json` when advertised.
-- Remote artifacts are filtered by the current app version from `pubspec.yaml` and installed bundle
-  registrar state. Endpoint `region` is storage/S3 deployment metadata and is not a bundle filter.
-- Compatible incremental artifacts are sorted before full artifacts when their `baseManifestHash`
-  matches the installed bundle registrar's latest `manifestHash`.
+- Remote artifacts are classified against the current app version from `pubspec.yaml` and installed
+  bundle registrar state. Endpoint `region` is storage/S3 deployment metadata and is not a bundle
+  filter.
+- The bundle manager summarizes the catalog as recommended, available, already installed, or
+  unavailable. The nested remote bundle page keeps unavailable artifacts visible with the reason so a
+  user can distinguish app-version mismatch, missing base bundle, missing manifest hash, and base
+  manifest mismatch cases.
+- Already installed classification checks the whole installed registrar history, not only the latest
+  patch. After applying an incremental patch, the full bundle that formed the base remains installed
+  history and should not be recommended as a replacement.
+- Compatible incremental artifacts are preferred before full artifacts when their `baseManifestHash`
+  matches the installed bundle registrar's latest `manifestHash`. Full artifacts remain the fallback
+  recommendation for new installs or replacements when no matching incremental path exists.
+- Recommended artifacts are scoped to installed bundle ids after at least one bundle is installed.
+  Full artifacts for other bundle ids remain importable alternatives but do not keep prompting the
+  user to install every bundle advertised by the catalog.
+- For an installed bundle id, recommendations must be newer than the newest already installed
+  artifact advertised by the catalog. This prevents an older full archive for the same bundle from
+  being recommended after a newer incremental patch is installed.
 - `BundleManager.addRemoteBundle(...)` downloads a selected archive into the resource cache,
   verifies byte size and SHA-256, then calls `BundleManager.addBundle(...)` with the same overwrite
   and incremental impact confirmations used by local file imports.
