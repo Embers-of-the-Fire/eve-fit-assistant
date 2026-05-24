@@ -152,6 +152,7 @@ Future<void> _importRemoteBundle(
       .addRemoteBundle(
         artifact,
         confirmIncrementalImpact: (report) => confirmBundleImpactWarning(context, ref, report),
+        confirmReplacementImpact: (report) => confirmBundleImpactWarning(context, ref, report),
         confirmOverwrite: () async {
           if (!context.mounted) return false;
           return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
@@ -200,6 +201,7 @@ class BundleManagerPage extends ConsumerWidget {
         .addBundle(
           selected.path,
           confirmIncrementalImpact: (report) => confirmBundleImpactWarning(context, ref, report),
+          confirmReplacementImpact: (report) => confirmBundleImpactWarning(context, ref, report),
           confirmOverwrite: () async {
             if (!context.mounted) return false;
             return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
@@ -212,11 +214,12 @@ class BundleManagerPage extends ConsumerWidget {
     final bundleRegistry = ref.watch(bundleRegistryManagerProvider);
     final bundleState = ref.watch(bundleServiceProvider);
     final remoteCatalog = ref.watch(remoteBundleCatalogManagerProvider);
-    final activeBundleId = ref.watch(currentBundleProvider)?.bundleId;
+    final activeBundle = ref.watch(currentBundleProvider);
+    final activeBundleId = activeBundle?.bundleId;
     final pendingBundleId = bundleState.isInitializing
         ? ref.read(bundleServiceProvider.notifier).pendingBundleId ?? bundleState.bundleId
         : null;
-    final activeBundle = activeBundleId == null ? null : bundleRegistry.bundles[activeBundleId];
+    final activeBundleInfo = activeBundleId == null ? null : bundleRegistry.bundles[activeBundleId];
 
     return Layout(
       title: context.l10n.bundleManagerPageTitle,
@@ -240,14 +243,14 @@ class BundleManagerPage extends ConsumerWidget {
             state: remoteCatalog,
             onRefreshPressed: () => ref.invalidate(remoteBundleCatalogManagerProvider),
           ),
-          if (activeBundle != null)
+          if (activeBundleInfo != null)
             _BundleTile(
-              bundle: activeBundle,
+              bundle: activeBundleInfo,
               activated: true,
-              pending: pendingBundleId == activeBundle.bundleId,
+              pending: pendingBundleId == activeBundleInfo.bundleId,
             ),
           for (final entry in bundleRegistry.bundles.entries.where(
-            (entry) => entry.key != activeBundle?.bundleId,
+            (entry) => entry.key != activeBundleInfo?.bundleId,
           ))
             _BundleTile(bundle: entry.value, pending: pendingBundleId == entry.key),
           const SizedBox(height: 10),
@@ -783,11 +786,18 @@ class _RemoteBundleImportOperationCard extends ConsumerWidget {
         .watch(bundleRegistryManagerProvider)
         .bundles
         .containsKey(operation.bundleId);
-    final activeBundleId = ref.watch(currentBundleProvider)?.bundleId;
+    final activeBundle = ref.watch(currentBundleProvider);
+    final loadedBundle = activeBundle?.bundleId == operation.bundleId;
     final title = operation.failed
         ? context.l10n.bundleRemoteProgressFailedTitle
+        : operation.completed && loadedBundle
+        ? context.l10n.bundleManagerReadyTitle
         : _remoteImportStageLabel(context, operation.progress.stage);
-    final description = _remoteImportOperationDescription(context, operation);
+    final description = _remoteImportOperationDescription(
+      context,
+      operation,
+      loadedBundle: loadedBundle,
+    );
 
     return Card(
       margin: margin,
@@ -866,7 +876,7 @@ class _RemoteBundleImportOperationCard extends ConsumerWidget {
                       icon: const Icon(Icons.info_outline),
                       label: Text(context.l10n.bundleRemoteProgressViewInstalledAction),
                     ),
-                  if (operation.completed && installed && activeBundleId != operation.bundleId)
+                  if (operation.completed && installed && !loadedBundle)
                     FilledButton.icon(
                       onPressed: () =>
                           _selectInstalledBundleWithImpactWarning(context, ref, operation.bundleId),
@@ -1061,8 +1071,9 @@ String _remoteImportStageLabel(BuildContext context, RemoteBundleImportStage sta
 
 String? _remoteImportOperationDescription(
   BuildContext context,
-  _RemoteBundleImportOperation operation,
-) {
+  _RemoteBundleImportOperation operation, {
+  required bool loadedBundle,
+}) {
   if (operation.failed) {
     return context.l10n.bundleRemoteProgressFailedDescription(
       stage: _remoteImportStageLabel(context, operation.failedStage ?? operation.progress.stage),
@@ -1073,6 +1084,9 @@ String? _remoteImportOperationDescription(
     return context.l10n.bundleRemoteProgressCancelledDescription;
   }
   if (operation.completed) {
+    if (loadedBundle) {
+      return context.l10n.bundleManagerReadyDescription(bundleId: operation.bundleId);
+    }
     return context.l10n.bundleRemoteProgressCompletedDescription(bundleId: operation.bundleId);
   }
   final progress = operation.progress;

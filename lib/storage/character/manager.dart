@@ -72,6 +72,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   Timer? _registrySyncTimer;
   Future<void> _pendingRegistrySync = Future<void>.value();
+  CharacterRegistry? _registrySyncSnapshot;
   final Set<String> _reportedBundleWarnings = <String>{};
 
   static bool isBuiltInCharacterId(String characterId) => builtInCharacterIds.contains(characterId);
@@ -88,9 +89,11 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   CharacterRegistry build() {
     ref.onDispose(() {
       _registrySyncTimer?.cancel();
-      unawaited(_queueRegistrySync());
+      final registry = _registrySyncSnapshot;
+      if (registry != null) {
+        unawaited(_queueRegistrySync(registry));
+      }
     });
-    final activeBundle = ref.watch(currentBundleProvider);
     final registryFile = File(_characterRegistryPath);
     if (!registryFile.existsSync()) {
       registryFile
@@ -101,12 +104,22 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
     final registry = CharacterRegistry.fromJson(registryJson);
-    return _ensureBuiltInCharacters(registry, activeBundle: activeBundle);
+    final normalizedRegistry = _ensureBuiltInCharacters(
+      registry,
+      activeBundle: ref.read(currentBundleProvider),
+    );
+    _registrySyncSnapshot = normalizedRegistry;
+    return normalizedRegistry;
   }
 
   void updateCharacter(CharacterMetadata metadata) {
     debug("Update character ${metadata.characterId} in ${metadata.bundleId}");
-    state = state.copyWith(characters: state.characters.add(metadata.characterId, metadata));
+    _setRegistry(state.copyWith(characters: state.characters.add(metadata.characterId, metadata)));
+    _scheduleRegistrySync();
+  }
+
+  void refreshBuiltInCharacters(BundleMetadata? activeBundle) {
+    _setRegistry(_ensureBuiltInCharacters(state, activeBundle: activeBundle));
     _scheduleRegistrySync();
   }
 
@@ -240,7 +253,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     if (path.existsSync()) {
       await path.delete();
     }
-    state = state.copyWith(characters: state.characters.remove(characterId));
+    _setRegistry(state.copyWith(characters: state.characters.remove(characterId)));
     await _flushRegistrySync();
   }
 
@@ -255,7 +268,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final registryContent = registryFile.readAsStringSync();
     final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
     final registry = CharacterRegistry.fromJson(registryJson);
-    state = _ensureBuiltInCharacters(registry, activeBundle: ref.read(currentBundleProvider));
+    _setRegistry(_ensureBuiltInCharacters(registry, activeBundle: ref.read(currentBundleProvider)));
   }
 
   void _scheduleRegistrySync() {
@@ -272,8 +285,9 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     await _queueRegistrySync();
   }
 
-  Future<void> _queueRegistrySync() {
-    final registry = state;
+  Future<void> _queueRegistrySync([CharacterRegistry? snapshot]) {
+    final registry = snapshot ?? state;
+    _registrySyncSnapshot = registry;
     _pendingRegistrySync = _pendingRegistrySync
         .catchError((Object errorValue, StackTrace stackTrace) {
           warning("Previous character registry sync failed: $errorValue");
@@ -291,6 +305,11 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final registryJson = _registryForDisk(registry).toJson();
     final registryContent = jsonEncode(registryJson);
     await registryFile.writeAsString(registryContent);
+  }
+
+  void _setRegistry(CharacterRegistry registry) {
+    state = registry;
+    _registrySyncSnapshot = registry;
   }
 
   Future<void> _writeCharacter(CharacterStorage character) async {

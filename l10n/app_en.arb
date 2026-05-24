@@ -153,6 +153,7 @@
   "bundleImpactReasonBuildMismatch": "Game build differs",
   "bundleImpactReasonAppVersionMismatch": "App version differs",
   "bundleImpactReasonIncrementalPatch": "Incremental patch contains changes",
+  "bundleImpactReasonFullReplacement": "Full replacement contains changes",
   "workspaceTabAnnouncementTitle": "Updates",
   "documentAnnouncementPageTitle": "Updates",
   "documentVersionPageTitle": "Version",

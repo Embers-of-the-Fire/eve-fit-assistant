@@ -181,6 +181,7 @@ Slots? bundleCollectionGetSlots(Ref ref) =>
 @riverpodSingleton
 class BundleCollectionService extends _$BundleCollectionService {
   int _loadGeneration = 0;
+  String? _activeBundleId;
 
   @override
   BundleCollectionStatus build() {
@@ -196,6 +197,7 @@ class BundleCollectionService extends _$BundleCollectionService {
     try {
       if (next == null) {
         _invalidateLoads();
+        _activeBundleId = null;
         state = const BundleCollectionStatus.notInitialized();
         return;
       }
@@ -215,6 +217,7 @@ class BundleCollectionService extends _$BundleCollectionService {
       );
 
       loadGeneration = _nextLoadGeneration();
+      _activeBundleId = next.bundleId;
       await _loadCollection(
         bundleId: next.bundleId,
         filePath: next.paths.getCollectionPath(),
@@ -284,8 +287,6 @@ class BundleCollectionService extends _$BundleCollectionService {
     _loadGeneration++;
   }
 
-  bool _isCurrentLoad(String bundleId, int loadGeneration) {
-    final activeBundleId = ref.read(currentBundleProvider)?.bundleId;
-    return _loadGeneration == loadGeneration && activeBundleId == bundleId;
-  }
+  bool _isCurrentLoad(String bundleId, int loadGeneration) =>
+      _loadGeneration == loadGeneration && _activeBundleId == bundleId;
 }
