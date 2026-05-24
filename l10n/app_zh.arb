@@ -974,7 +974,7 @@
     }
   },
   "bundleRemoteRecommendedSection": "推荐",
-  "bundleRemoteRecommendedSectionDescription": "根据已安装清单元数据，为已安装数据包选择最佳后续下载。只有在尚未安装任何数据包时，才会推荐新的数据包。",
+  "bundleRemoteRecommendedSectionDescription": "根据已安装清单元数据，为已安装数据包选择最佳后续下载。同一数据包的较旧产物会保留为备选项。",
   "bundleRemoteAvailableSection": "可用备选",
   "bundleRemoteAvailableSectionDescription": "可导入但不是首选推荐的完整数据包或补丁。",
   "bundleRemoteInstalledSection": "已安装",

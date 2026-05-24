@@ -447,7 +447,7 @@
     }
   },
   "bundleRemoteRecommendedSection": "Recommended",
-  "bundleRemoteRecommendedSectionDescription": "Best next downloads for installed bundles based on manifest metadata. New bundles are recommended only before any bundle is installed.",
+  "bundleRemoteRecommendedSectionDescription": "Best next downloads for installed bundles based on manifest metadata. Older artifacts for the same bundle stay as alternatives.",
   "bundleRemoteAvailableSection": "Available alternatives",
   "bundleRemoteAvailableSectionDescription": "Importable full bundles or patches that are not the top recommendation.",
   "bundleRemoteInstalledSection": "Already installed",

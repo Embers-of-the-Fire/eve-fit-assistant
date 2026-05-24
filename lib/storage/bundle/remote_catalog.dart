@@ -381,9 +381,24 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     Map<String, BundleRegistrar> installedRegistrars,
   ) {
     final hasInstalledBundles = installedRegistrars.isNotEmpty;
+    final newestInstalledByBundleId = <String, RemoteBundleCandidate>{};
+    for (final candidate in candidates.where(
+      (candidate) => candidate.state == RemoteBundleCandidateState.installed,
+    )) {
+      final current = newestInstalledByBundleId[candidate.artifact.bundleId];
+      if (current == null || candidate.artifact.generatedAt.isAfter(current.artifact.generatedAt)) {
+        newestInstalledByBundleId[candidate.artifact.bundleId] = candidate;
+      }
+    }
+
     final byBundleId = <String, List<RemoteBundleCandidate>>{};
     for (final candidate in candidates.where((candidate) => candidate.canImport)) {
       if (hasInstalledBundles && !installedRegistrars.containsKey(candidate.artifact.bundleId)) {
+        continue;
+      }
+      final newestInstalled = newestInstalledByBundleId[candidate.artifact.bundleId];
+      if (newestInstalled != null &&
+          !candidate.artifact.generatedAt.isAfter(newestInstalled.artifact.generatedAt)) {
         continue;
       }
       byBundleId.putIfAbsent(candidate.artifact.bundleId, () => []).add(candidate);

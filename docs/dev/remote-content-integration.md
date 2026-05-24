@@ -128,6 +128,9 @@ The app-side remote bundle path implemented for the v1 contract is:
 - Recommended artifacts are scoped to installed bundle ids after at least one bundle is installed.
   Full artifacts for other bundle ids remain importable alternatives but do not keep prompting the
   user to install every bundle advertised by the catalog.
+- For an installed bundle id, recommendations must be newer than the newest already installed
+  artifact advertised by the catalog. This prevents an older full archive for the same bundle from
+  being recommended after a newer incremental patch is installed.
 - `BundleManager.addRemoteBundle(...)` downloads a selected archive into the resource cache,
   verifies byte size and SHA-256, then calls `BundleManager.addBundle(...)` with the same overwrite
   and incremental impact confirmations used by local file imports.

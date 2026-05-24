@@ -387,6 +387,9 @@ Client behavior used by EVE Fit Assistant:
 - After at least one bundle is installed, recommendations are limited to installed bundle ids. Full
   artifacts for other bundle ids remain available alternatives, not prompts to install every remote
   bundle.
+- Recommendations for an installed bundle id must be newer than the newest installed artifact in the
+  catalog. Older same-bundle full artifacts remain available alternatives and are not recommended
+  after a newer incremental artifact is installed.
 - Unavailable artifacts remain visible in the remote bundle review page with local reason text for
   app-version mismatch, missing incremental metadata, missing base bundle, missing installed manifest
   hash, or base manifest mismatch.
