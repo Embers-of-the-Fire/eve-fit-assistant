@@ -242,6 +242,21 @@ class BundleManager extends _$BundleManager {
     return files;
   }
 
+  static void _dispatchRemoteProgress(
+    RemoteBundleImportProgressCallback? onProgress,
+    RemoteBundleImportProgress progress,
+  ) {
+    try {
+      onProgress?.call(progress);
+    } on Object catch (exception, stackTrace) {
+      warning(
+        "Remote bundle progress callback failed for ${progress.artifact.artifactId} "
+        "at ${progress.stage.name}: $exception",
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   static Future<BundleRegistrar> _readRegistrar(Directory targetDir) async {
     final registrarPath = BundleServicePaths(targetDir.path).getRegistrarPath();
     final registrarContent = jsonDecode(await File(registrarPath).readAsString());
@@ -325,7 +340,8 @@ class BundleManager extends _$BundleManager {
       if (artifact == null) {
         return;
       }
-      onRemoteProgress?.call(
+      _dispatchRemoteProgress(
+        onRemoteProgress,
         RemoteBundleImportProgress(
           artifact: artifact,
           stage: stage,
@@ -455,7 +471,8 @@ class BundleManager extends _$BundleManager {
         int? totalBytes,
         String? bundleId,
       }) {
-        onProgress?.call(
+        _dispatchRemoteProgress(
+          onProgress,
           RemoteBundleImportProgress(
             artifact: artifact,
             stage: stage,
@@ -527,7 +544,8 @@ class BundleManager extends _$BundleManager {
     RemoteBundleImportProgressCallback? onProgress,
   }) async {
     void reportProgress(RemoteBundleImportStage stage, {int? receivedBytes, int? totalBytes}) {
-      onProgress?.call(
+      _dispatchRemoteProgress(
+        onProgress,
         RemoteBundleImportProgress(
           artifact: artifact,
           stage: stage,
