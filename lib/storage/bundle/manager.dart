@@ -59,6 +59,55 @@ abstract class BundleRegistry with _$BundleRegistry {
   factory BundleRegistry.fromJson(Map<String, dynamic> json) => _$BundleRegistryFromJson(json);
 }
 
+enum RemoteBundleImportStage {
+  preparing,
+  downloading,
+  verifying,
+  unpacking,
+  importing,
+  applyingIncrementalPatch,
+  refreshingRegistry,
+  completed,
+  cancelled,
+}
+
+class RemoteBundleImportProgress {
+  const RemoteBundleImportProgress({
+    required this.artifact,
+    required this.stage,
+    this.receivedBytes,
+    this.totalBytes,
+    this.bundleId,
+    this.baseBundleId,
+    this.baseManifestHash,
+  });
+
+  final RemoteBundleArtifact artifact;
+  final RemoteBundleImportStage stage;
+  final int? receivedBytes;
+  final int? totalBytes;
+  final String? bundleId;
+  final String? baseBundleId;
+  final String? baseManifestHash;
+
+  double? get downloadFraction {
+    final received = receivedBytes;
+    final total = totalBytes;
+    if (received == null || total == null || total <= 0) {
+      return null;
+    }
+    if (received >= total) {
+      return 1;
+    }
+    return received / total;
+  }
+
+  bool get isTerminal =>
+      stage == RemoteBundleImportStage.completed || stage == RemoteBundleImportStage.cancelled;
+}
+
+typedef RemoteBundleImportProgressCallback = void Function(RemoteBundleImportProgress progress);
+
 @riverpodSingleton
 class BundleRegistryManager extends _$BundleRegistryManager {
   static String get _bundleRegistryPath => p.join(PathProvider.resourcesPath, "bundles.json");
@@ -268,9 +317,28 @@ class BundleManager extends _$BundleManager {
     String bundlePath, {
     Future<bool> Function()? confirmOverwrite,
     Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+    RemoteBundleArtifact? remoteArtifact,
+    RemoteBundleImportProgressCallback? onRemoteProgress,
   }) async {
+    void reportRemoteProgress(RemoteBundleImportStage stage, {String? bundleId}) {
+      final artifact = remoteArtifact;
+      if (artifact == null) {
+        return;
+      }
+      onRemoteProgress?.call(
+        RemoteBundleImportProgress(
+          artifact: artifact,
+          stage: stage,
+          bundleId: bundleId ?? artifact.bundleId,
+          baseBundleId: artifact.baseBundleId,
+          baseManifestHash: artifact.baseManifestHash,
+        ),
+      );
+    }
+
     late final _PreparedBundleArtifact artifact;
     try {
+      reportRemoteProgress(RemoteBundleImportStage.unpacking);
       artifact = await _prepareBundleArtifact(bundlePath);
     } catch (e) {
       warning("Invalid bundle artifact: $e", stackTrace: StackTrace.current);
@@ -285,6 +353,7 @@ class BundleManager extends _$BundleManager {
       await baseDir.create(recursive: true);
     }
     final targetDir = Directory(getBundlePath(bundleId));
+    reportRemoteProgress(RemoteBundleImportStage.importing, bundleId: bundleId);
     if (targetDir.existsSync()) {
       if (descriptor.isIncremental) {
         final registrar = await _readRegistrar(targetDir);
@@ -316,9 +385,11 @@ class BundleManager extends _$BundleManager {
           final confirmed = await confirmIncrementalImpact?.call(report) ?? true;
           if (!confirmed) {
             info("Aborting incremental bundle import for $bundleId");
+            reportRemoteProgress(RemoteBundleImportStage.cancelled, bundleId: bundleId);
             return DateTime.now();
           }
         }
+        reportRemoteProgress(RemoteBundleImportStage.applyingIncrementalPatch, bundleId: bundleId);
         info("Importing incremental bundle $bundleId: $descriptor");
         await deletePaths(targetDir, artifact.deletedFiles);
         final deletedFilesPath = File(
@@ -339,6 +410,7 @@ class BundleManager extends _$BundleManager {
           await _writeRegistrar(targetDir, BundleRegistrar.empty(bundleId).pushPatch(descriptor));
         } else {
           info("Aborting bundle import for $bundleId");
+          reportRemoteProgress(RemoteBundleImportStage.cancelled, bundleId: bundleId);
           return DateTime.now();
         }
       }
@@ -352,6 +424,7 @@ class BundleManager extends _$BundleManager {
 
     info("Successfully imported bundle $bundleId: $descriptor");
 
+    reportRemoteProgress(RemoteBundleImportStage.refreshingRegistry, bundleId: bundleId);
     ref
         .read(bundleRegistryManagerProvider.notifier)
         ._addBundle(
@@ -363,6 +436,7 @@ class BundleManager extends _$BundleManager {
           ),
         );
     ref.invalidate(bundleServiceProvider);
+    reportRemoteProgress(RemoteBundleImportStage.completed, bundleId: bundleId);
 
     return DateTime.now();
   }
@@ -371,9 +445,30 @@ class BundleManager extends _$BundleManager {
     RemoteBundleArtifact artifact, {
     Future<bool> Function()? confirmOverwrite,
     Future<bool> Function(BundleImpactReport report)? confirmIncrementalImpact,
+    RemoteBundleImportProgressCallback? onProgress,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
+      void reportProgress(
+        RemoteBundleImportStage stage, {
+        int? receivedBytes,
+        int? totalBytes,
+        String? bundleId,
+      }) {
+        onProgress?.call(
+          RemoteBundleImportProgress(
+            artifact: artifact,
+            stage: stage,
+            receivedBytes: receivedBytes,
+            totalBytes: totalBytes,
+            bundleId: bundleId ?? artifact.bundleId,
+            baseBundleId: artifact.baseBundleId,
+            baseManifestHash: artifact.baseManifestHash,
+          ),
+        );
+      }
+
+      reportProgress(RemoteBundleImportStage.preparing);
       final config = ref.read(appSettingServiceProvider).remoteContent;
       if (!config.enabled) {
         throw StateError("Remote content is disabled.");
@@ -382,12 +477,18 @@ class BundleManager extends _$BundleManager {
       _validateRemoteIncrementalCompatibility(artifact);
       final endpoint = RemoteContentEndpoint.fromSetting(config);
       final artifactUri = endpoint.resolvePayloadUri(artifact.artifactPath);
-      final localPath = await _downloadRemoteArtifact(artifact, artifactUri);
+      final localPath = await _downloadRemoteArtifact(
+        artifact,
+        artifactUri,
+        onProgress: onProgress,
+      );
       try {
         return await _addBundleFromPath(
           localPath,
           confirmOverwrite: confirmOverwrite,
           confirmIncrementalImpact: confirmIncrementalImpact,
+          remoteArtifact: artifact,
+          onRemoteProgress: onProgress,
         );
       } finally {
         final file = File(localPath);
@@ -420,7 +521,25 @@ class BundleManager extends _$BundleManager {
     }
   }
 
-  Future<String> _downloadRemoteArtifact(RemoteBundleArtifact artifact, Uri uri) async {
+  Future<String> _downloadRemoteArtifact(
+    RemoteBundleArtifact artifact,
+    Uri uri, {
+    RemoteBundleImportProgressCallback? onProgress,
+  }) async {
+    void reportProgress(RemoteBundleImportStage stage, {int? receivedBytes, int? totalBytes}) {
+      onProgress?.call(
+        RemoteBundleImportProgress(
+          artifact: artifact,
+          stage: stage,
+          receivedBytes: receivedBytes,
+          totalBytes: totalBytes,
+          bundleId: artifact.bundleId,
+          baseBundleId: artifact.baseBundleId,
+          baseManifestHash: artifact.baseManifestHash,
+        ),
+      );
+    }
+
     final cacheDir = Directory(_remoteDownloadCachePath);
     await cacheDir.create(recursive: true);
     final targetFile = File(p.join(cacheDir.path, "${artifact.artifactId}.zip"));
@@ -436,8 +555,18 @@ class BundleManager extends _$BundleManager {
           receiveTimeout: _remoteDownloadReceiveTimeout,
         ),
       );
-      await dio.downloadUri(uri, targetFile.path);
+      reportProgress(RemoteBundleImportStage.downloading);
+      await dio.downloadUri(
+        uri,
+        targetFile.path,
+        onReceiveProgress: (received, total) => reportProgress(
+          RemoteBundleImportStage.downloading,
+          receivedBytes: received,
+          totalBytes: total <= 0 ? null : total,
+        ),
+      );
 
+      reportProgress(RemoteBundleImportStage.verifying);
       final actualSize = await targetFile.length();
       if (actualSize != artifact.artifactSize) {
         throw StateError(
