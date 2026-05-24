@@ -145,8 +145,8 @@ class CurrentBundleStatus with _$CurrentBundleStatus {
 /// Returns `null` if no bundle is loaded.
 @riverpodSingleton
 BundleMetadata? currentBundle(Ref ref) {
-  ref.watch(bundleServiceProvider);
-  return ref.read(bundleServiceProvider.notifier).currentBundleData;
+  final status = ref.watch(bundleServiceProvider);
+  return status.currentData.toNullable();
 }
 
 /// Serves bundle data.
@@ -159,7 +159,6 @@ class BundleService extends _$BundleService {
   String? _pendingBundleId;
   int _loadGeneration = 0;
 
-  BundleMetadata? get currentBundleData => _mountedBundle;
   String? get pendingBundleId => _pendingBundleId;
 
   Collection? collectionForBundle(String bundleId) {
@@ -200,9 +199,12 @@ class BundleService extends _$BundleService {
     state = const CurrentBundleStatus.notSelected();
   }
 
-  Future<CurrentBundleStatus> loadBundle(String bundleId) async {
+  Future<CurrentBundleStatus> loadBundle(String bundleId, {bool forceReload = false}) async {
     final mountedBundle = _mountedBundle;
-    if (mountedBundle != null && mountedBundle.bundleId == bundleId && _pendingBundleId == null) {
+    if (!forceReload &&
+        mountedBundle != null &&
+        mountedBundle.bundleId == bundleId &&
+        _pendingBundleId == null) {
       state = CurrentBundleStatus.loaded(data: mountedBundle);
       return state;
     }
