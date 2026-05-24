@@ -384,6 +384,9 @@ Client behavior used by EVE Fit Assistant:
 - Compatible incremental artifacts are recommended before full artifacts.
 - Full artifacts remain available and can become the recommendation for new installs or when no
   matching incremental path exists for the installed manifest.
+- After at least one bundle is installed, recommendations are limited to installed bundle ids. Full
+  artifacts for other bundle ids remain available alternatives, not prompts to install every remote
+  bundle.
 - Unavailable artifacts remain visible in the remote bundle review page with local reason text for
   app-version mismatch, missing incremental metadata, missing base bundle, missing installed manifest
   hash, or base manifest mismatch.

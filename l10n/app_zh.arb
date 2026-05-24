@@ -974,7 +974,7 @@
     }
   },
   "bundleRemoteRecommendedSection": "推荐",
-  "bundleRemoteRecommendedSectionDescription": "根据已安装清单元数据，为每个数据包选择的最佳后续下载。",
+  "bundleRemoteRecommendedSectionDescription": "根据已安装清单元数据，为已安装数据包选择最佳后续下载。只有在尚未安装任何数据包时，才会推荐新的数据包。",
   "bundleRemoteAvailableSection": "可用备选",
   "bundleRemoteAvailableSectionDescription": "可导入但不是首选推荐的完整数据包或补丁。",
   "bundleRemoteInstalledSection": "已安装",
@@ -982,7 +982,7 @@
   "bundleRemoteUnavailableSection": "不可用",
   "bundleRemoteUnavailableSectionDescription": "由于应用版本或本地基线元数据不匹配，当前无法导入的产物。",
   "bundleRemoteSelectionSummaryTitle": "选择建议",
-  "bundleRemoteSelectionSummaryDescription": "当增量补丁匹配已安装基线清单时，会优先推荐增量补丁。完整数据包仍可用于新安装或替换安装。",
+  "bundleRemoteSelectionSummaryDescription": "当增量补丁匹配已安装基线清单时，会优先推荐增量补丁。完整数据包仍可手动用于新安装或替换安装。",
   "bundleRemoteRecommendationIncremental": "推荐为 {bundleId} 使用增量更新。",
   "@bundleRemoteRecommendationIncremental": {
     "placeholders": {

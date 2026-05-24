@@ -125,6 +125,9 @@ The app-side remote bundle path implemented for the v1 contract is:
 - Compatible incremental artifacts are preferred before full artifacts when their `baseManifestHash`
   matches the installed bundle registrar's latest `manifestHash`. Full artifacts remain the fallback
   recommendation for new installs or replacements when no matching incremental path exists.
+- Recommended artifacts are scoped to installed bundle ids after at least one bundle is installed.
+  Full artifacts for other bundle ids remain importable alternatives but do not keep prompting the
+  user to install every bundle advertised by the catalog.
 - `BundleManager.addRemoteBundle(...)` downloads a selected archive into the resource cache,
   verifies byte size and SHA-256, then calls `BundleManager.addBundle(...)` with the same overwrite
   and incremental impact confirmations used by local file imports.

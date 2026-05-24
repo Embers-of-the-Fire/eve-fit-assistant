@@ -447,7 +447,7 @@
     }
   },
   "bundleRemoteRecommendedSection": "Recommended",
-  "bundleRemoteRecommendedSectionDescription": "Best next downloads for each bundle based on installed manifest metadata.",
+  "bundleRemoteRecommendedSectionDescription": "Best next downloads for installed bundles based on manifest metadata. New bundles are recommended only before any bundle is installed.",
   "bundleRemoteAvailableSection": "Available alternatives",
   "bundleRemoteAvailableSectionDescription": "Importable full bundles or patches that are not the top recommendation.",
   "bundleRemoteInstalledSection": "Already installed",
@@ -455,7 +455,7 @@
   "bundleRemoteUnavailableSection": "Unavailable",
   "bundleRemoteUnavailableSectionDescription": "Artifacts that cannot be imported because app version or installed base metadata does not match.",
   "bundleRemoteSelectionSummaryTitle": "Selection guidance",
-  "bundleRemoteSelectionSummaryDescription": "Incremental patches are preferred when they match the installed base manifest. Full bundles remain available for new installs or replacements.",
+  "bundleRemoteSelectionSummaryDescription": "Incremental patches are preferred when they match an installed base manifest. Full bundles remain available for manual new installs or replacements.",
   "bundleRemoteRecommendationIncremental": "Recommended incremental update for {bundleId}.",
   "@bundleRemoteRecommendationIncremental": {
     "placeholders": {
