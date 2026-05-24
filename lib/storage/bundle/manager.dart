@@ -326,6 +326,26 @@ class BundleManager extends _$BundleManager {
         "Remote bundle id mismatch: ${remoteArtifact.bundleId} != ${descriptor.bundleId}",
       );
     }
+    if (remoteArtifact.isIncremental != descriptor.isIncremental) {
+      throw StateError(
+        "Remote bundle variant mismatch: "
+        "${remoteArtifact.variant.name} != ${descriptor.isIncremental ? "incremental" : "full"}",
+      );
+    }
+    if (remoteArtifact.isIncremental) {
+      if (remoteArtifact.baseBundleId != descriptor.baseBundleId) {
+        throw StateError(
+          "Remote incremental base bundle id mismatch: "
+          "${remoteArtifact.baseBundleId} != ${descriptor.baseBundleId}",
+        );
+      }
+      if (remoteArtifact.baseManifestHash != descriptor.baseManifestHash) {
+        throw StateError(
+          "Remote incremental base manifest hash mismatch: "
+          "${remoteArtifact.baseManifestHash} != ${descriptor.baseManifestHash}",
+        );
+      }
+    }
     if (remoteArtifact.manifestHash != descriptor.manifestHash && descriptor.manifestHash != null) {
       throw StateError(
         "Remote bundle manifest hash mismatch: "
