@@ -365,6 +365,13 @@ class _RemoteBundleSection extends ConsumerWidget {
     AsyncValue<RemoteBundleCatalogState> asyncState,
     RemoteBundleCatalogState? state,
   ) {
+    final providerError = switch (asyncState) {
+      AsyncError(error: final error) => error,
+      _ => null,
+    };
+    if (providerError != null) {
+      return context.l10n.bundleRemoteError(message: providerError.toString());
+    }
     if (asyncState.isLoading) {
       return context.l10n.bundleRemoteChecking;
     }
