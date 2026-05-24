@@ -226,7 +226,9 @@ class _BundleImpactDetailList extends StatelessWidget {
         _BundleImpactDetailTile(
           title: context.l10n.bundleImpactBundleDataSummary,
           subtitle: report.target.targetBundle.bundleId,
-          reason: BundleImpactReason.incrementalPatch,
+          reason: report.target.kind == BundleImpactTargetKind.fullReplacementImport
+              ? BundleImpactReason.fullReplacement
+              : BundleImpactReason.incrementalPatch,
           savedBundleId:
               report.target.sourceBundle?.bundleId ?? report.target.targetBundle.bundleId,
           targetBundleId: report.target.targetBundle.bundleId,
@@ -285,5 +287,6 @@ class _BundleImpactDetailTile extends StatelessWidget {
     BundleImpactReason.buildMismatch => context.l10n.bundleImpactReasonBuildMismatch,
     BundleImpactReason.appVersionMismatch => context.l10n.bundleImpactReasonAppVersionMismatch,
     BundleImpactReason.incrementalPatch => context.l10n.bundleImpactReasonIncrementalPatch,
+    BundleImpactReason.fullReplacement => context.l10n.bundleImpactReasonFullReplacement,
   };
 }

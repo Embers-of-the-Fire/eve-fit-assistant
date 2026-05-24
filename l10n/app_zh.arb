@@ -204,6 +204,7 @@
   "bundleImpactReasonBuildMismatch": "游戏构建版本不同",
   "bundleImpactReasonAppVersionMismatch": "应用版本不同",
   "bundleImpactReasonIncrementalPatch": "增量补丁包含变更",
+  "bundleImpactReasonFullReplacement": "完整替换包包含变更",
   "workspaceTabAnnouncementTitle": "更新动态",
   "documentAnnouncementPageTitle": "更新动态",
   "documentVersionPageTitle": "版本",

@@ -20,6 +20,7 @@ enum BundleImpactReason {
   buildMismatch,
   appVersionMismatch,
   incrementalPatch,
+  fullReplacement,
 }
 
 class BundleImpactTarget {
