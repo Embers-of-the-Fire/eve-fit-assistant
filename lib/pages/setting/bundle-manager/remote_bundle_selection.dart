@@ -163,6 +163,8 @@ class _RemoteBundleCandidateGroup extends ConsumerWidget {
     if (candidateList.isEmpty) {
       return const SizedBox.shrink();
     }
+    final operation = ref.watch(_remoteBundleImportOperationProvider);
+    final importRunning = operation?.running ?? false;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
@@ -186,6 +188,10 @@ class _RemoteBundleCandidateGroup extends ConsumerWidget {
             _RemoteBundleArtifactTile(
               candidate: candidate,
               currentAppVersion: currentAppVersion,
+              importDisabled: importRunning,
+              operation: operation?.artifact.artifactId == candidate.artifact.artifactId
+                  ? operation
+                  : null,
               onImportPressed: () => _importRemoteBundle(context, ref, candidate.artifact),
             ),
         ],
