@@ -896,7 +896,7 @@ class _RemoteBundleImportTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stages = _remoteImportStagesFor(artifact);
+    final stages = _remoteImportStagesFor(artifact, currentStage: currentStage);
     final currentIndex = currentStage == null ? -1 : stages.indexOf(currentStage!);
     return Column(
       children: [
@@ -905,13 +905,18 @@ class _RemoteBundleImportTimeline extends StatelessWidget {
             stage: stages[index],
             first: index == 0,
             last: index == stages.length - 1,
-            status: _timelineStatusFor(index, currentIndex, failed),
+            status: _timelineStatusFor(stages[index], index, currentIndex, failed),
           ),
       ],
     );
   }
 
-  _RemoteBundleImportTimelineStatus _timelineStatusFor(int index, int currentIndex, bool failed) {
+  _RemoteBundleImportTimelineStatus _timelineStatusFor(
+    RemoteBundleImportStage stage,
+    int index,
+    int currentIndex,
+    bool failed,
+  ) {
     if (currentIndex < 0) {
       return _RemoteBundleImportTimelineStatus.pending;
     }
@@ -922,7 +927,11 @@ class _RemoteBundleImportTimeline extends StatelessWidget {
       return _RemoteBundleImportTimelineStatus.completed;
     }
     if (index == currentIndex) {
-      return _RemoteBundleImportTimelineStatus.current;
+      return switch (stage) {
+        RemoteBundleImportStage.completed => _RemoteBundleImportTimelineStatus.completed,
+        RemoteBundleImportStage.cancelled => _RemoteBundleImportTimelineStatus.cancelled,
+        _ => _RemoteBundleImportTimelineStatus.current,
+      };
     }
     return _RemoteBundleImportTimelineStatus.pending;
   }
@@ -948,12 +957,14 @@ class _RemoteBundleImportTimelineRow extends StatelessWidget {
       _RemoteBundleImportTimelineStatus.completed => colorGreen,
       _RemoteBundleImportTimelineStatus.current => theme.colorScheme.primary,
       _RemoteBundleImportTimelineStatus.failed => theme.colorScheme.error,
+      _RemoteBundleImportTimelineStatus.cancelled => theme.colorScheme.secondary,
       _RemoteBundleImportTimelineStatus.pending => theme.colorScheme.outline,
     };
     final icon = switch (status) {
       _RemoteBundleImportTimelineStatus.completed => Icons.check,
       _RemoteBundleImportTimelineStatus.current => Icons.more_horiz,
       _RemoteBundleImportTimelineStatus.failed => Icons.close,
+      _RemoteBundleImportTimelineStatus.cancelled => Icons.block,
       _RemoteBundleImportTimelineStatus.pending => Icons.circle,
     };
     return IntrinsicHeight(
@@ -1014,9 +1025,12 @@ class _TimelineConnector extends StatelessWidget {
       : const SizedBox(width: 2);
 }
 
-enum _RemoteBundleImportTimelineStatus { completed, current, failed, pending }
+enum _RemoteBundleImportTimelineStatus { completed, current, failed, cancelled, pending }
 
-List<RemoteBundleImportStage> _remoteImportStagesFor(RemoteBundleArtifact artifact) => [
+List<RemoteBundleImportStage> _remoteImportStagesFor(
+  RemoteBundleArtifact artifact, {
+  RemoteBundleImportStage? currentStage,
+}) => [
   RemoteBundleImportStage.preparing,
   RemoteBundleImportStage.downloading,
   RemoteBundleImportStage.verifying,
@@ -1024,7 +1038,10 @@ List<RemoteBundleImportStage> _remoteImportStagesFor(RemoteBundleArtifact artifa
   RemoteBundleImportStage.importing,
   if (artifact.isIncremental) RemoteBundleImportStage.applyingIncrementalPatch,
   RemoteBundleImportStage.refreshingRegistry,
-  RemoteBundleImportStage.completed,
+  if (currentStage == RemoteBundleImportStage.cancelled)
+    RemoteBundleImportStage.cancelled
+  else
+    RemoteBundleImportStage.completed,
 ];
 
 String _remoteImportStageLabel(BuildContext context, RemoteBundleImportStage stage) =>
