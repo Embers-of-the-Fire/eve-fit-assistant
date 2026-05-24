@@ -119,6 +119,9 @@ The app-side remote bundle path implemented for the v1 contract is:
   unavailable. The nested remote bundle page keeps unavailable artifacts visible with the reason so a
   user can distinguish app-version mismatch, missing base bundle, missing manifest hash, and base
   manifest mismatch cases.
+- Already installed classification checks the whole installed registrar history, not only the latest
+  patch. After applying an incremental patch, the full bundle that formed the base remains installed
+  history and should not be recommended as a replacement.
 - Compatible incremental artifacts are preferred before full artifacts when their `baseManifestHash`
   matches the installed bundle registrar's latest `manifestHash`. Full artifacts remain the fallback
   recommendation for new installs or replacements when no matching incremental path exists.

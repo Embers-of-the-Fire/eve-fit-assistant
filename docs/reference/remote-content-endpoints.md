@@ -379,6 +379,8 @@ Client behavior used by EVE Fit Assistant:
 - Incremental artifacts are eligible only when an installed bundle registrar records the matching
   latest `manifestHash` for the artifact `baseManifestHash`.
 - The client classifies artifacts as recommended, available, already installed, or unavailable.
+- Already installed means the artifact manifest hash is present anywhere in the installed bundle
+  registrar history, not just as the latest patch.
 - Compatible incremental artifacts are recommended before full artifacts.
 - Full artifacts remain available and can become the recommendation for new installs or when no
   matching incremental path exists for the installed manifest.

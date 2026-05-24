@@ -482,7 +482,7 @@
   },
   "bundleRemoteRecommendedFallback": "Recommended remote bundle.",
   "bundleRemoteAvailableDescription": "This artifact can be downloaded and imported.",
-  "bundleRemoteInstalledDescription": "This artifact already matches the installed manifest.",
+  "bundleRemoteInstalledDescription": "This artifact already exists in the installed bundle history.",
   "bundleRemoteUnknownAppVersion": "unknown",
   "bundleRemoteUnavailableAppVersion": "Requires app version {requiredVersion}; current app is {currentVersion}.",
   "@bundleRemoteUnavailableAppVersion": {

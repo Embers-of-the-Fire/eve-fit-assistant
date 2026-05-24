@@ -301,6 +301,13 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         installedManifestHash: installedManifestHash,
       );
     }
+    if (_registrarContainsManifest(installedRegistrar, artifact.manifestHash)) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.installed,
+        installedManifestHash: artifact.manifestHash,
+      );
+    }
 
     if (artifact.isFull) {
       return RemoteBundleCandidate(
@@ -336,6 +343,13 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         installedManifestHash: baseInstalledManifestHash,
       );
     }
+    if (_registrarContainsManifest(registrar, artifact.manifestHash)) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.installed,
+        installedManifestHash: artifact.manifestHash,
+      );
+    }
     if (baseInstalledManifestHash == null) {
       return RemoteBundleCandidate(
         artifact: artifact,
@@ -358,6 +372,9 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       installedManifestHash: baseInstalledManifestHash,
     );
   }
+
+  bool _registrarContainsManifest(BundleRegistrar? registrar, String manifestHash) =>
+      registrar?.history.any((patch) => patch.manifestHash == manifestHash) ?? false;
 
   Set<RemoteBundleCandidate> _recommendCandidates(
     List<RemoteBundleCandidate> candidates,

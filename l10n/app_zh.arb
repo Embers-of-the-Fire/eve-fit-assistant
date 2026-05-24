@@ -1009,7 +1009,7 @@
   },
   "bundleRemoteRecommendedFallback": "推荐的远程数据包。",
   "bundleRemoteAvailableDescription": "此产物可以下载并导入。",
-  "bundleRemoteInstalledDescription": "此产物已经匹配已安装清单。",
+  "bundleRemoteInstalledDescription": "此产物已存在于已安装数据包历史中。",
   "bundleRemoteUnknownAppVersion": "未知",
   "bundleRemoteUnavailableAppVersion": "需要应用版本 {requiredVersion}；当前应用为 {currentVersion}。",
   "@bundleRemoteUnavailableAppVersion": {
