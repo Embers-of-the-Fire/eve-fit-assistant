@@ -210,7 +210,7 @@ class BundleService extends _$BundleService {
     }
 
     final pendingLoad = _pendingLoad;
-    if (pendingLoad != null && _pendingBundleId == bundleId) {
+    if (!forceReload && pendingLoad != null && _pendingBundleId == bundleId) {
       return pendingLoad;
     }
 
