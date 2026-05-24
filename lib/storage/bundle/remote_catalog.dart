@@ -343,13 +343,6 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         installedManifestHash: baseInstalledManifestHash,
       );
     }
-    if (_registrarContainsManifest(registrar, artifact.manifestHash)) {
-      return RemoteBundleCandidate(
-        artifact: artifact,
-        state: RemoteBundleCandidateState.installed,
-        installedManifestHash: artifact.manifestHash,
-      );
-    }
     if (baseInstalledManifestHash == null) {
       return RemoteBundleCandidate(
         artifact: artifact,
