@@ -527,17 +527,33 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
       currentAppVersion: currentAppVersion,
     );
     final canShowAction = candidate.canImport && MediaQuery.sizeOf(context).width >= 420;
+    final generatedAt = yMMMMdHmsLocalized(context).format(artifact.generatedAt.toLocal());
+    final metadata = <String>[
+      context.l10n.bundleRemoteArtifactSize(size: _formatByteSize(artifact.artifactSize)),
+      context.l10n.bundleRemoteArtifactGenerated(time: generatedAt),
+      if (artifact.baseBundleId != null)
+        context.l10n.bundleRemoteArtifactBaseBundle(bundleId: artifact.baseBundleId!),
+      if (artifact.baseManifestHash != null)
+        context.l10n.bundleRemoteArtifactBaseManifest(hash: _shortHash(artifact.baseManifestHash!)),
+    ];
     final content = Card(
       margin: const EdgeInsets.only(top: 8),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         leading: Icon(
           _remoteCandidateIcon(candidate),
           color: _remoteCandidateColor(context, candidate),
         ),
-        title: Text(artifact.artifactId, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(
+          artifact.artifactId,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 4),
             Text(
               context.l10n.bundleRemoteArtifactDescription(
                 variant: variant,
@@ -548,13 +564,23 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(status, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [for (final item in metadata) _RemoteBundleMetadataChip(label: item)],
+            ),
+            if (candidate.canImport) ...[
+              const SizedBox(height: 8),
+              Text(context.l10n.bundleRemoteImportBehaviorHint, style: theme.textTheme.bodySmall),
+            ],
           ],
         ),
         trailing: canShowAction
             ? FilledButton.tonalIcon(
                 onPressed: onImportPressed,
                 icon: const Icon(Icons.download),
-                label: Text(context.l10n.bundleRemoteDownloadAction),
+                label: Text(context.l10n.bundleRemoteDownloadImportAction),
               )
             : null,
       ),
@@ -572,13 +598,31 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
             child: FilledButton.tonalIcon(
               onPressed: onImportPressed,
               icon: const Icon(Icons.download),
-              label: Text(context.l10n.bundleRemoteDownloadAction),
+              label: Text(context.l10n.bundleRemoteDownloadImportAction),
             ),
           ),
         ),
       ],
     );
   }
+}
+
+class _RemoteBundleMetadataChip extends StatelessWidget {
+  const _RemoteBundleMetadataChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: context.theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Text(label, style: context.theme.textTheme.labelSmall),
+    ),
+  );
 }
 
 IconData _remoteCandidateIcon(RemoteBundleCandidate candidate) => switch (candidate.state) {
@@ -596,3 +640,19 @@ Color _remoteCandidateColor(BuildContext context, RemoteBundleCandidate candidat
       RemoteBundleCandidateState.installed => colorGreen,
       RemoteBundleCandidateState.unavailable => context.theme.colorScheme.error,
     };
+
+String _formatByteSize(int bytes) {
+  const units = ["B", "KiB", "MiB", "GiB"];
+  double size = bytes.toDouble();
+  var unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  if (unitIndex == 0) {
+    return "$bytes ${units[unitIndex]}";
+  }
+  return "${size.toStringAsFixed(size >= 10 ? 1 : 2)} ${units[unitIndex]}";
+}
+
+String _shortHash(String hash) => hash.length <= 12 ? hash : hash.substring(0, 12);
