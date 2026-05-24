@@ -26,22 +26,127 @@ part "bundle_tile.dart";
 part "impact_warning.dart";
 part "remote_bundle_selection.dart";
 
+final _remoteBundleImportOperationProvider =
+    NotifierProvider<_RemoteBundleImportOperationNotifier, _RemoteBundleImportOperation?>(
+      _RemoteBundleImportOperationNotifier.new,
+    );
+
+class _RemoteBundleImportOperationNotifier extends Notifier<_RemoteBundleImportOperation?> {
+  @override
+  _RemoteBundleImportOperation? build() => null;
+
+  void clear() => state = null;
+
+  void start(RemoteBundleArtifact artifact) {
+    state = _RemoteBundleImportOperation.started(artifact);
+  }
+
+  void updateProgress(RemoteBundleArtifact artifact, RemoteBundleImportProgress progress) {
+    final current = state;
+    if (current?.artifact.artifactId != artifact.artifactId) {
+      return;
+    }
+    state = current!.withProgress(progress);
+  }
+
+  void stop(RemoteBundleArtifact artifact) {
+    final current = state;
+    if (current?.artifact.artifactId == artifact.artifactId && current!.running) {
+      state = current.stopped();
+    }
+  }
+
+  void fail(RemoteBundleArtifact artifact, Object error) {
+    final current = state;
+    if (current?.artifact.artifactId == artifact.artifactId) {
+      state = current!.withError(error);
+    }
+  }
+}
+
+class _RemoteBundleImportOperation {
+  const _RemoteBundleImportOperation({
+    required this.artifact,
+    required this.progress,
+    required this.running,
+    this.error,
+    this.failedStage,
+  });
+
+  factory _RemoteBundleImportOperation.started(RemoteBundleArtifact artifact) =>
+      _RemoteBundleImportOperation(
+        artifact: artifact,
+        progress: RemoteBundleImportProgress(
+          artifact: artifact,
+          stage: RemoteBundleImportStage.preparing,
+          bundleId: artifact.bundleId,
+          baseBundleId: artifact.baseBundleId,
+          baseManifestHash: artifact.baseManifestHash,
+        ),
+        running: true,
+      );
+
+  final RemoteBundleArtifact artifact;
+  final RemoteBundleImportProgress progress;
+  final bool running;
+  final Object? error;
+  final RemoteBundleImportStage? failedStage;
+
+  String get bundleId => progress.bundleId ?? artifact.bundleId;
+  bool get failed => error != null;
+  bool get completed => progress.stage == RemoteBundleImportStage.completed;
+  bool get cancelled => progress.stage == RemoteBundleImportStage.cancelled;
+
+  _RemoteBundleImportOperation withProgress(RemoteBundleImportProgress progress) =>
+      _RemoteBundleImportOperation(
+        artifact: artifact,
+        progress: progress,
+        running: !progress.isTerminal,
+      );
+
+  _RemoteBundleImportOperation withError(Object error) => _RemoteBundleImportOperation(
+    artifact: artifact,
+    progress: progress,
+    running: false,
+    error: error,
+    failedStage: progress.stage,
+  );
+
+  _RemoteBundleImportOperation stopped() => _RemoteBundleImportOperation(
+    artifact: artifact,
+    progress: progress,
+    running: false,
+    error: error,
+    failedStage: failedStage,
+  );
+}
+
 Future<void> _importRemoteBundle(
   BuildContext context,
   WidgetRef ref,
-  RemoteBundleArtifact artifact,
-) async {
-  final confirmed = await showConfirmDialog(
-    context,
-    title: context.l10n.bundleRemoteImportConfirmTitle,
-    content: Text(
-      context.l10n.bundleRemoteImportConfirmDescription(artifactId: artifact.artifactId),
-    ),
-  );
-  if (!confirmed || !context.mounted) {
+  RemoteBundleArtifact artifact, {
+  bool confirmDownload = true,
+}) async {
+  final existingOperation = ref.read(_remoteBundleImportOperationProvider);
+  if (existingOperation?.running ?? false) {
     return;
   }
 
+  if (confirmDownload) {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: context.l10n.bundleRemoteImportConfirmTitle,
+      content: Text(
+        context.l10n.bundleRemoteImportConfirmDescription(artifactId: artifact.artifactId),
+      ),
+    );
+    if (!confirmed || !context.mounted) {
+      return;
+    }
+  }
+
+  final operationNotifier = ref.read(_remoteBundleImportOperationProvider.notifier)
+    ..start(artifact);
   await ref
       .read(bundleManagerProvider.notifier)
       .addRemoteBundle(
@@ -51,21 +156,33 @@ Future<void> _importRemoteBundle(
           if (!context.mounted) return false;
           return showConfirmDialog(context, title: context.l10n.bundleImportOverwriteTitle);
         },
+        onProgress: (progress) => operationNotifier.updateProgress(artifact, progress),
       );
   ref.invalidate(remoteBundleCatalogManagerProvider);
-  if (!context.mounted) {
+  final current = ref.read(_remoteBundleImportOperationProvider);
+  if (current?.artifact.artifactId != artifact.artifactId) {
     return;
   }
   ref
       .read(bundleManagerProvider)
-      .whenOrNull(
-        error: (error, _) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.bundleRemoteImportFailed(message: error.toString()))),
-        ),
-        data: (_) => ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(context.l10n.bundleRemoteImportSucceeded))),
+      .when(
+        data: (_) => operationNotifier.stop(artifact),
+        error: (error, _) => operationNotifier.fail(artifact, error),
+        loading: () {},
       );
+}
+
+Future<void> _selectInstalledBundleWithImpactWarning(
+  BuildContext context,
+  WidgetRef ref,
+  String bundleId,
+) async {
+  final report = ref.read(bundleSwitchImpactProvider(bundleId));
+  final confirmed = await confirmBundleImpactWarning(context, ref, report);
+  if (!confirmed) {
+    return;
+  }
+  await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
 }
 
 @RoutePage()
@@ -282,6 +399,8 @@ class _RemoteBundleSection extends ConsumerWidget {
 
     final theme = context.theme;
     final firstRecommended = value?.recommended.firstOrNull;
+    final operation = ref.watch(_remoteBundleImportOperationProvider);
+    final importRunning = operation?.running ?? false;
     final summary = _remoteBundleSummary(context, state, value);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -334,6 +453,14 @@ class _RemoteBundleSection extends ConsumerWidget {
               const SizedBox(height: 12),
               _RemoteBundleCounts(state: value),
             ],
+            if (operation != null) ...[
+              const SizedBox(height: 12),
+              _RemoteBundleImportOperationCard(
+                operation: operation,
+                showReviewAlternatives: true,
+                margin: EdgeInsets.zero,
+              ),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -348,7 +475,9 @@ class _RemoteBundleSection extends ConsumerWidget {
                 ),
                 if (firstRecommended != null)
                   FilledButton.icon(
-                    onPressed: () => _importRemoteBundle(context, ref, firstRecommended.artifact),
+                    onPressed: importRunning
+                        ? null
+                        : () => _importRemoteBundle(context, ref, firstRecommended.artifact),
                     icon: const Icon(Icons.download),
                     label: Text(context.l10n.bundleRemoteDownloadRecommendedAction),
                   ),
@@ -508,15 +637,24 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
     required this.candidate,
     required this.currentAppVersion,
     required this.onImportPressed,
+    this.importDisabled = false,
+    this.operation,
   });
 
   final RemoteBundleCandidate candidate;
   final String? currentAppVersion;
   final VoidCallback onImportPressed;
+  final bool importDisabled;
+  final _RemoteBundleImportOperation? operation;
 
   @override
   Widget build(BuildContext context) {
     final artifact = candidate.artifact;
+    final activeOperation = operation;
+    if (activeOperation != null) {
+      return _RemoteBundleImportOperationCard(operation: activeOperation);
+    }
+
     final theme = context.theme;
     final variant = artifact.isIncremental
         ? context.l10n.bundleManagerDetailVariantIncremental
@@ -527,17 +665,33 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
       currentAppVersion: currentAppVersion,
     );
     final canShowAction = candidate.canImport && MediaQuery.sizeOf(context).width >= 420;
+    final generatedAt = yMMMMdHmsLocalized(context).format(artifact.generatedAt.toLocal());
+    final metadata = <String>[
+      context.l10n.bundleRemoteArtifactSize(size: _formatByteSize(artifact.artifactSize)),
+      context.l10n.bundleRemoteArtifactGenerated(time: generatedAt),
+      if (artifact.baseBundleId != null)
+        context.l10n.bundleRemoteArtifactBaseBundle(bundleId: artifact.baseBundleId!),
+      if (artifact.baseManifestHash != null)
+        context.l10n.bundleRemoteArtifactBaseManifest(hash: _shortHash(artifact.baseManifestHash!)),
+    ];
     final content = Card(
       margin: const EdgeInsets.only(top: 8),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         leading: Icon(
           _remoteCandidateIcon(candidate),
           color: _remoteCandidateColor(context, candidate),
         ),
-        title: Text(artifact.artifactId, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(
+          artifact.artifactId,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 4),
             Text(
               context.l10n.bundleRemoteArtifactDescription(
                 variant: variant,
@@ -548,13 +702,23 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(status, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [for (final item in metadata) _RemoteBundleMetadataChip(label: item)],
+            ),
+            if (candidate.canImport) ...[
+              const SizedBox(height: 8),
+              Text(context.l10n.bundleRemoteImportBehaviorHint, style: theme.textTheme.bodySmall),
+            ],
           ],
         ),
         trailing: canShowAction
             ? FilledButton.tonalIcon(
-                onPressed: onImportPressed,
+                onPressed: importDisabled ? null : onImportPressed,
                 icon: const Icon(Icons.download),
-                label: Text(context.l10n.bundleRemoteDownloadAction),
+                label: Text(context.l10n.bundleRemoteDownloadImportAction),
               )
             : null,
       ),
@@ -570,15 +734,366 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
           child: SizedBox(
             width: double.infinity,
             child: FilledButton.tonalIcon(
-              onPressed: onImportPressed,
+              onPressed: importDisabled ? null : onImportPressed,
               icon: const Icon(Icons.download),
-              label: Text(context.l10n.bundleRemoteDownloadAction),
+              label: Text(context.l10n.bundleRemoteDownloadImportAction),
             ),
           ),
         ),
       ],
     );
   }
+}
+
+class _RemoteBundleMetadataChip extends StatelessWidget {
+  const _RemoteBundleMetadataChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: context.theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Text(label, style: context.theme.textTheme.labelSmall),
+    ),
+  );
+}
+
+class _RemoteBundleImportOperationCard extends ConsumerWidget {
+  const _RemoteBundleImportOperationCard({
+    required this.operation,
+    this.showReviewAlternatives = false,
+    this.margin = const EdgeInsets.only(top: 8),
+  });
+
+  final _RemoteBundleImportOperation operation;
+  final bool showReviewAlternatives;
+  final EdgeInsetsGeometry margin;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = context.theme;
+    final artifact = operation.artifact;
+    final currentStage = operation.failed ? operation.failedStage : operation.progress.stage;
+    final installed = ref
+        .watch(bundleRegistryManagerProvider)
+        .bundles
+        .containsKey(operation.bundleId);
+    final activeBundleId = ref.watch(currentBundleProvider)?.bundleId;
+    final title = operation.failed
+        ? context.l10n.bundleRemoteProgressFailedTitle
+        : _remoteImportStageLabel(context, operation.progress.stage);
+    final description = _remoteImportOperationDescription(context, operation);
+
+    return Card(
+      margin: margin,
+      color: operation.failed ? theme.colorScheme.errorContainer : null,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  operation.failed ? Icons.error_outline : Icons.downloading_outlined,
+                  color: operation.failed ? theme.colorScheme.error : theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(artifact.artifactId, style: theme.textTheme.bodyMedium),
+                      if (description != null) ...[
+                        const SizedBox(height: 4),
+                        Text(description, style: theme.textTheme.bodySmall),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (operation.progress.stage == RemoteBundleImportStage.downloading) ...[
+              const SizedBox(height: 12),
+              LinearProgressIndicator(value: operation.progress.downloadFraction),
+            ],
+            const SizedBox(height: 12),
+            _RemoteBundleImportTimeline(
+              artifact: artifact,
+              currentStage: currentStage,
+              failed: operation.failed,
+            ),
+            if (operation.completed || operation.failed || operation.cancelled) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (operation.failed)
+                    FilledButton.icon(
+                      onPressed: () =>
+                          _importRemoteBundle(context, ref, artifact, confirmDownload: false),
+                      icon: const Icon(Icons.refresh),
+                      label: Text(context.l10n.bundleRemoteProgressRetryAction),
+                    ),
+                  if (showReviewAlternatives && operation.failed)
+                    OutlinedButton.icon(
+                      onPressed: () => context.router.push(const RemoteBundleSelectionRoute()),
+                      icon: const Icon(Icons.manage_search_outlined),
+                      label: Text(context.l10n.bundleRemoteReviewAction),
+                    ),
+                  if (operation.failed || operation.cancelled)
+                    TextButton(
+                      onPressed: () =>
+                          ref.read(_remoteBundleImportOperationProvider.notifier).clear(),
+                      child: Text(context.l10n.bundleRemoteProgressKeepCurrentAction),
+                    ),
+                  if (operation.completed && installed)
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          context.router.push(BundleDetailRoute(bundleId: operation.bundleId)),
+                      icon: const Icon(Icons.info_outline),
+                      label: Text(context.l10n.bundleRemoteProgressViewInstalledAction),
+                    ),
+                  if (operation.completed && installed && activeBundleId != operation.bundleId)
+                    FilledButton.icon(
+                      onPressed: () =>
+                          _selectInstalledBundleWithImpactWarning(context, ref, operation.bundleId),
+                      icon: const Icon(Icons.archive_outlined),
+                      label: Text(context.l10n.bundleRemoteProgressLoadBundleAction),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RemoteBundleImportTimeline extends StatelessWidget {
+  const _RemoteBundleImportTimeline({
+    required this.artifact,
+    required this.currentStage,
+    required this.failed,
+  });
+
+  final RemoteBundleArtifact artifact;
+  final RemoteBundleImportStage? currentStage;
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final stages = _remoteImportStagesFor(artifact, currentStage: currentStage);
+    final currentIndex = currentStage == null ? -1 : stages.indexOf(currentStage!);
+    return Column(
+      children: [
+        for (var index = 0; index < stages.length; index += 1)
+          _RemoteBundleImportTimelineRow(
+            stage: stages[index],
+            first: index == 0,
+            last: index == stages.length - 1,
+            status: _timelineStatusFor(stages[index], index, currentIndex, failed),
+          ),
+      ],
+    );
+  }
+
+  _RemoteBundleImportTimelineStatus _timelineStatusFor(
+    RemoteBundleImportStage stage,
+    int index,
+    int currentIndex,
+    bool failed,
+  ) {
+    if (currentIndex < 0) {
+      return _RemoteBundleImportTimelineStatus.pending;
+    }
+    if (failed && index == currentIndex) {
+      return _RemoteBundleImportTimelineStatus.failed;
+    }
+    if (index < currentIndex) {
+      return _RemoteBundleImportTimelineStatus.completed;
+    }
+    if (index == currentIndex) {
+      return switch (stage) {
+        RemoteBundleImportStage.completed => _RemoteBundleImportTimelineStatus.completed,
+        RemoteBundleImportStage.cancelled => _RemoteBundleImportTimelineStatus.cancelled,
+        _ => _RemoteBundleImportTimelineStatus.current,
+      };
+    }
+    return _RemoteBundleImportTimelineStatus.pending;
+  }
+}
+
+class _RemoteBundleImportTimelineRow extends StatelessWidget {
+  const _RemoteBundleImportTimelineRow({
+    required this.stage,
+    required this.first,
+    required this.last,
+    required this.status,
+  });
+
+  final RemoteBundleImportStage stage;
+  final bool first;
+  final bool last;
+  final _RemoteBundleImportTimelineStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    final color = switch (status) {
+      _RemoteBundleImportTimelineStatus.completed => colorGreen,
+      _RemoteBundleImportTimelineStatus.current => theme.colorScheme.primary,
+      _RemoteBundleImportTimelineStatus.failed => theme.colorScheme.error,
+      _RemoteBundleImportTimelineStatus.cancelled => theme.colorScheme.secondary,
+      _RemoteBundleImportTimelineStatus.pending => theme.colorScheme.outline,
+    };
+    final icon = switch (status) {
+      _RemoteBundleImportTimelineStatus.completed => Icons.check,
+      _RemoteBundleImportTimelineStatus.current => Icons.more_horiz,
+      _RemoteBundleImportTimelineStatus.failed => Icons.close,
+      _RemoteBundleImportTimelineStatus.cancelled => Icons.block,
+      _RemoteBundleImportTimelineStatus.pending => Icons.circle,
+    };
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Column(
+              children: [
+                Expanded(
+                  child: _TimelineConnector(visible: !first, color: color),
+                ),
+                CircleAvatar(
+                  radius: 10,
+                  backgroundColor: color.withValues(alpha: 0.16),
+                  child: Icon(
+                    icon,
+                    size: status == _RemoteBundleImportTimelineStatus.pending ? 8 : 14,
+                  ),
+                ),
+                Expanded(
+                  child: _TimelineConnector(visible: !last, color: color),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text(
+                _remoteImportStageLabel(context, stage),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: color,
+                  fontWeight: status == _RemoteBundleImportTimelineStatus.current
+                      ? FontWeight.w700
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineConnector extends StatelessWidget {
+  const _TimelineConnector({required this.visible, required this.color});
+
+  final bool visible;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => visible
+      ? ColoredBox(color: color.withValues(alpha: 0.35), child: const SizedBox(width: 2))
+      : const SizedBox(width: 2);
+}
+
+enum _RemoteBundleImportTimelineStatus { completed, current, failed, cancelled, pending }
+
+List<RemoteBundleImportStage> _remoteImportStagesFor(
+  RemoteBundleArtifact artifact, {
+  RemoteBundleImportStage? currentStage,
+}) => [
+  RemoteBundleImportStage.preparing,
+  RemoteBundleImportStage.downloading,
+  RemoteBundleImportStage.verifying,
+  RemoteBundleImportStage.unpacking,
+  RemoteBundleImportStage.importing,
+  if (artifact.isIncremental) RemoteBundleImportStage.applyingIncrementalPatch,
+  RemoteBundleImportStage.refreshingRegistry,
+  if (currentStage == RemoteBundleImportStage.cancelled)
+    RemoteBundleImportStage.cancelled
+  else
+    RemoteBundleImportStage.completed,
+];
+
+String _remoteImportStageLabel(BuildContext context, RemoteBundleImportStage stage) =>
+    switch (stage) {
+      RemoteBundleImportStage.preparing => context.l10n.bundleRemoteProgressPreparing,
+      RemoteBundleImportStage.downloading => context.l10n.bundleRemoteProgressDownloading,
+      RemoteBundleImportStage.verifying => context.l10n.bundleRemoteProgressVerifying,
+      RemoteBundleImportStage.unpacking => context.l10n.bundleRemoteProgressUnpacking,
+      RemoteBundleImportStage.importing => context.l10n.bundleRemoteProgressImporting,
+      RemoteBundleImportStage.applyingIncrementalPatch =>
+        context.l10n.bundleRemoteProgressApplyingIncrementalPatch,
+      RemoteBundleImportStage.refreshingRegistry =>
+        context.l10n.bundleRemoteProgressRefreshingRegistry,
+      RemoteBundleImportStage.completed => context.l10n.bundleRemoteProgressCompleted,
+      RemoteBundleImportStage.cancelled => context.l10n.bundleRemoteProgressCancelled,
+    };
+
+String? _remoteImportOperationDescription(
+  BuildContext context,
+  _RemoteBundleImportOperation operation,
+) {
+  if (operation.failed) {
+    return context.l10n.bundleRemoteProgressFailedDescription(
+      stage: _remoteImportStageLabel(context, operation.failedStage ?? operation.progress.stage),
+      message: operation.error.toString(),
+    );
+  }
+  if (operation.cancelled) {
+    return context.l10n.bundleRemoteProgressCancelledDescription;
+  }
+  if (operation.completed) {
+    return context.l10n.bundleRemoteProgressCompletedDescription(bundleId: operation.bundleId);
+  }
+  final progress = operation.progress;
+  if (progress.stage == RemoteBundleImportStage.downloading && progress.receivedBytes != null) {
+    final received = _formatByteSize(progress.receivedBytes!);
+    final total = progress.totalBytes;
+    final fraction = progress.downloadFraction;
+    if (total != null && fraction != null) {
+      return context.l10n.bundleRemoteProgressDownloadingKnown(
+        received: received,
+        total: _formatByteSize(total),
+        percent: (fraction * 100).clamp(0, 100).toStringAsFixed(0),
+      );
+    }
+    return context.l10n.bundleRemoteProgressDownloadingUnknown(received: received);
+  }
+  if (progress.stage == RemoteBundleImportStage.applyingIncrementalPatch &&
+      progress.baseBundleId != null) {
+    return context.l10n.bundleRemoteArtifactBaseBundle(bundleId: progress.baseBundleId!);
+  }
+  return context.l10n.bundleRemoteProgressQueued;
 }
 
 IconData _remoteCandidateIcon(RemoteBundleCandidate candidate) => switch (candidate.state) {
@@ -596,3 +1111,19 @@ Color _remoteCandidateColor(BuildContext context, RemoteBundleCandidate candidat
       RemoteBundleCandidateState.installed => colorGreen,
       RemoteBundleCandidateState.unavailable => context.theme.colorScheme.error,
     };
+
+String _formatByteSize(int bytes) {
+  const units = ["B", "KiB", "MiB", "GiB"];
+  double size = bytes.toDouble();
+  var unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  if (unitIndex == 0) {
+    return "$bytes ${units[unitIndex]}";
+  }
+  return "${size.toStringAsFixed(size >= 10 ? 1 : 2)} ${units[unitIndex]}";
+}
+
+String _shortHash(String hash) => hash.length <= 12 ? hash : hash.substring(0, 12);

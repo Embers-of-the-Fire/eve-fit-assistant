@@ -120,6 +120,12 @@ Agents should read this file before editing code.
 - When impossible states are hit, log context and throw a typed error such as `StateError` rather than failing silently.
 - Use `unawaited(...)` deliberately for deferred async work and keep state mutation out of widget build timing hazards.
 
+## Localization Style
+
+- `l10n/app_zh.arb` is the `template-arb-file`; define typed placeholder `@...` metadata there.
+- Other ARBs such as `l10n/app_en.arb` should contain translation values only, not placeholder metadata blocks.
+- After localization changes, run `./x generate l10n` and the relevant formatter/linter.
+
 ## Rust Style
 
 - `rustfmt.toml` sets 100-column formatting and enables field/init and `?` shorthands.
