@@ -1060,6 +1060,97 @@
     }
   },
   "bundleRemoteDownloadAction": "下载",
+  "bundleRemoteDownloadImportAction": "下载并导入",
+  "bundleRemoteImportBehaviorHint": "将导入为已安装数据包。活动数据包会保持不变，直到您在下方手动选择。",
+  "bundleRemoteArtifactSize": "大小：{size}",
+  "@bundleRemoteArtifactSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactGenerated": "生成时间：{time}",
+  "@bundleRemoteArtifactGenerated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactBaseBundle": "修补已安装基线：{bundleId}",
+  "@bundleRemoteArtifactBaseBundle": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactBaseManifest": "基线清单：{hash}",
+  "@bundleRemoteArtifactBaseManifest": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressPreparing": "正在准备远程请求",
+  "bundleRemoteProgressDownloading": "正在下载归档",
+  "bundleRemoteProgressVerifying": "正在校验大小和 SHA-256",
+  "bundleRemoteProgressUnpacking": "正在解包归档",
+  "bundleRemoteProgressImporting": "正在导入数据包文件",
+  "bundleRemoteProgressApplyingIncrementalPatch": "正在应用增量补丁",
+  "bundleRemoteProgressRefreshingRegistry": "正在刷新已安装数据包列表",
+  "bundleRemoteProgressCompleted": "已导入，未激活",
+  "bundleRemoteProgressCancelled": "导入已取消",
+  "bundleRemoteProgressQueued": "等待开始",
+  "bundleRemoteProgressDownloadingKnown": "{received} / {total}（{percent}%）",
+  "@bundleRemoteProgressDownloadingKnown": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressDownloadingUnknown": "已下载 {received}",
+  "@bundleRemoteProgressDownloadingUnknown": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressCompletedDescription": "{bundleId} 已安装。需要切换应用活动数据时，请手动选择它。",
+  "@bundleRemoteProgressCompletedDescription": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressCancelledDescription": "当前数据包保持不变。",
+  "bundleRemoteProgressFailedTitle": "导入失败",
+  "bundleRemoteProgressFailedDescription": "在“{stage}”阶段失败：{message}",
+  "@bundleRemoteProgressFailedDescription": {
+    "placeholders": {
+      "stage": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressRetryAction": "重试",
+  "bundleRemoteProgressKeepCurrentAction": "保留当前数据包",
+  "bundleRemoteProgressViewInstalledAction": "查看已安装数据包",
+  "bundleRemoteProgressLoadBundleAction": "加载此数据包",
   "bundleRemoteImportConfirmTitle": "要下载远程数据包吗？",
   "bundleRemoteImportConfirmDescription": "下载、校验并导入 {artifactId}？当前活动数据包不会自动切换。",
   "@bundleRemoteImportConfirmDescription": {

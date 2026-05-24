@@ -467,6 +467,97 @@
     }
   },
   "bundleRemoteDownloadAction": "Download",
+  "bundleRemoteDownloadImportAction": "Download and import",
+  "bundleRemoteImportBehaviorHint": "Imports as an installed bundle. The active bundle stays unchanged until you choose one below.",
+  "bundleRemoteArtifactSize": "Size: {size}",
+  "@bundleRemoteArtifactSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactGenerated": "Generated: {time}",
+  "@bundleRemoteArtifactGenerated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactBaseBundle": "Patches installed base: {bundleId}",
+  "@bundleRemoteArtifactBaseBundle": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteArtifactBaseManifest": "Base manifest: {hash}",
+  "@bundleRemoteArtifactBaseManifest": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressPreparing": "Preparing remote request",
+  "bundleRemoteProgressDownloading": "Downloading archive",
+  "bundleRemoteProgressVerifying": "Verifying size and SHA-256",
+  "bundleRemoteProgressUnpacking": "Unpacking archive",
+  "bundleRemoteProgressImporting": "Importing bundle files",
+  "bundleRemoteProgressApplyingIncrementalPatch": "Applying incremental patch",
+  "bundleRemoteProgressRefreshingRegistry": "Refreshing installed bundle registry",
+  "bundleRemoteProgressCompleted": "Imported, not active",
+  "bundleRemoteProgressCancelled": "Import cancelled",
+  "bundleRemoteProgressQueued": "Waiting to start",
+  "bundleRemoteProgressDownloadingKnown": "{received} of {total} ({percent}%)",
+  "@bundleRemoteProgressDownloadingKnown": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressDownloadingUnknown": "{received} downloaded",
+  "@bundleRemoteProgressDownloadingUnknown": {
+    "placeholders": {
+      "received": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressCompletedDescription": "{bundleId} is installed. Select it manually when you want to switch the app's active data.",
+  "@bundleRemoteProgressCompletedDescription": {
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressCancelledDescription": "The current bundle was kept unchanged.",
+  "bundleRemoteProgressFailedTitle": "Import failed",
+  "bundleRemoteProgressFailedDescription": "Failed while {stage}: {message}",
+  "@bundleRemoteProgressFailedDescription": {
+    "placeholders": {
+      "stage": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleRemoteProgressRetryAction": "Retry",
+  "bundleRemoteProgressKeepCurrentAction": "Keep current bundle",
+  "bundleRemoteProgressViewInstalledAction": "View installed bundle",
+  "bundleRemoteProgressLoadBundleAction": "Load this bundle",
   "bundleRemoteImportConfirmTitle": "Download remote bundle?",
   "bundleRemoteImportConfirmDescription": "Download, verify, and import {artifactId}? The active bundle will not switch automatically.",
   "@bundleRemoteImportConfirmDescription": {
