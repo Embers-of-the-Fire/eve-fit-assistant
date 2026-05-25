@@ -109,6 +109,12 @@ class RemoteDocumentSyncService {
       throw const RemoteContentException("Remote document catalog entries must be a list.");
     }
 
+    final oldCatalog = DocumentStorage.remoteCatalog;
+    final oldEntries = <String, DocumentEntry>{};
+    for (final oldEntry in oldCatalog.entries) {
+      oldEntries[oldEntry.id] = oldEntry;
+    }
+
     final entries = <DocumentEntry>[];
     final cachedBodies = <String, String>{};
     final seenIds = <String>{};
@@ -117,7 +123,7 @@ class RemoteDocumentSyncService {
       if (rawEntry is! Map<String, dynamic>) {
         throw const RemoteContentException("Remote document entry must be an object.");
       }
-      final parsedEntry = await _parseEntry(rawEntry, endpoint);
+      final parsedEntry = await _parseEntry(rawEntry, endpoint, oldEntries: oldEntries);
       if (!seenIds.add(parsedEntry.entry.id)) {
         throw RemoteContentException("Duplicate remote document id: ${parsedEntry.entry.id}");
       }
@@ -133,8 +139,9 @@ class RemoteDocumentSyncService {
 
   Future<({DocumentEntry entry, Map<String, String> cachedBodies})> _parseEntry(
     Map<String, dynamic> payload,
-    RemoteContentEndpoint endpoint,
-  ) async {
+    RemoteContentEndpoint endpoint, {
+    Map<String, DocumentEntry>? oldEntries,
+  }) async {
     final id = readRemoteRequiredString(payload, "id");
     _validateDocumentId(id);
     final kind = readRemoteRequiredString(payload, "kind");
@@ -149,7 +156,8 @@ class RemoteDocumentSyncService {
     if (publishedAt == null) {
       throw RemoteContentException("Remote document '$id' has invalid publishedAt.");
     }
-    final localizations = await _parseLocalizations(payload, endpoint, id);
+    final oldEntry = oldEntries?[id];
+    final localizations = await _parseLocalizations(payload, endpoint, id, oldEntry: oldEntry);
 
     return (
       entry: DocumentEntry(
@@ -171,8 +179,9 @@ class RemoteDocumentSyncService {
   _parseLocalizations(
     Map<String, dynamic> payload,
     RemoteContentEndpoint endpoint,
-    String documentId,
-  ) async {
+    String documentId, {
+    DocumentEntry? oldEntry,
+  }) async {
     final rawLocalizations = payload["localizations"];
     if (rawLocalizations is! Map<String, dynamic> || rawLocalizations.isEmpty) {
       throw RemoteContentException("Remote document '$documentId' has no localizations.");
@@ -195,11 +204,19 @@ class RemoteDocumentSyncService {
       final localization = item.value as Map<String, dynamic>;
       final title = readRemoteRequiredString(localization, "title");
       final summary = readRemoteRequiredString(localization, "summary");
-      final bodyPath = readRemoteRequiredString(localization, "bodyPath");
-      final bodyUri = endpoint.resolvePayloadUri(bodyPath);
       final cacheKey = DocumentStorage.cacheKey(documentId, localeCode);
+
+      final oldLocaleExists = oldEntry?.localizations.containsKey(localeCode) ?? false;
       final cachedBody = DocumentStorage.cachedBody(documentId, localeCode);
-      final body = await _fetchText(bodyUri, cachedBody: cachedBody);
+
+      final String body;
+      if (oldLocaleExists && cachedBody != null) {
+        body = cachedBody;
+      } else {
+        final bodyPath = readRemoteRequiredString(localization, "bodyPath");
+        final bodyUri = endpoint.resolvePayloadUri(bodyPath);
+        body = await _fetchText(bodyUri, cachedBody: cachedBody);
+      }
       localizations[localeCode] = DocumentLocalization(title: title, summary: summary);
       cachedBodies[cacheKey] = body;
     }
