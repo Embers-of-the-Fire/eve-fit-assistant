@@ -231,7 +231,16 @@ class RemoteDocumentSyncService {
   Future<String> _fetchText(Uri uri, {String? cachedBody}) async {
     final result = await getRemoteUri<String>(_dio, uri);
     if (result.notModified) {
-      return cachedBody ?? "";
+      if (cachedBody != null) {
+        return cachedBody;
+      }
+      warning(
+        "Remote document body returned 304 but no cached body available for $uri."
+        " The ETag may be stale; clearing and retrying.",
+      );
+      EtagCache.remove(uri);
+      final retry = await getRemoteUri<String>(_dio, uri);
+      return retry.response.data ?? "";
     }
     return result.response.data ?? "";
   }
