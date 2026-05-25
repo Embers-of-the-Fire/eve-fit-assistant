@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/foundation.dart" show FlutterError;
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:package_info_plus/package_info_plus.dart";
 
 const String _bundledCatalogAssetPath = "assets/content/documents/generated/index.json";
 
@@ -42,6 +43,35 @@ class DocumentReadService {
     _ref.read(readGenerationProvider.notifier).state++;
   }
 }
+
+final appVersionProvider = FutureProvider<String>((Ref ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return info.version;
+});
+
+final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
+  ref.watch(readGenerationProvider);
+  final feed = ref.watch(documentFeedProvider(DocumentFeedKind.announcement));
+  return (feed.valueOrNull ?? []).where((r) => DocumentStorage.isUnread(r.id)).length;
+});
+
+final unreadVersionCountProvider = Provider<int>((Ref ref) {
+  ref.watch(readGenerationProvider);
+  final feed = ref.watch(documentFeedProvider(DocumentFeedKind.version));
+  return (feed.valueOrNull ?? []).where((r) => DocumentStorage.isUnread(r.id)).length;
+});
+
+final hasVersionBumpProvider = Provider<bool>((Ref ref) {
+  ref.watch(readGenerationProvider);
+  final appVer = ref.watch(appVersionProvider).valueOrNull;
+  final lastSeen = DocumentStorage.lastSeenAppVersion;
+  if (appVer == null || appVer == lastSeen) {
+    return false;
+  }
+  final versionFeed = ref.watch(documentFeedProvider(DocumentFeedKind.version));
+  final records = versionFeed.valueOrNull ?? [];
+  return records.any((r) => r.appVer == appVer);
+});
 
 final documentFeedProvider = FutureProvider.family<List<DocumentRecord>, DocumentFeedKind>((
   Ref ref,
