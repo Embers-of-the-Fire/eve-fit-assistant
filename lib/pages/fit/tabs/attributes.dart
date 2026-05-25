@@ -36,7 +36,7 @@ class _AttributeTabState extends ConsumerState<_AttributeTab> with AutomaticKeep
       child: SingleChildScrollView(
         child: Column(
           children: [
-            ShipInfo(fitContext: widget.fitContext),
+            ShipInfo(fitContext: widget.fitContext, interactionOptions: widget.interactionOptions),
             const Divider(height: 0),
             Capacitor(ship: emulated),
             Weapon(ship: emulated),
