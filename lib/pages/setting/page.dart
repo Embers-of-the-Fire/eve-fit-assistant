@@ -1,7 +1,9 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/badge/notification_dot.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -36,13 +38,28 @@ class SettingPage extends ConsumerWidget {
           title: context.l10n.settingTileBundleManagerTitle,
           onTap: () => unawaited(context.router.push(const BundleManagerRoute())),
         ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.new_releases_outlined),
-          title: context.l10n.settingTileVersionTitle,
-          subtitle: context.l10n.settingTileVersionSubtitle,
-          onTap: () => unawaited(context.router.push(const VersionRoute())),
+        ConfigListTile.custom(
+          _buildVersionTile(context, ref),
         ),
       ],
+    );
+  }
+
+  Widget _buildVersionTile(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(unreadVersionCountProvider);
+    return ListTile(
+      leading: const Icon(Icons.new_releases_outlined),
+      title: Text(context.l10n.settingTileVersionTitle),
+      subtitle: Text(context.l10n.settingTileVersionSubtitle),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (unreadCount > 0) NotificationDot(count: unreadCount),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+      onTap: () => unawaited(context.router.push(const VersionRoute())),
     );
   }
 }
