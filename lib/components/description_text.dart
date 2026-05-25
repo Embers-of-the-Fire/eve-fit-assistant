@@ -66,9 +66,7 @@ class _DescriptionTextState extends State<DescriptionText>
   };
 
   TextSpan _buildFromElement(BuildContext context, html.Element element) {
-    TextSpan Function(html.NodeList) any(
-      TextSpan Function(List<TextSpan>) builder,
-    ) =>
+    TextSpan Function(html.NodeList) any(TextSpan Function(List<TextSpan>) builder) =>
         (children) => builder(children.map((u) => _buildFromNode(context, u)).toList());
 
     final TextSpan Function(html.NodeList) builder = switch (element.localName) {
@@ -114,8 +112,7 @@ class _DescriptionTextState extends State<DescriptionText>
             await handler(context, uri);
           } on Object catch (e) {
             if (context.mounted) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text("$e")));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$e")));
             }
           }
         };
@@ -123,9 +120,7 @@ class _DescriptionTextState extends State<DescriptionText>
     }
 
     return TextSpan(
-      children: children
-          .map<TextSpan>((node) => _buildFromNode(context, node))
-          .toList(),
+      children: children.map<TextSpan>((node) => _buildFromNode(context, node)).toList(),
       style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
       recognizer: recognizer,
     );
