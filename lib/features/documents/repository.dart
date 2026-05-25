@@ -26,9 +26,7 @@ final readGenerationProvider = NotifierProvider<ReadGenerationNotifier, int>(
   ReadGenerationNotifier.new,
 );
 
-final documentReadServiceProvider = Provider<DocumentReadService>(
-  (Ref ref) => DocumentReadService(ref),
-);
+final documentReadServiceProvider = Provider<DocumentReadService>(DocumentReadService.new);
 
 class DocumentReadService {
   DocumentReadService(this._ref);
@@ -44,6 +42,11 @@ class DocumentReadService {
 
   void markAllRead(Iterable<String> ids) {
     DocumentStorage.markAllRead(ids);
+    _ref.read(readGenerationProvider.notifier).increment();
+  }
+
+  void markAllUnread(Iterable<String> ids) {
+    DocumentStorage.clearRead(ids);
     _ref.read(readGenerationProvider.notifier).increment();
   }
 
@@ -64,7 +67,7 @@ final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
   return feed.when(
     data: (records) => records.where((r) => DocumentStorage.isUnread(r.id)).length,
     loading: () => 0,
-    error: (_, __) => 0,
+    error: (_, _) => 0,
   );
 });
 
@@ -74,7 +77,7 @@ final unreadVersionCountProvider = Provider<int>((Ref ref) {
   return feed.when(
     data: (records) => records.where((r) => DocumentStorage.isUnread(r.id)).length,
     loading: () => 0,
-    error: (_, __) => 0,
+    error: (_, _) => 0,
   );
 });
 
@@ -82,7 +85,7 @@ final hasVersionBumpProvider = Provider<bool>((Ref ref) {
   ref.watch(readGenerationProvider);
   final appVer = ref
       .watch(appVersionProvider)
-      .when(data: (v) => v, loading: () => null, error: (_, __) => null);
+      .when(data: (v) => v, loading: () => null, error: (_, _) => null);
   final lastSeen = DocumentStorage.lastSeenAppVersion;
   if (appVer == null || appVer == lastSeen) {
     return false;
@@ -91,7 +94,7 @@ final hasVersionBumpProvider = Provider<bool>((Ref ref) {
   final records = versionFeed.when(
     data: (r) => r,
     loading: () => const <DocumentRecord>[],
-    error: (_, __) => const <DocumentRecord>[],
+    error: (_, _) => const <DocumentRecord>[],
   );
   return records.any((r) => r.appVer == appVer);
 });

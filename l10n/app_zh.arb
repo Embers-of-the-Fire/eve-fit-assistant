@@ -219,6 +219,8 @@
   "documentKindVersion": "版本",
   "documentOpenHint": "点击查看",
   "documentVersionBadge": "应用 {version}",
+  "documentMarkAllRead": "全部标为已读",
+  "documentMarkAllUnread": "全部标为未读",
   "@documentVersionBadge": {
     "placeholders": {
       "version": {

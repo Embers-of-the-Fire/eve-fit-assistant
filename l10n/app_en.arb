@@ -168,6 +168,8 @@
   "documentKindVersion": "Version",
   "documentOpenHint": "Open to read",
   "documentVersionBadge": "App {version}",
+  "documentMarkAllRead": "Mark all read",
+  "documentMarkAllUnread": "Mark all unread",
   "versionBumpCardTitle": "What's new in v{version}",
   "versionBumpCardSubtitle": "{count} new updates",
   "versionBumpCardCloseTooltip": "Close",

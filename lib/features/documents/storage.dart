@@ -119,11 +119,17 @@ class DocumentStorage {
   static void markAllRead(Iterable<String> ids) {
     final now = DateTime.now();
     _state = _state.copyWith(
-      readTimestamps: <String, DateTime>{
-        ..._state.readTimestamps,
-        for (final id in ids) id: now,
-      },
+      readTimestamps: <String, DateTime>{..._state.readTimestamps, for (final id in ids) id: now},
     );
+    _sync();
+  }
+
+  static void clearRead(Iterable<String> ids) {
+    final remaining = Map<String, DateTime>.of(_state.readTimestamps);
+    for (final id in ids) {
+      remaining.remove(id);
+    }
+    _state = _state.copyWith(readTimestamps: remaining);
     _sync();
   }
 

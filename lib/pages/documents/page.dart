@@ -72,11 +72,18 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
             return Row(
               children: [
                 Flexible(
-                  child: _DocumentListPane(
-                    feedKind: widget.feedKind,
-                    entries: entries,
-                    selectedDocumentId: selectedEntry?.id,
-                    onSelect: _selectDocument,
+                  child: Column(
+                    children: [
+                      _buildActionBar(context, entries),
+                      Expanded(
+                        child: _DocumentListPane(
+                          feedKind: widget.feedKind,
+                          entries: entries,
+                          selectedDocumentId: selectedEntry?.id,
+                          onSelect: _selectDocument,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const VerticalDivider(width: 1),
@@ -86,11 +93,18 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
           }
 
           if (selectedEntry == null) {
-            return _DocumentListPane(
-              feedKind: widget.feedKind,
-              entries: entries,
-              selectedDocumentId: null,
-              onSelect: _selectDocument,
+            return Column(
+              children: [
+                _buildActionBar(context, entries),
+                Expanded(
+                  child: _DocumentListPane(
+                    feedKind: widget.feedKind,
+                    entries: entries,
+                    selectedDocumentId: null,
+                    onSelect: _selectDocument,
+                  ),
+                ),
+              ],
             );
           }
 
@@ -148,6 +162,28 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
     DocumentStorage.saveSelectedDocumentId(widget.feedKind, entry.id);
     ref.read(documentReadServiceProvider).markRead(entry.id);
     setState(() => _selectedDocumentId = entry.id);
+  }
+
+  Widget _buildActionBar(BuildContext context, List<DocumentRecord> entries) {
+    final allIds = entries.map((r) => r.id);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => ref.read(documentReadServiceProvider).markAllRead(allIds),
+            icon: const Icon(Icons.done_all, size: 16),
+            label: Text(context.l10n.documentMarkAllRead),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: () => ref.read(documentReadServiceProvider).markAllUnread(allIds),
+            icon: const Icon(Icons.remove_done, size: 16),
+            label: Text(context.l10n.documentMarkAllUnread),
+          ),
+        ],
+      ),
+    );
   }
 }
 
