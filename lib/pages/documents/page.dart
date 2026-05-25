@@ -169,6 +169,7 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           OutlinedButton.icon(
             onPressed: () => ref.read(documentReadServiceProvider).markAllRead(allIds),
