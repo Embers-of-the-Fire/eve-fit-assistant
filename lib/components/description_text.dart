@@ -95,16 +95,15 @@ TextSpan _buildLink(BuildContext context, html.Element element, html.NodeList ch
     style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
     recognizer: handler != null && uri != null
         ? (TapGestureRecognizer()
-          ..onTap = () async {
-            try {
-              await handler(context, uri);
-            } on Object catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text("$e")));
+            ..onTap = () async {
+              try {
+                await handler(context, uri);
+              } on Object catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$e")));
+                }
               }
-            }
-          })
+            })
         : null,
   );
 }
