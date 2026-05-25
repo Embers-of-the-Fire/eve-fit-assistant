@@ -71,7 +71,7 @@ Future<void> _initVersionTracking(WidgetRef ref) async {
   await Future<void>.delayed(const Duration(milliseconds: 500));
   final appVersion = ref
       .read(appVersionProvider)
-      .when(data: (v) => v, loading: () => null, error: (_, __) => null);
+      .when(data: (v) => v, loading: () => null, error: (_, _) => null);
   if (appVersion == null || DocumentStorage.lastSeenAppVersion != null) {
     return;
   }

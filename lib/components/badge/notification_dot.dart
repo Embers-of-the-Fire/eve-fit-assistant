@@ -29,11 +29,7 @@ class NotificationDot extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         child,
-        Positioned(
-          top: -4,
-          right: -4,
-          child: badge,
-        ),
+        Positioned(top: -4, right: -4, child: badge),
       ],
     );
   }

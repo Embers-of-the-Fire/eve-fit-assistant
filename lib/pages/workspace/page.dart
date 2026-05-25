@@ -99,7 +99,7 @@ class WorkspacePage extends ConsumerWidget {
   Widget _buildVersionBumpCard(BuildContext context, WidgetRef ref) {
     final appVersion = ref
         .watch(appVersionProvider)
-        .when(data: (v) => v, loading: () => "", error: (_, __) => "");
+        .when(data: (v) => v, loading: () => "", error: (_, _) => "");
     final unreadVersionCount = ref.watch(unreadVersionCountProvider);
 
     return Card(
