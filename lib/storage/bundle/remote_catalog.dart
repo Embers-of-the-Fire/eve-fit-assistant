@@ -1,5 +1,6 @@
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
@@ -174,7 +175,7 @@ abstract class RemoteBundleCatalogState with _$RemoteBundleCatalogState {
 
 @riverpod
 class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
-  RemoteBundleCatalogManager({Dio? dio}) : _dio = dio ?? Dio();
+  RemoteBundleCatalogManager({Dio? dio}) : _dio = dio ?? createRemoteDio();
 
   final Dio _dio;
 

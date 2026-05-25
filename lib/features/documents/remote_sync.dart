@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
+import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -17,7 +18,9 @@ final remoteDocumentSyncServiceProvider = Provider<RemoteDocumentSyncService>(
 );
 
 class RemoteDocumentSyncService {
-  RemoteDocumentSyncService({required Ref ref, Dio? dio}) : _ref = ref, _dio = dio ?? Dio();
+  RemoteDocumentSyncService({required Ref ref, Dio? dio})
+    : _ref = ref,
+      _dio = dio ?? createRemoteDio();
 
   final Ref _ref;
   final Dio _dio;
@@ -172,16 +175,21 @@ class RemoteDocumentSyncService {
       final summary = readRemoteRequiredString(localization, "summary");
       final bodyPath = readRemoteRequiredString(localization, "bodyPath");
       final bodyUri = endpoint.resolvePayloadUri(bodyPath);
-      final body = await _fetchText(bodyUri);
+      final cacheKey = DocumentStorage.cacheKey(documentId, localeCode);
+      final cachedBody = DocumentStorage.cachedBody(documentId, localeCode);
+      final body = await _fetchText(bodyUri, cachedBody: cachedBody);
       localizations[localeCode] = DocumentLocalization(title: title, summary: summary);
-      cachedBodies[DocumentStorage.cacheKey(documentId, localeCode)] = body;
+      cachedBodies[cacheKey] = body;
     }
     return (localizations: localizations, cachedBodies: cachedBodies);
   }
 
-  Future<String> _fetchText(Uri uri) async {
-    final response = await getRemoteUri<String>(_dio, uri);
-    return response.data ?? "";
+  Future<String> _fetchText(Uri uri, {String? cachedBody}) async {
+    final result = await getRemoteUri<String>(_dio, uri);
+    if (result.notModified) {
+      return cachedBody ?? "";
+    }
+    return result.response.data ?? "";
   }
 }
 

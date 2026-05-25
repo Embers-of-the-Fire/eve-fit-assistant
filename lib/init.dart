@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/documents/remote_sync.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
@@ -27,6 +28,7 @@ Future<void> initSingletons() async {
   await PathProvider.init();
   AppSettingService.init();
   DocumentStorage.init();
+  EtagCache.init();
   GlobalLogger.init(
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,

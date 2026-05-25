@@ -5,6 +5,7 @@ import "package:crypto/crypto.dart";
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/storage/bundle/impact.dart";
 import "package:eve_fit_assistant/storage/bundle/remote_catalog.dart";
@@ -211,8 +212,6 @@ class BundleManager extends _$BundleManager {
   static String get _bundleBasePath => p.join(PathProvider.resourcesPath, "bundles");
   static String get _bundleCachePath => p.join(PathProvider.cacheResourcesPath, "bundles");
   static String get _remoteDownloadCachePath => p.join(_bundleCachePath, "remote");
-  static const Duration _remoteDownloadConnectTimeout = Duration(seconds: 30);
-  static const Duration _remoteDownloadSendTimeout = Duration(seconds: 30);
   static const Duration _remoteDownloadReceiveTimeout = Duration(minutes: 5);
 
   @override
@@ -648,13 +647,7 @@ class BundleManager extends _$BundleManager {
     }
 
     try {
-      final dio = Dio(
-        BaseOptions(
-          connectTimeout: _remoteDownloadConnectTimeout,
-          sendTimeout: _remoteDownloadSendTimeout,
-          receiveTimeout: _remoteDownloadReceiveTimeout,
-        ),
-      );
+      final dio = createRemoteDio(receiveTimeout: _remoteDownloadReceiveTimeout);
       reportProgress(RemoteBundleImportStage.downloading);
       await dio.downloadUri(
         uri,
