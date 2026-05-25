@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -34,6 +35,10 @@ class RemoteDocumentSyncService {
 
     try {
       final endpoint = RemoteContentEndpoint.fromSetting(config);
+
+      if (DocumentStorage.lastDocumentRevision == null) {
+        EtagCache.remove(endpoint.indexUri);
+      }
 
       final indexResult = await getRemoteUri<String>(_dio, endpoint.indexUri);
       if (indexResult.notModified) {

@@ -4,6 +4,7 @@ import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
@@ -194,16 +195,22 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     try {
       final endpoint = RemoteContentEndpoint.fromSetting(config);
 
+      // If we have no previous state to fall back on, clear any stale
+      // ETag so we never return an empty page on a 304 response.
+      final prev = state.asData?.value;
+      if (prev == null) {
+        EtagCache.remove(endpoint.indexUri);
+      }
+
       final indexResult = await getRemoteUri<String>(_dio, endpoint.indexUri);
       if (indexResult.notModified) {
         info("Remote bundle index unchanged; skipping refresh.");
-        final prev = state.asData?.value;
         return RemoteBundleCatalogState(
           enabled: true,
           loaded: true,
           catalogAvailable: true,
-          appVersion: prev?.appVersion,
-          candidates: prev?.candidates ?? const IList.empty(),
+          appVersion: prev!.appVersion,
+          candidates: prev.candidates,
         );
       }
       final indexText = indexResult.response.data;
@@ -220,13 +227,13 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       final bundleRevision = bundles?["revision"] as String?;
       if (bundleRevision != null && bundleRevision == _lastBundleRevision) {
         info("Remote bundle revision unchanged ($bundleRevision); skipping catalog fetch.");
-        final prev = state.asData?.value;
+        final current = state.asData?.value;
         return RemoteBundleCatalogState(
           enabled: true,
           loaded: true,
           catalogAvailable: true,
-          appVersion: prev?.appVersion,
-          candidates: prev?.candidates ?? const IList.empty(),
+          appVersion: current?.appVersion,
+          candidates: current?.candidates ?? const IList.empty(),
         );
       }
       _lastBundleRevision = bundleRevision;

@@ -90,10 +90,7 @@ Map<String, dynamic>? _conditionalHeaders(String? etag, String? lastModified) {
   if (etag == null && lastModified == null) {
     return null;
   }
-  return {
-    if (etag != null) "If-None-Match": etag,
-    if (lastModified != null) "If-Modified-Since": lastModified,
-  };
+  return {"If-None-Match": ?etag, "If-Modified-Since": ?lastModified};
 }
 
 void _updateCacheFromResponse(Uri uri, Response<dynamic> response) {
