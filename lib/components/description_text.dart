@@ -123,7 +123,9 @@ class _DescriptionTextState extends State<DescriptionText>
     }
 
     return TextSpan(
-      text: children.map((u) => u.text).join(),
+      children: children
+          .map<TextSpan>((node) => _buildFromNode(context, node))
+          .toList(),
       style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
       recognizer: recognizer,
     );
