@@ -100,6 +100,45 @@ class DocumentStorage {
 
   static String? get lastDocumentRevision => _state.lastDocumentRevision;
 
+  static Map<String, DateTime> get readTimestamps => _state.readTimestamps;
+
+  static String? get lastSeenAppVersion => _state.lastSeenAppVersion;
+
+  static bool isUnread(String documentId) => !_state.readTimestamps.containsKey(documentId);
+
+  static void markRead(String documentId) {
+    if (!isUnread(documentId)) {
+      return;
+    }
+    _state = _state.copyWith(
+      readTimestamps: <String, DateTime>{..._state.readTimestamps, documentId: DateTime.now()},
+    );
+    _sync();
+  }
+
+  static void markAllRead(Iterable<String> ids) {
+    final now = DateTime.now();
+    _state = _state.copyWith(
+      readTimestamps: <String, DateTime>{
+        ..._state.readTimestamps,
+        for (final id in ids) id: now,
+      },
+    );
+    _sync();
+  }
+
+  static void setLastSeenAppVersion(String version) {
+    if (_state.lastSeenAppVersion == version) {
+      return;
+    }
+    _state = _state.copyWith(lastSeenAppVersion: version);
+    _sync();
+  }
+
+  static int _changeGeneration = 0;
+
+  static int get changeGeneration => _changeGeneration;
+
   static String cacheKey(String documentId, String localeCode) => "$documentId::$localeCode";
 
   static DocumentStorageState _readState() {
@@ -148,5 +187,6 @@ class DocumentStorage {
       file.createSync(recursive: true);
     }
     file.writeAsStringSync(text);
+    _changeGeneration++;
   }
 }

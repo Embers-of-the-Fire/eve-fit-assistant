@@ -14,6 +14,35 @@ final documentRepositoryProvider = Provider<DocumentRepository>(
   (Ref ref) => const DocumentRepository(),
 );
 
+final readGenerationProvider = StateProvider<int>((Ref ref) => 0);
+
+final documentReadServiceProvider = Provider<DocumentReadService>(
+  (Ref ref) => DocumentReadService(ref),
+);
+
+class DocumentReadService {
+  DocumentReadService(this._ref);
+
+  final Ref _ref;
+
+  bool isUnread(String documentId) => DocumentStorage.isUnread(documentId);
+
+  void markRead(String documentId) {
+    DocumentStorage.markRead(documentId);
+    _ref.read(readGenerationProvider.notifier).state++;
+  }
+
+  void markAllRead(Iterable<String> ids) {
+    DocumentStorage.markAllRead(ids);
+    _ref.read(readGenerationProvider.notifier).state++;
+  }
+
+  void acknowledgeVersionBump(String version) {
+    DocumentStorage.setLastSeenAppVersion(version);
+    _ref.read(readGenerationProvider.notifier).state++;
+  }
+}
+
 final documentFeedProvider = FutureProvider.family<List<DocumentRecord>, DocumentFeedKind>((
   Ref ref,
   DocumentFeedKind feedKind,
