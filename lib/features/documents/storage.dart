@@ -19,6 +19,7 @@ abstract class DocumentStorageState with _$DocumentStorageState {
     @Default(<String, String>{}) Map<String, String> cachedBodies,
     @Default(<String, String>{}) Map<String, String> selectedDocumentIds,
     @Default(<String>[]) List<String> dismissedStartupAnnouncementIds,
+    String? lastDocumentRevision,
   }) = _DocumentStorageState;
 
   factory DocumentStorageState.initial() => DocumentStorageState(
@@ -82,10 +83,20 @@ class DocumentStorage {
   static String? cachedBody(String documentId, String localeCode) =>
       _state.cachedBodies[cacheKey(documentId, localeCode)];
 
-  static void replaceRemoteCatalog(DocumentCatalog catalog, Map<String, String> cachedBodies) {
-    _state = _state.copyWith(remoteCatalog: catalog, cachedBodies: cachedBodies);
+  static void replaceRemoteCatalog(
+    DocumentCatalog catalog,
+    Map<String, String> cachedBodies, {
+    String? documentRevision,
+  }) {
+    _state = _state.copyWith(
+      remoteCatalog: catalog,
+      cachedBodies: cachedBodies,
+      lastDocumentRevision: documentRevision ?? _state.lastDocumentRevision,
+    );
     _sync();
   }
+
+  static String? get lastDocumentRevision => _state.lastDocumentRevision;
 
   static String cacheKey(String documentId, String localeCode) => "$documentId::$localeCode";
 

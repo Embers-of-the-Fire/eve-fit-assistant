@@ -1,11 +1,14 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
+import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -17,7 +20,9 @@ final remoteDocumentSyncServiceProvider = Provider<RemoteDocumentSyncService>(
 );
 
 class RemoteDocumentSyncService {
-  RemoteDocumentSyncService({required Ref ref, Dio? dio}) : _ref = ref, _dio = dio ?? Dio();
+  RemoteDocumentSyncService({required Ref ref, Dio? dio})
+    : _ref = ref,
+      _dio = dio ?? createRemoteDio();
 
   final Ref _ref;
   final Dio _dio;
@@ -30,16 +35,41 @@ class RemoteDocumentSyncService {
 
     try {
       final endpoint = RemoteContentEndpoint.fromSetting(config);
-      final index = await fetchRemoteJson(_dio, endpoint.indexUri);
+
+      if (DocumentStorage.lastDocumentRevision == null) {
+        EtagCache.remove(endpoint.indexUri);
+      }
+
+      final indexResult = await getRemoteUri<String>(_dio, endpoint.indexUri);
+      if (indexResult.notModified) {
+        info("Remote document index unchanged; skipping sync.");
+        return true;
+      }
+      final indexText = indexResult.response.data;
+      if (indexText == null || indexText.isEmpty) {
+        throw const RemoteContentException("Remote index response body is empty.");
+      }
+      final index = jsonDecode(indexText) as Map<String, dynamic>;
       final documentCatalogPath = _readDocumentCatalogPath(index, endpoint.channel);
       if (documentCatalogPath == null) {
         return false;
       }
 
+      final documents = index["documents"] as Map<String, dynamic>?;
+      final documentRevision = documents?["revision"] as String?;
+      if (documentRevision != null && documentRevision == DocumentStorage.lastDocumentRevision) {
+        info("Remote document revision unchanged ($documentRevision); skipping catalog fetch.");
+        return true;
+      }
+
       final catalogUri = endpoint.resolvePayloadUri(documentCatalogPath);
       final catalogPayload = await fetchRemoteJson(_dio, catalogUri);
       final parsedCatalog = await _parseCatalog(catalogPayload, endpoint);
-      DocumentStorage.replaceRemoteCatalog(parsedCatalog.catalog, parsedCatalog.cachedBodies);
+      DocumentStorage.replaceRemoteCatalog(
+        parsedCatalog.catalog,
+        parsedCatalog.cachedBodies,
+        documentRevision: documentRevision,
+      );
       _ref.invalidate(documentFeedProvider);
       info("Synced ${parsedCatalog.catalog.entries.length} remote document entries.");
       return true;
@@ -84,6 +114,12 @@ class RemoteDocumentSyncService {
       throw const RemoteContentException("Remote document catalog entries must be a list.");
     }
 
+    final oldCatalog = DocumentStorage.remoteCatalog;
+    final oldEntries = <String, DocumentEntry>{};
+    for (final oldEntry in oldCatalog.entries) {
+      oldEntries[oldEntry.id] = oldEntry;
+    }
+
     final entries = <DocumentEntry>[];
     final cachedBodies = <String, String>{};
     final seenIds = <String>{};
@@ -92,7 +128,7 @@ class RemoteDocumentSyncService {
       if (rawEntry is! Map<String, dynamic>) {
         throw const RemoteContentException("Remote document entry must be an object.");
       }
-      final parsedEntry = await _parseEntry(rawEntry, endpoint);
+      final parsedEntry = await _parseEntry(rawEntry, endpoint, oldEntries: oldEntries);
       if (!seenIds.add(parsedEntry.entry.id)) {
         throw RemoteContentException("Duplicate remote document id: ${parsedEntry.entry.id}");
       }
@@ -108,8 +144,9 @@ class RemoteDocumentSyncService {
 
   Future<({DocumentEntry entry, Map<String, String> cachedBodies})> _parseEntry(
     Map<String, dynamic> payload,
-    RemoteContentEndpoint endpoint,
-  ) async {
+    RemoteContentEndpoint endpoint, {
+    Map<String, DocumentEntry>? oldEntries,
+  }) async {
     final id = readRemoteRequiredString(payload, "id");
     _validateDocumentId(id);
     final kind = readRemoteRequiredString(payload, "kind");
@@ -124,7 +161,8 @@ class RemoteDocumentSyncService {
     if (publishedAt == null) {
       throw RemoteContentException("Remote document '$id' has invalid publishedAt.");
     }
-    final localizations = await _parseLocalizations(payload, endpoint, id);
+    final oldEntry = oldEntries?[id];
+    final localizations = await _parseLocalizations(payload, endpoint, id, oldEntry: oldEntry);
 
     return (
       entry: DocumentEntry(
@@ -146,8 +184,9 @@ class RemoteDocumentSyncService {
   _parseLocalizations(
     Map<String, dynamic> payload,
     RemoteContentEndpoint endpoint,
-    String documentId,
-  ) async {
+    String documentId, {
+    DocumentEntry? oldEntry,
+  }) async {
     final rawLocalizations = payload["localizations"];
     if (rawLocalizations is! Map<String, dynamic> || rawLocalizations.isEmpty) {
       throw RemoteContentException("Remote document '$documentId' has no localizations.");
@@ -170,18 +209,40 @@ class RemoteDocumentSyncService {
       final localization = item.value as Map<String, dynamic>;
       final title = readRemoteRequiredString(localization, "title");
       final summary = readRemoteRequiredString(localization, "summary");
-      final bodyPath = readRemoteRequiredString(localization, "bodyPath");
-      final bodyUri = endpoint.resolvePayloadUri(bodyPath);
-      final body = await _fetchText(bodyUri);
+      final cacheKey = DocumentStorage.cacheKey(documentId, localeCode);
+
+      final oldLocaleExists = oldEntry?.localizations.containsKey(localeCode) ?? false;
+      final cachedBody = DocumentStorage.cachedBody(documentId, localeCode);
+
+      final String body;
+      if (oldLocaleExists && cachedBody != null) {
+        body = cachedBody;
+      } else {
+        final bodyPath = readRemoteRequiredString(localization, "bodyPath");
+        final bodyUri = endpoint.resolvePayloadUri(bodyPath);
+        body = await _fetchText(bodyUri, cachedBody: cachedBody);
+      }
       localizations[localeCode] = DocumentLocalization(title: title, summary: summary);
-      cachedBodies[DocumentStorage.cacheKey(documentId, localeCode)] = body;
+      cachedBodies[cacheKey] = body;
     }
     return (localizations: localizations, cachedBodies: cachedBodies);
   }
 
-  Future<String> _fetchText(Uri uri) async {
-    final response = await getRemoteUri<String>(_dio, uri);
-    return response.data ?? "";
+  Future<String> _fetchText(Uri uri, {String? cachedBody}) async {
+    final result = await getRemoteUri<String>(_dio, uri);
+    if (result.notModified) {
+      if (cachedBody != null) {
+        return cachedBody;
+      }
+      warning(
+        "Remote document body returned 304 but no cached body available for $uri."
+        " The ETag may be stale; clearing and retrying.",
+      );
+      EtagCache.remove(uri);
+      final retry = await getRemoteUri<String>(_dio, uri);
+      return retry.response.data ?? "";
+    }
+    return result.response.data ?? "";
   }
 }
 
