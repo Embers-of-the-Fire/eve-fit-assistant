@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
@@ -178,6 +180,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
   RemoteBundleCatalogManager({Dio? dio}) : _dio = dio ?? createRemoteDio();
 
   final Dio _dio;
+  String? _lastBundleRevision;
 
   @override
   Future<RemoteBundleCatalogState> build() async => refresh();
@@ -190,11 +193,43 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
 
     try {
       final endpoint = RemoteContentEndpoint.fromSetting(config);
-      final index = await fetchRemoteJson(_dio, endpoint.indexUri);
+
+      final indexResult = await getRemoteUri<String>(_dio, endpoint.indexUri);
+      if (indexResult.notModified) {
+        info("Remote bundle index unchanged; skipping refresh.");
+        final prev = state.asData?.value;
+        return RemoteBundleCatalogState(
+          enabled: true,
+          loaded: true,
+          catalogAvailable: true,
+          appVersion: prev?.appVersion,
+          candidates: prev?.candidates ?? const IList.empty(),
+        );
+      }
+      final indexText = indexResult.response.data;
+      if (indexText == null || indexText.isEmpty) {
+        throw const RemoteContentException("Remote index response body is empty.");
+      }
+      final index = jsonDecode(indexText) as Map<String, dynamic>;
       final catalogPath = _readBundleCatalogPath(index, endpoint.channel);
       if (catalogPath == null) {
         return const RemoteBundleCatalogState(enabled: true, loaded: true);
       }
+
+      final bundles = index["bundles"] as Map<String, dynamic>?;
+      final bundleRevision = bundles?["revision"] as String?;
+      if (bundleRevision != null && bundleRevision == _lastBundleRevision) {
+        info("Remote bundle revision unchanged ($bundleRevision); skipping catalog fetch.");
+        final prev = state.asData?.value;
+        return RemoteBundleCatalogState(
+          enabled: true,
+          loaded: true,
+          catalogAvailable: true,
+          appVersion: prev?.appVersion,
+          candidates: prev?.candidates ?? const IList.empty(),
+        );
+      }
+      _lastBundleRevision = bundleRevision;
 
       final catalog = RemoteBundleCatalog.fromJson(
         await fetchRemoteJson(_dio, endpoint.resolvePayloadUri(catalogPath)),

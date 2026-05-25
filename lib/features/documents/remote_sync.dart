@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -33,16 +34,37 @@ class RemoteDocumentSyncService {
 
     try {
       final endpoint = RemoteContentEndpoint.fromSetting(config);
-      final index = await fetchRemoteJson(_dio, endpoint.indexUri);
+
+      final indexResult = await getRemoteUri<String>(_dio, endpoint.indexUri);
+      if (indexResult.notModified) {
+        info("Remote document index unchanged; skipping sync.");
+        return true;
+      }
+      final indexText = indexResult.response.data;
+      if (indexText == null || indexText.isEmpty) {
+        throw const RemoteContentException("Remote index response body is empty.");
+      }
+      final index = jsonDecode(indexText) as Map<String, dynamic>;
       final documentCatalogPath = _readDocumentCatalogPath(index, endpoint.channel);
       if (documentCatalogPath == null) {
         return false;
       }
 
+      final documents = index["documents"] as Map<String, dynamic>?;
+      final documentRevision = documents?["revision"] as String?;
+      if (documentRevision != null && documentRevision == DocumentStorage.lastDocumentRevision) {
+        info("Remote document revision unchanged ($documentRevision); skipping catalog fetch.");
+        return true;
+      }
+
       final catalogUri = endpoint.resolvePayloadUri(documentCatalogPath);
       final catalogPayload = await fetchRemoteJson(_dio, catalogUri);
       final parsedCatalog = await _parseCatalog(catalogPayload, endpoint);
-      DocumentStorage.replaceRemoteCatalog(parsedCatalog.catalog, parsedCatalog.cachedBodies);
+      DocumentStorage.replaceRemoteCatalog(
+        parsedCatalog.catalog,
+        parsedCatalog.cachedBodies,
+        documentRevision: documentRevision,
+      );
       _ref.invalidate(documentFeedProvider);
       info("Synced ${parsedCatalog.catalog.entries.length} remote document entries.");
       return true;
