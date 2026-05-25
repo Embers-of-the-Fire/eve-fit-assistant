@@ -21,6 +21,8 @@ class _WorkspaceShortcutItem {
 class WorkspacePage extends ConsumerWidget {
   const WorkspacePage({super.key});
 
+  static const int _updatesCardIndex = 1;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = <_WorkspaceShortcutItem>[
@@ -55,7 +57,7 @@ class WorkspacePage extends ConsumerWidget {
 
     final unreadCount = ref.watch(unreadAnnouncementCountProvider);
 
-    return Center(
+    final grid = Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
         child: Padding(
@@ -71,11 +73,77 @@ class WorkspacePage extends ConsumerWidget {
             itemBuilder: (context, index) {
               final it = items[index];
               Widget card = HomepageLinkCard(title: it.title, icon: it.icon, onTap: it.onTap);
-              if (index == 1 && unreadCount > 0) {
+              if (index == _updatesCardIndex && unreadCount > 0) {
                 card = NotificationDot(count: unreadCount, child: card);
               }
               return card;
             },
+          ),
+        ),
+      ),
+    );
+
+    final hasVersionBump = ref.watch(hasVersionBumpProvider);
+    if (!hasVersionBump) {
+      return grid;
+    }
+
+    return Column(
+      children: [
+        _buildVersionBumpCard(context, ref),
+        Expanded(child: grid),
+      ],
+    );
+  }
+
+  Widget _buildVersionBumpCard(BuildContext context, WidgetRef ref) {
+    final appVersion = ref.watch(appVersionProvider).valueOrNull ?? "";
+    final unreadVersionCount = ref.watch(unreadVersionCountProvider);
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      color: Theme.of(context).colorScheme.primaryContainer,
+      child: InkWell(
+        onTap: () {
+          ref.read(documentReadServiceProvider).acknowledgeVersionBump(appVersion);
+          unawaited(context.router.push(const VersionRoute()));
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.new_releases, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      context.l10n.versionBumpCardTitle(version: appVersion),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      unreadVersionCount > 0
+                          ? context.l10n.versionBumpCardSubtitle(count: unreadVersionCount)
+                          : "See version notes",
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: context.l10n.versionBumpCardCloseTooltip,
+                onPressed: () {
+                  ref.read(documentReadServiceProvider).acknowledgeVersionBump(appVersion);
+                },
+              ),
+            ],
           ),
         ),
       ),
