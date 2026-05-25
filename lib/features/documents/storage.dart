@@ -20,6 +20,8 @@ abstract class DocumentStorageState with _$DocumentStorageState {
     @Default(<String, String>{}) Map<String, String> selectedDocumentIds,
     @Default(<String>[]) List<String> dismissedStartupAnnouncementIds,
     String? lastDocumentRevision,
+    @Default(<String, DateTime>{}) Map<String, DateTime> readTimestamps,
+    String? lastSeenAppVersion,
   }) = _DocumentStorageState;
 
   factory DocumentStorageState.initial() => DocumentStorageState(
@@ -34,7 +36,7 @@ abstract class DocumentStorageState with _$DocumentStorageState {
 class DocumentStorage {
   DocumentStorage._();
 
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
   static const String _storageFileName = "document_storage.json";
   static late DocumentStorageState _state;
   static Future<void> _pendingSync = Future<void>.value();
@@ -112,6 +114,13 @@ class DocumentStorage {
       }
       final state = DocumentStorageState.fromJson(payload);
       if (state.version != currentVersion) {
+        if (state.version == 1) {
+          return state.copyWith(
+            version: currentVersion,
+            readTimestamps: <String, DateTime>{},
+            lastSeenAppVersion: null,
+          );
+        }
         return DocumentStorageState.initial();
       }
       return state;
