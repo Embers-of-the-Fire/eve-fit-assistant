@@ -1,7 +1,9 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/badge/notification_dot.dart";
 import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
+import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/guard.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -51,6 +53,8 @@ class WorkspacePage extends ConsumerWidget {
       ),
     ];
 
+    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
@@ -66,10 +70,11 @@ class WorkspacePage extends ConsumerWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final it = items[index];
-              final String title = it.title;
-              final IconData icon = it.icon;
-
-              return HomepageLinkCard(title: title, icon: icon, onTap: it.onTap);
+              Widget card = HomepageLinkCard(title: it.title, icon: it.icon, onTap: it.onTap);
+              if (index == 1 && unreadCount > 0) {
+                card = NotificationDot(count: unreadCount, child: card);
+              }
+              return card;
             },
           ),
         ),
