@@ -6,7 +6,7 @@ import "package:html/parser.dart" as html_parser;
 import "package:url_launcher/url_launcher.dart";
 
 // ignore: avoid_private_typedef_functions
-typedef _LinkHandler = void Function(BuildContext context, Uri uri);
+typedef _LinkHandler = Future<void> Function(BuildContext context, Uri uri);
 
 const _linkHandlers = <String, _LinkHandler>{
   "showinfo": _handleShowInfo,
@@ -94,7 +94,17 @@ TextSpan _buildLink(BuildContext context, html.Element element, html.NodeList ch
     text: children.map((u) => u.text).join(),
     style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
     recognizer: handler != null && uri != null
-        ? (TapGestureRecognizer()..onTap = () => handler(context, uri))
+        ? (TapGestureRecognizer()
+          ..onTap = () async {
+            try {
+              await handler(context, uri);
+            } on Object catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text("$e")));
+              }
+            }
+          })
         : null,
   );
 }
