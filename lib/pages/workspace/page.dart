@@ -74,7 +74,7 @@ class WorkspacePage extends ConsumerWidget {
               final it = items[index];
               Widget card = HomepageLinkCard(title: it.title, icon: it.icon, onTap: it.onTap);
               if (index == _updatesCardIndex && unreadCount > 0) {
-                card = NotificationDot(count: unreadCount, child: card);
+                card = NotificationDot(count: unreadCount, badgeRadius: 13, child: card);
               }
               return card;
             },
