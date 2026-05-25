@@ -1,9 +1,14 @@
 part of "../../page.dart";
 
 class ShipInfo extends ConsumerWidget {
-  const ShipInfo({required this.fitContext, super.key});
+  const ShipInfo({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+    super.key,
+  });
 
   final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,6 +23,13 @@ class ShipInfo extends ConsumerWidget {
       minTileHeight: 0,
       leading: shipInfo.icon.map((t) => EveIcon(icon: t)),
       title: TypeNameText(typeId: shipInfo.typeId, textAlign: TextAlign.center),
+      onLongPress: interactionOptions.allowInspect
+          ? () => showItemDetailPage(
+              context,
+              typeId: shipInfo.typeId,
+              fitReference: ItemDetailFitReference.hull(fitId: fitContext.fitId),
+            )
+          : null,
     );
   }
 }
