@@ -51,23 +51,28 @@ class WorkspacePage extends ConsumerWidget {
       ),
     ];
 
-    return Padding(
-      padding: const .all(12),
-      child: GridView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final it = items[index];
-          final String title = it.title;
-          final IconData icon = it.icon;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 300,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final it = items[index];
+              final String title = it.title;
+              final IconData icon = it.icon;
 
-          return HomepageLinkCard(title: title, icon: icon, onTap: it.onTap);
-        },
+              return HomepageLinkCard(title: title, icon: icon, onTap: it.onTap);
+            },
+          ),
+        ),
       ),
     );
   }
