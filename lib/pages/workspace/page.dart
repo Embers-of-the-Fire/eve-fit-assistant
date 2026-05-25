@@ -55,8 +55,8 @@ class WorkspacePage extends ConsumerWidget {
       padding: const .all(12),
       child: GridView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 300,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
