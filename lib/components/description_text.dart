@@ -144,7 +144,12 @@ Color? _parseHtmlColor(String? value) {
     return null;
   }
 
-  return Color(expanded.length == 6 ? parsed | 0xFF000000 : parsed);
+  if (expanded.length == 6) {
+    return Color(parsed | 0xFF000000);
+  }
+  final alpha = parsed & 0xFF;
+  final rgb = (parsed >> 8) & 0xFFFFFF;
+  return Color((alpha << 24) | rgb);
 }
 
 double? _parseHtmlFontSize(String? value) {
