@@ -294,22 +294,36 @@ def __execute_command_redacted(cmd: list[str], redacted_cmd: list[str], title: s
         raise click.ClickException(message)
 
 
-def __publish_optional_tree(mc: str, source: Path, target: str) -> None:
+def __publish_optional_tree(
+    mc: str, source: Path, target: str, *, attrs: dict[str, str] | None = None
+) -> None:
     if not source.exists():
         warning(f"Remote publish source tree does not exist, skipping: {source}")
         return
     if not source.is_dir():
         raise click.ClickException(f"Remote publish source tree is not a directory: {source}")
-    __execute_command([mc, "mirror", "--overwrite", str(source), target], "REMOTE PUBLISH")
+    cmd = [mc, "mirror", "--overwrite"]
+    if attrs:
+        for k, v in attrs.items():
+            cmd.extend(["--attr", f"{k}={v}"])
+    cmd.extend([str(source), target])
+    __execute_command(cmd, "REMOTE PUBLISH")
 
 
-def __publish_optional_file(mc: str, source: Path, target: str) -> None:
+def __publish_optional_file(
+    mc: str, source: Path, target: str, *, attrs: dict[str, str] | None = None
+) -> None:
     if not source.exists():
         warning(f"Remote publish source file does not exist, skipping: {source}")
         return
     if not source.is_file():
         raise click.ClickException(f"Remote publish source path is not a file: {source}")
-    __execute_command([mc, "cp", str(source), target], "REMOTE PUBLISH")
+    cmd = [mc, "cp"]
+    if attrs:
+        for k, v in attrs.items():
+            cmd.extend(["--attr", f"{k}={v}"])
+    cmd.extend([str(source), target])
+    __execute_command(cmd, "REMOTE PUBLISH")
 
 
 def __publish_remote_origin_to_s3(
@@ -367,26 +381,44 @@ def __publish_remote_origin_to_s3(
         mc,
         root_dir / "documents" / "body",
         f"{target_root}/documents/body",
+        attrs={
+            "Cache-Control": "immutable, max-age=31536000",
+            "Content-Type": "text/markdown; charset=utf-8",
+        },
     )
-    __publish_optional_tree(mc, root_dir / "bundles", f"{target_root}/bundles")
+    __publish_optional_tree(
+        mc,
+        root_dir / "bundles",
+        f"{target_root}/bundles",
+        attrs={"Cache-Control": "immutable, max-age=31536000"},
+    )
 
     target_channel = f"{target_root}/channels/{resolved_channel}"
+    channel_attrs = {"Cache-Control": "max-age=300", "Content-Type": "application/json"}
     __publish_optional_file(
         mc,
         channel_dir / "documents" / "catalog.json",
         f"{target_channel}/documents/catalog.json",
+        attrs=channel_attrs,
     )
     __publish_optional_file(
         mc,
         channel_dir / "app" / "releases.json",
         f"{target_channel}/app/releases.json",
+        attrs=channel_attrs,
     )
     __publish_optional_file(
         mc,
         channel_dir / "bundles" / "catalog.json",
         f"{target_channel}/bundles/catalog.json",
+        attrs=channel_attrs,
     )
-    __execute_command([mc, "cp", str(index_path), f"{target_channel}/index.json"], "REMOTE PUBLISH")
+    __publish_optional_file(
+        mc,
+        index_path,
+        f"{target_channel}/index.json",
+        attrs={"Cache-Control": "no-cache", "Content-Type": "application/json"},
+    )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Uploaded remote origin: ") + str(source_dir))
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Target bucket: ") + bucket_target)
