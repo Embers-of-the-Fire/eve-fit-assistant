@@ -26,12 +26,27 @@ class DescriptionText extends StatefulWidget {
 
 class _DescriptionTextState extends State<DescriptionText>
     with AutomaticKeepAliveClientMixin<DescriptionText> {
+  final _recognizers = <TapGestureRecognizer>[];
+
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void dispose() {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    _recognizers.clear();
 
     final normalizedText = widget.text.replaceAllMapped(
       RegExp("<url=([^>]+)>"),
@@ -41,71 +56,78 @@ class _DescriptionTextState extends State<DescriptionText>
 
     return SelectableText.rich(_buildFromNode(context, fragment), style: widget.style);
   }
-}
 
-TextSpan _buildFromNode(BuildContext context, html.Node node) => switch (node) {
-  html.Text(:final data) => TextSpan(text: data),
-  html.Element() => _buildFromElement(context, node),
-  html.Node() => TextSpan(
-    children: node.nodes.map((child) => _buildFromNode(context, child)).toList(),
-  ),
-};
-
-TextSpan _buildFromElement(BuildContext context, html.Element element) {
-  TextSpan Function(html.NodeList) any(TextSpan Function(List<TextSpan>) builder) =>
-      (children) => builder(children.map((u) => _buildFromNode(context, u)).toList());
-
-  final TextSpan Function(html.NodeList) builder = switch (element.localName) {
-    "i" => any(
-      (ch) => TextSpan(
-        children: ch,
-        style: const TextStyle(fontStyle: FontStyle.italic),
-      ),
+  TextSpan _buildFromNode(BuildContext context, html.Node node) => switch (node) {
+    html.Text(:final data) => TextSpan(text: data),
+    html.Element() => _buildFromElement(context, node),
+    html.Node() => TextSpan(
+      children: node.nodes.map((child) => _buildFromNode(context, child)).toList(),
     ),
-    "b" => any(
-      (ch) => TextSpan(
-        children: ch,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-    ),
-    "br" => (_) => const TextSpan(text: "\n"),
-    "font" => any(
-      (ch) => TextSpan(
-        children: ch,
-        style: TextStyle(
-          color: _parseHtmlColor(element.attributes["color"]),
-          fontSize: _parseHtmlFontSize(element.attributes["size"]),
-        ),
-      ),
-    ),
-    "url" || "a" => (ch) => _buildLink(context, element, ch),
-    _ => any((ch) => TextSpan(children: ch)),
   };
 
-  return builder(element.nodes);
-}
+  TextSpan _buildFromElement(BuildContext context, html.Element element) {
+    TextSpan Function(html.NodeList) any(
+      TextSpan Function(List<TextSpan>) builder,
+    ) =>
+        (children) => builder(children.map((u) => _buildFromNode(context, u)).toList());
 
-TextSpan _buildLink(BuildContext context, html.Element element, html.NodeList children) {
-  final href = element.attributes["href"];
-  final uri = href == null ? null : Uri.tryParse(href);
-  final handler = uri != null ? _linkHandlers[uri.scheme] : null;
+    final TextSpan Function(html.NodeList) builder = switch (element.localName) {
+      "i" => any(
+        (ch) => TextSpan(
+          children: ch,
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ),
+      ),
+      "b" => any(
+        (ch) => TextSpan(
+          children: ch,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      "br" => (_) => const TextSpan(text: "\n"),
+      "font" => any(
+        (ch) => TextSpan(
+          children: ch,
+          style: TextStyle(
+            color: _parseHtmlColor(element.attributes["color"]),
+            fontSize: _parseHtmlFontSize(element.attributes["size"]),
+          ),
+        ),
+      ),
+      "url" || "a" => (ch) => _buildLink(context, element, ch),
+      _ => any((ch) => TextSpan(children: ch)),
+    };
 
-  return TextSpan(
-    text: children.map((u) => u.text).join(),
-    style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
-    recognizer: handler != null && uri != null
-        ? (TapGestureRecognizer()
-            ..onTap = () async {
-              try {
-                await handler(context, uri);
-              } on Object catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$e")));
-                }
-              }
-            })
-        : null,
-  );
+    return builder(element.nodes);
+  }
+
+  TextSpan _buildLink(BuildContext context, html.Element element, html.NodeList children) {
+    final href = element.attributes["href"];
+    final uri = href == null ? null : Uri.tryParse(href);
+    final handler = uri != null ? _linkHandlers[uri.scheme] : null;
+
+    TapGestureRecognizer? recognizer;
+    if (handler != null && uri != null) {
+      recognizer = TapGestureRecognizer()
+        ..onTap = () async {
+          try {
+            await handler(context, uri);
+          } on Object catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text("$e")));
+            }
+          }
+        };
+      _recognizers.add(recognizer);
+    }
+
+    return TextSpan(
+      text: children.map((u) => u.text).join(),
+      style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+      recognizer: recognizer,
+    );
+  }
 }
 
 Future<void> _handleShowInfo(BuildContext context, Uri uri) async {
