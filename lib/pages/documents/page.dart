@@ -145,6 +145,7 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
 
   void _selectDocument(DocumentRecord entry) {
     DocumentStorage.saveSelectedDocumentId(widget.feedKind, entry.id);
+    ref.read(documentReadServiceProvider).markRead(entry.id);
     setState(() => _selectedDocumentId = entry.id);
   }
 }
