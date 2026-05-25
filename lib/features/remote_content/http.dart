@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:dio/dio.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 
@@ -28,12 +29,22 @@ Future<Map<String, dynamic>> fetchRemoteJson(
   Uri uri, {
   Map<String, dynamic>? cachedPayload,
 }) async {
-  final result = await getRemoteUri<String>(dio, uri);
+  ConditionalFetchResult<String> result = await getRemoteUri<String>(dio, uri);
   if (result.notModified) {
     if (cachedPayload != null) {
       return cachedPayload;
     }
-    throw RemoteContentException("Remote JSON not modified but no cached payload available: $uri");
+    warning(
+      "Remote JSON returned 304 but no cached payload available for $uri."
+      " The ETag may be stale; clearing and retrying.",
+    );
+    EtagCache.remove(uri);
+    result = await getRemoteUri<String>(dio, uri);
+    if (result.notModified) {
+      throw RemoteContentException(
+        "Remote JSON not modified but no cached payload available: $uri",
+      );
+    }
   }
   final data = result.response.data;
   if (data is! String) {
