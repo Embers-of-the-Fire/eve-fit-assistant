@@ -1,8 +1,25 @@
 import "dart:io" show Platform;
 
 import "package:dio/dio.dart";
+import "package:package_info_plus/package_info_plus.dart";
 
-String get _efaUserAgent => "EFA/0.0.1+1 (Dart; ${_platformName()})";
+String _userAgentVersion = "0.0.0";
+Future<void>? _versionLoadFuture;
+
+void _ensureVersionLoad() {
+  _versionLoadFuture ??= PackageInfo.fromPlatform()
+      .then((info) {
+        _userAgentVersion = "${info.version}+${info.buildNumber}";
+      })
+      .catchError((Object _) {
+        _userAgentVersion = "0.0.0";
+      });
+}
+
+String get _efaUserAgent {
+  _ensureVersionLoad();
+  return "EFA/$_userAgentVersion (Dart; ${_platformName()})";
+}
 
 String _platformName() {
   try {
