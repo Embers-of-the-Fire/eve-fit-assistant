@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/components/badge/notification_dot.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
@@ -38,9 +37,7 @@ class SettingPage extends ConsumerWidget {
           title: context.l10n.settingTileBundleManagerTitle,
           onTap: () => unawaited(context.router.push(const BundleManagerRoute())),
         ),
-        ConfigListTile.custom(
-          _buildVersionTile(context, ref),
-        ),
+        ConfigListTile.custom(_buildVersionTile(context, ref)),
       ],
     );
   }
@@ -54,7 +51,19 @@ class SettingPage extends ConsumerWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (unreadCount > 0) NotificationDot(count: unreadCount),
+          if (unreadCount > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
+              child: Text(
+                unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           const SizedBox(width: 4),
           const Icon(Icons.chevron_right),
         ],

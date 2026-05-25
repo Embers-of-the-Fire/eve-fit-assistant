@@ -15,7 +15,16 @@ final documentRepositoryProvider = Provider<DocumentRepository>(
   (Ref ref) => const DocumentRepository(),
 );
 
-final readGenerationProvider = StateProvider<int>((Ref ref) => 0);
+class ReadGenerationNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void increment() => state++;
+}
+
+final readGenerationProvider = NotifierProvider<ReadGenerationNotifier, int>(
+  ReadGenerationNotifier.new,
+);
 
 final documentReadServiceProvider = Provider<DocumentReadService>(
   (Ref ref) => DocumentReadService(ref),
@@ -30,17 +39,17 @@ class DocumentReadService {
 
   void markRead(String documentId) {
     DocumentStorage.markRead(documentId);
-    _ref.read(readGenerationProvider.notifier).state++;
+    _ref.read(readGenerationProvider.notifier).increment();
   }
 
   void markAllRead(Iterable<String> ids) {
     DocumentStorage.markAllRead(ids);
-    _ref.read(readGenerationProvider.notifier).state++;
+    _ref.read(readGenerationProvider.notifier).increment();
   }
 
   void acknowledgeVersionBump(String version) {
     DocumentStorage.setLastSeenAppVersion(version);
-    _ref.read(readGenerationProvider.notifier).state++;
+    _ref.read(readGenerationProvider.notifier).increment();
   }
 }
 
@@ -52,24 +61,38 @@ final appVersionProvider = FutureProvider<String>((Ref ref) async {
 final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
   ref.watch(readGenerationProvider);
   final feed = ref.watch(documentFeedProvider(DocumentFeedKind.announcement));
-  return (feed.valueOrNull ?? []).where((r) => DocumentStorage.isUnread(r.id)).length;
+  return feed.when(
+    data: (records) => records.where((r) => DocumentStorage.isUnread(r.id)).length,
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
 });
 
 final unreadVersionCountProvider = Provider<int>((Ref ref) {
   ref.watch(readGenerationProvider);
   final feed = ref.watch(documentFeedProvider(DocumentFeedKind.version));
-  return (feed.valueOrNull ?? []).where((r) => DocumentStorage.isUnread(r.id)).length;
+  return feed.when(
+    data: (records) => records.where((r) => DocumentStorage.isUnread(r.id)).length,
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
 });
 
 final hasVersionBumpProvider = Provider<bool>((Ref ref) {
   ref.watch(readGenerationProvider);
-  final appVer = ref.watch(appVersionProvider).valueOrNull;
+  final appVer = ref
+      .watch(appVersionProvider)
+      .when(data: (v) => v, loading: () => null, error: (_, __) => null);
   final lastSeen = DocumentStorage.lastSeenAppVersion;
   if (appVer == null || appVer == lastSeen) {
     return false;
   }
   final versionFeed = ref.watch(documentFeedProvider(DocumentFeedKind.version));
-  final records = versionFeed.valueOrNull ?? [];
+  final records = versionFeed.when(
+    data: (r) => r,
+    loading: () => const <DocumentRecord>[],
+    error: (_, __) => const <DocumentRecord>[],
+  );
   return records.any((r) => r.appVer == appVer);
 });
 

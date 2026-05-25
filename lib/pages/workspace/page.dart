@@ -97,7 +97,9 @@ class WorkspacePage extends ConsumerWidget {
   }
 
   Widget _buildVersionBumpCard(BuildContext context, WidgetRef ref) {
-    final appVersion = ref.watch(appVersionProvider).valueOrNull ?? "";
+    final appVersion = ref
+        .watch(appVersionProvider)
+        .when(data: (v) => v, loading: () => "", error: (_, __) => "");
     final unreadVersionCount = ref.watch(unreadVersionCountProvider);
 
     return Card(
@@ -122,9 +124,9 @@ class WorkspacePage extends ConsumerWidget {
                   children: [
                     Text(
                       context.l10n.versionBumpCardTitle(version: appVersion),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text(
