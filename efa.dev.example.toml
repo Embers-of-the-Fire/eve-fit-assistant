@@ -32,25 +32,35 @@ fsd_loc_en_dir = "cache/workspaces/tranquility/index-cache/resources/localizatio
 output_dir = "cache/workspaces/tranquility/native"
 
 [remote]
-# Settings used by `./x remote` to materialize and launch local remote mocks.
+# Settings used by `./x remote` to materialize and launch local remote mocks
+# and publish content to S3-compatible storage.
 resource_root = "efa/v1"
 channel = "alpha"
 
-# Static HTTP mock defaults.
+# Common mock host for both MinIO and static mocks.
 host = "127.0.0.1"
-static_port = 8765
-
-# MinIO mock defaults. These credentials are for local development only.
-minio_port = 9000
-minio_console_port = 9001
-minio_bucket = "efa-dev"
-minio_access_key = "minioadmin"
-minio_secret_key = "minioadmin"
 
 # Paths are resolved relative to [paths].root unless absolute.
 mock_origin_dir = "remote/mock-origin"
-minio_data_dir = "remote/minio-data"
 
-# S3-compatible publishing defaults used by `./x remote publish upload`.
-publish_alias = "efa-remote-publish"
-publish_public_download = true
+[remote.minio]
+# MinIO mock server defaults. All fields are required — no silent defaults.
+# These credentials are for local development only.
+port = 9000
+console_port = 9001
+bucket = "efa-dev"
+access_key = "minioadmin"
+secret_key = "minioadmin"
+data_dir = "remote/minio-data"
+alias = "efa-remote-mock"
+public_download = true
+
+[remote.s3]
+# S3-compatible publishing defaults. All fields are required.
+# Used by `./x remote publish upload --target s3`.
+endpoint = "https://s3.example.com"
+bucket = "efa-publish"
+access_key = "your-access-key"
+secret_key = "your-secret-key"
+alias = "efa-remote-publish"
+public_download = true
