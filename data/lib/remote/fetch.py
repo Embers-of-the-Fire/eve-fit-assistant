@@ -52,8 +52,20 @@ def fetch_remote_state_s3(
     )
 
     _run(
-        [mc_bin, "cp", "--recursive", channel_target, str(output_dir / _channel_subdir(channel))],
-        [mc_bin, "cp", "--recursive", channel_target, str(output_dir / _channel_subdir(channel))],
+        [
+            mc_bin,
+            "cp",
+            "--recursive",
+            channel_target + "/",
+            str(output_dir / _channel_subdir(channel)) + "/",
+        ],
+        [
+            mc_bin,
+            "cp",
+            "--recursive",
+            channel_target + "/",
+            str(output_dir / _channel_subdir(channel)) + "/",
+        ],
         "FETCH REMOTE STATE",
     )
 

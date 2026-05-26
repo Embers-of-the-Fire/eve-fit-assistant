@@ -511,6 +511,7 @@ class SessionManager:
         channel: str,
         *,
         backend: str | None = None,
+        resource_root: str | None = None,
         endpoint: str | None = None,
         bucket: str | None = None,
         access_key: str | None = None,
@@ -536,6 +537,7 @@ class SessionManager:
         # Drift check: re-fetch remote state and compare with snapshot
         if backend in ("minio", "s3"):
             drift_errors = self._check_drift(
+                resource_root=resource_root or "",
                 endpoint=endpoint or "",
                 bucket=bucket or "",
                 access_key=access_key or "",
@@ -550,6 +552,7 @@ class SessionManager:
     def _check_drift(
         self,
         *,
+        resource_root: str,
         endpoint: str,
         bucket: str,
         access_key: str,
@@ -573,7 +576,7 @@ class SessionManager:
                     access_key=access_key,
                     secret_key=secret_key,
                     alias_name=alias_name,
-                    resource_root="placeholder",
+                    resource_root=resource_root,
                     channel=channel,
                     output_dir=tmp_path,
                 )

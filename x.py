@@ -1479,6 +1479,9 @@ def remote_prepare_verify(
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
 
     try:
         mgr = __get_session(session_id)
@@ -1488,7 +1491,7 @@ def remote_prepare_verify(
     lock = mgr._load_lockfile()
     backend = lock.backend if lock.backend != "local" else None
 
-    kwargs: dict[str, object] = {}
+    kwargs: dict[str, object] = {"resource_root": resolved_resource_root}
     if backend == "minio":
         sub = remote_cfg.require_minio()
         kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
