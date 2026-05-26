@@ -46,6 +46,7 @@ abstract class AppSetting with _$AppSetting {
     )
     required TypeListReturnBehavior typeListReturnBehavior,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
+    String? lastNotifiedBundleUpdateKey,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);
