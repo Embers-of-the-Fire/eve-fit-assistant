@@ -1650,12 +1650,211 @@ def __rollback_to_deployment(
     # Copy old catalog files back to their canonical locations
     for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
         src = f"{dep_target}/{deployment_timestamp}/channels/{channel}/{catalog_name}"
-        dst = f"{ch_target}/{catalog_name}"
-        _run_mc(
-            [mc, "cp", src, dst],
-            [mc, "cp", src, dst],
-            f"ROLLBACK {catalog_name}",
+        dst_dir = (
+            f"{ch_target}/documents/catalog.json"
+            if catalog_name == "documents/catalog.json"
+            else (
+                f"{ch_target}/bundles/catalog.json"
+                if catalog_name == "bundles/catalog.json"
+                else f"{ch_target}/index.json"
+            )
         )
+        with contextlib.suppress(OSError):
+            _run_mc(
+                [mc, "cp", src, dst_dir],
+                [mc, "cp", src, dst_dir],
+                f"ROLLBACK {catalog_name}",
+            )
+
+    # Update current deployment manifest
+    with contextlib.suppress(OSError):
+        _run_mc(
+            [
+                mc,
+                "cp",
+                f"{dep_target}/history/{deployment_timestamp}.json",
+                f"{dep_target}/manifest.json",
+            ],
+            [
+                mc,
+                "cp",
+                f"{dep_target}/history/{deployment_timestamp}.json",
+                f"{dep_target}/manifest.json",
+            ],
+            "ROLLBACK DEPLOYMENT MANIFEST",
+        )
+
+
+def _list_deployment_history(
+    mc: str,
+    bucket_target: str,
+) -> list[dict[str, object]]:
+    """Return sorted list of deployment history entries using ``mc ls --json``.
+
+    Each entry is a dict with keys: ``timestamp``, ``time``, ``size``, ``deployment``.
+    """
+    try:
+        out = subprocess.run(
+            [mc, "ls", "--json", f"{bucket_target}/history/"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if out.returncode != 0 or not out.stdout.strip():
+            return []
+    except Exception:
+        return []
+
+    entries: list[dict[str, object]] = []
+    for line in out.stdout.strip().splitlines():
+        if not line.strip():
+            continue
+        try:
+            obj: dict[str, object] = json.loads(line)
+        except ValueError:
+            continue
+        key = obj.get("key", "")
+        if not isinstance(key, str):
+            continue
+        raw_ts = key.rstrip("/").rsplit("/", 1)[-1].removesuffix(".json")
+        entries.append({
+            "timestamp": raw_ts,
+            "time": obj.get("lastModified", ""),
+            "size": obj.get("size", 0),
+            "key": key,
+        })
+    entries.sort(key=lambda e: str(e["timestamp"]))
+    return entries
+
+
+def _normalize_deployment_timestamp(raw: str) -> str:
+    """Normalize a user-supplied deployment identifier to the internal form.
+
+    Accepts ISO-8601 (``2026-05-26T12:00:00Z``), compact
+    (``20260526T120000Z``), or a prefix thereof.
+    """
+    stripped = raw.strip().replace("-", "").replace(":", "")
+    if not stripped:
+        raise ValueError(f"Invalid deployment timestamp: {raw!r}")
+    return stripped
+
+
+# ---- rollback --------------------------------------------------------------
+
+
+@publish.command("rollback")
+@click.option(
+    "--target",
+    type=click.Choice(["minio", "s3"], case_sensitive=False),
+    default="minio",
+    show_default=True,
+)
+@click.option(
+    "--deployment",
+    "since",
+    default=None,
+    help="Deployment timestamp (ISO-8601 or compact) to roll back to. Defaults to previous.",
+)
+@click.option(
+    "--list",
+    "list_only",
+    is_flag=True,
+    default=False,
+    help="List available deployment history with metadata.",
+)
+@click.option("--endpoint", default=None)
+@click.option("--bucket", default=None)
+@click.option("--access-key", default=None)
+@click.option("--secret-key", default=None)
+@click.option("--alias", "alias_name", default=None)
+@click.option("--resource-root", default=None)
+@click.option("--channel", default=None)
+def remote_publish_rollback(
+    target: str,
+    since: str | None,
+    list_only: bool,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    resource_root: str | None,
+    channel: str | None,
+):
+    """Revert to a previous deployment manifest."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+
+    s3 = __get_publish_s3_params(
+        target, endpoint, bucket, access_key, secret_key, alias_name, None
+    )
+    mc = get_command("mc")
+
+    resolved_endpoint = str(s3["endpoint"])
+    resolved_bucket = str(s3["bucket"])
+    resolved_access_key = str(s3["access_key"])
+    resolved_secret_key = str(s3["secret_key"])
+    resolved_alias = str(s3["alias_name"])
+
+    redacted = "<redacted>"
+    _run_mc(
+        [
+            mc,
+            "alias",
+            "set",
+            resolved_alias,
+            resolved_endpoint,
+            resolved_access_key,
+            resolved_secret_key,
+        ],
+        [mc, "alias", "set", resolved_alias, resolved_endpoint, redacted, redacted],
+        "ROLLBACK ALIAS",
+    )
+
+    dep_target = f"{resolved_alias}/{resolved_bucket}/{resolved_resource_root}/deployments"
+    entries = _list_deployment_history(mc, dep_target)
+
+    if list_only:
+        if not entries:
+            click.echo("No deployment history found.")
+        else:
+            click.echo(styled([Style.BRIGHT, Fore.CYAN], "Available deployments:"))
+            for e in entries:
+                ts = e["timestamp"]
+                tm = e.get("time", "")
+                sz = e.get("size", 0)
+                click.echo(f"  {ts}  {tm}  ({sz} bytes)")
+        return
+
+    # Determine which deployment to roll back to
+    if since:
+        deployment_timestamp = _normalize_deployment_timestamp(since)
+    else:
+        if len(entries) < 2:
+            raise click.ClickException(
+                "No previous deployment found to roll back to. "
+                "Use --list to see available deployments."
+            )
+        # The most recent entry is current; roll back to the one just before it
+        deployment_timestamp = str(entries[-2]["timestamp"])
+
+    __rollback_to_deployment(
+        mc=mc,
+        alias_name=resolved_alias,
+        bucket=resolved_bucket,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
+        deployment_timestamp=deployment_timestamp,
+    )
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Rolled back to deployment: ")
+        + deployment_timestamp
+    )
 
     # Update current deployment manifest
     _run_mc(
@@ -2045,141 +2244,9 @@ def remote_publish_upload(
         mgr = __get_session(session_id)
         shutil.rmtree(mgr.session_dir, ignore_errors=True)
         click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ") + str(mgr.session_dir)
+            styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ")
+            + str(mgr.session_dir)
         )
-
-
-# ---- rollback --------------------------------------------------------------
-
-
-@publish.command("rollback")
-@click.option(
-    "--target",
-    type=click.Choice(["minio", "s3"], case_sensitive=False),
-    default="minio",
-    show_default=True,
-)
-@click.option(
-    "--deployment",
-    "since",
-    default=None,
-    help="Deployment timestamp to roll back to. Defaults to previous.",
-)
-@click.option(
-    "--list",
-    "list_only",
-    is_flag=True,
-    default=False,
-    help="List available deployments to roll back to.",
-)
-@click.option("--endpoint", default=None)
-@click.option("--bucket", default=None)
-@click.option("--access-key", default=None)
-@click.option("--secret-key", default=None)
-@click.option("--alias", "alias_name", default=None)
-@click.option("--resource-root", default=None)
-@click.option("--channel", default=None)
-def remote_publish_rollback(
-    target: str,
-    since: str | None,
-    list_only: bool,
-    endpoint: str | None,
-    bucket: str | None,
-    access_key: str | None,
-    secret_key: str | None,
-    alias_name: str | None,
-    resource_root: str | None,
-    channel: str | None,
-):
-    """Revert to a previous deployment manifest."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
-
-    s3 = __get_publish_s3_params(target, endpoint, bucket, access_key, secret_key, alias_name, None)
-    mc = get_command("mc")
-
-    resolved_endpoint = str(s3["endpoint"])
-    resolved_bucket = str(s3["bucket"])
-    resolved_access_key = str(s3["access_key"])
-    resolved_secret_key = str(s3["secret_key"])
-    resolved_alias = str(s3["alias_name"])
-
-    redacted = "<redacted>"
-    _run_mc(
-        [
-            mc,
-            "alias",
-            "set",
-            resolved_alias,
-            resolved_endpoint,
-            resolved_access_key,
-            resolved_secret_key,
-        ],
-        [mc, "alias", "set", resolved_alias, resolved_endpoint, redacted, redacted],
-        "ROLLBACK ALIAS",
-    )
-
-    dep_target = f"{resolved_alias}/{resolved_bucket}/{resolved_resource_root}/deployments"
-
-    if list_only:
-        try:
-            out = subprocess.run(
-                [mc, "ls", f"{dep_target}/history/"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if out.returncode == 0 and out.stdout.strip():
-                click.echo("Available deployments:")
-                for line in out.stdout.strip().splitlines():
-                    click.echo(f"  {line.strip()}")
-            else:
-                click.echo("No deployment history found.")
-        except Exception as exc:
-            raise click.ClickException(f"Failed to list deployments: {exc}") from exc
-        return
-
-    # Determine which deployment to roll back to
-    if since:
-        deployment_timestamp = since.replace("-", "").replace(":", "")
-    else:
-        # Find previous deployment by listing history
-        try:
-            out = subprocess.run(
-                [mc, "ls", f"{dep_target}/history/"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            lines = [
-                line.strip().split()[-1].removesuffix(".json").split("/")[-1]
-                for line in out.stdout.strip().splitlines()
-                if line.strip()
-            ]
-            if len(lines) < 2:
-                raise click.ClickException("No previous deployment found to roll back to.")
-            lines.sort()
-            deployment_timestamp = lines[-2]
-        except Exception as exc:
-            raise click.ClickException(f"Failed to determine previous deployment: {exc}") from exc
-
-    __rollback_to_deployment(
-        mc=mc,
-        alias_name=resolved_alias,
-        bucket=resolved_bucket,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-        deployment_timestamp=deployment_timestamp,
-    )
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Rolled back to deployment: ") + deployment_timestamp
-    )
 
 
 # ---- gc --------------------------------------------------------------------
