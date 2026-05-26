@@ -1418,15 +1418,36 @@ def remote_prepare_remove(
 
 def _print_diff(diff: dict[str, object]) -> None:
     """Recursively print a human-readable diff tree produced by diff_catalogs."""
-    shown = False
+
+    def _walk(d: dict[str, object], depth: int) -> int:
+        """Recurse into nested diff dicts. Returns count of leaf entries printed."""
+        count = 0
+        for key, val in sorted(d.items()):
+            if not isinstance(val, dict):
+                continue
+            if "type" in val:
+                ctype = val.get("type", "?")
+                indent = "  " * depth
+                if ctype == "added":
+                    click.echo(styled(Fore.GREEN, f"{indent}+ {key}"))
+                elif ctype == "removed":
+                    click.echo(styled(Fore.RED, f"{indent}- {key}"))
+                elif ctype == "changed":
+                    click.echo(styled(Fore.YELLOW, f"{indent}~ {key}"))
+                else:
+                    click.echo(f"{indent}? {key}")
+                count += 1
+            else:
+                sub = _walk(val, depth + 1)
+                if sub > 0:
+                    count += sub
+        return count
+
+    top_total = 0
     for section, section_val in sorted(diff.items()):
         if not isinstance(section_val, dict) or not section_val:
             continue
-        # Check if this is a leaf diff entry (has 'type') or a nested section
         if "type" in section_val:
-            shown = True
-            if not shown:
-                click.echo(styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:"))
             ctype = section_val.get("type", "?")
             if ctype == "added":
                 click.echo(styled(Fore.GREEN, f"  + {section}"))
@@ -1436,26 +1457,17 @@ def _print_diff(diff: dict[str, object]) -> None:
                 click.echo(styled(Fore.YELLOW, f"  ~ {section}"))
             else:
                 click.echo(f"  ? {section}")
+            top_total += 1
         else:
-            # Nested section — recurse into leaf entries
-            for leaf_path, leaf_val in sorted(section_val.items()):
-                if not isinstance(leaf_val, dict):
-                    continue
-                if not shown:
-                    click.echo(
-                        styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:") + f"  [{section}]"
-                    )
-                    shown = True
-                ctype = leaf_val.get("type", "?")
-                if ctype == "added":
-                    click.echo(styled(Fore.GREEN, f"    + {leaf_path}"))
-                elif ctype == "removed":
-                    click.echo(styled(Fore.RED, f"    - {leaf_path}"))
-                elif ctype == "changed":
-                    click.echo(styled(Fore.YELLOW, f"    ~ {leaf_path}"))
-                else:
-                    click.echo(f"    ? {leaf_path}")
-    if not shown:
+            n = _walk(section_val, 2)
+            if n > 0:
+                top_total += n
+
+    if top_total > 0:
+        click.echo(
+            styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:") + f"  ({top_total} change(s))"
+        )
+    else:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "No differences detected."))
 
 
