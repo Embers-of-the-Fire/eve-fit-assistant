@@ -1416,6 +1416,49 @@ def remote_prepare_remove(
 # ---- diff ------------------------------------------------------------------
 
 
+def _print_diff(diff: dict[str, object]) -> None:
+    """Recursively print a human-readable diff tree produced by diff_catalogs."""
+    shown = False
+    for section, section_val in sorted(diff.items()):
+        if not isinstance(section_val, dict) or not section_val:
+            continue
+        # Check if this is a leaf diff entry (has 'type') or a nested section
+        if "type" in section_val:
+            shown = True
+            if not shown:
+                click.echo(styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:"))
+            ctype = section_val.get("type", "?")
+            if ctype == "added":
+                click.echo(styled(Fore.GREEN, f"  + {section}"))
+            elif ctype == "removed":
+                click.echo(styled(Fore.RED, f"  - {section}"))
+            elif ctype == "changed":
+                click.echo(styled(Fore.YELLOW, f"  ~ {section}"))
+            else:
+                click.echo(f"  ? {section}")
+        else:
+            # Nested section — recurse into leaf entries
+            for leaf_path, leaf_val in sorted(section_val.items()):
+                if not isinstance(leaf_val, dict):
+                    continue
+                if not shown:
+                    click.echo(
+                        styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:") + f"  [{section}]"
+                    )
+                    shown = True
+                ctype = leaf_val.get("type", "?")
+                if ctype == "added":
+                    click.echo(styled(Fore.GREEN, f"    + {leaf_path}"))
+                elif ctype == "removed":
+                    click.echo(styled(Fore.RED, f"    - {leaf_path}"))
+                elif ctype == "changed":
+                    click.echo(styled(Fore.YELLOW, f"    ~ {leaf_path}"))
+                else:
+                    click.echo(f"    ? {leaf_path}")
+    if not shown:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "No differences detected."))
+
+
 @prepare.command("diff")
 @click.option(
     "--session", "session_id", default=None, help="Session ID. Defaults to current session."
@@ -1435,30 +1478,20 @@ def remote_prepare_diff(
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
 
     try:
         mgr = __get_session(session_id)
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    diff = mgr.diff(channel=resolved_channel)
+    diff = mgr.diff(channel=resolved_channel, resource_root=resolved_resource_root)
     if as_json:
         click.echo(json.dumps(diff, indent=4, sort_keys=True))
-    elif not diff:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "No differences detected."))
     else:
-        click.echo(styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:"))
-        for path, change in sorted(diff.items()):
-            if isinstance(change, dict):
-                ctype = change.get("type", "?")
-                if ctype == "added":
-                    click.echo(styled(Fore.GREEN, f"  + {path}"))
-                elif ctype == "removed":
-                    click.echo(styled(Fore.RED, f"  - {path}"))
-                elif ctype == "changed":
-                    click.echo(styled(Fore.YELLOW, f"  ~ {path}"))
-                else:
-                    click.echo(f"  ? {path}")
+        _print_diff(diff)
 
 
 # ---- verify ----------------------------------------------------------------

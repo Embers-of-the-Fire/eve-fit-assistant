@@ -459,6 +459,7 @@ class SessionManager:
     def regenerate_merged(
         self,
         channel: str,
+        resource_root: str,
     ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
         index, docs, bundles = _fetch_mod.read_local_remote_state(self.remote_state_dir, channel)
         todo = self._load_todo()
@@ -472,27 +473,29 @@ class SessionManager:
         )
 
         # Write merged output
+        base = self.merged_dir / resource_root
         ch = f"channels/{channel}"
-        (self.merged_dir / ch).mkdir(parents=True, exist_ok=True)
-        _write_json(self.merged_dir / ch / "index.json", merged_index)
-        (self.merged_dir / ch / "documents").mkdir(parents=True, exist_ok=True)
-        _write_json(self.merged_dir / ch / "documents" / "catalog.json", merged_docs)
-        (self.merged_dir / ch / "bundles").mkdir(parents=True, exist_ok=True)
-        _write_json(self.merged_dir / ch / "bundles" / "catalog.json", merged_bundles)
+        (base / ch).mkdir(parents=True, exist_ok=True)
+        _write_json(base / ch / "index.json", merged_index)
+        (base / ch / "documents").mkdir(parents=True, exist_ok=True)
+        _write_json(base / ch / "documents" / "catalog.json", merged_docs)
+        (base / ch / "bundles").mkdir(parents=True, exist_ok=True)
+        _write_json(base / ch / "bundles" / "catalog.json", merged_bundles)
 
         # Link document bodies and bundle files from staged -> merged
-        _link_staged_to_merged(self.staged_dir, self.merged_dir, todo, channel)
+        _link_staged_to_merged(self.staged_dir, base, todo, channel)
 
         return merged_index, merged_docs, merged_bundles
 
     def diff(
         self,
         channel: str,
+        resource_root: str,
     ) -> dict[str, object]:
         r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
             self.remote_state_dir, channel
         )
-        m_idx, m_docs, m_bundles = self.regenerate_merged(channel)
+        m_idx, m_docs, m_bundles = self.regenerate_merged(channel, resource_root)
 
         remote_state: dict[str, object] = {
             "index": r_idx,
@@ -518,7 +521,7 @@ class SessionManager:
         secret_key: str | None = None,
         alias_name: str | None = None,
     ) -> list[str]:
-        _, m_docs, m_bundles = self.regenerate_merged(channel)
+        _, m_docs, m_bundles = self.regenerate_merged(channel, resource_root or "efa/v1")
 
         # Collect staged SHA256s
         staged_sha256s: dict[str, str] = {}
