@@ -3,6 +3,7 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/documents/startup_announcement.dart";
 import "package:eve_fit_assistant/init.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/bundle/startup_bundle_update.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -73,10 +74,14 @@ class MyApp extends ConsumerWidget {
             );
           });
         }
-        return StartupAnnouncementGate(
+        return StartupBundleUpdateGate(
           appRouter: _appRouter,
           navigatorKey: _appRouter.navigatorKey,
-          child: initBuilder(context, child),
+          child: StartupAnnouncementGate(
+            appRouter: _appRouter,
+            navigatorKey: _appRouter.navigatorKey,
+            child: initBuilder(context, child),
+          ),
         );
       },
     );
