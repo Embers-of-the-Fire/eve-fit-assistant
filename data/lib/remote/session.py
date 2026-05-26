@@ -58,14 +58,6 @@ def _file_sha256(path: Path) -> str:
     return hasher.hexdigest()
 
 
-def _is_running_by_pid(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
-
-
 # ---------------------------------------------------------------------------
 # Session manager
 # ---------------------------------------------------------------------------
@@ -637,16 +629,6 @@ def _read_current_session(sessions_root: Path) -> str | None:
     if not session_id:
         return None
     if not _session_path(sessions_root, session_id).is_dir():
-        return None
-    # Check lockfile exists (not yet committed/aborted)
-    lock_path = _session_path(sessions_root, session_id) / "lockfile.json"
-    if not lock_path.is_file():
-        return session_id  # committed session
-    try:
-        lock = _load_json_model(lock_path, LockFile)
-    except Exception:
-        return None
-    if not _is_running_by_pid(lock.pid):
         return None
     return session_id
 
