@@ -100,6 +100,10 @@ class DeveloperPaths(BaseModel):
     def workspace_output_path(self, workspace_id: str) -> ProjectPath:
         return self.workspace_root_path(workspace_id) / "output"
 
+    @property
+    def session_dir(self) -> ProjectPath:
+        return self.root / "remote" / "sessions"
+
 
 class DeveloperWorkspace(BaseModel):
     default: str | None = Field(default=None)
