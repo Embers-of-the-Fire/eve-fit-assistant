@@ -1008,7 +1008,7 @@ def dev_env_write_backend():
 
 @cli.group(cls=ClickAliasedGroup)
 def remote():
-    """Remote mock and publishing helper commands."""
+    """Remote content management — prepare, publish, validate, fetch, mock."""
 
 
 @remote.group("config", cls=ClickAliasedGroup)
@@ -1485,6 +1485,332 @@ def publish():
     """Remote content publishing commands."""
 
 
+def __resolve_publish_source(
+    *,
+    source_dir: Path | None,
+    session_id: str | None,
+) -> Path:
+    if source_dir is not None and session_id is not None:
+        raise click.ClickException("Pass either --source-dir or --session, not both.")
+    if source_dir is not None:
+        resolved = __resolve_dev_path(source_dir)
+        if not resolved.is_dir():
+            raise click.ClickException(f"Source directory does not exist: {resolved}")
+        return resolved
+    if session_id:
+        mgr = __get_session(session_id)
+    else:
+        try:
+            mgr = SessionManager.find_latest_committed(__get_session_root())
+        except FileNotFoundError as exc:
+            raise click.ClickException(str(exc)) from exc
+    merged = mgr.session_dir / "merged"
+    if not merged.is_dir():
+        raise click.ClickException(f"Session has no merged output. Run `./x remote prepare diff` first: {mgr.session_id}")
+    return merged
+
+
+# ---- shared S3 upload helpers -----------------------------------------------
+
+
+def __get_publish_s3_params(
+    target: str,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    public_download: bool | None,
+) -> dict[str, object]:
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+
+    if target.lower() == "minio":
+        sub = remote_cfg.require_minio()
+        return {
+            "endpoint": endpoint or f"http://{remote_cfg.host}:{sub.port}",
+            "bucket": bucket or sub.bucket,
+            "access_key": access_key or sub.access_key,
+            "secret_key": secret_key or sub.secret_key,
+            "alias_name": alias_name or sub.alias,
+            "public_download": (
+                public_download if public_download is not None else sub.public_download
+            ),
+        }
+    else:
+        sub = remote_cfg.require_s3()
+        return {
+            "endpoint": endpoint or sub.endpoint,
+            "bucket": bucket or sub.bucket,
+            "access_key": access_key or sub.access_key,
+            "secret_key": secret_key or sub.secret_key,
+            "alias_name": alias_name or sub.alias,
+            "public_download": (
+                public_download if public_download is not None else sub.public_download
+            ),
+        }
+
+
+def __publish_deployment_snapshot(
+    *,
+    mc: str,
+    source_dir: Path,
+    endpoint: str,
+    bucket: str,
+    access_key: str,
+    secret_key: str,
+    alias_name: str,
+    resource_root: str,
+    channel: str,
+    keep_session: bool,
+    session_id: str | None,
+) -> None:
+    """Save the current deployment state before publishing new content."""
+    bucket_target = f"{alias_name}/{bucket}/{resource_root}"
+    ch_target = f"{bucket_target}/channels/{channel}"
+    dep_target = f"{bucket_target}/deployments"
+
+    deployment_timestamp = __utc_timestamp()
+    current_dep_manifest_path = f"{dep_target}/manifest.json"
+
+    timestamp_stamp = deployment_timestamp.replace("-", "").replace(":", "")
+
+    cmd_redact = "<redacted>"
+    _run_mc(
+        [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
+        [mc, "alias", "set", alias_name, endpoint, cmd_redact, cmd_redact],
+        "PUBLISH ALIAS",
+    )
+
+    # Snapshot current deployment if it exists
+    try:
+        _run_mc(
+            [mc, "cp", current_dep_manifest_path,
+             f"{dep_target}/history/{timestamp_stamp}.json"],
+            [mc, "cp", current_dep_manifest_path,
+             f"{dep_target}/history/{timestamp_stamp}.json"],
+            "SNAPSHOT DEPLOYMENT HISTORY",
+        )
+    except OSError:
+        pass
+
+    # Snapshot current catalog files
+    for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
+        remote_catalog = f"{ch_target}/{catalog_name}"
+        deploy_catalog = f"{dep_target}/{timestamp_stamp}/channels/{channel}/{catalog_name}"
+        try:
+            _run_mc(
+                [mc, "cp", remote_catalog, deploy_catalog],
+                [mc, "cp", remote_catalog, deploy_catalog],
+                f"BACKUP {catalog_name}",
+            )
+        except OSError:
+            pass
+
+    # Upload new deployment manifest
+    manifest: dict[str, object] = {
+        "schemaVersion": 1,
+        "timestamp": deployment_timestamp,
+        "channel": channel,
+        "resourceRoot": resource_root,
+        "increments": [deployment_timestamp],
+    }
+    manifest_path = _write_temp_json(manifest)
+    try:
+        _run_mc(
+            [mc, "cp", str(manifest_path), current_dep_manifest_path],
+            [mc, "cp", str(manifest_path), current_dep_manifest_path],
+            "UPLOAD DEPLOYMENT MANIFEST",
+        )
+        _run_mc(
+            [mc, "cp", str(manifest_path),
+             f"{dep_target}/history/{timestamp_stamp}.json"],
+            [mc, "cp", str(manifest_path),
+             f"{dep_target}/history/{timestamp_stamp}.json"],
+            "ARCHIVE DEPLOYMENT MANIFEST",
+        )
+    finally:
+        manifest_path.unlink(missing_ok=True)
+
+
+def __rollback_to_deployment(
+    mc: str,
+    alias_name: str,
+    bucket: str,
+    resource_root: str,
+    channel: str,
+    deployment_timestamp: str,
+) -> None:
+    """Re-upload catalog/index files from a previous deployment snapshot."""
+    bucket_target = f"{alias_name}/{bucket}/{resource_root}"
+    dep_target = f"{bucket_target}/deployments"
+    ch_target = f"{bucket_target}/channels/{channel}"
+
+    # Copy old catalog files back to their canonical locations
+    for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
+        src = f"{dep_target}/{deployment_timestamp}/channels/{channel}/{catalog_name}"
+        dst = f"{ch_target}/{catalog_name}"
+        _run_mc(
+            [mc, "cp", src, dst],
+            [mc, "cp", src, dst],
+            f"ROLLBACK {catalog_name}",
+        )
+
+    # Update current deployment manifest
+    _run_mc(
+        [mc, "cp",
+         f"{dep_target}/history/{deployment_timestamp}.json",
+         f"{dep_target}/manifest.json"],
+        [mc, "cp",
+         f"{dep_target}/history/{deployment_timestamp}.json",
+         f"{dep_target}/manifest.json"],
+        "ROLLBACK DEPLOYMENT MANIFEST",
+    )
+
+
+def __gc_unreferenced_objects(
+    mc: str,
+    alias_name: str,
+    bucket: str,
+    resource_root: str,
+    channel: str,
+    *,
+    dry_run: bool,
+) -> str:
+    """Prune unreferenced objects from the remote bucket.
+
+    Collects all referenced paths from current catalogs, then deletes
+    anything in documents/body/ and bundles/ that isn't referenced.
+    Returns a human-readable summary.
+    """
+    import tempfile
+
+    bucket_target = f"{alias_name}/{bucket}/{resource_root}"
+    ch_target = f"{bucket_target}/channels/{channel}"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+
+        # Download current catalogs
+        (tmp_path / channel).mkdir(parents=True, exist_ok=True)
+        for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
+            _run_mc(
+                [mc, "cp",
+                 f"{ch_target}/{catalog_name}",
+                 str(tmp_path / channel / catalog_name)],
+                [mc, "cp",
+                 f"{ch_target}/{catalog_name}",
+                 f"<tmp>/{channel}/{catalog_name}"],
+                f"GC FETCH {catalog_name}",
+            )
+
+        referenced: set[str] = set()
+
+        # Parse document catalog
+        docs_path = tmp_path / channel / "documents" / "catalog.json"
+        if docs_path.is_file():
+            docs: dict[str, object] = json.loads(docs_path.read_text(encoding="utf-8"))
+            entries: object = docs.get("entries", [])
+            if isinstance(entries, list):
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        continue
+                    localizations = entry.get("localizations")
+                    if isinstance(localizations, dict):
+                        for _lang, loc in localizations.items():
+                            if isinstance(loc, dict):
+                                body = loc.get("bodyPath")
+                                if isinstance(body, str):
+                                    referenced.add(f"documents/body/{body.split('/', 1)[-1]}")
+
+        # Parse bundle catalog
+        bundles_path = tmp_path / channel / "bundles" / "catalog.json"
+        if bundles_path.is_file():
+            bundles: dict[str, object] = json.loads(bundles_path.read_text(encoding="utf-8"))
+            artifacts: object = bundles.get("artifacts", [])
+            if isinstance(artifacts, list):
+                for artifact in artifacts:
+                    if not isinstance(artifact, dict):
+                        continue
+                    ap = artifact.get("artifactPath")
+                    if isinstance(ap, str):
+                        referenced.add(ap)
+                    mp = artifact.get("manifestPath")
+                    if isinstance(mp, str):
+                        referenced.add(mp)
+
+        # List all objects in mutable prefixes
+        results: list[str] = []
+        for prefix in (f"{bucket_target}/documents/body", f"{bucket_target}/bundles"):
+            try:
+                out = subprocess.run(
+                    [mc, "ls", "--recursive", "--json", prefix],
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                )
+                if out.returncode == 0:
+                    results.extend(out.stdout.strip().splitlines())
+            except Exception:
+                continue
+
+        unreferenced: list[str] = []
+        for line in results:
+            if not line.strip():
+                continue
+            try:
+                obj: dict[str, object] = json.loads(line)
+            except ValueError:
+                continue
+            key = obj.get("key", "")
+            if not isinstance(key, str):
+                continue
+            rel = key.removeprefix(f"{resource_root}/") if key.startswith(f"{resource_root}/") else key
+            # Check if referenced by stripping the resource_root prefix
+            check = rel
+            if not any(check.endswith(ref.split("/")[-1]) for ref in referenced):
+                unreferenced.append(key)
+
+        if dry_run:
+            return f"Would delete {len(unreferenced)} unreferenced objects."
+
+        deleted = 0
+        for key in unreferenced:
+            try:
+                _run_mc(
+                    [mc, "rm", f"{alias_name}/{bucket}/{key}"],
+                    [mc, "rm", f"{alias_name}/{bucket}/{key}"],
+                    "GC DELETE",
+                )
+                deleted += 1
+            except OSError:
+                pass
+        return f"Deleted {deleted} unreferenced object(s)."
+
+
+def __write_temp_json(payload: dict[str, object]) -> Path:
+    import tempfile
+    fd, path_str = tempfile.mkstemp(suffix=".json", text=True)
+    os.close(fd)
+    p = Path(path_str)
+    p.write_text(json.dumps(payload, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
+    return p
+
+
+def _run_mc(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
+    if DRY_RUN:
+        info(f"[Dry-Run] {title}: {' '.join(redacted_cmd)}")
+        return
+    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if out.returncode != 0:
+        msg = f"Failed to execute [{out.returncode}]: {' '.join(redacted_cmd)}"
+        stderr = (out.stderr or "").strip()
+        if stderr:
+            msg += f"\n{stderr}"
+        raise OSError(msg)
+
+
+# ---- upload ----------------------------------------------------------------
+
+
 @publish.command("upload")
 @click.option(
     "--target",
@@ -1494,6 +1820,10 @@ def publish():
     help="S3-compatible upload target preset.",
 )
 @click.option("--source-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--session", "session_id", default=None,
+              help="Session ID. Defaults to latest committed session.")
+@click.option("--keep-session", is_flag=True, default=False,
+              help="Keep the session directory after successful publish.")
 @click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
 @click.option("--bucket", default=None, help="Override bucket name.")
 @click.option("--access-key", default=None, help="Override access key.")
@@ -1510,6 +1840,8 @@ def publish():
 def remote_publish_upload(
     target: str,
     source_dir: Path | None,
+    session_id: str | None,
+    keep_session: bool,
     endpoint: str | None,
     bucket: str | None,
     access_key: str | None,
@@ -1520,31 +1852,46 @@ def remote_publish_upload(
     clean: bool,
     public_download: bool | None,
 ):
-    """Upload a local remote origin to S3-compatible object storage."""
+    """Upload a local remote origin or committed session to S3-compatible object storage."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_source_dir = __resolve_dev_path(source_dir or remote_cfg.mock_origin_dir)
+    resolved_source_dir = __resolve_publish_source(
+        source_dir=source_dir, session_id=session_id
+    )
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
 
-    if target.lower() == "minio":
-        sub = remote_cfg.require_minio()
-        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{sub.port}"
-        resolved_bucket = bucket or sub.bucket
-        resolved_access_key = access_key or sub.access_key
-        resolved_secret_key = secret_key or sub.secret_key
-        resolved_alias = alias_name or sub.alias
-        resolved_public_download = (
-            public_download if public_download is not None else sub.public_download
-        )
-    else:
-        sub = remote_cfg.require_s3()
-        resolved_endpoint = endpoint or sub.endpoint
-        resolved_bucket = bucket or sub.bucket
-        resolved_access_key = access_key or sub.access_key
-        resolved_secret_key = secret_key or sub.secret_key
-        resolved_alias = alias_name or sub.alias
-        resolved_public_download = (
-            public_download if public_download is not None else sub.public_download
-        )
+    s3 = __get_publish_s3_params(
+        target, endpoint, bucket, access_key, secret_key, alias_name, public_download
+    )
+    resolved_endpoint = str(s3["endpoint"])
+    resolved_bucket = str(s3["bucket"])
+    resolved_access_key = str(s3["access_key"])
+    resolved_secret_key = str(s3["secret_key"])
+    resolved_alias = str(s3["alias_name"])
+    resolved_public_download = bool(s3["public_download"])
+
+    # Snapshot current deployment before uploading new content
+    if source_dir is None:
+        mc = get_command("mc")
+        try:
+            __publish_deployment_snapshot(
+                mc=mc,
+                source_dir=resolved_source_dir,
+                endpoint=resolved_endpoint,
+                bucket=resolved_bucket,
+                access_key=resolved_access_key,
+                secret_key=resolved_secret_key,
+                alias_name=resolved_alias,
+                resource_root=resolved_resource_root,
+                channel=resolved_channel,
+                keep_session=keep_session,
+                session_id=session_id,
+            )
+        except OSError:
+            warning("Deployment snapshot failed, continuing with upload.")
 
     __publish_remote_origin_to_s3(
         source_dir=resolved_source_dir,
@@ -1553,11 +1900,198 @@ def remote_publish_upload(
         access_key=resolved_access_key,
         secret_key=resolved_secret_key,
         alias_name=resolved_alias,
-        resource_root=resource_root or remote_cfg.resource_root,
-        channel=channel or remote_cfg.channel,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
         clean_bucket=clean,
         public_download=resolved_public_download,
     )
+
+    if source_dir is None and not keep_session and session_id:
+        mgr = __get_session(session_id)
+        shutil.rmtree(mgr.session_dir, ignore_errors=True)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ") + str(mgr.session_dir)
+        )
+
+
+# ---- rollback --------------------------------------------------------------
+
+
+@publish.command("rollback")
+@click.option(
+    "--target",
+    type=click.Choice(["minio", "s3"], case_sensitive=False),
+    default="minio",
+    show_default=True,
+)
+@click.option("--deployment", "since", default=None,
+              help="Deployment timestamp to roll back to. Defaults to previous.")
+@click.option("--list", "list_only", is_flag=True, default=False,
+              help="List available deployments to roll back to.")
+@click.option("--endpoint", default=None)
+@click.option("--bucket", default=None)
+@click.option("--access-key", default=None)
+@click.option("--secret-key", default=None)
+@click.option("--alias", "alias_name", default=None)
+@click.option("--resource-root", default=None)
+@click.option("--channel", default=None)
+def remote_publish_rollback(
+    target: str,
+    since: str | None,
+    list_only: bool,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    resource_root: str | None,
+    channel: str | None,
+):
+    """Revert to a previous deployment manifest."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+
+    s3 = __get_publish_s3_params(
+        target, endpoint, bucket, access_key, secret_key, alias_name, None
+    )
+    mc = get_command("mc")
+
+    resolved_endpoint = str(s3["endpoint"])
+    resolved_bucket = str(s3["bucket"])
+    resolved_access_key = str(s3["access_key"])
+    resolved_secret_key = str(s3["secret_key"])
+    resolved_alias = str(s3["alias_name"])
+
+    redacted = "<redacted>"
+    _run_mc(
+        [mc, "alias", "set", resolved_alias, resolved_endpoint,
+         resolved_access_key, resolved_secret_key],
+        [mc, "alias", "set", resolved_alias, resolved_endpoint, redacted, redacted],
+        "ROLLBACK ALIAS",
+    )
+
+    dep_target = f"{resolved_alias}/{resolved_bucket}/{resolved_resource_root}/deployments"
+
+    if list_only:
+        try:
+            out = subprocess.run(
+                [mc, "ls", f"{dep_target}/history/"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+            )
+            if out.returncode == 0 and out.stdout.strip():
+                click.echo("Available deployments:")
+                for line in out.stdout.strip().splitlines():
+                    click.echo(f"  {line.strip()}")
+            else:
+                click.echo("No deployment history found.")
+        except Exception as exc:
+            raise click.ClickException(f"Failed to list deployments: {exc}") from exc
+        return
+
+    # Determine which deployment to roll back to
+    if since:
+        deployment_timestamp = since.replace("-", "").replace(":", "")
+    else:
+        # Find previous deployment by listing history
+        try:
+            out = subprocess.run(
+                [mc, "ls", f"{dep_target}/history/"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+            )
+            lines = [
+                line.strip().split()[-1].removesuffix(".json").split("/")[-1]
+                for line in out.stdout.strip().splitlines()
+                if line.strip()
+            ]
+            if len(lines) < 2:
+                raise click.ClickException("No previous deployment found to roll back to.")
+            lines.sort()
+            deployment_timestamp = lines[-2]
+        except Exception as exc:
+            raise click.ClickException(
+                f"Failed to determine previous deployment: {exc}"
+            ) from exc
+
+    __rollback_to_deployment(
+        mc=mc,
+        alias_name=resolved_alias,
+        bucket=resolved_bucket,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
+        deployment_timestamp=deployment_timestamp,
+    )
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Rolled back to deployment: ") + deployment_timestamp
+    )
+
+
+# ---- gc --------------------------------------------------------------------
+
+
+@publish.command("gc")
+@click.option(
+    "--target",
+    type=click.Choice(["minio", "s3"], case_sensitive=False),
+    default="minio",
+    show_default=True,
+)
+@click.option("--dry-run", is_flag=True, default=False,
+              help="List what would be deleted without actually deleting.")
+@click.option("--endpoint", default=None)
+@click.option("--bucket", default=None)
+@click.option("--access-key", default=None)
+@click.option("--secret-key", default=None)
+@click.option("--alias", "alias_name", default=None)
+@click.option("--resource-root", default=None)
+@click.option("--channel", default=None)
+def remote_publish_gc(
+    target: str,
+    dry_run: bool,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    resource_root: str | None,
+    channel: str | None,
+):
+    """Prune unreferenced objects from the remote bucket."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+
+    s3 = __get_publish_s3_params(
+        target, endpoint, bucket, access_key, secret_key, alias_name, None
+    )
+    mc = get_command("mc")
+
+    resolved_alias = str(s3["alias_name"])
+    resolved_bucket = str(s3["bucket"])
+
+    redacted = "<redacted>"
+    _run_mc(
+        [mc, "alias", "set", resolved_alias, str(s3["endpoint"]),
+         str(s3["access_key"]), str(s3["secret_key"])],
+        [mc, "alias", "set", resolved_alias, str(s3["endpoint"]), redacted, redacted],
+        "GC ALIAS",
+    )
+
+    summary = __gc_unreferenced_objects(
+        mc=mc,
+        alias_name=resolved_alias,
+        bucket=resolved_bucket,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
+        dry_run=dry_run,
+    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "GC: ") + summary)
 
 
 @remote.group(cls=ClickAliasedGroup)
@@ -1750,6 +2284,147 @@ def remote_mock_launch(
         channel=resolved_channel,
         clean_bucket=clean_bucket,
         public_download=resolved_public_download,
+    )
+
+
+# ---- validate --------------------------------------------------------------
+
+
+@remote.command("validate")
+@click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+@click.option("--channel", default=None, help="Override remote channel.")
+def remote_validate(
+    origin_dir: Path | None,
+    resource_root: str | None,
+    channel: str | None,
+):
+    """Validate a local origin tree for internal consistency."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+
+    from data.lib.remote import fetch as remote_fetch
+
+    channel_dir = resolved_origin_dir / resolved_resource_root / "channels" / resolved_channel
+    index_path = channel_dir / "index.json"
+    docs_path = channel_dir / "documents" / "catalog.json"
+    bundles_path = channel_dir / "bundles" / "catalog.json"
+
+    missing = []
+    for p in (index_path, docs_path, bundles_path):
+        if not p.is_file():
+            missing.append(str(p))
+    if missing:
+        raise click.ClickException(f"Missing required files:\n  " + "\n  ".join(missing))
+
+    index, docs, bundles = remote_fetch.read_local_remote_state(
+        resolved_origin_dir / resolved_resource_root, resolved_channel
+    )
+
+    from data.lib.remote.catalog import verify_merged_state
+
+    staged_sha256s: dict[str, str] = {}
+    body_dir = resolved_origin_dir / resolved_resource_root / "documents" / "body"
+    if body_dir.is_dir():
+        for f in body_dir.rglob("*.md"):
+            if f.is_file():
+                staged_sha256s[str(f.relative_to(body_dir))] = __file_sha256(f)
+
+    merged_state: dict[str, object] = {
+        "index": index,
+        "documents_catalog": docs,
+        "bundles_catalog": bundles,
+    }
+    errors = verify_merged_state(merged_state, staged_sha256s)
+    if errors:
+        for err in errors:
+            click.echo(styled([Style.BRIGHT, Fore.RED], "ERROR: ") + err)
+        raise click.ClickException(f"Validation failed with {len(errors)} error(s).")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Origin tree passed validation."))
+
+
+# ---- fetch -----------------------------------------------------------------
+
+
+@remote.command("fetch")
+@click.option(
+    "--backend",
+    type=click.Choice(["minio", "s3"]),
+    required=True,
+    help="Which backend to fetch remote state from.",
+)
+@click.option("--output-dir", type=click.Path(path_type=Path), default=None,
+              help="Output directory. Defaults to a timestamped dir under the session root.")
+@click.option("--endpoint", default=None)
+@click.option("--bucket", default=None)
+@click.option("--access-key", default=None)
+@click.option("--secret-key", default=None)
+@click.option("--alias", "alias_name", default=None)
+@click.option("--resource-root", default=None)
+@click.option("--channel", default=None)
+def remote_fetch(
+    backend: str,
+    output_dir: Path | None,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    resource_root: str | None,
+    channel: str | None,
+):
+    """Download remote state into a local directory (for debugging/backup)."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+
+    if output_dir is None:
+        stamp = __utc_timestamp().replace("-", "").replace(":", "")
+        output_dir = __get_session_root() / f"fetch-{stamp}"
+
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+
+    from data.lib.remote import fetch as remote_fetch
+
+    mc = get_command("mc")
+
+    if backend == "minio":
+        sub = remote_cfg.require_minio()
+        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{sub.port}"
+        resolved_bucket = bucket or sub.bucket
+        resolved_access_key = access_key or sub.access_key
+        resolved_secret_key = secret_key or sub.secret_key
+        resolved_alias = alias_name or sub.alias
+        resolved_public_download = sub.public_download
+    else:
+        sub = remote_cfg.require_s3()
+        resolved_endpoint = endpoint or sub.endpoint
+        resolved_bucket = bucket or sub.bucket
+        resolved_access_key = access_key or sub.access_key
+        resolved_secret_key = secret_key or sub.secret_key
+        resolved_alias = alias_name or sub.alias
+        resolved_public_download = sub.public_download
+
+    remote_fetch.fetch_remote_state_s3(
+        mc_bin=mc,
+        endpoint=resolved_endpoint,
+        bucket=resolved_bucket,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+        alias_name=resolved_alias,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
+        output_dir=output_dir,
+    )
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Fetched remote state to: ") + str(output_dir)
     )
 
 
