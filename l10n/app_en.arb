@@ -173,6 +173,7 @@
   "versionBumpCardTitle": "What's new in v{version}",
   "versionBumpCardSubtitle": "{count} new updates",
   "versionBumpCardCloseTooltip": "Close",
+  "versionBumpCardSubtitleFallback": "See version notes",
   "fitCreationPageTitle": "Create New Fit",
   "fitCreationPageDialogHint": "New Fit {count}",
   "fitCreationPageDialogErrorText": "Please enter fit name.",

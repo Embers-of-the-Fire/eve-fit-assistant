@@ -245,6 +245,7 @@
     }
   },
   "versionBumpCardCloseTooltip": "关闭",
+  "versionBumpCardSubtitleFallback": "查看版本说明",
   "@@@_FIT_CREATION_PAGE": {},
   "fitCreationPageTitle": "创建新配置",
   "fitCreationPageDialogHint": "新配置 {count}",

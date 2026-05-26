@@ -132,7 +132,7 @@ class WorkspacePage extends ConsumerWidget {
                     Text(
                       unreadVersionCount > 0
                           ? context.l10n.versionBumpCardSubtitle(count: unreadVersionCount)
-                          : "See version notes",
+                          : context.l10n.versionBumpCardSubtitleFallback,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
