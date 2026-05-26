@@ -219,6 +219,8 @@
   "documentKindVersion": "版本",
   "documentOpenHint": "点击查看",
   "documentVersionBadge": "应用 {version}",
+  "documentMarkAllRead": "全部标为已读",
+  "documentMarkAllUnread": "全部标为未读",
   "@documentVersionBadge": {
     "placeholders": {
       "version": {
@@ -226,6 +228,24 @@
       }
     }
   },
+  "versionBumpCardTitle": "v{version} 更新内容",
+  "@versionBumpCardTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "versionBumpCardSubtitle": "{count} 条新内容",
+  "@versionBumpCardSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionBumpCardCloseTooltip": "关闭",
+  "versionBumpCardSubtitleFallback": "查看版本说明",
   "@@@_FIT_CREATION_PAGE": {},
   "fitCreationPageTitle": "创建新配置",
   "fitCreationPageDialogHint": "新配置 {count}",

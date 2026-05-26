@@ -20,6 +20,8 @@ abstract class DocumentStorageState with _$DocumentStorageState {
     @Default(<String, String>{}) Map<String, String> selectedDocumentIds,
     @Default(<String>[]) List<String> dismissedStartupAnnouncementIds,
     String? lastDocumentRevision,
+    @Default(<String, DateTime>{}) Map<String, DateTime> readTimestamps,
+    String? lastSeenAppVersion,
   }) = _DocumentStorageState;
 
   factory DocumentStorageState.initial() => DocumentStorageState(
@@ -34,7 +36,7 @@ abstract class DocumentStorageState with _$DocumentStorageState {
 class DocumentStorage {
   DocumentStorage._();
 
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
   static const String _storageFileName = "document_storage.json";
   static late DocumentStorageState _state;
   static Future<void> _pendingSync = Future<void>.value();
@@ -98,6 +100,51 @@ class DocumentStorage {
 
   static String? get lastDocumentRevision => _state.lastDocumentRevision;
 
+  static Map<String, DateTime> get readTimestamps => _state.readTimestamps;
+
+  static String? get lastSeenAppVersion => _state.lastSeenAppVersion;
+
+  static bool isUnread(String documentId) => !_state.readTimestamps.containsKey(documentId);
+
+  static void markRead(String documentId) {
+    if (!isUnread(documentId)) {
+      return;
+    }
+    _state = _state.copyWith(
+      readTimestamps: <String, DateTime>{..._state.readTimestamps, documentId: DateTime.now()},
+    );
+    _sync();
+  }
+
+  static void markAllRead(Iterable<String> ids) {
+    final now = DateTime.now();
+    _state = _state.copyWith(
+      readTimestamps: <String, DateTime>{..._state.readTimestamps, for (final id in ids) id: now},
+    );
+    _sync();
+  }
+
+  static void clearRead(Iterable<String> ids) {
+    final remaining = Map<String, DateTime>.of(_state.readTimestamps);
+    for (final id in ids) {
+      remaining.remove(id);
+    }
+    _state = _state.copyWith(readTimestamps: remaining);
+    _sync();
+  }
+
+  static void setLastSeenAppVersion(String version) {
+    if (_state.lastSeenAppVersion == version) {
+      return;
+    }
+    _state = _state.copyWith(lastSeenAppVersion: version);
+    _sync();
+  }
+
+  static int _changeGeneration = 0;
+
+  static int get changeGeneration => _changeGeneration;
+
   static String cacheKey(String documentId, String localeCode) => "$documentId::$localeCode";
 
   static DocumentStorageState _readState() {
@@ -112,6 +159,13 @@ class DocumentStorage {
       }
       final state = DocumentStorageState.fromJson(payload);
       if (state.version != currentVersion) {
+        if (state.version == 1) {
+          return state.copyWith(
+            version: currentVersion,
+            readTimestamps: <String, DateTime>{},
+            lastSeenAppVersion: null,
+          );
+        }
         return DocumentStorageState.initial();
       }
       return state;
@@ -129,7 +183,8 @@ class DocumentStorage {
     final state = _state;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)));
+        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)))
+        .then((_) => _changeGeneration++);
   }
 
   static void _syncToDisk(String filePath, DocumentStorageState state) {

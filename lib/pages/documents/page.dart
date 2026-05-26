@@ -45,6 +45,7 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(readGenerationProvider);
     final entriesAsync = ref.watch(documentFeedProvider(widget.feedKind));
     final splitLayout = _useSplitLayout(context);
 
@@ -71,11 +72,18 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
             return Row(
               children: [
                 Flexible(
-                  child: _DocumentListPane(
-                    feedKind: widget.feedKind,
-                    entries: entries,
-                    selectedDocumentId: selectedEntry?.id,
-                    onSelect: _selectDocument,
+                  child: Column(
+                    children: [
+                      _buildActionBar(context, entries),
+                      Expanded(
+                        child: _DocumentListPane(
+                          feedKind: widget.feedKind,
+                          entries: entries,
+                          selectedDocumentId: selectedEntry?.id,
+                          onSelect: _selectDocument,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const VerticalDivider(width: 1),
@@ -85,11 +93,18 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
           }
 
           if (selectedEntry == null) {
-            return _DocumentListPane(
-              feedKind: widget.feedKind,
-              entries: entries,
-              selectedDocumentId: null,
-              onSelect: _selectDocument,
+            return Column(
+              children: [
+                _buildActionBar(context, entries),
+                Expanded(
+                  child: _DocumentListPane(
+                    feedKind: widget.feedKind,
+                    entries: entries,
+                    selectedDocumentId: null,
+                    onSelect: _selectDocument,
+                  ),
+                ),
+              ],
             );
           }
 
@@ -145,7 +160,31 @@ class _DocumentHubPageState extends ConsumerState<_DocumentHubPage> {
 
   void _selectDocument(DocumentRecord entry) {
     DocumentStorage.saveSelectedDocumentId(widget.feedKind, entry.id);
+    ref.read(documentReadServiceProvider).markRead(entry.id);
     setState(() => _selectedDocumentId = entry.id);
+  }
+
+  Widget _buildActionBar(BuildContext context, List<DocumentRecord> entries) {
+    final allIds = entries.map((r) => r.id);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => ref.read(documentReadServiceProvider).markAllRead(allIds),
+            icon: const Icon(Icons.done_all, size: 16),
+            label: Text(context.l10n.documentMarkAllRead),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: () => ref.read(documentReadServiceProvider).markAllUnread(allIds),
+            icon: const Icon(Icons.remove_done, size: 16),
+            label: Text(context.l10n.documentMarkAllUnread),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -163,19 +202,23 @@ class _DocumentListPane extends StatelessWidget {
   final ValueChanged<DocumentRecord> onSelect;
 
   @override
-  Widget build(BuildContext context) => ListView.builder(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    itemCount: entries.length,
-    itemBuilder: (context, index) {
-      final entry = entries[index];
-      return _DocumentListCard(
-        feedKind: feedKind,
-        entry: entry,
-        selected: entry.id == selectedDocumentId,
-        onTap: () => onSelect(entry),
-      );
-    },
-  );
+  Widget build(BuildContext context) {
+    final unreadIds = entries.where((r) => DocumentStorage.isUnread(r.id)).map((r) => r.id).toSet();
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: entries.length,
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        return _DocumentListCard(
+          feedKind: feedKind,
+          entry: entry,
+          selected: entry.id == selectedDocumentId,
+          isUnread: unreadIds.contains(entry.id),
+          onTap: () => onSelect(entry),
+        );
+      },
+    );
+  }
 }
 
 class _DocumentListCard extends StatelessWidget {
@@ -184,12 +227,14 @@ class _DocumentListCard extends StatelessWidget {
     required this.entry,
     required this.selected,
     required this.onTap,
+    required this.isUnread,
   });
 
   final DocumentFeedKind feedKind;
   final DocumentRecord entry;
   final bool selected;
   final VoidCallback onTap;
+  final bool isUnread;
 
   @override
   Widget build(BuildContext context) {
@@ -203,38 +248,52 @@ class _DocumentListCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: .circular(12),
-        child: Padding(
-          padding: const .all(16),
-          child: Column(
-            crossAxisAlignment: .start,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const .all(16),
+              child: Column(
+                crossAxisAlignment: .start,
                 children: [
-                  _DocumentBadge(
-                    label: _documentKindLabel(context, entry.kind),
-                    icon: _documentKindIcon(entry.kind),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _DocumentBadge(
+                        label: _documentKindLabel(context, entry.kind),
+                        icon: _documentKindIcon(entry.kind),
+                      ),
+                      if (entry.appVer != null)
+                        _DocumentBadge(
+                          label: context.l10n.documentVersionBadge(version: entry.appVer!),
+                          icon: Icons.sell_outlined,
+                        ),
+                      _DocumentBadge(label: dateText, icon: Icons.event_outlined),
+                    ],
                   ),
-                  if (entry.appVer != null)
-                    _DocumentBadge(
-                      label: context.l10n.documentVersionBadge(version: entry.appVer!),
-                      icon: Icons.sell_outlined,
+                  const SizedBox(height: 12),
+                  Text(entry.title, style: context.theme.textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    entry.summary,
+                    style: context.theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                  _DocumentBadge(label: dateText, icon: Icons.event_outlined),
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(entry.title, style: context.theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(
-                entry.summary,
-                style: context.theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+            ),
+            if (isUnread)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

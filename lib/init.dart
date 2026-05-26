@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/documents/remote_sync.dart";
+import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
@@ -63,4 +64,30 @@ void initWithRef(WidgetRef ref) {
     ..read(bundleCollectionServiceProvider)
     ..read(nativeFitEngineServiceProvider);
   unawaited(ref.read(remoteDocumentSyncServiceProvider).sync());
+  unawaited(_initVersionTracking(ref));
+}
+
+Future<void> _initVersionTracking(WidgetRef ref) async {
+  final completer = Completer<String>();
+  late final ProviderSubscription<AsyncValue<String>> sub;
+  sub = ref.listenManual(appVersionProvider, (_, AsyncValue<String> next) {
+    if (completer.isCompleted) return;
+    next.whenData(completer.complete);
+    if (next.hasError && !completer.isCompleted) {
+      completer.completeError(next.error!, next.stackTrace);
+    }
+  }, fireImmediately: true);
+
+  try {
+    final appVersion = await completer.future.timeout(const Duration(milliseconds: 500));
+    if (DocumentStorage.lastSeenAppVersion != null) return;
+    DocumentStorage.setLastSeenAppVersion(appVersion);
+    ref.invalidate(readGenerationProvider);
+  } on TimeoutException {
+    // Provider didn't resolve in time
+  } catch (_) {
+    // Provider errored
+  } finally {
+    sub.close();
+  }
 }

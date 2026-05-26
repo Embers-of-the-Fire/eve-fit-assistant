@@ -25,6 +25,9 @@ final startupAnnouncementProvider = FutureProvider<DocumentRecord?>((Ref ref) as
     if (DocumentStorage.isStartupAnnouncementDismissed(entry.id)) {
       continue;
     }
+    if (!DocumentStorage.isUnread(entry.id)) {
+      continue;
+    }
     return entry;
   }
   return null;
@@ -77,10 +80,12 @@ class _StartupAnnouncementGateState extends ConsumerState<StartupAnnouncementGat
       title: entry.title,
       informationText: entry.summary,
       onShowDetail: () async {
+        ref.read(documentReadServiceProvider).markRead(entry.id);
         DocumentStorage.saveSelectedDocumentId(DocumentFeedKind.announcement, entry.id);
         await widget.appRouter.push(const AnnouncementRoute());
       },
       onPersistPreference: ({required bool dontShowAgain}) {
+        ref.read(documentReadServiceProvider).markRead(entry.id);
         if (!dontShowAgain) {
           return;
         }
