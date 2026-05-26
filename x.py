@@ -1675,20 +1675,17 @@ def __rollback_to_deployment(
     )
 
 
-def __gc_unreferenced_objects(
+def _collect_referenced_paths_from_catalogs(
     mc: str,
     alias_name: str,
     bucket: str,
     resource_root: str,
     channel: str,
-    *,
-    dry_run: bool,
-) -> str:
-    """Prune unreferenced objects from the remote bucket.
+) -> set[str]:
+    """Download current catalogs and collect all referenced content paths.
 
-    Collects all referenced paths from current catalogs, then deletes
-    anything in documents/body/ and bundles/ that isn't referenced.
-    Returns a human-readable summary.
+    Returns the set of full relative paths (e.g. ``bundles/{bundleId}/{artifactId}.zip``)
+    from ``artifactPath``, ``manifestPath``, and ``bodyPath`` fields.
     """
     import tempfile
 
@@ -1697,19 +1694,27 @@ def __gc_unreferenced_objects(
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-
-        # Download current catalogs
         (tmp_path / channel).mkdir(parents=True, exist_ok=True)
+
         for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
             _run_mc(
-                [mc, "cp", f"{ch_target}/{catalog_name}", str(tmp_path / channel / catalog_name)],
-                [mc, "cp", f"{ch_target}/{catalog_name}", f"<tmp>/{channel}/{catalog_name}"],
+                [
+                    mc,
+                    "cp",
+                    f"{ch_target}/{catalog_name}",
+                    str(tmp_path / channel / catalog_name),
+                ],
+                [
+                    mc,
+                    "cp",
+                    f"{ch_target}/{catalog_name}",
+                    f"<tmp>/{channel}/{catalog_name}",
+                ],
                 f"GC FETCH {catalog_name}",
             )
 
         referenced: set[str] = set()
 
-        # Parse document catalog
         docs_path = tmp_path / channel / "documents" / "catalog.json"
         if docs_path.is_file():
             docs: dict[str, object] = json.loads(docs_path.read_text(encoding="utf-8"))
@@ -1724,9 +1729,8 @@ def __gc_unreferenced_objects(
                             if isinstance(loc, dict):
                                 body = loc.get("bodyPath")
                                 if isinstance(body, str):
-                                    referenced.add(f"documents/body/{body.split('/', 1)[-1]}")
+                                    referenced.add(body)
 
-        # Parse bundle catalog
         bundles_path = tmp_path / channel / "bundles" / "catalog.json"
         if bundles_path.is_file():
             bundles: dict[str, object] = json.loads(bundles_path.read_text(encoding="utf-8"))
@@ -1742,58 +1746,172 @@ def __gc_unreferenced_objects(
                     if isinstance(mp, str):
                         referenced.add(mp)
 
-        # List all objects in mutable prefixes
-        results: list[str] = []
-        for prefix in (f"{bucket_target}/documents/body", f"{bucket_target}/bundles"):
-            try:
-                out = subprocess.run(
-                    [mc, "ls", "--recursive", "--json", prefix],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
-                if out.returncode == 0:
-                    results.extend(out.stdout.strip().splitlines())
-            except Exception:
-                continue
+    return referenced
 
-        unreferenced: list[str] = []
-        for line in results:
-            if not line.strip():
-                continue
-            try:
-                obj: dict[str, object] = json.loads(line)
-            except ValueError:
-                continue
-            key = obj.get("key", "")
-            if not isinstance(key, str):
-                continue
-            rel = (
-                key.removeprefix(f"{resource_root}/")
-                if key.startswith(f"{resource_root}/")
-                else key
+
+def __gc_unreferenced_objects(
+    mc: str,
+    alias_name: str,
+    bucket: str,
+    resource_root: str,
+    channel: str,
+    *,
+    dry_run: bool,
+) -> str:
+    """Prune unreferenced objects from the remote bucket.
+
+    Collects all referenced paths from current catalogs via exact path
+    matching, then deletes anything in ``documents/body/`` and ``bundles/``
+    that isn't referenced.  Also cleans up stale deployment snapshots.
+    Returns a human-readable summary.
+    """
+    bucket_target = f"{alias_name}/{bucket}/{resource_root}"
+
+    referenced = _collect_referenced_paths_from_catalogs(
+        mc=mc,
+        alias_name=alias_name,
+        bucket=bucket,
+        resource_root=resource_root,
+        channel=channel,
+    )
+
+    # List all objects in mutable prefixes
+    results: list[str] = []
+    for prefix in (f"{bucket_target}/documents/body", f"{bucket_target}/bundles"):
+        try:
+            out = subprocess.run(
+                [mc, "ls", "--recursive", "--json", prefix],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
-            # Check if referenced by stripping the resource_root prefix
-            check = rel
-            if not any(check.endswith(ref.split("/")[-1]) for ref in referenced):
-                unreferenced.append(key)
+            if out.returncode == 0:
+                results.extend(out.stdout.strip().splitlines())
+        except Exception:
+            continue
 
-        if dry_run:
-            return f"Would delete {len(unreferenced)} unreferenced objects."
+    unreferenced: list[tuple[str, str]] = []
+    for line in results:
+        if not line.strip():
+            continue
+        try:
+            obj: dict[str, object] = json.loads(line)
+        except ValueError:
+            continue
+        key = obj.get("key", "")
+        if not isinstance(key, str):
+            continue
+        rel = (
+            key.removeprefix(f"{resource_root}/")
+            if key.startswith(f"{resource_root}/")
+            else key
+        )
+        if rel not in referenced:
+            size = obj.get("size")
+            size_str = f"{size}" if isinstance(size, (int, float)) else "?"
+            unreferenced.append((key, size_str))
 
-        deleted = 0
-        for key in unreferenced:
-            try:
-                _run_mc(
-                    [mc, "rm", f"{alias_name}/{bucket}/{key}"],
-                    [mc, "rm", f"{alias_name}/{bucket}/{key}"],
-                    "GC DELETE",
+    # Collect stale deployment snapshots
+    stale_deps: list[tuple[str, str]] = []
+    dep_prefix = f"{bucket_target}/deployments"
+    try:
+        out = subprocess.run(
+            [mc, "ls", "--recursive", "--json", dep_prefix],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if out.returncode == 0:
+            dep_objects: list[dict[str, object]] = []
+            for line in out.stdout.strip().splitlines():
+                try:
+                    dep_objects.append(json.loads(line))
+                except ValueError:
+                    continue
+            # Keep only the 10 most recent deployments
+            timestamps: set[str] = set()
+            for obj in dep_objects:
+                key: object = obj.get("key", "")
+                if not isinstance(key, str):
+                    continue
+                rel = (
+                    key.removeprefix(f"{resource_root}/")
+                    if key.startswith(f"{resource_root}/")
+                    else key
                 )
-                deleted += 1
-            except OSError:
-                pass
-        return f"Deleted {deleted} unreferenced object(s)."
+                parts = rel.split("/")
+                if len(parts) > 1 and parts[0] == "deployments":
+                    for part in parts[1:]:
+                        if len(part) >= 14 and part[0].isdigit():
+                            timestamps.add(part)
+            keep = set(sorted(timestamps, reverse=True)[:10])
+            for obj in dep_objects:
+                key: object = obj.get("key", "")
+                if not isinstance(key, str):
+                    continue
+                rel = (
+                    key.removeprefix(f"{resource_root}/")
+                    if key.startswith(f"{resource_root}/")
+                    else key
+                )
+                parts = rel.split("/")
+                ts = None
+                if len(parts) > 1 and parts[0] == "deployments":
+                    for part in parts[1:]:
+                        if len(part) >= 14 and part[0].isdigit():
+                            ts = part
+                            break
+                if ts and ts not in keep:
+                    size = obj.get("size")
+                    size_str = f"{size}" if isinstance(size, (int, float)) else "?"
+                    stale_deps.append((key, size_str))
+    except Exception:
+        pass
+
+    if dry_run:
+        lines = []
+        if unreferenced:
+            lines.append(f"Would delete {len(unreferenced)} unreferenced object(s):")
+            for key, size in sorted(unreferenced):
+                lines.append(f"  {key}  ({size} bytes)")
+        if stale_deps:
+            lines.append(f"Would delete {len(stale_deps)} stale deployment artifact(s):")
+            for key, size in sorted(stale_deps):
+                lines.append(f"  {key}  ({size} bytes)")
+        if not unreferenced and not stale_deps:
+            return "Nothing to prune."
+        return "\n".join(lines)
+
+    deleted_content = 0
+    for key, _size in unreferenced:
+        with contextlib.suppress(OSError):
+            _run_mc(
+                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
+                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
+                "GC DELETE",
+            )
+            deleted_content += 1
+
+    deleted_deps = 0
+    for key, _size in stale_deps:
+        with contextlib.suppress(OSError):
+            _run_mc(
+                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
+                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
+                "GC DELETE DEPLOYMENT",
+            )
+            deleted_deps += 1
+
+    parts = []
+    if deleted_content:
+        parts.append(f"{deleted_content} unreferenced object(s)")
+    if deleted_deps:
+        parts.append(f"{deleted_deps} stale deployment artifact(s)")
+    if not parts:
+        return "Nothing to prune."
+    return f"Deleted {', '.join(parts)}."
 
 
 def __write_temp_json(payload: dict[str, object]) -> Path:
