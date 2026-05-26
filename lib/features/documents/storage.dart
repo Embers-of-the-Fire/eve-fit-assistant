@@ -183,7 +183,8 @@ class DocumentStorage {
     final state = _state;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)));
+        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)))
+        .then((_) => _changeGeneration++);
   }
 
   static void _syncToDisk(String filePath, DocumentStorageState state) {
@@ -193,6 +194,5 @@ class DocumentStorage {
       file.createSync(recursive: true);
     }
     file.writeAsStringSync(text);
-    _changeGeneration++;
   }
 }
