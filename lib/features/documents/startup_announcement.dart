@@ -80,11 +80,15 @@ class _StartupAnnouncementGateState extends ConsumerState<StartupAnnouncementGat
       title: entry.title,
       informationText: entry.summary,
       onShowDetail: () async {
+        // Bypasses read-generation so unread badges / counts may not
+        // refresh in-session. Prefer pathway via readGenerationProvider.
         DocumentStorage.markRead(entry.id);
         DocumentStorage.saveSelectedDocumentId(DocumentFeedKind.announcement, entry.id);
         await widget.appRouter.push(const AnnouncementRoute());
       },
       onPersistPreference: ({required bool dontShowAgain}) {
+        // Bypasses read-generation so unread badges / counts may not
+        // refresh in-session. Prefer pathway via readGenerationProvider.
         DocumentStorage.markRead(entry.id);
         if (!dontShowAgain) {
           return;
