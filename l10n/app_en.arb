@@ -623,5 +623,34 @@
   "itemDetailEffectCategorySystem": "System",
   "loadingTextExtractingBundle": "Extracting {archiveName}...",
   "dontShowAgain": "Don't show again.",
-  "showDetails": "Show Details"
+  "showDetails": "Show Details",
+  "startupBundleUpdateTitle": "Bundle updates available",
+  "startupBundleUpdateSingleDescription": "A new recommended bundle update is available. Review it in Bundle Manager before downloading.",
+  "startupBundleUpdateMultipleDescription": "{count} recommended bundle updates are available. Review them in Bundle Manager before downloading.",
+  "@startupBundleUpdateMultipleDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupBundleUpdateSummaryRecommended": "{firstId} recommended",
+  "@startupBundleUpdateSummaryRecommended": {
+    "placeholders": {
+      "firstId": {
+        "type": "String"
+      }
+    }
+  },
+  "startupBundleUpdateSummaryWithCount": "{firstId} and {moreCount} more recommended",
+  "@startupBundleUpdateSummaryWithCount": {
+    "placeholders": {
+      "firstId": {
+        "type": "String"
+      },
+      "moreCount": {
+        "type": "int"
+      }
+    }
+  }
 }
