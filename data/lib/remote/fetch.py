@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 import subprocess
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _channel_subdir(channel: str) -> str:
@@ -41,9 +45,11 @@ def fetch_remote_state_s3(
     channel_target = f"{bucket_target}/{channel_prefix}"
 
     redacted = "<redacted>"
-    _run([mc_bin, "alias", "set", alias_name, endpoint, access_key, secret_key],
-         [mc_bin, "alias", "set", alias_name, endpoint, redacted, redacted],
-         "FETCH ALIAS")
+    _run(
+        [mc_bin, "alias", "set", alias_name, endpoint, access_key, secret_key],
+        [mc_bin, "alias", "set", alias_name, endpoint, redacted, redacted],
+        "FETCH ALIAS",
+    )
 
     _run(
         [mc_bin, "cp", "--recursive", channel_target, str(output_dir / _channel_subdir(channel))],
@@ -97,7 +103,9 @@ def fetch_remote_state_http(
             raise OSError(f"Failed to fetch {name} from {remote_path}: {exc}") from exc
 
         paths[name].parent.mkdir(parents=True, exist_ok=True)
-        paths[name].write_text(json.dumps(data, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
+        paths[name].write_text(
+            json.dumps(data, indent=4, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
 
 
 def read_local_remote_state(

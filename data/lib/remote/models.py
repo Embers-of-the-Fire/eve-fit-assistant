@@ -7,7 +7,7 @@ SessionStatus — lightweight summary for the status command.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Literal
 
 from pydantic import BaseModel
@@ -15,9 +15,14 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
 # ---------------------------------------------------------------------------
 # Session lockfile
 # ---------------------------------------------------------------------------
+
 
 class LockFile(BaseModel):
     """Identity record written at session start; removed at commit or abort."""
@@ -34,6 +39,7 @@ class LockFile(BaseModel):
 # ---------------------------------------------------------------------------
 # Operations (todo.json entries)
 # ---------------------------------------------------------------------------
+
 
 class AddAnnouncementOp(BaseModel):
     type: Literal["add-announcement"] = "add-announcement"
@@ -61,6 +67,7 @@ class RemoveOp(BaseModel):
 # Todo list (the ordered journal of staged operations)
 # ---------------------------------------------------------------------------
 
+
 class TodoList(BaseModel):
     """Mutable journal persisted at session/todo.json.  Operations are
     applied in order when regenerating merged output."""
@@ -74,6 +81,7 @@ class TodoList(BaseModel):
 # ---------------------------------------------------------------------------
 # Session status (for the status command)
 # ---------------------------------------------------------------------------
+
 
 class SessionStatus(BaseModel):
     session_id: str
@@ -89,6 +97,7 @@ class SessionStatus(BaseModel):
 # Remote state (snapshot of remote catalogs + index)
 # ---------------------------------------------------------------------------
 
+
 class RemoteState(BaseModel):
     """The three JSON files that make up a channel's remote state."""
 
@@ -100,6 +109,7 @@ class RemoteState(BaseModel):
 # ---------------------------------------------------------------------------
 # Deployment manifest (for rollback)
 # ---------------------------------------------------------------------------
+
 
 class DeploymentEntry(BaseModel):
     catalog_path: str
@@ -119,6 +129,7 @@ class DeploymentManifest(BaseModel):
 # ---------------------------------------------------------------------------
 # Misc / helpers
 # ---------------------------------------------------------------------------
+
 
 def _session_path(sessions_root: Path, session_id: str) -> Path:
     """Return the canonical session directory path."""

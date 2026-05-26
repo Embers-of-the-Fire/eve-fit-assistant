@@ -16,7 +16,6 @@ import uuid
 import zipfile
 
 from pathlib import Path
-from typing import Any
 
 from data.lib.remote import catalog as _catalog_mod
 from data.lib.remote import fetch as _fetch_mod
@@ -184,9 +183,12 @@ class SessionManager:
             elif backend in ("minio", "s3"):
                 if mc_bin is None:
                     from data.lib.utils import get_command
+
                     mc_bin = get_command("mc")
                 if endpoint is None or bucket is None or access_key is None:
-                    raise ValueError("endpoint, bucket, and access_key are required for s3/minio fetch")
+                    raise ValueError(
+                        "endpoint, bucket, and access_key are required for s3/minio fetch"
+                    )
                 _fetch_mod.fetch_remote_state_s3(
                     mc_bin=mc_bin,
                     endpoint=endpoint,
@@ -217,7 +219,9 @@ class SessionManager:
     ) -> SessionManager:
         session_id = _read_current_session(sessions_root)
         if session_id is None:
-            raise SessionNotActiveError("No session is currently active. Run `./x remote prepare start`.")
+            raise SessionNotActiveError(
+                "No session is currently active. Run `./x remote prepare start`."
+            )
         return cls.from_session_id(sessions_root, session_id)
 
     @classmethod
@@ -388,8 +392,8 @@ class SessionManager:
         bundle_id = _require_string(full_descriptor, "bundleId", str(full_path))
 
         staged_files: dict[str, str] = {}
-        staged_files[f"zip"] = f"bundles/{artifact_id}.zip"
-        staged_files[f"manifest"] = f"bundles/{artifact_id}.manifest.json"
+        staged_files["zip"] = f"bundles/{artifact_id}.zip"
+        staged_files["manifest"] = f"bundles/{artifact_id}.manifest.json"
 
         full_zip_target = self.staged_dir / staged_files["zip"]
         full_manifest_target = self.staged_dir / staged_files["manifest"]
@@ -464,13 +468,15 @@ class SessionManager:
         self,
         channel: str,
     ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
-        index, docs, bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, channel
-        )
+        index, docs, bundles = _fetch_mod.read_local_remote_state(self.remote_state_dir, channel)
         todo = self._load_todo()
         ops_raw = [op.model_dump(mode="json") for op in todo.operations]
         merged_index, merged_docs, merged_bundles = _catalog_mod.apply_operations_to_catalogs(
-            index, docs, bundles, channel, ops_raw  # type: ignore[arg-type]
+            index,
+            docs,
+            bundles,
+            channel,
+            ops_raw,  # type: ignore[arg-type]
         )
 
         # Write merged output
@@ -483,9 +489,7 @@ class SessionManager:
         _write_json(self.merged_dir / ch / "bundles" / "catalog.json", merged_bundles)
 
         # Link document bodies and bundle files from staged -> merged
-        _link_staged_to_merged(
-            self.staged_dir, self.merged_dir, todo, channel
-        )
+        _link_staged_to_merged(self.staged_dir, self.merged_dir, todo, channel)
 
         return merged_index, merged_docs, merged_bundles
 
@@ -584,9 +588,7 @@ class SessionManager:
             except Exception as exc:
                 return [f"Unable to check drift (fetch failed): {exc}"]
 
-            r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
-                tmp_path, channel
-            )
+            r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(tmp_path, channel)
             s_idx, s_docs, s_bundles = _fetch_mod.read_local_remote_state(
                 self.remote_state_dir, channel
             )
@@ -595,9 +597,13 @@ class SessionManager:
             if r_idx != s_idx:
                 errors.append("Remote index has changed since session start (drift detected)")
             if r_docs != s_docs:
-                errors.append("Remote document catalog has changed since session start (drift detected)")
+                errors.append(
+                    "Remote document catalog has changed since session start (drift detected)"
+                )
             if r_bundles != s_bundles:
-                errors.append("Remote bundle catalog has changed since session start (drift detected)")
+                errors.append(
+                    "Remote bundle catalog has changed since session start (drift detected)"
+                )
             return errors
 
     def commit(self) -> SessionStatus:
@@ -617,6 +623,7 @@ class SessionManager:
 # ---------------------------------------------------------------------------
 # Current session pointer helpers
 # ---------------------------------------------------------------------------
+
 
 def _current_session_path(sessions_root: Path) -> Path:
     return sessions_root / CURRENT_SESSION_FILE
@@ -659,6 +666,7 @@ def _clear_current_session(sessions_root: Path, session_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
 
 def _read_zip_json(zip_path: Path, member_name: str) -> dict[str, object]:
     with zipfile.ZipFile(zip_path) as archive, archive.open(member_name) as f:

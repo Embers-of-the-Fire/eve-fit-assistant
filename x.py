@@ -21,6 +21,7 @@ Please use the configuration files to configure the tool, or pass parameters dir
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
 import hashlib
 import json
@@ -71,11 +72,11 @@ from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
 from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import info
 from data.lib.log import warning
-from data.lib.utils import execute_command
-from data.lib.utils import get_command
+from data.lib.remote.session import SessionCommittedError
 from data.lib.remote.session import SessionManager
 from data.lib.remote.session import SessionNotActiveError
-from data.lib.remote.session import SessionCommittedError
+from data.lib.utils import execute_command
+from data.lib.utils import get_command
 from data.lib.workspace.config import WorkspaceConfig
 
 
@@ -1085,8 +1086,12 @@ def __get_session(session_id: str | None = None) -> SessionManager:
     required=True,
     help="Which backend to fetch remote state from.",
 )
-@click.option("--origin-dir", type=click.Path(path_type=Path), default=None,
-              help="Local origin directory to copy state from instead of fetching.")
+@click.option(
+    "--origin-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Local origin directory to copy state from instead of fetching.",
+)
 @click.option("--resource-root", default=None, help="Override remote resource root.")
 @click.option("--channel", default=None, help="Override remote channel.")
 def remote_prepare_start(
@@ -1105,12 +1110,12 @@ def remote_prepare_start(
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
 
-    kwargs: dict[str, object] = dict(
-        backend=backend,
-        origin_dir=origin_dir,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-    )
+    kwargs: dict[str, object] = {
+        "backend": backend,
+        "origin_dir": origin_dir,
+        "resource_root": resolved_resource_root,
+        "channel": resolved_channel,
+    }
 
     if origin_dir is None:
         if backend == "minio":
@@ -1186,8 +1191,9 @@ def add():
 @click.option(
     "--tag", "tags", multiple=True, help="Announcement tag. Can be passed multiple times."
 )
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to current session.")
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
 def remote_prepare_add_announcement(
     zh_path: Path,
     en_path: Path,
@@ -1240,9 +1246,7 @@ def remote_prepare_add_announcement(
         resource_root=resolved_resource_root,
         channel=resolved_channel,
     )
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Staged announcement: ") + resolved_document_id
-    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged announcement: ") + resolved_document_id)
 
 
 @add.command("bundle")
@@ -1255,8 +1259,9 @@ def remote_prepare_add_announcement(
     default=None,
     help="Artifact id for the incremental bundle. Required with --increment.",
 )
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to current session.")
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
 def remote_prepare_add_bundle(
     full_path: Path,
     manifest_path: Path,
@@ -1293,9 +1298,7 @@ def remote_prepare_add_bundle(
         increment_path=increment_path,
         increment_artifact_id=increment_artifact_id,
     )
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id
-    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id)
 
 
 # ---- remove ----------------------------------------------------------------
@@ -1304,8 +1307,9 @@ def remote_prepare_add_bundle(
 @prepare.command("remove")
 @click.option("--artifact-id", default=None, help="Bundle artifact id to remove.")
 @click.option("--document-id", default=None, help="Document id to remove.")
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to current session.")
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
 def remote_prepare_remove(
     artifact_id: str | None,
     document_id: str | None,
@@ -1337,12 +1341,14 @@ def remote_prepare_remove(
 
 
 @prepare.command("diff")
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to current session.")
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
 @click.option("--resource-root", default=None, help="Override remote resource root.")
 @click.option("--channel", default=None, help="Override remote channel.")
-@click.option("--json", "as_json", is_flag=True, default=False,
-              help="Output as machine-readable JSON.")
+@click.option(
+    "--json", "as_json", is_flag=True, default=False, help="Output as machine-readable JSON."
+)
 def remote_prepare_diff(
     session_id: str | None,
     resource_root: str | None,
@@ -1383,8 +1389,9 @@ def remote_prepare_diff(
 
 
 @prepare.command("verify")
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to current session.")
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
 @click.option("--resource-root", default=None, help="Override remote resource root.")
 @click.option("--channel", default=None, help="Override remote channel.")
 def remote_prepare_verify(
@@ -1438,8 +1445,9 @@ def remote_prepare_verify(
 
 
 @prepare.command("commit")
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to current session.")
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
 def remote_prepare_commit(session_id: str | None):
     """Finalize session (immutable todo, remove lockfile). Emits summary."""
     try:
@@ -1450,15 +1458,16 @@ def remote_prepare_commit(session_id: str | None):
     st = mgr.commit()
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
     click.echo(f"  operations: {st.operation_count}")
-    click.echo(f"  committed:  true")
+    click.echo("  committed:  true")
 
 
 # ---- abort -----------------------------------------------------------------
 
 
 @prepare.command("abort")
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to current session.")
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
 @click.option("--force", is_flag=True, default=False, help="Skip confirmation prompt.")
 def remote_prepare_abort(session_id: str | None, force: bool):
     """Discard session, remove session dir."""
@@ -1475,9 +1484,7 @@ def remote_prepare_abort(session_id: str | None, force: bool):
 
     session_dir = mgr.session_dir
     mgr.abort()
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir)
-    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
 
 
 @remote.group(cls=ClickAliasedGroup)
@@ -1506,7 +1513,9 @@ def __resolve_publish_source(
             raise click.ClickException(str(exc)) from exc
     merged = mgr.session_dir / "merged"
     if not merged.is_dir():
-        raise click.ClickException(f"Session has no merged output. Run `./x remote prepare diff` first: {mgr.session_id}")
+        raise click.ClickException(
+            f"Session has no merged output. Run `./x remote prepare diff` first: {mgr.session_id}"
+        )
     return merged
 
 
@@ -1583,29 +1592,23 @@ def __publish_deployment_snapshot(
     )
 
     # Snapshot current deployment if it exists
-    try:
+    with contextlib.suppress(OSError):
         _run_mc(
-            [mc, "cp", current_dep_manifest_path,
-             f"{dep_target}/history/{timestamp_stamp}.json"],
-            [mc, "cp", current_dep_manifest_path,
-             f"{dep_target}/history/{timestamp_stamp}.json"],
+            [mc, "cp", current_dep_manifest_path, f"{dep_target}/history/{timestamp_stamp}.json"],
+            [mc, "cp", current_dep_manifest_path, f"{dep_target}/history/{timestamp_stamp}.json"],
             "SNAPSHOT DEPLOYMENT HISTORY",
         )
-    except OSError:
-        pass
 
     # Snapshot current catalog files
     for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
         remote_catalog = f"{ch_target}/{catalog_name}"
         deploy_catalog = f"{dep_target}/{timestamp_stamp}/channels/{channel}/{catalog_name}"
-        try:
+        with contextlib.suppress(OSError):
             _run_mc(
                 [mc, "cp", remote_catalog, deploy_catalog],
                 [mc, "cp", remote_catalog, deploy_catalog],
                 f"BACKUP {catalog_name}",
             )
-        except OSError:
-            pass
 
     # Upload new deployment manifest
     manifest: dict[str, object] = {
@@ -1615,7 +1618,7 @@ def __publish_deployment_snapshot(
         "resourceRoot": resource_root,
         "increments": [deployment_timestamp],
     }
-    manifest_path = _write_temp_json(manifest)
+    manifest_path = __write_temp_json(manifest)
     try:
         _run_mc(
             [mc, "cp", str(manifest_path), current_dep_manifest_path],
@@ -1623,10 +1626,8 @@ def __publish_deployment_snapshot(
             "UPLOAD DEPLOYMENT MANIFEST",
         )
         _run_mc(
-            [mc, "cp", str(manifest_path),
-             f"{dep_target}/history/{timestamp_stamp}.json"],
-            [mc, "cp", str(manifest_path),
-             f"{dep_target}/history/{timestamp_stamp}.json"],
+            [mc, "cp", str(manifest_path), f"{dep_target}/history/{timestamp_stamp}.json"],
+            [mc, "cp", str(manifest_path), f"{dep_target}/history/{timestamp_stamp}.json"],
             "ARCHIVE DEPLOYMENT MANIFEST",
         )
     finally:
@@ -1658,12 +1659,18 @@ def __rollback_to_deployment(
 
     # Update current deployment manifest
     _run_mc(
-        [mc, "cp",
-         f"{dep_target}/history/{deployment_timestamp}.json",
-         f"{dep_target}/manifest.json"],
-        [mc, "cp",
-         f"{dep_target}/history/{deployment_timestamp}.json",
-         f"{dep_target}/manifest.json"],
+        [
+            mc,
+            "cp",
+            f"{dep_target}/history/{deployment_timestamp}.json",
+            f"{dep_target}/manifest.json",
+        ],
+        [
+            mc,
+            "cp",
+            f"{dep_target}/history/{deployment_timestamp}.json",
+            f"{dep_target}/manifest.json",
+        ],
         "ROLLBACK DEPLOYMENT MANIFEST",
     )
 
@@ -1695,12 +1702,8 @@ def __gc_unreferenced_objects(
         (tmp_path / channel).mkdir(parents=True, exist_ok=True)
         for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
             _run_mc(
-                [mc, "cp",
-                 f"{ch_target}/{catalog_name}",
-                 str(tmp_path / channel / catalog_name)],
-                [mc, "cp",
-                 f"{ch_target}/{catalog_name}",
-                 f"<tmp>/{channel}/{catalog_name}"],
+                [mc, "cp", f"{ch_target}/{catalog_name}", str(tmp_path / channel / catalog_name)],
+                [mc, "cp", f"{ch_target}/{catalog_name}", f"<tmp>/{channel}/{catalog_name}"],
                 f"GC FETCH {catalog_name}",
             )
 
@@ -1745,7 +1748,10 @@ def __gc_unreferenced_objects(
             try:
                 out = subprocess.run(
                     [mc, "ls", "--recursive", "--json", prefix],
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
                 )
                 if out.returncode == 0:
                     results.extend(out.stdout.strip().splitlines())
@@ -1763,7 +1769,11 @@ def __gc_unreferenced_objects(
             key = obj.get("key", "")
             if not isinstance(key, str):
                 continue
-            rel = key.removeprefix(f"{resource_root}/") if key.startswith(f"{resource_root}/") else key
+            rel = (
+                key.removeprefix(f"{resource_root}/")
+                if key.startswith(f"{resource_root}/")
+                else key
+            )
             # Check if referenced by stripping the resource_root prefix
             check = rel
             if not any(check.endswith(ref.split("/")[-1]) for ref in referenced):
@@ -1788,6 +1798,7 @@ def __gc_unreferenced_objects(
 
 def __write_temp_json(payload: dict[str, object]) -> Path:
     import tempfile
+
     fd, path_str = tempfile.mkstemp(suffix=".json", text=True)
     os.close(fd)
     p = Path(path_str)
@@ -1820,10 +1831,18 @@ def _run_mc(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
     help="S3-compatible upload target preset.",
 )
 @click.option("--source-dir", type=click.Path(path_type=Path), default=None)
-@click.option("--session", "session_id", default=None,
-              help="Session ID. Defaults to latest committed session.")
-@click.option("--keep-session", is_flag=True, default=False,
-              help="Keep the session directory after successful publish.")
+@click.option(
+    "--session",
+    "session_id",
+    default=None,
+    help="Session ID. Defaults to latest committed session.",
+)
+@click.option(
+    "--keep-session",
+    is_flag=True,
+    default=False,
+    help="Keep the session directory after successful publish.",
+)
 @click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
 @click.option("--bucket", default=None, help="Override bucket name.")
 @click.option("--access-key", default=None, help="Override access key.")
@@ -1855,9 +1874,7 @@ def remote_publish_upload(
     """Upload a local remote origin or committed session to S3-compatible object storage."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_source_dir = __resolve_publish_source(
-        source_dir=source_dir, session_id=session_id
-    )
+    resolved_source_dir = __resolve_publish_source(source_dir=source_dir, session_id=session_id)
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
@@ -1924,10 +1941,19 @@ def remote_publish_upload(
     default="minio",
     show_default=True,
 )
-@click.option("--deployment", "since", default=None,
-              help="Deployment timestamp to roll back to. Defaults to previous.")
-@click.option("--list", "list_only", is_flag=True, default=False,
-              help="List available deployments to roll back to.")
+@click.option(
+    "--deployment",
+    "since",
+    default=None,
+    help="Deployment timestamp to roll back to. Defaults to previous.",
+)
+@click.option(
+    "--list",
+    "list_only",
+    is_flag=True,
+    default=False,
+    help="List available deployments to roll back to.",
+)
 @click.option("--endpoint", default=None)
 @click.option("--bucket", default=None)
 @click.option("--access-key", default=None)
@@ -1955,9 +1981,7 @@ def remote_publish_rollback(
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
 
-    s3 = __get_publish_s3_params(
-        target, endpoint, bucket, access_key, secret_key, alias_name, None
-    )
+    s3 = __get_publish_s3_params(target, endpoint, bucket, access_key, secret_key, alias_name, None)
     mc = get_command("mc")
 
     resolved_endpoint = str(s3["endpoint"])
@@ -1968,8 +1992,15 @@ def remote_publish_rollback(
 
     redacted = "<redacted>"
     _run_mc(
-        [mc, "alias", "set", resolved_alias, resolved_endpoint,
-         resolved_access_key, resolved_secret_key],
+        [
+            mc,
+            "alias",
+            "set",
+            resolved_alias,
+            resolved_endpoint,
+            resolved_access_key,
+            resolved_secret_key,
+        ],
         [mc, "alias", "set", resolved_alias, resolved_endpoint, redacted, redacted],
         "ROLLBACK ALIAS",
     )
@@ -1980,7 +2011,10 @@ def remote_publish_rollback(
         try:
             out = subprocess.run(
                 [mc, "ls", f"{dep_target}/history/"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             if out.returncode == 0 and out.stdout.strip():
                 click.echo("Available deployments:")
@@ -2000,7 +2034,10 @@ def remote_publish_rollback(
         try:
             out = subprocess.run(
                 [mc, "ls", f"{dep_target}/history/"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             lines = [
                 line.strip().split()[-1].removesuffix(".json").split("/")[-1]
@@ -2012,9 +2049,7 @@ def remote_publish_rollback(
             lines.sort()
             deployment_timestamp = lines[-2]
         except Exception as exc:
-            raise click.ClickException(
-                f"Failed to determine previous deployment: {exc}"
-            ) from exc
+            raise click.ClickException(f"Failed to determine previous deployment: {exc}") from exc
 
     __rollback_to_deployment(
         mc=mc,
@@ -2039,8 +2074,12 @@ def remote_publish_rollback(
     default="minio",
     show_default=True,
 )
-@click.option("--dry-run", is_flag=True, default=False,
-              help="List what would be deleted without actually deleting.")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="List what would be deleted without actually deleting.",
+)
 @click.option("--endpoint", default=None)
 @click.option("--bucket", default=None)
 @click.option("--access-key", default=None)
@@ -2067,9 +2106,7 @@ def remote_publish_gc(
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
 
-    s3 = __get_publish_s3_params(
-        target, endpoint, bucket, access_key, secret_key, alias_name, None
-    )
+    s3 = __get_publish_s3_params(target, endpoint, bucket, access_key, secret_key, alias_name, None)
     mc = get_command("mc")
 
     resolved_alias = str(s3["alias_name"])
@@ -2077,8 +2114,15 @@ def remote_publish_gc(
 
     redacted = "<redacted>"
     _run_mc(
-        [mc, "alias", "set", resolved_alias, str(s3["endpoint"]),
-         str(s3["access_key"]), str(s3["secret_key"])],
+        [
+            mc,
+            "alias",
+            "set",
+            resolved_alias,
+            str(s3["endpoint"]),
+            str(s3["access_key"]),
+            str(s3["secret_key"]),
+        ],
         [mc, "alias", "set", resolved_alias, str(s3["endpoint"]), redacted, redacted],
         "GC ALIAS",
     )
@@ -2320,7 +2364,7 @@ def remote_validate(
         if not p.is_file():
             missing.append(str(p))
     if missing:
-        raise click.ClickException(f"Missing required files:\n  " + "\n  ".join(missing))
+        raise click.ClickException("Missing required files:\n  " + "\n  ".join(missing))
 
     index, docs, bundles = remote_fetch.read_local_remote_state(
         resolved_origin_dir / resolved_resource_root, resolved_channel
@@ -2358,8 +2402,12 @@ def remote_validate(
     required=True,
     help="Which backend to fetch remote state from.",
 )
-@click.option("--output-dir", type=click.Path(path_type=Path), default=None,
-              help="Output directory. Defaults to a timestamped dir under the session root.")
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output directory. Defaults to a timestamped dir under the session root.",
+)
 @click.option("--endpoint", default=None)
 @click.option("--bucket", default=None)
 @click.option("--access-key", default=None)
@@ -2402,7 +2450,6 @@ def remote_fetch(
         resolved_access_key = access_key or sub.access_key
         resolved_secret_key = secret_key or sub.secret_key
         resolved_alias = alias_name or sub.alias
-        resolved_public_download = sub.public_download
     else:
         sub = remote_cfg.require_s3()
         resolved_endpoint = endpoint or sub.endpoint
@@ -2410,7 +2457,6 @@ def remote_fetch(
         resolved_access_key = access_key or sub.access_key
         resolved_secret_key = secret_key or sub.secret_key
         resolved_alias = alias_name or sub.alias
-        resolved_public_download = sub.public_download
 
     remote_fetch.fetch_remote_state_s3(
         mc_bin=mc,
@@ -2423,9 +2469,7 @@ def remote_fetch(
         channel=resolved_channel,
         output_dir=output_dir,
     )
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Fetched remote state to: ") + str(output_dir)
-    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Fetched remote state to: ") + str(output_dir))
 
 
 @cli.group(aliases=["env"], cls=ClickAliasedGroup)

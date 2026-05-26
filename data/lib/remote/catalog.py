@@ -26,6 +26,7 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
 # Apply operations
 # ---------------------------------------------------------------------------
 
+
 def _apply_add_announcement(catalog: dict[str, object], op: dict[str, object]) -> None:
     entries: list[object] = catalog.get("entries", [])  # type: ignore[assignment]
     if not isinstance(entries, list):
@@ -58,7 +59,9 @@ def _apply_add_bundle(catalog: dict[str, object], op: dict[str, object]) -> None
     catalog["artifacts"] = artifacts
 
 
-def _apply_remove(op: dict[str, object], docs: dict[str, object], bundles: dict[str, object]) -> None:  # noqa: E501
+def _apply_remove(
+    op: dict[str, object], docs: dict[str, object], bundles: dict[str, object]
+) -> None:
     target_type: str = op.get("target_type", "")  # type: ignore[assignment]
     target_id: str = op.get("target_id", "")  # type: ignore[assignment]
     if target_type == "document":
@@ -66,18 +69,14 @@ def _apply_remove(op: dict[str, object], docs: dict[str, object], bundles: dict[
         if not isinstance(entries, list):
             return
         docs["entries"] = [
-            e
-            for e in entries
-            if not (isinstance(e, dict) and e.get("id") == target_id)
+            e for e in entries if not (isinstance(e, dict) and e.get("id") == target_id)
         ]
     elif target_type == "artifact":
         artifacts: list[object] = bundles.get("artifacts", [])  # type: ignore[assignment]
         if not isinstance(artifacts, list):
             return
         bundles["artifacts"] = [
-            a
-            for a in artifacts
-            if not (isinstance(a, dict) and a.get("artifactId") == target_id)
+            a for a in artifacts if not (isinstance(a, dict) and a.get("artifactId") == target_id)
         ]
 
 
@@ -115,10 +114,7 @@ def _bump_index_revision(
     import datetime as _dt
 
     generated_at = (
-        _dt.datetime.now(_dt.UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
+        _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
     stamp = generated_at.replace("-", "").replace(":", "")
 
@@ -141,6 +137,7 @@ def _bump_index_revision(
 # ---------------------------------------------------------------------------
 # Diff
 # ---------------------------------------------------------------------------
+
 
 def _diff_dicts(
     before: dict[str, object],
@@ -238,6 +235,7 @@ def diff_catalogs(
 # Verify
 # ---------------------------------------------------------------------------
 
+
 def verify_merged_state(
     merged_state: dict[str, object],
     staged_dir_sha256s: dict[str, str],
@@ -253,7 +251,7 @@ def verify_merged_state(
         entries: object = docs.get("entries", [])
         if isinstance(entries, list):
             seen_ids: set[str] = set()
-            for idx, entry in enumerate(entries):
+            for _idx, entry in enumerate(entries):
                 if not isinstance(entry, dict):
                     continue
                 doc_id = entry.get("id")
@@ -267,7 +265,7 @@ def verify_merged_state(
         artifacts: object = bundles.get("artifacts", [])
         if isinstance(artifacts, list):
             seen_artifact_ids: set[str] = set()
-            for idx, entry in enumerate(artifacts):
+            for _idx, entry in enumerate(artifacts):
                 if not isinstance(entry, dict):
                     continue
                 a_id = entry.get("artifactId")
