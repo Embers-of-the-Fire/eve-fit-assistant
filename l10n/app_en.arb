@@ -43,62 +43,14 @@
   "characterCustomProfiles": "Custom profiles",
   "characterCreateProfile": "Create profile",
   "characterCreateProfileError": "Could not create profile: {message}",
-  "@characterCreateProfileError": {
-    "placeholders": {
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "characterNewProfileName": "New Character",
   "characterClonedProfileName": "{name} Copy",
-  "@characterClonedProfileName": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "characterCloneProfileError": "Could not clone {name}: {message}",
-  "@characterCloneProfileError": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "characterNoCustomProfiles": "No custom profiles yet. Create one from All V to start editing local skills.",
   "characterLastModified": "Modified {time}",
-  "@characterLastModified": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
   "characterDeleteProfileTitle": "Delete profile",
   "characterDeleteProfileContent": "Delete {name}? Fits using this profile will keep the profile id until you choose another one.",
-  "@characterDeleteProfileContent": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "characterDeleteProfileError": "Could not delete {name}: {message}",
-  "@characterDeleteProfileError": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "characterProfileInfoTab": "Info",
   "characterProfileNameLabel": "Character name",
   "characterProfileDescriptionLabel": "Description",
@@ -443,30 +395,7 @@
   "bundleRemoteUnavailableBaseManifestMismatch": "Installed manifest does not match this incremental patch base. Use a full bundle instead.",
   "bundleRemoteUnavailableUnknown": "This artifact cannot be imported right now.",
   "bundleRemoteError": "Remote bundle discovery failed: {message}",
-  "@bundleRemoteError": {
-    "placeholders": {
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "bundleRemoteArtifactDescription": "{variant} bundle {bundleId} · build {gameBuild} · {gameServer}",
-  "@bundleRemoteArtifactDescription": {
-    "placeholders": {
-      "variant": {
-        "type": "String"
-      },
-      "bundleId": {
-        "type": "String"
-      },
-      "gameBuild": {
-        "type": "String"
-      },
-      "gameServer": {
-        "type": "String"
-      }
-    }
-  },
   "bundleRemoteDownloadAction": "Download",
   "bundleRemoteDownloadImportAction": "Download and import",
   "bundleRemoteImportBehaviorHint": "Imports as an installed bundle. The active bundle stays unchanged until you choose one below.",
@@ -496,22 +425,8 @@
   "bundleRemoteProgressLoadBundleAction": "Load this bundle",
   "bundleRemoteImportConfirmTitle": "Download remote bundle?",
   "bundleRemoteImportConfirmDescription": "Download, verify, and import {artifactId}? The active bundle will not switch automatically.",
-  "@bundleRemoteImportConfirmDescription": {
-    "placeholders": {
-      "artifactId": {
-        "type": "String"
-      }
-    }
-  },
   "bundleRemoteImportSucceeded": "Remote bundle imported.",
   "bundleRemoteImportFailed": "Remote bundle import failed: {message}",
-  "@bundleRemoteImportFailed": {
-    "placeholders": {
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "bundleManagerErrorMissingPath": "Missing required path: {path}",
   "bundleManagerErrorExpectFile": "Expected a file at: {fileName}",
   "bundleManagerErrorExpectDirectory": "Expected a directory at: {dirName}",
@@ -533,13 +448,6 @@
   "itemDetailDynamicReset": "Reset",
   "itemDetailDynamicReroll": "Reroll",
   "itemDetailDynamicBaseAttributeUnavailable": "Base attribute data is unavailable for {attributeId}.",
-  "@itemDetailDynamicBaseAttributeUnavailable": {
-    "placeholders": {
-      "attributeId": {
-        "type": "int"
-      }
-    }
-  },
   "itemDetailDescription": "Description",
   "itemDetailClassification": "Classification",
   "itemDetailTypeId": "Type ID",
@@ -623,5 +531,10 @@
   "itemDetailEffectCategorySystem": "System",
   "loadingTextExtractingBundle": "Extracting {archiveName}...",
   "dontShowAgain": "Don't show again.",
-  "showDetails": "Show Details"
+  "showDetails": "Show Details",
+  "startupBundleUpdateTitle": "Bundle updates available",
+  "startupBundleUpdateSingleDescription": "A new recommended bundle update is available. Review it in Bundle Manager before downloading.",
+  "startupBundleUpdateMultipleDescription": "{count} recommended bundle updates are available. Review them in Bundle Manager before downloading.",
+  "startupBundleUpdateSummaryRecommended": "{firstId} recommended",
+  "startupBundleUpdateSummaryWithCount": "{firstId} and {moreCount} more recommended"
 }

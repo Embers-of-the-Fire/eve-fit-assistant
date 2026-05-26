@@ -1489,5 +1489,34 @@
   },
   "@_ANNOUCENEMENT_TEXT": {},
   "dontShowAgain": "下次不再提示",
-  "showDetails": "显示详情"
+  "showDetails": "显示详情",
+  "startupBundleUpdateTitle": "有可用的数据包更新",
+  "startupBundleUpdateSingleDescription": "有一个新的推荐数据包更新可用。请在数据包管理中查看后再下载。",
+  "startupBundleUpdateMultipleDescription": "有 {count} 个推荐的数据包更新可用。请在数据包管理中查看后再下载。",
+  "@startupBundleUpdateMultipleDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startupBundleUpdateSummaryRecommended": "{firstId} 被推荐",
+  "@startupBundleUpdateSummaryRecommended": {
+    "placeholders": {
+      "firstId": {
+        "type": "String"
+      }
+    }
+  },
+  "startupBundleUpdateSummaryWithCount": "{firstId} 及其他 {moreCount} 个被推荐",
+  "@startupBundleUpdateSummaryWithCount": {
+    "placeholders": {
+      "firstId": {
+        "type": "String"
+      },
+      "moreCount": {
+        "type": "int"
+      }
+    }
+  }
 }
