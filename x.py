@@ -1031,8 +1031,15 @@ def __redact_remote_config(config: dict[str, object]) -> dict[str, object]:
 
 @remote_config.command("display")
 @click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
-def remote_config_display(pretty: bool):
-    """Print effective remote developer configuration."""
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Output as machine-readable JSON (no session info).",
+)
+def remote_config_display(pretty: bool, as_json: bool):
+    """Print effective remote developer configuration and current session status."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     paths = data.lib.config.DEV_CONFIGURATION.paths
@@ -1055,11 +1062,80 @@ def remote_config_display(pretty: bool):
             channel=remote_cfg.channel,
         )
 
-    payload = {
+    payload: dict[str, object] = {
         "remote": __redact_remote_config(remote_cfg.model_dump(mode="json")),
         "resolved": resolved,
     }
     click.echo(json.dumps(payload, indent=4 if pretty else None))
+
+    if as_json:
+        return
+
+    sessions_root = __resolve_dev_path(paths.session_dir)
+    current_id = None
+    current_path = sessions_root / "current"
+    if current_path.is_file():
+        current_id = current_path.read_text(encoding="utf-8").strip()
+
+    click.echo()
+    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session status"))
+
+    if sessions_root.is_dir():
+        session_dirs = sorted(
+            [d for d in sessions_root.iterdir() if d.is_dir() and d.name != "current"],
+            reverse=True,
+        )
+    else:
+        session_dirs = []
+
+    if not session_dirs and not current_id:
+        click.echo("  No sessions found.")
+        return
+
+    if current_id:
+        is_active = (sessions_root / current_id / "lockfile.json").is_file()
+        state = "active" if is_active else "committed"
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"  Current:  {current_id}  [{state}]"))
+
+        s_path = sessions_root / current_id
+        todo_path = s_path / "todo.json"
+        if todo_path.is_file():
+            try:
+                from data.lib.remote.models import TodoList
+                from data.lib.remote.models import _load_json_model
+
+                todo = _load_json_model(todo_path, TodoList)
+                click.echo(f"  Operations: {len(todo.operations)}")
+                click.echo(styled(Style.DIM, f"  Committed:  {todo.committed}"))
+                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
+            except Exception:
+                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
+    else:
+        recent_committed = None
+        for d in session_dirs:
+            todo_p = d / "todo.json"
+            if todo_p.is_file():
+                try:
+                    from data.lib.remote.models import TodoList
+                    from data.lib.remote.models import _load_json_model
+
+                    todo = _load_json_model(todo_p, TodoList)
+                    if todo.committed:
+                        recent_committed = (d.name, todo)
+                        break
+                except Exception:
+                    continue
+        if recent_committed:
+            name, todo = recent_committed
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], f"  Latest committed:  {name}"))
+            click.echo(f"  Operations: {len(todo.operations)}")
+            click.echo(styled(Style.DIM, f"  Path:       {sessions_root / name}"))
+        else:
+            click.echo("  No current or committed sessions.")
+            if session_dirs:
+                click.echo(f"  {len(session_dirs)} uncommitted session(s) found.")
+
+    click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Sessions root: {sessions_root}"))
 
 
 @remote.group(cls=ClickAliasedGroup)
@@ -1718,12 +1794,14 @@ def _list_deployment_history(
         if not isinstance(key, str):
             continue
         raw_ts = key.rstrip("/").rsplit("/", 1)[-1].removesuffix(".json")
-        entries.append({
-            "timestamp": raw_ts,
-            "time": obj.get("lastModified", ""),
-            "size": obj.get("size", 0),
-            "key": key,
-        })
+        entries.append(
+            {
+                "timestamp": raw_ts,
+                "time": obj.get("lastModified", ""),
+                "size": obj.get("size", 0),
+                "key": key,
+            }
+        )
     entries.sort(key=lambda e: str(e["timestamp"]))
     return entries
 
@@ -1790,9 +1868,7 @@ def remote_publish_rollback(
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
 
-    s3 = __get_publish_s3_params(
-        target, endpoint, bucket, access_key, secret_key, alias_name, None
-    )
+    s3 = __get_publish_s3_params(target, endpoint, bucket, access_key, secret_key, alias_name, None)
     mc = get_command("mc")
 
     resolved_endpoint = str(s3["endpoint"])
@@ -1852,8 +1928,7 @@ def remote_publish_rollback(
         deployment_timestamp=deployment_timestamp,
     )
     click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Rolled back to deployment: ")
-        + deployment_timestamp
+        styled([Style.BRIGHT, Fore.GREEN], "Rolled back to deployment: ") + deployment_timestamp
     )
 
     # Update current deployment manifest
@@ -2001,11 +2076,7 @@ def __gc_unreferenced_objects(
         key = obj.get("key", "")
         if not isinstance(key, str):
             continue
-        rel = (
-            key.removeprefix(f"{resource_root}/")
-            if key.startswith(f"{resource_root}/")
-            else key
-        )
+        rel = key.removeprefix(f"{resource_root}/") if key.startswith(f"{resource_root}/") else key
         if rel not in referenced:
             size = obj.get("size")
             size_str = f"{size}" if isinstance(size, (int, float)) else "?"
@@ -2244,8 +2315,7 @@ def remote_publish_upload(
         mgr = __get_session(session_id)
         shutil.rmtree(mgr.session_dir, ignore_errors=True)
         click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ")
-            + str(mgr.session_dir)
+            styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ") + str(mgr.session_dir)
         )
 
 
