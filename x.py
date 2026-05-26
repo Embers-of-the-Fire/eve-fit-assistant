@@ -1538,7 +1538,9 @@ def remote_publish_upload(
         resolved_access_key = access_key or sub.access_key
         resolved_secret_key = secret_key or sub.secret_key
         resolved_alias = alias_name or sub.alias
-        resolved_public_download = public_download if public_download is not None else sub.public_download
+        resolved_public_download = (
+            public_download if public_download is not None else sub.public_download
+        )
     else:
         sub = remote_cfg.require_s3()
         resolved_endpoint = endpoint or sub.endpoint
@@ -1546,7 +1548,9 @@ def remote_publish_upload(
         resolved_access_key = access_key or sub.access_key
         resolved_secret_key = secret_key or sub.secret_key
         resolved_alias = alias_name or sub.alias
-        resolved_public_download = public_download if public_download is not None else sub.public_download
+        resolved_public_download = (
+            public_download if public_download is not None else sub.public_download
+        )
 
     __publish_remote_origin_to_s3(
         source_dir=resolved_source_dir,
@@ -1724,7 +1728,9 @@ def remote_mock_launch(
     resolved_secret_key = secret_key or minio.secret_key
     resolved_data_dir = __resolve_dev_path(data_dir or minio.data_dir)
     resolved_alias = alias_name or minio.alias
-    resolved_public_download = public_download if public_download is not None else minio.public_download
+    resolved_public_download = (
+        public_download if public_download is not None else minio.public_download
+    )
 
     origin_url = f"http://{resolved_host}:{resolved_port}/{resolved_bucket}"
     click.echo(
