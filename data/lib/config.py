@@ -14,6 +14,7 @@ See `<project root>/efa.dev.example.toml` for more information.
 from __future__ import annotations
 
 import json
+import sys
 import tomllib
 
 from pathlib import Path
@@ -120,22 +121,59 @@ class DeveloperNative(BaseModel):
     output_dir: ProjectPath | None = Field(default=None)
 
 
+class DeveloperRemoteMinio(BaseModel):
+    """MinIO mock server configuration. All fields required — no silent defaults."""
+
+    port: int
+    console_port: int
+    bucket: str
+    access_key: str
+    secret_key: str
+    data_dir: Path
+    alias: str
+    public_download: bool
+
+
+class DeveloperRemoteS3(BaseModel):
+    """S3-compatible remote publishing configuration. All fields required — no silent defaults."""
+
+    endpoint: str
+    bucket: str
+    access_key: str
+    secret_key: str
+    alias: str
+    public_download: bool
+
+
+def _fail_remote_sub(toml_key: str, command_group: str) -> None:
+    print(
+        f"Error: [{toml_key}] is not configured in efa.dev.toml.\n"
+        f"       This section is required for `./x remote {command_group}` commands.\n"
+        f"       See efa.dev.example.toml for the expected format.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
 class DeveloperRemote(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
     resource_root: str = Field(default="efa/v1")
     channel: str = Field(default="alpha")
     host: str = Field(default="127.0.0.1")
-    static_port: int = Field(default=8765)
-    minio_port: int = Field(default=9000)
-    minio_console_port: int = Field(default=9001)
-    minio_bucket: str = Field(default="efa-dev")
-    minio_access_key: str = Field(default="minioadmin")
-    minio_secret_key: str = Field(default="minioadmin")
     mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))
-    minio_data_dir: Path = Field(default=Path("remote/minio-data"))
-    publish_alias: str = Field(default="efa-remote-publish")
-    publish_public_download: bool = Field(default=True)
+    minio: DeveloperRemoteMinio | None = None
+    s3: DeveloperRemoteS3 | None = None
+
+    def require_minio(self) -> DeveloperRemoteMinio:
+        if self.minio is None:
+            _fail_remote_sub("remote.minio", "mock")
+        return self.minio  # type: ignore[return-value]
+
+    def require_s3(self) -> DeveloperRemoteS3:
+        if self.s3 is None:
+            _fail_remote_sub("remote.s3", "publish")
+        return self.s3  # type: ignore[return-value]
 
 
 class DeveloperConfiguration(BaseModel):
