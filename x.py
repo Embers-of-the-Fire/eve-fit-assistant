@@ -1015,9 +1015,13 @@ def remote_config():
 
 def __redact_remote_config(config: dict[str, object]) -> dict[str, object]:
     redacted = dict(config)
-    for key in ("minio_access_key", "minio_secret_key"):
-        if key in redacted:
-            redacted[key] = "<redacted>"
+    for sub in ("minio", "s3"):
+        if sub in redacted and isinstance(redacted[sub], dict):
+            sub_dict = dict(redacted[sub])  # type: ignore[arg-type]
+            for key in ("access_key", "secret_key"):
+                if key in sub_dict:
+                    sub_dict[key] = "<redacted>"
+            redacted[sub] = sub_dict
     return redacted
 
 
@@ -1029,26 +1033,27 @@ def remote_config_display(pretty: bool):
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     paths = data.lib.config.DEV_CONFIGURATION.paths
     origin_path = __resolve_dev_path(remote_cfg.mock_origin_dir)
-    minio_data_path = __resolve_dev_path(remote_cfg.minio_data_dir)
-    static_origin_url = f"http://{remote_cfg.host}:{remote_cfg.static_port}"
-    minio_origin_url = f"http://{remote_cfg.host}:{remote_cfg.minio_port}/{remote_cfg.minio_bucket}"
+
+    resolved: dict[str, str] = {
+        "developerRoot": str(paths.root),
+        "mockOriginPath": str(origin_path),
+    }
+
+    if remote_cfg.minio is not None:
+        minio_data_path = __resolve_dev_path(remote_cfg.minio.data_dir)
+        minio_origin_url = (
+            f"http://{remote_cfg.host}:{remote_cfg.minio.port}/{remote_cfg.minio.bucket}"
+        )
+        resolved["minioDataPath"] = str(minio_data_path)
+        resolved["minioIndexUrl"] = __remote_channel_index_url(
+            origin_url=minio_origin_url,
+            resource_root=remote_cfg.resource_root,
+            channel=remote_cfg.channel,
+        )
+
     payload = {
         "remote": __redact_remote_config(remote_cfg.model_dump(mode="json")),
-        "resolved": {
-            "developerRoot": str(paths.root),
-            "mockOriginPath": str(origin_path),
-            "minioDataPath": str(minio_data_path),
-            "staticIndexUrl": __remote_channel_index_url(
-                origin_url=static_origin_url,
-                resource_root=remote_cfg.resource_root,
-                channel=remote_cfg.channel,
-            ),
-            "minioIndexUrl": __remote_channel_index_url(
-                origin_url=minio_origin_url,
-                resource_root=remote_cfg.resource_root,
-                channel=remote_cfg.channel,
-            ),
-        },
+        "resolved": resolved,
     }
     click.echo(json.dumps(payload, indent=4 if pretty else None))
 
@@ -1525,25 +1530,39 @@ def remote_publish_upload(
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_source_dir = __resolve_dev_path(source_dir or remote_cfg.mock_origin_dir)
-    resolved_endpoint = endpoint
-    if resolved_endpoint is None and target.lower() == "minio":
-        resolved_endpoint = f"http://{remote_cfg.host}:{remote_cfg.minio_port}"
-    if resolved_endpoint is None:
-        raise click.ClickException("Remote publish endpoint is required for non-MinIO targets.")
+
+    if target.lower() == "minio":
+        sub = remote_cfg.require_minio()
+        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{sub.port}"
+        resolved_bucket = bucket or sub.bucket
+        resolved_access_key = access_key or sub.access_key
+        resolved_secret_key = secret_key or sub.secret_key
+        resolved_alias = alias_name or sub.alias
+        resolved_public_download = (
+            public_download if public_download is not None else sub.public_download
+        )
+    else:
+        sub = remote_cfg.require_s3()
+        resolved_endpoint = endpoint or sub.endpoint
+        resolved_bucket = bucket or sub.bucket
+        resolved_access_key = access_key or sub.access_key
+        resolved_secret_key = secret_key or sub.secret_key
+        resolved_alias = alias_name or sub.alias
+        resolved_public_download = (
+            public_download if public_download is not None else sub.public_download
+        )
 
     __publish_remote_origin_to_s3(
         source_dir=resolved_source_dir,
         endpoint=resolved_endpoint,
-        bucket=bucket or remote_cfg.minio_bucket,
-        access_key=access_key or remote_cfg.minio_access_key,
-        secret_key=secret_key or remote_cfg.minio_secret_key,
-        alias_name=alias_name or remote_cfg.publish_alias,
+        bucket=resolved_bucket,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+        alias_name=resolved_alias,
         resource_root=resource_root or remote_cfg.resource_root,
         channel=channel or remote_cfg.channel,
         clean_bucket=clean,
-        public_download=(
-            remote_cfg.publish_public_download if public_download is None else public_download
-        ),
+        public_download=resolved_public_download,
     )
 
 
@@ -1576,25 +1595,6 @@ def remote_mock_materialize(origin_dir: Path | None, clean: bool):
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
     __materialize_remote_mock(resolved_origin_dir, clean)
-
-
-def __start_static_remote_mock(host: str, port: int, origin_dir: Path) -> None:
-    python = get_command("python3")
-    command = [
-        python,
-        "-m",
-        "http.server",
-        str(port),
-        "--bind",
-        host,
-        "--directory",
-        str(origin_dir),
-    ]
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + " ".join(command))
-    if DRY_RUN:
-        return
-    process = subprocess.Popen(command, text=True)
-    __run_foreground(process, "\nStatic remote mock interrupted by user.")
 
 
 def __start_minio_remote_mock(
@@ -1663,14 +1663,8 @@ def __start_minio_remote_mock(
 
 
 @mock.command("launch")
-@click.option(
-    "--backend",
-    type=click.Choice(["static", "minio"], case_sensitive=False),
-    default="static",
-    show_default=True,
-)
 @click.option("--host", default=None, help="Override remote mock host.")
-@click.option("--port", type=int, default=None, help="Override static or MinIO API port.")
+@click.option("--port", type=int, default=None, help="Override MinIO API port.")
 @click.option("--console-port", type=int, default=None, help="Override MinIO console port.")
 @click.option("--bucket", default=None, help="Override MinIO bucket name.")
 @click.option("--access-key", default=None, help="Override MinIO access key.")
@@ -1689,8 +1683,13 @@ def __start_minio_remote_mock(
 @click.option(
     "--clean-bucket", is_flag=True, default=False, help="Clean MinIO bucket before mirroring."
 )
+@click.option(
+    "--public-download/--private",
+    "public_download",
+    default=None,
+    help="Configure anonymous bucket downloads.",
+)
 def remote_mock_launch(
-    backend: str,
     host: str | None,
     port: int | None,
     console_port: int | None,
@@ -1705,10 +1704,13 @@ def remote_mock_launch(
     no_materialize: bool,
     clean_origin: bool,
     clean_bucket: bool,
+    public_download: bool | None,
 ):
-    """Launch a local remote mock through static HTTP or MinIO."""
+    """Launch a local MinIO remote mock."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    minio = remote_cfg.require_minio()
+
     resolved_host = host or remote_cfg.host
     resolved_resource_root = resource_root or remote_cfg.resource_root
     resolved_channel = channel or remote_cfg.channel
@@ -1719,26 +1721,17 @@ def remote_mock_launch(
     elif not resolved_origin_dir.exists():
         raise click.ClickException(f"Remote mock origin does not exist: {resolved_origin_dir}")
 
-    if backend.lower() == "static":
-        resolved_port = port or remote_cfg.static_port
-        origin_url = f"http://{resolved_host}:{resolved_port}"
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
-            + __remote_channel_index_url(
-                origin_url=origin_url,
-                resource_root=resolved_resource_root,
-                channel=resolved_channel,
-            )
-        )
-        __start_static_remote_mock(resolved_host, resolved_port, resolved_origin_dir)
-        return
+    resolved_port = port or minio.port
+    resolved_console_port = console_port or minio.console_port
+    resolved_bucket = bucket or minio.bucket
+    resolved_access_key = access_key or minio.access_key
+    resolved_secret_key = secret_key or minio.secret_key
+    resolved_data_dir = __resolve_dev_path(data_dir or minio.data_dir)
+    resolved_alias = alias_name or minio.alias
+    resolved_public_download = (
+        public_download if public_download is not None else minio.public_download
+    )
 
-    resolved_port = port or remote_cfg.minio_port
-    resolved_console_port = console_port or remote_cfg.minio_console_port
-    resolved_bucket = bucket or remote_cfg.minio_bucket
-    resolved_access_key = access_key or remote_cfg.minio_access_key
-    resolved_secret_key = secret_key or remote_cfg.minio_secret_key
-    resolved_data_dir = __resolve_dev_path(data_dir or remote_cfg.minio_data_dir)
     origin_url = f"http://{resolved_host}:{resolved_port}/{resolved_bucket}"
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
@@ -1758,11 +1751,11 @@ def remote_mock_launch(
         bucket=resolved_bucket,
         access_key=resolved_access_key,
         secret_key=resolved_secret_key,
-        alias_name=alias_name or remote_cfg.publish_alias,
+        alias_name=resolved_alias,
         resource_root=resolved_resource_root,
         channel=resolved_channel,
         clean_bucket=clean_bucket,
-        public_download=remote_cfg.publish_public_download,
+        public_download=resolved_public_download,
     )
 
 
