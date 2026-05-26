@@ -69,6 +69,16 @@ void initWithRef(WidgetRef ref) {
 
 Future<void> _initVersionTracking(WidgetRef ref) async {
   await Future<void>.delayed(const Duration(milliseconds: 500));
+  // Reads synchronously via .when with a loading fallback of null. If the
+  // provider is still loading at this instant, appVersion is null and the
+  // function returns permanently without retrying — so
+  // DocumentStorage.lastSeenAppVersion may never be initialised.
+  //
+  // Using ref.read(appVersionProvider.future) is also problematic in
+  // Riverpod 3.x: ref.read does not keep the provider alive, so awaiting
+  // that future can hang. Prefer a listen-once / await-first-value pattern
+  // (e.g. ref.listen with a Completer, close the subscription on first
+  // data or error, then apply the existing guard clause).
   final appVersion = ref
       .read(appVersionProvider)
       .when(data: (v) => v, loading: () => null, error: (_, _) => null);
