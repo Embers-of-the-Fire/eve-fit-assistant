@@ -1630,14 +1630,14 @@ def __resolve_publish_source(
     *,
     source_dir: Path | None,
     session_id: str | None,
-) -> Path:
+) -> tuple[Path, str | None]:
     if source_dir is not None and session_id is not None:
         raise click.ClickException("Pass either --source-dir or --session, not both.")
     if source_dir is not None:
         resolved = __resolve_dev_path(source_dir)
         if not resolved.is_dir():
             raise click.ClickException(f"Source directory does not exist: {resolved}")
-        return resolved
+        return resolved, None
     if session_id:
         mgr = __get_session(session_id)
     else:
@@ -1650,7 +1650,7 @@ def __resolve_publish_source(
         raise click.ClickException(
             f"Session has no merged output. Run `./x remote prepare diff` first: {mgr.session_id}"
         )
-    return merged
+    return merged, mgr.session_id
 
 
 # ---- shared S3 upload helpers -----------------------------------------------
@@ -2320,7 +2320,9 @@ def remote_publish_upload(
     """Upload a local remote origin or committed session to S3-compatible object storage."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_source_dir = __resolve_publish_source(source_dir=source_dir, session_id=session_id)
+    resolved_source_dir, resolved_session_id = __resolve_publish_source(
+        source_dir=source_dir, session_id=session_id
+    )
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
@@ -2351,7 +2353,7 @@ def remote_publish_upload(
                 resource_root=resolved_resource_root,
                 channel=resolved_channel,
                 keep_session=keep_session,
-                session_id=session_id,
+                session_id=resolved_session_id,
             )
         except OSError:
             warning("Deployment snapshot failed, continuing with upload.")
@@ -2369,8 +2371,8 @@ def remote_publish_upload(
         public_download=resolved_public_download,
     )
 
-    if source_dir is None and not keep_session and session_id:
-        mgr = __get_session(session_id)
+    if source_dir is None and not keep_session and resolved_session_id:
+        mgr = __get_session(resolved_session_id)
         shutil.rmtree(mgr.session_dir, ignore_errors=True)
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ") + str(mgr.session_dir)
