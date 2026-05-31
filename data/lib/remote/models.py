@@ -33,7 +33,7 @@ class LockFile(BaseModel):
     timestamp: str
     host: str
     pid: int
-    backend: str  # "minio" | "s3"
+    backend: Literal["minio", "s3", "local"]
 
 
 # ---------------------------------------------------------------------------
@@ -52,14 +52,14 @@ class AddBundleOp(BaseModel):
     type: Literal["add-bundle"] = "add-bundle"
     artifact_id: str
     bundle_id: str
-    variant: str  # "full" | "incremental"
+    variant: Literal["full", "incremental"]
     fields: dict[str, object] = Field(default_factory=dict)
     staged_files: dict[str, str] = Field(default_factory=dict)
 
 
 class RemoveOp(BaseModel):
     type: Literal["remove"] = "remove"
-    target_type: str  # "document" | "artifact"
+    target_type: Literal["document", "artifact"]
     target_id: str
 
 
