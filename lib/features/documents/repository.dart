@@ -58,7 +58,7 @@ class DocumentReadService {
 
 final appVersionProvider = FutureProvider<String>((Ref ref) async {
   final info = await PackageInfo.fromPlatform();
-  return "${info.version}+${info.buildNumber}";
+  return info.version;
 });
 
 final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
