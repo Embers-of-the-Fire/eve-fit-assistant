@@ -102,7 +102,12 @@ def fetch_remote_state_http(
 ) -> None:
     """Download channel catalogs + index over HTTP."""
     from urllib.error import URLError
+    from urllib.parse import urlparse
     from urllib.request import urlopen
+
+    scheme = urlparse(origin_url).scheme
+    if scheme not in ("http", "https"):
+        raise ValueError(f"origin_url scheme must be http or https, got {scheme!r}")
 
     ch_prefix = f"{origin_url.rstrip('/')}/{resource_root}/{_channel_subdir(channel)}"
     paths = _remote_state_output_paths(output_dir, channel)
@@ -113,7 +118,7 @@ def fetch_remote_state_http(
         ("bundles_catalog", f"{ch_prefix}/bundles/catalog.json"),
     ]:
         try:
-            with urlopen(remote_path) as resp:
+            with urlopen(remote_path, timeout=300) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except (URLError, ValueError) as exc:
             raise OSError(f"Failed to fetch {name} from {remote_path}: {exc}") from exc
