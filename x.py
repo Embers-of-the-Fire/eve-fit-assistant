@@ -1159,8 +1159,8 @@ def __get_session(session_id: str | None = None) -> SessionManager:
 @click.option(
     "--backend",
     type=click.Choice(["minio", "s3"]),
-    required=True,
-    help="Which backend to fetch remote state from.",
+    default=None,
+    help="Which backend to fetch remote state from. Required unless --origin-dir is used.",
 )
 @click.option(
     "--origin-dir",
@@ -1171,7 +1171,7 @@ def __get_session(session_id: str | None = None) -> SessionManager:
 @click.option("--resource-root", default=None, help="Override remote resource root.")
 @click.option("--channel", default=None, help="Override remote channel.")
 def remote_prepare_start(
-    backend: str,
+    backend: str | None,
     origin_dir: Path | None,
     resource_root: str | None,
     channel: str | None,
@@ -1186,15 +1186,22 @@ def remote_prepare_start(
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
 
+    if origin_dir is not None:
+        resolved_backend = "local"
+    elif backend is None:
+        raise click.UsageError("--backend (minio|s3) is required when --origin-dir is not used.")
+    else:
+        resolved_backend = backend
+
     kwargs: dict[str, object] = {
-        "backend": backend,
+        "backend": resolved_backend,
         "origin_dir": origin_dir,
         "resource_root": resolved_resource_root,
         "channel": resolved_channel,
     }
 
     if origin_dir is None:
-        if backend == "minio":
+        if resolved_backend == "minio":
             sub = remote_cfg.require_minio()
             kwargs["mc_bin"] = get_command("mc")
             kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
@@ -1213,7 +1220,7 @@ def remote_prepare_start(
 
     mgr = SessionManager.start(sessions_root, **kwargs)  # type: ignore[arg-type]
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
-    click.echo(styled(Style.DIM, f"  backend: {backend}"))
+    click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
     click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
     click.echo(styled(Style.DIM, f"  session dir: {mgr.session_dir}"))
 
