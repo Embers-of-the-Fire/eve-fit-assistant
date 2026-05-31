@@ -6,6 +6,8 @@ Orchestration (session.py) provides the data.
 
 from __future__ import annotations
 
+import copy
+
 from typing import Any
 
 
@@ -88,9 +90,9 @@ def apply_operations_to_catalogs(
     operations: list[dict[str, object]],
 ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     """Return (index, documents_catalog, bundles_catalog) with ops applied in order."""
-    merged_index = dict(index)
-    merged_docs = dict(documents_catalog)
-    merged_bundles = dict(bundles_catalog)
+    merged_index = copy.deepcopy(index)
+    merged_docs = copy.deepcopy(documents_catalog)
+    merged_bundles = copy.deepcopy(bundles_catalog)
 
     for op in operations:
         op_type: str = op.get("type", "")  # type: ignore[assignment]
