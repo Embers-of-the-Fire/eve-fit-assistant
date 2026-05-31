@@ -108,26 +108,6 @@ class RemoteState(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Deployment manifest (for rollback)
-# ---------------------------------------------------------------------------
-
-
-class DeploymentEntry(BaseModel):
-    catalog_path: str
-    revision: str
-
-
-class DeploymentManifest(BaseModel):
-    schema_version: int = Field(alias="schemaVersion", default=1)
-    timestamp: str
-    channel: str
-    resource_root: str = Field(default="")
-    increments: list[str] = Field(default_factory=list)
-
-    model_config = ConfigDict(populate_by_name=True)
-
-
-# ---------------------------------------------------------------------------
 # Misc / helpers
 # ---------------------------------------------------------------------------
 
