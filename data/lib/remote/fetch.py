@@ -139,10 +139,21 @@ def read_local_remote_state(
             f"Remote state files not found in {remote_state_dir}: {', '.join(missing)}"
         )
 
-    index: dict[str, object] = json.loads(paths["index"].read_text(encoding="utf-8"))
-    docs: dict[str, object] = json.loads(paths["documents_catalog"].read_text(encoding="utf-8"))
-    bundles: dict[str, object] = json.loads(paths["bundles_catalog"].read_text(encoding="utf-8"))
+    index = _json_loads_dict(paths["index"].read_text(encoding="utf-8"), "index")
+    docs = _json_loads_dict(
+        paths["documents_catalog"].read_text(encoding="utf-8"), "documents_catalog"
+    )
+    bundles = _json_loads_dict(
+        paths["bundles_catalog"].read_text(encoding="utf-8"), "bundles_catalog"
+    )
     return index, docs, bundles
+
+
+def _json_loads_dict(text: str, label: str) -> dict[str, object]:
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        raise TypeError(f"{label} JSON decoded as {type(data).__name__}, expected dict")
+    return data
 
 
 def _run(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
