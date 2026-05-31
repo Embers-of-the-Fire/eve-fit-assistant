@@ -342,6 +342,7 @@ def __publish_remote_origin_to_s3(
     channel: str,
     clean_bucket: bool,
     public_download: bool,
+    target: str = "minio",
 ) -> None:
     if not source_dir.exists():
         raise click.ClickException(f"Remote publish source directory does not exist: {source_dir}")
@@ -372,13 +373,15 @@ def __publish_remote_origin_to_s3(
         [mc, "alias", "set", resolved_alias, endpoint, redacted, redacted],
         "REMOTE PUBLISH ALIAS",
     )
-    __execute_command([mc, "mb", "--ignore-existing", bucket_target], "REMOTE PUBLISH")
+    if target == "minio":
+        __execute_command([mc, "mb", "--ignore-existing", bucket_target], "REMOTE PUBLISH")
     if clean_bucket:
         __execute_command([mc, "rm", "--recursive", "--force", bucket_target], "REMOTE PUBLISH")
-    if public_download:
-        __execute_command([mc, "anonymous", "set", "download", bucket_target], "REMOTE PUBLISH")
-    else:
-        __execute_command([mc, "anonymous", "set", "none", bucket_target], "REMOTE PUBLISH")
+    if target == "minio":
+        if public_download:
+            __execute_command([mc, "anonymous", "set", "download", bucket_target], "REMOTE PUBLISH")
+        else:
+            __execute_command([mc, "anonymous", "set", "none", bucket_target], "REMOTE PUBLISH")
 
     target_root = f"{bucket_target}/{resolved_resource_root}"
     __publish_optional_tree(
@@ -2041,6 +2044,7 @@ def remote_publish_upload(
         channel=resolved_channel,
         clean_bucket=clean,
         public_download=resolved_public_download,
+        target=target,
     )
 
     if source_dir is None and not keep_session and resolved_session_id:
