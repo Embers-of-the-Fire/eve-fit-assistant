@@ -1640,6 +1640,11 @@ def __resolve_publish_source(
         return resolved, None
     if session_id:
         mgr = __get_session(session_id)
+        if not mgr.status().committed:
+            raise click.ClickException(
+                f"Session has not been committed."
+                f" Run `./x remote prepare commit --session {mgr.session_id}` first."
+            )
     else:
         try:
             mgr = SessionManager.find_latest_committed(__get_session_root())
@@ -2373,7 +2378,7 @@ def remote_publish_upload(
 
     if source_dir is None and not keep_session and resolved_session_id:
         mgr = __get_session(resolved_session_id)
-        shutil.rmtree(mgr.session_dir, ignore_errors=True)
+        mgr.abort()
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ") + str(mgr.session_dir)
         )

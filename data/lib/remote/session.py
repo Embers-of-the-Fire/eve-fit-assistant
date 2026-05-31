@@ -353,6 +353,8 @@ class SessionManager:
                     f" already exists in session {self.session_id}"
                 )
 
+        _validate_path_segment(document_id, "document_id")
+
         zh_staged = f"documents/{document_id}_zh.md"
         en_staged = f"documents/{document_id}_en.md"
         zh_target = self.staged_dir / zh_staged
@@ -438,6 +440,7 @@ class SessionManager:
         if full_descriptor.get("isIncremental") is True:
             raise ValueError(f"Full bundle archive must not be incremental: {full_path}")
         bundle_id = _require_string(full_descriptor, "bundleId", str(full_path))
+        _validate_path_segment(bundle_id, "bundle_id (from descriptor.json)")
 
         staged_files: dict[str, str] = {}
         staged_files["zip"] = f"bundles/{artifact_id}.zip"
@@ -473,6 +476,7 @@ class SessionManager:
             if inc_descriptor.get("isIncremental") is not True:
                 raise ValueError(f"Incremental bundle must declare isIncremental: {increment_path}")
             inc_bundle_id = _require_string(inc_descriptor, "bundleId", str(increment_path))
+            _validate_path_segment(inc_bundle_id, "inc_bundle_id (from descriptor.json)")
             if inc_bundle_id != bundle_id:
                 raise ValueError(
                     f"Incremental bundle id does not match full: {inc_bundle_id} != {bundle_id}"
