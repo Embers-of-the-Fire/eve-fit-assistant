@@ -76,6 +76,7 @@ class TodoList(BaseModel):
     session_id: str
     committed: bool = False
     operations: list[AddAnnouncementOp | AddBundleOp | RemoveOp] = Field(default_factory=list)
+    lock_snapshot: dict[str, object] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------

@@ -153,7 +153,15 @@ class SessionManager:
             backend=backend,
         )
 
-        todo = TodoList(session_id=session_id)
+        todo = TodoList(
+            session_id=session_id,
+            lock_snapshot={
+                "backend": lockfile.backend,
+                "timestamp": lockfile.timestamp,
+                "host": lockfile.host,
+                "pid": lockfile.pid,
+            },
+        )
 
         try:
             (session_dir / "lockfile.json").write_text(
@@ -285,7 +293,22 @@ class SessionManager:
 
     def _load_lockfile(self) -> LockFile:
         if self._lockfile is None:
-            self._lockfile = _load_json_model(self.lockfile_path, LockFile)
+            if self.lockfile_path.is_file():
+                self._lockfile = _load_json_model(self.lockfile_path, LockFile)
+            else:
+                todo = self._load_todo()
+                if todo.lock_snapshot:
+                    self._lockfile = LockFile(
+                        session_id=self.session_id,
+                        backend=str(todo.lock_snapshot["backend"]),
+                        timestamp=str(todo.lock_snapshot["timestamp"]),
+                        host=str(todo.lock_snapshot["host"]),
+                        pid=int(todo.lock_snapshot["pid"]),
+                    )
+                else:
+                    raise FileNotFoundError(
+                        f"Lockfile not found and no snapshot in todo: {self.lockfile_path}"
+                    )
         return self._lockfile
 
     # ---- operations --------------------------------------------------------
