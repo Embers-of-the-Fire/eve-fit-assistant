@@ -13,6 +13,10 @@ if TYPE_CHECKING:
 
 
 def _channel_subdir(channel: str) -> str:
+    if not channel:
+        raise ValueError("channel must not be empty")
+    if ".." in channel or "/" in channel or "\\" in channel:
+        raise ValueError(f"channel {channel!r} contains path separators or parent references")
     return f"channels/{channel}"
 
 
