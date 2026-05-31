@@ -491,6 +491,6 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
 
   Future<String> _readAppVersion() async {
     final info = await PackageInfo.fromPlatform();
-    return info.version;
+    return "${info.version}+${info.buildNumber}";
   }
 }
