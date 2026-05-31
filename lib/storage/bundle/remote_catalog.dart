@@ -11,7 +11,6 @@ import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:package_info_plus/package_info_plus.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 part "remote_catalog.freezed.dart";
 part "remote_catalog.g.dart";
@@ -489,8 +488,5 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
 
   int _variantSortOrder(RemoteBundleArtifact artifact) => artifact.isIncremental ? 0 : 1;
 
-  Future<String> _readAppVersion() async {
-    final info = await PackageInfo.fromPlatform();
-    return "${info.version}+${info.buildNumber}";
-  }
+  Future<String> _readAppVersion() => readFullAppVersion();
 }
