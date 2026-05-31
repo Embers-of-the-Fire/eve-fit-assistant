@@ -346,6 +346,13 @@ class SessionManager:
         self._ensure_not_committed()
         todo = self._load_todo()
 
+        for op in todo.operations:
+            if isinstance(op, AddAnnouncementOp) and op.document_id == document_id:
+                raise ValueError(
+                    f"Announcement with document_id {document_id!r}"
+                    f" already exists in session {self.session_id}"
+                )
+
         zh_staged = f"documents/{document_id}_zh.md"
         en_staged = f"documents/{document_id}_en.md"
         zh_target = self.staged_dir / zh_staged
@@ -400,6 +407,22 @@ class SessionManager:
     ) -> None:
         self._ensure_not_committed()
         todo = self._load_todo()
+
+        for op in todo.operations:
+            if isinstance(op, AddBundleOp) and op.artifact_id == artifact_id:
+                raise ValueError(
+                    f"Bundle with artifact_id {artifact_id!r}"
+                    f" already exists in session {self.session_id}"
+                )
+            if (
+                increment_artifact_id is not None
+                and isinstance(op, AddBundleOp)
+                and op.artifact_id == increment_artifact_id
+            ):
+                raise ValueError(
+                    f"Bundle with artifact_id {increment_artifact_id!r}"
+                    f" already exists in session {self.session_id}"
+                )
 
         full_descriptor = _read_zip_json(full_path, "descriptor.json")
         if full_descriptor.get("isIncremental") is True:
