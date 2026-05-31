@@ -424,6 +424,16 @@ class SessionManager:
                     f" already exists in session {self.session_id}"
                 )
 
+        _validate_path_segment(artifact_id, "artifact_id")
+        if increment_artifact_id is not None:
+            _validate_path_segment(increment_artifact_id, "increment_artifact_id")
+            if increment_artifact_id == artifact_id:
+                raise ValueError(
+                    f"increment_artifact_id {increment_artifact_id!r}"
+                    f" must differ from artifact_id {artifact_id!r}"
+                    f" (staged paths would collide)"
+                )
+
         full_descriptor = _read_zip_json(full_path, "descriptor.json")
         if full_descriptor.get("isIncremental") is True:
             raise ValueError(f"Full bundle archive must not be incremental: {full_path}")
@@ -713,6 +723,13 @@ def _require_string(d: dict[str, object], key: str, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"Descriptor is missing or has empty string field '{key}': {label}")
     return value
+
+
+def _validate_path_segment(name: str, label: str) -> None:
+    if not name:
+        raise ValueError(f"{label} must not be empty")
+    if ".." in name or "/" in name or "\\" in name:
+        raise ValueError(f"{label} {name!r} contains path separators or parent references")
 
 
 def _copy_or_hardlink(src: Path, dst: Path) -> None:
