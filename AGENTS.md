@@ -13,7 +13,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 
 - Use `nix develop`; `flake.nix` supplies Flutter, JDK 17, Android SDK/NDK, Rust/Cargo, `uv`, protobuf tools, and `flutter_rust_bridge_codegen`.
 - Bootstrap with `./x dev env install` or, equivalently, `flutter pub get` and `uv sync` inside the dev shell.
-- Do not hand-edit `android/local.properties` unless needed; the Nix shell hook regenerates it and preserves Flutter build version keys.
+- Do not hand-edit `android/local.properties` unless needed; the Nix shell hook regenerates it with only SDK/NDK/CMake paths derived from the Nix environment. Flutter build properties (version, build mode, etc.) are not touched and are read from `pubspec.yaml` directly.
 - Python requires 3.13+ and is managed by `uv`; run `x.py` through `./x`, `./x.ps1`, or `uv run x.py`, not a global Python.
 - Backend Rust builds/tests/codegen need `rust/lib/eve-fit-os/.env`; normally create `efa.dev.toml` with `./x dev init-cfg`, set `[native]`, then run `./x dev env write-backend`.
 
