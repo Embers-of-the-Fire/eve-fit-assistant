@@ -1311,24 +1311,24 @@ def remote_prepare_add_announcement(
 
     try:
         mgr = __get_session(session_id)
+        mgr.add_announcement(
+            zh_path=zh_path,
+            en_path=en_path,
+            document_id=resolved_document_id,
+            title_zh=title_zh,
+            title_en=title_en,
+            summary_zh=summary_zh,
+            summary_en=summary_en,
+            published_at=resolved_published_at,
+            min_app_ver=resolved_min_app_ver,
+            startup=startup,
+            tags=resolved_tags,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    mgr.add_announcement(
-        zh_path=zh_path,
-        en_path=en_path,
-        document_id=resolved_document_id,
-        title_zh=title_zh,
-        title_en=title_en,
-        summary_zh=summary_zh,
-        summary_en=summary_en,
-        published_at=resolved_published_at,
-        min_app_ver=resolved_min_app_ver,
-        startup=startup,
-        tags=resolved_tags,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-    )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged announcement: ") + resolved_document_id)
 
 
@@ -1369,18 +1369,18 @@ def remote_prepare_add_bundle(
 
     try:
         mgr = __get_session(session_id)
+        mgr.add_bundle(
+            full_path=full_path,
+            manifest_path=manifest_path,
+            artifact_id=resolved_artifact_id,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+            increment_path=increment_path,
+            increment_artifact_id=increment_artifact_id,
+        )
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    mgr.add_bundle(
-        full_path=full_path,
-        manifest_path=manifest_path,
-        artifact_id=resolved_artifact_id,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-        increment_path=increment_path,
-        increment_artifact_id=increment_artifact_id,
-    )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id)
 
 
@@ -1406,18 +1406,21 @@ def remote_prepare_remove(
 
     try:
         mgr = __get_session(session_id)
+        if artifact_id is not None:
+            resolved = __validate_remote_artifact_id(artifact_id)
+            mgr.remove(target_type="artifact", target_id=resolved)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged removal of artifact: ") + resolved
+            )
+        else:
+            assert document_id is not None
+            resolved = __validate_remote_document_id(document_id)
+            mgr.remove(target_type="document", target_id=resolved)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged removal of document: ") + resolved
+            )
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
-
-    if artifact_id is not None:
-        resolved = __validate_remote_artifact_id(artifact_id)
-        mgr.remove(target_type="artifact", target_id=resolved)
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged removal of artifact: ") + resolved)
-    else:
-        assert document_id is not None
-        resolved = __validate_remote_document_id(document_id)
-        mgr.remove(target_type="document", target_id=resolved)
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged removal of document: ") + resolved)
 
 
 # ---- diff ------------------------------------------------------------------
@@ -1583,10 +1586,10 @@ def remote_prepare_commit(session_id: str | None):
     """Finalize session (immutable todo, remove lockfile). Emits summary."""
     try:
         mgr = __get_session(session_id)
+        st = mgr.commit()
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    st = mgr.commit()
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
     click.echo(f"  operations: {st.operation_count}")
     click.echo("  committed:  true")
