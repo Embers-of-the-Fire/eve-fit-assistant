@@ -167,9 +167,17 @@ def _run(
     title: str,
     timeout: float = 300,
 ) -> None:
-    out = subprocess.run(
-        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout
-    )
+    try:
+        out = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        raise OSError(f"{title} timed out after {timeout}s: {' '.join(redacted_cmd)}") from None
     if out.returncode != 0:
         msg = f"Failed to execute [{out.returncode}]: {' '.join(redacted_cmd)}"
         stderr = (out.stderr or "").strip()
