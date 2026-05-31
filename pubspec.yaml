@@ -103,7 +103,6 @@ flutter:
   generate: true
 
   assets:
-    - pubspec.yaml
     - assets/images/icons/
     - assets/content/documents/
     - assets/content/documents/generated/
