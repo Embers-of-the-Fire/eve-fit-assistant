@@ -10,15 +10,11 @@ import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
-import "package:flutter/services.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:package_info_plus/package_info_plus.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
-import "package:yaml/yaml.dart";
-
 part "remote_catalog.freezed.dart";
 part "remote_catalog.g.dart";
-
-const String _packageVersionAsset = "pubspec.yaml";
 
 enum RemoteBundleArtifactVariant { full, incremental }
 
@@ -494,14 +490,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
   int _variantSortOrder(RemoteBundleArtifact artifact) => artifact.isIncremental ? 0 : 1;
 
   Future<String> _readAppVersion() async {
-    final pubspec = await rootBundle.loadString(_packageVersionAsset);
-    final yaml = loadYaml(pubspec);
-    if (yaml is YamlMap) {
-      final version = yaml["version"];
-      if (version is String && version.trim().isNotEmpty) {
-        return version.trim();
-      }
-    }
-    throw const RemoteContentException("Unable to read app version from pubspec.yaml.");
+    final info = await PackageInfo.fromPlatform();
+    return info.version;
   }
 }
