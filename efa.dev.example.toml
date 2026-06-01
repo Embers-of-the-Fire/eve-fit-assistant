@@ -43,6 +43,7 @@ host = "127.0.0.1"
 # Paths are resolved relative to [paths].root unless absolute.
 mock_origin_dir = "remote/mock-origin"
 # verify_upload = true  # optional global override (overrides sub-target defaults)
+# verify_workers = 4   # optional global override for concurrent download workers
 
 [remote.minio]
 # MinIO mock server defaults. All fields are required — no silent defaults.
@@ -56,6 +57,7 @@ data_dir = "remote/minio-data"
 alias = "efa-remote-mock"
 public_download = true
 # verify_upload = false  # default: false; re-download and SHA256-verify after upload
+# verify_workers = 4     # default: 4; concurrent download threads for verification
 
 [remote.s3]
 # S3-compatible publishing defaults. All fields are required.
@@ -67,3 +69,4 @@ secret_key = "your-secret-key"
 alias = "efa-remote-publish"
 public_download = true
 # verify_upload = true  # default: true; re-download and SHA256-verify after upload
+# verify_workers = 4    # default: 4; concurrent download threads for verification
