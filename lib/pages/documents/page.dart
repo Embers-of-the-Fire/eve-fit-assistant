@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
+import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:intl/intl.dart";
@@ -221,7 +222,7 @@ class _DocumentListPane extends StatelessWidget {
   }
 }
 
-class _DocumentListCard extends StatelessWidget {
+class _DocumentListCard extends ConsumerWidget {
   const _DocumentListCard({
     required this.feedKind,
     required this.entry,
@@ -237,11 +238,45 @@ class _DocumentListCard extends StatelessWidget {
   final bool isUnread;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.theme.colorScheme;
     final dateText = DateFormat.yMMMMd(
       context.locale.toString(),
     ).format(entry.publishedAt.toLocal());
+
+    final appVer = ref.watch(appVersionProvider).when(
+      data: (v) => v,
+      loading: () => null,
+      error: (_, _) => null,
+    );
+    final showMinVerWarning = entry.minAppVer != null &&
+        appVer != null &&
+        isAppVersionBelow(appVer, entry.minAppVer!);
+
+    final trailingWidget = showMinVerWarning || isUnread
+        ? Row(
+            mainAxisSize: .min,
+            children: [
+              if (showMinVerWarning)
+                Tooltip(
+                  message: context.l10n.documentMinAppVerWarning(version: entry.minAppVer!),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 16,
+                  ),
+                ),
+              if (showMinVerWarning && isUnread) const SizedBox(width: 4),
+              if (isUnread)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                ),
+            ],
+          )
+        : null;
+
     return Card(
       margin: const .only(bottom: 12),
       color: selected ? colorScheme.secondaryContainer : colorScheme.surfaceContainer,
@@ -283,15 +318,11 @@ class _DocumentListCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (isUnread)
+            if (trailingWidget != null)
               Positioned(
                 top: 10,
                 right: 10,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                ),
+                child: trailingWidget,
               ),
           ],
         ),
