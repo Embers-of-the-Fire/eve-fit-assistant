@@ -1978,6 +1978,23 @@ def _resolve_verify_flag(
     return remote_cfg.require_s3().verify_upload
 
 
+def _resolve_verify_workers(
+    *,
+    cli_value: int | None,
+    target: str,
+) -> int:
+    """Resolve verify_workers from CLI > target config > global override > target default (4)."""
+    if cli_value is not None and cli_value > 0:
+        return cli_value
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    if remote_cfg.verify_workers is not None and remote_cfg.verify_workers > 0:
+        return remote_cfg.verify_workers
+    if target.lower() == "minio":
+        return remote_cfg.require_minio().verify_workers
+    return remote_cfg.require_s3().verify_workers
+
+
 def __verify_upload_integrity(
     *,
     source_dir: Path,
@@ -2225,6 +2242,12 @@ def _verify_one_item(item: dict[str, str]) -> str | None:
     default=None,
     help="Verify uploaded file integrity after publish (overrides config).",
 )
+@click.option(
+    "--verify-workers",
+    type=int,
+    default=None,
+    help="Number of concurrent download workers for verification (default: 4).",
+)
 def remote_publish_upload(
     target: str,
     source_dir: Path | None,
@@ -2240,6 +2263,7 @@ def remote_publish_upload(
     clean: bool,
     public_download: bool | None,
     verify: bool | None,
+    verify_workers: int | None,
 ):
     """Upload a local remote origin or committed session to S3-compatible object storage."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
@@ -2283,6 +2307,10 @@ def remote_publish_upload(
     if resolved_verify:
         mc_bin = get_command("mc")
         bucket_target = f"{resolved_alias}/{resolved_bucket}"
+        resolved_workers = _resolve_verify_workers(
+            cli_value=verify_workers,
+            target=target,
+        )
         verify_errors = __verify_upload_integrity(
             source_dir=resolved_source_dir,
             mc_bin=mc_bin,
@@ -2290,6 +2318,7 @@ def remote_publish_upload(
             resource_root=resolved_resource_root,
             channel=resolved_channel,
             session_id=resolved_session_id if source_dir is None else None,
+            verify_workers=resolved_workers,
         )
         if verify_errors:
             for err in verify_errors:
