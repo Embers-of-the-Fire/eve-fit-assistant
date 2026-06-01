@@ -1960,6 +1960,23 @@ def _run_mc(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
         raise OSError(msg)
 
 
+def _resolve_verify_flag(
+    *,
+    cli_value: bool | None,
+    target: str,
+) -> bool:
+    """Resolve the verify flag from CLI > target config > global override > target default."""
+    if cli_value is not None:
+        return cli_value
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    if remote_cfg.verify_upload is not None:
+        return remote_cfg.verify_upload
+    if target.lower() == "minio":
+        return remote_cfg.require_minio().verify_upload
+    return remote_cfg.require_s3().verify_upload
+
+
 def __verify_upload_integrity(
     *,
     source_dir: Path,
@@ -2158,6 +2175,11 @@ def _verify_remote_file(
     default=None,
     help="Configure anonymous bucket downloads after upload.",
 )
+@click.option(
+    "--verify/--no-verify",
+    default=None,
+    help="Verify uploaded file integrity after publish (overrides config).",
+)
 def remote_publish_upload(
     target: str,
     source_dir: Path | None,
@@ -2172,6 +2194,7 @@ def remote_publish_upload(
     channel: str | None,
     clean: bool,
     public_download: bool | None,
+    verify: bool | None,
 ):
     """Upload a local remote origin or committed session to S3-compatible object storage."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
@@ -2207,6 +2230,32 @@ def remote_publish_upload(
         public_download=resolved_public_download,
         target=target,
     )
+
+    resolved_verify = _resolve_verify_flag(
+        cli_value=verify,
+        target=target,
+    )
+    if resolved_verify:
+        mc_bin = get_command("mc")
+        bucket_target = f"{resolved_alias}/{resolved_bucket}"
+        verify_errors = __verify_upload_integrity(
+            source_dir=resolved_source_dir,
+            mc_bin=mc_bin,
+            bucket_target=bucket_target,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+            session_id=resolved_session_id if source_dir is None else None,
+        )
+        if verify_errors:
+            for err in verify_errors:
+                click.echo(styled([Style.BRIGHT, Fore.RED], "ERROR: ") + err)
+            raise click.ClickException(
+                f"Upload verification failed with {len(verify_errors)} error(s)."
+            )
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Verification passed: ")
+            + "all uploaded files match local source."
+        )
 
     if source_dir is None and not keep_session and resolved_session_id:
         mgr = __get_session(resolved_session_id)
