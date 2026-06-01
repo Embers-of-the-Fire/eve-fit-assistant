@@ -136,6 +136,7 @@ class DeveloperRemoteMinio(BaseModel):
     data_dir: Path
     alias: str
     public_download: bool
+    verify_upload: bool = False
 
 
 class DeveloperRemoteS3(BaseModel):
@@ -147,6 +148,7 @@ class DeveloperRemoteS3(BaseModel):
     secret_key: str
     alias: str
     public_download: bool
+    verify_upload: bool = True
 
 
 def _fail_remote_sub(toml_key: str, command_group: str) -> None:
@@ -166,6 +168,7 @@ class DeveloperRemote(BaseModel):
     channel: str = Field(default="alpha")
     host: str = Field(default="127.0.0.1")
     mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))
+    verify_upload: bool | None = None
     minio: DeveloperRemoteMinio | None = None
     s3: DeveloperRemoteS3 | None = None
 
