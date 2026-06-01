@@ -1960,6 +1960,167 @@ def _run_mc(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
         raise OSError(msg)
 
 
+def __verify_upload_integrity(
+    *,
+    source_dir: Path,
+    mc_bin: str,
+    bucket_target: str,
+    resource_root: str,
+    channel: str,
+    session_id: str | None = None,
+) -> list[str]:
+    """Verify uploaded files match local source by re-downloading and comparing SHA256.
+
+    For session uploads, only files from staged operations are verified.
+    For --source-dir uploads, all catalog entries are verified.
+
+    Returns a list of error strings (empty = all good).
+    """
+
+    local_root = source_dir / resource_root
+    channel_dir = local_root / "channels" / channel
+    remote_root = f"{bucket_target}/{resource_root}"
+    remote_channel = f"{remote_root}/channels/{channel}"
+
+    errors: list[str] = []
+
+    tracked_artifact_ids: set[str] | None = None
+    tracked_document_ids: set[str] | None = None
+
+    if session_id is not None:
+        from data.lib.remote.session import SessionManager as SM
+
+        sessions_root = __get_session_root()
+        mgr = SM.from_session_id(sessions_root, session_id)
+        todo = mgr._load_todo()
+        tracked_artifact_ids = set()
+        tracked_document_ids = set()
+        for op in todo.operations:
+            if isinstance(op, data.lib.remote.models.AddBundleOp):
+                tracked_artifact_ids.add(op.artifact_id)
+            elif isinstance(op, data.lib.remote.models.AddAnnouncementOp):
+                tracked_document_ids.add(op.document_id)
+
+    catalog_files = [
+        ("index.json", None),
+        ("documents/catalog.json", "application/json"),
+        ("app/releases.json", "application/json"),
+        ("bundles/catalog.json", "application/json"),
+    ]
+    for rel_path, _content_type in catalog_files:
+        local_path = channel_dir / rel_path
+        if not local_path.is_file():
+            continue
+        expected_sha256 = __file_sha256(local_path)
+        remote_path = f"{remote_channel}/{rel_path}"
+        err = _verify_remote_file(
+            mc_bin=mc_bin,
+            remote_path=remote_path,
+            expected_sha256=expected_sha256,
+            label=rel_path,
+        )
+        if err:
+            errors.append(err)
+
+    bundles_catalog_path = channel_dir / "bundles" / "catalog.json"
+    if bundles_catalog_path.is_file():
+        bundles_catalog = json.loads(bundles_catalog_path.read_text(encoding="utf-8"))
+        if isinstance(bundles_catalog, dict):
+            artifacts = bundles_catalog.get("artifacts")
+            if isinstance(artifacts, list):
+                for entry in artifacts:
+                    if not isinstance(entry, dict):
+                        continue
+                    a_id = entry.get("artifactId")
+                    if not isinstance(a_id, str):
+                        continue
+                    if tracked_artifact_ids is not None and a_id not in tracked_artifact_ids:
+                        continue
+                    artifact_path = entry.get("artifactPath")
+                    expected_sha256 = entry.get("artifactSha256")
+                    if not isinstance(artifact_path, str) or not isinstance(expected_sha256, str):
+                        continue
+                    remote_path = f"{remote_root}/{artifact_path}"
+                    err = _verify_remote_file(
+                        mc_bin=mc_bin,
+                        remote_path=remote_path,
+                        expected_sha256=expected_sha256,
+                        label=f"bundle {a_id}",
+                    )
+                    if err:
+                        errors.append(err)
+
+    docs_catalog_path = channel_dir / "documents" / "catalog.json"
+    if docs_catalog_path.is_file():
+        docs_catalog = json.loads(docs_catalog_path.read_text(encoding="utf-8"))
+        if isinstance(docs_catalog, dict):
+            entries = docs_catalog.get("entries")
+            if isinstance(entries, list):
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        continue
+                    doc_id = entry.get("id")
+                    if not isinstance(doc_id, str):
+                        continue
+                    if tracked_document_ids is not None and doc_id not in tracked_document_ids:
+                        continue
+                    localizations = entry.get("localizations")
+                    if not isinstance(localizations, dict):
+                        continue
+                    for lang, loc in localizations.items():
+                        if not isinstance(loc, dict):
+                            continue
+                        body_path = loc.get("bodyPath")
+                        expected_sha256 = loc.get("bodySha256")
+                        if not isinstance(body_path, str) or not isinstance(expected_sha256, str):
+                            continue
+                        remote_path = f"{remote_root}/{body_path}"
+                        err = _verify_remote_file(
+                            mc_bin=mc_bin,
+                            remote_path=remote_path,
+                            expected_sha256=expected_sha256,
+                            label=f"document body {doc_id} ({lang})",
+                        )
+                        if err:
+                            errors.append(err)
+
+    return errors
+
+
+def _verify_remote_file(
+    *,
+    mc_bin: str,
+    remote_path: str,
+    expected_sha256: str,
+    label: str,
+) -> str | None:
+    """Download a single remote file to a temp location and compare its SHA256.
+
+    Returns an error string on mismatch, or None on success.
+    """
+    import tempfile
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".verify", delete=False)
+    tmp_path = Path(tmp.name)
+    tmp.close()
+    try:
+        cmd = [mc_bin, "cp", remote_path, str(tmp_path)]
+        out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if out.returncode != 0:
+            stderr = (out.stderr or "").strip()
+            return f"Failed to download {label} from {remote_path}: [{out.returncode}] {stderr}"
+        actual_sha256 = __file_sha256(tmp_path)
+        if actual_sha256 != expected_sha256:
+            return (
+                f"SHA256 mismatch for {label}:\n"
+                f"  expected: {expected_sha256}\n"
+                f"  actual:   {actual_sha256}"
+            )
+        return None
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
 # ---- upload ----------------------------------------------------------------
 
 
