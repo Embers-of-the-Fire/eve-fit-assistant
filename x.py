@@ -32,6 +32,7 @@ import sys
 import time
 import zipfile
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import unquote
 from urllib.request import urlopen
@@ -1960,6 +1961,245 @@ def _run_mc(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
         raise OSError(msg)
 
 
+def _resolve_verify_flag(
+    *,
+    cli_value: bool | None,
+    target: str,
+) -> bool:
+    """Resolve the verify flag from CLI > target config > global override > target default."""
+    if cli_value is not None:
+        return cli_value
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    if remote_cfg.verify_upload is not None:
+        return remote_cfg.verify_upload
+    if target.lower() == "minio":
+        return remote_cfg.require_minio().verify_upload
+    return remote_cfg.require_s3().verify_upload
+
+
+def _resolve_verify_workers(
+    *,
+    cli_value: int | None,
+    target: str,
+) -> int:
+    """Resolve verify_workers from CLI > target config > global override > target default (4)."""
+    if cli_value is not None and cli_value > 0:
+        return cli_value
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    if remote_cfg.verify_workers is not None and remote_cfg.verify_workers > 0:
+        return remote_cfg.verify_workers
+    if target.lower() == "minio":
+        return remote_cfg.require_minio().verify_workers
+    return remote_cfg.require_s3().verify_workers
+
+
+def __verify_upload_integrity(
+    *,
+    source_dir: Path,
+    mc_bin: str,
+    bucket_target: str,
+    resource_root: str,
+    channel: str,
+    session_id: str | None = None,
+    verify_workers: int = 4,
+) -> list[str]:
+    """Verify uploaded files match local source by re-downloading and comparing SHA256.
+
+    For session uploads, only files from staged operations are verified.
+    For --source-dir uploads, all catalog entries are verified.
+
+    Returns a list of error strings (empty = all good).
+    """
+
+    local_root = source_dir / resource_root
+    channel_dir = local_root / "channels" / channel
+    remote_root = f"{bucket_target}/{resource_root}"
+    remote_channel = f"{remote_root}/channels/{channel}"
+
+    items: list[dict[str, str]] = []
+
+    tracked_artifact_ids: set[str] | None = None
+    tracked_document_ids: set[str] | None = None
+
+    if session_id is not None:
+        from data.lib.remote.session import SessionManager as SessionMgr
+
+        sessions_root = __get_session_root()
+        mgr = SessionMgr.from_session_id(sessions_root, session_id)
+        todo = mgr._load_todo()
+        tracked_artifact_ids = set()
+        tracked_document_ids = set()
+        for op in todo.operations:
+            if isinstance(op, data.lib.remote.models.AddBundleOp):
+                tracked_artifact_ids.add(op.artifact_id)
+            elif isinstance(op, data.lib.remote.models.AddAnnouncementOp):
+                tracked_document_ids.add(op.document_id)
+
+    catalog_files = [
+        "index.json",
+        "documents/catalog.json",
+        "app/releases.json",
+        "bundles/catalog.json",
+    ]
+    for rel_path in catalog_files:
+        local_path = channel_dir / rel_path
+        if not local_path.is_file():
+            continue
+        items.append(
+            {
+                "remote": f"{remote_channel}/{rel_path}",
+                "sha256": __file_sha256(local_path),
+                "label": rel_path,
+                "mc": mc_bin,
+            }
+        )
+
+    bundles_catalog_path = channel_dir / "bundles" / "catalog.json"
+    if bundles_catalog_path.is_file():
+        bundles_catalog = json.loads(bundles_catalog_path.read_text(encoding="utf-8"))
+        if isinstance(bundles_catalog, dict):
+            artifacts = bundles_catalog.get("artifacts")
+            if isinstance(artifacts, list):
+                for entry in artifacts:
+                    if not isinstance(entry, dict):
+                        continue
+                    a_id = entry.get("artifactId")
+                    if not isinstance(a_id, str):
+                        continue
+                    if tracked_artifact_ids is not None and a_id not in tracked_artifact_ids:
+                        continue
+                    artifact_path = entry.get("artifactPath")
+                    expected_sha256 = entry.get("artifactSha256")
+                    if not isinstance(artifact_path, str) or not isinstance(expected_sha256, str):
+                        continue
+                    items.append(
+                        {
+                            "remote": f"{remote_root}/{artifact_path}",
+                            "sha256": expected_sha256,
+                            "label": f"bundle {a_id}",
+                            "mc": mc_bin,
+                        }
+                    )
+
+    docs_catalog_path = channel_dir / "documents" / "catalog.json"
+    if docs_catalog_path.is_file():
+        docs_catalog = json.loads(docs_catalog_path.read_text(encoding="utf-8"))
+        if isinstance(docs_catalog, dict):
+            entries = docs_catalog.get("entries")
+            if isinstance(entries, list):
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        continue
+                    doc_id = entry.get("id")
+                    if not isinstance(doc_id, str):
+                        continue
+                    if tracked_document_ids is not None and doc_id not in tracked_document_ids:
+                        continue
+                    localizations = entry.get("localizations")
+                    if not isinstance(localizations, dict):
+                        continue
+                    for lang, loc in localizations.items():
+                        if not isinstance(loc, dict):
+                            continue
+                        body_path = loc.get("bodyPath")
+                        expected_sha256 = loc.get("bodySha256")
+                        if not isinstance(body_path, str) or not isinstance(expected_sha256, str):
+                            continue
+                        items.append(
+                            {
+                                "remote": f"{remote_root}/{body_path}",
+                                "sha256": expected_sha256,
+                                "label": f"document body {doc_id} ({lang})",
+                                "mc": mc_bin,
+                            }
+                        )
+
+    if not items:
+        return []
+
+    worker_count = min(verify_workers, len(items))
+    click.echo(
+        styled([Style.BRIGHT, Fore.CYAN], f"Verifying {len(items)} file(s) ")
+        + f"with {worker_count} worker(s)..."
+    )
+
+    errors: list[str] = []
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        results = list(executor.map(_verify_one_item, items))
+
+    for i, (item, err) in enumerate(zip(items, results, strict=True), 1):
+        if err:
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], f"  [{i}/{len(items)}] FAIL ") + item["label"]
+            )
+            errors.append(err)
+        else:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], f"  [{i}/{len(items)}] OK   ") + item["label"]
+            )
+
+    if errors:
+        click.echo()
+        click.echo(
+            styled([Style.BRIGHT, Fore.RED], "Verification summary: ")
+            + f"{len(items) - len(errors)}/{len(items)} passed, {len(errors)} failed."
+        )
+    else:
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Verification summary: ")
+            + f"all {len(items)} file(s) passed."
+        )
+
+    return errors
+
+
+def _verify_remote_file(
+    *,
+    mc_bin: str,
+    remote_path: str,
+    expected_sha256: str,
+    label: str,
+) -> str | None:
+    """Download a single remote file to a temp location and compare its SHA256.
+
+    Returns an error string on mismatch, or None on success.
+    """
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".verify", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    try:
+        cmd = [mc_bin, "cp", remote_path, str(tmp_path)]
+        out = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if out.returncode != 0:
+            stderr = (out.stderr or "").strip()
+            return f"Failed to download {label} from {remote_path}: [{out.returncode}] {stderr}"
+        actual_sha256 = __file_sha256(tmp_path)
+        if actual_sha256 != expected_sha256:
+            return (
+                f"SHA256 mismatch for {label}:\n"
+                f"  expected: {expected_sha256}\n"
+                f"  actual:   {actual_sha256}"
+            )
+        return None
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def _verify_one_item(item: dict[str, str]) -> str | None:
+    """Adapter for ThreadPoolExecutor.map — unpacks item dict into _verify_remote_file."""
+    return _verify_remote_file(
+        mc_bin=item["mc"],
+        remote_path=item["remote"],
+        expected_sha256=item["sha256"],
+        label=item["label"],
+    )
+
+
 # ---- upload ----------------------------------------------------------------
 
 
@@ -1997,6 +2237,17 @@ def _run_mc(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
     default=None,
     help="Configure anonymous bucket downloads after upload.",
 )
+@click.option(
+    "--verify/--no-verify",
+    default=None,
+    help="Verify uploaded file integrity after publish (overrides config).",
+)
+@click.option(
+    "--verify-workers",
+    type=int,
+    default=None,
+    help="Number of concurrent download workers for verification (default: 4).",
+)
 def remote_publish_upload(
     target: str,
     source_dir: Path | None,
@@ -2011,6 +2262,8 @@ def remote_publish_upload(
     channel: str | None,
     clean: bool,
     public_download: bool | None,
+    verify: bool | None,
+    verify_workers: int | None,
 ):
     """Upload a local remote origin or committed session to S3-compatible object storage."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
@@ -2046,6 +2299,37 @@ def remote_publish_upload(
         public_download=resolved_public_download,
         target=target,
     )
+
+    resolved_verify = _resolve_verify_flag(
+        cli_value=verify,
+        target=target,
+    )
+    if resolved_verify:
+        mc_bin = get_command("mc")
+        bucket_target = f"{resolved_alias}/{resolved_bucket}"
+        resolved_workers = _resolve_verify_workers(
+            cli_value=verify_workers,
+            target=target,
+        )
+        verify_errors = __verify_upload_integrity(
+            source_dir=resolved_source_dir,
+            mc_bin=mc_bin,
+            bucket_target=bucket_target,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+            session_id=resolved_session_id if source_dir is None else None,
+            verify_workers=resolved_workers,
+        )
+        if verify_errors:
+            for err in verify_errors:
+                click.echo(styled([Style.BRIGHT, Fore.RED], "ERROR: ") + err)
+            raise click.ClickException(
+                f"Upload verification failed with {len(verify_errors)} error(s)."
+            )
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Verification passed: ")
+            + "all uploaded files match local source."
+        )
 
     if source_dir is None and not keep_session and resolved_session_id:
         mgr = __get_session(resolved_session_id)

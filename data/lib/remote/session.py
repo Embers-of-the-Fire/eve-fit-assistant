@@ -365,6 +365,11 @@ class SessionManager:
         shutil.copyfile(zh_path, zh_target)
         shutil.copyfile(en_path, en_target)
 
+        zh_body_sha256 = _file_sha256(zh_target)
+        zh_body_size = zh_target.stat().st_size
+        en_body_sha256 = _file_sha256(en_target)
+        en_body_size = en_target.stat().st_size
+
         entry: dict[str, object] = {
             "id": document_id,
             "kind": "announcement",
@@ -379,11 +384,15 @@ class SessionManager:
                     "title": title_en,
                     "summary": summary_en,
                     "bodyPath": f"documents/body/en/{document_id}.md",
+                    "bodySha256": en_body_sha256,
+                    "bodySize": en_body_size,
                 },
                 "zh": {
                     "title": title_zh,
                     "summary": summary_zh,
                     "bodyPath": f"documents/body/zh/{document_id}.md",
+                    "bodySha256": zh_body_sha256,
+                    "bodySize": zh_body_size,
                 },
             },
         }

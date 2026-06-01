@@ -262,6 +262,24 @@ def verify_merged_state(
                         errors.append(f"Duplicate document id in merged output: {doc_id}")
                     seen_ids.add(doc_id)
 
+                localizations = entry.get("localizations")
+                if isinstance(localizations, dict):
+                    for lang, loc in localizations.items():
+                        if not isinstance(loc, dict):
+                            continue
+                        body_sha256 = loc.get("bodySha256")
+                        body_path = loc.get("bodyPath")
+                        if isinstance(body_sha256, str) and isinstance(body_path, str):
+                            staged_key = f"documents/{doc_id}_{lang}.md"
+                            if staged_key in staged_dir_sha256s:
+                                expected = staged_dir_sha256s[staged_key]
+                                if body_sha256 != expected:
+                                    errors.append(
+                                        f"SHA256 mismatch for document {doc_id}"
+                                        f" ({lang}): catalog has {body_sha256},"
+                                        f" staged has {expected}"
+                                    )
+
     bundles = merged_state.get("bundles_catalog")
     if isinstance(bundles, dict):
         artifacts: object = bundles.get("artifacts", [])
