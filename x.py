@@ -2005,10 +2005,10 @@ def __verify_upload_integrity(
     tracked_document_ids: set[str] | None = None
 
     if session_id is not None:
-        from data.lib.remote.session import SessionManager as SM
+        from data.lib.remote.session import SessionManager as SessionMgr
 
         sessions_root = __get_session_root()
-        mgr = SM.from_session_id(sessions_root, session_id)
+        mgr = SessionMgr.from_session_id(sessions_root, session_id)
         todo = mgr._load_todo()
         tracked_artifact_ids = set()
         tracked_document_ids = set()
@@ -2117,12 +2117,13 @@ def _verify_remote_file(
     """
     import tempfile
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".verify", delete=False)
-    tmp_path = Path(tmp.name)
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".verify", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
     try:
         cmd = [mc_bin, "cp", remote_path, str(tmp_path)]
-        out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        out = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
         if out.returncode != 0:
             stderr = (out.stderr or "").strip()
             return f"Failed to download {label} from {remote_path}: [{out.returncode}] {stderr}"
