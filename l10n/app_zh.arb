@@ -228,6 +228,14 @@
       }
     }
   },
+  "documentMinAppVerWarning": "需要应用版本 {version} 或更高",
+  "@documentMinAppVerWarning": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "versionBumpCardTitle": "v{version} 更新内容",
   "@versionBumpCardTitle": {
     "placeholders": {
