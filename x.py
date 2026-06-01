@@ -32,6 +32,7 @@ import sys
 import time
 import zipfile
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import unquote
 from urllib.request import urlopen
@@ -1985,6 +1986,7 @@ def __verify_upload_integrity(
     resource_root: str,
     channel: str,
     session_id: str | None = None,
+    verify_workers: int = 4,
 ) -> list[str]:
     """Verify uploaded files match local source by re-downloading and comparing SHA256.
 
@@ -1999,7 +2001,7 @@ def __verify_upload_integrity(
     remote_root = f"{bucket_target}/{resource_root}"
     remote_channel = f"{remote_root}/channels/{channel}"
 
-    errors: list[str] = []
+    items: list[dict[str, str]] = []
 
     tracked_artifact_ids: set[str] | None = None
     tracked_document_ids: set[str] | None = None
@@ -2019,25 +2021,23 @@ def __verify_upload_integrity(
                 tracked_document_ids.add(op.document_id)
 
     catalog_files = [
-        ("index.json", None),
-        ("documents/catalog.json", "application/json"),
-        ("app/releases.json", "application/json"),
-        ("bundles/catalog.json", "application/json"),
+        "index.json",
+        "documents/catalog.json",
+        "app/releases.json",
+        "bundles/catalog.json",
     ]
-    for rel_path, _content_type in catalog_files:
+    for rel_path in catalog_files:
         local_path = channel_dir / rel_path
         if not local_path.is_file():
             continue
-        expected_sha256 = __file_sha256(local_path)
-        remote_path = f"{remote_channel}/{rel_path}"
-        err = _verify_remote_file(
-            mc_bin=mc_bin,
-            remote_path=remote_path,
-            expected_sha256=expected_sha256,
-            label=rel_path,
+        items.append(
+            {
+                "remote": f"{remote_channel}/{rel_path}",
+                "sha256": __file_sha256(local_path),
+                "label": rel_path,
+                "mc": mc_bin,
+            }
         )
-        if err:
-            errors.append(err)
 
     bundles_catalog_path = channel_dir / "bundles" / "catalog.json"
     if bundles_catalog_path.is_file():
@@ -2057,15 +2057,14 @@ def __verify_upload_integrity(
                     expected_sha256 = entry.get("artifactSha256")
                     if not isinstance(artifact_path, str) or not isinstance(expected_sha256, str):
                         continue
-                    remote_path = f"{remote_root}/{artifact_path}"
-                    err = _verify_remote_file(
-                        mc_bin=mc_bin,
-                        remote_path=remote_path,
-                        expected_sha256=expected_sha256,
-                        label=f"bundle {a_id}",
+                    items.append(
+                        {
+                            "remote": f"{remote_root}/{artifact_path}",
+                            "sha256": expected_sha256,
+                            "label": f"bundle {a_id}",
+                            "mc": mc_bin,
+                        }
                     )
-                    if err:
-                        errors.append(err)
 
     docs_catalog_path = channel_dir / "documents" / "catalog.json"
     if docs_catalog_path.is_file():
@@ -2091,15 +2090,50 @@ def __verify_upload_integrity(
                         expected_sha256 = loc.get("bodySha256")
                         if not isinstance(body_path, str) or not isinstance(expected_sha256, str):
                             continue
-                        remote_path = f"{remote_root}/{body_path}"
-                        err = _verify_remote_file(
-                            mc_bin=mc_bin,
-                            remote_path=remote_path,
-                            expected_sha256=expected_sha256,
-                            label=f"document body {doc_id} ({lang})",
+                        items.append(
+                            {
+                                "remote": f"{remote_root}/{body_path}",
+                                "sha256": expected_sha256,
+                                "label": f"document body {doc_id} ({lang})",
+                                "mc": mc_bin,
+                            }
                         )
-                        if err:
-                            errors.append(err)
+
+    if not items:
+        return []
+
+    worker_count = min(verify_workers, len(items))
+    click.echo(
+        styled([Style.BRIGHT, Fore.CYAN], f"Verifying {len(items)} file(s) ")
+        + f"with {worker_count} worker(s)..."
+    )
+
+    errors: list[str] = []
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        results = list(executor.map(_verify_one_item, items))
+
+    for i, (item, err) in enumerate(zip(items, results, strict=True), 1):
+        if err:
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], f"  [{i}/{len(items)}] FAIL ") + item["label"]
+            )
+            errors.append(err)
+        else:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], f"  [{i}/{len(items)}] OK   ") + item["label"]
+            )
+
+    if errors:
+        click.echo()
+        click.echo(
+            styled([Style.BRIGHT, Fore.RED], "Verification summary: ")
+            + f"{len(items) - len(errors)}/{len(items)} passed, {len(errors)} failed."
+        )
+    else:
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Verification summary: ")
+            + f"all {len(items)} file(s) passed."
+        )
 
     return errors
 
@@ -2137,6 +2171,16 @@ def _verify_remote_file(
         return None
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+def _verify_one_item(item: dict[str, str]) -> str | None:
+    """Adapter for ThreadPoolExecutor.map — unpacks item dict into _verify_remote_file."""
+    return _verify_remote_file(
+        mc_bin=item["mc"],
+        remote_path=item["remote"],
+        expected_sha256=item["sha256"],
+        label=item["label"],
+    )
 
 
 # ---- upload ----------------------------------------------------------------
