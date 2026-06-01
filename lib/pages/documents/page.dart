@@ -244,14 +244,11 @@ class _DocumentListCard extends ConsumerWidget {
       context.locale.toString(),
     ).format(entry.publishedAt.toLocal());
 
-    final appVer = ref.watch(appVersionProvider).when(
-      data: (v) => v,
-      loading: () => null,
-      error: (_, _) => null,
-    );
-    final showMinVerWarning = entry.minAppVer != null &&
-        appVer != null &&
-        isAppVersionBelow(appVer, entry.minAppVer!);
+    final appVer = ref
+        .watch(appVersionProvider)
+        .when(data: (v) => v, loading: () => null, error: (_, _) => null);
+    final showMinVerWarning =
+        entry.minAppVer != null && appVer != null && isAppVersionBelow(appVer, entry.minAppVer!);
 
     final trailingWidget = showMinVerWarning || isUnread
         ? Row(
@@ -260,11 +257,7 @@ class _DocumentListCard extends ConsumerWidget {
               if (showMinVerWarning)
                 Tooltip(
                   message: context.l10n.documentMinAppVerWarning(version: entry.minAppVer!),
-                  child: const Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.orange,
-                    size: 16,
-                  ),
+                  child: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
                 ),
               if (showMinVerWarning && isUnread) const SizedBox(width: 4),
               if (isUnread)
@@ -318,12 +311,7 @@ class _DocumentListCard extends ConsumerWidget {
                 ],
               ),
             ),
-            if (trailingWidget != null)
-              Positioned(
-                top: 10,
-                right: 10,
-                child: trailingWidget,
-              ),
+            if (trailingWidget != null) Positioned(top: 10, right: 10, child: trailingWidget),
           ],
         ),
       ),
@@ -392,14 +380,11 @@ class _DocumentDetailPane extends ConsumerWidget {
       );
     }
 
-    final appVer = ref.watch(appVersionProvider).when(
-      data: (v) => v,
-      loading: () => null,
-      error: (_, _) => null,
-    );
-    final showMinVerWarning = entry!.minAppVer != null &&
-        appVer != null &&
-        isAppVersionBelow(appVer, entry!.minAppVer!);
+    final appVer = ref
+        .watch(appVersionProvider)
+        .when(data: (v) => v, loading: () => null, error: (_, _) => null);
+    final showMinVerWarning =
+        entry!.minAppVer != null && appVer != null && isAppVersionBelow(appVer, entry!.minAppVer!);
 
     final dateText = DateFormat.yMMMMd(
       context.locale.toString(),
@@ -444,11 +429,7 @@ class _DocumentDetailPane extends ConsumerWidget {
                 Row(
                   mainAxisSize: .min,
                   children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.orange,
-                      size: 18,
-                    ),
+                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
