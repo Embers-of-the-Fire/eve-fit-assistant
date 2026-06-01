@@ -6,10 +6,15 @@ import "package:package_info_plus/package_info_plus.dart";
 String _userAgentVersion = "0.0.0";
 Future<void>? _versionLoadFuture;
 
+Future<String> readFullAppVersion() async {
+  final info = await PackageInfo.fromPlatform();
+  return "${info.version}+${info.buildNumber}";
+}
+
 void _ensureVersionLoad() {
-  _versionLoadFuture ??= PackageInfo.fromPlatform()
-      .then((info) {
-        _userAgentVersion = "${info.version}+${info.buildNumber}";
+  _versionLoadFuture ??= readFullAppVersion()
+      .then((version) {
+        _userAgentVersion = version;
       })
       .catchError((Object _) {
         _userAgentVersion = "0.0.0";
