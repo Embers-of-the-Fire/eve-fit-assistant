@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import ValidationError
+from pydantic import model_validator
 
 from data.lib.constant import CACHE_CONFIG_PATH
 from data.lib.constant import CONFIG_PATH
@@ -54,6 +55,18 @@ class ProjectResource(BaseModel):
 class BundleSchema(BaseModel):
     current: int
     supported: list[int]
+
+    @model_validator(mode="after")
+    def _validate_schema(self) -> BundleSchema:
+        if not self.supported:
+            raise ValueError("supported must be non-empty")
+        if self.current <= 0:
+            raise ValueError(f"current must be positive, got {self.current}")
+        if any(v <= 0 for v in self.supported):
+            raise ValueError("all supported version numbers must be positive")
+        if self.current not in self.supported:
+            raise ValueError(f"current ({self.current}) must be in supported ({self.supported})")
+        return self
 
 
 class ProjectConfiguration(BaseModel):
