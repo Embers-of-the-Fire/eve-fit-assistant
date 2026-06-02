@@ -34,7 +34,7 @@ abstract class BundleDescriptor with _$BundleDescriptor {
     required String gameBranch,
     required String gameServer,
     @Default(1) int bundleSchemaVersion,
-    @Default(IList<int>) IList<int> compatibleBundleSchemaVersions,
+    @Default(IList<int>.empty()) IList<int> compatibleBundleSchemaVersions,
     String? manifestHash,
     String? baseBundleId,
     String? baseManifestHash,
