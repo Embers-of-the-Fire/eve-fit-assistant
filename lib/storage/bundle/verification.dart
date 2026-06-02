@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:crypto/crypto.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
+import "package:eve_fit_assistant/storage/bundle/schema_version.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
@@ -33,7 +34,8 @@ class BundleManifestFile {
 
 class BundleSnapshotManifest {
   const BundleSnapshotManifest({
-    required this.schemaVersion,
+    required this.bundleSchemaVersion,
+    required this.compatibleBundleSchemaVersions,
     required this.bundleId,
     required this.generateTimestamp,
     required this.files,
@@ -45,7 +47,8 @@ class BundleSnapshotManifest {
       throw const FormatException("Manifest field 'files' must be a list.");
     }
     return BundleSnapshotManifest(
-      schemaVersion: _readRequiredInt(json, "schemaVersion"),
+      bundleSchemaVersion: _readBundleSchemaVersion(json),
+      compatibleBundleSchemaVersions: _readCompatibleBundleSchemaVersions(json),
       bundleId: _readRequiredString(json, "bundleId"),
       generateTimestamp: _readRequiredInt(json, "generateTimestamp"),
       files: rawFiles.map((rawFile) {
@@ -57,7 +60,8 @@ class BundleSnapshotManifest {
     );
   }
 
-  final int schemaVersion;
+  final int bundleSchemaVersion;
+  final IList<int> compatibleBundleSchemaVersions;
   final String bundleId;
   final int generateTimestamp;
   final IList<BundleManifestFile> files;
@@ -78,78 +82,24 @@ class BundleVerificationMissingManifest extends BundleVerificationIssue {
   final String path;
 }
 
-class BundleVerificationInvalidManifest extends BundleVerificationIssue {
-  const BundleVerificationInvalidManifest({required this.path, required this.error});
-
-  @override
-  final String path;
-  final String error;
-}
-
-class BundleVerificationManifestHashMissing extends BundleVerificationIssue {
-  const BundleVerificationManifestHashMissing();
-}
-
-class BundleVerificationManifestHashMismatch extends BundleVerificationIssue {
-  const BundleVerificationManifestHashMismatch({required this.expected, required this.actual});
-
-  final String expected;
-  final String actual;
-}
-
-class BundleVerificationUnsafeManifestPath extends BundleVerificationIssue {
-  const BundleVerificationUnsafeManifestPath({required this.path});
-
-  @override
-  final String path;
-}
-
-class BundleVerificationMissingFile extends BundleVerificationIssue {
-  const BundleVerificationMissingFile({required this.path});
-
-  @override
-  final String path;
-}
-
-class BundleVerificationSizeMismatch extends BundleVerificationIssue {
-  const BundleVerificationSizeMismatch({
-    required this.path,
-    required this.expected,
-    required this.actual,
+class BundleVerificationUnsupportedSchemaVersion extends BundleVerificationIssue {
+  const BundleVerificationUnsupportedSchemaVersion({
+    required this.bundleVersion,
+    required this.supported,
   });
 
-  @override
-  final String path;
-  final int expected;
-  final int actual;
+  final int bundleVersion;
+  final IList<int> supported;
 }
 
-class BundleVerificationHashMismatch extends BundleVerificationIssue {
-  const BundleVerificationHashMismatch({
-    required this.path,
-    required this.expected,
-    required this.actual,
+class BundleVerificationSchemaVersionMismatch extends BundleVerificationIssue {
+  const BundleVerificationSchemaVersionMismatch({
+    required this.bundleVersion,
+    required this.current,
   });
 
-  @override
-  final String path;
-  final String expected;
-  final String actual;
-}
-
-class BundleVerificationExtraFile extends BundleVerificationIssue {
-  const BundleVerificationExtraFile({required this.path});
-
-  @override
-  final String path;
-}
-
-class BundleVerificationReadError extends BundleVerificationIssue {
-  const BundleVerificationReadError({required this.path, required this.error});
-
-  @override
-  final String path;
-  final String error;
+  final int bundleVersion;
+  final int current;
 }
 
 class BundleVerificationReport {
@@ -172,7 +122,10 @@ class BundleVerificationReport {
   IList<BundleVerificationIssue> get blockingIssues => issues
       .where(
         (issue) => switch (issue) {
-          BundleVerificationExtraFile() || BundleVerificationManifestHashMissing() => false,
+          BundleVerificationExtraFile() ||
+          BundleVerificationManifestHashMissing() ||
+          BundleVerificationSchemaVersionMismatch() =>
+            false,
           _ => true,
         },
       )
@@ -181,7 +134,10 @@ class BundleVerificationReport {
   IList<BundleVerificationIssue> get warningIssues => issues
       .where(
         (issue) => switch (issue) {
-          BundleVerificationExtraFile() || BundleVerificationManifestHashMissing() => true,
+          BundleVerificationExtraFile() ||
+          BundleVerificationManifestHashMissing() ||
+          BundleVerificationSchemaVersionMismatch() =>
+            true,
           _ => false,
         },
       )
@@ -236,6 +192,7 @@ class BundleVerificationService {
     }
 
     _verifyManifestHash(bundleId, bundleRoot, manifestContent, issues);
+    _verifyManifestSchemaVersion(manifest, issues);
     await _verifyManifestEntries(bundleRoot, manifest, issues);
     await _verifyExtraFiles(bundleRoot, manifest, issues);
 
@@ -267,6 +224,27 @@ class BundleVerificationService {
       }
     } on Object {
       issues.add(const BundleVerificationManifestHashMissing());
+    }
+  }
+
+  void _verifyManifestSchemaVersion(
+    BundleSnapshotManifest manifest,
+    List<BundleVerificationIssue> issues,
+  ) {
+    if (!supportedBundleSchemaVersions.contains(manifest.bundleSchemaVersion)) {
+      issues.add(
+        BundleVerificationUnsupportedSchemaVersion(
+          bundleVersion: manifest.bundleSchemaVersion,
+          supported: supportedBundleSchemaVersions,
+        ),
+      );
+    } else if (manifest.bundleSchemaVersion != currentBundleSchemaVersion) {
+      issues.add(
+        BundleVerificationSchemaVersionMismatch(
+          bundleVersion: manifest.bundleSchemaVersion,
+          current: currentBundleSchemaVersion,
+        ),
+      );
     }
   }
 
@@ -344,14 +322,17 @@ class BundleVerificationService {
     final status =
         issues.any(
           (issue) => switch (issue) {
-            BundleVerificationExtraFile() || BundleVerificationManifestHashMissing() => false,
+            BundleVerificationExtraFile() ||
+            BundleVerificationManifestHashMissing() ||
+            BundleVerificationSchemaVersionMismatch() =>
+              false,
             _ => true,
           },
         )
-        ? BundleVerificationStatus.invalid
-        : issues.isEmpty
-        ? BundleVerificationStatus.valid
-        : BundleVerificationStatus.warning;
+            ? BundleVerificationStatus.invalid
+            : issues.isEmpty
+            ? BundleVerificationStatus.valid
+            : BundleVerificationStatus.warning;
     return BundleVerificationReport(
       bundleId: bundleId,
       checkedAt: checkedAt,
@@ -407,4 +388,20 @@ String _readRequiredString(Map<String, dynamic> payload, String key) {
     throw FormatException("Manifest field '$key' must be a non-empty string.");
   }
   return value;
+}
+
+int _readBundleSchemaVersion(Map<String, dynamic> json) {
+  final value = json["bundleSchemaVersion"];
+  if (value is int) return value;
+  final oldValue = json["schemaVersion"];
+  if (oldValue is int) return oldValue;
+  return 1;
+}
+
+IList<int> _readCompatibleBundleSchemaVersions(Map<String, dynamic> json) {
+  final value = json["compatibleBundleSchemaVersions"];
+  if (value is List<Object?>) {
+    return value.whereType<int>().toIList();
+  }
+  return IList([_readBundleSchemaVersion(json)]);
 }
