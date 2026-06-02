@@ -52,7 +52,7 @@ class Descriptor(BaseModel):
         timestamp = datetime.datetime.now().timestamp()
         app_path = PROJECT_ROOT / "pubspec.yaml"
         with open(app_path, "r", encoding="utf-8") as f:
-            pubspec = yaml.load(f, yaml.CLoader)
+            pubspec = yaml.load(f, Loader=yaml.SafeLoader)
         app_version = pubspec["version"]
 
         descriptor = Descriptor(
