@@ -42,8 +42,9 @@ abstract class BundleDescriptor with _$BundleDescriptor {
 
   factory BundleDescriptor.fromJson(Map<String, dynamic> json) {
     final compatList = json["compatibleBundleSchemaVersions"];
-    final compatVersions = compatList is List<Object?>
-        ? compatList.whereType<int>().toIList()
+    final rawVersions = compatList is List<Object?> ? compatList.whereType<int>().toIList() : null;
+    final compatVersions = (rawVersions != null && rawVersions.isNotEmpty)
+        ? rawVersions
         : IList(const [1]);
     return BundleDescriptor(
       generateTimestamp: json["generateTimestamp"] as int,
