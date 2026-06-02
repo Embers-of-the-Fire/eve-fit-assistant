@@ -326,6 +326,7 @@ Future<BundleInfo?> _readBundleInfo(String bundleId) async {
     final appVersion = json["appVersion"];
     final gameBuild = json["gameBuild"];
     final gameRegion = json["gameRegion"];
+    final bundleSchemaVersion = json["bundleSchemaVersion"] ?? json["schemaVersion"] ?? 1;
     if (descriptorBundleId is! String ||
         appVersion is! String ||
         gameBuild is! String ||
@@ -342,6 +343,7 @@ Future<BundleInfo?> _readBundleInfo(String bundleId) async {
       version: appVersion,
       build: gameBuild,
       region: gameRegion,
+      bundleSchemaVersion: bundleSchemaVersion is int ? bundleSchemaVersion : 1,
     );
   } on Object catch (errorValue, stackTrace) {
     warning("Skipped bundle recovery for $bundleId: $errorValue", stackTrace: stackTrace);

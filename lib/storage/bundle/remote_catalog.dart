@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/bundle/manager.dart";
+import "package:eve_fit_assistant/storage/bundle/schema_version.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -23,6 +24,7 @@ enum RemoteBundleCandidateRecommendation { incrementalUpdate, fullInstall, fullR
 
 enum RemoteBundleCandidateUnavailableReason {
   appVersionMismatch,
+  incompatibleBundleSchema,
   missingIncrementalMetadata,
   baseBundleNotInstalled,
   installedManifestMissing,
@@ -47,6 +49,8 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     required String artifactSha256,
     required String manifestPath,
     required String manifestHash,
+    @Default(1) int bundleSchemaVersion,
+    @Default(IList<int>.empty()) IList<int> compatibleBundleSchemaVersions,
     String? baseBundleId,
     String? baseManifestHash,
   }) = _RemoteBundleArtifact;
@@ -63,6 +67,12 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
       bundleId: readRemoteRequiredString(json, "bundleId"),
       variant: _readVariant(json),
       appVersion: readRemoteRequiredString(json, "appVersion"),
+      bundleSchemaVersion: readRemoteOptionalInt(json, "bundleSchemaVersion", 1),
+      compatibleBundleSchemaVersions: readRemoteOptionalIntList(
+        json,
+        "compatibleBundleSchemaVersions",
+        IList(const [1]),
+      ),
       gameVersion: readRemoteRequiredString(json, "gameVersion"),
       gameBuild: readRemoteRequiredString(json, "gameBuild"),
       gameRegion: readRemoteRequiredString(json, "gameRegion"),
@@ -124,6 +134,7 @@ abstract class RemoteBundleCandidate with _$RemoteBundleCandidate {
     RemoteBundleCandidateRecommendation? recommendation,
     RemoteBundleCandidateUnavailableReason? unavailableReason,
     String? installedManifestHash,
+    int? schemaVersionWarning,
   }) = _RemoteBundleCandidate;
 
   const RemoteBundleCandidate._();
@@ -330,6 +341,21 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       );
     }
 
+    final schemaCompat = artifact.compatibleBundleSchemaVersions.any(
+      (v) => v >= minSupportedBundleSchemaVersion && v <= currentBundleSchemaVersion,
+    );
+    if (!schemaCompat) {
+      return RemoteBundleCandidate(
+        artifact: artifact,
+        state: RemoteBundleCandidateState.unavailable,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.incompatibleBundleSchema,
+      );
+    }
+
+    final schemaWarning = artifact.bundleSchemaVersion != currentBundleSchemaVersion
+        ? artifact.bundleSchemaVersion
+        : null;
+
     final installedRegistrar = installedRegistrars[artifact.bundleId];
     final installedManifestHash = installedRegistrar?.latest.manifestHash;
     if (installedManifestHash == artifact.manifestHash) {
@@ -337,6 +363,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         artifact: artifact,
         state: RemoteBundleCandidateState.installed,
         installedManifestHash: installedManifestHash,
+        schemaVersionWarning: schemaWarning,
       );
     }
     if (_registrarContainsManifest(installedRegistrar, artifact.manifestHash)) {
@@ -344,6 +371,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         artifact: artifact,
         state: RemoteBundleCandidateState.installed,
         installedManifestHash: artifact.manifestHash,
+        schemaVersionWarning: schemaWarning,
       );
     }
 
@@ -352,6 +380,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         artifact: artifact,
         state: RemoteBundleCandidateState.available,
         installedManifestHash: installedManifestHash,
+        schemaVersionWarning: schemaWarning,
       );
     }
 
@@ -362,6 +391,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
         unavailableReason: RemoteBundleCandidateUnavailableReason.missingIncrementalMetadata,
+        schemaVersionWarning: schemaWarning,
       );
     }
     final registrar = installedRegistrars[baseBundleId];
@@ -370,6 +400,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
         unavailableReason: RemoteBundleCandidateUnavailableReason.baseBundleNotInstalled,
+        schemaVersionWarning: schemaWarning,
       );
     }
 
@@ -379,6 +410,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         artifact: artifact,
         state: RemoteBundleCandidateState.installed,
         installedManifestHash: baseInstalledManifestHash,
+        schemaVersionWarning: schemaWarning,
       );
     }
     if (baseInstalledManifestHash == null) {
@@ -386,6 +418,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
         unavailableReason: RemoteBundleCandidateUnavailableReason.installedManifestMissing,
+        schemaVersionWarning: schemaWarning,
       );
     }
     if (baseInstalledManifestHash != baseManifestHash) {
@@ -394,6 +427,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         state: RemoteBundleCandidateState.unavailable,
         unavailableReason: RemoteBundleCandidateUnavailableReason.baseManifestMismatch,
         installedManifestHash: baseInstalledManifestHash,
+        schemaVersionWarning: schemaWarning,
       );
     }
 
@@ -401,6 +435,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       artifact: artifact,
       state: RemoteBundleCandidateState.available,
       installedManifestHash: baseInstalledManifestHash,
+      schemaVersionWarning: schemaWarning,
     );
   }
 
@@ -475,6 +510,10 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     final generatedOrder = b.generatedAt.compareTo(a.generatedAt);
     if (generatedOrder != 0) {
       return generatedOrder;
+    }
+    final schemaOrder = b.bundleSchemaVersion.compareTo(a.bundleSchemaVersion);
+    if (schemaOrder != 0) {
+      return schemaOrder;
     }
     return a.artifactId.compareTo(b.artifactId);
   }

@@ -33,12 +33,36 @@ abstract class BundleDescriptor with _$BundleDescriptor {
     required String gameRegion,
     required String gameBranch,
     required String gameServer,
+    @Default(1) int bundleSchemaVersion,
+    @Default(IList<int>.empty()) IList<int> compatibleBundleSchemaVersions,
     String? manifestHash,
     String? baseBundleId,
     String? baseManifestHash,
   }) = _BundleDescriptor;
 
-  factory BundleDescriptor.fromJson(Map<String, dynamic> json) => _$BundleDescriptorFromJson(json);
+  factory BundleDescriptor.fromJson(Map<String, dynamic> json) {
+    final compatList = json["compatibleBundleSchemaVersions"];
+    final rawVersions = compatList is List<Object?> ? compatList.whereType<int>().toIList() : null;
+    final compatVersions = (rawVersions != null && rawVersions.isNotEmpty)
+        ? rawVersions
+        : IList(const [1]);
+    return BundleDescriptor(
+      generateTimestamp: json["generateTimestamp"] as int,
+      isIncremental: json["isIncremental"] as bool? ?? false,
+      bundleId: json["bundleId"] as String,
+      appVersion: json["appVersion"] as String,
+      gameVersion: json["gameVersion"] as String,
+      gameBuild: json["gameBuild"] as String,
+      gameRegion: json["gameRegion"] as String,
+      gameBranch: json["gameBranch"] as String,
+      gameServer: json["gameServer"] as String,
+      bundleSchemaVersion: json["bundleSchemaVersion"] as int? ?? 1,
+      compatibleBundleSchemaVersions: compatVersions,
+      manifestHash: json["manifestHash"] as String?,
+      baseBundleId: json["baseBundleId"] as String?,
+      baseManifestHash: json["baseManifestHash"] as String?,
+    );
+  }
 }
 
 @freezed
@@ -53,6 +77,7 @@ abstract class BundleHistoryPatch with _$BundleHistoryPatch {
     required String gameBranch,
     required String gameServer,
     required bool isIncremental,
+    @Default(1) int bundleSchemaVersion,
     String? manifestHash,
   }) = _BundleHistoryPatch;
 
@@ -81,6 +106,7 @@ abstract class BundleRegistrar with _$BundleRegistrar {
       appVersion: descriptor.appVersion,
       generateTimestamp: descriptor.generateTimestamp,
       loadTimestamp: DateTime.now().millisecondsSinceEpoch,
+      bundleSchemaVersion: descriptor.bundleSchemaVersion,
       manifestHash: descriptor.manifestHash,
       gameVersion: descriptor.gameVersion,
       gameBuild: descriptor.gameBuild,

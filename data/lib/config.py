@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import ValidationError
+from pydantic import model_validator
 
 from data.lib.constant import CACHE_CONFIG_PATH
 from data.lib.constant import CONFIG_PATH
@@ -51,9 +52,25 @@ class ProjectResource(BaseModel):
     descriptor: ProjectPath
 
 
+class BundleSchema(BaseModel):
+    current: int
+    min: int
+
+    @model_validator(mode="after")
+    def _validate_schema(self) -> BundleSchema:
+        if self.current <= 0:
+            raise ValueError(f"current must be positive, got {self.current}")
+        if self.min <= 0:
+            raise ValueError(f"min must be positive, got {self.min}")
+        if self.min > self.current:
+            raise ValueError(f"min ({self.min}) must be <= current ({self.current})")
+        return self
+
+
 class ProjectConfiguration(BaseModel):
     localizations: ProjectLocalizations
     paths: ProjectPaths
+    bundle_schema: BundleSchema
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 
     @staticmethod

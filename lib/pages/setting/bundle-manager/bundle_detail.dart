@@ -123,6 +123,16 @@ class _BundleDetailPageState extends ConsumerState<BundleDetailPage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        context.l10n.bundleManagerBundleSchemaVersion(
+                          num: bundle.bundleSchemaVersion,
+                        ),
+                        style: context.theme.textTheme.bodySmall?.copyWith(
+                          color: context.theme.colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -359,6 +369,21 @@ String _formatVerificationIssue(BuildContext context, BundleVerificationIssue is
       ),
       BundleVerificationReadError(:final path, :final error) =>
         context.l10n.bundleVerificationIssueReadError(path: path, error: error),
+      BundleVerificationUnsupportedSchemaVersion(
+        :final bundleVersion,
+        :final minSupported,
+        :final maxSupported,
+      ) =>
+        context.l10n.bundleVerificationIssueUnsupportedSchemaVersion(
+          version: bundleVersion,
+          min: minSupported,
+          max: maxSupported,
+        ),
+      BundleVerificationSchemaVersionMismatch(:final bundleVersion, :final current) =>
+        context.l10n.bundleVerificationIssueSchemaVersionMismatch(
+          version: bundleVersion,
+          current: current,
+        ),
     };
 
 class _PatchTile extends StatelessWidget {

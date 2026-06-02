@@ -621,6 +621,8 @@ String _formatRemoteCandidateUnavailableReason(
         requiredVersion: artifact.appVersion,
         currentVersion: currentAppVersion ?? context.l10n.bundleRemoteUnknownAppVersion,
       ),
+    RemoteBundleCandidateUnavailableReason.incompatibleBundleSchema =>
+      context.l10n.bundleRemoteUnavailableIncompatibleSchema(version: artifact.bundleSchemaVersion),
     RemoteBundleCandidateUnavailableReason.missingIncrementalMetadata =>
       context.l10n.bundleRemoteUnavailableMissingIncrementalMetadata,
     RemoteBundleCandidateUnavailableReason.baseBundleNotInstalled =>
@@ -676,6 +678,8 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
         context.l10n.bundleRemoteArtifactBaseBundle(bundleId: artifact.baseBundleId!),
       if (artifact.baseManifestHash != null)
         context.l10n.bundleRemoteArtifactBaseManifest(hash: _shortHash(artifact.baseManifestHash!)),
+      if (candidate.schemaVersionWarning != null)
+        context.l10n.bundleRemoteSchemaVersionWarning(version: candidate.schemaVersionWarning!),
     ];
     final content = Card(
       margin: const EdgeInsets.only(top: 8),

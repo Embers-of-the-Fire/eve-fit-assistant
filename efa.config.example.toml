@@ -14,6 +14,15 @@ supported = ["en", "zh"]
 en = "English"
 zh = "简体中文"
 
+[bundle_schema]
+# The `bundle_schema` section defines the schema versioning for built bundles.
+# `current` is the schema version the current app build creates.
+# `min` is the oldest bundle schema version the app can consume.
+# Schema versions are cumulative — a version N bundle never removes what N-1 provided.
+# The supported range is implicitly [min, current].
+current = 1
+min = 1
+
 [paths]
 # `paths` section defines some global paths used to store resources or outputs
 # Most of the paths are suggested not to change.

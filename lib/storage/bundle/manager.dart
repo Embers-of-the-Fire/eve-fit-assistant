@@ -45,6 +45,7 @@ abstract class BundleInfo with _$BundleInfo {
     required String version,
     required String build,
     required String region,
+    @Default(1) int bundleSchemaVersion,
   }) = _BundleInfo;
 
   factory BundleInfo.fromJson(Map<String, dynamic> json) => _$BundleInfoFromJson(json);
@@ -520,6 +521,7 @@ class BundleManager extends _$BundleManager {
             version: descriptor.appVersion,
             build: descriptor.gameBuild,
             region: descriptor.gameRegion,
+            bundleSchemaVersion: descriptor.bundleSchemaVersion,
           ),
         );
     if (wasActiveBundle || updatedRegistry.selectedBundleId == bundleId) {

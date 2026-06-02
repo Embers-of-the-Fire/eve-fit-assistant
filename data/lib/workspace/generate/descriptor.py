@@ -9,6 +9,7 @@ import yaml
 
 from pydantic import BaseModel
 
+from data.lib.config import CONFIGURATION
 from data.lib.constant import PROJECT_ROOT
 from data.lib.log import info
 
@@ -27,6 +28,9 @@ class Descriptor(BaseModel):
 
     bundleId: str
     appVersion: str
+
+    bundleSchemaVersion: int
+    compatibleBundleSchemaVersions: list[int]
 
     gameVersion: str
     gameBuild: str
@@ -48,8 +52,8 @@ class Descriptor(BaseModel):
         timestamp = datetime.datetime.now().timestamp()
         app_path = PROJECT_ROOT / "pubspec.yaml"
         with open(app_path, "r", encoding="utf-8") as f:
-            data = yaml.load(f, yaml.CLoader)
-        app_version = data["version"]
+            pubspec = yaml.load(f, Loader=yaml.SafeLoader)
+        app_version = pubspec["version"]
 
         descriptor = Descriptor(
             generateTimestamp=int(timestamp),
@@ -58,6 +62,13 @@ class Descriptor(BaseModel):
             baseManifestHash=base_manifest_hash,
             appVersion=app_version,
             bundleId=datasource.config.metadata.identifier,
+            bundleSchemaVersion=CONFIGURATION.bundle_schema.current,
+            compatibleBundleSchemaVersions=list(
+                range(
+                    CONFIGURATION.bundle_schema.min,
+                    CONFIGURATION.bundle_schema.current + 1,
+                )
+            ),
             gameVersion=start_config.get("main", "version"),
             gameBuild=start_config.get("main", "build"),
             gameRegion=start_config.get("main", "region"),

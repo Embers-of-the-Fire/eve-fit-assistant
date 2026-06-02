@@ -738,6 +738,26 @@ def _require_string(d: dict[str, object], key: str, label: str) -> str:
     return value
 
 
+def _require_int(d: dict[str, object], key: str, label: str, *, default: int | None = None) -> int:
+    value = d.get(key)
+    if isinstance(value, int):
+        return value
+    if default is not None:
+        return default
+    raise ValueError(f"Descriptor is missing int field '{key}': {label}")
+
+
+def _require_int_list(
+    d: dict[str, object], key: str, label: str, *, default: list[int] | None = None
+) -> list[int]:
+    value = d.get(key)
+    if isinstance(value, list) and all(isinstance(v, int) for v in value):
+        return value
+    if default is not None:
+        return list(default)
+    raise ValueError(f"Descriptor is missing int list field '{key}': {label}")
+
+
 def _validate_path_segment(name: str, label: str) -> None:
     if not name:
         raise ValueError(f"{label} must not be empty")
@@ -792,6 +812,12 @@ def _bundle_artifact_entry(
         "gameRegion": _require_string(descriptor, "gameRegion", str(archive_path)),
         "gameBranch": _require_string(descriptor, "gameBranch", str(archive_path)),
         "gameServer": _require_string(descriptor, "gameServer", str(archive_path)),
+        "bundleSchemaVersion": _require_int(
+            descriptor, "bundleSchemaVersion", str(archive_path), default=1
+        ),
+        "compatibleBundleSchemaVersions": _require_int_list(
+            descriptor, "compatibleBundleSchemaVersions", str(archive_path), default=[1]
+        ),
         "generatedAt": _utc_timestamp(),
         "artifactPath": artifact_relative_path,
         "artifactSize": archive_path.stat().st_size,
