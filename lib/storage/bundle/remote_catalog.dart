@@ -507,13 +507,13 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     if (variantOrder != 0) {
       return variantOrder;
     }
-    final schemaOrder = b.bundleSchemaVersion.compareTo(a.bundleSchemaVersion);
-    if (schemaOrder != 0) {
-      return schemaOrder;
-    }
     final generatedOrder = b.generatedAt.compareTo(a.generatedAt);
     if (generatedOrder != 0) {
       return generatedOrder;
+    }
+    final schemaOrder = b.bundleSchemaVersion.compareTo(a.bundleSchemaVersion);
+    if (schemaOrder != 0) {
+      return schemaOrder;
     }
     return a.artifactId.compareTo(b.artifactId);
   }
