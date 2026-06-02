@@ -82,6 +82,80 @@ class BundleVerificationMissingManifest extends BundleVerificationIssue {
   final String path;
 }
 
+class BundleVerificationInvalidManifest extends BundleVerificationIssue {
+  const BundleVerificationInvalidManifest({required this.path, required this.error});
+
+  @override
+  final String path;
+  final String error;
+}
+
+class BundleVerificationManifestHashMissing extends BundleVerificationIssue {
+  const BundleVerificationManifestHashMissing();
+}
+
+class BundleVerificationManifestHashMismatch extends BundleVerificationIssue {
+  const BundleVerificationManifestHashMismatch({required this.expected, required this.actual});
+
+  final String expected;
+  final String actual;
+}
+
+class BundleVerificationUnsafeManifestPath extends BundleVerificationIssue {
+  const BundleVerificationUnsafeManifestPath({required this.path});
+
+  @override
+  final String path;
+}
+
+class BundleVerificationMissingFile extends BundleVerificationIssue {
+  const BundleVerificationMissingFile({required this.path});
+
+  @override
+  final String path;
+}
+
+class BundleVerificationSizeMismatch extends BundleVerificationIssue {
+  const BundleVerificationSizeMismatch({
+    required this.path,
+    required this.expected,
+    required this.actual,
+  });
+
+  @override
+  final String path;
+  final int expected;
+  final int actual;
+}
+
+class BundleVerificationHashMismatch extends BundleVerificationIssue {
+  const BundleVerificationHashMismatch({
+    required this.path,
+    required this.expected,
+    required this.actual,
+  });
+
+  @override
+  final String path;
+  final String expected;
+  final String actual;
+}
+
+class BundleVerificationExtraFile extends BundleVerificationIssue {
+  const BundleVerificationExtraFile({required this.path});
+
+  @override
+  final String path;
+}
+
+class BundleVerificationReadError extends BundleVerificationIssue {
+  const BundleVerificationReadError({required this.path, required this.error});
+
+  @override
+  final String path;
+  final String error;
+}
+
 class BundleVerificationUnsupportedSchemaVersion extends BundleVerificationIssue {
   const BundleVerificationUnsupportedSchemaVersion({
     required this.bundleVersion,
@@ -124,8 +198,7 @@ class BundleVerificationReport {
         (issue) => switch (issue) {
           BundleVerificationExtraFile() ||
           BundleVerificationManifestHashMissing() ||
-          BundleVerificationSchemaVersionMismatch() =>
-            false,
+          BundleVerificationSchemaVersionMismatch() => false,
           _ => true,
         },
       )
@@ -136,8 +209,7 @@ class BundleVerificationReport {
         (issue) => switch (issue) {
           BundleVerificationExtraFile() ||
           BundleVerificationManifestHashMissing() ||
-          BundleVerificationSchemaVersionMismatch() =>
-            true,
+          BundleVerificationSchemaVersionMismatch() => true,
           _ => false,
         },
       )
@@ -324,15 +396,14 @@ class BundleVerificationService {
           (issue) => switch (issue) {
             BundleVerificationExtraFile() ||
             BundleVerificationManifestHashMissing() ||
-            BundleVerificationSchemaVersionMismatch() =>
-              false,
+            BundleVerificationSchemaVersionMismatch() => false,
             _ => true,
           },
         )
-            ? BundleVerificationStatus.invalid
-            : issues.isEmpty
-            ? BundleVerificationStatus.valid
-            : BundleVerificationStatus.warning;
+        ? BundleVerificationStatus.invalid
+        : issues.isEmpty
+        ? BundleVerificationStatus.valid
+        : BundleVerificationStatus.warning;
     return BundleVerificationReport(
       bundleId: bundleId,
       checkedAt: checkedAt,

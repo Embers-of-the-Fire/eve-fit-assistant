@@ -622,9 +622,7 @@ String _formatRemoteCandidateUnavailableReason(
         currentVersion: currentAppVersion ?? context.l10n.bundleRemoteUnknownAppVersion,
       ),
     RemoteBundleCandidateUnavailableReason.incompatibleBundleSchema =>
-      context.l10n.bundleRemoteUnavailableIncompatibleSchema(
-        version: artifact.bundleSchemaVersion,
-      ),
+      context.l10n.bundleRemoteUnavailableIncompatibleSchema(version: artifact.bundleSchemaVersion),
     RemoteBundleCandidateUnavailableReason.missingIncrementalMetadata =>
       context.l10n.bundleRemoteUnavailableMissingIncrementalMetadata,
     RemoteBundleCandidateUnavailableReason.baseBundleNotInstalled =>

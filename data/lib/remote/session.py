@@ -812,7 +812,9 @@ def _bundle_artifact_entry(
         "gameRegion": _require_string(descriptor, "gameRegion", str(archive_path)),
         "gameBranch": _require_string(descriptor, "gameBranch", str(archive_path)),
         "gameServer": _require_string(descriptor, "gameServer", str(archive_path)),
-        "bundleSchemaVersion": _require_int(descriptor, "bundleSchemaVersion", str(archive_path), default=1),
+        "bundleSchemaVersion": _require_int(
+            descriptor, "bundleSchemaVersion", str(archive_path), default=1
+        ),
         "compatibleBundleSchemaVersions": _require_int_list(
             descriptor, "compatibleBundleSchemaVersions", str(archive_path), default=[1]
         ),

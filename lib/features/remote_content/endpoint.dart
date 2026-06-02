@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
 const int remoteContentClientApiVersion = 1;
 const int remoteContentSchemaVersion = 1;
@@ -181,13 +182,17 @@ int readRemoteOptionalInt(Map<String, dynamic> payload, String key, int defaultV
   return value;
 }
 
-List<int> readRemoteOptionalIntList(Map<String, dynamic> payload, String key, List<int> defaultValue) {
+IList<int> readRemoteOptionalIntList(
+  Map<String, dynamic> payload,
+  String key,
+  IList<int> defaultValue,
+) {
   final value = payload[key];
   if (value == null) {
-    return List<int>.of(defaultValue);
+    return defaultValue;
   }
   if (value is! List<Object?> || value.any((item) => item is! int)) {
     throw RemoteContentException("Remote field '$key' must be an int list when set.");
   }
-  return value.cast<int>();
+  return value.cast<int>().toIList();
 }

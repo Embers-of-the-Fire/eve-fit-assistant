@@ -4,4 +4,4 @@
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
 const int currentBundleSchemaVersion = 1;
-const IList<int> supportedBundleSchemaVersions = IList([1]);
+final IList<int> supportedBundleSchemaVersions = IList([1]);

@@ -38,8 +38,6 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     required String bundleId,
     required RemoteBundleArtifactVariant variant,
     required String appVersion,
-    @Default(1) int bundleSchemaVersion,
-    @Default(IList<int>) IList<int> compatibleBundleSchemaVersions,
     required String gameVersion,
     required String gameBuild,
     required String gameRegion,
@@ -51,6 +49,8 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     required String artifactSha256,
     required String manifestPath,
     required String manifestHash,
+    @Default(1) int bundleSchemaVersion,
+    @Default(IList<int>) IList<int> compatibleBundleSchemaVersions,
     String? baseBundleId,
     String? baseManifestHash,
   }) = _RemoteBundleArtifact;
@@ -67,8 +67,12 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
       bundleId: readRemoteRequiredString(json, "bundleId"),
       variant: _readVariant(json),
       appVersion: readRemoteRequiredString(json, "appVersion"),
-      bundleSchemaVersion: _readOptionalInt(json, "bundleSchemaVersion", 1),
-      compatibleBundleSchemaVersions: _readOptionalIntList(json, "compatibleBundleSchemaVersions", [1]),
+      bundleSchemaVersion: readRemoteOptionalInt(json, "bundleSchemaVersion", 1),
+      compatibleBundleSchemaVersions: readRemoteOptionalIntList(
+        json,
+        "compatibleBundleSchemaVersions",
+        IList([1]),
+      ),
       gameVersion: readRemoteRequiredString(json, "gameVersion"),
       gameBuild: readRemoteRequiredString(json, "gameBuild"),
       gameRegion: readRemoteRequiredString(json, "gameRegion"),
@@ -337,8 +341,9 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       );
     }
 
-    final schemaCompat = artifact.compatibleBundleSchemaVersions
-        .any((v) => supportedBundleSchemaVersions.contains(v));
+    final schemaCompat = artifact.compatibleBundleSchemaVersions.any(
+      supportedBundleSchemaVersions.contains,
+    );
     if (!schemaCompat) {
       return RemoteBundleCandidate(
         artifact: artifact,

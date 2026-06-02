@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-import data.lib.config
-
 from pydantic import BaseModel
 
 from data.lib.constant import PROJECT_ROOT

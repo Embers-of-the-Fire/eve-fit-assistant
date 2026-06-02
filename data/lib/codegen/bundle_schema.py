@@ -28,7 +28,7 @@ def codegen_dart() -> list[Path]:
             "// DO NOT EDIT\n\n"
             'import "package:fast_immutable_collections/fast_immutable_collections.dart";\n\n'
             f"const int currentBundleSchemaVersion = {current};\n"
-            f"const IList<int> supportedBundleSchemaVersions = IList([{supported_str}]);\n"
+            f"final IList<int> supportedBundleSchemaVersions = IList([{supported_str}]);\n"
         )
 
     return [OUT_PATH]
