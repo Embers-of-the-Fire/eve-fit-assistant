@@ -50,7 +50,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     required String manifestPath,
     required String manifestHash,
     @Default(1) int bundleSchemaVersion,
-    @Default(IList<int>) IList<int> compatibleBundleSchemaVersions,
+    @Default(IListConst([1])) IList<int> compatibleBundleSchemaVersions,
     String? baseBundleId,
     String? baseManifestHash,
   }) = _RemoteBundleArtifact;
