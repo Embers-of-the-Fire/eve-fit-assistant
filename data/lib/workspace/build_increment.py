@@ -50,13 +50,21 @@ def build_increment_bundle(config, baseline_manifest_path: Path):
         shutil.rmtree(increment_generated)
     increment_generated.mkdir(parents=True, exist_ok=True)
 
+    descriptor = Descriptor.create(
+        datasource,
+        base_bundle_id=baseline_manifest.bundleId,
+        base_manifest_hash=manifest_hash(baseline_manifest),
+    )
+
     current_manifest = build_snapshot_manifest(
         baseline_manifest.bundleId,
         baseline_manifest.generateTimestamp,
+        descriptor.bundleSchemaVersion,
+        descriptor.compatibleBundleSchemaVersions,
         datasource.paths.full_generate_out_path,
         skipped_paths={"descriptor.json", "manifest.json", "deleted_files.json"},
     )
-    current_manifest.generateTimestamp = Descriptor.create(datasource).generateTimestamp
+    current_manifest.generateTimestamp = descriptor.generateTimestamp
 
     baseline_files = baseline_manifest.file_map
     current_files = current_manifest.file_map
@@ -80,12 +88,6 @@ def build_increment_bundle(config, baseline_manifest_path: Path):
     )
     info(f"Generated deleted files manifest at {datasource.paths.increment_deleted_files_path}.")
 
-    descriptor = Descriptor.create(
-        datasource,
-        base_bundle_id=baseline_manifest.bundleId,
-        base_manifest_hash=manifest_hash(baseline_manifest),
-    )
-    current_manifest.generateTimestamp = descriptor.generateTimestamp
     descriptor.manifestHash = write_snapshot_manifest(
         datasource.paths.increment_manifest_path,
         current_manifest,

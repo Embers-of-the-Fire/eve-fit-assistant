@@ -55,6 +55,8 @@ async def run_generator(config: WorkspaceConfig, skip: set[str], gen_hash: bool)
             manifest = build_snapshot_manifest(
                 desc.bundleId,
                 desc.generateTimestamp,
+                desc.bundleSchemaVersion,
+                desc.compatibleBundleSchemaVersions,
                 datasource.paths.full_generate_out_path,
                 skipped_paths={"descriptor.json", "manifest.json", "deleted_files.json"},
             )

@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+import data.lib.config
+
 from pydantic import BaseModel
 
 from data.lib.constant import PROJECT_ROOT
@@ -27,6 +29,9 @@ class Descriptor(BaseModel):
 
     bundleId: str
     appVersion: str
+
+    bundleSchemaVersion: int
+    compatibleBundleSchemaVersions: list[int]
 
     gameVersion: str
     gameBuild: str
@@ -58,6 +63,8 @@ class Descriptor(BaseModel):
             baseManifestHash=base_manifest_hash,
             appVersion=app_version,
             bundleId=datasource.config.metadata.identifier,
+            bundleSchemaVersion=data.lib.config.CONFIGURATION.bundle_schema.current,
+            compatibleBundleSchemaVersions=data.lib.config.CONFIGURATION.bundle_schema.supported,
             gameVersion=start_config.get("main", "version"),
             gameBuild=start_config.get("main", "build"),
             gameRegion=start_config.get("main", "region"),

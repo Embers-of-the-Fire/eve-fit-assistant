@@ -22,7 +22,8 @@ class ManifestFile(BaseModel):
 
 
 class SnapshotManifest(BaseModel):
-    schemaVersion: int = 1
+    bundleSchemaVersion: int
+    compatibleBundleSchemaVersions: list[int]
     bundleId: str
     generateTimestamp: int
     files: list[ManifestFile] = Field(default_factory=list)
@@ -35,6 +36,8 @@ class SnapshotManifest(BaseModel):
 def build_snapshot_manifest(
     bundle_id: str,
     generate_timestamp: int,
+    bundle_schema_version: int,
+    compatible_bundle_schema_versions: list[int],
     root_dir: Path,
     *,
     skipped_paths: set[str] | None = None,
@@ -59,6 +62,8 @@ def build_snapshot_manifest(
         )
 
     return SnapshotManifest(
+        bundleSchemaVersion=bundle_schema_version,
+        compatibleBundleSchemaVersions=compatible_bundle_schema_versions,
         bundleId=bundle_id,
         generateTimestamp=generate_timestamp,
         files=files,
@@ -82,5 +87,12 @@ def write_snapshot_manifest(path: Path, manifest: SnapshotManifest) -> str:
 
 
 def load_snapshot_manifest(path: Path) -> SnapshotManifest:
+    import json as _json
+
     content = path.read_text(encoding="utf-8")
-    return SnapshotManifest.model_validate_json(content)
+    raw = _json.loads(content)
+    if "bundleSchemaVersion" not in raw:
+        old_version = raw.get("schemaVersion", 1)
+        raw["bundleSchemaVersion"] = old_version
+        raw["compatibleBundleSchemaVersions"] = [old_version]
+    return SnapshotManifest.model_validate(raw)
