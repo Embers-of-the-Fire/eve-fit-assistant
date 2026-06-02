@@ -348,7 +348,7 @@
   "bundleVerificationIssueHashMismatch": "Hash mismatch for {path}: expected {expected}, got {actual}",
   "bundleVerificationIssueExtraFile": "Extra file: {path}",
   "bundleVerificationIssueReadError": "Read error for {path}: {error}",
-  "bundleVerificationIssueUnsupportedSchemaVersion": "Bundle schema v{version} is not supported (supported: {supported}).",
+  "bundleVerificationIssueUnsupportedSchemaVersion": "Bundle schema v{version} is not supported (supported: v{min}–v{max}).",
   "bundleVerificationIssueSchemaVersionMismatch": "Bundle schema v{version} differs from current app schema v{current}.",
   "bundleManagerSetupTitle": "Import your first bundle",
   "bundleManagerSetupDescription": "The app needs one valid data bundle before fitting and related tools can load. Import a bundle archive to get started.",

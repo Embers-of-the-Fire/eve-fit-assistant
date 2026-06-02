@@ -159,11 +159,13 @@ class BundleVerificationReadError extends BundleVerificationIssue {
 class BundleVerificationUnsupportedSchemaVersion extends BundleVerificationIssue {
   const BundleVerificationUnsupportedSchemaVersion({
     required this.bundleVersion,
-    required this.supported,
+    required this.minSupported,
+    required this.maxSupported,
   });
 
   final int bundleVersion;
-  final IList<int> supported;
+  final int minSupported;
+  final int maxSupported;
 }
 
 class BundleVerificationSchemaVersionMismatch extends BundleVerificationIssue {
@@ -293,11 +295,13 @@ class BundleVerificationService {
     BundleSnapshotManifest manifest,
     List<BundleVerificationIssue> issues,
   ) {
-    if (!supportedBundleSchemaVersions.contains(manifest.bundleSchemaVersion)) {
+    if (manifest.bundleSchemaVersion < minSupportedBundleSchemaVersion ||
+        manifest.bundleSchemaVersion > currentBundleSchemaVersion) {
       issues.add(
         BundleVerificationUnsupportedSchemaVersion(
           bundleVersion: manifest.bundleSchemaVersion,
-          supported: supportedBundleSchemaVersions,
+          minSupported: minSupportedBundleSchemaVersion,
+          maxSupported: currentBundleSchemaVersion,
         ),
       );
     } else if (manifest.bundleSchemaVersion != currentBundleSchemaVersion) {

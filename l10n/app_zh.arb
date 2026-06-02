@@ -937,14 +937,17 @@
       }
     }
   },
-  "bundleVerificationIssueUnsupportedSchemaVersion": "数据包架构 v{version} 不受支持（支持版本: {supported})。",
+  "bundleVerificationIssueUnsupportedSchemaVersion": "数据包架构 v{version} 不受支持（支持版本: v{min}–v{max})。",
   "@bundleVerificationIssueUnsupportedSchemaVersion": {
     "placeholders": {
       "version": {
         "type": "int"
       },
-      "supported": {
-        "type": "String"
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
       }
     }
   },

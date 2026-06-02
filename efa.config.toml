@@ -8,7 +8,7 @@ zh = "简体中文"
 
 [bundle_schema]
 current = 1
-supported = [1]
+min = 1
 
 [paths]
 log = "data/log"

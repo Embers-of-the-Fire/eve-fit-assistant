@@ -63,7 +63,12 @@ class Descriptor(BaseModel):
             appVersion=app_version,
             bundleId=datasource.config.metadata.identifier,
             bundleSchemaVersion=CONFIGURATION.bundle_schema.current,
-            compatibleBundleSchemaVersions=CONFIGURATION.bundle_schema.supported,
+            compatibleBundleSchemaVersions=list(
+                range(
+                    CONFIGURATION.bundle_schema.min,
+                    CONFIGURATION.bundle_schema.current + 1,
+                )
+            ),
             gameVersion=start_config.get("main", "version"),
             gameBuild=start_config.get("main", "build"),
             gameRegion=start_config.get("main", "region"),

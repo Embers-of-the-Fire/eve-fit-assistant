@@ -54,18 +54,16 @@ class ProjectResource(BaseModel):
 
 class BundleSchema(BaseModel):
     current: int
-    supported: list[int]
+    min: int
 
     @model_validator(mode="after")
     def _validate_schema(self) -> BundleSchema:
-        if not self.supported:
-            raise ValueError("supported must be non-empty")
         if self.current <= 0:
             raise ValueError(f"current must be positive, got {self.current}")
-        if any(v <= 0 for v in self.supported):
-            raise ValueError("all supported version numbers must be positive")
-        if self.current not in self.supported:
-            raise ValueError(f"current ({self.current}) must be in supported ({self.supported})")
+        if self.min <= 0:
+            raise ValueError(f"min must be positive, got {self.min}")
+        if self.min > self.current:
+            raise ValueError(f"min ({self.min}) must be <= current ({self.current})")
         return self
 
 

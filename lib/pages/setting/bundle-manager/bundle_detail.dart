@@ -369,10 +369,15 @@ String _formatVerificationIssue(BuildContext context, BundleVerificationIssue is
       ),
       BundleVerificationReadError(:final path, :final error) =>
         context.l10n.bundleVerificationIssueReadError(path: path, error: error),
-      BundleVerificationUnsupportedSchemaVersion(:final bundleVersion, :final supported) =>
+      BundleVerificationUnsupportedSchemaVersion(
+        :final bundleVersion,
+        :final minSupported,
+        :final maxSupported,
+      ) =>
         context.l10n.bundleVerificationIssueUnsupportedSchemaVersion(
           version: bundleVersion,
-          supported: supported.join(", "),
+          min: minSupported,
+          max: maxSupported,
         ),
       BundleVerificationSchemaVersionMismatch(:final bundleVersion, :final current) =>
         context.l10n.bundleVerificationIssueSchemaVersionMismatch(

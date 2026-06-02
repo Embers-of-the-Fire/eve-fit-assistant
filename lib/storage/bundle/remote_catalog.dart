@@ -342,7 +342,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     }
 
     final schemaCompat = artifact.compatibleBundleSchemaVersions.any(
-      supportedBundleSchemaVersions.contains,
+      (v) => v >= minSupportedBundleSchemaVersion && v <= currentBundleSchemaVersion,
     );
     if (!schemaCompat) {
       return RemoteBundleCandidate(
