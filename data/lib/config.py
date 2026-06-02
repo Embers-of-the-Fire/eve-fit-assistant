@@ -51,9 +51,15 @@ class ProjectResource(BaseModel):
     descriptor: ProjectPath
 
 
+class BundleSchema(BaseModel):
+    current: int
+    supported: list[int]
+
+
 class ProjectConfiguration(BaseModel):
     localizations: ProjectLocalizations
     paths: ProjectPaths
+    bundle_schema: BundleSchema
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 
     @staticmethod
