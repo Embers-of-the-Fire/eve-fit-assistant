@@ -312,7 +312,7 @@
   "bundleManagerBundleServer": "Server: ",
   "bundleManagerBundleRegion": "Region: ",
   "bundleManagerBundleBranch": "Branch: ",
-  "bundleManagerBundleSchemaVersion": "Schema v",
+  "bundleManagerBundleSchemaVersion": "Schema v{num}",
   "bundleManagerDeleteBundleConfirmTitle": "Delete Bundle",
   "bundleManagerDeleteBundleConfirmContent": "Do you want to delete bundle {bundleId}?",
   "bundleManagerDeleteBundleInUseWarning": "This bundle is currently in use, deleting it may cause some features to not work properly.",

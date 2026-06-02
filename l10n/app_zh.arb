@@ -761,7 +761,14 @@
   "bundleManagerBundleServer": "服务器：",
   "bundleManagerBundleRegion": "服务地区：",
   "bundleManagerBundleBranch": "游戏分支：",
-  "bundleManagerBundleSchemaVersion": "架构 v",
+  "bundleManagerBundleSchemaVersion": "架构 v{num}",
+  "@bundleManagerBundleSchemaVersion": {
+    "placeholders": {
+      "num": {
+        "type": "int"
+      }
+    }
+  },
   "bundleManagerDeleteBundleConfirmTitle": "删除数据包",
   "bundleManagerDeleteBundleConfirmContent": "您确定要删除数据包 {bundleId} 吗？",
   "@bundleManagerDeleteBundleConfirmContent": {

@@ -125,7 +125,9 @@ class _BundleDetailPageState extends ConsumerState<BundleDetailPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "${context.l10n.bundleManagerBundleSchemaVersion}v${bundle.bundleSchemaVersion}",
+                        context.l10n.bundleManagerBundleSchemaVersion(
+                          num: bundle.bundleSchemaVersion,
+                        ),
                         style: context.theme.textTheme.bodySmall?.copyWith(
                           color: context.theme.colorScheme.primary,
                           fontWeight: FontWeight.w500,
