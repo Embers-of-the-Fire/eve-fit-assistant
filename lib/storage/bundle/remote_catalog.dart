@@ -71,7 +71,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
       compatibleBundleSchemaVersions: readRemoteOptionalIntList(
         json,
         "compatibleBundleSchemaVersions",
-        IList([1]),
+        IList(const [1]),
       ),
       gameVersion: readRemoteRequiredString(json, "gameVersion"),
       gameBuild: readRemoteRequiredString(json, "gameBuild"),
