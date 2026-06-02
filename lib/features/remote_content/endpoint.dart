@@ -169,3 +169,25 @@ List<String> readRemoteOptionalStringList(Map<String, dynamic> payload, String k
   }
   return value.cast<String>();
 }
+
+int readRemoteOptionalInt(Map<String, dynamic> payload, String key, int defaultValue) {
+  final value = payload[key];
+  if (value == null) {
+    return defaultValue;
+  }
+  if (value is! int) {
+    throw RemoteContentException("Remote field '$key' must be an integer when set.");
+  }
+  return value;
+}
+
+List<int> readRemoteOptionalIntList(Map<String, dynamic> payload, String key, List<int> defaultValue) {
+  final value = payload[key];
+  if (value == null) {
+    return List<int>.of(defaultValue);
+  }
+  if (value is! List<Object?> || value.any((item) => item is! int)) {
+    throw RemoteContentException("Remote field '$key' must be an int list when set.");
+  }
+  return value.cast<int>();
+}
