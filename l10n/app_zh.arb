@@ -761,6 +761,7 @@
   "bundleManagerBundleServer": "服务器：",
   "bundleManagerBundleRegion": "服务地区：",
   "bundleManagerBundleBranch": "游戏分支：",
+  "bundleManagerBundleSchemaVersion": "架构 v",
   "bundleManagerDeleteBundleConfirmTitle": "删除数据包",
   "bundleManagerDeleteBundleConfirmContent": "您确定要删除数据包 {bundleId} 吗？",
   "@bundleManagerDeleteBundleConfirmContent": {
@@ -929,6 +930,28 @@
       }
     }
   },
+  "bundleVerificationIssueUnsupportedSchemaVersion": "数据包架构 v{version} 不受支持（支持版本: {supported})。",
+  "@bundleVerificationIssueUnsupportedSchemaVersion": {
+    "placeholders": {
+      "version": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleVerificationIssueSchemaVersionMismatch": "数据包架构 v{version} 与当前应用架构 v{current} 不同。",
+  "@bundleVerificationIssueSchemaVersionMismatch": {
+    "placeholders": {
+      "version": {
+        "type": "int"
+      },
+      "current": {
+        "type": "int"
+      }
+    }
+  },
   "bundleManagerSetupTitle": "导入第一个数据包",
   "bundleManagerSetupDescription": "装配和相关功能需要先加载一个有效的数据包。请先导入数据包归档文件。",
   "bundleManagerAlphaScope": "Alpha 范围：应用可以安装多个数据包，但全局同一时间只会启用一个活动数据包。",
@@ -1051,6 +1074,14 @@
       }
     }
   },
+  "bundleRemoteUnavailableIncompatibleSchema": "数据包架构 v{version} 不被当前应用版本支持。",
+  "@bundleRemoteUnavailableIncompatibleSchema": {
+    "placeholders": {
+      "version": {
+        "type": "int"
+      }
+    }
+  },
   "bundleRemoteUnavailableMissingIncrementalMetadata": "增量产物缺少基线数据包元数据。",
   "bundleRemoteUnavailableBaseNotInstalled": "请先安装基线数据包 {bundleId}，再应用此增量补丁。",
   "@bundleRemoteUnavailableBaseNotInstalled": {
@@ -1120,6 +1151,14 @@
     "placeholders": {
       "hash": {
         "type": "String"
+      }
+    }
+  },
+  "bundleRemoteSchemaVersionWarning": "架构 v{version} — 可能与当前应用架构不同",
+  "@bundleRemoteSchemaVersionWarning": {
+    "placeholders": {
+      "version": {
+        "type": "int"
       }
     }
   },

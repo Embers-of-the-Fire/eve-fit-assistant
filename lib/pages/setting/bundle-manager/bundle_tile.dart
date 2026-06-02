@@ -60,6 +60,21 @@ class _BundleTile extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const .symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: context.theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        "v${bundle.bundleSchemaVersion}",
+                        style: context.theme.textTheme.labelSmall?.copyWith(
+                          color: context.theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
