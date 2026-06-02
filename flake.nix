@@ -99,6 +99,8 @@
       androidSdkRoot = "${androidSdk}/libexec/android-sdk";
       runtimeLibraryPath = pkgs.lib.makeLibraryPath [
         pkgs.stdenv.cc.cc
+        pkgs.openssl
+        pkgs.curl
       ];
       nativeRustToolchainPath = pkgs.lib.makeBinPath [
         pkgs.cargo
