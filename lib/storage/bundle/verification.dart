@@ -176,6 +176,13 @@ class BundleVerificationSchemaVersionMismatch extends BundleVerificationIssue {
   final int current;
 }
 
+bool _isNonBlocking(BundleVerificationIssue issue) => switch (issue) {
+  BundleVerificationExtraFile() ||
+  BundleVerificationManifestHashMissing() ||
+  BundleVerificationSchemaVersionMismatch() => true,
+  _ => false,
+};
+
 class BundleVerificationReport {
   const BundleVerificationReport({
     required this.bundleId,
@@ -193,27 +200,10 @@ class BundleVerificationReport {
 
   int countIssues<T extends BundleVerificationIssue>() => issues.whereType<T>().length;
 
-  IList<BundleVerificationIssue> get blockingIssues => issues
-      .where(
-        (issue) => switch (issue) {
-          BundleVerificationExtraFile() ||
-          BundleVerificationManifestHashMissing() ||
-          BundleVerificationSchemaVersionMismatch() => false,
-          _ => true,
-        },
-      )
-      .toIList();
+  IList<BundleVerificationIssue> get blockingIssues =>
+      issues.where((issue) => !_isNonBlocking(issue)).toIList();
 
-  IList<BundleVerificationIssue> get warningIssues => issues
-      .where(
-        (issue) => switch (issue) {
-          BundleVerificationExtraFile() ||
-          BundleVerificationManifestHashMissing() ||
-          BundleVerificationSchemaVersionMismatch() => true,
-          _ => false,
-        },
-      )
-      .toIList();
+  IList<BundleVerificationIssue> get warningIssues => issues.where(_isNonBlocking).toIList();
 }
 
 class BundleVerificationService {
@@ -391,15 +381,7 @@ class BundleVerificationService {
     required DateTime checkedAt,
     required List<BundleVerificationIssue> issues,
   }) {
-    final status =
-        issues.any(
-          (issue) => switch (issue) {
-            BundleVerificationExtraFile() ||
-            BundleVerificationManifestHashMissing() ||
-            BundleVerificationSchemaVersionMismatch() => false,
-            _ => true,
-          },
-        )
+    final status = issues.any((issue) => !_isNonBlocking(issue))
         ? BundleVerificationStatus.invalid
         : issues.isEmpty
         ? BundleVerificationStatus.valid
