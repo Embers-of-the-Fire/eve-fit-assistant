@@ -17,6 +17,7 @@ OUT_PATH = DART_ROOT / "storage" / "bundle" / "schema_version.dart"
 def codegen_dart() -> list[Path]:
     data.lib.config.ProjectConfiguration.ensure_loaded()
     bundle_schema = data.lib.config.CONFIGURATION.bundle_schema
+    _validate_schema_range(bundle_schema.current, bundle_schema.min)
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with OUT_PATH.open("w", encoding="utf-8") as f:
@@ -28,3 +29,12 @@ def codegen_dart() -> list[Path]:
         )
 
     return [OUT_PATH]
+
+
+def _validate_schema_range(current: int, min_: int) -> None:
+    if current <= 0:
+        raise ValueError(f"current ({current}) must be positive")
+    if min_ <= 0:
+        raise ValueError(f"min ({min_}) must be positive")
+    if min_ > current:
+        raise ValueError(f"min ({min_}) must be <= current ({current})")
