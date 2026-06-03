@@ -68,10 +68,86 @@ class BundleSchema(BaseModel):
         return self
 
 
+class ProjectVersion(BaseModel):
+    major: int
+    minor: int
+    patch: int
+    pre_label: str = ""
+    pre_num: int = 0
+    build: int = 0
+
+    @model_validator(mode="after")
+    def _validate_version(self) -> ProjectVersion:
+        if self.major < 0:
+            raise ValueError(f"major must be >= 0, got {self.major}")
+        if self.minor < 0:
+            raise ValueError(f"minor must be >= 0, got {self.minor}")
+        if self.patch < 0:
+            raise ValueError(f"patch must be >= 0, got {self.patch}")
+        if self.build < 0:
+            raise ValueError(f"build must be >= 0, got {self.build}")
+        if self.pre_label and self.pre_num < 1:
+            raise ValueError(
+                f"pre_num must be >= 1 when pre_label is set, "
+                f"got pre_label={self.pre_label!r} pre_num={self.pre_num}"
+            )
+        if not self.pre_label and self.pre_num > 0:
+            raise ValueError(
+                f"pre_label must be set when pre_num > 0, "
+                f"got pre_label={self.pre_label!r} pre_num={self.pre_num}"
+            )
+        return self
+
+    def is_prerelease(self) -> bool:
+        return bool(self.pre_label)
+
+    def render_full(self) -> str:
+        base = f"{self.major}.{self.minor}.{self.patch}"
+        if self.is_prerelease():
+            base = f"{base}-{self.pre_label}.{self.pre_num}"
+        return f"{base}+{self.build}"
+
+    def render_semver(self) -> str:
+        base = f"{self.major}.{self.minor}.{self.patch}"
+        if self.is_prerelease():
+            base = f"{base}-{self.pre_label}.{self.pre_num}"
+        return base
+
+    def render_tag(self) -> str:
+        return f"v{self.render_full()}"
+
+    def bump_major(self) -> ProjectVersion:
+        self.major += 1
+        self.minor = 0
+        self.patch = 0
+        if self.is_prerelease():
+            self.pre_num = 1
+        return self
+
+    def bump_minor(self) -> ProjectVersion:
+        self.minor += 1
+        self.patch = 0
+        if self.is_prerelease():
+            self.pre_num = 1
+        return self
+
+    def bump_patch(self) -> ProjectVersion:
+        self.patch += 1
+        if self.is_prerelease():
+            self.pre_num = 1
+        return self
+
+    def clear_prerelease(self) -> ProjectVersion:
+        self.pre_label = ""
+        self.pre_num = 0
+        return self
+
+
 class ProjectConfiguration(BaseModel):
     localizations: ProjectLocalizations
     paths: ProjectPaths
     bundle_schema: BundleSchema
+    version: ProjectVersion
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 
     @staticmethod
