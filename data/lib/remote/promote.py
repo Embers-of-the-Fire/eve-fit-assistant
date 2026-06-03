@@ -40,6 +40,15 @@ _SOURCE_CHANNEL = Channel.TESTING
 _TARGET_CHANNEL = Channel.STABLE
 
 
+def _utc_now() -> str:
+    return (
+        datetime.datetime.now(datetime.UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
 def _generate_session_id() -> str:
     stamp = (
         datetime.datetime.now(datetime.UTC)
@@ -281,14 +290,12 @@ class PromotionSessionManager:
         docs: list[dict[str, object]] = [
             e
             for e in t_docs.get("entries", [])  # type: ignore[assignment]
-            if isinstance(e, dict)
-            and e.get("id") not in stable_doc_ids
+            if isinstance(e, dict) and e.get("id") not in stable_doc_ids
         ]
         bundles: list[dict[str, object]] = [
             a
             for a in t_bundles.get("artifacts", [])  # type: ignore[assignment]
-            if isinstance(a, dict)
-            and a.get("artifactId") not in stable_artifact_ids
+            if isinstance(a, dict) and a.get("artifactId") not in stable_artifact_ids
         ]
 
         return {"documents": docs, "bundles": bundles}
@@ -353,7 +360,8 @@ class PromotionSessionManager:
                     f"Bundle {artifact_id!r} already staged in session {self.session_id}"
                 )
 
-        entry = self._get_testing_entry(artifact_id)
+        entry = dict(self._get_testing_entry(artifact_id))
+        entry["generatedAt"] = _utc_now()
         bundle_id = entry.get("bundleId", "")
         if not isinstance(bundle_id, str):
             raise ValueError("Entry missing bundleId")
@@ -372,18 +380,19 @@ class PromotionSessionManager:
                 inc_artifact_id = inc.get("artifactId", "")
                 if not isinstance(inc_artifact_id, str):
                     continue
-                # Skip if already staged
                 already_staged = any(
                     isinstance(o, PromoteBundleOp) and o.artifact_id == inc_artifact_id
                     for o in todo.operations
                 )
                 if already_staged:
                     continue
+                inc_entry = dict(inc)
+                inc_entry["generatedAt"] = _utc_now()
                 inc_op = PromoteBundleOp(
                     artifact_id=inc_artifact_id,
                     bundle_id=bundle_id,
                     variant="incremental",
-                    fields=inc,
+                    fields=inc_entry,
                 )
                 todo.operations.append(inc_op)
 
@@ -400,7 +409,8 @@ class PromotionSessionManager:
                     f"Document {document_id!r} already staged in session {self.session_id}"
                 )
 
-        entry = self._get_testing_document(document_id)
+        entry = dict(self._get_testing_document(document_id))
+        entry["publishedAt"] = _utc_now()
         op = PromoteDocumentOp(document_id=document_id, fields=entry)
         todo.operations.append(op)
         self._save_todo()
