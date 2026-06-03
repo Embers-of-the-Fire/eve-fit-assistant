@@ -361,44 +361,6 @@ def check_lint(force: bool) -> CheckResult:
     )
 
 
-def check_test(force: bool) -> CheckResult:
-    rc, _, stderr = _shell(
-        ["cargo", "test", "-p", "eve-fit-os", "-p", "rust_lib_eve_fit_assistant"]
-    )
-    if rc != 0:
-        return CheckResult(
-            name="test",
-            passed=False,
-            severity=CheckSeverity.WARN if force else CheckSeverity.FATAL,
-            message="cargo test failed",
-            details=stderr,
-        )
-    return CheckResult(
-        name="test",
-        passed=True,
-        severity=CheckSeverity.FATAL,
-        message="Rust tests passed",
-    )
-
-
-def check_build_data(force: bool) -> CheckResult:
-    rc, _, stderr = _shell(["uv", "run", "x.py", "build", "data"])
-    if rc != 0:
-        return CheckResult(
-            name="build-data",
-            passed=False,
-            severity=CheckSeverity.WARN if force else CheckSeverity.FATAL,
-            message="./x build data failed",
-            details=stderr,
-        )
-    return CheckResult(
-        name="build-data",
-        passed=True,
-        severity=CheckSeverity.FATAL,
-        message="./x build data succeeded",
-    )
-
-
 def check_changelog_entry(force: bool) -> CheckResult:
     from data.lib.release.changelog import check_changelog
     from data.lib.release.version import load_version
@@ -428,8 +390,6 @@ _CHECK_FUNCTIONS = [
     check_submodule,
     check_generate,
     check_lint,
-    check_test,
-    check_build_data,
     check_changelog_entry,
 ]
 

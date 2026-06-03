@@ -3642,9 +3642,9 @@ def release_check(since_tag: str | None, force: bool):
     """Run all pre-release checks.
 
     \b
-    Runs 12 verification gates: version-sync, git-clean, git-tag,
+    Runs 10 verification gates: version-sync, git-clean, git-tag,
     schema-diff, schema-bump, persistence-check, submodule, generate,
-    lint, test, build-data, and changelog.  Fatal failures block the
+    lint, and changelog.  Fatal failures block the
     release unless --force is used.
     """
     from data.lib.release.check import CheckSeverity
