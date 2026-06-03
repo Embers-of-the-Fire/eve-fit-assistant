@@ -748,6 +748,8 @@
   "appSettingsPageRemoteContentOriginUrlLabel": "源 URL",
   "appSettingsPageRemoteContentResourceRootLabel": "资源根路径",
   "appSettingsPageRemoteContentChannelLabel": "频道",
+  "appSettingsPageRemoteContentChannelTesting": "测试版",
+  "appSettingsPageRemoteContentChannelStable": "稳定版",
   "appSettingsPageRemoteContentRegionLabel": "存储区域",
   "appSettingsPageSectionDeveloper": "开发者选项",
   "appSettingsPageDebugLogTitle": "启用调试日志",
