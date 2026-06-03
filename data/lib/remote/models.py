@@ -63,6 +63,20 @@ class RemoveOp(BaseModel):
     target_id: str
 
 
+class PromoteDocumentOp(BaseModel):
+    type: Literal["promote-document"] = "promote-document"
+    document_id: str
+    fields: dict[str, object] = Field(default_factory=dict)
+
+
+class PromoteBundleOp(BaseModel):
+    type: Literal["promote-bundle"] = "promote-bundle"
+    artifact_id: str
+    bundle_id: str
+    variant: Literal["full", "incremental"]
+    fields: dict[str, object] = Field(default_factory=dict)
+
+
 # ---------------------------------------------------------------------------
 # Todo list (the ordered journal of staged operations)
 # ---------------------------------------------------------------------------
@@ -75,7 +89,9 @@ class TodoList(BaseModel):
     version: int = 1
     session_id: str
     committed: bool = False
-    operations: list[AddAnnouncementOp | AddBundleOp | RemoveOp] = Field(default_factory=list)
+    operations: list[
+        AddAnnouncementOp | AddBundleOp | RemoveOp | PromoteDocumentOp | PromoteBundleOp
+    ] = Field(default_factory=list)
     lock_snapshot: dict[str, object] = Field(default_factory=dict)
 
 

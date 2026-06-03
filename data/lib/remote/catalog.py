@@ -107,6 +107,10 @@ def apply_operations_to_catalogs(
             _apply_add_bundle(merged_bundles, op)
         elif op_type == "remove":
             _apply_remove(op, merged_docs, merged_bundles)
+        elif op_type == "promote-document":
+            _apply_add_announcement(merged_docs, op)
+        elif op_type == "promote-bundle":
+            _apply_add_bundle(merged_bundles, op)
 
     _bump_index_revision(merged_index, merged_docs, merged_bundles, channel)
     return merged_index, merged_docs, merged_bundles

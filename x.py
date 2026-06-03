@@ -74,6 +74,7 @@ from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
 from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import info
 from data.lib.log import warning
+from data.lib.remote.promote import PromotionSessionNotActiveError
 from data.lib.remote.session import SessionCommittedError
 from data.lib.remote.session import SessionManager
 from data.lib.remote.session import SessionNotActiveError
@@ -1623,6 +1624,315 @@ def remote_prepare_abort(session_id: str | None, force: bool):
     if not force:
         click.confirm(
             f"Discard session {mgr.session_id} and all staged content?",
+            abort=True,
+        )
+
+    session_dir = mgr.session_dir
+    mgr.abort()
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
+
+
+# ---------------------------------------------------------------------------
+# remote promote
+# ---------------------------------------------------------------------------
+
+
+@remote.group(cls=ClickAliasedGroup)
+def promote_cmd():
+    """Promotion commands for testing -> stable content flow."""
+
+
+def __get_promote_session(session_id: str | None = None) -> data.lib.remote.promote.PromotionSessionManager:
+    from data.lib.remote import promote as _promote
+
+    root = __get_session_root()
+    if session_id:
+        return _promote.PromotionSessionManager.from_session_id(root, session_id)
+    return _promote.PromotionSessionManager.from_current(root)
+
+
+@promote_cmd.command("start")
+@click.option(
+    "--backend",
+    type=click.Choice(["minio", "s3"]),
+    default=None,
+    help="Which backend to fetch remote state from. Required unless --origin-dir is used.",
+)
+@click.option(
+    "--origin-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Local origin directory to copy state from instead of fetching.",
+)
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+def remote_promote_start(
+    backend: str | None,
+    origin_dir: Path | None,
+    resource_root: str | None,
+):
+    """Start a promotion session (testing -> stable). Fetches both channels."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    from data.lib.remote import promote as _promote
+
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    sessions_root = __get_session_root()
+
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+
+    resolved_backend = "local" if origin_dir is not None or backend is None else backend
+
+    kwargs: dict[str, object] = {
+        "backend": resolved_backend,
+        "origin_dir": origin_dir or __resolve_dev_path(remote_cfg.mock_origin_dir),
+        "resource_root": resolved_resource_root,
+    }
+
+    if resolved_backend == "minio":
+        sub = remote_cfg.require_minio()
+        kwargs["mc_bin"] = get_command("mc")
+        kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
+        kwargs["bucket"] = sub.bucket
+        kwargs["access_key"] = sub.access_key
+        kwargs["secret_key"] = sub.secret_key
+        kwargs["alias_name"] = sub.alias
+    elif resolved_backend == "s3":
+        sub = remote_cfg.require_s3()
+        kwargs["mc_bin"] = get_command("mc")
+        kwargs["endpoint"] = sub.endpoint
+        kwargs["bucket"] = sub.bucket
+        kwargs["access_key"] = sub.access_key
+        kwargs["secret_key"] = sub.secret_key
+        kwargs["alias_name"] = sub.alias
+
+    mgr = _promote.PromotionSessionManager.start(sessions_root, **kwargs)  # type: ignore[arg-type]
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
+    click.echo(styled(Style.DIM, f"  source: {_promote._SOURCE_CHANNEL.value}"))
+    click.echo(styled(Style.DIM, f"  target: {_promote._TARGET_CHANNEL.value}"))
+
+    available = mgr.available_items()
+    bundles = available.get("bundles", [])
+    documents = available.get("documents", [])
+
+    if not bundles and not documents:
+        click.echo(styled(Style.DIM, "\n  No items to promote. Testing and stable are in sync."))
+        return
+
+    click.echo()
+    if bundles:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Bundles ({len(bundles)}):"))
+        for b in bundles:
+            aid = b.get("artifactId", "?")
+            variant = b.get("variant", "?")
+            click.echo(
+                styled(Style.DIM, f"    {aid}  [{variant}]")
+            )
+
+    if documents:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Documents ({len(documents)}):"))
+        for d in documents:
+            did = d.get("id", "?")
+            kind = d.get("kind", "?")
+            localizations = d.get("localizations", {})
+            title = ""
+            if isinstance(localizations, dict):
+                en_loc = localizations.get("en", {})
+                if isinstance(en_loc, dict):
+                    title = str(en_loc.get("title", ""))
+            click.echo(
+                styled(Style.DIM, f"    {did}  [{kind}]  {title}")
+            )
+
+
+@promote_cmd.command("status")
+@click.option("--session", "session_id", default=None, help="Session ID. Defaults to current.")
+def remote_promote_status(session_id: str | None):
+    """Show promotion session summary."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    st = mgr.status()
+    from data.lib.remote import promote as _promote
+
+    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session: ") + st.session_id)
+    click.echo(f"  source:     {_promote._SOURCE_CHANNEL.value}")
+    click.echo(f"  target:     {_promote._TARGET_CHANNEL.value}")
+    click.echo(f"  operations: {st.operation_count}")
+    click.echo(f"  committed:  {st.committed}")
+
+
+# ---- promote add ---------------------------------------------------------
+
+
+@promote_cmd.command("add")
+@click.option("--bundle", "bundle_id", default=None, help="Artifact id to promote.")
+@click.option("--document", "document_id", default=None, help="Document id to promote.")
+@click.option("--all", "add_all", is_flag=True, default=False, help="Stage all eligible items.")
+@click.option("--no-increment", is_flag=True, default=False, help="Skip associated increments.")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+def remote_promote_add(
+    bundle_id: str | None,
+    document_id: str | None,
+    add_all: bool,
+    no_increment: bool,
+    session_id: str | None,
+):
+    """Stage items for promotion from testing to stable."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if add_all:
+        if bundle_id or document_id:
+            raise click.ClickException("--all cannot be combined with --bundle or --document.")
+        mgr.add_all()
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion.")
+        )
+        return
+
+    if bundle_id:
+        mgr.add_bundle(bundle_id, no_increment=no_increment)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ")
+            + bundle_id
+        )
+        if no_increment:
+            click.echo(styled(Style.DIM, "  (increments skipped)"))
+
+    elif document_id:
+        mgr.add_document(document_id)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ")
+            + document_id
+        )
+    else:
+        raise click.ClickException("Specify --bundle <id>, --document <id>, or --all.")
+
+
+# ---- promote remove -----------------------------------------------------
+
+
+@promote_cmd.command("remove")
+@click.option("--bundle", "bundle_id", default=None, help="Artifact id to un-stage.")
+@click.option("--document", "document_id", default=None, help="Document id to un-stage.")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+def remote_promote_remove(
+    bundle_id: str | None,
+    document_id: str | None,
+    session_id: str | None,
+):
+    """Remove a staged promotion."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if bundle_id:
+        mgr.remove(target_type="artifact", target_id=bundle_id)
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged bundle: ") + bundle_id)
+    elif document_id:
+        mgr.remove(target_type="document", target_id=document_id)
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged document: ") + document_id)
+    else:
+        raise click.ClickException("Specify --bundle <id> or --document <id>.")
+
+
+# ---- promote diff -------------------------------------------------------
+
+
+@promote_cmd.command("diff")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+def remote_promote_diff(
+    session_id: str | None,
+    resource_root: str | None,
+):
+    """Diff current stable against the promoted result."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+
+    diff = mgr.diff(resource_root=resolved_resource_root)
+    click.echo(json.dumps(diff, indent=4, ensure_ascii=False))
+
+
+# ---- promote verify -----------------------------------------------------
+
+
+@promote_cmd.command("verify")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+def remote_promote_verify(session_id: str | None):
+    """Verify the integrity of the promoted state."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    errors = mgr.verify()
+    if errors:
+        click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification found {len(errors)} issue(s):"))
+        for err in errors:
+            click.echo(f"  - {err}")
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Verification passed."))
+
+
+# ---- promote commit -----------------------------------------------------
+
+
+@promote_cmd.command("commit")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+def remote_promote_commit(session_id: str | None):
+    """Commit the promotion session, writing the stable channel merged output."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    try:
+        st = mgr.commit()
+    except data.lib.remote.promote.PromotionSessionCommittedError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id
+    )
+    click.echo(
+        styled(Style.DIM, "  Run `./x remote publish upload` to ship the stable channel.")
+    )
+
+
+# ---- promote abort ------------------------------------------------------
+
+
+@promote_cmd.command("abort")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+@click.option("--force", is_flag=True, default=False, help="Skip confirmation.")
+def remote_promote_abort(session_id: str | None, force: bool):
+    """Abort a promotion session and discard all staged changes."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if not force:
+        click.confirm(
+            styled(
+                [Fore.YELLOW, Style.BRIGHT],
+                f"Discard promotion session {mgr.session_id} and all staged content?",
+            ),
             abort=True,
         )
 
