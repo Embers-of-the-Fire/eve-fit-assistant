@@ -54,17 +54,19 @@ def load_version() -> ProjectVersion:
 
 def _replace_line(file_path: Path, pattern: str, replacement: str, dry_run: bool) -> bool:
     content = file_path.read_text(encoding="utf-8")
-    new_content, count = re.subn(pattern, replacement, content, count=1, flags=re.MULTILINE)
 
-    if count == 0:
+    match_count = sum(1 for _ in re.finditer(pattern, content, flags=re.MULTILINE))
+    if match_count == 0:
         raise RuntimeError(
             f"Pattern not found in {file_path.relative_to(PROJECT_ROOT)}: {pattern!r}"
         )
-    if count > 1:
+    if match_count > 1:
         raise RuntimeError(
-            f"Pattern matched {count} times in {file_path.relative_to(PROJECT_ROOT)}, "
+            f"Pattern matched {match_count} times in {file_path.relative_to(PROJECT_ROOT)}, "
             f"expected exactly 1"
         )
+
+    new_content, _ = re.subn(pattern, replacement, content, count=1, flags=re.MULTILINE)
 
     if not dry_run:
         file_path.write_text(new_content, encoding="utf-8")
