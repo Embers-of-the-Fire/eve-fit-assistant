@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-20T00:00:00Z",
+  "minClientApi": 1,
+  "channel": "testing",
+  "region": "global",
+  "documents": {
+    "catalogPath": "channels/testing/documents/catalog.json",
+    "revision": "docs-mock-20260520"
+  },
+  "app": {
+    "releasesPath": "channels/testing/app/releases.json",
+    "revision": "app-mock-0.0.2"
+  },
+  "bundles": {
+    "catalogPath": "channels/testing/bundles/catalog.json",
+    "revision": "bundles-mock-empty"
+  }
+}

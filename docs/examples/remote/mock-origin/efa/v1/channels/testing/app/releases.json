@@ -3,7 +3,7 @@
   "releases": [
     {
       "platform": "android",
-      "channel": "alpha",
+      "channel": "testing",
       "appVersion": "0.0.2",
       "buildNumber": 2,
       "publishedAt": "2026-05-20T00:00:00Z",
