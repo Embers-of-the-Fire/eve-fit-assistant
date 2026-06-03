@@ -367,7 +367,7 @@ def __publish_remote_origin_to_s3(
     resolved_alias = __validate_mc_target_segment(alias_name, "alias")
     resolved_resource_root = __validate_remote_resource_root(resource_root)
     root_dir = source_dir / resolved_resource_root
-    channel_dir = root_dir / "channels" / channel
+    channel_dir = root_dir / "channels" / channel.value
     index_path = channel_dir / "index.json"
     if not index_path.exists() or not index_path.is_file():
         raise click.ClickException(f"Remote publish channel index does not exist: {index_path}")
