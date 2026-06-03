@@ -168,7 +168,9 @@ def get_unpushed_tags() -> list[str]:
     if not ok:
         return []
     remote_tags = {
-        line.split("\t")[-1].removeprefix("refs/tags/") for line in stdout.splitlines() if line
+        line.split("\t")[-1].removeprefix("refs/tags/").removesuffix("^{}")
+        for line in stdout.splitlines()
+        if line
     }
     ok, stdout, _ = _run_ok(["git", "tag", "-l"])
     if not ok:
