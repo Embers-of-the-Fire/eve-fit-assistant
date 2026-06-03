@@ -3505,7 +3505,7 @@ def release_version_show():
         ("Semver only", v.render_semver()),
         ("Git tag", v.render_tag()),
     ]
-    label_width = max(len(l) for l, _ in lines if l)
+    label_width = max(len(label) for label, _ in lines if label)
     for label, value in lines:
         if not label:
             click.echo("")
@@ -3521,7 +3521,8 @@ def release_version_show():
 @click.option("--dry-run", is_flag=True, default=False, help="Show what would be written.")
 def release_version_sync(dry_run: bool):
     """Sync version from efa.config.toml to all target files."""
-    from data.lib.release.version import load_version, sync_all
+    from data.lib.release.version import load_version
+    from data.lib.release.version import sync_all
 
     v = load_version()
     click.echo(
@@ -3576,7 +3577,9 @@ def release_version_bump(
     Only update build number:
         ./x release version bump --build 42
     """
-    from data.lib.release.version import load_version, sync_all, write_config_version
+    from data.lib.release.version import load_version
+    from data.lib.release.version import sync_all
+    from data.lib.release.version import write_config_version
 
     v = load_version()
     old_ver = v.render_full()
@@ -3627,7 +3630,96 @@ def release_version_bump(
 
 
 # --- release check ---
-# (implemented in Stage 7)
+
+
+@release.command("check")
+@click.option("--since", "since_tag", default=None, help="Compare against this tag instead of auto-detecting.")
+@click.option("--force", is_flag=True, default=False, help="Downgrade most fatal checks to warnings.")
+def release_check(since_tag: str | None, force: bool):
+    """Run all pre-release checks.
+
+    \b
+    Runs 12 verification gates: version-sync, git-clean, git-tag,
+    schema-diff, schema-bump, persistence-check, submodule, generate,
+    lint, test, build-data, and changelog.  Fatal failures block the
+    release unless --force is used.
+    """
+    from data.lib.release.check import CheckSeverity
+    from data.lib.release.check import run_all_checks
+
+    report = run_all_checks(force=force, since_tag=since_tag)
+
+    # Print results
+    click.echo("")
+    click.echo(styled([Style.BRIGHT], "=" * 60))
+    click.echo(styled([Style.BRIGHT], "Pre-Release Check Report"))
+    click.echo(styled([Style.BRIGHT], "=" * 60))
+    click.echo("")
+
+    width = max(len(r.name) for r in report.results) + 2
+
+    for r in report.results:
+        name_padded = r.name.ljust(width)
+        if r.passed:
+            click.echo(
+                styled([Fore.GREEN], f"  {r.icon} ")
+                + styled([Style.BRIGHT], name_padded)
+                + styled([Fore.GREEN], r.message)
+            )
+        elif r.severity == CheckSeverity.FATAL:
+            click.echo(
+                styled([Fore.RED], f"  {r.icon} ")
+                + styled([Style.BRIGHT], name_padded)
+                + styled([Fore.RED], r.message)
+            )
+        elif r.severity == CheckSeverity.WARN:
+            click.echo(
+                styled([Fore.YELLOW], f"  {r.icon} ")
+                + styled([Style.BRIGHT], name_padded)
+                + styled([Fore.YELLOW], r.message)
+            )
+        else:
+            click.echo(
+                styled([Fore.CYAN], f"  {r.icon} ")
+                + styled([Style.BRIGHT], name_padded)
+                + styled([Fore.CYAN], r.message)
+            )
+
+        if r.details:
+            for line in r.details.split("\n"):
+                click.echo(" " * (14 + width) + line)
+
+    click.echo("")
+    fatal = report.fatal_failures
+    warns = report.warnings
+    passed = len(report.results) - len(fatal) - len(warns)
+
+    click.echo(
+        styled([Style.BRIGHT], f"  {passed} passed, ")
+        + styled([Fore.YELLOW, Style.BRIGHT], f"{len(warns)} warnings, ")
+        + styled([Fore.RED, Style.BRIGHT], f"{len(fatal)} failures")
+    )
+    click.echo("")
+
+    if report.has_fatal_failure():
+        click.echo(
+            styled([Fore.RED, Style.BRIGHT], "Release blocked by fatal check failures.")
+        )
+        if not force:
+            click.echo(
+                styled([Fore.YELLOW], "Re-run with --force to downgrade to warnings, ")
+                + "or fix the issues above."
+            )
+        exit(1)
+
+    if warns:
+        click.echo(
+            styled([Fore.YELLOW, Style.BRIGHT], f"Release would proceed with {len(warns)} warning(s).")
+        )
+    else:
+        click.echo(
+            styled([Fore.GREEN, Style.BRIGHT], "All checks passed — ready to release!")
+        )
 
 
 # --- release commit ---
