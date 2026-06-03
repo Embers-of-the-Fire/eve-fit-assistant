@@ -33,7 +33,7 @@ For this contract, the resource root is:
 efa/v1/
 ```
 
-`v1` is the storage and wire-schema version. It is separate from content channels such as `alpha`
+`v1` is the storage and wire-schema version. It is separate from content channels such as `testing`
 or `stable`. Breaking changes to object layout, JSON semantics, or required fields must use a new
 resource root such as `efa/v2/`.
 
@@ -46,7 +46,7 @@ Clients conceptually need these fields to locate remote content:
   "enabled": false,
   "originUrl": "https://updates.example.com/",
   "resourceRoot": "efa/v1/",
-  "channel": "alpha",
+  "channel": "testing",
   "region": "global"
 }
 ```
@@ -76,7 +76,7 @@ The effective channel index URL is:
 Example:
 
 ```text
-https://updates.example.com/efa/v1/channels/alpha/index.json
+https://updates.example.com/efa/v1/channels/testing/index.json
 ```
 
 ## Canonical Object Layout
@@ -98,23 +98,24 @@ treated as immutable when their object names include revisioned document ids or 
 
 ## Channel Semantics
 
-Channels are content streams, not API versions. Recommended channel names are:
+Channels are content streams, not API versions. Two channels are defined:
 
 ```text
-dev
-alpha
-beta
+testing
 stable
 ```
 
-Recommended promotion flow:
+- **testing** — bleeding-edge data for developers and early testers. May contain incomplete content,
+  internal-only announcements, and experimental bundles.  Updated frequently.
+- **stable** — validated data for normal users.  Contains only content that has been explicitly
+  promoted from `testing`.  Updated less frequently, after testing has validated the content.
 
-```text
-dev -> alpha -> beta -> stable
-```
+Content flows from `testing` to `stable` via the ``./x remote promote`` command.  Promotion is
+**selective** — individual bundles and documents are promoted, not the entire catalog.  ``testing``
+remains the superset; ``stable`` is a curated subset.
 
-Promotion should copy or rewrite small channel-scoped JSON catalogs. Promotion should not move or
-rename immutable document body objects, bundle archives, or bundle manifest snapshots.
+Promotion copies channel-scoped JSON catalog entries to reference the same immutable objects
+(document body files, bundle archives, bundle manifest snapshots).  No files are moved or duplicated.
 
 ## Common JSON Payload Rules
 
@@ -149,18 +150,18 @@ Example:
   "schemaVersion": 1,
   "generatedAt": "2026-05-20T00:00:00Z",
   "minClientApi": 1,
-  "channel": "alpha",
+  "channel": "testing",
   "region": "global",
   "documents": {
-    "catalogPath": "channels/alpha/documents/catalog.json",
+    "catalogPath": "channels/testing/documents/catalog.json",
     "revision": "docs-20260520"
   },
   "app": {
-    "releasesPath": "channels/alpha/app/releases.json",
+    "releasesPath": "channels/testing/app/releases.json",
     "revision": "app-0.0.2"
   },
   "bundles": {
-    "catalogPath": "channels/alpha/bundles/catalog.json",
+    "catalogPath": "channels/testing/bundles/catalog.json",
     "revision": "tq-20260520"
   }
 }
@@ -261,12 +262,12 @@ Example:
   "releases": [
     {
       "platform": "android",
-      "channel": "alpha",
+  "channel": "testing",
       "appVersion": "0.0.2",
       "buildNumber": 2,
       "publishedAt": "2026-05-20T00:00:00Z",
       "minimumSupportedVersion": "0.0.1",
-      "releaseNoteDocumentId": "version-alpha-0-0-2",
+      "releaseNoteDocumentId": "version-0-0-2",
       "downloadUrl": "https://example.com/eve-fit-assistant-0.0.2.apk",
       "sha256": "optional-apk-sha256"
     }
@@ -435,7 +436,7 @@ Relative payload path rules:
 Accepted examples:
 
 ```text
-channels/alpha/documents/catalog.json
+channels/testing/documents/catalog.json
 documents/body/en/remote-announcement-2026-05-maintenance.md
 bundles/tranquility/tranquility-full-20260520.zip
 ```
@@ -444,7 +445,7 @@ Rejected examples:
 
 ```text
 https://evil.example.com/catalog.json
-/channels/alpha/documents/catalog.json
+/channels/testing/documents/catalog.json
 ../catalog.json
 documents/../../secret.md
 %2e%2e/secret.md
@@ -514,10 +515,10 @@ docs/examples/remote/mock-origin/
 With the default `efa.dev.toml` values, the runtime layout is:
 
 ```text
-cache/remote/mock-origin/efa/v1/channels/alpha/index.json
-cache/remote/mock-origin/efa/v1/channels/alpha/documents/catalog.json
-cache/remote/mock-origin/efa/v1/channels/alpha/app/releases.json
-cache/remote/mock-origin/efa/v1/channels/alpha/bundles/catalog.json
+cache/remote/mock-origin/efa/v1/channels/testing/index.json
+cache/remote/mock-origin/efa/v1/channels/testing/documents/catalog.json
+cache/remote/mock-origin/efa/v1/channels/testing/app/releases.json
+cache/remote/mock-origin/efa/v1/channels/testing/bundles/catalog.json
 cache/remote/mock-origin/efa/v1/documents/body/en/remote-announcement-2026-05-maintenance.md
 ```
 
@@ -530,7 +531,7 @@ Static HTTP mock endpoint:
 Channel index URL:
 
 ```text
-http://127.0.0.1:8765/efa/v1/channels/alpha/index.json
+http://127.0.0.1:8765/efa/v1/channels/testing/index.json
 ```
 
 MinIO-style bucket endpoint:
@@ -542,7 +543,7 @@ MinIO-style bucket endpoint:
 Channel index URL:
 
 ```text
-http://127.0.0.1:9000/efa-dev/efa/v1/channels/alpha/index.json
+http://127.0.0.1:9000/efa-dev/efa/v1/channels/testing/index.json
 ```
 
 The MinIO object store persists under the configured developer data directory. With the default

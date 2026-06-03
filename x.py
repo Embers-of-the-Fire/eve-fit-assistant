@@ -54,6 +54,7 @@ from data.lib.constant import NATIVE_LIB_ROOT
 from data.lib.constant import PROJECT_ROOT
 from data.lib.constant import SKIP_FULL_MANIFEST_UPDATE_ENV_VAR
 from data.lib.etc.codeart import generate_codeart
+from data.lib.remote.channel import Channel
 
 
 def __fix_env():
@@ -73,6 +74,8 @@ from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
 from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import info
 from data.lib.log import warning
+from data.lib.remote.promote import PromotionSessionCommittedError
+from data.lib.remote.promote import PromotionSessionNotActiveError
 from data.lib.remote.session import SessionCommittedError
 from data.lib.remote.session import SessionManager
 from data.lib.remote.session import SessionNotActiveError
@@ -114,10 +117,8 @@ def __resource_root(value: str) -> str:
     return value.strip("/")
 
 
-def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: str) -> str:
-    return (
-        f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel}/index.json"
-    )
+def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: Channel) -> str:
+    return f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel.value}/index.json"
 
 
 def __remote_origin_url(*, endpoint: str, bucket: str) -> str:
@@ -172,11 +173,17 @@ def __validate_remote_resource_root(resource_root: str) -> str:
     return normalized
 
 
-def __validate_remote_channel(channel: str) -> str:
+def __validate_remote_channel(channel: str) -> Channel:
     normalized = channel.strip()
     if not normalized or "/" in normalized or ".." in normalized or "%2e" in normalized.lower():
         raise click.ClickException(f"Invalid remote channel: {channel!r}")
-    return normalized
+    try:
+        return Channel(normalized)
+    except ValueError:
+        raise click.ClickException(
+            f"Unknown remote channel: {channel!r}. "
+            f"Expected one of: {', '.join(c.value for c in Channel)}"
+        ) from None
 
 
 def __validate_remote_document_id(document_id: str) -> str:
@@ -340,7 +347,7 @@ def __publish_remote_origin_to_s3(
     secret_key: str,
     alias_name: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     clean_bucket: bool,
     public_download: bool,
     target: str = "minio",
@@ -359,9 +366,8 @@ def __publish_remote_origin_to_s3(
     resolved_bucket = __validate_mc_target_segment(bucket, "bucket")
     resolved_alias = __validate_mc_target_segment(alias_name, "alias")
     resolved_resource_root = __validate_remote_resource_root(resource_root)
-    resolved_channel = __validate_remote_channel(channel)
     root_dir = source_dir / resolved_resource_root
-    channel_dir = root_dir / "channels" / resolved_channel
+    channel_dir = root_dir / "channels" / channel.value
     index_path = channel_dir / "index.json"
     if not index_path.exists() or not index_path.is_file():
         raise click.ClickException(f"Remote publish channel index does not exist: {index_path}")
@@ -401,7 +407,7 @@ def __publish_remote_origin_to_s3(
         attrs={"Cache-Control": "immutable, max-age=31536000"},
     )
 
-    target_channel = f"{target_root}/channels/{resolved_channel}"
+    target_channel = f"{target_root}/channels/{channel}"
     channel_attrs = {"Cache-Control": "max-age=300", "Content-Type": "application/json"}
     __publish_optional_file(
         mc,
@@ -435,7 +441,7 @@ def __publish_remote_origin_to_s3(
         + __remote_channel_index_url(
             origin_url=__remote_origin_url(endpoint=endpoint, bucket=resolved_bucket),
             resource_root=resolved_resource_root,
-            channel=resolved_channel,
+            channel=channel,
         )
     )
 
@@ -1080,19 +1086,27 @@ def remote_config_display(pretty: bool, as_json: bool):
     current_path = sessions_root / "current"
     if current_path.is_file():
         current_id = current_path.read_text(encoding="utf-8").strip()
+    promote_current_id = None
+    promote_current_path = sessions_root / "current-promote"
+    if promote_current_path.is_file():
+        promote_current_id = promote_current_path.read_text(encoding="utf-8").strip()
 
     click.echo()
     click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session status"))
 
     if sessions_root.is_dir():
         session_dirs = sorted(
-            [d for d in sessions_root.iterdir() if d.is_dir() and d.name != "current"],
+            [
+                d
+                for d in sessions_root.iterdir()
+                if d.is_dir() and d.name not in ("current", "current-promote")
+            ],
             reverse=True,
         )
     else:
         session_dirs = []
 
-    if not session_dirs and not current_id:
+    if not session_dirs and not current_id and not promote_current_id:
         click.echo("  No sessions found.")
         return
 
@@ -1138,6 +1152,27 @@ def remote_config_display(pretty: bool, as_json: bool):
             click.echo("  No current or committed sessions.")
             if session_dirs:
                 click.echo(f"  {len(session_dirs)} uncommitted session(s) found.")
+
+    if promote_current_id:
+        is_active = (sessions_root / promote_current_id / "lockfile.json").is_file()
+        state = "active" if is_active else "committed"
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"  Promote:  {promote_current_id}  [{state}]")
+        )
+
+        s_path = sessions_root / promote_current_id
+        todo_path = s_path / "todo.json"
+        if todo_path.is_file():
+            try:
+                from data.lib.remote.models import TodoList
+                from data.lib.remote.models import _load_json_model
+
+                todo = _load_json_model(todo_path, TodoList)
+                click.echo(f"  Operations: {len(todo.operations)}")
+                click.echo(styled(Style.DIM, f"  Committed:  {todo.committed}"))
+                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
+            except Exception:
+                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
 
     click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Sessions root: {sessions_root}"))
 
@@ -1188,7 +1223,7 @@ def remote_prepare_start(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     if origin_dir is not None:
         resolved_backend = "local"
@@ -1503,7 +1538,7 @@ def remote_prepare_diff(
     """Show catalog/index diffs between remote-state and merged output."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
@@ -1537,7 +1572,7 @@ def remote_prepare_verify(
     """Validate merged output is internally consistent."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
@@ -1617,6 +1652,324 @@ def remote_prepare_abort(session_id: str | None, force: bool):
     if not force:
         click.confirm(
             f"Discard session {mgr.session_id} and all staged content?",
+            abort=True,
+        )
+
+    session_dir = mgr.session_dir
+    mgr.abort()
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
+
+
+# ---------------------------------------------------------------------------
+# remote promote
+# ---------------------------------------------------------------------------
+
+
+@remote.group(cls=ClickAliasedGroup)
+def promote_cmd():
+    """Promotion commands for testing -> stable content flow."""
+
+
+def __get_promote_session(
+    session_id: str | None = None,
+) -> data.lib.remote.promote.PromotionSessionManager:
+    from data.lib.remote import promote as _promote
+
+    root = __get_session_root()
+    if session_id:
+        return _promote.PromotionSessionManager.from_session_id(root, session_id)
+    return _promote.PromotionSessionManager.from_current(root)
+
+
+@promote_cmd.command("start")
+@click.option(
+    "--backend",
+    type=click.Choice(["minio", "s3"]),
+    default=None,
+    help="Which backend to fetch remote state from. Required unless --origin-dir is used.",
+)
+@click.option(
+    "--origin-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Local origin directory to copy state from instead of fetching.",
+)
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+def remote_promote_start(
+    backend: str | None,
+    origin_dir: Path | None,
+    resource_root: str | None,
+):
+    """Start a promotion session (testing -> stable). Fetches both channels."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    from data.lib.remote import promote as _promote
+
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    sessions_root = __get_session_root()
+
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+
+    resolved_backend = "local" if origin_dir is not None or backend is None else backend
+
+    kwargs: dict[str, object] = {
+        "backend": resolved_backend,
+        "origin_dir": origin_dir or __resolve_dev_path(remote_cfg.mock_origin_dir),
+        "resource_root": resolved_resource_root,
+    }
+
+    if resolved_backend == "minio":
+        sub = remote_cfg.require_minio()
+        kwargs["mc_bin"] = get_command("mc")
+        kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
+        kwargs["bucket"] = sub.bucket
+        kwargs["access_key"] = sub.access_key
+        kwargs["secret_key"] = sub.secret_key
+        kwargs["alias_name"] = sub.alias
+    elif resolved_backend == "s3":
+        sub = remote_cfg.require_s3()
+        kwargs["mc_bin"] = get_command("mc")
+        kwargs["endpoint"] = sub.endpoint
+        kwargs["bucket"] = sub.bucket
+        kwargs["access_key"] = sub.access_key
+        kwargs["secret_key"] = sub.secret_key
+        kwargs["alias_name"] = sub.alias
+
+    mgr = _promote.PromotionSessionManager.start(sessions_root, **kwargs)  # type: ignore[arg-type]
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
+    click.echo(styled(Style.DIM, f"  source: {_promote._SOURCE_CHANNEL.value}"))
+    click.echo(styled(Style.DIM, f"  target: {_promote._TARGET_CHANNEL.value}"))
+
+    available = mgr.available_items()
+    bundles = available.get("bundles", [])
+    documents = available.get("documents", [])
+
+    if not bundles and not documents:
+        click.echo(styled(Style.DIM, "\n  No items to promote. Testing and stable are in sync."))
+        return
+
+    click.echo()
+    if bundles:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Bundles ({len(bundles)}):"))
+        for b in bundles:
+            aid = b.get("artifactId", "?")
+            variant = b.get("variant", "?")
+            click.echo(styled(Style.DIM, f"    {aid}  [{variant}]"))
+
+    if documents:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Documents ({len(documents)}):"))
+        for d in documents:
+            did = d.get("id", "?")
+            kind = d.get("kind", "?")
+            localizations = d.get("localizations", {})
+            title = ""
+            if isinstance(localizations, dict):
+                en_loc = localizations.get("en", {})
+                if isinstance(en_loc, dict):
+                    title = str(en_loc.get("title", ""))
+            click.echo(styled(Style.DIM, f"    {did}  [{kind}]  {title}"))
+
+
+@promote_cmd.command("status")
+@click.option("--session", "session_id", default=None, help="Session ID. Defaults to current.")
+def remote_promote_status(session_id: str | None):
+    """Show promotion session summary."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    st = mgr.status()
+    from data.lib.remote import promote as _promote
+
+    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session: ") + st.session_id)
+    click.echo(f"  source:     {_promote._SOURCE_CHANNEL.value}")
+    click.echo(f"  target:     {_promote._TARGET_CHANNEL.value}")
+    click.echo(f"  operations: {st.operation_count}")
+    click.echo(f"  committed:  {st.committed}")
+
+
+# ---- promote add ---------------------------------------------------------
+
+
+@promote_cmd.command("add")
+@click.option("--bundle", "bundle_id", default=None, help="Artifact id to promote.")
+@click.option("--document", "document_id", default=None, help="Document id to promote.")
+@click.option("--all", "add_all", is_flag=True, default=False, help="Stage all eligible items.")
+@click.option("--no-increment", is_flag=True, default=False, help="Skip associated increments.")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+def remote_promote_add(
+    bundle_id: str | None,
+    document_id: str | None,
+    add_all: bool,
+    no_increment: bool,
+    session_id: str | None,
+):
+    """Stage items for promotion from testing to stable."""
+    try:
+        mgr = __get_promote_session(session_id)
+
+        if add_all:
+            if bundle_id or document_id:
+                raise click.ClickException("--all cannot be combined with --bundle or --document.")
+            mgr.add_all()
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion.")
+            )
+            return
+
+        if bundle_id:
+            mgr.add_bundle(bundle_id, no_increment=no_increment)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ") + bundle_id
+            )
+            if no_increment:
+                click.echo(styled(Style.DIM, "  (increments skipped)"))
+
+        elif document_id:
+            mgr.add_document(document_id)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ") + document_id
+            )
+        else:
+            raise click.ClickException("Specify --bundle <id>, --document <id>, or --all.")
+    except (
+        PromotionSessionNotActiveError,
+        PromotionSessionCommittedError,
+        FileNotFoundError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+# ---- promote remove -----------------------------------------------------
+
+
+@promote_cmd.command("remove")
+@click.option("--bundle", "bundle_id", default=None, help="Artifact id to un-stage.")
+@click.option("--document", "document_id", default=None, help="Document id to un-stage.")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+def remote_promote_remove(
+    bundle_id: str | None,
+    document_id: str | None,
+    session_id: str | None,
+):
+    """Remove a staged promotion."""
+    try:
+        mgr = __get_promote_session(session_id)
+
+        if bundle_id:
+            mgr.remove(target_type="artifact", target_id=bundle_id)
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged bundle: ") + bundle_id)
+        elif document_id:
+            mgr.remove(target_type="document", target_id=document_id)
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged document: ") + document_id)
+        else:
+            raise click.ClickException("Specify --bundle <id> or --document <id>.")
+    except (
+        PromotionSessionNotActiveError,
+        PromotionSessionCommittedError,
+        FileNotFoundError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+# ---- promote diff -------------------------------------------------------
+
+
+@promote_cmd.command("diff")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+def remote_promote_diff(
+    session_id: str | None,
+    resource_root: str | None,
+):
+    """Diff current stable against the promoted result."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or remote_cfg.resource_root
+    )
+
+    diff = mgr.diff(resource_root=resolved_resource_root)
+    click.echo(json.dumps(diff, indent=4, ensure_ascii=False))
+
+
+# ---- promote verify -----------------------------------------------------
+
+
+@promote_cmd.command("verify")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+def remote_promote_verify(session_id: str | None, resource_root: str | None):
+    """Verify the integrity of the promoted state."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    errors = mgr.verify(resource_root=resource_root)
+    if errors:
+        click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification found {len(errors)} issue(s):"))
+        for err in errors:
+            click.echo(f"  - {err}")
+        raise click.ClickException(f"Verification failed with {len(errors)} error(s).")
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Verification passed."))
+
+
+# ---- promote commit -----------------------------------------------------
+
+
+@promote_cmd.command("commit")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+def remote_promote_commit(session_id: str | None):
+    """Commit the promotion session, writing the stable channel merged output."""
+    try:
+        mgr = __get_promote_session(session_id)
+        st = mgr.commit()
+    except (
+        PromotionSessionNotActiveError,
+        PromotionSessionCommittedError,
+        FileNotFoundError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
+    click.echo(f"  operations: {st.operation_count}")
+    click.echo("  committed:  true")
+    click.echo(
+        styled(
+            Style.DIM,
+            f"  merged:     {mgr.merged_dir}",
+        )
+    )
+
+
+# ---- promote abort ------------------------------------------------------
+
+
+@promote_cmd.command("abort")
+@click.option("--session", "session_id", default=None, help="Session ID.")
+@click.option("--force", is_flag=True, default=False, help="Skip confirmation.")
+def remote_promote_abort(session_id: str | None, force: bool):
+    """Abort a promotion session and discard all staged changes."""
+    try:
+        mgr = __get_promote_session(session_id)
+    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if not force:
+        click.confirm(
+            styled(
+                [Fore.YELLOW, Style.BRIGHT],
+                f"Discard promotion session {mgr.session_id} and all staged content?",
+            ),
             abort=True,
         )
 
@@ -1708,7 +2061,7 @@ def _collect_referenced_paths_from_catalogs(
     alias_name: str,
     bucket: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
 ) -> set[str]:
     """Download current catalogs and collect all referenced content paths.
 
@@ -1782,7 +2135,7 @@ def __gc_unreferenced_objects(
     alias_name: str,
     bucket: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     *,
     dry_run: bool,
 ) -> str:
@@ -2001,7 +2354,7 @@ def __verify_upload_integrity(
     mc_bin: str,
     bucket_target: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     session_id: str | None = None,
     verify_workers: int = 4,
 ) -> list[str]:
@@ -2274,7 +2627,7 @@ def remote_publish_upload(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     s3 = __get_publish_s3_params(
         target, endpoint, bucket, access_key, secret_key, alias_name, public_download
@@ -2379,7 +2732,7 @@ def remote_publish_gc(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     s3 = __get_publish_s3_params(target, endpoint, bucket, access_key, secret_key, alias_name, None)
     mc = get_command("mc")
@@ -2456,7 +2809,7 @@ def __start_minio_remote_mock(
     secret_key: str,
     alias_name: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     clean_bucket: bool,
     public_download: bool,
 ) -> None:
@@ -2560,7 +2913,7 @@ def remote_mock_launch(
 
     resolved_host = host or remote_cfg.host
     resolved_resource_root = resource_root or remote_cfg.resource_root
-    resolved_channel = channel or remote_cfg.channel
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
 
     if not no_materialize:
@@ -2625,7 +2978,7 @@ def remote_validate(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     from data.lib.remote import fetch as remote_fetch
 
@@ -2712,7 +3065,7 @@ def remote_fetch(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     from data.lib.remote import fetch as remote_fetch
 

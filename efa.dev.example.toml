@@ -35,7 +35,7 @@ output_dir = "cache/workspaces/tranquility/native"
 # Settings used by `./x remote` to materialize and launch local remote mocks
 # and publish content to S3-compatible storage.
 resource_root = "efa/v1"
-channel = "alpha"
+channel = "testing"
 
 # Common mock host for both MinIO and static mocks.
 host = "127.0.0.1"

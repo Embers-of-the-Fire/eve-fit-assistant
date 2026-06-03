@@ -303,6 +303,8 @@
   "appSettingsPageRemoteContentOriginUrlLabel": "Origin URL",
   "appSettingsPageRemoteContentResourceRootLabel": "Resource Root",
   "appSettingsPageRemoteContentChannelLabel": "Channel",
+  "appSettingsPageRemoteContentChannelTesting": "Testing",
+  "appSettingsPageRemoteContentChannelStable": "Stable",
   "appSettingsPageRemoteContentRegionLabel": "Storage Region",
   "bundleManagerPageTitle": "Bundle Manager",
   "bundleImportOverwriteTitle": "Replace existing bundle?",

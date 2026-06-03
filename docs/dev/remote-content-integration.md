@@ -190,7 +190,7 @@ Launch a static HTTP mock:
 Default channel index URL:
 
 ```text
-http://127.0.0.1:8765/efa/v1/channels/alpha/index.json
+http://127.0.0.1:8765/efa/v1/channels/testing/index.json
 ```
 
 When the app runs inside the Android emulator, configure the app with the emulator host alias instead
@@ -203,7 +203,7 @@ http://10.0.2.2:8765
 Android emulator channel index URL:
 
 ```text
-http://10.0.2.2:8765/efa/v1/channels/alpha/index.json
+http://10.0.2.2:8765/efa/v1/channels/testing/index.json
 ```
 
 Launch an S3-compatible MinIO mock:
@@ -215,7 +215,7 @@ Launch an S3-compatible MinIO mock:
 Default MinIO channel index URL:
 
 ```text
-http://127.0.0.1:9000/efa-dev/efa/v1/channels/alpha/index.json
+http://127.0.0.1:9000/efa-dev/efa/v1/channels/testing/index.json
 ```
 
 Android emulator MinIO origin URL:
@@ -337,7 +337,7 @@ large and workspace-specific. To test remote bundle downloads locally:
    cache/remote/mock-origin/efa/v1/bundles/<bundle-id>/<artifact-id>.manifest.json
    ```
 
-3. Edit `cache/remote/mock-origin/efa/v1/channels/alpha/bundles/catalog.json` with the artifact
+3. Edit `cache/remote/mock-origin/efa/v1/channels/testing/bundles/catalog.json` with the artifact
    metadata from the generated descriptor, zip byte size, zip SHA-256, manifest path, and manifest
    hash.
 

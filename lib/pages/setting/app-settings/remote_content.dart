@@ -3,6 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -125,23 +126,22 @@ class _RemoteContentEndpointDialog extends StatefulWidget {
 class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDialog> {
   late final TextEditingController originController;
   late final TextEditingController resourceRootController;
-  late final TextEditingController channelController;
   late final TextEditingController regionController;
+  late Channel _channel;
 
   @override
   void initState() {
     super.initState();
     originController = TextEditingController(text: widget.config.originUrl);
     resourceRootController = TextEditingController(text: widget.config.resourceRoot);
-    channelController = TextEditingController(text: widget.config.channel);
     regionController = TextEditingController(text: widget.config.region);
+    _channel = Channel.tryParse(widget.config.channel) ?? Channel.defaultChannel;
   }
 
   @override
   void dispose() {
     originController.dispose();
     resourceRootController.dispose();
-    channelController.dispose();
     regionController.dispose();
     super.dispose();
   }
@@ -170,13 +170,27 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
             ),
             textInputAction: TextInputAction.next,
           ),
-          TextField(
-            controller: channelController,
+          DropdownButtonFormField<Channel>(
+            initialValue: _channel,
             decoration: InputDecoration(
               labelText: context.l10n.appSettingsPageRemoteContentChannelLabel,
-              hintText: "alpha",
             ),
-            textInputAction: TextInputAction.next,
+            items: Channel.values
+                .map(
+                  (c) => DropdownMenuItem<Channel>(
+                    value: c,
+                    child: Text(switch (c) {
+                      Channel.testing => context.l10n.appSettingsPageRemoteContentChannelTesting,
+                      Channel.stable => context.l10n.appSettingsPageRemoteContentChannelStable,
+                    }),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _channel = value);
+              }
+            },
           ),
           TextField(
             controller: regionController,
@@ -199,7 +213,7 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
           widget.config.copyWith(
             originUrl: originController.text.trim(),
             resourceRoot: resourceRootController.text.trim(),
-            channel: channelController.text.trim(),
+            channel: _channel.value,
             region: regionController.text.trim(),
           ),
         ),
