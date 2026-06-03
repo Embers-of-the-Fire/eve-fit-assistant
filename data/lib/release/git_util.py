@@ -84,17 +84,39 @@ def check_head_pushed() -> GitCheckResult:
     return GitCheckResult(True, "HEAD is pushed to origin/dev")
 
 
-def _parse_semver_tag(tag: str) -> tuple[int, int, int] | None:
-    """Extract (major, minor, patch) from tag like 'v0.1.0-beta.1+5'."""
+def _parse_semver_tag(tag: str) -> tuple[int, int, int, str, int, int] | None:
+    """Parse tag like 'v0.1.0-beta.1+5' into (major, minor, patch, pre_label, pre_num, build)."""
     if not tag.startswith("v"):
         return None
     rest = tag[1:]
-    base = rest.split("-")[0]
-    parts = base.split(".")
+
+    build = 0
+    if "+" in rest:
+        rest, build_str = rest.split("+", 1)
+        try:
+            build = int(build_str)
+        except ValueError:
+            build = 0
+
+    pre_label = ""
+    pre_num = 0
+    if "-" in rest:
+        rest, pre_str = rest.split("-", 1)
+        parts = pre_str.split(".")
+        if len(parts) >= 2:
+            pre_label = parts[0]
+            try:
+                pre_num = int(parts[1])
+            except ValueError:
+                pre_num = 0
+        else:
+            pre_label = pre_str
+
+    parts = rest.split(".")
     if len(parts) < 3:
         return None
     try:
-        return (int(parts[0]), int(parts[1]), int(parts[2]))
+        return (int(parts[0]), int(parts[1]), int(parts[2]), pre_label, pre_num, build)
     except ValueError:
         return None
 
@@ -106,12 +128,14 @@ def find_last_release_tag() -> str | None:
 
     tags = stdout.strip().split("\n")
 
-    # Sort by semver descending
-    parsed: list[tuple[tuple[int, int, int], str]] = []
+    parsed = []
     for t in tags:
-        ver = _parse_semver_tag(t)
-        if ver is not None:
-            parsed.append((ver, t))
+        v = _parse_semver_tag(t)
+        if v is not None:
+            major, minor, patch, pre_label, pre_num, build = v
+            is_not_pre = 0 if pre_label else 1
+            sort_key = (major, minor, patch, is_not_pre, pre_label, pre_num, build)
+            parsed.append((sort_key, t))
 
     parsed.sort(key=lambda x: x[0], reverse=True)
     return parsed[0][1] if parsed else None
