@@ -16,6 +16,7 @@ import uuid
 import zipfile
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from data.lib.remote import catalog as _catalog_mod
 from data.lib.remote import fetch as _fetch_mod
@@ -28,6 +29,10 @@ from data.lib.remote.models import TodoList
 from data.lib.remote.models import _load_json_model
 from data.lib.remote.models import _persist_json
 from data.lib.remote.models import _session_path
+
+
+if TYPE_CHECKING:
+    from data.lib.remote.channel import Channel
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +130,7 @@ class SessionManager:
         backend: str,
         origin_dir: Path | None,
         resource_root: str,
-        channel: str,
+        channel: Channel,
         # s3/minio params
         mc_bin: str | None = None,
         endpoint: str | None = None,
@@ -341,7 +346,7 @@ class SessionManager:
         startup: bool,
         tags: list[str],
         resource_root: str,
-        channel: str,
+        channel: Channel,
     ) -> None:
         self._ensure_not_committed()
         todo = self._load_todo()
@@ -412,7 +417,7 @@ class SessionManager:
         manifest_path: Path,
         artifact_id: str,
         resource_root: str,
-        channel: str,
+        channel: Channel,
         increment_path: Path | None = None,
         increment_artifact_id: str | None = None,
     ) -> None:
@@ -527,7 +532,7 @@ class SessionManager:
 
     def regenerate_merged(
         self,
-        channel: str,
+        channel: Channel,
         resource_root: str,
     ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
         index, docs, bundles = _fetch_mod.read_local_remote_state(self.remote_state_dir, channel)
@@ -558,7 +563,7 @@ class SessionManager:
 
     def diff(
         self,
-        channel: str,
+        channel: Channel,
         resource_root: str,
     ) -> dict[str, object]:
         r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
@@ -580,7 +585,7 @@ class SessionManager:
 
     def verify(
         self,
-        channel: str,
+        channel: Channel,
         *,
         backend: str | None = None,
         resource_root: str | None = None,
@@ -630,7 +635,7 @@ class SessionManager:
         access_key: str,
         secret_key: str,
         alias_name: str,
-        channel: str,
+        channel: Channel,
     ) -> list[str]:
         from data.lib.utils import get_command
 
@@ -837,7 +842,7 @@ def _link_staged_to_merged(
     staged_dir: Path,
     merged_dir: Path,
     todo: TodoList,
-    channel: str,
+    channel: Channel,
 ) -> None:
     """Create hardlinks from staged files into the merged directory structure."""
     for op in todo.operations:

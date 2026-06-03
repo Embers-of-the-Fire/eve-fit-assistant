@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import copy
 
+from typing import TYPE_CHECKING
 from typing import Any
+
+
+if TYPE_CHECKING:
+    from data.lib.remote.channel import Channel
 
 
 def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
@@ -86,7 +91,7 @@ def apply_operations_to_catalogs(
     index: dict[str, object],
     documents_catalog: dict[str, object],
     bundles_catalog: dict[str, object],
-    channel: str,
+    channel: Channel,
     operations: list[dict[str, object]],
 ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     """Return (index, documents_catalog, bundles_catalog) with ops applied in order."""
@@ -111,7 +116,7 @@ def _bump_index_revision(
     index: dict[str, object],
     documents_catalog: dict[str, object],
     bundles_catalog: dict[str, object],
-    channel: str,
+    channel: Channel,
 ) -> None:
     import datetime as _dt
 
@@ -124,14 +129,14 @@ def _bump_index_revision(
     docs = index.get("documents", {})
     if isinstance(docs, dict):
         n_entries = len(documents_catalog.get("entries", []))  # type: ignore[arg-type]
-        docs["catalogPath"] = f"channels/{channel}/documents/catalog.json"
+        docs["catalogPath"] = f"channels/{channel.value}/documents/catalog.json"
         docs["revision"] = f"docs-{stamp}-n{n_entries}"
         index["documents"] = docs
 
     bundles = index.get("bundles", {})
     if isinstance(bundles, dict):
         n_artifacts = len(bundles_catalog.get("artifacts", []))  # type: ignore[arg-type]
-        bundles["catalogPath"] = f"channels/{channel}/bundles/catalog.json"
+        bundles["catalogPath"] = f"channels/{channel.value}/bundles/catalog.json"
         bundles["revision"] = f"bundles-{stamp}-n{n_artifacts}"
         index["bundles"] = bundles
 

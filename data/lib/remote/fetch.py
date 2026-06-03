@@ -11,16 +11,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-
-def _channel_subdir(channel: str) -> str:
-    if not channel:
-        raise ValueError("channel must not be empty")
-    if channel == "." or ".." in channel or "/" in channel or "\\" in channel:
-        raise ValueError(f"channel {channel!r} contains path separators or parent references")
-    return f"channels/{channel}"
+    from data.lib.remote.channel import Channel
 
 
-def _remote_state_output_paths(output_dir: Path, channel: str) -> dict[str, Path]:
+def _channel_subdir(channel: Channel) -> str:
+    return f"channels/{channel.value}"
+
+
+def _remote_state_output_paths(output_dir: Path, channel: Channel) -> dict[str, Path]:
     ch = _channel_subdir(channel)
     return {
         "index": output_dir / ch / "index.json",
@@ -38,7 +36,7 @@ def fetch_remote_state_s3(
     secret_key: str,
     alias_name: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     output_dir: Path,
 ) -> None:
     """Download channel catalogs + index from S3-compatible storage via ``mc``."""
@@ -78,7 +76,7 @@ def fetch_remote_state_local(
     *,
     origin_dir: Path,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     output_dir: Path,
 ) -> None:
     """Copy remote state from a local origin directory."""
@@ -97,7 +95,7 @@ def fetch_remote_state_http(
     *,
     origin_url: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     output_dir: Path,
 ) -> None:
     """Download channel catalogs + index over HTTP."""
@@ -131,7 +129,7 @@ def fetch_remote_state_http(
 
 def read_local_remote_state(
     remote_state_dir: Path,
-    channel: str,
+    channel: Channel,
 ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     """Read previously-fetched remote state from a local directory.
 

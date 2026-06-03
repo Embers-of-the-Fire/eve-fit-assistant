@@ -54,6 +54,7 @@ from data.lib.constant import NATIVE_LIB_ROOT
 from data.lib.constant import PROJECT_ROOT
 from data.lib.constant import SKIP_FULL_MANIFEST_UPDATE_ENV_VAR
 from data.lib.etc.codeart import generate_codeart
+from data.lib.remote.channel import Channel
 
 
 def __fix_env():
@@ -114,9 +115,9 @@ def __resource_root(value: str) -> str:
     return value.strip("/")
 
 
-def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: str) -> str:
+def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: Channel) -> str:
     return (
-        f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel}/index.json"
+        f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel.value}/index.json"
     )
 
 
@@ -172,11 +173,17 @@ def __validate_remote_resource_root(resource_root: str) -> str:
     return normalized
 
 
-def __validate_remote_channel(channel: str) -> str:
+def __validate_remote_channel(channel: str) -> Channel:
     normalized = channel.strip()
     if not normalized or "/" in normalized or ".." in normalized or "%2e" in normalized.lower():
         raise click.ClickException(f"Invalid remote channel: {channel!r}")
-    return normalized
+    try:
+        return Channel(normalized)
+    except ValueError:
+        raise click.ClickException(
+            f"Unknown remote channel: {channel!r}. "
+            f"Expected one of: {', '.join(c.value for c in Channel)}"
+        ) from None
 
 
 def __validate_remote_document_id(document_id: str) -> str:
@@ -340,7 +347,7 @@ def __publish_remote_origin_to_s3(
     secret_key: str,
     alias_name: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     clean_bucket: bool,
     public_download: bool,
     target: str = "minio",
@@ -359,9 +366,8 @@ def __publish_remote_origin_to_s3(
     resolved_bucket = __validate_mc_target_segment(bucket, "bucket")
     resolved_alias = __validate_mc_target_segment(alias_name, "alias")
     resolved_resource_root = __validate_remote_resource_root(resource_root)
-    resolved_channel = __validate_remote_channel(channel)
     root_dir = source_dir / resolved_resource_root
-    channel_dir = root_dir / "channels" / resolved_channel
+    channel_dir = root_dir / "channels" / channel
     index_path = channel_dir / "index.json"
     if not index_path.exists() or not index_path.is_file():
         raise click.ClickException(f"Remote publish channel index does not exist: {index_path}")
@@ -401,7 +407,7 @@ def __publish_remote_origin_to_s3(
         attrs={"Cache-Control": "immutable, max-age=31536000"},
     )
 
-    target_channel = f"{target_root}/channels/{resolved_channel}"
+    target_channel = f"{target_root}/channels/{channel}"
     channel_attrs = {"Cache-Control": "max-age=300", "Content-Type": "application/json"}
     __publish_optional_file(
         mc,
@@ -435,7 +441,7 @@ def __publish_remote_origin_to_s3(
         + __remote_channel_index_url(
             origin_url=__remote_origin_url(endpoint=endpoint, bucket=resolved_bucket),
             resource_root=resolved_resource_root,
-            channel=resolved_channel,
+            channel=channel,
         )
     )
 
@@ -1188,7 +1194,7 @@ def remote_prepare_start(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     if origin_dir is not None:
         resolved_backend = "local"
@@ -1503,7 +1509,7 @@ def remote_prepare_diff(
     """Show catalog/index diffs between remote-state and merged output."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
@@ -1537,7 +1543,7 @@ def remote_prepare_verify(
     """Validate merged output is internally consistent."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
@@ -1708,7 +1714,7 @@ def _collect_referenced_paths_from_catalogs(
     alias_name: str,
     bucket: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
 ) -> set[str]:
     """Download current catalogs and collect all referenced content paths.
 
@@ -1782,7 +1788,7 @@ def __gc_unreferenced_objects(
     alias_name: str,
     bucket: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     *,
     dry_run: bool,
 ) -> str:
@@ -2001,7 +2007,7 @@ def __verify_upload_integrity(
     mc_bin: str,
     bucket_target: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     session_id: str | None = None,
     verify_workers: int = 4,
 ) -> list[str]:
@@ -2274,7 +2280,7 @@ def remote_publish_upload(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     s3 = __get_publish_s3_params(
         target, endpoint, bucket, access_key, secret_key, alias_name, public_download
@@ -2379,7 +2385,7 @@ def remote_publish_gc(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     s3 = __get_publish_s3_params(target, endpoint, bucket, access_key, secret_key, alias_name, None)
     mc = get_command("mc")
@@ -2456,7 +2462,7 @@ def __start_minio_remote_mock(
     secret_key: str,
     alias_name: str,
     resource_root: str,
-    channel: str,
+    channel: Channel,
     clean_bucket: bool,
     public_download: bool,
 ) -> None:
@@ -2560,7 +2566,7 @@ def remote_mock_launch(
 
     resolved_host = host or remote_cfg.host
     resolved_resource_root = resource_root or remote_cfg.resource_root
-    resolved_channel = channel or remote_cfg.channel
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
 
     if not no_materialize:
@@ -2625,7 +2631,7 @@ def remote_validate(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     from data.lib.remote import fetch as remote_fetch
 
@@ -2712,7 +2718,7 @@ def remote_fetch(
     resolved_resource_root = __validate_remote_resource_root(
         resource_root or remote_cfg.resource_root
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel)
+    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
     from data.lib.remote import fetch as remote_fetch
 

@@ -30,6 +30,7 @@ from data.lib.constant import CACHE_CONFIG_PATH
 from data.lib.constant import CONFIG_PATH
 from data.lib.constant import DEV_CONFIG_PATH
 from data.lib.localization import LocalizationModel  # noqa:TC001
+from data.lib.remote.channel import Channel
 from data.lib.validator import ProjectPath  # noqa:TC001
 
 
@@ -184,7 +185,7 @@ class DeveloperRemote(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
     resource_root: str = Field(default="efa/v1")
-    channel: str = Field(default="alpha")
+    channel: Channel = Field(default=Channel.TESTING)
     host: str = Field(default="127.0.0.1")
     mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))
     verify_upload: bool | None = None
