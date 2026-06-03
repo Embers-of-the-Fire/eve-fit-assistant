@@ -7,7 +7,7 @@ please report it to us privately. **Do not open a public GitHub issue.**
 
 ### Contact Channels
 
-- **Email:** [stellarishs@163.com](mailto:stellarishs@163.com)
+- **Email:** [security@efa-tech.dev](mailto:security@efa-tech.dev)
   Please use the subject prefix `[EFA/Security]` so your report is routed
   appropriately.
 - **QQ:** `3562377918`

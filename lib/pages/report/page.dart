@@ -16,7 +16,7 @@ class ReportFeedbackPage extends ConsumerWidget {
   static const _githubIssuesUrl = "https://github.com/Embers-of-the-Fire/eve-fit-assistant/issues";
   static const _tencentFormUrl = "https://docs.qq.com/form/page/DV0JsUURRU054Y3pY";
   static const _tencentSheetUrl = "https://docs.qq.com/sheet/DV25JV2VxS2J2Q2dj?tab=q1br0o";
-  static const _securityEmail = "stellarishs@163.com";
+  static const _securityEmail = "security@efa-tech.dev";
   static const _securityEmailSubject = "[EFA/Security] Vulnerability Report";
   static const _securityQQ = "3562377918";
   static const _qqOfficial = "1031146601";
