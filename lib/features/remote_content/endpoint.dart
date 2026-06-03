@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
@@ -91,6 +92,13 @@ String validateRemoteChannel(String value) {
   }
   if (Uri.decodeComponent(normalized).contains("..")) {
     throw RemoteContentException("Invalid remote channel: $value");
+  }
+  final channel = Channel.tryParse(normalized);
+  if (channel == null) {
+    throw RemoteContentException(
+      "Unknown remote channel: '$value'. "
+      "Expected one of: ${Channel.values.map((c) => c.value).join(", ")}.",
+    );
   }
   return normalized;
 }
