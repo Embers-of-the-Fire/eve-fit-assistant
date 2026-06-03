@@ -267,7 +267,7 @@ Example:
       "buildNumber": 2,
       "publishedAt": "2026-05-20T00:00:00Z",
       "minimumSupportedVersion": "0.0.1",
-      "releaseNoteDocumentId": "version-alpha-0-0-2",
+      "releaseNoteDocumentId": "version-0-0-2",
       "downloadUrl": "https://example.com/eve-fit-assistant-0.0.2.apk",
       "sha256": "optional-apk-sha256"
     }

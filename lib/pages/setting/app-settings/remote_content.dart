@@ -175,22 +175,17 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
             decoration: InputDecoration(
               labelText: context.l10n.appSettingsPageRemoteContentChannelLabel,
             ),
-            items:
-                Channel.values
-                    .map(
-                      (c) => DropdownMenuItem<Channel>(
-                        value: c,
-                        child: Text(
-                          switch (c) {
-                            Channel.testing =>
-                              context.l10n.appSettingsPageRemoteContentChannelTesting,
-                            Channel.stable =>
-                              context.l10n.appSettingsPageRemoteContentChannelStable,
-                          },
-                        ),
-                      ),
-                    )
-                    .toList(),
+            items: Channel.values
+                .map(
+                  (c) => DropdownMenuItem<Channel>(
+                    value: c,
+                    child: Text(switch (c) {
+                      Channel.testing => context.l10n.appSettingsPageRemoteContentChannelTesting,
+                      Channel.stable => context.l10n.appSettingsPageRemoteContentChannelStable,
+                    }),
+                  ),
+                )
+                .toList(),
             onChanged: (value) {
               if (value != null) {
                 setState(() => _channel = value);

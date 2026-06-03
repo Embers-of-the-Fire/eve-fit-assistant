@@ -25,7 +25,7 @@
       }
     },
     {
-      "id": "version-alpha-0-0-2",
+      "id": "version-0-0-2",
       "kind": "version",
       "source": "remote",
       "publishedAt": "2026-05-20T00:00:00Z",
@@ -37,12 +37,12 @@
         "en": {
           "title": "Version 0.0.2 remote notes",
           "summary": "A mock remote version note for launcher validation.",
-          "bodyPath": "documents/body/en/version-alpha-0-0-2.md"
+          "bodyPath": "documents/body/en/version-0-0-2.md"
         },
         "zh": {
           "title": "版本 0.0.2 远程说明",
           "summary": "用于启动器验证的远程版本说明模拟内容。",
-          "bodyPath": "documents/body/zh/version-alpha-0-0-2.md"
+          "bodyPath": "documents/body/zh/version-0-0-2.md"
         }
       }
     }
