@@ -8,9 +8,9 @@ from __future__ import annotations
 import enum
 import re
 import subprocess
+
 from dataclasses import dataclass
 from dataclasses import field
-from pathlib import Path
 
 import data.lib.config
 
@@ -215,13 +215,10 @@ def _verify_bundle_schema_bump(since_tag: str) -> BumpVerification:
 
     result.current_bumped = new_current > old_current
     if new_current > old_current:
-        result.message = (
-            f"bundle_schema.current bumped: {old_current} -> {new_current}"
-        )
+        result.message = f"bundle_schema.current bumped: {old_current} -> {new_current}"
     else:
         result.message = (
-            f"bundle_schema.current has NOT been bumped "
-            f"(was {old_current}, still {new_current})"
+            f"bundle_schema.current has NOT been bumped (was {old_current}, still {new_current})"
         )
 
     return result
@@ -251,13 +248,10 @@ def _verify_persistence_versions(since_tag: str) -> PersistenceVerification:
                     f"(verify migration code exists)"
                 )
             else:
-                result.message = (
-                    f"currentFitStorageVersion unchanged at {new_ver}"
-                )
+                result.message = f"currentFitStorageVersion unchanged at {new_ver}"
         elif new_ver is not None:
             result.message = (
-                f"currentFitStorageVersion = {new_ver} "
-                f"(no previous tag value to compare)"
+                f"currentFitStorageVersion = {new_ver} (no previous tag value to compare)"
             )
         else:
             result.message = "Could not parse currentFitStorageVersion"

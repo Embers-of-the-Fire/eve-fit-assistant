@@ -6,9 +6,10 @@ and writes to pubspec.yaml, Cargo.toml, and pyproject.toml.
 from __future__ import annotations
 
 import re
+
 from dataclasses import dataclass
 from dataclasses import field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import data.lib.config
 
@@ -16,6 +17,11 @@ from data.lib.config import ProjectConfiguration
 from data.lib.config import ProjectVersion
 from data.lib.constant import CONFIG_PATH
 from data.lib.constant import PROJECT_ROOT
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 PUBSPEC_PATH = PROJECT_ROOT / "pubspec.yaml"
 CARGO_BRIDGE_PATH = PROJECT_ROOT / "rust" / "Cargo.toml"

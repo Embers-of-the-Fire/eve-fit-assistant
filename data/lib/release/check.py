@@ -49,17 +49,11 @@ class CheckReport:
 
     @property
     def fatal_failures(self) -> list[CheckResult]:
-        return [
-            r for r in self.results
-            if not r.passed and r.severity == CheckSeverity.FATAL
-        ]
+        return [r for r in self.results if not r.passed and r.severity == CheckSeverity.FATAL]
 
     @property
     def warnings(self) -> list[CheckResult]:
-        return [
-            r for r in self.results
-            if not r.passed and r.severity == CheckSeverity.WARN
-        ]
+        return [r for r in self.results if not r.passed and r.severity == CheckSeverity.WARN]
 
     def has_fatal_failure(self) -> bool:
         return len(self.fatal_failures) > 0
@@ -116,9 +110,7 @@ def check_version_sync(force: bool) -> CheckResult:
             message="All version targets match efa.config.toml",
         )
 
-    detail = "\n".join(
-        f"    {m.label}: expected {m.expected!r}" for m in mismatches
-    )
+    detail = "\n".join(f"    {m.label}: expected {m.expected!r}" for m in mismatches)
     return CheckResult(
         name="version-sync",
         passed=False,

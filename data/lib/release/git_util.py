@@ -6,11 +6,15 @@ and submodule state inspection.
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass
-from pathlib import Path
+
+from typing import TYPE_CHECKING
 from typing import NamedTuple
 
 from data.lib.constant import PROJECT_ROOT
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class GitCheckResult(NamedTuple):
@@ -69,9 +73,7 @@ def check_on_dev_branch() -> GitCheckResult:
 
 
 def check_head_pushed() -> GitCheckResult:
-    ok, stdout, stderr = _run_ok(
-        ["git", "rev-list", "--count", "origin/dev..dev"]
-    )
+    ok, stdout, stderr = _run_ok(["git", "rev-list", "--count", "origin/dev..dev"])
     if not ok:
         return GitCheckResult(False, f"Failed to compare with origin/dev: {stderr}")
     if stdout.strip() != "0":
@@ -141,7 +143,9 @@ def get_unpushed_tags() -> list[str]:
     ok, stdout, _ = _run_ok(["git", "ls-remote", "--tags", "origin"])
     if not ok:
         return []
-    remote_tags = {line.split("\t")[-1].removeprefix("refs/tags/") for line in stdout.splitlines() if line}
+    remote_tags = {
+        line.split("\t")[-1].removeprefix("refs/tags/") for line in stdout.splitlines() if line
+    }
     ok, stdout, _ = _run_ok(["git", "tag", "-l"])
     if not ok:
         return []
@@ -174,7 +178,7 @@ def check_submodule_state() -> GitCheckResult:
     if prefix == "+":
         return GitCheckResult(
             False,
-            f"Submodule rust/lib/eve-fit-os has local changes (dirty). "
+            "Submodule rust/lib/eve-fit-os has local changes (dirty). "
             "Commit submodule changes before releasing.",
         )
     if prefix == "U":

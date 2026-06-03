@@ -5,12 +5,16 @@ for the current version.
 
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from data.lib.config import ProjectVersion
 from data.lib.constant import PROJECT_ROOT
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from data.lib.config import ProjectVersion
+
 
 CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
 
