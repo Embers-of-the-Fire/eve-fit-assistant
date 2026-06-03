@@ -3727,8 +3727,15 @@ def release_check(since_tag: str | None, force: bool):
 
 
 @release.command("commit")
-@click.option("--no-edit", is_flag=True, default=False, help="Use the default message without opening an editor.")
-@click.option("--dry-run", is_flag=True, default=False, help="Print the commands without executing.")
+@click.option(
+    "--no-edit",
+    is_flag=True,
+    default=False,
+    help="Use the default message without opening an editor.",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Print the commands without executing."
+)
 def release_commit(no_edit: bool, dry_run: bool):
     """Commit staged changes and create a git tag locally.
 
