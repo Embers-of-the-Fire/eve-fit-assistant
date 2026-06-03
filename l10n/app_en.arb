@@ -568,6 +568,7 @@
   "reportTileSecurityQQ": "Security QQ",
   "reportTileSecurityQQDescription": "Contact QQ 3562377918",
   "reportCopyQQSuccess": "QQ number copied to clipboard",
+  "reportCopyQQError": "Failed to copy QQ number to clipboard",
   "reportOpenError": "Could not open link",
   "workspaceTabReportTitle": "Report & Feedback"
 }

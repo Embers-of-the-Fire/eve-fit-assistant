@@ -1616,6 +1616,7 @@
   "reportTileSecurityQQ": "安全联系 QQ",
   "reportTileSecurityQQDescription": "联系 QQ 3562377918",
   "reportCopyQQSuccess": "已复制 QQ 号到剪贴板",
+  "reportCopyQQError": "复制 QQ 号到剪贴板失败",
   "reportOpenError": "无法打开链接",
   "workspaceTabReportTitle": "报告与反馈"
 }

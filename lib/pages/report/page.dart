@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
@@ -92,9 +94,22 @@ class ReportFeedbackPage extends ConsumerWidget {
   }
 
   void _copyQQ(BuildContext context, String qqNumber) {
-    Clipboard.setData(ClipboardData(text: qqNumber));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.reportCopyQQSuccess)));
+    unawaited(
+      Clipboard.setData(ClipboardData(text: qqNumber))
+          .then((_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(context.l10n.reportCopyQQSuccess)));
+            }
+          })
+          .catchError((_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(context.l10n.reportCopyQQError)));
+            }
+          }),
+    );
   }
 }
