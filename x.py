@@ -3473,6 +3473,167 @@ def build_increment_cmd(baseline_manifest_path: str | None):
     build_increment_bundle(__get_current_workspace_descriptor(), baseline_manifest)
 
 
+@cli.group(aliases=["rel"], cls=ClickAliasedGroup)
+def release():
+    """Pre-release workflow commands."""
+
+
+# --- release version ---
+
+@release.group("version", cls=ClickAliasedGroup)
+def release_version():
+    """Version management — show, sync, and bump the canonical version."""
+
+
+@release_version.command("show")
+def release_version_show():
+    """Display the current version from efa.config.toml."""
+    from data.lib.release.version import load_version
+
+    v = load_version()
+    is_pre = v.is_prerelease()
+
+    lines = [
+        ("Canonical version", v.render_full()),
+        ("  major", str(v.major)),
+        ("  minor", str(v.minor)),
+        ("  patch", str(v.patch)),
+        ("  pre-release", f"{v.pre_label}.{v.pre_num}" if is_pre else "(none)"),
+        ("  build", str(v.build)),
+        ("", ""),
+        ("Full string", v.render_full()),
+        ("Semver only", v.render_semver()),
+        ("Git tag", v.render_tag()),
+    ]
+    label_width = max(len(l) for l, _ in lines if l)
+    for label, value in lines:
+        if not label:
+            click.echo("")
+        else:
+            click.echo(
+                styled([Style.BRIGHT, Fore.CYAN], label.ljust(label_width))
+                + "  "
+                + styled([Style.BRIGHT], value)
+            )
+
+
+@release_version.command("sync")
+@click.option("--dry-run", is_flag=True, default=False, help="Show what would be written.")
+def release_version_sync(dry_run: bool):
+    """Sync version from efa.config.toml to all target files."""
+    from data.lib.release.version import load_version, sync_all
+
+    v = load_version()
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Syncing version ")
+        + styled([Style.BRIGHT], v.render_full())
+    )
+
+    report = sync_all(v, dry_run=dry_run)
+    for t in report.synced:
+        click.echo(
+            styled([Fore.GREEN], f"  {t.label:40s} -> {t.expected}")
+        )
+    for err in report.errors:
+        click.echo(styled([Fore.RED], f"  ERROR: {err}"))
+
+    if dry_run:
+        click.echo(styled([Fore.YELLOW], "  (dry-run — no files were modified)"))
+
+
+@release_version.command("bump")
+@click.argument("level", type=click.Choice(["major", "minor", "patch"]), required=False)
+@click.option("--pre-label", default=None, help="Set pre-release label (e.g. 'beta', 'rc').")
+@click.option("--pre-num", type=int, default=None, help="Set pre-release number.")
+@click.option("--build", "build_num", type=int, default=None, help="Set build number.")
+@click.option("--clear-pre", is_flag=True, default=False, help="Remove pre-release (promote to release).")
+@click.option("--dry-run", is_flag=True, default=False, help="Show what would be done.")
+def release_version_bump(
+    level: str | None,
+    pre_label: str | None,
+    pre_num: int | None,
+    build_num: int | None,
+    clear_pre: bool,
+    dry_run: bool,
+):
+    """Bump the canonical version and sync all target files.
+
+    LEVEL must be one of: major, minor, patch.
+
+    \b
+    Bump patch with pre-release:
+        ./x release version bump patch --pre-label beta --pre-num 1
+
+    \b
+    Bump minor and clear pre-release (final release):
+        ./x release version bump minor --clear-pre
+
+    \b
+    Only update pre-release number:
+        ./x release version bump --pre-label beta --pre-num 5
+
+    \b
+    Only update build number:
+        ./x release version bump --build 42
+    """
+    from data.lib.release.version import load_version, sync_all, write_config_version
+
+    v = load_version()
+    old_ver = v.render_full()
+
+    if level is not None:
+        if level == "major":
+            v.bump_major()
+        elif level == "minor":
+            v.bump_minor()
+        elif level == "patch":
+            v.bump_patch()
+
+    if clear_pre:
+        v.clear_prerelease()
+    else:
+        if pre_label is not None:
+            v.pre_label = pre_label
+            if v.pre_num == 0 and pre_num is None:
+                v.pre_num = 1
+        if pre_num is not None:
+            v.pre_num = pre_num
+            if v.pre_num > 0 and not v.pre_label:
+                raise click.ClickException(
+                    "pre_label is required when setting pre_num > 0"
+                )
+
+    if build_num is not None:
+        v.build = build_num
+
+    new_ver = v.render_full()
+    click.echo(
+        styled([Style.BRIGHT, Fore.CYAN], "Bumping: ")
+        + styled([Style.BRIGHT], f"{old_ver} -> {new_ver}")
+    )
+
+    if dry_run:
+        click.echo(styled([Fore.YELLOW], "  (dry-run — no files were modified)"))
+        return
+
+    write_config_version(v, dry_run=False)
+    click.echo(styled([Fore.GREEN], "  Updated efa.config.toml"))
+
+    report = sync_all(v, dry_run=False)
+    for t in report.synced:
+        click.echo(styled([Fore.GREEN], f"  Synced {t.label} -> {t.expected}"))
+    for err in report.errors:
+        click.echo(styled([Fore.RED], f"  ERROR: {err}"))
+
+
+# --- release check ---
+# (implemented in Stage 7)
+
+
+# --- release commit ---
+# (implemented in Stage 8)
+
+
 @cli.group(cls=ClickAliasedGroup)
 def etc():
     """Extra toolsets."""
