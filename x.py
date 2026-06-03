@@ -74,6 +74,7 @@ from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
 from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import info
 from data.lib.log import warning
+from data.lib.remote.promote import PromotionSessionCommittedError
 from data.lib.remote.promote import PromotionSessionNotActiveError
 from data.lib.remote.session import SessionCommittedError
 from data.lib.remote.session import SessionManager
@@ -1808,29 +1809,37 @@ def remote_promote_add(
     """Stage items for promotion from testing to stable."""
     try:
         mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
+
+        if add_all:
+            if bundle_id or document_id:
+                raise click.ClickException("--all cannot be combined with --bundle or --document.")
+            mgr.add_all()
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion.")
+            )
+            return
+
+        if bundle_id:
+            mgr.add_bundle(bundle_id, no_increment=no_increment)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ") + bundle_id
+            )
+            if no_increment:
+                click.echo(styled(Style.DIM, "  (increments skipped)"))
+
+        elif document_id:
+            mgr.add_document(document_id)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ") + document_id
+            )
+        else:
+            raise click.ClickException("Specify --bundle <id>, --document <id>, or --all.")
+    except (
+        PromotionSessionNotActiveError,
+        PromotionSessionCommittedError,
+        FileNotFoundError,
+    ) as exc:
         raise click.ClickException(str(exc)) from exc
-
-    if add_all:
-        if bundle_id or document_id:
-            raise click.ClickException("--all cannot be combined with --bundle or --document.")
-        mgr.add_all()
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion."))
-        return
-
-    if bundle_id:
-        mgr.add_bundle(bundle_id, no_increment=no_increment)
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ") + bundle_id)
-        if no_increment:
-            click.echo(styled(Style.DIM, "  (increments skipped)"))
-
-    elif document_id:
-        mgr.add_document(document_id)
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ") + document_id
-        )
-    else:
-        raise click.ClickException("Specify --bundle <id>, --document <id>, or --all.")
 
 
 # ---- promote remove -----------------------------------------------------
@@ -1848,17 +1857,21 @@ def remote_promote_remove(
     """Remove a staged promotion."""
     try:
         mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
 
-    if bundle_id:
-        mgr.remove(target_type="artifact", target_id=bundle_id)
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged bundle: ") + bundle_id)
-    elif document_id:
-        mgr.remove(target_type="document", target_id=document_id)
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged document: ") + document_id)
-    else:
-        raise click.ClickException("Specify --bundle <id> or --document <id>.")
+        if bundle_id:
+            mgr.remove(target_type="artifact", target_id=bundle_id)
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged bundle: ") + bundle_id)
+        elif document_id:
+            mgr.remove(target_type="document", target_id=document_id)
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged document: ") + document_id)
+        else:
+            raise click.ClickException("Specify --bundle <id> or --document <id>.")
+    except (
+        PromotionSessionNotActiveError,
+        PromotionSessionCommittedError,
+        FileNotFoundError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 # ---- promote diff -------------------------------------------------------
@@ -1918,12 +1931,12 @@ def remote_promote_commit(session_id: str | None):
     """Commit the promotion session, writing the stable channel merged output."""
     try:
         mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    try:
         st = mgr.commit()
-    except data.lib.remote.promote.PromotionSessionCommittedError as exc:
+    except (
+        PromotionSessionNotActiveError,
+        PromotionSessionCommittedError,
+        FileNotFoundError,
+    ) as exc:
         raise click.ClickException(str(exc)) from exc
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
