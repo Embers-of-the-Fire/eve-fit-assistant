@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from data.lib.remote.models import SessionStatus
 
 
-CURRENT_SESSION_FILE = "current"
+CURRENT_SESSION_FILE = "current-promote"
 _SOURCE_CHANNEL = Channel.TESTING
 _TARGET_CHANNEL = Channel.STABLE
 
@@ -147,44 +147,52 @@ class PromotionSessionManager:
 
         todo = TodoList(session_id=session_id)
 
-        (session_dir / "lockfile.json").write_text(
-            lockfile.model_dump_json(indent=4, by_alias=True) + "\n",
-            encoding="utf-8",
-        )
-        _persist_json(session_dir / "todo.json", todo)
-        (session_dir / "merged").mkdir(parents=True, exist_ok=True)
+        try:
+            (session_dir / "lockfile.json").write_text(
+                lockfile.model_dump_json(indent=4, by_alias=True) + "\n",
+                encoding="utf-8",
+            )
+            _persist_json(session_dir / "todo.json", todo)
+            (session_dir / "merged").mkdir(parents=True, exist_ok=True)
 
-        remote_state_dir = session_dir / "remote-state"
+            remote_state_dir = session_dir / "remote-state"
 
-        for ch in (_SOURCE_CHANNEL, _TARGET_CHANNEL):
-            if origin_dir is not None:
-                _fetch_mod.fetch_remote_state_local(
-                    origin_dir=origin_dir,
-                    resource_root=resource_root,
-                    channel=ch,
-                    output_dir=remote_state_dir,
-                )
-            elif backend in ("minio", "s3"):
-                if mc_bin is None:
-                    from data.lib.utils import get_command
-
-                    mc_bin = get_command("mc")
-                if endpoint is None or bucket is None or access_key is None:
-                    raise ValueError(
-                        "endpoint, bucket, access_key, and secret_key are required for"
-                        f" backend {backend!r}"
+            for ch in (_SOURCE_CHANNEL, _TARGET_CHANNEL):
+                if origin_dir is not None:
+                    _fetch_mod.fetch_remote_state_local(
+                        origin_dir=origin_dir,
+                        resource_root=resource_root,
+                        channel=ch,
+                        output_dir=remote_state_dir,
                     )
-                _fetch_mod.fetch_remote_state_s3(
-                    mc_bin=mc_bin,
-                    endpoint=endpoint,
-                    bucket=bucket,
-                    access_key=access_key,
-                    secret_key=secret_key or "",
-                    alias_name=alias_name or "promote-remote",
-                    resource_root=resource_root,
-                    channel=ch,
-                    output_dir=remote_state_dir,
-                )
+                elif backend in ("minio", "s3"):
+                    if mc_bin is None:
+                        from data.lib.utils import get_command
+
+                        mc_bin = get_command("mc")
+                    if endpoint is None or bucket is None or access_key is None:
+                        raise ValueError(
+                            "endpoint, bucket, access_key, and secret_key are required for"
+                            f" backend {backend!r}"
+                        )
+                    _fetch_mod.fetch_remote_state_s3(
+                        mc_bin=mc_bin,
+                        endpoint=endpoint,
+                        bucket=bucket,
+                        access_key=access_key,
+                        secret_key=secret_key or "",
+                        alias_name=alias_name or "promote-remote",
+                        resource_root=resource_root,
+                        channel=ch,
+                        output_dir=remote_state_dir,
+                    )
+
+            _write_current_session(sessions_root, session_id)
+
+        except Exception:
+            if session_dir.exists():
+                shutil.rmtree(session_dir, ignore_errors=True)
+            raise
 
         return cls(sessions_root, session_id, lockfile=lockfile, todo=todo)
 

@@ -117,9 +117,7 @@ def __resource_root(value: str) -> str:
 
 
 def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: Channel) -> str:
-    return (
-        f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel.value}/index.json"
-    )
+    return f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel.value}/index.json"
 
 
 def __remote_origin_url(*, endpoint: str, bucket: str) -> str:
@@ -1087,19 +1085,27 @@ def remote_config_display(pretty: bool, as_json: bool):
     current_path = sessions_root / "current"
     if current_path.is_file():
         current_id = current_path.read_text(encoding="utf-8").strip()
+    promote_current_id = None
+    promote_current_path = sessions_root / "current-promote"
+    if promote_current_path.is_file():
+        promote_current_id = promote_current_path.read_text(encoding="utf-8").strip()
 
     click.echo()
     click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session status"))
 
     if sessions_root.is_dir():
         session_dirs = sorted(
-            [d for d in sessions_root.iterdir() if d.is_dir() and d.name != "current"],
+            [
+                d
+                for d in sessions_root.iterdir()
+                if d.is_dir() and d.name not in ("current", "current-promote")
+            ],
             reverse=True,
         )
     else:
         session_dirs = []
 
-    if not session_dirs and not current_id:
+    if not session_dirs and not current_id and not promote_current_id:
         click.echo("  No sessions found.")
         return
 
@@ -1145,6 +1151,27 @@ def remote_config_display(pretty: bool, as_json: bool):
             click.echo("  No current or committed sessions.")
             if session_dirs:
                 click.echo(f"  {len(session_dirs)} uncommitted session(s) found.")
+
+    if promote_current_id:
+        is_active = (sessions_root / promote_current_id / "lockfile.json").is_file()
+        state = "active" if is_active else "committed"
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"  Promote:  {promote_current_id}  [{state}]")
+        )
+
+        s_path = sessions_root / promote_current_id
+        todo_path = s_path / "todo.json"
+        if todo_path.is_file():
+            try:
+                from data.lib.remote.models import TodoList
+                from data.lib.remote.models import _load_json_model
+
+                todo = _load_json_model(todo_path, TodoList)
+                click.echo(f"  Operations: {len(todo.operations)}")
+                click.echo(styled(Style.DIM, f"  Committed:  {todo.committed}"))
+                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
+            except Exception:
+                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
 
     click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Sessions root: {sessions_root}"))
 
@@ -1642,7 +1669,9 @@ def promote_cmd():
     """Promotion commands for testing -> stable content flow."""
 
 
-def __get_promote_session(session_id: str | None = None) -> data.lib.remote.promote.PromotionSessionManager:
+def __get_promote_session(
+    session_id: str | None = None,
+) -> data.lib.remote.promote.PromotionSessionManager:
     from data.lib.remote import promote as _promote
 
     root = __get_session_root()
@@ -1725,9 +1754,7 @@ def remote_promote_start(
         for b in bundles:
             aid = b.get("artifactId", "?")
             variant = b.get("variant", "?")
-            click.echo(
-                styled(Style.DIM, f"    {aid}  [{variant}]")
-            )
+            click.echo(styled(Style.DIM, f"    {aid}  [{variant}]"))
 
     if documents:
         click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Documents ({len(documents)}):"))
@@ -1740,9 +1767,7 @@ def remote_promote_start(
                 en_loc = localizations.get("en", {})
                 if isinstance(en_loc, dict):
                     title = str(en_loc.get("title", ""))
-            click.echo(
-                styled(Style.DIM, f"    {did}  [{kind}]  {title}")
-            )
+            click.echo(styled(Style.DIM, f"    {did}  [{kind}]  {title}"))
 
 
 @promote_cmd.command("status")
@@ -1790,25 +1815,19 @@ def remote_promote_add(
         if bundle_id or document_id:
             raise click.ClickException("--all cannot be combined with --bundle or --document.")
         mgr.add_all()
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion.")
-        )
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion."))
         return
 
     if bundle_id:
         mgr.add_bundle(bundle_id, no_increment=no_increment)
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ")
-            + bundle_id
-        )
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ") + bundle_id)
         if no_increment:
             click.echo(styled(Style.DIM, "  (increments skipped)"))
 
     elif document_id:
         mgr.add_document(document_id)
         click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ")
-            + document_id
+            styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ") + document_id
         )
     else:
         raise click.ClickException("Specify --bundle <id>, --document <id>, or --all.")
@@ -1906,12 +1925,8 @@ def remote_promote_commit(session_id: str | None):
     except data.lib.remote.promote.PromotionSessionCommittedError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id
-    )
-    click.echo(
-        styled(Style.DIM, "  Run `./x remote publish upload` to ship the stable channel.")
-    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
+    click.echo(styled(Style.DIM, "  Run `./x remote publish upload` to ship the stable channel."))
 
 
 # ---- promote abort ------------------------------------------------------
