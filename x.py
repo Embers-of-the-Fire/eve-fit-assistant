@@ -3480,6 +3480,7 @@ def release():
 
 # --- release version ---
 
+
 @release.group("version", cls=ClickAliasedGroup)
 def release_version():
     """Version management — show, sync, and bump the canonical version."""
@@ -3532,9 +3533,7 @@ def release_version_sync(dry_run: bool):
 
     report = sync_all(v, dry_run=dry_run)
     for t in report.synced:
-        click.echo(
-            styled([Fore.GREEN], f"  {t.label:40s} -> {t.expected}")
-        )
+        click.echo(styled([Fore.GREEN], f"  {t.label:40s} -> {t.expected}"))
     for err in report.errors:
         click.echo(styled([Fore.RED], f"  ERROR: {err}"))
 
@@ -3547,7 +3546,9 @@ def release_version_sync(dry_run: bool):
 @click.option("--pre-label", default=None, help="Set pre-release label (e.g. 'beta', 'rc').")
 @click.option("--pre-num", type=int, default=None, help="Set pre-release number.")
 @click.option("--build", "build_num", type=int, default=None, help="Set build number.")
-@click.option("--clear-pre", is_flag=True, default=False, help="Remove pre-release (promote to release).")
+@click.option(
+    "--clear-pre", is_flag=True, default=False, help="Remove pre-release (promote to release)."
+)
 @click.option("--dry-run", is_flag=True, default=False, help="Show what would be done.")
 def release_version_bump(
     level: str | None,
@@ -3602,9 +3603,7 @@ def release_version_bump(
         if pre_num is not None:
             v.pre_num = pre_num
             if v.pre_num > 0 and not v.pre_label:
-                raise click.ClickException(
-                    "pre_label is required when setting pre_num > 0"
-                )
+                raise click.ClickException("pre_label is required when setting pre_num > 0")
 
     if build_num is not None:
         v.build = build_num
@@ -3633,8 +3632,12 @@ def release_version_bump(
 
 
 @release.command("check")
-@click.option("--since", "since_tag", default=None, help="Compare against this tag instead of auto-detecting.")
-@click.option("--force", is_flag=True, default=False, help="Downgrade most fatal checks to warnings.")
+@click.option(
+    "--since", "since_tag", default=None, help="Compare against this tag instead of auto-detecting."
+)
+@click.option(
+    "--force", is_flag=True, default=False, help="Downgrade most fatal checks to warnings."
+)
 def release_check(since_tag: str | None, force: bool):
     """Run all pre-release checks.
 
@@ -3702,9 +3705,7 @@ def release_check(since_tag: str | None, force: bool):
     click.echo("")
 
     if report.has_fatal_failure():
-        click.echo(
-            styled([Fore.RED, Style.BRIGHT], "Release blocked by fatal check failures.")
-        )
+        click.echo(styled([Fore.RED, Style.BRIGHT], "Release blocked by fatal check failures."))
         if not force:
             click.echo(
                 styled([Fore.YELLOW], "Re-run with --force to downgrade to warnings, ")
@@ -3714,16 +3715,79 @@ def release_check(since_tag: str | None, force: bool):
 
     if warns:
         click.echo(
-            styled([Fore.YELLOW, Style.BRIGHT], f"Release would proceed with {len(warns)} warning(s).")
+            styled(
+                [Fore.YELLOW, Style.BRIGHT], f"Release would proceed with {len(warns)} warning(s)."
+            )
         )
     else:
-        click.echo(
-            styled([Fore.GREEN, Style.BRIGHT], "All checks passed — ready to release!")
-        )
+        click.echo(styled([Fore.GREEN, Style.BRIGHT], "All checks passed — ready to release!"))
 
 
 # --- release commit ---
-# (implemented in Stage 8)
+
+
+@release.command("commit")
+@click.option("--no-edit", is_flag=True, default=False, help="Use the default message without opening an editor.")
+@click.option("--dry-run", is_flag=True, default=False, help="Print the commands without executing.")
+def release_commit(no_edit: bool, dry_run: bool):
+    """Commit staged changes and create a git tag locally.
+
+    \b
+    Reads the version from efa.config.toml and:
+      1. Commits staged changes with message "chore: release v{version}"
+      2. Creates an annotated tag "v{version}"
+
+    By default, both the commit and tag open $EDITOR for message review.
+    Use --no-edit to accept the default messages without review.
+    Use --dry-run to preview without executing.
+
+    Does NOT push — you must push manually.
+    """
+    from data.lib.release.git_util import check_tag_exists
+    from data.lib.release.version import load_version
+
+    v = load_version()
+    tag = v.render_tag()
+    commit_msg = f"chore: release {tag}"
+
+    if check_tag_exists(tag):
+        raise click.ClickException(
+            f"Tag {tag} already exists. Delete it first with `git tag -d {tag}` if you want to re-tag."
+        )
+
+    # Build git commands
+    commit_cmd = ["git", "commit", "-m", commit_msg]
+    if not no_edit:
+        commit_cmd.append("--edit")
+    commit_cmd.append("-s")
+
+    tag_cmd = ["git", "tag", "-a", tag, "-m", f"Release {tag}"]
+    if not no_edit:
+        tag_cmd.append("--edit")
+
+    if dry_run:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], "[DRY-RUN] Would execute:"))
+        click.echo(f"  {' '.join(commit_cmd)}")
+        click.echo(f"  {' '.join(tag_cmd)}")
+        return
+
+    # Commit
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Committing: ") + commit_msg)
+    proc = subprocess.run(commit_cmd, cwd=PROJECT_ROOT)
+    if proc.returncode != 0:
+        raise click.ClickException(f"git commit failed with exit code {proc.returncode}")
+
+    # Tag
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Tagging: ") + tag)
+    proc = subprocess.run(tag_cmd, cwd=PROJECT_ROOT)
+    if proc.returncode != 0:
+        raise click.ClickException(f"git tag failed with exit code {proc.returncode}")
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Committed and tagged locally. ")
+        + styled([Fore.YELLOW], "Push manually when ready."),
+    )
+    click.echo(f"  git push origin dev && git push origin {tag}")
 
 
 @cli.group(cls=ClickAliasedGroup)
