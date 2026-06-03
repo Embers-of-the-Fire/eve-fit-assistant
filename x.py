@@ -1892,14 +1892,15 @@ def remote_promote_diff(
 
 @promote_cmd.command("verify")
 @click.option("--session", "session_id", default=None, help="Session ID.")
-def remote_promote_verify(session_id: str | None):
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+def remote_promote_verify(session_id: str | None, resource_root: str | None):
     """Verify the integrity of the promoted state."""
     try:
         mgr = __get_promote_session(session_id)
     except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    errors = mgr.verify()
+    errors = mgr.verify(resource_root=resource_root)
     if errors:
         click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification found {len(errors)} issue(s):"))
         for err in errors:

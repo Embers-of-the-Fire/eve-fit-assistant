@@ -143,6 +143,8 @@ class PromotionSessionManager:
             host=platform.node(),
             pid=os.getpid(),
             backend=backend,  # type: ignore[arg-type]
+            origin_dir=str(origin_dir) if origin_dir is not None else None,
+            resource_root=resource_root,
         )
 
         todo = TodoList(session_id=session_id)
@@ -518,34 +520,58 @@ class PromotionSessionManager:
 
     # ---- verify ------------------------------------------------------------
 
-    def verify(self) -> list[str]:
+    def verify(self, resource_root: str | None = None) -> list[str]:
         """Validate that promoted entries reference existing objects."""
-        _m_idx, m_docs, m_bundles = self.regenerate_merged("efa/v1")
+        resolved_root = resource_root
+        if resolved_root is None:
+            if self._lockfile is not None and self._lockfile.resource_root:
+                resolved_root = self._lockfile.resource_root
+            else:
+                resolved_root = "efa/v1"
+
+        _m_idx, m_docs, m_bundles = self.regenerate_merged(resolved_root)
 
         errors: list[str] = []
 
-        for entry in m_docs.get("entries", []):  # type: ignore[assignment]
-            if not isinstance(entry, dict):
-                continue
-            localizations = entry.get("localizations")
-            if isinstance(localizations, dict):
-                for _lang, loc in localizations.items():
-                    if isinstance(loc, dict):
-                        body_path = loc.get("bodyPath")
-                        if isinstance(body_path, str):
-                            body_file = self.remote_state_dir / body_path
-                            if not body_file.is_file():
-                                errors.append(f"Missing document body: {body_path}")
+        # Catalog-integrity checks (duplicate entries)
+        merged_state: dict[str, object] = {
+            "documents_catalog": m_docs,
+            "bundles_catalog": m_bundles,
+        }
+        errors.extend(_catalog_mod.verify_merged_state(merged_state, {}))
 
-        for artifact in m_bundles.get("artifacts", []):  # type: ignore[assignment]
-            if not isinstance(artifact, dict):
-                continue
-            for path_key in ("artifactPath", "manifestPath"):
-                relative = artifact.get(path_key)
-                if isinstance(relative, str):
-                    local = self.remote_state_dir / relative
-                    if not local.is_file():
-                        errors.append(f"Missing {path_key}: {relative}")
+        # File-existence checks against the origin (local backend only)
+        if self._lockfile is not None and self._lockfile.backend == "local":
+            origin_dir = self._lockfile.origin_dir
+            if origin_dir:
+                from pathlib import Path
+
+                origin_base = Path(origin_dir) / resolved_root
+                if not origin_base.is_dir():
+                    return errors
+
+                for entry in m_docs.get("entries", []):  # type: ignore[assignment]
+                    if not isinstance(entry, dict):
+                        continue
+                    localizations = entry.get("localizations")
+                    if isinstance(localizations, dict):
+                        for _lang, loc in localizations.items():
+                            if isinstance(loc, dict):
+                                body_path = loc.get("bodyPath")
+                                if isinstance(body_path, str):
+                                    body_file = origin_base / body_path
+                                    if not body_file.is_file():
+                                        errors.append(f"Missing document body: {body_path}")
+
+                for artifact in m_bundles.get("artifacts", []):  # type: ignore[assignment]
+                    if not isinstance(artifact, dict):
+                        continue
+                    for path_key in ("artifactPath", "manifestPath"):
+                        relative = artifact.get(path_key)
+                        if isinstance(relative, str):
+                            local = origin_base / relative
+                            if not local.is_file():
+                                errors.append(f"Missing {path_key}: {relative}")
 
         return errors
 

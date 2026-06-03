@@ -34,6 +34,8 @@ class LockFile(BaseModel):
     host: str
     pid: int
     backend: Literal["minio", "s3", "local"]
+    origin_dir: str | None = Field(default=None)
+    resource_root: str | None = Field(default=None)
 
 
 # ---------------------------------------------------------------------------
