@@ -105,7 +105,9 @@ class ProjectVersion(BaseModel):
         base = f"{self.major}.{self.minor}.{self.patch}"
         if self.is_prerelease():
             base = f"{base}-{self.pre_label}.{self.pre_num}"
-        return f"{base}+{self.build}"
+        if self.build:
+            base = f"{base}+{self.build}"
+        return base
 
     def render_semver(self) -> str:
         base = f"{self.major}.{self.minor}.{self.patch}"
