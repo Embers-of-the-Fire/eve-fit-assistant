@@ -1941,7 +1941,14 @@ def remote_promote_commit(session_id: str | None):
         raise click.ClickException(str(exc)) from exc
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
-    click.echo(styled(Style.DIM, "  Run `./x remote publish upload` to ship the stable channel."))
+    click.echo(f"  operations: {st.operation_count}")
+    click.echo("  committed:  true")
+    click.echo(
+        styled(
+            Style.DIM,
+            f"  merged:     {mgr.merged_dir}",
+        )
+    )
 
 
 # ---- promote abort ------------------------------------------------------

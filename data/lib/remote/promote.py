@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from data.lib.remote import catalog as _catalog_mod
 from data.lib.remote import fetch as _fetch_mod
 from data.lib.remote.channel import Channel
+from data.lib.remote.models import LockFile
 from data.lib.remote.models import PromoteBundleOp
 from data.lib.remote.models import PromoteDocumentOp
 from data.lib.remote.models import TodoList
@@ -31,7 +32,6 @@ from data.lib.remote.models import _session_path
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from data.lib.remote.models import LockFile
     from data.lib.remote.models import SessionStatus
 
 
@@ -147,7 +147,15 @@ class PromotionSessionManager:
             resource_root=resource_root,
         )
 
-        todo = TodoList(session_id=session_id)
+        todo = TodoList(
+            session_id=session_id,
+            lock_snapshot={
+                "backend": lockfile.backend,
+                "timestamp": lockfile.timestamp,
+                "host": lockfile.host,
+                "pid": lockfile.pid,
+            },
+        )
 
         try:
             (session_dir / "lockfile.json").write_text(
@@ -242,6 +250,28 @@ class PromotionSessionManager:
         if self._todo is None:
             self._todo = _load_json_model(self.todo_path, TodoList)
         return self._todo
+
+    def _load_lockfile(self) -> LockFile:
+        if self._lockfile is None:
+            from data.lib.remote.models import LockFile as _LockFile
+
+            if self.lockfile_path.is_file():
+                self._lockfile = _load_json_model(self.lockfile_path, _LockFile)
+            else:
+                todo = self._load_todo()
+                if todo.lock_snapshot:
+                    self._lockfile = _LockFile(
+                        session_id=self.session_id,
+                        backend=str(todo.lock_snapshot["backend"]),
+                        timestamp=str(todo.lock_snapshot["timestamp"]),
+                        host=str(todo.lock_snapshot["host"]),
+                        pid=int(todo.lock_snapshot["pid"]),
+                    )
+                else:
+                    raise FileNotFoundError(
+                        f"Lockfile not found and no snapshot in todo: {self.lockfile_path}"
+                    )
+        return self._lockfile
 
     def _save_todo(self) -> None:
         if self._todo is not None:
@@ -580,6 +610,8 @@ class PromotionSessionManager:
     def commit(self) -> SessionStatus:
         """Mark the session as committed."""
         self._ensure_not_committed()
+        lock = self._load_lockfile()
+        self.regenerate_merged(lock.resource_root or "efa/v1")
         todo = self._load_todo()
         todo.committed = True
         _persist_json(self.todo_path, todo)
