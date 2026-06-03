@@ -55,6 +55,7 @@ class CheckReport:
     def warnings(self) -> list[CheckResult]:
         return [r for r in self.results if not r.passed and r.severity == CheckSeverity.WARN]
 
+    @property
     def has_fatal_failure(self) -> bool:
         return len(self.fatal_failures) > 0
 

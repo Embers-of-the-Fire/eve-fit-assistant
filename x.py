@@ -3704,7 +3704,7 @@ def release_check(since_tag: str | None, force: bool):
     )
     click.echo("")
 
-    if report.has_fatal_failure():
+    if report.has_fatal_failure:
         click.echo(styled([Fore.RED, Style.BRIGHT], "Release blocked by fatal check failures."))
         if not force:
             click.echo(
