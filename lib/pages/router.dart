@@ -1,6 +1,7 @@
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/pages/documents/page.dart";
 import "package:eve_fit_assistant/pages/fit/page.dart";
+import "package:eve_fit_assistant/pages/report/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/remote_content.dart";
 import "package:eve_fit_assistant/pages/setting/bundle-manager/page.dart";
@@ -27,6 +28,7 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/bundle-manager/remote", page: RemoteBundleSelectionRoute.page),
     AutoRoute(path: "/setting/bundle-manager/:bundleId", page: BundleDetailRoute.page),
     AutoRoute(path: "/setting/bundle-manager/:bundleId/impact", page: BundleImpactDetailRoute.page),
+    AutoRoute(path: "/setting/report-feedback", page: ReportFeedbackRoute.page),
     AutoRoute(path: "/announcement", page: AnnouncementRoute.page),
     AutoRoute(path: "/fitting/current", page: FitRoute.page),
   ];

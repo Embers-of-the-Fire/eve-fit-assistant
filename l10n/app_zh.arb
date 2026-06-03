@@ -1597,5 +1597,26 @@
         "type": "int"
       }
     }
-  }
+  },
+  "@@_REPORT_PAGE": {},
+  "reportPageTitle": "报告与反馈",
+  "reportSectionGeneral": "通用反馈",
+  "reportTileGitHub": "GitHub Issues",
+  "reportTileGitHubDescription": "通过 GitHub 提交 Issue 报告问题或提出建议。",
+  "reportTileTencentForm": "腾讯收集表",
+  "reportTileTencentFormDescription": "通过腾讯收集表提交反馈（中文用户）。",
+  "reportTileTencentSheet": "腾讯反馈汇总",
+  "reportTileTencentSheetDescription": "查看已提交反馈的汇总表格。",
+  "reportSectionCommunity": "社区交流",
+  "reportTileQQOfficial": "EFA 官方 QQ 群",
+  "reportTileQQOfficialDescription": "QQ 群聊 1031146601",
+  "reportSectionSecurity": "安全报告",
+  "reportTileSecurityEmail": "安全邮件",
+  "reportTileSecurityEmailDescription": "发送安全报告至 security@efa-tech.dev",
+  "reportTileSecurityQQ": "安全联系 QQ",
+  "reportTileSecurityQQDescription": "联系 QQ 3562377918",
+  "reportCopyQQSuccess": "已复制 QQ 号到剪贴板",
+  "reportCopyQQError": "复制 QQ 号到剪贴板失败",
+  "reportOpenError": "无法打开链接",
+  "workspaceTabReportTitle": "报告与反馈"
 }
