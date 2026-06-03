@@ -1918,6 +1918,7 @@ def remote_promote_verify(session_id: str | None, resource_root: str | None):
         click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification found {len(errors)} issue(s):"))
         for err in errors:
             click.echo(f"  - {err}")
+        raise click.ClickException(f"Verification failed with {len(errors)} error(s).")
     else:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Verification passed."))
 
