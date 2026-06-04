@@ -122,7 +122,7 @@ def _parse_semver_tag(tag: str) -> tuple[int, int, int, str, int, int] | None:
 
 
 def find_last_release_tag() -> str | None:
-    ok, stdout, _ = _run_ok(["git", "tag", "-l", "v*"])
+    ok, stdout, _ = _run_ok(["git", "tag", "--merged", "HEAD", "-l", "v*"])
     if not ok or not stdout:
         return None
 
