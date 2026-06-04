@@ -3797,6 +3797,59 @@ def release_commit(no_edit: bool, dry_run: bool):
     click.echo(f"  git push origin dev && git push origin {tag}")
 
 
+# --- release changelog ---
+
+
+@release.group("changelog", cls=ClickAliasedGroup)
+def release_changelog():
+    """Changelog generation — full file and per-version documents."""
+
+
+@release_changelog.command("generate")
+def release_changelog_generate():
+    """Regenerate CHANGELOG.md using git-cliff.
+
+    Prepends a new version entry for the current version from efa.config.toml.
+    """
+    from data.lib.release.changelog_gen import generate_full
+    from data.lib.release.version import load_version
+
+    v = load_version()
+    tag = v.render_tag()
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Generating changelog for ")
+        + styled([Style.BRIGHT], tag)
+    )
+    generate_full(v)
+    click.echo(styled([Fore.GREEN], "  Prepended entry to CHANGELOG.md"))
+
+
+@release_changelog.command("detail")
+@click.option(
+    "--no-edit",
+    is_flag=True,
+    default=False,
+    help="Write template as-is without opening editor.",
+)
+def release_changelog_detail(no_edit: bool):
+    """Generate bi-lingual version documents for in-app release notes.
+
+    By default, opens $EDITOR with a template containing en-us/zh-cn summary sections.
+    Use --no-edit to write the generated template as-is without manual editing.
+    On save (or if --no-edit), writes authored .md files to assets/content/documents/{en,zh}/.
+    """
+    from data.lib.release.changelog_gen import generate_detail
+    from data.lib.release.version import load_version
+
+    v = load_version()
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Preparing version documents for ")
+        + styled([Style.BRIGHT], v.render_semver())
+    )
+    generate_detail(v, no_edit=no_edit)
+    click.echo(styled([Fore.GREEN], "  Written to assets/content/documents/"))
+
+
 @cli.group(cls=ClickAliasedGroup)
 def etc():
     """Extra toolsets."""

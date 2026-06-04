@@ -140,6 +140,7 @@
           protobuf
           protoc-gen-dart
           flutter_rust_bridge_codegen
+          git-cliff
           cargo-expand
         ];
 

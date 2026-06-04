@@ -20,11 +20,7 @@ CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
 
 
 def _version_header(version: ProjectVersion) -> str:
-    ver = f"v{version.major}.{version.minor}.{version.patch}"
-    if version.is_prerelease():
-        ver = f"{ver}-{version.pre_label}.{version.pre_num}"
-    if version.build:
-        ver = f"{ver}+{version.build}"
+    ver = f"v{version.render_semver()}"
     return f"## [{ver}]"
 
 
