@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import shutil
 import subprocess
 import tempfile
 
@@ -24,17 +25,27 @@ CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
 DOCUMENTS_ROOT = PROJECT_ROOT / "assets" / "content" / "documents"
 
 
+def _cliff_cmd() -> list[str]:
+    if shutil.which("git-cliff"):
+        return ["git-cliff"]
+    return ["nix", "shell", "nixpkgs#git-cliff", "-c", "git-cliff"]
+
+
+def _run_cliff(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+    return subprocess.run([*_cliff_cmd(), *args], **kwargs)  # type: ignore[call-overload]
+
+
 def generate_full(version: ProjectVersion) -> None:
     tag = version.render_tag()
     if CHANGELOG_PATH.exists():
-        subprocess.run(
-            ["git", "cliff", "--tag", tag, "--prepend", str(CHANGELOG_PATH)],
+        _run_cliff(
+            ["--tag", tag, "--prepend", str(CHANGELOG_PATH)],
             check=True,
             cwd=PROJECT_ROOT,
         )
     else:
-        subprocess.run(
-            ["git", "cliff", "--tag", tag, "-o", str(CHANGELOG_PATH)],
+        _run_cliff(
+            ["--tag", tag, "-o", str(CHANGELOG_PATH)],
             check=True,
             cwd=PROJECT_ROOT,
         )
@@ -90,14 +101,14 @@ def _get_commit_list() -> list[str]:
 
 def _get_cliff_body(version: ProjectVersion) -> str:
     tag = version.render_tag()
-    result = subprocess.run(
-        ["git", "cliff", "--unreleased", "--tag", tag, "--strip", "header"],
+    result = _run_cliff(
+        ["--unreleased", "--tag", tag, "--strip", "header"],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"git cliff failed: {result.stderr.strip()}")
+        raise RuntimeError(f"git-cliff failed: {result.stderr.strip()}")
     return result.stdout.strip() + "\n"
 
 
