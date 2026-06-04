@@ -29,7 +29,7 @@ DOCUMENTS_ROOT = PROJECT_ROOT / "assets" / "content" / "documents"
 def _cliff_cmd() -> list[str]:
     if shutil.which("git-cliff"):
         return ["git-cliff"]
-    return ["nix", "shell", "nixpkgs#git-cliff", "-c", "git-cliff"]
+    raise RuntimeError("git-cliff not found on PATH; install git-cliff to generate changelogs")
 
 
 def _run_cliff(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
