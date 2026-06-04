@@ -5,12 +5,9 @@ import datetime
 from configparser import ConfigParser
 from typing import TYPE_CHECKING
 
-import yaml
-
 from pydantic import BaseModel
 
 from data.lib.config import CONFIGURATION
-from data.lib.constant import PROJECT_ROOT
 from data.lib.log import info
 
 
@@ -50,10 +47,7 @@ class Descriptor(BaseModel):
         start_config.read(datasource.config.metadata.start_cfg)
 
         timestamp = datetime.datetime.now().timestamp()
-        app_path = PROJECT_ROOT / "pubspec.yaml"
-        with open(app_path, "r", encoding="utf-8") as f:
-            pubspec = yaml.load(f, Loader=yaml.SafeLoader)
-        app_version = pubspec["version"]
+        app_version = CONFIGURATION.version.render_full()
 
         descriptor = Descriptor(
             generateTimestamp=int(timestamp),

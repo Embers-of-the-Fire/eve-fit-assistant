@@ -6,6 +6,14 @@ supported = ["en", "zh"]
 en = "English"
 zh = "简体中文"
 
+[version]
+major = 0
+minor = 1
+patch = 0
+pre_label = "beta"
+pre_num = 1
+build = 1
+
 [bundle_schema]
 current = 1
 min = 1
