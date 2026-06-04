@@ -116,7 +116,7 @@ class ProjectVersion(BaseModel):
         return base
 
     def render_tag(self) -> str:
-        return f"v{self.render_full()}"
+        return f"v{self.render_semver()}"
 
     def bump_major(self) -> ProjectVersion:
         self.major += 1
