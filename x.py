@@ -3834,8 +3834,9 @@ def release_changelog_generate():
 def release_changelog_detail(no_edit: bool):
     """Generate bi-lingual version documents for in-app release notes.
 
-    Opens $EDITOR with a template containing en-us/zh-cn summary sections.
-    On save, writes authored .md files to assets/content/documents/{en,zh}/.
+    By default, opens $EDITOR with a template containing en-us/zh-cn summary sections.
+    Use --no-edit to write the generated template as-is without manual editing.
+    On save (or if --no-edit), writes authored .md files to assets/content/documents/{en,zh}/.
     """
     from data.lib.release.changelog_gen import generate_detail
     from data.lib.release.version import load_version
