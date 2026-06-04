@@ -95,6 +95,8 @@ def _get_commit_list() -> list[str]:
         cmd = ["git", "log", "--oneline", "--no-decorate"]
 
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
+    if result.returncode != 0:
+        raise RuntimeError(f"git log failed: {result.stderr.strip()}")
     output = result.stdout.strip()
     return output.split("\n") if output else []
 
