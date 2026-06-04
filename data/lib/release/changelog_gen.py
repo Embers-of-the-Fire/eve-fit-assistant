@@ -39,13 +39,13 @@ def generate_full(version: ProjectVersion) -> None:
     tag = version.render_tag()
     if CHANGELOG_PATH.exists():
         _run_cliff(
-            ["--tag", tag, "--prepend", str(CHANGELOG_PATH)],
+            ["--unreleased", "--tag", tag, "--prepend", str(CHANGELOG_PATH)],
             check=True,
             cwd=PROJECT_ROOT,
         )
     else:
         _run_cliff(
-            ["--tag", tag, "-o", str(CHANGELOG_PATH)],
+            ["--unreleased", "--tag", tag, "-o", str(CHANGELOG_PATH)],
             check=True,
             cwd=PROJECT_ROOT,
         )
