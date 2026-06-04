@@ -8,7 +8,6 @@ from __future__ import annotations
 import datetime as dt
 import os
 import shlex
-import shutil
 import subprocess
 import tempfile
 
@@ -16,6 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from data.lib.constant import PROJECT_ROOT
+from data.lib.utils import get_command
 
 
 if TYPE_CHECKING:
@@ -27,9 +27,7 @@ DOCUMENTS_ROOT = PROJECT_ROOT / "assets" / "content" / "documents"
 
 
 def _cliff_cmd() -> list[str]:
-    if shutil.which("git-cliff"):
-        return ["git-cliff"]
-    raise RuntimeError("git-cliff not found on PATH; install git-cliff to generate changelogs")
+    return [get_command("git-cliff")]
 
 
 def _run_cliff(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
