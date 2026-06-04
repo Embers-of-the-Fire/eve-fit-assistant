@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -196,4 +197,4 @@ def _write_version_documents(
 
 def _open_editor(filepath: str) -> None:
     editor = os.environ.get("EDITOR") or os.environ.get("VISUAL") or "vim"
-    subprocess.run([editor, filepath], check=True)
+    subprocess.run([*shlex.split(editor), filepath], check=True)
