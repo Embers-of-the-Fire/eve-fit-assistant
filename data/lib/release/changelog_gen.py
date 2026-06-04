@@ -57,8 +57,7 @@ def generate_detail(version: ProjectVersion, *, no_edit: bool = False) -> None:
 
         if not no_edit and (not en_body or not zh_body):
             raise RuntimeError(
-                "Both en-us and zh-cn sections must contain content. "
-                "Use --no-edit to skip editing."
+                "Both en-us and zh-cn sections must contain content. Use --no-edit to skip editing."
             )
 
         cliff_body = _get_cliff_body(version)
