@@ -11,11 +11,13 @@ body = """\
 ## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
 
 {% for group, commits in commits | group_by(attribute="group") %}
+{%- if group != "<!-- skip -->" %}
 ### {{ group }}
 {% for commit in commits %}
 - {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}\
 {%- if commit.github.pr_number %} ([#{{ commit.github.pr_number }}]){% endif -%}
 {% endfor -%}
+{% endif -%}
 {% endfor %}
 """
 footer = ""

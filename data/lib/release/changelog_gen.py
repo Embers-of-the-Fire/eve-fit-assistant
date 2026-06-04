@@ -91,7 +91,7 @@ def _get_commit_list() -> list[str]:
 def _get_cliff_body(version: ProjectVersion) -> str:
     tag = version.render_tag()
     result = subprocess.run(
-        ["git", "cliff", "--latest", "--tag", tag, "--strip", "header"],
+        ["git", "cliff", "--unreleased", "--tag", tag, "--strip", "header"],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,

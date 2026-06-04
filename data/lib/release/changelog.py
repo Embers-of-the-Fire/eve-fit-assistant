@@ -20,7 +20,7 @@ CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
 
 
 def _version_header(version: ProjectVersion) -> str:
-    ver = version.render_semver()
+    ver = f"v{version.render_semver()}"
     return f"## [{ver}]"
 
 
