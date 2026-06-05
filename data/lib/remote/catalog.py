@@ -93,6 +93,8 @@ def apply_operations_to_catalogs(
     bundles_catalog: dict[str, object],
     channel: Channel,
     operations: list[dict[str, object]],
+    *,
+    generation: str | None = None,
 ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     """Return (index, documents_catalog, bundles_catalog) with ops applied in order."""
     merged_index = copy.deepcopy(index)
@@ -101,9 +103,7 @@ def apply_operations_to_catalogs(
 
     for op in operations:
         op_type: str = op.get("type", "")  # type: ignore[assignment]
-        if op_type == "add-announcement":
-            _apply_document_upsert(merged_docs, op)
-        elif op_type == "add-version":
+        if op_type == "add-announcement" or op_type == "add-version":
             _apply_document_upsert(merged_docs, op)
         elif op_type == "add-bundle":
             _apply_add_bundle(merged_bundles, op)
@@ -114,7 +114,8 @@ def apply_operations_to_catalogs(
         elif op_type == "promote-bundle":
             _apply_add_bundle(merged_bundles, op)
 
-    _bump_index_revision(merged_index, merged_docs, merged_bundles, channel)
+    if generation is not None:
+        _bump_index_revision(merged_index, merged_docs, merged_bundles, channel, generation)
     return merged_index, merged_docs, merged_bundles
 
 
@@ -123,28 +124,39 @@ def _bump_index_revision(
     documents_catalog: dict[str, object],
     bundles_catalog: dict[str, object],
     channel: Channel,
+    generation: str,
 ) -> None:
     import datetime as _dt
 
     generated_at = (
         _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
-    stamp = generated_at.replace("-", "").replace(":", "")
 
     index["generatedAt"] = generated_at
+    index["generation"] = generation
     docs = index.get("documents", {})
     if isinstance(docs, dict):
-        n_entries = len(documents_catalog.get("entries", []))  # type: ignore[arg-type]
-        docs["catalogPath"] = f"channels/{channel.value}/documents/catalog.json"
-        docs["revision"] = f"docs-{stamp}-n{n_entries}"
+        docs["catalogPath"] = (
+            f"channels/{channel.value}/.generations/{generation}/documents/catalog.json"
+        )
+        docs["revision"] = f"docs-{generation}"
         index["documents"] = docs
 
     bundles = index.get("bundles", {})
     if isinstance(bundles, dict):
-        n_artifacts = len(bundles_catalog.get("artifacts", []))  # type: ignore[arg-type]
-        bundles["catalogPath"] = f"channels/{channel.value}/bundles/catalog.json"
-        bundles["revision"] = f"bundles-{stamp}-n{n_artifacts}"
+        bundles["catalogPath"] = (
+            f"channels/{channel.value}/.generations/{generation}/bundles/catalog.json"
+        )
+        bundles["revision"] = f"bundles-{generation}"
         index["bundles"] = bundles
+
+    app = index.get("app", {})
+    if isinstance(app, dict):
+        app["releasesPath"] = (
+            f"channels/{channel.value}/.generations/{generation}/app/releases.json"
+        )
+        app["revision"] = f"app-{generation}"
+        index["app"] = app
 
 
 # ---------------------------------------------------------------------------

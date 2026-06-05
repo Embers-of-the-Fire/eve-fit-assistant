@@ -621,6 +621,8 @@ class SessionManager:
         self,
         channel: Channel,
         resource_root: str,
+        *,
+        generation: str | None = None,
     ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
         index, docs, bundles = _fetch_mod.read_local_remote_state(self.remote_state_dir, channel)
         todo = self._load_todo()
@@ -631,17 +633,31 @@ class SessionManager:
             bundles,
             channel,
             ops_raw,  # type: ignore[arg-type]
+            generation=generation,
         )
 
         # Write merged output
         base = self.merged_dir / resource_root
         ch = f"channels/{channel}"
-        (base / ch).mkdir(parents=True, exist_ok=True)
-        _write_json(base / ch / "index.json", merged_index)
-        (base / ch / "documents").mkdir(parents=True, exist_ok=True)
-        _write_json(base / ch / "documents" / "catalog.json", merged_docs)
-        (base / ch / "bundles").mkdir(parents=True, exist_ok=True)
-        _write_json(base / ch / "bundles" / "catalog.json", merged_bundles)
+
+        if generation is not None:
+            gen_dir = base / ch / ".generations" / generation
+            gen_dir.mkdir(parents=True, exist_ok=True)
+            _write_json(gen_dir / "index.json", merged_index)
+            (gen_dir / "documents").mkdir(parents=True, exist_ok=True)
+            _write_json(gen_dir / "documents" / "catalog.json", merged_docs)
+            (gen_dir / "bundles").mkdir(parents=True, exist_ok=True)
+            _write_json(gen_dir / "bundles" / "catalog.json", merged_bundles)
+            (gen_dir / "app").mkdir(parents=True, exist_ok=True)
+            releases = _generate_releases_json(merged_docs, channel, generation)
+            _write_json(gen_dir / "app" / "releases.json", releases)
+        else:
+            (base / ch).mkdir(parents=True, exist_ok=True)
+            _write_json(base / ch / "index.json", merged_index)
+            (base / ch / "documents").mkdir(parents=True, exist_ok=True)
+            _write_json(base / ch / "documents" / "catalog.json", merged_docs)
+            (base / ch / "bundles").mkdir(parents=True, exist_ok=True)
+            _write_json(base / ch / "bundles" / "catalog.json", merged_bundles)
 
         # Link document bodies and bundle files from staged -> merged
         _link_staged_to_merged(self.staged_dir, base, todo, channel)
@@ -652,11 +668,17 @@ class SessionManager:
         self,
         channel: Channel,
         resource_root: str,
+        *,
+        generation: str | None = None,
     ) -> dict[str, object]:
+        if generation is None:
+            generation = _generate_publish_id()
         r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
             self.remote_state_dir, channel
         )
-        m_idx, m_docs, m_bundles = self.regenerate_merged(channel, resource_root)
+        m_idx, m_docs, m_bundles = self.regenerate_merged(
+            channel, resource_root, generation=generation
+        )
 
         remote_state: dict[str, object] = {
             "index": r_idx,
@@ -681,8 +703,13 @@ class SessionManager:
         access_key: str | None = None,
         secret_key: str | None = None,
         alias_name: str | None = None,
+        generation: str | None = None,
     ) -> list[str]:
-        _, m_docs, m_bundles = self.regenerate_merged(channel, resource_root or "efa/v1")
+        if generation is None:
+            generation = _generate_publish_id()
+        _, m_docs, m_bundles = self.regenerate_merged(
+            channel, resource_root or "efa/v1", generation=generation
+        )
 
         # Collect staged SHA256s
         staged_sha256s: dict[str, str] = {}
@@ -765,10 +792,17 @@ class SessionManager:
                 )
             return errors
 
-    def commit(self) -> SessionStatus:
+    def commit(
+        self,
+        channel: Channel,
+        resource_root: str,
+    ) -> SessionStatus:
         self._ensure_not_committed()
         todo = self._load_todo()
+        generation = todo.generation or _generate_publish_id()
+        self.regenerate_merged(channel, resource_root, generation=generation)
         todo.committed = True
+        todo.generation = generation
         _persist_json(self.todo_path, todo)
         self.lockfile_path.unlink(missing_ok=True)
         return self.status()

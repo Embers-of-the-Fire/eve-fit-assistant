@@ -136,20 +136,41 @@ def read_local_remote_state(
     Returns (index, documents_catalog, bundles_catalog) as dicts.
     """
     paths = _remote_state_output_paths(remote_state_dir, channel)
-    missing = [k for k, p in paths.items() if not p.is_file()]
-    if missing:
-        raise FileNotFoundError(
-            f"Remote state files not found in {remote_state_dir}: {', '.join(missing)}"
-        )
+    if not paths["index"].is_file():
+        raise FileNotFoundError(f"Remote index file not found in {remote_state_dir}")
 
     index = _json_loads_dict(paths["index"].read_text(encoding="utf-8"), "index")
-    docs = _json_loads_dict(
-        paths["documents_catalog"].read_text(encoding="utf-8"), "documents_catalog"
+
+    docs_catalog_path = _resolve_catalog_local_path(
+        remote_state_dir, index, "documents", paths["documents_catalog"]
     )
-    bundles = _json_loads_dict(
-        paths["bundles_catalog"].read_text(encoding="utf-8"), "bundles_catalog"
+    bundles_catalog_path = _resolve_catalog_local_path(
+        remote_state_dir, index, "bundles", paths["bundles_catalog"]
     )
+
+    if docs_catalog_path.is_file():
+        docs = _json_loads_dict(docs_catalog_path.read_text(encoding="utf-8"), "documents_catalog")
+    else:
+        docs = {}
+    if bundles_catalog_path.is_file():
+        bundles = _json_loads_dict(
+            bundles_catalog_path.read_text(encoding="utf-8"), "bundles_catalog"
+        )
+    else:
+        bundles = {}
     return index, docs, bundles
+
+
+def _resolve_catalog_local_path(
+    base_dir: Path, index: dict[str, object], section: str, fallback: Path
+) -> Path:
+    """Resolve the local path for a catalog file from index.json's catalogPath."""
+    sec = index.get(section, {})
+    if isinstance(sec, dict):
+        catalog_path = sec.get("catalogPath")
+        if isinstance(catalog_path, str):
+            return base_dir / catalog_path
+    return fallback
 
 
 def _json_loads_dict(text: str, label: str) -> dict[str, object]:

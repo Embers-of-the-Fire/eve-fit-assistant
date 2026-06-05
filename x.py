@@ -348,7 +348,7 @@ def __publish_remote_origin_to_s3(
     alias_name: str,
     resource_root: str,
     channel: Channel,
-    clean_bucket: bool,
+    generation: str,
     public_download: bool,
     target: str = "minio",
 ) -> None:
@@ -362,15 +362,29 @@ def __publish_remote_origin_to_s3(
         raise click.ClickException("Remote publish access key must not be empty.")
     if not secret_key:
         raise click.ClickException("Remote publish secret key must not be empty.")
+    if not generation or not generation.strip():
+        raise click.ClickException("Remote publish generation must not be empty.")
 
     resolved_bucket = __validate_mc_target_segment(bucket, "bucket")
     resolved_alias = __validate_mc_target_segment(alias_name, "alias")
     resolved_resource_root = __validate_remote_resource_root(resource_root)
     root_dir = source_dir / resolved_resource_root
     channel_dir = root_dir / "channels" / channel.value
-    index_path = channel_dir / "index.json"
+    gen_dir = channel_dir / ".generations" / generation
+    index_path = gen_dir / "index.json"
+
+    legacy_index_path = channel_dir / "index.json"
+    if not index_path.exists() and legacy_index_path.is_file():
+        warning(f"Source uses legacy layout; wrapping generation {generation} at upload time.")
+        gen_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy_index_path, gen_dir / "index.json")
+        for sub in ("documents", "bundles", "app"):
+            src_sub = channel_dir / sub
+            if src_sub.is_dir():
+                shutil.copytree(src_sub, gen_dir / sub, dirs_exist_ok=True)
+
     if not index_path.exists() or not index_path.is_file():
-        raise click.ClickException(f"Remote publish channel index does not exist: {index_path}")
+        raise click.ClickException(f"Remote publish generation index does not exist: {index_path}")
 
     mc = get_command("mc")
     bucket_target = f"{resolved_alias}/{resolved_bucket}"
@@ -382,8 +396,6 @@ def __publish_remote_origin_to_s3(
     )
     if target == "minio":
         __execute_command([mc, "mb", "--ignore-existing", bucket_target], "REMOTE PUBLISH")
-    if clean_bucket:
-        __execute_command([mc, "rm", "--recursive", "--force", bucket_target], "REMOTE PUBLISH")
     if target == "minio":
         if public_download:
             __execute_command([mc, "anonymous", "set", "download", bucket_target], "REMOTE PUBLISH")
@@ -391,6 +403,7 @@ def __publish_remote_origin_to_s3(
             __execute_command([mc, "anonymous", "set", "none", bucket_target], "REMOTE PUBLISH")
 
     target_root = f"{bucket_target}/{resolved_resource_root}"
+    # Step 1: mirror shared content (idempotent, safe to interrupt)
     __publish_optional_tree(
         mc,
         root_dir / "documents" / "body",
@@ -407,35 +420,38 @@ def __publish_remote_origin_to_s3(
         attrs={"Cache-Control": "immutable, max-age=31536000"},
     )
 
-    target_channel = f"{target_root}/channels/{channel}"
+    # Step 2: mirror generation catalog tree (tiny JSONs, NEW paths)
     channel_attrs = {"Cache-Control": "max-age=300", "Content-Type": "application/json"}
-    __publish_optional_file(
+    __publish_optional_tree(
         mc,
-        channel_dir / "documents" / "catalog.json",
-        f"{target_channel}/documents/catalog.json",
+        gen_dir / "documents",
+        f"{target_root}/channels/{channel}/.generations/{generation}/documents",
+        attrs=channel_attrs,
+    )
+    __publish_optional_tree(
+        mc,
+        gen_dir / "bundles",
+        f"{target_root}/channels/{channel}/.generations/{generation}/bundles",
         attrs=channel_attrs,
     )
     __publish_optional_file(
         mc,
-        channel_dir / "app" / "releases.json",
-        f"{target_channel}/app/releases.json",
+        gen_dir / "app" / "releases.json",
+        f"{target_root}/channels/{channel}/.generations/{generation}/app/releases.json",
         attrs=channel_attrs,
     )
-    __publish_optional_file(
-        mc,
-        channel_dir / "bundles" / "catalog.json",
-        f"{target_channel}/bundles/catalog.json",
-        attrs=channel_attrs,
-    )
+
+    # Step 3: atomic commit — copy generation's index.json to live path
     __publish_optional_file(
         mc,
         index_path,
-        f"{target_channel}/index.json",
+        f"{target_root}/channels/{channel}/index.json",
         attrs={"Cache-Control": "no-cache", "Content-Type": "application/json"},
     )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Uploaded remote origin: ") + str(source_dir))
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Target bucket: ") + bucket_target)
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Generation: ") + generation)
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
         + __remote_channel_index_url(
@@ -1714,9 +1730,14 @@ def remote_prepare_verify(
 )
 def remote_prepare_commit(session_id: str | None):
     """Finalize session (immutable todo, remove lockfile). Emits summary."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     try:
         mgr = __get_session(session_id)
-        st = mgr.commit()
+        st = mgr.commit(
+            channel=remote_cfg.channel,
+            resource_root=remote_cfg.resource_root,
+        )
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -2104,6 +2125,36 @@ def __resolve_publish_source(
             f"Session has no merged output. Run `./x remote prepare diff` first: {mgr.session_id}"
         )
     return merged, mgr.session_id
+
+
+def __resolve_publish_generation(
+    *,
+    source_dir: Path,
+    session_id: str | None,
+    channel: Channel,
+    resource_root: str,
+) -> str:
+    resolved_resource_root = __validate_remote_resource_root(resource_root)
+    if session_id is not None:
+        mgr = __get_session(session_id)
+        todo = mgr._load_todo()
+        if todo.generation:
+            return todo.generation
+        raise click.ClickException(
+            f"Session {session_id} has no generation. Run `./x remote prepare commit` first."
+        )
+    # --source-dir mode: extract generation from the source's index.json
+    ch_dir = source_dir / resolved_resource_root / "channels" / channel.value
+    index_path = ch_dir / "index.json"
+    if index_path.is_file():
+        index_data: dict[str, object] = json.loads(index_path.read_text(encoding="utf-8"))
+        gen = index_data.get("generation")
+        if isinstance(gen, str) and gen:
+            return gen
+    raise click.ClickException(
+        "Unable to resolve generation from session or source. "
+        "Ensure the session is committed or the source directory contains a valid index.json."
+    )
 
 
 # ---- shared S3 upload helpers -----------------------------------------------
@@ -2675,7 +2726,12 @@ def _verify_one_item(item: dict[str, str]) -> str | None:
 @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
 @click.option("--resource-root", default=None, help="Override remote resource root.")
 @click.option("--channel", default=None, help="Override remote channel.")
-@click.option("--clean", is_flag=True, default=False, help="Clean bucket before publishing.")
+@click.option(
+    "--clean",
+    is_flag=True,
+    default=False,
+    help="Run garbage collection after successful publish to prune old generations and unreferenced content.",
+)
 @click.option(
     "--public-download/--private",
     default=None,
@@ -2720,6 +2776,13 @@ def remote_publish_upload(
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
+    generation = __resolve_publish_generation(
+        source_dir=resolved_source_dir,
+        session_id=resolved_session_id,
+        channel=resolved_channel,
+        resource_root=resolved_resource_root,
+    )
+
     s3 = __get_publish_s3_params(
         target, endpoint, bucket, access_key, secret_key, alias_name, public_download
     )
@@ -2739,7 +2802,7 @@ def remote_publish_upload(
         alias_name=resolved_alias,
         resource_root=resolved_resource_root,
         channel=resolved_channel,
-        clean_bucket=clean,
+        generation=generation,
         public_download=resolved_public_download,
         target=target,
     )
@@ -2774,6 +2837,20 @@ def remote_publish_upload(
             styled([Style.BRIGHT, Fore.GREEN], "Verification passed: ")
             + "all uploaded files match local source."
         )
+
+    if clean:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], "Running post-publish garbage collection..."))
+        mc_bin = get_command("mc")
+        bucket_target = f"{resolved_alias}/{resolved_bucket}"
+        summary = __gc_unreferenced_objects(
+            mc=mc_bin,
+            alias_name=resolved_alias,
+            bucket=resolved_bucket,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+            dry_run=False,
+        )
+        click.echo(summary)
 
     if source_dir is None and not keep_session and resolved_session_id:
         mgr = __get_session(resolved_session_id)
@@ -2928,6 +3005,7 @@ def __start_minio_remote_mock(
     process = subprocess.Popen(command, env=env, text=True)
     try:
         __wait_for_http(f"{endpoint}/minio/health/ready")
+        mock_generation = __utc_timestamp().replace("-", "").replace(":", "") + "Z"
         __publish_remote_origin_to_s3(
             source_dir=origin_dir,
             endpoint=endpoint,
@@ -2937,7 +3015,7 @@ def __start_minio_remote_mock(
             alias_name=alias_name,
             resource_root=resource_root,
             channel=channel,
-            clean_bucket=clean_bucket,
+            generation=mock_generation,
             public_download=public_download,
         )
 
@@ -4081,7 +4159,7 @@ def release_changelog_stage(do_commit: bool):
         click.echo(f"  Upload:             ./x remote publish upload --session {mgr.session_id}")
         return
 
-    status = mgr.commit()
+    status = mgr.commit(channel=resolved_channel, resource_root=resolved_resource_root)
     click.echo("")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Session committed: ")
