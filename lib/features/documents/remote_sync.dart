@@ -71,6 +71,7 @@ class RemoteDocumentSyncService {
         documentRevision: documentRevision,
       );
       _ref.invalidate(documentFeedProvider);
+      _ref.invalidate(availableUpdateProvider);
       info("Synced ${parsedCatalog.catalog.entries.length} remote document entries.");
       return true;
     } on Object catch (exception, stackTrace) {

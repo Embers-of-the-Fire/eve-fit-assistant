@@ -4,6 +4,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/documents/models.dart";
 import "package:eve_fit_assistant/features/documents/storage.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/foundation.dart" show FlutterError;
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -97,6 +98,38 @@ final hasVersionBumpProvider = Provider<bool>((Ref ref) {
     error: (_, _) => const <DocumentRecord>[],
   );
   return records.any((r) => r.appVer == appVer);
+});
+
+final availableUpdateProvider = Provider<DocumentRecord?>((Ref ref) {
+  ref.watch(readGenerationProvider);
+  final appVer = ref
+      .watch(appVersionProvider)
+      .when(data: (v) => v, loading: () => null, error: (_, _) => null);
+  if (appVer == null) {
+    return null;
+  }
+
+  final versionFeed = ref.watch(documentFeedProvider(DocumentFeedKind.version));
+  final records = versionFeed.when(
+    data: (r) => r,
+    loading: () => const <DocumentRecord>[],
+    error: (_, _) => const <DocumentRecord>[],
+  );
+
+  final candidates = records
+      .where((r) => r.appVer != null && compareVersions(r.appVer!, appVer) > 0)
+      .toList();
+  if (candidates.isEmpty) {
+    return null;
+  }
+
+  candidates.sort((a, b) => compareVersions(b.appVer!, a.appVer!));
+  final latest = candidates.first;
+
+  if (latest.appVer == DocumentStorage.notifiedAvailableVersion) {
+    return null;
+  }
+  return latest;
 });
 
 final documentFeedProvider = FutureProvider.family<List<DocumentRecord>, DocumentFeedKind>((

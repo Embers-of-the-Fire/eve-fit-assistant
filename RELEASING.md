@@ -236,6 +236,44 @@ to a minimum app version.
 ```
 
 
+## Remote Version Publishing
+
+Version release notes can be published to the remote server so that older
+app installations can discover what has changed in a new release.
+
+### Publishing a version note
+
+1. Generate the bi-lingual version documents:
+   ```bash
+   ./x release changelog detail --no-edit
+   ```
+
+2. Build the bundled document assets so the new version notes are included
+   in the APK:
+   ```bash
+   ./x generate docs
+   ```
+
+3. Stage to remote so older app installations can discover the new version:
+   ```bash
+   ./x release changelog stage --commit
+   ./x remote publish upload
+   ```
+
+   Without `--commit`, the `stage` command shows a diff and prints the
+   manual commit/upload commands for review before finalizing.
+
+### Removing a version note
+
+```bash
+./x remote prepare start
+./x remote prepare remove --document-id <version-document-id>
+./x remote prepare diff
+./x remote prepare commit
+./x remote publish upload
+```
+
+
 ## Remote Bundle Publishing
 
 Bundles can be uploaded to S3-compatible storage (Cloudflare R2, MinIO, etc.).

@@ -34,7 +34,7 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
 # ---------------------------------------------------------------------------
 
 
-def _apply_add_announcement(catalog: dict[str, object], op: dict[str, object]) -> None:
+def _apply_document_upsert(catalog: dict[str, object], op: dict[str, object]) -> None:
     entries: list[object] = catalog.get("entries", [])  # type: ignore[assignment]
     if not isinstance(entries, list):
         return
@@ -102,13 +102,15 @@ def apply_operations_to_catalogs(
     for op in operations:
         op_type: str = op.get("type", "")  # type: ignore[assignment]
         if op_type == "add-announcement":
-            _apply_add_announcement(merged_docs, op)
+            _apply_document_upsert(merged_docs, op)
+        elif op_type == "add-version":
+            _apply_document_upsert(merged_docs, op)
         elif op_type == "add-bundle":
             _apply_add_bundle(merged_bundles, op)
         elif op_type == "remove":
             _apply_remove(op, merged_docs, merged_bundles)
         elif op_type == "promote-document":
-            _apply_add_announcement(merged_docs, op)
+            _apply_document_upsert(merged_docs, op)
         elif op_type == "promote-bundle":
             _apply_add_bundle(merged_bundles, op)
 

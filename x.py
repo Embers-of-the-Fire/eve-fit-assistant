@@ -1371,6 +1371,76 @@ def remote_prepare_add_announcement(
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged announcement: ") + resolved_document_id)
 
 
+@add.command("version")
+@click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
+@click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
+@click.option("--id", "document_id", required=True, help="Remote document id to create.")
+@click.option("--title-zh", required=True, help="Chinese version title.")
+@click.option("--title-en", required=True, help="English version title.")
+@click.option("--summary-zh", required=True, help="Chinese version summary.")
+@click.option("--summary-en", required=True, help="English version summary.")
+@click.option("--app-ver", required=True, help="App version this release note describes.")
+@click.option("--published-at", default=None, help="UTC ISO timestamp. Defaults to now.")
+@click.option(
+    "--tag",
+    "tags",
+    multiple=True,
+    default=("release-note", "version"),
+    show_default=True,
+    help="Tags (repeatable).",
+)
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
+def remote_prepare_add_version(
+    zh_path: Path,
+    en_path: Path,
+    document_id: str,
+    title_zh: str,
+    title_en: str,
+    summary_zh: str,
+    summary_en: str,
+    app_ver: str,
+    published_at: str | None,
+    tags: tuple[str, ...],
+    session_id: str | None,
+):
+    """Stage a version release note in the pending session."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    if not zh_path.is_file():
+        raise click.ClickException(f"Chinese Markdown file does not exist: {zh_path}")
+    if not en_path.is_file():
+        raise click.ClickException(f"English Markdown file does not exist: {en_path}")
+
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_document_id = __validate_remote_document_id(document_id)
+    resolved_published_at = published_at or __utc_timestamp()
+    resolved_tags = list(tags)
+    resolved_resource_root = remote_cfg.resource_root
+    resolved_channel = remote_cfg.channel
+
+    try:
+        mgr = __get_session(session_id)
+        mgr.add_version(
+            zh_path=zh_path,
+            en_path=en_path,
+            document_id=resolved_document_id,
+            title_zh=title_zh,
+            title_en=title_en,
+            summary_zh=summary_zh,
+            summary_en=summary_en,
+            app_ver=app_ver,
+            published_at=resolved_published_at,
+            tags=resolved_tags,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + resolved_document_id)
+
+
 @add.command("bundle")
 @click.option("--full", "full_path", type=click.Path(path_type=Path), required=True)
 @click.option("--manifest", "manifest_path", type=click.Path(path_type=Path), required=True)
@@ -3848,6 +3918,248 @@ def release_changelog_detail(no_edit: bool):
     )
     generate_detail(v, no_edit=no_edit)
     click.echo(styled([Fore.GREEN], "  Written to assets/content/documents/"))
+
+
+@release_changelog.command("stage")
+@click.option(
+    "--commit",
+    "do_commit",
+    is_flag=True,
+    default=False,
+    help="Commit the session after staging (otherwise diff only).",
+)
+def release_changelog_stage(do_commit: bool):
+    """Stage version release notes in a remote prepare session.
+
+    Reads the generated version documents from assets/content/documents/,
+    creates a remote prepare session, and stages the version entry.
+    Use the --commit flag to finalize; without it, the command shows a diff
+    without committing. Run ``./x remote publish upload`` afterwards to
+    actually upload to the remote server.
+    """
+
+    from data.lib.constant import PROJECT_ROOT
+    from data.lib.release.changelog_gen import _version_to_doc_id
+    from data.lib.release.version import load_version
+    from data.lib.remote.channel import Channel
+    from data.lib.remote.session import SessionManager
+
+    v = load_version()
+    doc_id = _version_to_doc_id(v)
+    semver = v.render_semver()
+
+    zh_path = PROJECT_ROOT / "assets" / "content" / "documents" / "zh" / f"{doc_id}.md"
+    en_path = PROJECT_ROOT / "assets" / "content" / "documents" / "en" / f"{doc_id}.md"
+
+    if not zh_path.is_file():
+        raise click.ClickException(
+            f"Chinese version document not found: {zh_path}\n"
+            f"  Run './x release changelog detail' first."
+        )
+    if not en_path.is_file():
+        raise click.ClickException(
+            f"English version document not found: {en_path}\n"
+            f"  Run './x release changelog detail' first."
+        )
+
+    zh_meta, zh_title, zh_summary = _parse_version_document(zh_path)
+    _en_meta, en_title, en_summary = _parse_version_document(en_path)
+    app_ver = zh_meta.get("appVer", semver)
+    tags = zh_meta.get("tags", ["release-note", "version"])
+    published_at = zh_meta.get("publishedAt", None)
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Staging version document: ")
+        + styled([Style.BRIGHT], doc_id)
+    )
+    click.echo(styled(Style.DIM, f"  zh: {zh_path}"))
+    click.echo(styled(Style.DIM, f"  en: {en_path}"))
+    click.echo(styled(Style.DIM, f"  appVer: {app_ver}"))
+    click.echo(styled(Style.DIM, f"  tags: {tags}"))
+    click.echo("")
+
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_resource_root = __validate_remote_resource_root(remote_cfg.resource_root)
+    resolved_channel = Channel(remote_cfg.channel.value)
+    resolved_backend, origin_dir, start_kwargs = _resolve_stage_backend(
+        remote_cfg=remote_cfg,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
+    )
+
+    sessions_root = __get_session_root()
+    try:
+        mgr = SessionManager.start(
+            sessions_root=sessions_root,
+            backend=resolved_backend,
+            origin_dir=origin_dir,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+            **start_kwargs,
+        )
+    except (OSError, FileNotFoundError) as exc:
+        click.echo(styled([Style.BRIGHT, Fore.YELLOW], f"Remote state unavailable: {exc}"))
+        click.echo(styled(Style.DIM, "Falling back to local-only session (no diff available)."))
+        mgr = SessionManager.start(
+            sessions_root=sessions_root,
+            backend="local",
+            origin_dir=None,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+        resolved_backend = "local"
+        start_kwargs = {}
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
+    click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
+    click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
+
+    try:
+        mgr.add_version(
+            zh_path=zh_path,
+            en_path=en_path,
+            document_id=doc_id,
+            title_zh=zh_title,
+            title_en=en_title,
+            summary_zh=zh_summary,
+            summary_en=en_summary,
+            app_ver=str(app_ver),
+            published_at=published_at or __utc_timestamp(),
+            tags=[str(t) for t in tags],
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + doc_id)
+    except Exception as exc:
+        mgr.abort()
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo("")
+    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Diff:"))
+    try:
+        diff = mgr.diff(resolved_channel, resolved_resource_root)
+        if isinstance(diff, dict) and diff:
+            for path, change in sorted(diff.items()):
+                if isinstance(change, dict) and change.get("type") == "added":
+                    click.echo(styled([Fore.GREEN], f"  + {path}"))
+                elif isinstance(change, dict) and change.get("type") == "removed":
+                    click.echo(styled([Fore.RED], f"  - {path}"))
+                elif isinstance(change, dict):
+                    click.echo(styled([Fore.YELLOW], f"  ~ {path}"))
+        else:
+            click.echo(styled(Style.DIM, "  (no changes)"))
+    except FileNotFoundError:
+        click.echo(styled(Style.DIM, "  (no remote state available — session is local-only)"))
+
+    if not do_commit:
+        click.echo("")
+        click.echo(
+            styled([Style.BRIGHT, Fore.YELLOW], "Session not committed (use --commit to finalize).")
+        )
+        click.echo(f"  Review and commit:  ./x remote prepare commit --session {mgr.session_id}")
+        click.echo(f"  Upload:             ./x remote publish upload --session {mgr.session_id}")
+        return
+
+    status = mgr.commit()
+    click.echo("")
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Session committed: ")
+        + f"{mgr.session_id}  ({status.operation_count} operation(s))"
+    )
+    click.echo(f"  Upload:  ./x remote publish upload --session {mgr.session_id}")
+
+
+def _parse_version_document(path: Path) -> tuple[dict[str, object], str, str]:
+    """Parse a version markdown document into (metadata, title, summary).
+
+    Returns metadata from YAML front matter (may be empty for en files),
+    the h1 heading text as title, and the first non-heading paragraph as summary.
+    """
+    import re as _re
+
+    import yaml as _yaml
+
+    content = path.read_text(encoding="utf-8")
+    metadata: dict[str, object] = {}
+    body = content
+
+    if content.startswith("---\n"):
+        parts = content.split("\n---\n", 1)
+        if len(parts) == 2:
+            raw_front_matter = parts[0][len("---\n") :]
+            body = parts[1]
+            data = _yaml.safe_load(raw_front_matter)
+            if isinstance(data, dict):
+                metadata = data
+
+    body = body.lstrip()
+    lines = body.splitlines()
+
+    title = ""
+    summary = ""
+    title_found = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("# "):
+            if not title_found:
+                title = stripped[2:].strip()
+                title_found = True
+            continue
+        if (
+            title_found
+            and not summary
+            and not stripped.startswith(("#", "```", "- ", "* ", "+ "))
+            and not _re.match(r"\d+\.\s", stripped)
+        ):
+            summary = stripped
+            break
+
+    if not title:
+        title = path.stem
+    if not summary:
+        summary = title
+
+    return metadata, title, summary
+
+
+def _resolve_stage_backend(
+    *,
+    remote_cfg,
+    resource_root: str,
+    channel,
+) -> tuple[str, Path | None, dict[str, object]]:
+    if remote_cfg.s3 is not None:
+        sub = remote_cfg.require_s3()
+        return (
+            "s3",
+            None,
+            {
+                "mc_bin": get_command("mc"),
+                "endpoint": sub.endpoint,
+                "bucket": sub.bucket,
+                "access_key": sub.access_key,
+                "secret_key": sub.secret_key,
+                "alias_name": sub.alias,
+            },
+        )
+    if remote_cfg.minio is not None:
+        sub = remote_cfg.require_minio()
+        return (
+            "minio",
+            None,
+            {
+                "mc_bin": get_command("mc"),
+                "endpoint": f"http://{remote_cfg.host}:{sub.port}",
+                "bucket": sub.bucket,
+                "access_key": sub.access_key,
+                "secret_key": sub.secret_key,
+                "alias_name": sub.alias,
+            },
+        )
+    return "local", None, {}
 
 
 @cli.group(cls=ClickAliasedGroup)

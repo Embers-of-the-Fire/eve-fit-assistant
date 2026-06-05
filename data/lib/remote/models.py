@@ -50,6 +50,13 @@ class AddAnnouncementOp(BaseModel):
     staged_files: dict[str, str] = Field(default_factory=dict)
 
 
+class AddVersionOp(BaseModel):
+    type: Literal["add-version"] = "add-version"
+    document_id: str
+    fields: dict[str, object] = Field(default_factory=dict)
+    staged_files: dict[str, str] = Field(default_factory=dict)
+
+
 class AddBundleOp(BaseModel):
     type: Literal["add-bundle"] = "add-bundle"
     artifact_id: str
@@ -92,7 +99,12 @@ class TodoList(BaseModel):
     session_id: str
     committed: bool = False
     operations: list[
-        AddAnnouncementOp | AddBundleOp | RemoveOp | PromoteDocumentOp | PromoteBundleOp
+        AddAnnouncementOp
+        | AddVersionOp
+        | AddBundleOp
+        | RemoveOp
+        | PromoteDocumentOp
+        | PromoteBundleOp
     ] = Field(default_factory=list)
     lock_snapshot: dict[str, object] = Field(default_factory=dict)
 
