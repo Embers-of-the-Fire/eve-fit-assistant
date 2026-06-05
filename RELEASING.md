@@ -199,14 +199,19 @@ to a minimum app version.
    ./x remote prepare add announcement \
      --zh docs/drafts/update.zh.md \
      --en docs/drafts/update.en.md \
-     --id remote-announcement-2026-06-data-update \
+     --id data-update \
      --title-zh "数据更新公告" \
      --title-en "Data update notice" \
      --summary-zh "本次更新包含最新 EVE 数据。" \
      --summary-en "This update includes the latest EVE data."
    ```
 
+   A seconds-level timestamp suffix is automatically appended to the document ID
+   (e.g. `data-update-20260605T120030Z`).  Omit `--id` to use an auto-generated
+   `announcement-<timestamp>` ID.
+
    Key options:
+   - `--id <prefix>` — optional topic prefix (timestamp suffix appended automatically). Defaults to `announcement`.
    - `--startup` / `--no-startup` — control whether the announcement appears on launch (default: `--startup`).
    - `--min-app-ver <version>` — scope to a minimum app version (defaults to the current `efa.config.toml` version).
    - `--all-app-ver` — publish for all app versions (writes `minAppVer` as null; mutually exclusive with `--min-app-ver`).
@@ -242,6 +247,9 @@ Version release notes can be published to the remote server so that older
 app installations can discover what has changed in a new release.
 
 ### Publishing a version note
+
+Version document IDs are auto-generated as `version-{appVer}` (e.g. `version-0.0.3`).
+Pass `--id` to override.
 
 1. Generate the bi-lingual version documents:
    ```bash
@@ -287,11 +295,17 @@ Configure the remote under `[remote.s3]` in `efa.dev.toml`.
     --full <bundle_id>.zip \
     --manifest <bundle_manifest.json>
 ./x remote prepare add bundle \        # optionally add its increment
+    --full <bundle_id>.zip \
+    --manifest <bundle_manifest.json> \
     --increment <bundle_id>_increment.zip
 ./x remote prepare diff                # review catalog/index diffs
 ./x remote prepare verify              # validate internal consistency
 ./x remote prepare commit              # finalize the session
 ```
+
+The `--artifact-id` option is now **optional**. When omitted, the artifact ID is auto-generated
+from the bundle descriptor as `data-{gameServer}-{gameBuild}` (e.g. `data-tranquility-2203108`).
+For incremental bundles the suffix `-inc` is appended.
 
 ### Upload to remote storage
 
@@ -300,7 +314,8 @@ Configure the remote under `[remote.s3]` in `efa.dev.toml`.
 ```
 
 - `--verify` checks SHA256 integrity of every uploaded object.
-- `--clean` removes objects from the remote bucket that no catalog references.
+- `--clean` runs post-upload garbage collection to prune old generations and unreferenced content
+  (no longer deletes the bucket before uploading — the publish is safe to retry if interrupted).
 
 ### Promote testing → stable
 
@@ -346,7 +361,9 @@ auto-detecting the last release tag.
 | Build full bundle | `./x build data` |
 | Build patch bundle | `./x build increment <baseline_manifest>` |
 | Stage announcement | `./x remote prepare add announcement --zh ... --en ...` |
+| Stage bundle | `./x remote prepare add bundle --full ... --manifest ...` |
 | Upload to remote | `./x remote publish upload [--verify]` |
+| Run remote GC | `./x remote publish gc [--dry-run] [--keep-generations N]` |
 
 
 [Semver]: https://semver.org/

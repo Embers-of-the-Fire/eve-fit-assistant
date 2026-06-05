@@ -98,6 +98,7 @@ class TodoList(BaseModel):
     version: int = 1
     session_id: str
     committed: bool = False
+    generation: str | None = Field(default=None)
     operations: list[
         AddAnnouncementOp
         | AddVersionOp

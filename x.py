@@ -348,7 +348,7 @@ def __publish_remote_origin_to_s3(
     alias_name: str,
     resource_root: str,
     channel: Channel,
-    clean_bucket: bool,
+    generation: str,
     public_download: bool,
     target: str = "minio",
 ) -> None:
@@ -362,15 +362,29 @@ def __publish_remote_origin_to_s3(
         raise click.ClickException("Remote publish access key must not be empty.")
     if not secret_key:
         raise click.ClickException("Remote publish secret key must not be empty.")
+    if not generation or not generation.strip():
+        raise click.ClickException("Remote publish generation must not be empty.")
 
     resolved_bucket = __validate_mc_target_segment(bucket, "bucket")
     resolved_alias = __validate_mc_target_segment(alias_name, "alias")
     resolved_resource_root = __validate_remote_resource_root(resource_root)
     root_dir = source_dir / resolved_resource_root
     channel_dir = root_dir / "channels" / channel.value
-    index_path = channel_dir / "index.json"
+    gen_dir = channel_dir / ".generations" / generation
+    index_path = gen_dir / "index.json"
+
+    legacy_index_path = channel_dir / "index.json"
+    if not index_path.exists() and legacy_index_path.is_file():
+        warning(f"Source uses legacy layout; wrapping generation {generation} at upload time.")
+        gen_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy_index_path, gen_dir / "index.json")
+        for sub in ("documents", "bundles", "app"):
+            src_sub = channel_dir / sub
+            if src_sub.is_dir():
+                shutil.copytree(src_sub, gen_dir / sub, dirs_exist_ok=True)
+
     if not index_path.exists() or not index_path.is_file():
-        raise click.ClickException(f"Remote publish channel index does not exist: {index_path}")
+        raise click.ClickException(f"Remote publish generation index does not exist: {index_path}")
 
     mc = get_command("mc")
     bucket_target = f"{resolved_alias}/{resolved_bucket}"
@@ -382,8 +396,6 @@ def __publish_remote_origin_to_s3(
     )
     if target == "minio":
         __execute_command([mc, "mb", "--ignore-existing", bucket_target], "REMOTE PUBLISH")
-    if clean_bucket:
-        __execute_command([mc, "rm", "--recursive", "--force", bucket_target], "REMOTE PUBLISH")
     if target == "minio":
         if public_download:
             __execute_command([mc, "anonymous", "set", "download", bucket_target], "REMOTE PUBLISH")
@@ -391,6 +403,7 @@ def __publish_remote_origin_to_s3(
             __execute_command([mc, "anonymous", "set", "none", bucket_target], "REMOTE PUBLISH")
 
     target_root = f"{bucket_target}/{resolved_resource_root}"
+    # Step 1: mirror shared content (idempotent, safe to interrupt)
     __publish_optional_tree(
         mc,
         root_dir / "documents" / "body",
@@ -407,35 +420,38 @@ def __publish_remote_origin_to_s3(
         attrs={"Cache-Control": "immutable, max-age=31536000"},
     )
 
-    target_channel = f"{target_root}/channels/{channel}"
+    # Step 2: mirror generation catalog tree (tiny JSONs, NEW paths)
     channel_attrs = {"Cache-Control": "max-age=300", "Content-Type": "application/json"}
-    __publish_optional_file(
+    __publish_optional_tree(
         mc,
-        channel_dir / "documents" / "catalog.json",
-        f"{target_channel}/documents/catalog.json",
+        gen_dir / "documents",
+        f"{target_root}/channels/{channel}/.generations/{generation}/documents",
+        attrs=channel_attrs,
+    )
+    __publish_optional_tree(
+        mc,
+        gen_dir / "bundles",
+        f"{target_root}/channels/{channel}/.generations/{generation}/bundles",
         attrs=channel_attrs,
     )
     __publish_optional_file(
         mc,
-        channel_dir / "app" / "releases.json",
-        f"{target_channel}/app/releases.json",
+        gen_dir / "app" / "releases.json",
+        f"{target_root}/channels/{channel}/.generations/{generation}/app/releases.json",
         attrs=channel_attrs,
     )
-    __publish_optional_file(
-        mc,
-        channel_dir / "bundles" / "catalog.json",
-        f"{target_channel}/bundles/catalog.json",
-        attrs=channel_attrs,
-    )
+
+    # Step 3: atomic commit — copy generation's index.json to live path
     __publish_optional_file(
         mc,
         index_path,
-        f"{target_channel}/index.json",
+        f"{target_root}/channels/{channel}/index.json",
         attrs={"Cache-Control": "no-cache", "Content-Type": "application/json"},
     )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Uploaded remote origin: ") + str(source_dir))
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Target bucket: ") + bucket_target)
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Generation: ") + generation)
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
         + __remote_channel_index_url(
@@ -1296,7 +1312,12 @@ def add():
 @add.command("announcement")
 @click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
 @click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
-@click.option("--id", "document_id", required=True, help="Remote document id to create.")
+@click.option(
+    "--id",
+    "document_id",
+    default=None,
+    help="Remote document id prefix (timestamp suffix appended). Defaults to auto-generated.",
+)
 @click.option("--title-zh", required=True, help="Chinese announcement title.")
 @click.option("--title-en", required=True, help="English announcement title.")
 @click.option("--summary-zh", required=True, help="Chinese announcement summary.")
@@ -1319,7 +1340,7 @@ def add():
 def remote_prepare_add_announcement(
     zh_path: Path,
     en_path: Path,
-    document_id: str,
+    document_id: str | None,
     title_zh: str,
     title_en: str,
     summary_zh: str,
@@ -1341,7 +1362,8 @@ def remote_prepare_add_announcement(
         raise click.ClickException(f"English Markdown file does not exist: {en_path}")
 
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id = __validate_remote_document_id(document_id)
+    resolved_document_id_base = document_id or "announcement"
+    resolved_document_id = __validate_remote_document_id(resolved_document_id_base)
     resolved_published_at = published_at or __utc_timestamp()
     resolved_min_app_ver = None if all_app_ver else (min_app_ver or __read_current_app_version())
     resolved_tags = list(tags or ("announcement",))
@@ -1350,7 +1372,7 @@ def remote_prepare_add_announcement(
 
     try:
         mgr = __get_session(session_id)
-        mgr.add_announcement(
+        resolved_document_id = mgr.add_announcement(
             zh_path=zh_path,
             en_path=en_path,
             document_id=resolved_document_id,
@@ -1374,7 +1396,12 @@ def remote_prepare_add_announcement(
 @add.command("version")
 @click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
 @click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
-@click.option("--id", "document_id", required=True, help="Remote document id to create.")
+@click.option(
+    "--id",
+    "document_id",
+    default=None,
+    help="Remote document id (auto-generated from app-ver if omitted).",
+)
 @click.option("--title-zh", required=True, help="Chinese version title.")
 @click.option("--title-en", required=True, help="English version title.")
 @click.option("--summary-zh", required=True, help="Chinese version summary.")
@@ -1395,7 +1422,7 @@ def remote_prepare_add_announcement(
 def remote_prepare_add_version(
     zh_path: Path,
     en_path: Path,
-    document_id: str,
+    document_id: str | None,
     title_zh: str,
     title_en: str,
     summary_zh: str,
@@ -1413,7 +1440,7 @@ def remote_prepare_add_version(
         raise click.ClickException(f"English Markdown file does not exist: {en_path}")
 
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id = __validate_remote_document_id(document_id)
+    resolved_document_id = __validate_remote_document_id(document_id) if document_id else None
     resolved_published_at = published_at or __utc_timestamp()
     resolved_tags = list(tags)
     resolved_resource_root = remote_cfg.resource_root
@@ -1438,18 +1465,25 @@ def remote_prepare_add_version(
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + resolved_document_id)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Staged version: ")
+        + (resolved_document_id or f"version-{app_ver}")
+    )
 
 
 @add.command("bundle")
 @click.option("--full", "full_path", type=click.Path(path_type=Path), required=True)
 @click.option("--manifest", "manifest_path", type=click.Path(path_type=Path), required=True)
-@click.option("--artifact-id", required=True, help="Artifact id for the full bundle.")
+@click.option(
+    "--artifact-id",
+    default=None,
+    help="Artifact id for the full bundle (auto-generated from descriptor if omitted).",
+)
 @click.option("--increment", "increment_path", type=click.Path(path_type=Path), default=None)
 @click.option(
     "--increment-artifact-id",
     default=None,
-    help="Artifact id for the incremental bundle. Required with --increment.",
+    help="Artifact id for the incremental bundle (auto-generated from descriptor if omitted).",
 )
 @click.option(
     "--session", "session_id", default=None, help="Session ID. Defaults to current session."
@@ -1457,40 +1491,46 @@ def remote_prepare_add_version(
 def remote_prepare_add_bundle(
     full_path: Path,
     manifest_path: Path,
-    artifact_id: str,
+    artifact_id: str | None,
     increment_path: Path | None,
     increment_artifact_id: str | None,
     session_id: str | None,
 ):
     """Stage a bundle in the pending session."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if increment_path is not None and increment_artifact_id is None:
-        raise click.ClickException("--increment-artifact-id is required when --increment is used.")
     if increment_path is None and increment_artifact_id is not None:
         raise click.ClickException("--increment-artifact-id requires --increment.")
     if not manifest_path.is_file():
         raise click.ClickException(f"Bundle manifest file does not exist: {manifest_path}")
 
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_artifact_id = __validate_remote_artifact_id(artifact_id)
+    resolved_artifact_id = __validate_remote_artifact_id(artifact_id) if artifact_id else None
+    resolved_increment_artifact_id = (
+        __validate_remote_artifact_id(increment_artifact_id) if increment_artifact_id else None
+    )
     resolved_resource_root = remote_cfg.resource_root
     resolved_channel = remote_cfg.channel
 
     try:
         mgr = __get_session(session_id)
-        mgr.add_bundle(
+        resolved_artifact_id, resolved_increment_artifact_id = mgr.add_bundle(
             full_path=full_path,
             manifest_path=manifest_path,
             artifact_id=resolved_artifact_id,
             resource_root=resolved_resource_root,
             channel=resolved_channel,
             increment_path=increment_path,
-            increment_artifact_id=increment_artifact_id,
+            increment_artifact_id=resolved_increment_artifact_id,
         )
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id)
+    parts = [styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id]
+    if resolved_increment_artifact_id is not None:
+        parts.append(
+            styled([Style.BRIGHT, Fore.GREEN], "  increment: ") + resolved_increment_artifact_id
+        )
+    click.echo("\n".join(parts))
 
 
 # ---- remove ----------------------------------------------------------------
@@ -1693,9 +1733,14 @@ def remote_prepare_verify(
 )
 def remote_prepare_commit(session_id: str | None):
     """Finalize session (immutable todo, remove lockfile). Emits summary."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     try:
         mgr = __get_session(session_id)
-        st = mgr.commit()
+        st = mgr.commit(
+            channel=remote_cfg.channel,
+            resource_root=remote_cfg.resource_root,
+        )
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -2085,6 +2130,33 @@ def __resolve_publish_source(
     return merged, mgr.session_id
 
 
+def __resolve_publish_generation(
+    *,
+    source_dir: Path,
+    session_id: str | None,
+    channel: Channel,
+    resource_root: str,
+) -> str:
+    from data.lib.remote.session import _generate_publish_id
+
+    resolved_resource_root = __validate_remote_resource_root(resource_root)
+    if session_id is not None:
+        mgr = __get_session(session_id)
+        todo = mgr._load_todo()
+        if todo.generation:
+            return todo.generation
+        return _generate_publish_id()
+    # --source-dir mode: extract generation from the source's index.json
+    ch_dir = source_dir / resolved_resource_root / "channels" / channel.value
+    index_path = ch_dir / "index.json"
+    if index_path.is_file():
+        index_data: dict[str, object] = json.loads(index_path.read_text(encoding="utf-8"))
+        gen = index_data.get("generation")
+        if isinstance(gen, str) and gen:
+            return gen
+    return _generate_publish_id()
+
+
 # ---- shared S3 upload helpers -----------------------------------------------
 
 
@@ -2147,28 +2219,51 @@ def _collect_referenced_paths_from_catalogs(
         tmp_path = Path(tmp)
         (tmp_path / channel).mkdir(parents=True, exist_ok=True)
 
-        for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
+        # Download index.json first to locate catalog files
+        _run_mc(
+            [mc, "cp", f"{ch_target}/index.json", str(tmp_path / channel / "index.json")],
+            [mc, "cp", f"{ch_target}/index.json", f"<tmp>/{channel}/index.json"],
+            "GC FETCH index.json",
+        )
+
+        index_path = tmp_path / channel / "index.json"
+        docs_cat_remote = f"{ch_target}/documents/catalog.json"
+        bundles_cat_remote = f"{ch_target}/bundles/catalog.json"
+        if index_path.is_file():
+            index_data: dict[str, object] = json.loads(index_path.read_text(encoding="utf-8"))
+            docs = index_data.get("documents", {})
+            if isinstance(docs, dict):
+                cp = docs.get("catalogPath")
+                if isinstance(cp, str):
+                    docs_cat_remote = f"{alias_name}/{bucket}/{cp}"
+            bundles = index_data.get("bundles", {})
+            if isinstance(bundles, dict):
+                cp = bundles.get("catalogPath")
+                if isinstance(cp, str):
+                    bundles_cat_remote = f"{alias_name}/{bucket}/{cp}"
+
+        docs_local = tmp_path / channel / "documents" / "catalog.json"
+        docs_local.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(OSError):
             _run_mc(
-                [
-                    mc,
-                    "cp",
-                    f"{ch_target}/{catalog_name}",
-                    str(tmp_path / channel / catalog_name),
-                ],
-                [
-                    mc,
-                    "cp",
-                    f"{ch_target}/{catalog_name}",
-                    f"<tmp>/{channel}/{catalog_name}",
-                ],
-                f"GC FETCH {catalog_name}",
+                [mc, "cp", docs_cat_remote, str(docs_local)],
+                [mc, "cp", docs_cat_remote, f"<tmp>/{channel}/documents/catalog.json"],
+                "GC FETCH documents/catalog.json",
+            )
+
+        bundles_local = tmp_path / channel / "bundles" / "catalog.json"
+        bundles_local.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(OSError):
+            _run_mc(
+                [mc, "cp", bundles_cat_remote, str(bundles_local)],
+                [mc, "cp", bundles_cat_remote, f"<tmp>/{channel}/bundles/catalog.json"],
+                "GC FETCH bundles/catalog.json",
             )
 
         referenced: set[str] = set()
 
-        docs_path = tmp_path / channel / "documents" / "catalog.json"
-        if docs_path.is_file():
-            docs: dict[str, object] = json.loads(docs_path.read_text(encoding="utf-8"))
+        if docs_local.is_file():
+            docs: dict[str, object] = json.loads(docs_local.read_text(encoding="utf-8"))
             entries: object = docs.get("entries", [])
             if isinstance(entries, list):
                 for entry in entries:
@@ -2182,9 +2277,8 @@ def _collect_referenced_paths_from_catalogs(
                                 if isinstance(body, str):
                                     referenced.add(body)
 
-        bundles_path = tmp_path / channel / "bundles" / "catalog.json"
-        if bundles_path.is_file():
-            bundles: dict[str, object] = json.loads(bundles_path.read_text(encoding="utf-8"))
+        if bundles_local.is_file():
+            bundles: dict[str, object] = json.loads(bundles_local.read_text(encoding="utf-8"))
             artifacts: object = bundles.get("artifacts", [])
             if isinstance(artifacts, list):
                 for artifact in artifacts:
@@ -2208,15 +2302,53 @@ def __gc_unreferenced_objects(
     channel: Channel,
     *,
     dry_run: bool,
+    keep_generations: int = 2,
 ) -> str:
     """Prune unreferenced objects from the remote bucket.
 
     Collects all referenced paths from current catalogs via exact path
     matching, then deletes anything in ``documents/body/`` and ``bundles/``
-    that isn't referenced.  Also cleans up stale deployment snapshots.
+    that isn't referenced.  Also prunes old generations beyond *keep_generations*
+    and cleans up stale deployment snapshots.
     Returns a human-readable summary.
     """
     bucket_target = f"{alias_name}/{bucket}/{resource_root}"
+    gen_prefix = f"channels/{channel}/.generations"
+
+    # Collect active generation and prune old generations
+    generations_stale: list[tuple[str, str]] = []
+    try:
+        out = subprocess.run(
+            [mc, "ls", "--json", f"{bucket_target}/{gen_prefix}/"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if out.returncode == 0:
+            gen_names: list[str] = []
+            for line in out.stdout.strip().splitlines():
+                try:
+                    obj: dict[str, object] = json.loads(line)
+                except ValueError:
+                    continue
+                key = obj.get("key", "")
+                if not isinstance(key, str):
+                    continue
+                rel = (
+                    key.removeprefix(f"{resource_root}/")
+                    if key.startswith(f"{resource_root}/")
+                    else key
+                )
+                name = rel.removeprefix(f"{gen_prefix}/").rstrip("/")
+                if name and "/" not in name:
+                    gen_names.append(name)
+            gen_names.sort(reverse=True)
+            for stale_gen in gen_names[keep_generations:]:
+                stale_key = f"{gen_prefix}/{stale_gen}"
+                generations_stale.append((stale_key, "0"))
+    except Exception:
+        pass
 
     referenced = _collect_referenced_paths_from_catalogs(
         mc=mc,
@@ -2319,6 +2451,13 @@ def __gc_unreferenced_objects(
 
     if dry_run:
         lines = []
+        if generations_stale:
+            lines.append(
+                f"Would delete {len(generations_stale)} stale generation(s)"
+                f" (keeping {keep_generations}):"
+            )
+            for key, _size in sorted(generations_stale):
+                lines.append(f"  {resource_root}/{key}/")
         if unreferenced:
             lines.append(f"Would delete {len(unreferenced)} unreferenced object(s):")
             for key, size in sorted(unreferenced):
@@ -2327,9 +2466,20 @@ def __gc_unreferenced_objects(
             lines.append(f"Would delete {len(stale_deps)} stale deployment artifact(s):")
             for key, size in sorted(stale_deps):
                 lines.append(f"  {key}  ({size} bytes)")
-        if not unreferenced and not stale_deps:
+        if not generations_stale and not unreferenced and not stale_deps:
             return "Nothing to prune."
         return "\n".join(lines)
+
+    deleted_gens = 0
+    for gen_rel, _size in generations_stale:
+        full_key = f"{resource_root}/{gen_rel}"
+        with contextlib.suppress(OSError):
+            _run_mc(
+                [mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}/{full_key}"],
+                [mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}/{full_key}"],
+                "GC DELETE GENERATION",
+            )
+            deleted_gens += 1
 
     deleted_content = 0
     for key, _size in unreferenced:
@@ -2352,6 +2502,8 @@ def __gc_unreferenced_objects(
             deleted_deps += 1
 
     parts = []
+    if deleted_gens:
+        parts.append(f"{deleted_gens} stale generation(s)")
     if deleted_content:
         parts.append(f"{deleted_content} unreferenced object(s)")
     if deleted_deps:
@@ -2418,6 +2570,53 @@ def _resolve_verify_workers(
     return remote_cfg.require_s3().verify_workers
 
 
+def _find_local_index(channel_dir: Path) -> Path:
+    legacy = channel_dir / "index.json"
+    if legacy.is_file():
+        return legacy
+    for gen_dir in channel_dir.glob(".generations/*"):
+        idx = gen_dir / "index.json"
+        if idx.is_file():
+            return idx
+    return legacy
+
+
+def _resolve_local_catalog_file(
+    channel_dir: Path, index_data: dict[str, object], section: str
+) -> Path:
+    sec = index_data.get(section, {})
+    if isinstance(sec, dict):
+        cp = sec.get("catalogPath")
+        if isinstance(cp, str):
+            parts = cp.split("/")
+            try:
+                gen_idx = parts.index(".generations")
+                rel = "/".join(parts[gen_idx:])
+                return channel_dir / rel
+            except ValueError:
+                pass
+    return channel_dir / section / "catalog.json"
+
+
+def _resolve_local_app_releases(
+    channel_dir: Path, index_data: dict[str, object], generation: str | None
+) -> Path:
+    app = index_data.get("app", {})
+    if isinstance(app, dict):
+        rp = app.get("releasesPath")
+        if isinstance(rp, str):
+            parts = rp.split("/")
+            try:
+                gen_idx = parts.index(".generations")
+                rel = "/".join(parts[gen_idx:])
+                return channel_dir / rel
+            except ValueError:
+                pass
+    if generation:
+        return channel_dir / ".generations" / generation / "app" / "releases.json"
+    return channel_dir / "app" / "releases.json"
+
+
 def __verify_upload_integrity(
     *,
     source_dir: Path,
@@ -2457,30 +2656,65 @@ def __verify_upload_integrity(
         for op in todo.operations:
             if isinstance(op, data.lib.remote.models.AddBundleOp):
                 tracked_artifact_ids.add(op.artifact_id)
-            elif isinstance(op, data.lib.remote.models.AddAnnouncementOp):
+            elif isinstance(
+                op, (data.lib.remote.models.AddAnnouncementOp, data.lib.remote.models.AddVersionOp)
+            ):
                 tracked_document_ids.add(op.document_id)
 
-    catalog_files = [
-        "index.json",
-        "documents/catalog.json",
-        "app/releases.json",
-        "bundles/catalog.json",
-    ]
-    for rel_path in catalog_files:
-        local_path = channel_dir / rel_path
-        if not local_path.is_file():
-            continue
+    # Resolve index.json and catalog files (generation-aware)
+    index_local_path = _find_local_index(channel_dir)
+    if not index_local_path.is_file():
+        return ["Local index.json not found for verification."]
+
+    index_data: dict[str, object] = json.loads(index_local_path.read_text(encoding="utf-8"))
+    generation = None
+    gen_val = index_data.get("generation")
+    if isinstance(gen_val, str) and gen_val:
+        generation = gen_val
+
+    remote_channel_url = remote_channel
+    if generation:
+        remote_channel_url = f"{remote_channel}/.generations/{generation}"
+
+    items.append(
+        {
+            "remote": f"{remote_channel}/index.json",
+            "sha256": __file_sha256(index_local_path),
+            "label": "index.json",
+            "mc": mc_bin,
+        }
+    )
+
+    docs_catalog_local = _resolve_local_catalog_file(channel_dir, index_data, "documents")
+    bundles_catalog_local = _resolve_local_catalog_file(channel_dir, index_data, "bundles")
+    app_releases_local = _resolve_local_app_releases(channel_dir, index_data, generation)
+
+    for label, local_path, remote_suffix in [
+        ("documents/catalog.json", docs_catalog_local, "/documents/catalog.json"),
+        ("bundles/catalog.json", bundles_catalog_local, "/bundles/catalog.json"),
+    ]:
+        if local_path and local_path.is_file():
+            items.append(
+                {
+                    "remote": f"{remote_channel_url}{remote_suffix}",
+                    "sha256": __file_sha256(local_path),
+                    "label": label,
+                    "mc": mc_bin,
+                }
+            )
+
+    if app_releases_local and app_releases_local.is_file():
         items.append(
             {
-                "remote": f"{remote_channel}/{rel_path}",
-                "sha256": __file_sha256(local_path),
-                "label": rel_path,
+                "remote": f"{remote_channel_url}/app/releases.json",
+                "sha256": __file_sha256(app_releases_local),
+                "label": "app/releases.json",
                 "mc": mc_bin,
             }
         )
 
-    bundles_catalog_path = channel_dir / "bundles" / "catalog.json"
-    if bundles_catalog_path.is_file():
+    bundles_catalog_path = bundles_catalog_local
+    if bundles_catalog_path and bundles_catalog_path.is_file():
         bundles_catalog = json.loads(bundles_catalog_path.read_text(encoding="utf-8"))
         if isinstance(bundles_catalog, dict):
             artifacts = bundles_catalog.get("artifacts")
@@ -2506,8 +2740,8 @@ def __verify_upload_integrity(
                         }
                     )
 
-    docs_catalog_path = channel_dir / "documents" / "catalog.json"
-    if docs_catalog_path.is_file():
+    docs_catalog_path = docs_catalog_local
+    if docs_catalog_path and docs_catalog_path.is_file():
         docs_catalog = json.loads(docs_catalog_path.read_text(encoding="utf-8"))
         if isinstance(docs_catalog, dict):
             entries = docs_catalog.get("entries")
@@ -2654,7 +2888,12 @@ def _verify_one_item(item: dict[str, str]) -> str | None:
 @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
 @click.option("--resource-root", default=None, help="Override remote resource root.")
 @click.option("--channel", default=None, help="Override remote channel.")
-@click.option("--clean", is_flag=True, default=False, help="Clean bucket before publishing.")
+@click.option(
+    "--clean",
+    is_flag=True,
+    default=False,
+    help="Run garbage collection after successful publish to prune old generations and unreferenced content.",
+)
 @click.option(
     "--public-download/--private",
     default=None,
@@ -2699,6 +2938,13 @@ def remote_publish_upload(
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
+    generation = __resolve_publish_generation(
+        source_dir=resolved_source_dir,
+        session_id=resolved_session_id,
+        channel=resolved_channel,
+        resource_root=resolved_resource_root,
+    )
+
     s3 = __get_publish_s3_params(
         target, endpoint, bucket, access_key, secret_key, alias_name, public_download
     )
@@ -2718,7 +2964,7 @@ def remote_publish_upload(
         alias_name=resolved_alias,
         resource_root=resolved_resource_root,
         channel=resolved_channel,
-        clean_bucket=clean,
+        generation=generation,
         public_download=resolved_public_download,
         target=target,
     )
@@ -2754,6 +3000,20 @@ def remote_publish_upload(
             + "all uploaded files match local source."
         )
 
+    if clean:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], "Running post-publish garbage collection..."))
+        mc_bin = get_command("mc")
+        bucket_target = f"{resolved_alias}/{resolved_bucket}"
+        summary = __gc_unreferenced_objects(
+            mc=mc_bin,
+            alias_name=resolved_alias,
+            bucket=resolved_bucket,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+            dry_run=False,
+        )
+        click.echo(summary)
+
     if source_dir is None and not keep_session and resolved_session_id:
         mgr = __get_session(resolved_session_id)
         mgr.abort()
@@ -2785,6 +3045,13 @@ def remote_publish_upload(
 @click.option("--alias", "alias_name", default=None)
 @click.option("--resource-root", default=None)
 @click.option("--channel", default=None)
+@click.option(
+    "--keep-generations",
+    type=int,
+    default=2,
+    show_default=True,
+    help="Number of generations to keep (current + N-1 previous).",
+)
 def remote_publish_gc(
     target: str,
     dry_run: bool,
@@ -2795,8 +3062,13 @@ def remote_publish_gc(
     alias_name: str | None,
     resource_root: str | None,
     channel: str | None,
+    keep_generations: int,
 ):
     """Prune unreferenced objects from the remote bucket."""
+    if keep_generations < 1:
+        raise click.ClickException(
+            "--keep-generations must be >= 1 to preserve at least the current live generation."
+        )
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_resource_root = __validate_remote_resource_root(
@@ -2832,6 +3104,7 @@ def remote_publish_gc(
         resource_root=resolved_resource_root,
         channel=resolved_channel,
         dry_run=dry_run,
+        keep_generations=keep_generations,
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "GC: ") + summary)
 
@@ -2907,6 +3180,26 @@ def __start_minio_remote_mock(
     process = subprocess.Popen(command, env=env, text=True)
     try:
         __wait_for_http(f"{endpoint}/minio/health/ready")
+        if clean_bucket:
+            mc = get_command("mc")
+            bucket_target = f"{alias_name}/{bucket}"
+            redacted = "<redacted>"
+            __execute_command_redacted(
+                [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
+                [mc, "alias", "set", alias_name, endpoint, redacted, redacted],
+                "REMOTE PUBLISH ALIAS",
+            )
+            __execute_command_redacted(
+                [mc, "mb", "--ignore-existing", bucket_target],
+                [mc, "mb", "--ignore-existing", bucket_target],
+                "REMOTE CLEAN BUCKET (CREATE)",
+            )
+            __execute_command_redacted(
+                [mc, "rm", "--recursive", "--force", bucket_target],
+                [mc, "rm", "--recursive", "--force", bucket_target],
+                "REMOTE CLEAN BUCKET",
+            )
+        mock_generation = __utc_timestamp().replace("-", "").replace(":", "") + "Z"
         __publish_remote_origin_to_s3(
             source_dir=origin_dir,
             endpoint=endpoint,
@@ -2916,7 +3209,7 @@ def __start_minio_remote_mock(
             alias_name=alias_name,
             resource_root=resource_root,
             channel=channel,
-            clean_bucket=clean_bucket,
+            generation=mock_generation,
             public_download=public_download,
         )
 
@@ -4060,7 +4353,7 @@ def release_changelog_stage(do_commit: bool):
         click.echo(f"  Upload:             ./x remote publish upload --session {mgr.session_id}")
         return
 
-    status = mgr.commit()
+    status = mgr.commit(channel=resolved_channel, resource_root=resolved_resource_root)
     click.echo("")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Session committed: ")
