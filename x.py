@@ -1296,7 +1296,12 @@ def add():
 @add.command("announcement")
 @click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
 @click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
-@click.option("--id", "document_id", required=True, help="Remote document id to create.")
+@click.option(
+    "--id",
+    "document_id",
+    default=None,
+    help="Remote document id prefix (timestamp suffix appended). Defaults to auto-generated.",
+)
 @click.option("--title-zh", required=True, help="Chinese announcement title.")
 @click.option("--title-en", required=True, help="English announcement title.")
 @click.option("--summary-zh", required=True, help="Chinese announcement summary.")
@@ -1319,7 +1324,7 @@ def add():
 def remote_prepare_add_announcement(
     zh_path: Path,
     en_path: Path,
-    document_id: str,
+    document_id: str | None,
     title_zh: str,
     title_en: str,
     summary_zh: str,
@@ -1341,7 +1346,8 @@ def remote_prepare_add_announcement(
         raise click.ClickException(f"English Markdown file does not exist: {en_path}")
 
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id = __validate_remote_document_id(document_id)
+    resolved_document_id_base = document_id or "announcement"
+    resolved_document_id = __validate_remote_document_id(resolved_document_id_base)
     resolved_published_at = published_at or __utc_timestamp()
     resolved_min_app_ver = None if all_app_ver else (min_app_ver or __read_current_app_version())
     resolved_tags = list(tags or ("announcement",))
@@ -1374,7 +1380,12 @@ def remote_prepare_add_announcement(
 @add.command("version")
 @click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
 @click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
-@click.option("--id", "document_id", required=True, help="Remote document id to create.")
+@click.option(
+    "--id",
+    "document_id",
+    default=None,
+    help="Remote document id (auto-generated from app-ver if omitted).",
+)
 @click.option("--title-zh", required=True, help="Chinese version title.")
 @click.option("--title-en", required=True, help="English version title.")
 @click.option("--summary-zh", required=True, help="Chinese version summary.")
@@ -1395,7 +1406,7 @@ def remote_prepare_add_announcement(
 def remote_prepare_add_version(
     zh_path: Path,
     en_path: Path,
-    document_id: str,
+    document_id: str | None,
     title_zh: str,
     title_en: str,
     summary_zh: str,
@@ -1413,7 +1424,7 @@ def remote_prepare_add_version(
         raise click.ClickException(f"English Markdown file does not exist: {en_path}")
 
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id = __validate_remote_document_id(document_id)
+    resolved_document_id = __validate_remote_document_id(document_id) if document_id else None
     resolved_published_at = published_at or __utc_timestamp()
     resolved_tags = list(tags)
     resolved_resource_root = remote_cfg.resource_root
@@ -1438,18 +1449,25 @@ def remote_prepare_add_version(
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + resolved_document_id)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Staged version: ")
+        + (resolved_document_id or f"version-{app_ver}")
+    )
 
 
 @add.command("bundle")
 @click.option("--full", "full_path", type=click.Path(path_type=Path), required=True)
 @click.option("--manifest", "manifest_path", type=click.Path(path_type=Path), required=True)
-@click.option("--artifact-id", required=True, help="Artifact id for the full bundle.")
+@click.option(
+    "--artifact-id",
+    default=None,
+    help="Artifact id for the full bundle (auto-generated from descriptor if omitted).",
+)
 @click.option("--increment", "increment_path", type=click.Path(path_type=Path), default=None)
 @click.option(
     "--increment-artifact-id",
     default=None,
-    help="Artifact id for the incremental bundle. Required with --increment.",
+    help="Artifact id for the incremental bundle (auto-generated from descriptor if omitted).",
 )
 @click.option(
     "--session", "session_id", default=None, help="Session ID. Defaults to current session."
@@ -1457,22 +1475,23 @@ def remote_prepare_add_version(
 def remote_prepare_add_bundle(
     full_path: Path,
     manifest_path: Path,
-    artifact_id: str,
+    artifact_id: str | None,
     increment_path: Path | None,
     increment_artifact_id: str | None,
     session_id: str | None,
 ):
     """Stage a bundle in the pending session."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if increment_path is not None and increment_artifact_id is None:
-        raise click.ClickException("--increment-artifact-id is required when --increment is used.")
     if increment_path is None and increment_artifact_id is not None:
         raise click.ClickException("--increment-artifact-id requires --increment.")
     if not manifest_path.is_file():
         raise click.ClickException(f"Bundle manifest file does not exist: {manifest_path}")
 
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_artifact_id = __validate_remote_artifact_id(artifact_id)
+    resolved_artifact_id = __validate_remote_artifact_id(artifact_id) if artifact_id else None
+    resolved_increment_artifact_id = (
+        __validate_remote_artifact_id(increment_artifact_id) if increment_artifact_id else None
+    )
     resolved_resource_root = remote_cfg.resource_root
     resolved_channel = remote_cfg.channel
 
@@ -1485,12 +1504,14 @@ def remote_prepare_add_bundle(
             resource_root=resolved_resource_root,
             channel=resolved_channel,
             increment_path=increment_path,
-            increment_artifact_id=increment_artifact_id,
+            increment_artifact_id=resolved_increment_artifact_id,
         )
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + (resolved_artifact_id or "<auto>")
+    )
 
 
 # ---- remove ----------------------------------------------------------------

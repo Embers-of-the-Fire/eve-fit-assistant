@@ -352,6 +352,9 @@ class SessionManager:
         self._ensure_not_committed()
         todo = self._load_todo()
 
+        ts_suffix = _utc_timestamp().replace("-", "").replace(":", "") + "Z"
+        document_id = f"{document_id}-{ts_suffix}"
+
         for op in todo.operations:
             if isinstance(op, (AddAnnouncementOp, AddVersionOp)) and op.document_id == document_id:
                 raise ValueError(
@@ -416,7 +419,7 @@ class SessionManager:
         *,
         zh_path: Path,
         en_path: Path,
-        document_id: str,
+        document_id: str | None = None,
         title_zh: str,
         title_en: str,
         summary_zh: str,
@@ -430,14 +433,16 @@ class SessionManager:
         self._ensure_not_committed()
         todo = self._load_todo()
 
+        if document_id is None:
+            document_id = f"version-{app_ver}"
+        _validate_path_segment(document_id, "document_id")
+
         for op in todo.operations:
             if isinstance(op, (AddAnnouncementOp, AddVersionOp)) and op.document_id == document_id:
                 raise ValueError(
                     f"Document with document_id {document_id!r}"
                     f" already exists in session {self.session_id}"
                 )
-
-        _validate_path_segment(document_id, "document_id")
 
         zh_staged = f"documents/{document_id}_zh.md"
         en_staged = f"documents/{document_id}_en.md"
@@ -494,7 +499,7 @@ class SessionManager:
         *,
         full_path: Path,
         manifest_path: Path,
-        artifact_id: str,
+        artifact_id: str | None = None,
         resource_root: str,
         channel: Channel,
         increment_path: Path | None = None,
@@ -503,35 +508,22 @@ class SessionManager:
         self._ensure_not_committed()
         todo = self._load_todo()
 
+        full_descriptor = _read_zip_json(full_path, "descriptor.json")
+        if full_descriptor.get("isIncremental") is True:
+            raise ValueError(f"Full bundle archive must not be incremental: {full_path}")
+
+        if artifact_id is None:
+            artifact_id = _derive_artifact_id(full_descriptor, variant="full")
+
+        _validate_path_segment(artifact_id, "artifact_id")
+
         for op in todo.operations:
             if isinstance(op, AddBundleOp) and op.artifact_id == artifact_id:
                 raise ValueError(
                     f"Bundle with artifact_id {artifact_id!r}"
                     f" already exists in session {self.session_id}"
                 )
-            if (
-                increment_artifact_id is not None
-                and isinstance(op, AddBundleOp)
-                and op.artifact_id == increment_artifact_id
-            ):
-                raise ValueError(
-                    f"Bundle with artifact_id {increment_artifact_id!r}"
-                    f" already exists in session {self.session_id}"
-                )
 
-        _validate_path_segment(artifact_id, "artifact_id")
-        if increment_artifact_id is not None:
-            _validate_path_segment(increment_artifact_id, "increment_artifact_id")
-            if increment_artifact_id == artifact_id:
-                raise ValueError(
-                    f"increment_artifact_id {increment_artifact_id!r}"
-                    f" must differ from artifact_id {artifact_id!r}"
-                    f" (staged paths would collide)"
-                )
-
-        full_descriptor = _read_zip_json(full_path, "descriptor.json")
-        if full_descriptor.get("isIncremental") is True:
-            raise ValueError(f"Full bundle archive must not be incremental: {full_path}")
         bundle_id = _require_string(full_descriptor, "bundleId", str(full_path))
         _validate_path_segment(bundle_id, "bundle_id (from descriptor.json)")
 
@@ -564,7 +556,7 @@ class SessionManager:
         )
         todo.operations.append(op)
 
-        if increment_path is not None and increment_artifact_id is not None:
+        if increment_path is not None:
             inc_descriptor = _read_zip_json(increment_path, "descriptor.json")
             if inc_descriptor.get("isIncremental") is not True:
                 raise ValueError(f"Incremental bundle must declare isIncremental: {increment_path}")
@@ -574,6 +566,22 @@ class SessionManager:
                 raise ValueError(
                     f"Incremental bundle id does not match full: {inc_bundle_id} != {bundle_id}"
                 )
+
+            if increment_artifact_id is None:
+                increment_artifact_id = _derive_artifact_id(inc_descriptor, variant="incremental")
+            _validate_path_segment(increment_artifact_id, "increment_artifact_id")
+            if increment_artifact_id == artifact_id:
+                raise ValueError(
+                    f"increment_artifact_id {increment_artifact_id!r}"
+                    f" must differ from artifact_id {artifact_id!r}"
+                    f" (staged paths would collide)"
+                )
+            for op in todo.operations:
+                if isinstance(op, AddBundleOp) and op.artifact_id == increment_artifact_id:
+                    raise ValueError(
+                        f"Bundle with artifact_id {increment_artifact_id!r}"
+                        f" already exists in session {self.session_id}"
+                    )
 
             inc_staged: dict[str, str] = {}
             inc_staged["zip"] = f"bundles/{increment_artifact_id}.zip"
@@ -856,6 +864,46 @@ def _copy_or_hardlink(src: Path, dst: Path) -> None:
         os.link(src, dst)
     except OSError:
         shutil.copyfile(src, dst)
+
+
+def _generate_publish_id() -> str:
+    return _utc_timestamp().replace("-", "").replace(":", "") + "Z"
+
+
+def _derive_artifact_id(descriptor: dict[str, object], *, variant: str) -> str:
+    game_server = _require_string(descriptor, "gameServer", "descriptor").lower()
+    game_build = _require_string(descriptor, "gameBuild", "descriptor")
+    suffix = "-inc" if variant == "incremental" else ""
+    return f"data-{game_server}-{game_build}{suffix}"
+
+
+def _generate_releases_json(
+    merged_docs: dict[str, object],
+    channel: Channel,
+    generation: str,
+) -> dict[str, object]:
+    releases: list[dict[str, object]] = []
+    entries: object = merged_docs.get("entries", [])
+    if isinstance(entries, list):
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("kind") == "version" and entry.get("appVer"):
+                releases.append(
+                    {
+                        "platform": "android",
+                        "channel": channel.value,
+                        "appVersion": entry["appVer"],
+                        "buildNumber": None,
+                        "publishedAt": entry.get("publishedAt"),
+                        "minimumSupportedVersion": "0.0.1",
+                        "releaseNoteDocumentId": entry["id"],
+                        "downloadUrl": None,
+                        "sha256": None,
+                        "generation": generation,
+                    }
+                )
+    return {"schemaVersion": 1, "releases": releases}
 
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:
