@@ -265,7 +265,7 @@ def check_schema_bump(force: bool, since_tag: str | None = None) -> CheckResult:
             passed=False,
             severity=CheckSeverity.WARN if force else CheckSeverity.FATAL,
             message=bv.message,
-            details="Increment bundle_schema.current in efa.config.toml, then run `./x generate all -f`",
+            details="Increment bundle_schema.current in efa.config.toml, then run `./x generate -f all`",
         )
 
 
@@ -315,13 +315,13 @@ def check_submodule(force: bool) -> CheckResult:
 
 
 def check_generate(force: bool) -> CheckResult:
-    rc, _, stderr = _shell(["uv", "run", "x.py", "generate", "all", "-f"])
+    rc, _, stderr = _shell(["uv", "run", "x.py", "generate", "-f", "all"])
     if rc != 0:
         return CheckResult(
             name="generate",
             passed=False,
             severity=CheckSeverity.WARN if force else CheckSeverity.FATAL,
-            message="./x generate all -f failed",
+            message="./x generate -f all failed",
             details=stderr,
         )
 
@@ -333,14 +333,14 @@ def check_generate(force: bool) -> CheckResult:
             passed=False,
             severity=CheckSeverity.WARN if force else CheckSeverity.FATAL,
             message="Generated code has uncommitted changes",
-            details="Run `./x generate all -f` and commit the results",
+            details="Run `./x generate -f all` and commit the results",
         )
 
     return CheckResult(
         name="generate",
         passed=True,
         severity=CheckSeverity.FATAL,
-        message="./x generate all -f succeeded with no diff",
+        message="./x generate -f all succeeded with no diff",
     )
 
 
