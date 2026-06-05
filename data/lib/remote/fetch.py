@@ -110,21 +110,32 @@ def fetch_remote_state_http(
     ch_prefix = f"{origin_url.rstrip('/')}/{resource_root}/{_channel_subdir(channel)}"
     paths = _remote_state_output_paths(output_dir, channel)
 
-    for name, remote_path in [
-        ("index", f"{ch_prefix}/index.json"),
-        ("documents_catalog", f"{ch_prefix}/documents/catalog.json"),
-        ("bundles_catalog", f"{ch_prefix}/bundles/catalog.json"),
-    ]:
+    def _fetch(name: str, local: Path, label: str) -> None:
+        remote_path = f"{ch_prefix}/{local.relative_to(output_dir)}"
         try:
             with urlopen(remote_path, timeout=300) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except (URLError, ValueError) as exc:
-            raise OSError(f"Failed to fetch {name} from {remote_path}: {exc}") from exc
+            raise OSError(f"Failed to fetch {label} from {remote_path}: {exc}") from exc
+        local.parent.mkdir(parents=True, exist_ok=True)
+        local.write_text(json.dumps(data, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
 
-        paths[name].parent.mkdir(parents=True, exist_ok=True)
-        paths[name].write_text(
-            json.dumps(data, indent=4, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
+    # Download index first — it may reference generation-scoped catalogs.
+    _fetch("index", paths["index"], "index")
+    index = _json_loads_dict(paths["index"].read_text(encoding="utf-8"), "index")
+
+    for section, legacy_path, label in [
+        ("documents", paths["documents_catalog"], "documents_catalog"),
+        ("bundles", paths["bundles_catalog"], "bundles_catalog"),
+    ]:
+        resolved, _from_index = _resolve_catalog_local_path(output_dir, index, section, legacy_path)
+        # Always download the legacy path so consumers that don't read the
+        # index still work.
+        _fetch(section, legacy_path, label)
+        # Also download the generation-scoped catalog if the index references
+        # a different path.
+        if resolved != legacy_path:
+            _fetch(section, resolved, f"{label} (generation-scoped)")
 
 
 def read_local_remote_state(
@@ -141,36 +152,43 @@ def read_local_remote_state(
 
     index = _json_loads_dict(paths["index"].read_text(encoding="utf-8"), "index")
 
-    docs_catalog_path = _resolve_catalog_local_path(
+    docs_catalog_path, docs_from_index = _resolve_catalog_local_path(
         remote_state_dir, index, "documents", paths["documents_catalog"]
     )
-    bundles_catalog_path = _resolve_catalog_local_path(
+    bundles_catalog_path, bundles_from_index = _resolve_catalog_local_path(
         remote_state_dir, index, "bundles", paths["bundles_catalog"]
     )
 
-    if docs_catalog_path.is_file():
-        docs = _json_loads_dict(docs_catalog_path.read_text(encoding="utf-8"), "documents_catalog")
-    else:
-        docs = {}
-    if bundles_catalog_path.is_file():
-        bundles = _json_loads_dict(
-            bundles_catalog_path.read_text(encoding="utf-8"), "bundles_catalog"
-        )
-    else:
-        bundles = {}
+    def _read_catalog(path: Path, from_index: bool, label: str) -> dict[str, object]:
+        if path.is_file():
+            return _json_loads_dict(path.read_text(encoding="utf-8"), label)
+        if from_index:
+            raise FileNotFoundError(
+                f"Index-referenced {label} not found: {path}."
+                f" The remote state may be incomplete; re-fetch and try again."
+            )
+        return {}
+
+    docs = _read_catalog(docs_catalog_path, docs_from_index, "documents_catalog")
+    bundles = _read_catalog(bundles_catalog_path, bundles_from_index, "bundles_catalog")
     return index, docs, bundles
 
 
 def _resolve_catalog_local_path(
     base_dir: Path, index: dict[str, object], section: str, fallback: Path
-) -> Path:
-    """Resolve the local path for a catalog file from index.json's catalogPath."""
+) -> tuple[Path, bool]:
+    """Resolve the local path for a catalog file from index.json's catalogPath.
+
+    Returns ``(path, is_from_index)`` — *is_from_index* is True when the
+    resolved path came from the index's ``catalogPath`` field rather than
+    the legacy fallback.
+    """
     sec = index.get(section, {})
     if isinstance(sec, dict):
         catalog_path = sec.get("catalogPath")
         if isinstance(catalog_path, str):
-            return base_dir / catalog_path
-    return fallback
+            return base_dir / catalog_path, True
+    return fallback, False
 
 
 def _json_loads_dict(text: str, label: str) -> dict[str, object]:
