@@ -3988,14 +3988,27 @@ def release_changelog_publish(do_commit: bool):
     )
 
     sessions_root = __get_session_root()
-    mgr = SessionManager.start(
-        sessions_root=sessions_root,
-        backend=resolved_backend,
-        origin_dir=origin_dir,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-        **start_kwargs,
-    )
+    try:
+        mgr = SessionManager.start(
+            sessions_root=sessions_root,
+            backend=resolved_backend,
+            origin_dir=origin_dir,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+            **start_kwargs,
+        )
+    except (OSError, FileNotFoundError) as exc:
+        click.echo(styled([Style.BRIGHT, Fore.YELLOW], f"Remote state unavailable: {exc}"))
+        click.echo(styled(Style.DIM, "Falling back to local-only session (no diff available)."))
+        mgr = SessionManager.start(
+            sessions_root=sessions_root,
+            backend="local",
+            origin_dir=None,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+        resolved_backend = "local"
+        start_kwargs = {}
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
     click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
     click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
