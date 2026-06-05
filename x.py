@@ -3920,7 +3920,7 @@ def release_changelog_detail(no_edit: bool):
     click.echo(styled([Fore.GREEN], "  Written to assets/content/documents/"))
 
 
-@release_changelog.command("publish")
+@release_changelog.command("stage")
 @click.option(
     "--commit",
     "do_commit",
@@ -3928,13 +3928,14 @@ def release_changelog_detail(no_edit: bool):
     default=False,
     help="Commit the session after staging (otherwise diff only).",
 )
-def release_changelog_publish(do_commit: bool):
-    """Publish version release notes to the remote document catalog.
+def release_changelog_stage(do_commit: bool):
+    """Stage version release notes in a remote prepare session.
 
     Reads the generated version documents from assets/content/documents/,
-    stages them in a remote prepare session, and optionally commits the session.
+    creates a remote prepare session, and stages the version entry.
     Use the --commit flag to finalize; without it, the command shows a diff
-    without committing.
+    without committing. Run ``./x remote publish upload`` afterwards to
+    actually upload to the remote server.
     """
 
     from data.lib.constant import PROJECT_ROOT
@@ -3968,7 +3969,7 @@ def release_changelog_publish(do_commit: bool):
     published_at = zh_meta.get("publishedAt", None)
 
     click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Publishing version document: ")
+        styled([Style.BRIGHT, Fore.GREEN], "Staging version document: ")
         + styled([Style.BRIGHT], doc_id)
     )
     click.echo(styled(Style.DIM, f"  zh: {zh_path}"))
@@ -3981,7 +3982,7 @@ def release_changelog_publish(do_commit: bool):
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_resource_root = __validate_remote_resource_root(remote_cfg.resource_root)
     resolved_channel = Channel(remote_cfg.channel.value)
-    resolved_backend, origin_dir, start_kwargs = _resolve_publish_backend(
+    resolved_backend, origin_dir, start_kwargs = _resolve_stage_backend(
         remote_cfg=remote_cfg,
         resource_root=resolved_resource_root,
         channel=resolved_channel,
@@ -4124,7 +4125,7 @@ def _parse_version_document(path: Path) -> tuple[dict[str, object], str, str]:
     return metadata, title, summary
 
 
-def _resolve_publish_backend(
+def _resolve_stage_backend(
     *,
     remote_cfg,
     resource_root: str,

@@ -254,13 +254,13 @@ app installations can discover what has changed in a new release.
    ./x generate docs
    ```
 
-3. Publish to remote so older app installations can discover the new version:
+3. Stage to remote so older app installations can discover the new version:
    ```bash
-   ./x release changelog publish --commit
+   ./x release changelog stage --commit
    ./x remote publish upload
    ```
 
-   Without `--commit`, the `publish` command shows a diff and prints the
+   Without `--commit`, the `stage` command shows a diff and prints the
    manual commit/upload commands for review before finalizing.
 
 ### Removing a version note
