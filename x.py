@@ -3981,16 +3981,24 @@ def release_changelog_publish(do_commit: bool):
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_resource_root = __validate_remote_resource_root(remote_cfg.resource_root)
     resolved_channel = Channel(remote_cfg.channel.value)
+    resolved_backend, origin_dir, start_kwargs = _resolve_publish_backend(
+        remote_cfg=remote_cfg,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
+    )
 
     sessions_root = __get_session_root()
     mgr = SessionManager.start(
         sessions_root=sessions_root,
-        backend="local",
-        origin_dir=None,
+        backend=resolved_backend,
+        origin_dir=origin_dir,
         resource_root=resolved_resource_root,
         channel=resolved_channel,
+        **start_kwargs,
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
+    click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
+    click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
 
     try:
         mgr.add_version(
@@ -4014,17 +4022,20 @@ def release_changelog_publish(do_commit: bool):
 
     click.echo("")
     click.echo(styled([Style.BRIGHT, Fore.CYAN], "Diff:"))
-    diff = mgr.diff(resolved_channel, resolved_resource_root)
-    if isinstance(diff, dict) and diff:
-        for path, change in sorted(diff.items()):
-            if isinstance(change, dict) and change.get("type") == "added":
-                click.echo(styled([Fore.GREEN], f"  + {path}"))
-            elif isinstance(change, dict) and change.get("type") == "removed":
-                click.echo(styled([Fore.RED], f"  - {path}"))
-            elif isinstance(change, dict):
-                click.echo(styled([Fore.YELLOW], f"  ~ {path}"))
-    else:
-        click.echo(styled(Style.DIM, "  (no changes)"))
+    try:
+        diff = mgr.diff(resolved_channel, resolved_resource_root)
+        if isinstance(diff, dict) and diff:
+            for path, change in sorted(diff.items()):
+                if isinstance(change, dict) and change.get("type") == "added":
+                    click.echo(styled([Fore.GREEN], f"  + {path}"))
+                elif isinstance(change, dict) and change.get("type") == "removed":
+                    click.echo(styled([Fore.RED], f"  - {path}"))
+                elif isinstance(change, dict):
+                    click.echo(styled([Fore.YELLOW], f"  ~ {path}"))
+        else:
+            click.echo(styled(Style.DIM, "  (no changes)"))
+    except FileNotFoundError:
+        click.echo(styled(Style.DIM, "  (no remote state available — session is local-only)"))
 
     if not do_commit:
         click.echo("")
@@ -4098,6 +4109,43 @@ def _parse_version_document(path: Path) -> tuple[dict[str, object], str, str]:
         summary = title
 
     return metadata, title, summary
+
+
+def _resolve_publish_backend(
+    *,
+    remote_cfg,
+    resource_root: str,
+    channel,
+) -> tuple[str, Path | None, dict[str, object]]:
+    if remote_cfg.s3 is not None:
+        sub = remote_cfg.require_s3()
+        return (
+            "s3",
+            None,
+            {
+                "mc_bin": get_command("mc"),
+                "endpoint": sub.endpoint,
+                "bucket": sub.bucket,
+                "access_key": sub.access_key,
+                "secret_key": sub.secret_key,
+                "alias_name": sub.alias,
+            },
+        )
+    if remote_cfg.minio is not None:
+        sub = remote_cfg.require_minio()
+        return (
+            "minio",
+            None,
+            {
+                "mc_bin": get_command("mc"),
+                "endpoint": f"http://{remote_cfg.host}:{sub.port}",
+                "bucket": sub.bucket,
+                "access_key": sub.access_key,
+                "secret_key": sub.secret_key,
+                "alias_name": sub.alias,
+            },
+        )
+    return "local", None, {}
 
 
 @cli.group(cls=ClickAliasedGroup)
