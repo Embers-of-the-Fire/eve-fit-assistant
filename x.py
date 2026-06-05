@@ -2134,15 +2134,15 @@ def __resolve_publish_generation(
     channel: Channel,
     resource_root: str,
 ) -> str:
+    from data.lib.remote.session import _generate_publish_id
+
     resolved_resource_root = __validate_remote_resource_root(resource_root)
     if session_id is not None:
         mgr = __get_session(session_id)
         todo = mgr._load_todo()
         if todo.generation:
             return todo.generation
-        raise click.ClickException(
-            f"Session {session_id} has no generation. Run `./x remote prepare commit` first."
-        )
+        return _generate_publish_id()
     # --source-dir mode: extract generation from the source's index.json
     ch_dir = source_dir / resolved_resource_root / "channels" / channel.value
     index_path = ch_dir / "index.json"
@@ -2151,10 +2151,7 @@ def __resolve_publish_generation(
         gen = index_data.get("generation")
         if isinstance(gen, str) and gen:
             return gen
-    raise click.ClickException(
-        "Unable to resolve generation from session or source. "
-        "Ensure the session is committed or the source directory contains a valid index.json."
-    )
+    return _generate_publish_id()
 
 
 # ---- shared S3 upload helpers -----------------------------------------------
