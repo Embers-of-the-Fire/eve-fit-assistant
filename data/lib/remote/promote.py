@@ -27,6 +27,8 @@ from data.lib.remote.models import TodoList
 from data.lib.remote.models import _load_json_model
 from data.lib.remote.models import _persist_json
 from data.lib.remote.models import _session_path
+from data.lib.remote.session import _generate_publish_id
+from data.lib.remote.session import _generate_releases_json
 
 
 if TYPE_CHECKING:
@@ -498,6 +500,8 @@ class PromotionSessionManager:
     def regenerate_merged(
         self,
         resource_root: str,
+        *,
+        generation: str | None = None,
     ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
         """Apply staged promotions to the stable channel's catalogs."""
         index, docs, bundles = _fetch_mod.read_local_remote_state(
@@ -511,16 +515,30 @@ class PromotionSessionManager:
             bundles,
             _TARGET_CHANNEL,
             ops_raw,  # type: ignore[arg-type]
+            generation=generation,
         )
 
         base = self.merged_dir / resource_root
         ch = f"channels/{_TARGET_CHANNEL}"
-        (base / ch).mkdir(parents=True, exist_ok=True)
-        _write_json(base / ch / "index.json", merged_index)
-        (base / ch / "documents").mkdir(parents=True, exist_ok=True)
-        _write_json(base / ch / "documents" / "catalog.json", merged_docs)
-        (base / ch / "bundles").mkdir(parents=True, exist_ok=True)
-        _write_json(base / ch / "bundles" / "catalog.json", merged_bundles)
+
+        if generation is not None:
+            gen_dir = base / ch / ".generations" / generation
+            gen_dir.mkdir(parents=True, exist_ok=True)
+            _write_json(gen_dir / "index.json", merged_index)
+            (gen_dir / "documents").mkdir(parents=True, exist_ok=True)
+            _write_json(gen_dir / "documents" / "catalog.json", merged_docs)
+            (gen_dir / "bundles").mkdir(parents=True, exist_ok=True)
+            _write_json(gen_dir / "bundles" / "catalog.json", merged_bundles)
+            (gen_dir / "app").mkdir(parents=True, exist_ok=True)
+            releases = _generate_releases_json(merged_docs, _TARGET_CHANNEL, generation)
+            _write_json(gen_dir / "app" / "releases.json", releases)
+        else:
+            (base / ch).mkdir(parents=True, exist_ok=True)
+            _write_json(base / ch / "index.json", merged_index)
+            (base / ch / "documents").mkdir(parents=True, exist_ok=True)
+            _write_json(base / ch / "documents" / "catalog.json", merged_docs)
+            (base / ch / "bundles").mkdir(parents=True, exist_ok=True)
+            _write_json(base / ch / "bundles" / "catalog.json", merged_bundles)
 
         return merged_index, merged_docs, merged_bundles
 
@@ -529,12 +547,16 @@ class PromotionSessionManager:
     def diff(
         self,
         resource_root: str,
+        *,
+        generation: str | None = None,
     ) -> dict[str, object]:
         """Diff the current stable state against the promoted (merged) state."""
+        if generation is None:
+            generation = _generate_publish_id()
         r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
             self.remote_state_dir, _TARGET_CHANNEL
         )
-        m_idx, m_docs, m_bundles = self.regenerate_merged(resource_root)
+        m_idx, m_docs, m_bundles = self.regenerate_merged(resource_root, generation=generation)
 
         remote_state: dict[str, object] = {
             "index": r_idx,
@@ -550,7 +572,12 @@ class PromotionSessionManager:
 
     # ---- verify ------------------------------------------------------------
 
-    def verify(self, resource_root: str | None = None) -> list[str]:
+    def verify(
+        self,
+        resource_root: str | None = None,
+        *,
+        generation: str | None = None,
+    ) -> list[str]:
         """Validate that promoted entries reference existing objects."""
         resolved_root = resource_root
         if resolved_root is None:
@@ -559,7 +586,9 @@ class PromotionSessionManager:
             else:
                 resolved_root = "efa/v1"
 
-        _m_idx, m_docs, m_bundles = self.regenerate_merged(resolved_root)
+        if generation is None:
+            generation = _generate_publish_id()
+        _m_idx, m_docs, m_bundles = self.regenerate_merged(resolved_root, generation=generation)
 
         errors: list[str] = []
 
@@ -611,9 +640,11 @@ class PromotionSessionManager:
         """Mark the session as committed."""
         self._ensure_not_committed()
         lock = self._load_lockfile()
-        self.regenerate_merged(lock.resource_root or "efa/v1")
         todo = self._load_todo()
+        generation = todo.generation or _generate_publish_id()
+        self.regenerate_merged(lock.resource_root or "efa/v1", generation=generation)
         todo.committed = True
+        todo.generation = generation
         _persist_json(self.todo_path, todo)
         self.lockfile_path.unlink(missing_ok=True)
         return self.status()
