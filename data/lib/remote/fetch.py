@@ -109,7 +109,7 @@ def fetch_remote_state_http(
     ch_prefix = f"{origin_url.rstrip('/')}/{resource_root}/{_channel_subdir(channel)}"
     paths = _remote_state_output_paths(output_dir, channel)
 
-    def _fetch(name: str, local: Path, label: str) -> None:
+    def _fetch(local: Path, label: str) -> None:
         remote_path = f"{ch_prefix}/{local.relative_to(output_dir)}"
         try:
             with urlopen(remote_path, timeout=300) as resp:
@@ -120,7 +120,7 @@ def fetch_remote_state_http(
         local.write_text(json.dumps(data, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
 
     # Download index first — it may reference generation-scoped catalogs.
-    _fetch("index", paths["index"], "index")
+    _fetch(paths["index"], "index")
     index = _json_loads_dict(paths["index"].read_text(encoding="utf-8"), "index")
 
     for section, legacy_path, label in [
@@ -130,11 +130,11 @@ def fetch_remote_state_http(
         resolved, _from_index = _resolve_catalog_local_path(output_dir, index, section, legacy_path)
         # Always download the legacy path so consumers that don't read the
         # index still work.
-        _fetch(section, legacy_path, label)
+        _fetch(legacy_path, label)
         # Also download the generation-scoped catalog if the index references
         # a different path.
         if resolved != legacy_path:
-            _fetch(section, resolved, f"{label} (generation-scoped)")
+            _fetch(resolved, f"{label} (generation-scoped)")
 
 
 def read_local_remote_state(
