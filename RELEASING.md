@@ -236,6 +236,48 @@ to a minimum app version.
 ```
 
 
+## Remote Version Publishing
+
+Version release notes can be published to the remote server so that older
+app installations can discover what has changed in a new release.
+
+### Publishing a version note
+
+1. Generate the bi-lingual version documents:
+   ```bash
+   ./x release generate detail
+   ```
+   This writes `assets/content/documents/{en,zh}/version-<id>.md`.
+
+2. Stage and publish:
+   ```bash
+   ./x remote prepare start
+   ./x remote prepare add version \
+     --zh assets/content/documents/zh/version-<id>.md \
+     --en assets/content/documents/en/version-<id>.md \
+     --id version-<major>-<minor>-<patch> \
+     --title-zh "版本 X.Y.Z" \
+     --title-en "Version X.Y.Z" \
+     --summary-zh "..." \
+     --summary-en "..." \
+     --app-ver X.Y.Z
+   ./x remote prepare diff
+   ./x remote prepare verify
+   ./x remote prepare commit
+   ./x remote publish upload
+   ```
+
+### Removing a version note
+
+```bash
+./x remote prepare start
+./x remote prepare remove --document-id <version-document-id>
+./x remote prepare diff
+./x remote prepare commit
+./x remote publish upload
+```
+
+
 ## Remote Bundle Publishing
 
 Bundles can be uploaded to S3-compatible storage (Cloudflare R2, MinIO, etc.).

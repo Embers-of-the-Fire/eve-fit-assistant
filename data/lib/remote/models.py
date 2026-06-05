@@ -99,7 +99,12 @@ class TodoList(BaseModel):
     session_id: str
     committed: bool = False
     operations: list[
-        AddAnnouncementOp | AddVersionOp | AddBundleOp | RemoveOp | PromoteDocumentOp | PromoteBundleOp
+        AddAnnouncementOp
+        | AddVersionOp
+        | AddBundleOp
+        | RemoveOp
+        | PromoteDocumentOp
+        | PromoteBundleOp
     ] = Field(default_factory=list)
     lock_snapshot: dict[str, object] = Field(default_factory=dict)
 
