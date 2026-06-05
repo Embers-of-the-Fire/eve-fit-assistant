@@ -3063,6 +3063,10 @@ def remote_publish_gc(
     keep_generations: int,
 ):
     """Prune unreferenced objects from the remote bucket."""
+    if keep_generations < 1:
+        raise click.ClickException(
+            "--keep-generations must be >= 1 to preserve at least the current live generation."
+        )
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_resource_root = __validate_remote_resource_root(
