@@ -3920,6 +3920,186 @@ def release_changelog_detail(no_edit: bool):
     click.echo(styled([Fore.GREEN], "  Written to assets/content/documents/"))
 
 
+@release_changelog.command("publish")
+@click.option(
+    "--commit",
+    "do_commit",
+    is_flag=True,
+    default=False,
+    help="Commit the session after staging (otherwise diff only).",
+)
+def release_changelog_publish(do_commit: bool):
+    """Publish version release notes to the remote document catalog.
+
+    Reads the generated version documents from assets/content/documents/,
+    stages them in a remote prepare session, and optionally commits the session.
+    Use the --commit flag to finalize; without it, the command shows a diff
+    without committing.
+    """
+
+    from data.lib.constant import PROJECT_ROOT
+    from data.lib.release.changelog_gen import _version_to_doc_id
+    from data.lib.release.version import load_version
+    from data.lib.remote.channel import Channel
+    from data.lib.remote.session import SessionManager
+
+    v = load_version()
+    doc_id = _version_to_doc_id(v)
+    semver = v.render_semver()
+
+    zh_path = PROJECT_ROOT / "assets" / "content" / "documents" / "zh" / f"{doc_id}.md"
+    en_path = PROJECT_ROOT / "assets" / "content" / "documents" / "en" / f"{doc_id}.md"
+
+    if not zh_path.is_file():
+        raise click.ClickException(
+            f"Chinese version document not found: {zh_path}\n"
+            f"  Run './x release changelog detail' first."
+        )
+    if not en_path.is_file():
+        raise click.ClickException(
+            f"English version document not found: {en_path}\n"
+            f"  Run './x release changelog detail' first."
+        )
+
+    zh_meta, zh_title, zh_summary = _parse_version_document(zh_path)
+    _en_meta, en_title, en_summary = _parse_version_document(en_path)
+    app_ver = zh_meta.get("appVer", semver)
+    tags = zh_meta.get("tags", ["release-note", "version"])
+    published_at = zh_meta.get("publishedAt", None)
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Publishing version document: ")
+        + styled([Style.BRIGHT], doc_id)
+    )
+    click.echo(styled(Style.DIM, f"  zh: {zh_path}"))
+    click.echo(styled(Style.DIM, f"  en: {en_path}"))
+    click.echo(styled(Style.DIM, f"  appVer: {app_ver}"))
+    click.echo(styled(Style.DIM, f"  tags: {tags}"))
+    click.echo("")
+
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_resource_root = __validate_remote_resource_root(remote_cfg.resource_root)
+    resolved_channel = Channel(remote_cfg.channel.value)
+
+    sessions_root = __get_session_root()
+    mgr = SessionManager.start(
+        sessions_root=sessions_root,
+        backend="local",
+        origin_dir=None,
+        resource_root=resolved_resource_root,
+        channel=resolved_channel,
+    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
+
+    try:
+        mgr.add_version(
+            zh_path=zh_path,
+            en_path=en_path,
+            document_id=doc_id,
+            title_zh=zh_title,
+            title_en=en_title,
+            summary_zh=zh_summary,
+            summary_en=en_summary,
+            app_ver=str(app_ver),
+            published_at=published_at or __utc_timestamp(),
+            tags=[str(t) for t in tags],
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + doc_id)
+    except Exception as exc:
+        mgr.abort()
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo("")
+    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Diff:"))
+    diff = mgr.diff(resolved_channel, resolved_resource_root)
+    if isinstance(diff, dict) and diff:
+        for path, change in sorted(diff.items()):
+            if isinstance(change, dict) and change.get("type") == "added":
+                click.echo(styled([Fore.GREEN], f"  + {path}"))
+            elif isinstance(change, dict) and change.get("type") == "removed":
+                click.echo(styled([Fore.RED], f"  - {path}"))
+            elif isinstance(change, dict):
+                click.echo(styled([Fore.YELLOW], f"  ~ {path}"))
+    else:
+        click.echo(styled(Style.DIM, "  (no changes)"))
+
+    if not do_commit:
+        click.echo("")
+        click.echo(
+            styled([Style.BRIGHT, Fore.YELLOW], "Session not committed (use --commit to finalize).")
+        )
+        click.echo(f"  Review and commit:  ./x remote prepare commit --session {mgr.session_id}")
+        click.echo(f"  Upload:             ./x remote publish upload --session {mgr.session_id}")
+        return
+
+    status = mgr.commit()
+    click.echo("")
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Session committed: ")
+        + f"{mgr.session_id}  ({status.operation_count} operation(s))"
+    )
+    click.echo(f"  Upload:  ./x remote publish upload --session {mgr.session_id}")
+
+
+def _parse_version_document(path: Path) -> tuple[dict[str, object], str, str]:
+    """Parse a version markdown document into (metadata, title, summary).
+
+    Returns metadata from YAML front matter (may be empty for en files),
+    the h1 heading text as title, and the first non-heading paragraph as summary.
+    """
+    import re as _re
+
+    import yaml as _yaml
+
+    content = path.read_text(encoding="utf-8")
+    metadata: dict[str, object] = {}
+    body = content
+
+    if content.startswith("---\n"):
+        parts = content.split("\n---\n", 1)
+        if len(parts) == 2:
+            raw_front_matter = parts[0][len("---\n") :]
+            body = parts[1]
+            data = _yaml.safe_load(raw_front_matter)
+            if isinstance(data, dict):
+                metadata = data
+
+    body = body.lstrip()
+    lines = body.splitlines()
+
+    title = ""
+    summary = ""
+    title_found = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("# "):
+            if not title_found:
+                title = stripped[2:].strip()
+                title_found = True
+            continue
+            if (
+                title_found
+                and not summary
+                and not stripped.startswith(("#", "```", "- ", "* ", "+ "))
+                and not _re.match(r"\d+\.\s", stripped)
+            ):
+                summary = stripped
+                break
+
+    if not title:
+        title = path.stem
+    if not summary:
+        summary = title
+
+    return metadata, title, summary
+
+
 @cli.group(cls=ClickAliasedGroup)
 def etc():
     """Extra toolsets."""

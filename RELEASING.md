@@ -243,29 +243,15 @@ app installations can discover what has changed in a new release.
 
 ### Publishing a version note
 
-1. Generate the bi-lingual version documents:
+1. Generate the bi-lingual version documents and publish to remote:
    ```bash
-   ./x release generate detail
-   ```
-   This writes `assets/content/documents/{en,zh}/version-<id>.md`.
-
-2. Stage and publish:
-   ```bash
-   ./x remote prepare start
-   ./x remote prepare add version \
-     --zh assets/content/documents/zh/version-<id>.md \
-     --en assets/content/documents/en/version-<id>.md \
-     --id version-<major>-<minor>-<patch> \
-     --title-zh "版本 X.Y.Z" \
-     --title-en "Version X.Y.Z" \
-     --summary-zh "..." \
-     --summary-en "..." \
-     --app-ver X.Y.Z
-   ./x remote prepare diff
-   ./x remote prepare verify
-   ./x remote prepare commit
+   ./x release changelog detail --no-edit
+   ./x release changelog publish --commit
    ./x remote publish upload
    ```
+
+   Without `--commit`, the command shows a diff and prints the manual
+   commit/upload commands for review before finalizing.
 
 ### Removing a version note
 
