@@ -553,6 +553,9 @@ class PromotionSessionManager:
         """Diff the current stable state against the promoted (merged) state."""
         if generation is None:
             generation = _generate_publish_id()
+            todo = self._load_todo()
+            todo.generation = generation
+            _persist_json(self.todo_path, todo)
         r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
             self.remote_state_dir, _TARGET_CHANNEL
         )
@@ -588,6 +591,9 @@ class PromotionSessionManager:
 
         if generation is None:
             generation = _generate_publish_id()
+            todo = self._load_todo()
+            todo.generation = generation
+            _persist_json(self.todo_path, todo)
         _m_idx, m_docs, m_bundles = self.regenerate_merged(resolved_root, generation=generation)
 
         errors: list[str] = []

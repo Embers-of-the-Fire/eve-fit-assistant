@@ -673,6 +673,9 @@ class SessionManager:
     ) -> dict[str, object]:
         if generation is None:
             generation = _generate_publish_id()
+            todo = self._load_todo()
+            todo.generation = generation
+            _persist_json(self.todo_path, todo)
         r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
             self.remote_state_dir, channel
         )
@@ -707,6 +710,9 @@ class SessionManager:
     ) -> list[str]:
         if generation is None:
             generation = _generate_publish_id()
+            todo = self._load_todo()
+            todo.generation = generation
+            _persist_json(self.todo_path, todo)
         _, m_docs, m_bundles = self.regenerate_merged(
             channel, resource_root or "efa/v1", generation=generation
         )
