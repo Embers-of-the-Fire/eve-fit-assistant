@@ -902,7 +902,7 @@ def _copy_or_hardlink(src: Path, dst: Path) -> None:
 
 def _generate_publish_id() -> str:
     ts = _utc_timestamp().replace("-", "").replace(":", "") + "Z"
-    return f"{ts}-{uuid.uuid4().hex[:8]}"
+    return f"{ts}-{uuid.uuid4().hex}"
 
 
 def _derive_artifact_id(descriptor: dict[str, object], *, variant: str) -> str:
