@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 import subprocess
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from data.lib.remote.channel import Channel
 
 
@@ -174,6 +173,15 @@ def read_local_remote_state(
     return index, docs, bundles
 
 
+def _validate_catalog_path(catalog_path: str) -> None:
+    """Reject remote catalogPath values that could escape the base directory."""
+    p = Path(catalog_path)
+    if p.is_absolute():
+        raise ValueError(f"catalogPath must be relative, got {catalog_path!r}")
+    if ".." in p.parts:
+        raise ValueError(f"catalogPath must not contain '..' components, got {catalog_path!r}")
+
+
 def _resolve_catalog_local_path(
     base_dir: Path, index: dict[str, object], section: str, fallback: Path
 ) -> tuple[Path, bool]:
@@ -187,7 +195,16 @@ def _resolve_catalog_local_path(
     if isinstance(sec, dict):
         catalog_path = sec.get("catalogPath")
         if isinstance(catalog_path, str):
-            return base_dir / catalog_path, True
+            _validate_catalog_path(catalog_path)
+            resolved = (base_dir / catalog_path).resolve()
+            try:
+                resolved.relative_to(base_dir.resolve())
+            except ValueError:
+                raise ValueError(
+                    f"catalogPath resolves outside base_dir:"
+                    f" base_dir={base_dir}, catalogPath={catalog_path!r}"
+                ) from None
+            return resolved, True
     return fallback, False
 
 
