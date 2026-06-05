@@ -4108,14 +4108,14 @@ def _parse_version_document(path: Path) -> tuple[dict[str, object], str, str]:
                 title = stripped[2:].strip()
                 title_found = True
             continue
-            if (
-                title_found
-                and not summary
-                and not stripped.startswith(("#", "```", "- ", "* ", "+ "))
-                and not _re.match(r"\d+\.\s", stripped)
-            ):
-                summary = stripped
-                break
+        if (
+            title_found
+            and not summary
+            and not stripped.startswith(("#", "```", "- ", "* ", "+ "))
+            and not _re.match(r"\d+\.\s", stripped)
+        ):
+            summary = stripped
+            break
 
     if not title:
         title = path.stem
