@@ -1371,6 +1371,76 @@ def remote_prepare_add_announcement(
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged announcement: ") + resolved_document_id)
 
 
+@add.command("version")
+@click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
+@click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
+@click.option("--id", "document_id", required=True, help="Remote document id to create.")
+@click.option("--title-zh", required=True, help="Chinese version title.")
+@click.option("--title-en", required=True, help="English version title.")
+@click.option("--summary-zh", required=True, help="Chinese version summary.")
+@click.option("--summary-en", required=True, help="English version summary.")
+@click.option("--app-ver", required=True, help="App version this release note describes.")
+@click.option("--published-at", default=None, help="UTC ISO timestamp. Defaults to now.")
+@click.option(
+    "--tag",
+    "tags",
+    multiple=True,
+    default=("release-note", "version"),
+    show_default=True,
+    help="Tags (repeatable).",
+)
+@click.option(
+    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+)
+def remote_prepare_add_version(
+    zh_path: Path,
+    en_path: Path,
+    document_id: str,
+    title_zh: str,
+    title_en: str,
+    summary_zh: str,
+    summary_en: str,
+    app_ver: str,
+    published_at: str | None,
+    tags: tuple[str, ...],
+    session_id: str | None,
+):
+    """Stage a version release note in the pending session."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    if not zh_path.is_file():
+        raise click.ClickException(f"Chinese Markdown file does not exist: {zh_path}")
+    if not en_path.is_file():
+        raise click.ClickException(f"English Markdown file does not exist: {en_path}")
+
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    resolved_document_id = __validate_remote_document_id(document_id)
+    resolved_published_at = published_at or __utc_timestamp()
+    resolved_tags = list(tags)
+    resolved_resource_root = remote_cfg.resource_root
+    resolved_channel = remote_cfg.channel
+
+    try:
+        mgr = __get_session(session_id)
+        mgr.add_version(
+            zh_path=zh_path,
+            en_path=en_path,
+            document_id=resolved_document_id,
+            title_zh=title_zh,
+            title_en=title_en,
+            summary_zh=summary_zh,
+            summary_en=summary_en,
+            app_ver=app_ver,
+            published_at=resolved_published_at,
+            tags=resolved_tags,
+            resource_root=resolved_resource_root,
+            channel=resolved_channel,
+        )
+    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + resolved_document_id)
+
+
 @add.command("bundle")
 @click.option("--full", "full_path", type=click.Path(path_type=Path), required=True)
 @click.option("--manifest", "manifest_path", type=click.Path(path_type=Path), required=True)
