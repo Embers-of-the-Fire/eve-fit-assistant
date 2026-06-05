@@ -525,7 +525,7 @@ Recommended publishing order:
 3. Upload the generation's index to the channel index last (atomic S3 PUT):
 
    ```text
-   efa/v1/channels/<channel>.generations/<generation>/index.json
+   efa/v1/channels/<channel>/.generations/<generation>/index.json
        → efa/v1/channels/<channel>/index.json
    ```
 
