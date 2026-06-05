@@ -22,6 +22,7 @@ abstract class DocumentStorageState with _$DocumentStorageState {
     String? lastDocumentRevision,
     @Default(<String, DateTime>{}) Map<String, DateTime> readTimestamps,
     String? lastSeenAppVersion,
+    String? notifiedAvailableVersion,
   }) = _DocumentStorageState;
 
   factory DocumentStorageState.initial() => DocumentStorageState(
@@ -36,7 +37,7 @@ abstract class DocumentStorageState with _$DocumentStorageState {
 class DocumentStorage {
   DocumentStorage._();
 
-  static const int currentVersion = 2;
+  static const int currentVersion = 3;
   static const String _storageFileName = "document_storage.json";
   static late DocumentStorageState _state;
   static Future<void> _pendingSync = Future<void>.value();
@@ -104,6 +105,8 @@ class DocumentStorage {
 
   static String? get lastSeenAppVersion => _state.lastSeenAppVersion;
 
+  static String? get notifiedAvailableVersion => _state.notifiedAvailableVersion;
+
   static bool isUnread(String documentId) => !_state.readTimestamps.containsKey(documentId);
 
   static void markRead(String documentId) {
@@ -141,6 +144,14 @@ class DocumentStorage {
     _sync();
   }
 
+  static void setNotifiedAvailableVersion(String version) {
+    if (_state.notifiedAvailableVersion == version) {
+      return;
+    }
+    _state = _state.copyWith(notifiedAvailableVersion: version);
+    _sync();
+  }
+
   static int _changeGeneration = 0;
 
   static int get changeGeneration => _changeGeneration;
@@ -165,6 +176,9 @@ class DocumentStorage {
             readTimestamps: <String, DateTime>{},
             lastSeenAppVersion: null,
           );
+        }
+        if (state.version == 2) {
+          return state.copyWith(version: currentVersion);
         }
         return DocumentStorageState.initial();
       }
