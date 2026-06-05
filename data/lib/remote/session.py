@@ -352,7 +352,7 @@ class SessionManager:
         self._ensure_not_committed()
         todo = self._load_todo()
 
-        ts_suffix = _utc_timestamp().replace("-", "").replace(":", "") + "Z"
+        ts_suffix = _utc_timestamp().replace("-", "").replace(":", "")
         document_id = f"{document_id}-{ts_suffix}"
 
         for op in todo.operations:
@@ -907,7 +907,7 @@ def _copy_or_hardlink(src: Path, dst: Path) -> None:
 
 
 def _generate_publish_id() -> str:
-    ts = _utc_timestamp().replace("-", "").replace(":", "") + "Z"
+    ts = _utc_timestamp().replace("-", "").replace(":", "")
     return f"{ts}-{uuid.uuid4().hex}"
 
 
