@@ -1372,7 +1372,7 @@ def remote_prepare_add_announcement(
 
     try:
         mgr = __get_session(session_id)
-        mgr.add_announcement(
+        resolved_document_id = mgr.add_announcement(
             zh_path=zh_path,
             en_path=en_path,
             document_id=resolved_document_id,
@@ -1513,7 +1513,7 @@ def remote_prepare_add_bundle(
 
     try:
         mgr = __get_session(session_id)
-        mgr.add_bundle(
+        resolved_artifact_id, resolved_increment_artifact_id = mgr.add_bundle(
             full_path=full_path,
             manifest_path=manifest_path,
             artifact_id=resolved_artifact_id,
@@ -1525,9 +1525,12 @@ def remote_prepare_add_bundle(
     except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + (resolved_artifact_id or "<auto>")
-    )
+    parts = [styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id]
+    if resolved_increment_artifact_id is not None:
+        parts.append(
+            styled([Style.BRIGHT, Fore.GREEN], "  increment: ") + resolved_increment_artifact_id
+        )
+    click.echo("\n".join(parts))
 
 
 # ---- remove ----------------------------------------------------------------

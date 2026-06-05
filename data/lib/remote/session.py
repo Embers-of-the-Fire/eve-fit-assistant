@@ -413,6 +413,7 @@ class SessionManager:
         )
         todo.operations.append(op)
         self._save_todo()
+        return document_id
 
     def add_version(
         self,
@@ -609,6 +610,7 @@ class SessionManager:
             todo.operations.append(inc_op)
 
         self._save_todo()
+        return artifact_id, increment_artifact_id if increment_path is not None else None
 
     def remove(self, *, target_type: str, target_id: str) -> None:
         self._ensure_not_committed()
