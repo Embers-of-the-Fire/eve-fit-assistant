@@ -3174,6 +3174,25 @@ def __start_minio_remote_mock(
     process = subprocess.Popen(command, env=env, text=True)
     try:
         __wait_for_http(f"{endpoint}/minio/health/ready")
+        if clean_bucket:
+            mc = get_command("mc")
+            bucket_target = f"{alias_name}/{bucket}"
+            redacted = "<redacted>"
+            __execute_command_redacted(
+                [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
+                [mc, "alias", "set", alias_name, endpoint, redacted, redacted],
+                "REMOTE PUBLISH ALIAS",
+            )
+            __execute_command_redacted(
+                [mc, "mb", "--ignore-existing", bucket_target],
+                [mc, "mb", "--ignore-existing", bucket_target],
+                "REMOTE CLEAN BUCKET (CREATE)",
+            )
+            __execute_command_redacted(
+                [mc, "rm", "--recursive", "--force", bucket_target],
+                [mc, "rm", "--recursive", "--force", bucket_target],
+                "REMOTE CLEAN BUCKET",
+            )
         mock_generation = __utc_timestamp().replace("-", "").replace(":", "") + "Z"
         __publish_remote_origin_to_s3(
             source_dir=origin_dir,
