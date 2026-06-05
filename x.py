@@ -2219,28 +2219,51 @@ def _collect_referenced_paths_from_catalogs(
         tmp_path = Path(tmp)
         (tmp_path / channel).mkdir(parents=True, exist_ok=True)
 
-        for catalog_name in ("index.json", "documents/catalog.json", "bundles/catalog.json"):
+        # Download index.json first to locate catalog files
+        _run_mc(
+            [mc, "cp", f"{ch_target}/index.json", str(tmp_path / channel / "index.json")],
+            [mc, "cp", f"{ch_target}/index.json", f"<tmp>/{channel}/index.json"],
+            "GC FETCH index.json",
+        )
+
+        index_path = tmp_path / channel / "index.json"
+        docs_cat_remote = f"{ch_target}/documents/catalog.json"
+        bundles_cat_remote = f"{ch_target}/bundles/catalog.json"
+        if index_path.is_file():
+            index_data: dict[str, object] = json.loads(index_path.read_text(encoding="utf-8"))
+            docs = index_data.get("documents", {})
+            if isinstance(docs, dict):
+                cp = docs.get("catalogPath")
+                if isinstance(cp, str):
+                    docs_cat_remote = f"{alias_name}/{bucket}/{cp}"
+            bundles = index_data.get("bundles", {})
+            if isinstance(bundles, dict):
+                cp = bundles.get("catalogPath")
+                if isinstance(cp, str):
+                    bundles_cat_remote = f"{alias_name}/{bucket}/{cp}"
+
+        docs_local = tmp_path / channel / "documents" / "catalog.json"
+        docs_local.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(OSError):
             _run_mc(
-                [
-                    mc,
-                    "cp",
-                    f"{ch_target}/{catalog_name}",
-                    str(tmp_path / channel / catalog_name),
-                ],
-                [
-                    mc,
-                    "cp",
-                    f"{ch_target}/{catalog_name}",
-                    f"<tmp>/{channel}/{catalog_name}",
-                ],
-                f"GC FETCH {catalog_name}",
+                [mc, "cp", docs_cat_remote, str(docs_local)],
+                [mc, "cp", docs_cat_remote, f"<tmp>/{channel}/documents/catalog.json"],
+                "GC FETCH documents/catalog.json",
+            )
+
+        bundles_local = tmp_path / channel / "bundles" / "catalog.json"
+        bundles_local.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(OSError):
+            _run_mc(
+                [mc, "cp", bundles_cat_remote, str(bundles_local)],
+                [mc, "cp", bundles_cat_remote, f"<tmp>/{channel}/bundles/catalog.json"],
+                "GC FETCH bundles/catalog.json",
             )
 
         referenced: set[str] = set()
 
-        docs_path = tmp_path / channel / "documents" / "catalog.json"
-        if docs_path.is_file():
-            docs: dict[str, object] = json.loads(docs_path.read_text(encoding="utf-8"))
+        if docs_local.is_file():
+            docs: dict[str, object] = json.loads(docs_local.read_text(encoding="utf-8"))
             entries: object = docs.get("entries", [])
             if isinstance(entries, list):
                 for entry in entries:
@@ -2254,9 +2277,8 @@ def _collect_referenced_paths_from_catalogs(
                                 if isinstance(body, str):
                                     referenced.add(body)
 
-        bundles_path = tmp_path / channel / "bundles" / "catalog.json"
-        if bundles_path.is_file():
-            bundles: dict[str, object] = json.loads(bundles_path.read_text(encoding="utf-8"))
+        if bundles_local.is_file():
+            bundles: dict[str, object] = json.loads(bundles_local.read_text(encoding="utf-8"))
             artifacts: object = bundles.get("artifacts", [])
             if isinstance(artifacts, list):
                 for artifact in artifacts:
@@ -2280,15 +2302,53 @@ def __gc_unreferenced_objects(
     channel: Channel,
     *,
     dry_run: bool,
+    keep_generations: int = 2,
 ) -> str:
     """Prune unreferenced objects from the remote bucket.
 
     Collects all referenced paths from current catalogs via exact path
     matching, then deletes anything in ``documents/body/`` and ``bundles/``
-    that isn't referenced.  Also cleans up stale deployment snapshots.
+    that isn't referenced.  Also prunes old generations beyond *keep_generations*
+    and cleans up stale deployment snapshots.
     Returns a human-readable summary.
     """
     bucket_target = f"{alias_name}/{bucket}/{resource_root}"
+    gen_prefix = f"channels/{channel}/.generations"
+
+    # Collect active generation and prune old generations
+    generations_stale: list[tuple[str, str]] = []
+    try:
+        out = subprocess.run(
+            [mc, "ls", "--json", f"{bucket_target}/{gen_prefix}/"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if out.returncode == 0:
+            gen_names: list[str] = []
+            for line in out.stdout.strip().splitlines():
+                try:
+                    obj: dict[str, object] = json.loads(line)
+                except ValueError:
+                    continue
+                key = obj.get("key", "")
+                if not isinstance(key, str):
+                    continue
+                rel = (
+                    key.removeprefix(f"{resource_root}/")
+                    if key.startswith(f"{resource_root}/")
+                    else key
+                )
+                name = rel.removeprefix(f"{gen_prefix}/").rstrip("/")
+                if name and "/" not in name:
+                    gen_names.append(name)
+            gen_names.sort(reverse=True)
+            for stale_gen in gen_names[keep_generations:]:
+                stale_key = f"{gen_prefix}/{stale_gen}"
+                generations_stale.append((stale_key, "0"))
+    except Exception:
+        pass
 
     referenced = _collect_referenced_paths_from_catalogs(
         mc=mc,
@@ -2391,6 +2451,13 @@ def __gc_unreferenced_objects(
 
     if dry_run:
         lines = []
+        if generations_stale:
+            lines.append(
+                f"Would delete {len(generations_stale)} stale generation(s)"
+                f" (keeping {keep_generations}):"
+            )
+            for key, _size in sorted(generations_stale):
+                lines.append(f"  {resource_root}/{key}/")
         if unreferenced:
             lines.append(f"Would delete {len(unreferenced)} unreferenced object(s):")
             for key, size in sorted(unreferenced):
@@ -2399,9 +2466,20 @@ def __gc_unreferenced_objects(
             lines.append(f"Would delete {len(stale_deps)} stale deployment artifact(s):")
             for key, size in sorted(stale_deps):
                 lines.append(f"  {key}  ({size} bytes)")
-        if not unreferenced and not stale_deps:
+        if not generations_stale and not unreferenced and not stale_deps:
             return "Nothing to prune."
         return "\n".join(lines)
+
+    deleted_gens = 0
+    for gen_rel, _size in generations_stale:
+        full_key = f"{resource_root}/{gen_rel}"
+        with contextlib.suppress(OSError):
+            _run_mc(
+                [mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}/{full_key}"],
+                [mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}/{full_key}"],
+                "GC DELETE GENERATION",
+            )
+            deleted_gens += 1
 
     deleted_content = 0
     for key, _size in unreferenced:
@@ -2424,6 +2502,8 @@ def __gc_unreferenced_objects(
             deleted_deps += 1
 
     parts = []
+    if deleted_gens:
+        parts.append(f"{deleted_gens} stale generation(s)")
     if deleted_content:
         parts.append(f"{deleted_content} unreferenced object(s)")
     if deleted_deps:
@@ -2490,6 +2570,53 @@ def _resolve_verify_workers(
     return remote_cfg.require_s3().verify_workers
 
 
+def _find_local_index(channel_dir: Path) -> Path:
+    legacy = channel_dir / "index.json"
+    if legacy.is_file():
+        return legacy
+    for gen_dir in channel_dir.glob(".generations/*"):
+        idx = gen_dir / "index.json"
+        if idx.is_file():
+            return idx
+    return legacy
+
+
+def _resolve_local_catalog_file(
+    channel_dir: Path, index_data: dict[str, object], section: str
+) -> Path:
+    sec = index_data.get(section, {})
+    if isinstance(sec, dict):
+        cp = sec.get("catalogPath")
+        if isinstance(cp, str):
+            parts = cp.split("/")
+            try:
+                gen_idx = parts.index(".generations")
+                rel = "/".join(parts[gen_idx:])
+                return channel_dir / rel
+            except ValueError:
+                pass
+    return channel_dir / section / "catalog.json"
+
+
+def _resolve_local_app_releases(
+    channel_dir: Path, index_data: dict[str, object], generation: str | None
+) -> Path:
+    app = index_data.get("app", {})
+    if isinstance(app, dict):
+        rp = app.get("releasesPath")
+        if isinstance(rp, str):
+            parts = rp.split("/")
+            try:
+                gen_idx = parts.index(".generations")
+                rel = "/".join(parts[gen_idx:])
+                return channel_dir / rel
+            except ValueError:
+                pass
+    if generation:
+        return channel_dir / ".generations" / generation / "app" / "releases.json"
+    return channel_dir / "app" / "releases.json"
+
+
 def __verify_upload_integrity(
     *,
     source_dir: Path,
@@ -2532,27 +2659,60 @@ def __verify_upload_integrity(
             elif isinstance(op, data.lib.remote.models.AddAnnouncementOp):
                 tracked_document_ids.add(op.document_id)
 
-    catalog_files = [
-        "index.json",
-        "documents/catalog.json",
-        "app/releases.json",
-        "bundles/catalog.json",
-    ]
-    for rel_path in catalog_files:
-        local_path = channel_dir / rel_path
-        if not local_path.is_file():
-            continue
+    # Resolve index.json and catalog files (generation-aware)
+    index_local_path = _find_local_index(channel_dir)
+    if not index_local_path.is_file():
+        return ["Local index.json not found for verification."]
+
+    index_data: dict[str, object] = json.loads(index_local_path.read_text(encoding="utf-8"))
+    generation = None
+    gen_val = index_data.get("generation")
+    if isinstance(gen_val, str) and gen_val:
+        generation = gen_val
+
+    remote_channel_url = remote_channel
+    if generation:
+        remote_channel_url = f"{remote_channel}/.generations/{generation}"
+
+    items.append(
+        {
+            "remote": f"{remote_channel}/index.json",
+            "sha256": __file_sha256(index_local_path),
+            "label": "index.json",
+            "mc": mc_bin,
+        }
+    )
+
+    docs_catalog_local = _resolve_local_catalog_file(channel_dir, index_data, "documents")
+    bundles_catalog_local = _resolve_local_catalog_file(channel_dir, index_data, "bundles")
+    app_releases_local = _resolve_local_app_releases(channel_dir, index_data, generation)
+
+    for label, local_path, remote_suffix in [
+        ("documents/catalog.json", docs_catalog_local, "/documents/catalog.json"),
+        ("bundles/catalog.json", bundles_catalog_local, "/bundles/catalog.json"),
+    ]:
+        if local_path and local_path.is_file():
+            items.append(
+                {
+                    "remote": f"{remote_channel_url}{remote_suffix}",
+                    "sha256": __file_sha256(local_path),
+                    "label": label,
+                    "mc": mc_bin,
+                }
+            )
+
+    if app_releases_local and app_releases_local.is_file():
         items.append(
             {
-                "remote": f"{remote_channel}/{rel_path}",
-                "sha256": __file_sha256(local_path),
-                "label": rel_path,
+                "remote": f"{remote_channel_url}/app/releases.json",
+                "sha256": __file_sha256(app_releases_local),
+                "label": "app/releases.json",
                 "mc": mc_bin,
             }
         )
 
-    bundles_catalog_path = channel_dir / "bundles" / "catalog.json"
-    if bundles_catalog_path.is_file():
+    bundles_catalog_path = bundles_catalog_local
+    if bundles_catalog_path and bundles_catalog_path.is_file():
         bundles_catalog = json.loads(bundles_catalog_path.read_text(encoding="utf-8"))
         if isinstance(bundles_catalog, dict):
             artifacts = bundles_catalog.get("artifacts")
@@ -2578,8 +2738,8 @@ def __verify_upload_integrity(
                         }
                     )
 
-    docs_catalog_path = channel_dir / "documents" / "catalog.json"
-    if docs_catalog_path.is_file():
+    docs_catalog_path = docs_catalog_local
+    if docs_catalog_path and docs_catalog_path.is_file():
         docs_catalog = json.loads(docs_catalog_path.read_text(encoding="utf-8"))
         if isinstance(docs_catalog, dict):
             entries = docs_catalog.get("entries")
@@ -2883,6 +3043,13 @@ def remote_publish_upload(
 @click.option("--alias", "alias_name", default=None)
 @click.option("--resource-root", default=None)
 @click.option("--channel", default=None)
+@click.option(
+    "--keep-generations",
+    type=int,
+    default=2,
+    show_default=True,
+    help="Number of generations to keep (current + N-1 previous).",
+)
 def remote_publish_gc(
     target: str,
     dry_run: bool,
@@ -2893,6 +3060,7 @@ def remote_publish_gc(
     alias_name: str | None,
     resource_root: str | None,
     channel: str | None,
+    keep_generations: int,
 ):
     """Prune unreferenced objects from the remote bucket."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
@@ -2930,6 +3098,7 @@ def remote_publish_gc(
         resource_root=resolved_resource_root,
         channel=resolved_channel,
         dry_run=dry_run,
+        keep_generations=keep_generations,
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "GC: ") + summary)
 
