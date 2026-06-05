@@ -353,9 +353,9 @@ class SessionManager:
         todo = self._load_todo()
 
         for op in todo.operations:
-            if isinstance(op, AddAnnouncementOp) and op.document_id == document_id:
+            if isinstance(op, (AddAnnouncementOp, AddVersionOp)) and op.document_id == document_id:
                 raise ValueError(
-                    f"Announcement with document_id {document_id!r}"
+                    f"Document with document_id {document_id!r}"
                     f" already exists in session {self.session_id}"
                 )
 
