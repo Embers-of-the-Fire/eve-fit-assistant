@@ -50,6 +50,22 @@ def _apply_add_announcement(catalog: dict[str, object], op: dict[str, object]) -
     catalog["entries"] = entries
 
 
+def _apply_add_version(catalog: dict[str, object], op: dict[str, object]) -> None:
+    entries: list[object] = catalog.get("entries", [])  # type: ignore[assignment]
+    if not isinstance(entries, list):
+        return
+    entry = dict(op["fields"])  # type: ignore[index]
+    doc_id = entry.get("id")
+    if doc_id is None:
+        return
+    for idx, existing in enumerate(entries):
+        if isinstance(existing, dict) and existing.get("id") == doc_id:
+            entries[idx] = entry
+            return
+    entries.append(entry)
+    catalog["entries"] = entries
+
+
 def _apply_add_bundle(catalog: dict[str, object], op: dict[str, object]) -> None:
     artifacts: list[object] = catalog.get("artifacts", [])  # type: ignore[assignment]
     if not isinstance(artifacts, list):
@@ -103,6 +119,8 @@ def apply_operations_to_catalogs(
         op_type: str = op.get("type", "")  # type: ignore[assignment]
         if op_type == "add-announcement":
             _apply_add_announcement(merged_docs, op)
+        elif op_type == "add-version":
+            _apply_add_version(merged_docs, op)
         elif op_type == "add-bundle":
             _apply_add_bundle(merged_bundles, op)
         elif op_type == "remove":
