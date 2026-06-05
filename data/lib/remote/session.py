@@ -22,6 +22,7 @@ from data.lib.remote import catalog as _catalog_mod
 from data.lib.remote import fetch as _fetch_mod
 from data.lib.remote.models import AddAnnouncementOp
 from data.lib.remote.models import AddBundleOp
+from data.lib.remote.models import AddVersionOp
 from data.lib.remote.models import LockFile
 from data.lib.remote.models import RemoveOp
 from data.lib.remote.models import SessionStatus
@@ -403,6 +404,84 @@ class SessionManager:
         }
 
         op = AddAnnouncementOp(
+            document_id=document_id,
+            fields=entry,
+            staged_files={"zh": zh_staged, "en": en_staged},
+        )
+        todo.operations.append(op)
+        self._save_todo()
+
+    def add_version(
+        self,
+        *,
+        zh_path: Path,
+        en_path: Path,
+        document_id: str,
+        title_zh: str,
+        title_en: str,
+        summary_zh: str,
+        summary_en: str,
+        app_ver: str,
+        published_at: str,
+        tags: list[str],
+        resource_root: str,
+        channel: Channel,
+    ) -> None:
+        self._ensure_not_committed()
+        todo = self._load_todo()
+
+        for op in todo.operations:
+            if isinstance(op, (AddAnnouncementOp, AddVersionOp)) and op.document_id == document_id:
+                raise ValueError(
+                    f"Document with document_id {document_id!r}"
+                    f" already exists in session {self.session_id}"
+                )
+
+        _validate_path_segment(document_id, "document_id")
+
+        zh_staged = f"documents/{document_id}_zh.md"
+        en_staged = f"documents/{document_id}_en.md"
+        zh_target = self.staged_dir / zh_staged
+        en_target = self.staged_dir / en_staged
+
+        zh_target.parent.mkdir(parents=True, exist_ok=True)
+        en_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(zh_path, zh_target)
+        shutil.copyfile(en_path, en_target)
+
+        zh_body_sha256 = _file_sha256(zh_target)
+        zh_body_size = zh_target.stat().st_size
+        en_body_sha256 = _file_sha256(en_target)
+        en_body_size = en_target.stat().st_size
+
+        entry: dict[str, object] = {
+            "id": document_id,
+            "kind": "version",
+            "source": "remote",
+            "publishedAt": published_at,
+            "tags": tags,
+            "startup": False,
+            "minAppVer": None,
+            "appVer": app_ver,
+            "localizations": {
+                "en": {
+                    "title": title_en,
+                    "summary": summary_en,
+                    "bodyPath": f"documents/body/en/{document_id}.md",
+                    "bodySha256": en_body_sha256,
+                    "bodySize": en_body_size,
+                },
+                "zh": {
+                    "title": title_zh,
+                    "summary": summary_zh,
+                    "bodyPath": f"documents/body/zh/{document_id}.md",
+                    "bodySha256": zh_body_sha256,
+                    "bodySize": zh_body_size,
+                },
+            },
+        }
+
+        op = AddVersionOp(
             document_id=document_id,
             fields=entry,
             staged_files={"zh": zh_staged, "en": en_staged},
@@ -846,7 +925,7 @@ def _link_staged_to_merged(
 ) -> None:
     """Create hardlinks from staged files into the merged directory structure."""
     for op in todo.operations:
-        if isinstance(op, AddAnnouncementOp):
+        if isinstance(op, (AddAnnouncementOp, AddVersionOp)):
             for _lang, staged_rel in op.staged_files.items():
                 src = staged_dir / staged_rel
                 if not src.is_file():
