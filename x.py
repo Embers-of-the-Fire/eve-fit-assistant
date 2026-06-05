@@ -2656,7 +2656,9 @@ def __verify_upload_integrity(
         for op in todo.operations:
             if isinstance(op, data.lib.remote.models.AddBundleOp):
                 tracked_artifact_ids.add(op.artifact_id)
-            elif isinstance(op, data.lib.remote.models.AddAnnouncementOp):
+            elif isinstance(
+                op, (data.lib.remote.models.AddAnnouncementOp, data.lib.remote.models.AddVersionOp)
+            ):
                 tracked_document_ids.add(op.document_id)
 
     # Resolve index.json and catalog files (generation-aware)
