@@ -148,21 +148,22 @@ Example:
 ```json
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-20T00:00:00Z",
+  "generation": "20260605T120000Z",
+  "generatedAt": "2026-06-05T12:00:00Z",
   "minClientApi": 1,
   "channel": "testing",
   "region": "global",
   "documents": {
-    "catalogPath": "channels/testing/documents/catalog.json",
-    "revision": "docs-20260520"
+    "catalogPath": "channels/testing/.generations/20260605T120000Z/documents/catalog.json",
+    "revision": "docs-20260605T120000Z"
   },
   "app": {
-    "releasesPath": "channels/testing/app/releases.json",
-    "revision": "app-0.0.2"
+    "releasesPath": "channels/testing/.generations/20260605T120000Z/app/releases.json",
+    "revision": "app-20260605T120000Z"
   },
   "bundles": {
-    "catalogPath": "channels/testing/bundles/catalog.json",
-    "revision": "tq-20260520"
+    "catalogPath": "channels/testing/.generations/20260605T120000Z/bundles/catalog.json",
+    "revision": "bundles-20260605T120000Z"
   }
 }
 ```
@@ -170,27 +171,38 @@ Example:
 Field semantics:
 
 - `schemaVersion`: JSON schema version for this payload.
+- `generation`: unique publish generation identifier (`YYYYMMDDThhmmssZ`).
+  Every committed publish produces a new generation. Old generations are pruned
+  by garbage collection (default keep count: 2).
 - `generatedAt`: UTC timestamp for the index generation time.
 - `minClientApi`: minimum client remote-content API version required to consume this index.
 - `channel`: channel represented by this index. It must match the requested channel.
 - `region`: optional storage or deployment region represented by this index.
 - `documents`: optional document catalog section.
 - `documents.catalogPath`: relative path to the channel document catalog.
+  Located inside `.generations/{generation}/` to enable atomic publishes.
 - `documents.revision`: opaque document catalog revision for diagnostics and cache decisions.
+  Derived from the generation timestamp.
 - `app`: optional app release metadata section.
 - `app.releasesPath`: relative path to app release metadata.
 - `app.revision`: opaque app release metadata revision.
 - `bundles`: optional bundle catalog section.
 - `bundles.catalogPath`: relative path to the channel bundle catalog.
+  Located inside `.generations/{generation}/` for atomicity.
 - `bundles.revision`: opaque bundle catalog revision.
 
 ## Documents Catalog
 
-Path:
+The catalog is located at the path specified by `documents.catalogPath` in the channel index.
+In the generation-stamped layout:
 
 ```text
-efa/v1/channels/<channel>/documents/catalog.json
+efa/v1/channels/<channel>/.generations/<generation>/documents/catalog.json
 ```
+
+Legacy clients that hardcode `documents/catalog.json` are served by the backward-compatible
+flat layout during the transition period (the tooling copies catalogs to legacy paths
+automatically at publish time).
 
 Example:
 
@@ -200,7 +212,7 @@ Example:
   "version": 1,
   "entries": [
     {
-      "id": "remote-announcement-2026-05-maintenance",
+      "id": "maintenance-20260520T000000Z",
       "kind": "announcement",
       "source": "remote",
       "publishedAt": "2026-05-20T00:00:00Z",
@@ -212,12 +224,34 @@ Example:
         "en": {
           "title": "Maintenance notice",
           "summary": "A short remote announcement summary.",
-          "bodyPath": "documents/body/en/remote-announcement-2026-05-maintenance.md"
+          "bodyPath": "documents/body/en/maintenance-20260520T000000Z.md"
         },
         "zh": {
           "title": "维护公告",
           "summary": "一条简短的远程公告摘要。",
-          "bodyPath": "documents/body/zh/remote-announcement-2026-05-maintenance.md"
+          "bodyPath": "documents/body/zh/maintenance-20260520T000000Z.md"
+        }
+      }
+    },
+    {
+      "id": "version-0.0.2",
+      "kind": "version",
+      "source": "remote",
+      "publishedAt": "2026-05-20T00:00:00Z",
+      "tags": ["version"],
+      "startup": false,
+      "minAppVer": null,
+      "appVer": "0.0.2",
+      "localizations": {
+        "en": {
+          "title": "Version 0.0.2",
+          "summary": "Release notes for version 0.0.2.",
+          "bodyPath": "documents/body/en/version-0.0.2.md"
+        },
+        "zh": {
+          "title": "版本 0.0.2",
+          "summary": "版本 0.0.2 的发布说明。",
+          "bodyPath": "documents/body/zh/version-0.0.2.md"
         }
       }
     }
@@ -230,7 +264,8 @@ Field semantics:
 - `schemaVersion`: JSON schema version for this payload.
 - `version`: document catalog content version. This is distinct from `schemaVersion`.
 - `entries`: document entries visible to the app.
-- `id`: stable document id.
+- `id`: stable document id. Auto-generated: `version-{appVer}` for version entries,
+  `{topic}-{timestamp}` for announcements (custom topic via `--id` prefix, timestamp always appended).
 - `kind`: document kind. Supported values are `announcement`, `information`, and `version`.
 - `source`: source marker. Remote catalogs must use `remote`.
 - `publishedAt`: UTC publication timestamp.
@@ -248,11 +283,15 @@ merged document feed. Use this only for intentional corrections.
 
 ## App Releases
 
-Path:
+The releases metadata is located at the path specified by `app.releasesPath` in the channel index.
+In the generation-stamped layout:
 
 ```text
-efa/v1/channels/<channel>/app/releases.json
+efa/v1/channels/<channel>/.generations/<generation>/app/releases.json
 ```
+
+This file is auto-generated from version entries in the document catalog and the current
+app version in `pubspec.yaml`.
 
 Example:
 
@@ -262,14 +301,15 @@ Example:
   "releases": [
     {
       "platform": "android",
-  "channel": "testing",
+      "channel": "testing",
       "appVersion": "0.0.2",
       "buildNumber": 2,
       "publishedAt": "2026-05-20T00:00:00Z",
       "minimumSupportedVersion": "0.0.1",
-      "releaseNoteDocumentId": "version-0-0-2",
+      "releaseNoteDocumentId": "version-0.0.2",
       "downloadUrl": "https://example.com/eve-fit-assistant-0.0.2.apk",
-      "sha256": "optional-apk-sha256"
+      "sha256": "optional-apk-sha256",
+      "generation": "20260605T120000Z"
     }
   ]
 }
@@ -278,26 +318,29 @@ Example:
 Field semantics:
 
 - `schemaVersion`: JSON schema version for this payload.
-- `releases`: release metadata entries.
+- `releases`: release metadata entries, auto-generated from version document entries
+  in the document catalog.
 - `platform`: target platform, such as `android`.
 - `channel`: release channel.
 - `appVersion`: user-facing app version.
-- `buildNumber`: platform build number.
+- `buildNumber`: platform build number (parsed from `pubspec.yaml` `version: X.Y.Z+N`).
 - `publishedAt`: UTC release publication timestamp.
 - `minimumSupportedVersion`: optional minimum app version that remains supported.
 - `releaseNoteDocumentId`: optional document id for release notes.
 - `downloadUrl`: optional external download URL.
 - `sha256`: optional SHA-256 for the externally downloaded app artifact.
+- `generation`: publish generation that produced this release entry.
 
 App release metadata is informational. It must not trigger in-app binary hot updates, runtime code
 replacement, or dynamic Dart, native, or JavaScript loading.
 
 ## Bundle Catalog
 
-Path:
+The catalog is located at the path specified by `bundles.catalogPath` in the channel index.
+In the generation-stamped layout:
 
 ```text
-efa/v1/channels/<channel>/bundles/catalog.json
+efa/v1/channels/<channel>/.generations/<generation>/bundles/catalog.json
 ```
 
 Example:
@@ -307,7 +350,7 @@ Example:
   "schemaVersion": 1,
   "artifacts": [
     {
-      "artifactId": "tranquility-full-20260520",
+      "artifactId": "data-tranquility-1234567",
       "bundleId": "tranquility",
       "variant": "full",
       "appVersion": "0.0.1+1",
@@ -317,16 +360,16 @@ Example:
       "gameBranch": "release",
       "gameServer": "tranquility",
       "generatedAt": "2026-05-20T00:00:00Z",
-      "artifactPath": "bundles/tranquility/tranquility-full-20260520.zip",
+      "artifactPath": "bundles/tranquility/data-tranquility-1234567.zip",
       "artifactSize": 123456789,
       "artifactSha256": "zip-sha256",
-      "manifestPath": "bundles/tranquility/tranquility-full-20260520.manifest.json",
+      "manifestPath": "bundles/tranquility/data-tranquility-1234567.manifest.json",
       "manifestHash": "manifest-json-sha256",
       "baseBundleId": null,
       "baseManifestHash": null
     },
     {
-      "artifactId": "tranquility-increment-20260521",
+      "artifactId": "data-tranquility-1234568-inc",
       "bundleId": "tranquility",
       "variant": "incremental",
       "appVersion": "0.0.1+1",
@@ -336,10 +379,10 @@ Example:
       "gameBranch": "release",
       "gameServer": "tranquility",
       "generatedAt": "2026-05-21T00:00:00Z",
-      "artifactPath": "bundles/tranquility/tranquility-increment-20260521.zip",
+      "artifactPath": "bundles/tranquility/data-tranquility-1234568-inc.zip",
       "artifactSize": 123456,
       "artifactSha256": "zip-sha256",
-      "manifestPath": "bundles/tranquility/tranquility-increment-20260521.manifest.json",
+      "manifestPath": "bundles/tranquility/data-tranquility-1234568.manifest.json",
       "manifestHash": "new-manifest-json-sha256",
       "baseBundleId": "tranquility",
       "baseManifestHash": "required-installed-manifest-hash"
@@ -352,7 +395,9 @@ Field semantics:
 
 - `schemaVersion`: JSON schema version for this payload.
 - `artifacts`: available bundle artifacts.
-- `artifactId`: stable artifact id.
+- `artifactId`: stable, auto-generated artifact id in the form
+  `data-{gameServer}-{gameBuild}` (full) or `data-{gameServer}-{gameBuild}-inc` (incremental).
+  Can be overridden during preparation with `--artifact-id`.
 - `bundleId`: bundle identity installed by the app.
 - `variant`: artifact variant. Supported values are `full` and `incremental`.
 - `appVersion`: app version that generated or supports the artifact.
@@ -453,31 +498,40 @@ documents/../../secret.md
 
 ## S3-Compatible Publishing Rules
 
-The v1 layout is designed to work as public read-only static object storage. The app never receives
+The layout is designed to work as public read-only static object storage. The app never receives
 S3, R2, OSS, or MinIO credentials.
+
+Each publish produces a **generation** — a self-contained snapshot written to a timestamped
+directory under `.generations/`. The channel `index.json` is the sole live-mutated object;
+its S3 PUT is atomic, making the entire publish an atomic commit.
 
 Recommended publishing order:
 
-1. Upload shared immutable resources first:
+1. Upload shared immutable resources first (same paths as v1):
 
    ```text
    efa/v1/documents/body/**
    efa/v1/bundles/**
    ```
 
-2. Upload channel-scoped catalogs next:
+2. Upload generation-specific catalog metadata next (NEW paths, never overwrites live state):
 
    ```text
-   efa/v1/channels/<channel>/documents/catalog.json
-   efa/v1/channels/<channel>/app/releases.json
-   efa/v1/channels/<channel>/bundles/catalog.json
+   efa/v1/channels/<channel>/.generations/<generation>/documents/catalog.json
+   efa/v1/channels/<channel>/.generations/<generation>/app/releases.json
+   efa/v1/channels/<channel>/.generations/<generation>/bundles/catalog.json
    ```
 
-3. Upload the channel index last:
+3. Upload the generation's index to the channel index last (atomic S3 PUT):
 
    ```text
-   efa/v1/channels/<channel>/index.json
+   efa/v1/channels/<channel>.generations/<generation>/index.json
+       → efa/v1/channels/<channel>/index.json
    ```
+
+This three-step order ensures that interruption at any point leaves the live state consistent:
+before the index update clients see the previous generation; after the index update
+they see the fully-uploaded new generation.
 
 The repository helper follows this order when uploading a local origin to MinIO or another
 S3-compatible endpoint:
@@ -486,13 +540,34 @@ S3-compatible endpoint:
 ./x remote publish upload --target minio
 ```
 
+### Garbage Collection
+
+Old generations are pruned automatically when `--clean` is passed to `publish upload`,
+or can be run separately:
+
+```bash
+./x remote publish gc [--dry-run] [--keep-generations <N>]
+```
+
+`--keep-generations` defaults to 2 (current + 1 previous) to allow rollback to the
+previous generation by re-copying its `index.json` over the live path.
+
+### Rollback
+
+To revert a bad publish, copy the previous generation's index to the live path:
+
+```bash
+mc cp <alias>/<bucket>/efa/v1/channels/<channel>/.generations/<prev_gen>/index.json \
+      <alias>/<bucket>/efa/v1/channels/<channel>/index.json
+```
+
 Recommended cache policy:
 
 ```text
 efa/v1/channels/<channel>/index.json
   Cache-Control: no-cache or max-age=30
 
-efa/v1/channels/<channel>/**/*.json
+efa/v1/channels/<channel>/.generations/<gen>/**/*.json
   Cache-Control: max-age=60..300
 
 efa/v1/documents/body/**
@@ -516,11 +591,15 @@ With the default `efa.dev.toml` values, the runtime layout is:
 
 ```text
 cache/remote/mock-origin/efa/v1/channels/testing/index.json
-cache/remote/mock-origin/efa/v1/channels/testing/documents/catalog.json
-cache/remote/mock-origin/efa/v1/channels/testing/app/releases.json
-cache/remote/mock-origin/efa/v1/channels/testing/bundles/catalog.json
+cache/remote/mock-origin/efa/v1/channels/testing/.generations/<gen>/documents/catalog.json
+cache/remote/mock-origin/efa/v1/channels/testing/.generations/<gen>/app/releases.json
+cache/remote/mock-origin/efa/v1/channels/testing/.generations/<gen>/bundles/catalog.json
 cache/remote/mock-origin/efa/v1/documents/body/en/remote-announcement-2026-05-maintenance.md
 ```
+
+The mock origin fixtures at `docs/examples/remote/mock-origin/` use the legacy flat layout
+(without `.generations/`). At publish time, the tooling wraps legacy sources into a
+generation directory automatically, so existing mock fixtures remain compatible.
 
 Static HTTP mock endpoint:
 

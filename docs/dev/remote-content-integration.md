@@ -236,27 +236,32 @@ Prepare a localized remote announcement in the configured mock origin before pub
 ./x remote prepare announcement \
   --zh docs/drafts/update.zh.md \
   --en docs/drafts/update.en.md \
-  --id remote-announcement-2026-05-data-update \
+  --id data-update \
   --title-zh "数据更新公告" \
   --title-en "Data update notice" \
   --summary-zh "本次更新包含最新 EVE 数据。" \
   --summary-en "This update includes the latest EVE data."
 ```
 
-Announcement preparation copies the Markdown bodies into the canonical remote object layout, creates
-or updates the document catalog, and always ensures the channel index advertises the document catalog.
-The generated announcement is scoped to the current app version through `minAppVer` by default. Pass
-`--all-app-ver` to write `minAppVer: null`. Existing announcement ids or body files are rejected by
-default; pass `--replace` only for intentional corrections.
+The `--id` option provides a topic prefix; a seconds-level timestamp suffix is always appended
+(e.g. `data-update-20260605T120030Z`). Omit `--id` to use an auto-generated `announcement-<ts>`
+ID. Announcement preparation copies the Markdown bodies into the canonical remote object layout,
+creates or updates the document catalog, and always ensures the channel index advertises the
+document catalog. The generated announcement is scoped to the current app version through
+`minAppVer` by default. Pass `--all-app-ver` to write `minAppVer: null`. Existing announcement
+ids or body files are rejected by default; pass `--replace` only for intentional corrections.
 
 Prepare bundle artifacts in the same origin after running the data build:
 
 ```bash
 ./x remote prepare bundle \
   --full cache/workspaces/tranquility/output/tranquility.zip \
-  --manifest cache/workspaces/tranquility/output/bundle_manifest.json \
-  --artifact-id tranquility-tq-2863052-full
+  --manifest cache/workspaces/tranquility/output/bundle_manifest.json
 ```
+
+The `--artifact-id` is auto-generated from the bundle descriptor as
+`data-{gameServer}-{gameBuild}` (e.g. `data-tranquility-2863052`). Pass `--artifact-id` to
+override.
 
 When a previous published manifest is available, generate an incremental patch and prepare both
 artifacts together:
@@ -266,10 +271,11 @@ artifacts together:
 ./x remote prepare bundle \
   --full cache/workspaces/tranquility/output/tranquility.zip \
   --manifest cache/workspaces/tranquility/output/bundle_manifest.json \
-  --artifact-id tranquility-tq-2863052-full \
-  --increment cache/workspaces/tranquility/output/tranquility_increment.zip \
-  --increment-artifact-id tranquility-tq-2862000-to-2863052-increment
+  --increment cache/workspaces/tranquility/output/tranquility_increment.zip
 ```
+
+The incremental artifact ID is auto-generated as `data-{gameServer}-{gameBuild}-inc`.
+Both `--artifact-id` and `--increment-artifact-id` accept explicit overrides.
 
 Bundle preparation reads `descriptor.json` from each zip, computes artifact size and SHA-256 values,
 copies immutable artifacts into `bundles/<bundle-id>/`, updates `bundles/catalog.json`, and always
@@ -288,9 +294,12 @@ Upload a materialized mock origin to an already running MinIO or S3-compatible e
 ```
 
 The upload command uses the same `[remote]` defaults as the mock launcher. It configures the `mc`
-alias, creates the bucket if needed, optionally enables anonymous downloads, uploads shared content
-first, uploads channel catalogs next, and uploads `index.json` last so clients never observe an index
-before referenced content exists.
+alias, creates the bucket if needed, optionally enables anonymous downloads, and follows a
+three-step atomic publish: (1) mirror shared content to immutable paths, (2) mirror
+generation-specific catalog metadata to `.generations/<gen>/`, (3) atomically copy the
+generation's `index.json` to the live channel path via a single S3 PUT.
+If interrupted, retry is safe and idempotent — only the successful step-3 index copy commits
+the new generation.
 
 Useful publishing overrides:
 
