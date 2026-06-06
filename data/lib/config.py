@@ -47,6 +47,7 @@ class ProjectLocalizations(BaseModel):
 
 class ProjectPaths(BaseModel):
     log: ProjectPath
+    apk: ProjectPath = Field(default="cache/apk")
 
 
 class ProjectResource(BaseModel):
