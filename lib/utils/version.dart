@@ -55,24 +55,10 @@ int compareAppVersions(String a, String b) {
 ({String core, String? pre}) _splitSemver(String version) {
   final dashIndex = version.indexOf("-");
   if (dashIndex == -1) return (core: version, pre: null);
-  return (
-    core: version.substring(0, dashIndex),
-    pre: version.substring(dashIndex + 1),
-  );
+  return (core: version.substring(0, dashIndex), pre: version.substring(dashIndex + 1));
 }
 
-int _compareDotSeparatedInts(String a, String b) {
-  final aParts = a.split(".").map(int.tryParse).toList();
-  final bParts = b.split(".").map(int.tryParse).toList();
-  final length = aParts.length > bParts.length ? aParts.length : bParts.length;
-  for (var i = 0; i < length; i++) {
-    final aVal = i < aParts.length ? (aParts[i] ?? 0) : 0;
-    final bVal = i < bParts.length ? (bParts[i] ?? 0) : 0;
-    final cmp = aVal.compareTo(bVal);
-    if (cmp != 0) return cmp;
-  }
-  return 0;
-}
+int _compareDotSeparatedInts(String a, String b) => compareVersions(a, b);
 
 ({String label, int num}) _parsePreRelease(String pre) {
   final lastDot = pre.lastIndexOf(".");
