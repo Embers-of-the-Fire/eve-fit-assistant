@@ -187,13 +187,6 @@ def _validate_backend(backend: str) -> Literal["minio", "s3", "local"]:
 
 
 def _generate_session_id(prefix: str) -> str:
-    stamp = (
-        datetime.datetime.now(datetime.UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-        .replace("-", "")
-        .replace(":", "")
-    )
+    stamp = _utc_timestamp().replace("-", "").replace(":", "")
     short_uuid = uuid.uuid4().hex[:8]
     return f"{prefix}-{stamp}-{short_uuid}"
