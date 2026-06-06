@@ -180,6 +180,14 @@ def _write_json(path: Path, data: dict[str, object]) -> None:
     )
 
 
+def _validate_backend(backend: str) -> Literal["minio", "s3", "local"]:
+    if backend not in ("minio", "s3", "local"):
+        raise ValueError(
+            f"Invalid backend {backend!r}; must be one of 'minio', 's3', 'local'"
+        )
+    return backend  # type: ignore[return-value]
+
+
 def _generate_session_id(prefix: str) -> str:
     stamp = (
         datetime.datetime.now(datetime.UTC)

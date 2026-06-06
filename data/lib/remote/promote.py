@@ -26,6 +26,7 @@ from data.lib.remote.models import _generate_session_id as _gen_session_id
 from data.lib.remote.models import _persist_json
 from data.lib.remote.models import _session_path
 from data.lib.remote.models import _utc_timestamp
+from data.lib.remote.models import _validate_backend
 from data.lib.remote.models import _write_json
 from data.lib.remote.session import _generate_publish_id
 from data.lib.remote.session import _generate_releases_json
@@ -85,7 +86,7 @@ class PromotionSessionManager(_BaseSessionManager):
             timestamp=_utc_timestamp(),
             host=platform.node(),
             pid=os.getpid(),
-            backend=backend,  # type: ignore[arg-type]
+            backend=_validate_backend(backend),
             origin_dir=str(origin_dir) if origin_dir is not None else None,
             resource_root=resource_root,
         )
