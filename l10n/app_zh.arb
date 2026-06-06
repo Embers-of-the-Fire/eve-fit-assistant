@@ -735,13 +735,12 @@
   "appSettingsPageRemoteContentEnabledTitle": "启用远程内容",
   "appSettingsPageRemoteContentEnabledDescription": "当运行时同步可用时，允许应用从配置的远程源发现文档、版本和数据包元数据。",
   "appSettingsPageRemoteContentEndpointTitle": "远程内容端点",
-  "appSettingsPageRemoteContentEndpointDescription": "源：{origin}\n根路径：{resourceRoot}\n频道：{channel}\n存储区域：{region}",
+  "appSettingsPageRemoteContentEndpointDescription": "源：{origin}\n根路径：{resourceRoot}\n频道：{channel}",
   "@appSettingsPageRemoteContentEndpointDescription": {
     "placeholders": {
       "origin": { "type": "String" },
       "resourceRoot": { "type": "String" },
-      "channel": { "type": "String" },
-      "region": { "type": "String" }
+      "channel": { "type": "String" }
     }
   },
   "appSettingsPageRemoteContentNotSet": "未设置",
@@ -750,7 +749,6 @@
   "appSettingsPageRemoteContentChannelLabel": "频道",
   "appSettingsPageRemoteContentChannelTesting": "测试版",
   "appSettingsPageRemoteContentChannelStable": "稳定版",
-  "appSettingsPageRemoteContentRegionLabel": "存储区域",
   "appSettingsPageSectionDeveloper": "开发者选项",
   "appSettingsPageDebugLogTitle": "启用调试日志",
   "appSettingsPageDebugLogDescription": "启用调试日志后，应用将会输出所有日志到日志目录中。\n建议仅当开发者要求开启此功能时才开启。",

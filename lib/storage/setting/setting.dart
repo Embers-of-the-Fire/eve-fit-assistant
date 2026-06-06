@@ -22,7 +22,6 @@ abstract class RemoteContentSetting with _$RemoteContentSetting {
     @Default("https://prod.storage.efa-tech.dev") String originUrl,
     @Default("efa/v1/") String resourceRoot,
     @Default("testing") String channel,
-    @Default("global") String region,
   }) = _RemoteContentSetting;
 
   factory RemoteContentSetting.fromJson(Map<String, dynamic> json) =>

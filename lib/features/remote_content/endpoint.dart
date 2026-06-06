@@ -11,7 +11,6 @@ class RemoteContentEndpoint {
     required this.originUri,
     required this.resourceRoot,
     required this.channel,
-    required this.region,
   });
 
   factory RemoteContentEndpoint.fromSetting(RemoteContentSetting setting) {
@@ -37,14 +36,12 @@ class RemoteContentEndpoint {
       originUri: originUri,
       resourceRoot: resourceRoot,
       channel: validateRemoteChannel(setting.channel),
-      region: validateRemoteChannel(setting.region),
     );
   }
 
   final Uri originUri;
   final String resourceRoot;
   final String channel;
-  final String region;
 
   Uri get indexUri => resolvePayloadUri("channels/$channel/index.json");
 

@@ -88,7 +88,6 @@ class RemoteContentEndpointTile extends ConsumerWidget {
           origin: endpointValue(config.originUrl),
           resourceRoot: endpointValue(config.resourceRoot),
           channel: endpointValue(config.channel),
-          region: endpointValue(config.region),
         ),
       ),
       trailing: const Icon(Icons.chevron_right),
@@ -126,7 +125,6 @@ class _RemoteContentEndpointDialog extends StatefulWidget {
 class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDialog> {
   late final TextEditingController originController;
   late final TextEditingController resourceRootController;
-  late final TextEditingController regionController;
   late Channel _channel;
 
   @override
@@ -134,7 +132,6 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
     super.initState();
     originController = TextEditingController(text: widget.config.originUrl);
     resourceRootController = TextEditingController(text: widget.config.resourceRoot);
-    regionController = TextEditingController(text: widget.config.region);
     _channel = Channel.tryParse(widget.config.channel) ?? Channel.defaultChannel;
   }
 
@@ -142,7 +139,6 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
   void dispose() {
     originController.dispose();
     resourceRootController.dispose();
-    regionController.dispose();
     super.dispose();
   }
 
@@ -192,14 +188,6 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
               }
             },
           ),
-          TextField(
-            controller: regionController,
-            decoration: InputDecoration(
-              labelText: context.l10n.appSettingsPageRemoteContentRegionLabel,
-              hintText: "global",
-            ),
-            textInputAction: TextInputAction.done,
-          ),
         ],
       ),
     ),
@@ -214,7 +202,6 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
             originUrl: originController.text.trim(),
             resourceRoot: resourceRootController.text.trim(),
             channel: _channel.value,
-            region: regionController.text.trim(),
           ),
         ),
         child: Text(MaterialLocalizations.of(context).saveButtonLabel),
