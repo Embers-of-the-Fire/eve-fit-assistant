@@ -17,7 +17,7 @@ part "setting.g.dart";
 @freezed
 abstract class RemoteContentSetting with _$RemoteContentSetting {
   const factory RemoteContentSetting({
-    @Default(false) bool enabled,
+    @Default(true) bool enabled,
     @Default(false) bool exposed,
     @Default("https://prod.storage.efa-tech.dev") String originUrl,
     @Default("efa/v1/") String resourceRoot,
