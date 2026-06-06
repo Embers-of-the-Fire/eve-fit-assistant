@@ -314,12 +314,13 @@ def __publish_optional_tree(
         return
     if not source.is_dir():
         raise click.ClickException(f"Remote publish source tree is not a directory: {source}")
-    cmd = [mc, "mirror", "--overwrite"]
-    if attrs:
-        for k, v in attrs.items():
-            cmd.extend(["--attr", f"{k}={v}"])
-    cmd.extend([str(source), target])
-    __execute_command(cmd, "REMOTE PUBLISH")
+    target_base = target.rstrip("/")
+    for f in sorted(source.rglob("*")):
+        if not f.is_file():
+            continue
+        rel = f.relative_to(source)
+        remote = f"{target_base}/{rel}"
+        __publish_optional_file(mc, f, remote, attrs=attrs)
 
 
 def __publish_optional_file(
@@ -380,8 +381,8 @@ def __publish_remote_origin_to_s3(
     bucket_target = f"{resolved_alias}/{resolved_bucket}"
     redacted = "<redacted>"
     __execute_command_redacted(
-        [mc, "alias", "set", resolved_alias, endpoint, access_key, secret_key],
-        [mc, "alias", "set", resolved_alias, endpoint, redacted, redacted],
+        [mc, "alias", "set", resolved_alias, endpoint, access_key, secret_key, "--api", "s3v4"],
+        [mc, "alias", "set", resolved_alias, endpoint, redacted, redacted, "--api", "s3v4"],
         "REMOTE PUBLISH ALIAS",
     )
     if target == "minio":
@@ -2138,13 +2139,27 @@ def __resolve_publish_generation(
         return _generate_publish_id()
     # --source-dir mode: extract generation from the source's index.json
     ch_dir = source_dir / resolved_resource_root / "channels" / channel.value
-    index_path = ch_dir / "index.json"
-    if index_path.is_file():
-        index_data: dict[str, object] = json.loads(index_path.read_text(encoding="utf-8"))
+    gen = _read_generation_from_channel_dir(ch_dir)
+    if gen is not None:
+        return gen
+    return _generate_publish_id()
+
+
+def _read_generation_from_channel_dir(ch_dir: Path) -> str | None:
+    legacy = ch_dir / "index.json"
+    if legacy.is_file():
+        index_data: dict[str, object] = json.loads(legacy.read_text(encoding="utf-8"))
         gen = index_data.get("generation")
         if isinstance(gen, str) and gen:
             return gen
-    return _generate_publish_id()
+    for gen_dir in sorted(ch_dir.glob(".generations/*"), reverse=True):
+        idx = gen_dir / "index.json"
+        if idx.is_file():
+            index_data = json.loads(idx.read_text(encoding="utf-8"))
+            gen = index_data.get("generation")
+            if isinstance(gen, str) and gen:
+                return gen
+    return None
 
 
 # ---- shared S3 upload helpers -----------------------------------------------
@@ -2560,11 +2575,14 @@ def _resolve_verify_workers(
     return remote_cfg.require_s3().verify_workers
 
 
-def _find_local_index(channel_dir: Path) -> Path:
+def _resolve_local_index(channel_dir: Path, generation: str) -> Path:
+    gen_path = channel_dir / ".generations" / generation / "index.json"
+    if gen_path.is_file():
+        return gen_path
     legacy = channel_dir / "index.json"
     if legacy.is_file():
         return legacy
-    for gen_dir in channel_dir.glob(".generations/*"):
+    for gen_dir in sorted(channel_dir.glob(".generations/*"), reverse=True):
         idx = gen_dir / "index.json"
         if idx.is_file():
             return idx
@@ -2614,6 +2632,7 @@ def __verify_upload_integrity(
     bucket_target: str,
     resource_root: str,
     channel: Channel,
+    generation: str,
     session_id: str | None = None,
     verify_workers: int = 4,
 ) -> list[str]:
@@ -2651,20 +2670,14 @@ def __verify_upload_integrity(
             ):
                 tracked_document_ids.add(op.document_id)
 
-    # Resolve index.json and catalog files (generation-aware)
-    index_local_path = _find_local_index(channel_dir)
+    # Resolve index.json — prefer the generation-specific path matching the upload
+    index_local_path = _resolve_local_index(channel_dir, generation)
     if not index_local_path.is_file():
         return ["Local index.json not found for verification."]
 
     index_data: dict[str, object] = json.loads(index_local_path.read_text(encoding="utf-8"))
-    generation = None
-    gen_val = index_data.get("generation")
-    if isinstance(gen_val, str) and gen_val:
-        generation = gen_val
 
-    remote_channel_url = remote_channel
-    if generation:
-        remote_channel_url = f"{remote_channel}/.generations/{generation}"
+    remote_channel_url = f"{remote_channel}/.generations/{generation}"
 
     items.append(
         {
@@ -2976,6 +2989,7 @@ def remote_publish_upload(
             bucket_target=bucket_target,
             resource_root=resolved_resource_root,
             channel=resolved_channel,
+            generation=generation,
             session_id=resolved_session_id if source_dir is None else None,
             verify_workers=resolved_workers,
         )
@@ -3082,8 +3096,20 @@ def remote_publish_gc(
             str(s3["endpoint"]),
             str(s3["access_key"]),
             str(s3["secret_key"]),
+            "--api",
+            "s3v4",
         ],
-        [mc, "alias", "set", resolved_alias, str(s3["endpoint"]), redacted, redacted],
+        [
+            mc,
+            "alias",
+            "set",
+            resolved_alias,
+            str(s3["endpoint"]),
+            redacted,
+            redacted,
+            "--api",
+            "s3v4",
+        ],
         "GC ALIAS",
     )
 
@@ -3175,8 +3201,8 @@ def __start_minio_remote_mock(
             bucket_target = f"{alias_name}/{bucket}"
             redacted = "<redacted>"
             __execute_command_redacted(
-                [mc, "alias", "set", alias_name, endpoint, access_key, secret_key],
-                [mc, "alias", "set", alias_name, endpoint, redacted, redacted],
+                [mc, "alias", "set", alias_name, endpoint, access_key, secret_key, "--api", "s3v4"],
+                [mc, "alias", "set", alias_name, endpoint, redacted, redacted, "--api", "s3v4"],
                 "REMOTE PUBLISH ALIAS",
             )
             __execute_command_redacted(

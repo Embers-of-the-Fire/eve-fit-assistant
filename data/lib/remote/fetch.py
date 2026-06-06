@@ -93,8 +93,8 @@ def fetch_remote_state_s3(
 
     redacted = "<redacted>"
     _run(
-        [mc_bin, "alias", "set", alias_name, endpoint, access_key, secret_key],
-        [mc_bin, "alias", "set", alias_name, endpoint, redacted, redacted],
+        [mc_bin, "alias", "set", alias_name, endpoint, access_key, secret_key, "--api", "s3v4"],
+        [mc_bin, "alias", "set", alias_name, endpoint, redacted, redacted, "--api", "s3v4"],
         "FETCH ALIAS",
     )
 
