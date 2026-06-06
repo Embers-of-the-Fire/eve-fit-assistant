@@ -1,9 +1,33 @@
-# Changelog
+---
+id: version-0-1-0-beta-1
+kind: version
+publishedAt: 2026-06-06T08:44:24Z
+appVer: 0.1.0-beta.1
+tags:
+  - release-note
+  - version
+---
 
-All notable changes to EVE Fit Assistant are documented in this file.
+# v0.1.0-beta.1 发布说明
+- 实现远程内容管道，支持 S3/MinIO 存储、发布/导入工作流、ETag 缓存与会话管理
+- 实现 Bundle 管理功能，包含 schema 版本化、影响分析、技能方案校验与已安装验证
+- 集成 git-cliff 实现变更日志自动生成，新增发布版本管理命令行工具
+- 将频道从 Alpha 重命名为 Testing，完成跨平台迁移
+- 新增应用版本工具，支持最低版本警告和系统语言检测
+- 实现文档存储，支持未读追踪与启动时更新通知
+- 优化用户界面：舰船船体查看、自适应网格布局和技能编辑器改版
+- 增强开发者配置与环境管理命令
+- 修复 S3 空桶场景下的发布和远程状态获取问题
+- artifact 标识符改为从 bundleId 而非 gameServer 派生
+- 修复发布工具链：命令行标志位置、分支范围标签查找及 Flutter 构建属性
+- S3 目标跳过不必要的桶创建
+- 修复热重启时过期的 ETag 缓存问题
+- 修复缺失 Alpha Max 技能的处理及窄布局下 Bundle 标题显示
+- 定义远程内容存储契约，文档化本地基线
+- 更新运行时与构建依赖
+- 重命名包标识符、更新原始 URL，移除遗留的 S3 回滚逻辑
+- 更新开发者文档，开发环境增加 MinIO CLI 支持
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [v0.1.0-beta.1] - 2026-06-06
 
 
@@ -65,9 +89,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **remote:** Handle empty S3 bucket in fetch_remote_state_s3
 - **remote:** Derive artifact_id from bundleId instead of gameServer
 - **remote:** Fix S3 publish upload failures on empty R2 buckets
-## [Unreleased]
-
-### Added
-
--
-
