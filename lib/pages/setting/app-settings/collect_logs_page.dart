@@ -108,7 +108,11 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
   int get _totalSize {
     int size = 0;
     for (final path in _selectedPaths) {
-      size += File(path).lengthSync();
+      try {
+        size += File(path).lengthSync();
+      } on Object {
+        // file rotated or deleted since listing
+      }
     }
     return size;
   }
@@ -130,9 +134,15 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
     final archive = Archive();
     for (final path in _selectedPaths) {
       final basename = p.basename(path);
-      final bytes = await File(path).readAsBytes();
-      archive.addFile(ArchiveFile(basename, bytes.length, bytes));
+      try {
+        final bytes = await File(path).readAsBytes();
+        archive.addFile(ArchiveFile(basename, bytes.length, bytes));
+      } on Object {
+        // file rotated or deleted since selection
+      }
     }
+
+    if (archive.isEmpty) return;
 
     final zipData = ZipEncoder().encode(archive);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -228,8 +238,19 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
   Widget _logFileTile(BuildContext context, File file) {
     final basename = p.basename(file.path);
     final isActive = basename == "latest.log";
-    final modified = file.lastModifiedSync();
-    final size = _formatSize(file.lengthSync());
+
+    String sizeLabel;
+    String modifiedLabel;
+    try {
+      sizeLabel = _formatSize(file.lengthSync());
+    } on Object {
+      sizeLabel = "—";
+    }
+    try {
+      modifiedLabel = _formatDateTime(file.lastModifiedSync());
+    } on Object {
+      modifiedLabel = "—";
+    }
 
     return CheckboxListTile(
       title: Text.rich(
@@ -244,7 +265,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
           ],
         ),
       ),
-      subtitle: Text("${_formatDateTime(modified)} — $size"),
+      subtitle: Text("$modifiedLabel — $sizeLabel"),
       value: _selectedPaths.contains(file.path),
       onChanged: (_) => _toggleFile(file.path),
     );
