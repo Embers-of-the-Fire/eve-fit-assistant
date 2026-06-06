@@ -19,7 +19,7 @@ abstract class RemoteContentSetting with _$RemoteContentSetting {
   const factory RemoteContentSetting({
     @Default(false) bool enabled,
     @Default(false) bool exposed,
-    @Default("") String originUrl,
+    @Default("https://prod.storage.efa-tech.dev") String originUrl,
     @Default("efa/v1/") String resourceRoot,
     @Default("testing") String channel,
     @Default("global") String region,
