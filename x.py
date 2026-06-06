@@ -373,16 +373,6 @@ def __publish_remote_origin_to_s3(
     gen_dir = channel_dir / ".generations" / generation
     index_path = gen_dir / "index.json"
 
-    legacy_index_path = channel_dir / "index.json"
-    if not index_path.exists() and legacy_index_path.is_file():
-        warning(f"Source uses legacy layout; wrapping generation {generation} at upload time.")
-        gen_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(legacy_index_path, gen_dir / "index.json")
-        for sub in ("documents", "bundles", "app"):
-            src_sub = channel_dir / sub
-            if src_sub.is_dir():
-                shutil.copytree(src_sub, gen_dir / sub, dirs_exist_ok=True)
-
     if not index_path.exists() or not index_path.is_file():
         raise click.ClickException(f"Remote publish generation index does not exist: {index_path}")
 
