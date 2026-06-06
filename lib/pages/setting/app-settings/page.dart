@@ -47,6 +47,12 @@ class AppSettingsPage extends ConsumerWidget {
           subtitle: context.l10n.appSettingsPageRemoteContentOpenDescription,
           onTap: () => unawaited(_openRemoteContentSettings(context)),
         ),
+        ConfigListTile.item(
+          icon: const Icon(Icons.bug_report_outlined),
+          title: context.l10n.appSettingsPageCollectLogsEntryTitle,
+          subtitle: context.l10n.appSettingsPageCollectLogsEntryDescription,
+          onTap: () => unawaited(context.router.push(const CollectLogsRoute())),
+        ),
       ],
     ),
   );
