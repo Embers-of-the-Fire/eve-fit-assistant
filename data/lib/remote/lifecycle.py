@@ -113,9 +113,7 @@ class _BaseSessionManager:
         return cls.from_session_id(sessions_root, session_id)
 
     @classmethod
-    def from_session_id(
-        cls, sessions_root: Path, session_id: str
-    ) -> _BaseSessionManager:
+    def from_session_id(cls, sessions_root: Path, session_id: str) -> _BaseSessionManager:
         session_dir = _session_path(sessions_root, session_id)
         if not session_dir.is_dir():
             raise FileNotFoundError(f"Session directory does not exist: {session_dir}")
