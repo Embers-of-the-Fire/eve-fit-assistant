@@ -8,25 +8,25 @@ channel.
 
 from __future__ import annotations
 
-import datetime
-import json
 import os
 import platform
 import shutil
-import uuid
 
 from typing import TYPE_CHECKING
 
 from data.lib.remote import catalog as _catalog_mod
 from data.lib.remote import fetch as _fetch_mod
 from data.lib.remote.channel import Channel
+from data.lib.remote.lifecycle import _BaseSessionManager
 from data.lib.remote.models import LockFile
 from data.lib.remote.models import PromoteBundleOp
 from data.lib.remote.models import PromoteDocumentOp
 from data.lib.remote.models import TodoList
-from data.lib.remote.models import _load_json_model
+from data.lib.remote.models import _generate_session_id as _gen_session_id
 from data.lib.remote.models import _persist_json
 from data.lib.remote.models import _session_path
+from data.lib.remote.models import _utc_timestamp
+from data.lib.remote.models import _write_json
 from data.lib.remote.session import _generate_publish_id
 from data.lib.remote.session import _generate_releases_json
 
@@ -37,33 +37,6 @@ if TYPE_CHECKING:
     from data.lib.remote.models import SessionStatus
 
 
-CURRENT_SESSION_FILE = "current-promote"
-_SOURCE_CHANNEL = Channel.TESTING
-_TARGET_CHANNEL = Channel.STABLE
-
-
-def _utc_now() -> str:
-    return (
-        datetime.datetime.now(datetime.UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
-
-
-def _generate_session_id() -> str:
-    stamp = (
-        datetime.datetime.now(datetime.UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-        .replace("-", "")
-        .replace(":", "")
-    )
-    short_uuid = uuid.uuid4().hex[:8]
-    return f"promote-{stamp}-{short_uuid}"
-
-
 class PromotionSessionNotActiveError(Exception):
     """Raised when no promotion session is currently active."""
 
@@ -72,42 +45,15 @@ class PromotionSessionCommittedError(Exception):
     """Raised when an operation is attempted on an already-committed session."""
 
 
-class PromotionSessionManager:
+class PromotionSessionManager(_BaseSessionManager):
     """Lifecycle manager for a promotion session (testing -> stable)."""
 
-    def __init__(
-        self,
-        sessions_root: Path,
-        session_id: str,
-        *,
-        lockfile: LockFile | None = None,
-        todo: TodoList | None = None,
-    ) -> None:
-        self.sessions_root = sessions_root
-        self.session_id = session_id
-        self._session_dir = _session_path(sessions_root, session_id)
-        self._lockfile: LockFile | None = lockfile
-        self._todo: TodoList | None = todo
+    CURRENT_SESSION_FILE = "current-promote"
+    _NOT_ACTIVE_ERROR = PromotionSessionNotActiveError
+    _COMMITTED_ERROR = PromotionSessionCommittedError
 
-    @property
-    def session_dir(self) -> Path:
-        return self._session_dir
-
-    @property
-    def remote_state_dir(self) -> Path:
-        return self._session_dir / "remote-state"
-
-    @property
-    def merged_dir(self) -> Path:
-        return self._session_dir / "merged"
-
-    @property
-    def todo_path(self) -> Path:
-        return self._session_dir / "todo.json"
-
-    @property
-    def lockfile_path(self) -> Path:
-        return self._session_dir / "lockfile.json"
+    _source_channel = Channel.TESTING
+    _target_channel = Channel.STABLE
 
     # ---- factory: start ----------------------------------------------------
 
@@ -126,9 +72,7 @@ class PromotionSessionManager:
         secret_key: str | None = None,
         alias_name: str | None = None,
     ) -> PromotionSessionManager:
-        from data.lib.remote.models import LockFile
-
-        session_id = _generate_session_id()
+        session_id = _gen_session_id("promote")
         session_dir = _session_path(sessions_root, session_id)
 
         if session_dir.exists():
@@ -138,10 +82,7 @@ class PromotionSessionManager:
 
         lockfile = LockFile(
             session_id=session_id,
-            timestamp=datetime.datetime.now(datetime.UTC)
-            .replace(microsecond=0)
-            .isoformat()
-            .replace("+00:00", "Z"),
+            timestamp=_utc_timestamp(),
             host=platform.node(),
             pid=os.getpid(),
             backend=backend,  # type: ignore[arg-type]
@@ -169,7 +110,7 @@ class PromotionSessionManager:
 
             remote_state_dir = session_dir / "remote-state"
 
-            for ch in (_SOURCE_CHANNEL, _TARGET_CHANNEL):
+            for ch in (cls._source_channel, cls._target_channel):
                 if origin_dir is not None:
                     _fetch_mod.fetch_remote_state_local(
                         origin_dir=origin_dir,
@@ -199,7 +140,7 @@ class PromotionSessionManager:
                         output_dir=remote_state_dir,
                     )
 
-            _write_current_session(sessions_root, session_id)
+            cls._write_current_session(sessions_root, session_id)
 
         except Exception:
             if session_dir.exists():
@@ -207,77 +148,6 @@ class PromotionSessionManager:
             raise
 
         return cls(sessions_root, session_id, lockfile=lockfile, todo=todo)
-
-    # ---- factory: from existing session ------------------------------------
-
-    @classmethod
-    def from_current(cls, sessions_root: Path) -> PromotionSessionManager:
-        session_id = _read_current_session(sessions_root)
-        if session_id is None:
-            raise PromotionSessionNotActiveError(
-                "No promotion session is active. Run `./x remote promote start`."
-            )
-        return cls.from_session_id(sessions_root, session_id)
-
-    @classmethod
-    def from_session_id(cls, sessions_root: Path, session_id: str) -> PromotionSessionManager:
-        session_dir = _session_path(sessions_root, session_id)
-        if not session_dir.is_dir():
-            raise FileNotFoundError(f"Session directory does not exist: {session_dir}")
-
-        from data.lib.remote.models import LockFile
-
-        lockfile: LockFile | None = None
-        lockfile_path = session_dir / "lockfile.json"
-        if lockfile_path.is_file():
-            lockfile = _load_json_model(lockfile_path, LockFile)
-
-        todo: TodoList | None = None
-        todo_path = session_dir / "todo.json"
-        if todo_path.is_file():
-            todo = _load_json_model(todo_path, TodoList)
-
-        return cls(sessions_root, session_id, lockfile=lockfile, todo=todo)
-
-    # ---- lock / todo helpers -----------------------------------------------
-
-    def _ensure_not_committed(self) -> None:
-        self._load_todo()
-        if self._todo and self._todo.committed:
-            raise PromotionSessionCommittedError(
-                f"Session {self.session_id} has already been committed and is immutable."
-            )
-
-    def _load_todo(self) -> TodoList:
-        if self._todo is None:
-            self._todo = _load_json_model(self.todo_path, TodoList)
-        return self._todo
-
-    def _load_lockfile(self) -> LockFile:
-        if self._lockfile is None:
-            from data.lib.remote.models import LockFile as _LockFile
-
-            if self.lockfile_path.is_file():
-                self._lockfile = _load_json_model(self.lockfile_path, _LockFile)
-            else:
-                todo = self._load_todo()
-                if todo.lock_snapshot:
-                    self._lockfile = _LockFile(
-                        session_id=self.session_id,
-                        backend=str(todo.lock_snapshot["backend"]),
-                        timestamp=str(todo.lock_snapshot["timestamp"]),
-                        host=str(todo.lock_snapshot["host"]),
-                        pid=int(todo.lock_snapshot["pid"]),
-                    )
-                else:
-                    raise FileNotFoundError(
-                        f"Lockfile not found and no snapshot in todo: {self.lockfile_path}"
-                    )
-        return self._lockfile
-
-    def _save_todo(self) -> None:
-        if self._todo is not None:
-            _persist_json(self.todo_path, self._todo)
 
     # ---- status ------------------------------------------------------------
 
@@ -306,10 +176,10 @@ class PromotionSessionManager:
         is the catalog entry dict from the testing channel's catalog.
         """
         _s_idx, _s_docs, _s_bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, _TARGET_CHANNEL
+            self.remote_state_dir, self._target_channel
         )
         _t_idx, t_docs, t_bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, _SOURCE_CHANNEL
+            self.remote_state_dir, self._source_channel
         )
 
         stable_doc_ids: set[str] = {
@@ -344,7 +214,7 @@ class PromotionSessionManager:
 
     def _get_testing_entry(self, artifact_id: str) -> dict[str, object]:
         _t_idx, _t_docs, t_bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, _SOURCE_CHANNEL
+            self.remote_state_dir, self._source_channel
         )
         for a in t_bundles.get("artifacts", []):  # type: ignore[assignment]
             if isinstance(a, dict) and a.get("artifactId") == artifact_id:
@@ -353,7 +223,7 @@ class PromotionSessionManager:
 
     def _get_testing_document(self, document_id: str) -> dict[str, object]:
         _t_idx, t_docs, _t_bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, _SOURCE_CHANNEL
+            self.remote_state_dir, self._source_channel
         )
         for e in t_docs.get("entries", []):  # type: ignore[assignment]
             if isinstance(e, dict) and e.get("id") == document_id:
@@ -367,7 +237,7 @@ class PromotionSessionManager:
             return []
 
         _t_idx, _t_docs, t_bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, _SOURCE_CHANNEL
+            self.remote_state_dir, self._source_channel
         )
         increments: list[dict[str, object]] = []
         for a in t_bundles.get("artifacts", []):  # type: ignore[assignment]
@@ -403,7 +273,7 @@ class PromotionSessionManager:
                 )
 
         entry = dict(self._get_testing_entry(artifact_id))
-        entry["generatedAt"] = _utc_now()
+        entry["generatedAt"] = _utc_timestamp()
         bundle_id = entry.get("bundleId", "")
         if not isinstance(bundle_id, str):
             raise ValueError("Entry missing bundleId")
@@ -429,7 +299,7 @@ class PromotionSessionManager:
                 if already_staged:
                     continue
                 inc_entry = dict(inc)
-                inc_entry["generatedAt"] = _utc_now()
+                inc_entry["generatedAt"] = _utc_timestamp()
                 inc_op = PromoteBundleOp(
                     artifact_id=inc_artifact_id,
                     bundle_id=bundle_id,
@@ -452,7 +322,7 @@ class PromotionSessionManager:
                 )
 
         entry = dict(self._get_testing_document(document_id))
-        entry["publishedAt"] = _utc_now()
+        entry["publishedAt"] = _utc_timestamp()
         op = PromoteDocumentOp(document_id=document_id, fields=entry)
         todo.operations.append(op)
         self._save_todo()
@@ -505,7 +375,7 @@ class PromotionSessionManager:
     ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
         """Apply staged promotions to the stable channel's catalogs."""
         index, docs, bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, _TARGET_CHANNEL
+            self.remote_state_dir, self._target_channel
         )
         todo = self._load_todo()
         ops_raw = [op.model_dump(mode="json") for op in todo.operations]
@@ -513,13 +383,13 @@ class PromotionSessionManager:
             index,
             docs,
             bundles,
-            _TARGET_CHANNEL,
+            self._target_channel,
             ops_raw,  # type: ignore[arg-type]
             generation=generation,
         )
 
         base = self.merged_dir / resource_root
-        ch = f"channels/{_TARGET_CHANNEL}"
+        ch = f"channels/{self._target_channel}"
 
         if generation is not None:
             gen_dir = base / ch / ".generations" / generation
@@ -530,7 +400,7 @@ class PromotionSessionManager:
             (gen_dir / "bundles").mkdir(parents=True, exist_ok=True)
             _write_json(gen_dir / "bundles" / "catalog.json", merged_bundles)
             (gen_dir / "app").mkdir(parents=True, exist_ok=True)
-            releases = _generate_releases_json(merged_docs, _TARGET_CHANNEL, generation)
+            releases = _generate_releases_json(merged_docs, self._target_channel, generation)
             _write_json(gen_dir / "app" / "releases.json", releases)
         else:
             (base / ch).mkdir(parents=True, exist_ok=True)
@@ -557,7 +427,7 @@ class PromotionSessionManager:
             todo.generation = generation
             _persist_json(self.todo_path, todo)
         r_idx, r_docs, r_bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, _TARGET_CHANNEL
+            self.remote_state_dir, self._target_channel
         )
         m_idx, m_docs, m_bundles = self.regenerate_merged(resource_root, generation=generation)
 
@@ -654,50 +524,3 @@ class PromotionSessionManager:
         _persist_json(self.todo_path, todo)
         self.lockfile_path.unlink(missing_ok=True)
         return self.status()
-
-    # ---- abort -------------------------------------------------------------
-
-    def abort(self) -> None:
-        """Delete the session directory."""
-        if self._session_dir.exists():
-            shutil.rmtree(self._session_dir, ignore_errors=True)
-        _clear_current_session(self.sessions_root, self.session_id)
-
-
-# ---------------------------------------------------------------------------
-# Session pointer helpers
-# ---------------------------------------------------------------------------
-
-
-def _current_session_path(sessions_root: Path) -> Path:
-    return sessions_root / CURRENT_SESSION_FILE
-
-
-def _read_current_session(sessions_root: Path) -> str | None:
-    path = _current_session_path(sessions_root)
-    if path.is_file():
-        return path.read_text(encoding="utf-8").strip()
-    return None
-
-
-def _write_current_session(sessions_root: Path, session_id: str) -> None:
-    _current_session_path(sessions_root).write_text(session_id, encoding="utf-8")
-
-
-def _clear_current_session(sessions_root: Path, session_id: str) -> None:
-    path = _current_session_path(sessions_root)
-    if path.is_file() and path.read_text(encoding="utf-8").strip() == session_id:
-        path.unlink(missing_ok=True)
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-def _write_json(path: Path, data: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(data, indent=4, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
