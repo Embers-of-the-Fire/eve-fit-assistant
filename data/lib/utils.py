@@ -90,3 +90,11 @@ def get_file_sha256(file: Path) -> str:
         for chunk in iter(lambda: f.read(8192), b""):
             hasher.update(chunk)
         return hasher.hexdigest()
+
+
+def get_file_sha1(file: Path) -> str:
+    with file.open("rb") as f:
+        hasher = hashlib.sha1()
+        for chunk in iter(lambda: f.read(8192), b""):
+            hasher.update(chunk)
+        return hasher.hexdigest()
