@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/storage/bundle/manager.dart";
 import "package:eve_fit_assistant/storage/bundle/schema_version.dart";
 import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/utils/version.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
@@ -333,7 +334,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     required String appVersion,
     required Map<String, BundleRegistrar> installedRegistrars,
   }) {
-    if (artifact.appVersion != appVersion) {
+    if (compareAppVersions(artifact.appVersion, appVersion) > 0) {
       return RemoteBundleCandidate(
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
