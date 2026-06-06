@@ -762,6 +762,12 @@
   "collectLogsNoLogFiles": "未找到日志文件",
   "collectLogsShareButton": "分享",
   "collectLogsTotalSize": "{size}，共 {count} 个文件",
+  "@collectLogsTotalSize": {
+    "placeholders": {
+      "size": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
   "collectLogsLoadError": "加载日志文件失败",
   "appSettingsPageSectionDeveloper": "开发者选项",
   "appSettingsPageDebugLogTitle": "启用调试日志",
