@@ -26,6 +26,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
   final Set<String> _selectedPaths = {};
   TimeFilter _activeFilter = TimeFilter.all;
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -34,7 +35,10 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
   }
 
   Future<void> _loadFiles() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
     try {
       final dir = Directory(PathProvider.logsPath);
       if (!await dir.exists()) {
@@ -56,7 +60,10 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
       _applyFilter(_activeFilter);
     } on Object {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
     }
   }
 
@@ -189,6 +196,23 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
   Widget _buildFileList(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
+    }
+    if (_error) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48),
+              const SizedBox(height: 12),
+              Text(context.l10n.collectLogsLoadError),
+              const SizedBox(height: 16),
+              OutlinedButton(onPressed: _loadFiles, child: const Text("Retry")),
+            ],
+          ),
+        ),
+      );
     }
     if (_logFiles.isEmpty) {
       return Center(
