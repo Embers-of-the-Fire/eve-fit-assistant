@@ -110,7 +110,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
   }
 
   String _formatDateTime(DateTime dt) {
-    final pad = (int n) => n.toString().padLeft(2, "0");
+    String pad(int n) => n.toString().padLeft(2, "0");
     return "${dt.year}-${pad(dt.month)}-${pad(dt.day)} ${pad(dt.hour)}:${pad(dt.minute)}";
   }
 
@@ -130,9 +130,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
     await File(zipPath).writeAsBytes(zipData);
 
     if (!mounted) return;
-    await SharePlus.instance.share(
-      ShareParams(files: [XFile(zipPath)], subject: "EFA Logs"),
-    );
+    await SharePlus.instance.share(ShareParams(files: [XFile(zipPath)], subject: "EFA Logs"));
   }
 
   Iterable<File> get _logFiles =>
@@ -151,39 +149,39 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
     ),
   );
 
-  Widget _buildFilters(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(context.l10n.collectLogsQuickFilter, style: context.theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: TimeFilter.values.map((filter) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(switch (filter) {
-                      TimeFilter.oneHour => context.l10n.collectLogsFilter1Hour,
-                      TimeFilter.twentyFourHours => context.l10n.collectLogsFilter24Hours,
-                      TimeFilter.sevenDays => context.l10n.collectLogsFilter7Days,
-                      TimeFilter.thirtyDays => context.l10n.collectLogsFilter30Days,
-                      TimeFilter.all => context.l10n.collectLogsFilterAll,
-                    }),
-                    selected: _activeFilter == filter,
-                    onSelected: (_) => _applyFilter(filter),
+  Widget _buildFilters(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(context.l10n.collectLogsQuickFilter, style: context.theme.textTheme.titleSmall),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: TimeFilter.values
+                .map(
+                  (filter) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(switch (filter) {
+                        TimeFilter.oneHour => context.l10n.collectLogsFilter1Hour,
+                        TimeFilter.twentyFourHours => context.l10n.collectLogsFilter24Hours,
+                        TimeFilter.sevenDays => context.l10n.collectLogsFilter7Days,
+                        TimeFilter.thirtyDays => context.l10n.collectLogsFilter30Days,
+                        TimeFilter.all => context.l10n.collectLogsFilterAll,
+                      }),
+                      selected: _activeFilter == filter,
+                      onSelected: (_) => _applyFilter(filter),
+                    ),
                   ),
-                );
-              }).toList(),
-            ),
+                )
+                .toList(),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 
   Widget _buildFileList(BuildContext context) {
     if (_loading) {
@@ -197,13 +195,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
         ),
       );
     }
-    return ListView(
-      children: _logFiles
-          .map(
-            (file) => _logFileTile(context, file),
-          )
-          .toList(),
-    );
+    return ListView(children: _logFiles.map((file) => _logFileTile(context, file)).toList());
   }
 
   Widget _logFileTile(BuildContext context, File file) {
@@ -248,7 +240,10 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
         children: [
           Expanded(
             child: Text(
-              context.l10n.collectLogsTotalSize(size: _formatSize(_totalSize), count: _selectedCount),
+              context.l10n.collectLogsTotalSize(
+                size: _formatSize(_totalSize),
+                count: _selectedCount,
+              ),
               style: theme.textTheme.bodyMedium,
             ),
           ),
