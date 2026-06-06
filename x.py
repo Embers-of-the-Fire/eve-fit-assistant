@@ -3875,7 +3875,9 @@ def _build_apk_copy_and_verify(src_apk: Path, src_sha1: Path, dst_apk: Path, dst
 @build.command("apk")
 @click.option("--clean", is_flag=True, default=False, help="Run `flutter clean` before building.")
 @click.option("--flavor", default=None, help="Flutter flavor to build (e.g. dev, prod).")
-@click.option("--debug", is_flag=True, default=False, help="Build debug APK (single ABI only, no split).")
+@click.option(
+    "--debug", is_flag=True, default=False, help="Build debug APK (single ABI only, no split)."
+)
 def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
     """Build Android APKs with versioned filenames."""
     ProjectConfiguration.ensure_loaded()
@@ -3893,8 +3895,7 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         __execute_command([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
 
     if debug:
-        mode_suffix = "debug"
-        __execute_command([flutter, "build", "apk", "--debug"] + flavor_args, "BUILDING DEBUG APK")
+        __execute_command([flutter, "build", "apk", "--debug", *flavor_args], "BUILDING DEBUG APK")
         src_prefix = f"app-{flavor}-" if flavor else "app-"
         src_apk = apk_source / f"{src_prefix}debug.apk"
         src_sha1 = apk_source / f"{src_prefix}debug.apk.sha1"
@@ -3904,10 +3905,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         dst_sha1 = output_dir / f"{tag}-debug.apk.sha1"
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
     else:
-        __execute_command([flutter, "build", "apk"] + flavor_args, "BUILDING GENERAL APK")
-        src_apk = apk_source / (
-            f"app-{flavor}-release.apk" if flavor else "app-release.apk"
-        )
+        __execute_command([flutter, "build", "apk", *flavor_args], "BUILDING GENERAL APK")
+        src_apk = apk_source / (f"app-{flavor}-release.apk" if flavor else "app-release.apk")
         src_sha1 = apk_source / (
             f"app-{flavor}-release.apk.sha1" if flavor else "app-release.apk.sha1"
         )
@@ -3918,7 +3917,7 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
         __execute_command(
-            [flutter, "build", "apk", "--split-per-abi"] + flavor_args,
+            [flutter, "build", "apk", "--split-per-abi", *flavor_args],
             "BUILDING SPLIT ABI APKS",
         )
         for flutter_abi, apk_suffix in _ABI_FLUTTER_TO_APK.items():
