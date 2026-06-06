@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import json
 import subprocess
 
@@ -24,6 +25,51 @@ def _remote_state_output_paths(output_dir: Path, channel: Channel) -> dict[str, 
         "documents_catalog": output_dir / ch / "documents" / "catalog.json",
         "bundles_catalog": output_dir / ch / "bundles" / "catalog.json",
     }
+
+
+def _write_empty_remote_state(output_dir: Path, channel: Channel) -> None:
+    """Create empty initial remote state files for a blank bucket."""
+    ch = _channel_subdir(channel)
+    timestamp = datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat()
+    index = {
+        "schemaVersion": 1,
+        "generatedAt": timestamp,
+        "minClientApi": 1,
+        "channel": channel.value,
+        "region": "global",
+        "documents": {
+            "catalogPath": f"{ch}/documents/catalog.json",
+            "revision": "empty",
+        },
+        "bundles": {
+            "catalogPath": f"{ch}/bundles/catalog.json",
+            "revision": "empty",
+        },
+        "app": {
+            "releasesPath": f"{ch}/app/releases.json",
+            "revision": "empty",
+        },
+    }
+    documents_catalog = {
+        "schemaVersion": 1,
+        "version": 1,
+        "entries": [],
+    }
+    bundles_catalog = {
+        "schemaVersion": 1,
+        "artifacts": [],
+    }
+
+    def _write(path: Path, data: dict[str, object]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(data, indent=4, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    _write(output_dir / ch / "index.json", index)
+    _write(output_dir / ch / "documents" / "catalog.json", documents_catalog)
+    _write(output_dir / ch / "bundles" / "catalog.json", bundles_catalog)
 
 
 def fetch_remote_state_s3(
@@ -52,23 +98,30 @@ def fetch_remote_state_s3(
         "FETCH ALIAS",
     )
 
-    _run(
-        [
-            mc_bin,
-            "cp",
-            "--recursive",
-            channel_target + "/",
-            str(output_dir / _channel_subdir(channel)) + "/",
-        ],
-        [
-            mc_bin,
-            "cp",
-            "--recursive",
-            channel_target + "/",
-            str(output_dir / _channel_subdir(channel)) + "/",
-        ],
-        "FETCH REMOTE STATE",
-    )
+    try:
+        _run(
+            [
+                mc_bin,
+                "cp",
+                "--recursive",
+                channel_target + "/",
+                str(output_dir / _channel_subdir(channel)) + "/",
+            ],
+            [
+                mc_bin,
+                "cp",
+                "--recursive",
+                channel_target + "/",
+                str(output_dir / _channel_subdir(channel)) + "/",
+            ],
+            "FETCH REMOTE STATE",
+        )
+    except OSError as exc:
+        msg = str(exc)
+        if "Object does not exist" in msg or "NoSuchKey" in msg:
+            _write_empty_remote_state(output_dir, channel)
+            return
+        raise
 
 
 def fetch_remote_state_local(
