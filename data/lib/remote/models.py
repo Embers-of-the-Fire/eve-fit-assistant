@@ -7,6 +7,10 @@ SessionStatus — lightweight summary for the status command.
 
 from __future__ import annotations
 
+import datetime
+import json
+import uuid
+
 from typing import TYPE_CHECKING
 from typing import Literal
 
@@ -154,7 +158,35 @@ def _persist_json(path: Path, model: BaseModel) -> None:
 
 
 def _load_json_model[T: BaseModel](path: Path, model_cls: type[T]) -> T:
-    import json as _json
-
     text = path.read_text(encoding="utf-8")
-    return model_cls.model_validate(_json.loads(text))
+    return model_cls.model_validate(json.loads(text))
+
+
+def _utc_timestamp() -> str:
+    """Return an ISO-8601 UTC timestamp string."""
+    return (
+        datetime.datetime.now(datetime.UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def _write_json(path: Path, data: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(data, indent=4, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _validate_backend(backend: str) -> Literal["minio", "s3", "local"]:
+    if backend not in ("minio", "s3", "local"):
+        raise ValueError(f"Invalid backend {backend!r}; must be one of 'minio', 's3', 'local'")
+    return backend  # type: ignore[return-value]
+
+
+def _generate_session_id(prefix: str) -> str:
+    stamp = _utc_timestamp().replace("-", "").replace(":", "")
+    short_uuid = uuid.uuid4().hex[:8]
+    return f"{prefix}-{stamp}-{short_uuid}"
