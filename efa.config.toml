@@ -11,8 +11,8 @@ major = 0
 minor = 1
 patch = 0
 pre_label = "beta"
-pre_num = 2
-build = 2
+pre_num = 3
+build = 3
 
 [bundle_schema]
 current = 1

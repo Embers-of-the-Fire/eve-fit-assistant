@@ -4,7 +4,15 @@ All notable changes to EVE Fit Assistant are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
-## [v0.1.0-beta.2] - 2026-06-06
+## [v0.1.0-beta.3] - 2026-06-06
+
+
+### Added
+
+- Add APK output path and SHA1 utility functions (#124) ([#124])
+### Fixed
+
+- **bundle:** Use semver comparison for remote bundle app version check (#123) ([#123])## [v0.1.0-beta.2] - 2026-06-06
 
 
 ### Added
