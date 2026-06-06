@@ -749,6 +749,26 @@
   "appSettingsPageRemoteContentChannelLabel": "频道",
   "appSettingsPageRemoteContentChannelTesting": "测试版",
   "appSettingsPageRemoteContentChannelStable": "稳定版",
+  "appSettingsPageCollectLogsEntryTitle": "收集日志",
+  "appSettingsPageCollectLogsEntryDescription": "选择和分享应用日志以进行调试和问题报告",
+  "collectLogsPageTitle": "收集日志",
+  "collectLogsQuickFilter": "快速筛选",
+  "collectLogsFilterAll": "全部",
+  "collectLogsFilter1Hour": "1小时",
+  "collectLogsFilter24Hours": "24小时",
+  "collectLogsFilter7Days": "7天",
+  "collectLogsFilter30Days": "30天",
+  "collectLogsFileActive": "(当前)",
+  "collectLogsNoLogFiles": "未找到日志文件",
+  "collectLogsShareButton": "分享",
+  "collectLogsTotalSize": "{size}，共 {count} 个文件",
+  "@collectLogsTotalSize": {
+    "placeholders": {
+      "size": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "collectLogsLoadError": "加载日志文件失败",
   "appSettingsPageSectionDeveloper": "开发者选项",
   "appSettingsPageDebugLogTitle": "启用调试日志",
   "appSettingsPageDebugLogDescription": "启用调试日志后，应用将会输出所有日志到日志目录中。\n建议仅当开发者要求开启此功能时才开启。",
