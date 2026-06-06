@@ -761,10 +761,10 @@ def _generate_publish_id() -> str:
 
 
 def _derive_artifact_id(descriptor: dict[str, object], *, variant: str) -> str:
-    game_server = _require_string(descriptor, "gameServer", "descriptor").lower()
+    bundle_id = _require_string(descriptor, "bundleId", "descriptor").lower()
     game_build = _require_string(descriptor, "gameBuild", "descriptor")
     suffix = "-inc" if variant == "incremental" else ""
-    return f"data-{game_server}-{game_build}{suffix}"
+    return f"data-{bundle_id}-{game_build}{suffix}"
 
 
 def _generate_releases_json(
