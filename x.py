@@ -80,7 +80,9 @@ from data.lib.remote.session import SessionCommittedError
 from data.lib.remote.session import SessionManager
 from data.lib.remote.session import SessionNotActiveError
 from data.lib.utils import execute_command
+from data.lib.utils import get_bin_size
 from data.lib.utils import get_command
+from data.lib.utils import get_file_sha1
 from data.lib.workspace.config import WorkspaceConfig
 
 
@@ -3850,6 +3852,97 @@ def build_increment_cmd(baseline_manifest_path: str | None):
         baseline_manifest = Path(baseline_manifest_path)
 
     build_increment_bundle(__get_current_workspace_descriptor(), baseline_manifest)
+
+
+_ABI_FLUTTER_TO_APK = {
+    "armeabi-v7a": "arm",
+    "arm64-v8a": "arm64",
+    "x86_64": "x64",
+}
+
+
+def _build_apk_copy_and_verify(src_apk: Path, src_sha1: Path, dst_apk: Path, dst_sha1: Path):
+    shutil.copy2(src_apk, dst_apk)
+    shutil.copy2(src_sha1, dst_sha1)
+    expected = src_sha1.read_text(encoding="utf-8").strip()
+    actual = get_file_sha1(dst_apk)
+    if expected != actual:
+        raise click.ClickException(
+            f"SHA1 mismatch for {dst_apk.name}: expected {expected}, got {actual}"
+        )
+
+
+@build.command("apk")
+@click.option("--clean", is_flag=True, default=False, help="Run `flutter clean` before building.")
+@click.option("--flavor", default=None, help="Flutter flavor to build (e.g. dev, prod).")
+@click.option("--debug", is_flag=True, default=False, help="Build debug APK (single ABI only, no split).")
+def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
+    """Build Android APKs with versioned filenames."""
+    ProjectConfiguration.ensure_loaded()
+    version = data.lib.config.CONFIGURATION.version
+    tag = version.render_tag()
+    output_root = data.lib.config.CONFIGURATION.paths.apk
+    output_dir = output_root / tag
+    output_dir.mkdir(parents=True, exist_ok=True)
+    apk_source = PROJECT_ROOT / "build" / "app" / "outputs" / "flutter-apk"
+
+    flutter = get_command("flutter")
+    flavor_args = [f"--flavor={flavor}"] if flavor else []
+
+    if clean:
+        __execute_command([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
+
+    if debug:
+        mode_suffix = "debug"
+        __execute_command([flutter, "build", "apk", "--debug"] + flavor_args, "BUILDING DEBUG APK")
+        src_prefix = f"app-{flavor}-" if flavor else "app-"
+        src_apk = apk_source / f"{src_prefix}debug.apk"
+        src_sha1 = apk_source / f"{src_prefix}debug.apk.sha1"
+        if not src_apk.exists():
+            raise click.ClickException(f"Expected debug APK not found: {src_apk}")
+        dst_apk = output_dir / f"{tag}-debug.apk"
+        dst_sha1 = output_dir / f"{tag}-debug.apk.sha1"
+        _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
+    else:
+        __execute_command([flutter, "build", "apk"] + flavor_args, "BUILDING GENERAL APK")
+        src_apk = apk_source / (
+            f"app-{flavor}-release.apk" if flavor else "app-release.apk"
+        )
+        src_sha1 = apk_source / (
+            f"app-{flavor}-release.apk.sha1" if flavor else "app-release.apk.sha1"
+        )
+        if not src_apk.exists():
+            raise click.ClickException(f"Expected general APK not found: {src_apk}")
+        dst_apk = output_dir / f"{tag}-general.apk"
+        dst_sha1 = output_dir / f"{tag}-general.apk.sha1"
+        _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
+
+        __execute_command(
+            [flutter, "build", "apk", "--split-per-abi"] + flavor_args,
+            "BUILDING SPLIT ABI APKS",
+        )
+        for flutter_abi, apk_suffix in _ABI_FLUTTER_TO_APK.items():
+            src_apk = apk_source / (
+                f"app-{flavor}-{flutter_abi}-release.apk"
+                if flavor
+                else f"app-{flutter_abi}-release.apk"
+            )
+            src_sha1 = apk_source / (
+                f"app-{flavor}-{flutter_abi}-release.apk.sha1"
+                if flavor
+                else f"app-{flutter_abi}-release.apk.sha1"
+            )
+            if not src_apk.exists():
+                raise click.ClickException(f"Expected ABI APK not found: {src_apk}")
+            dst_apk = output_dir / f"{tag}-{apk_suffix}.apk"
+            dst_sha1 = output_dir / f"{tag}-{apk_suffix}.apk.sha1"
+            _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
+    for f in sorted(output_dir.iterdir()):
+        if f.is_file():
+            size = get_bin_size(f.stat().st_size)
+            click.echo(f"  {f.name} ({size})")
 
 
 @cli.group(aliases=["rel"], cls=ClickAliasedGroup)
