@@ -19,18 +19,9 @@ part "remote_catalog.g.dart";
 
 enum RemoteBundleArtifactVariant { full, incremental }
 
-enum RemoteBundleCandidateState {
-  recommended,
-  available,
-  installed,
-  unavailable,
-}
+enum RemoteBundleCandidateState { recommended, available, installed, unavailable }
 
-enum RemoteBundleCandidateRecommendation {
-  incrementalUpdate,
-  fullInstall,
-  fullReplacement,
-}
+enum RemoteBundleCandidateRecommendation { incrementalUpdate, fullInstall, fullReplacement }
 
 enum RemoteBundleCandidateUnavailableReason {
   appVersionMismatch,
@@ -66,9 +57,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
   }) = _RemoteBundleArtifact;
 
   factory RemoteBundleArtifact.fromJson(Map<String, dynamic> json) {
-    final generatedAt = DateTime.tryParse(
-      readRemoteRequiredString(json, "generatedAt"),
-    );
+    final generatedAt = DateTime.tryParse(readRemoteRequiredString(json, "generatedAt"));
     if (generatedAt == null) {
       throw RemoteContentException(
         "Remote bundle artifact '${json["artifactId"]}' has invalid generatedAt.",
@@ -79,11 +68,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
       bundleId: readRemoteRequiredString(json, "bundleId"),
       variant: _readVariant(json),
       appVersion: readRemoteRequiredString(json, "appVersion"),
-      bundleSchemaVersion: readRemoteOptionalInt(
-        json,
-        "bundleSchemaVersion",
-        1,
-      ),
+      bundleSchemaVersion: readRemoteOptionalInt(json, "bundleSchemaVersion", 1),
       compatibleBundleSchemaVersions: readRemoteOptionalIntList(
         json,
         "compatibleBundleSchemaVersions",
@@ -115,33 +100,26 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     return switch (value) {
       "full" => RemoteBundleArtifactVariant.full,
       "incremental" => RemoteBundleArtifactVariant.incremental,
-      _ => throw RemoteContentException(
-        "Unsupported remote bundle artifact variant: $value",
-      ),
+      _ => throw RemoteContentException("Unsupported remote bundle artifact variant: $value"),
     };
   }
 }
 
 @freezed
 abstract class RemoteBundleCatalog with _$RemoteBundleCatalog {
-  const factory RemoteBundleCatalog({
-    required IList<RemoteBundleArtifact> artifacts,
-  }) = _RemoteBundleCatalog;
+  const factory RemoteBundleCatalog({required IList<RemoteBundleArtifact> artifacts}) =
+      _RemoteBundleCatalog;
 
   factory RemoteBundleCatalog.fromJson(Map<String, dynamic> json) {
     expectRemoteInt(json, "schemaVersion", remoteContentSchemaVersion);
     final artifacts = json["artifacts"];
     if (artifacts is! List<Object?>) {
-      throw const RemoteContentException(
-        "Remote bundle catalog artifacts must be a list.",
-      );
+      throw const RemoteContentException("Remote bundle catalog artifacts must be a list.");
     }
     return RemoteBundleCatalog(
       artifacts: artifacts.map((item) {
         if (item is! Map<String, dynamic>) {
-          throw const RemoteContentException(
-            "Remote bundle artifact must be an object.",
-          );
+          throw const RemoteContentException("Remote bundle artifact must be an object.");
         }
         return RemoteBundleArtifact.fromJson(item);
       }).toIList(),
@@ -174,37 +152,26 @@ abstract class RemoteBundleCatalogState with _$RemoteBundleCatalogState {
     @Default(false) bool loaded,
     @Default(false) bool catalogAvailable,
     String? appVersion,
-    @Default(IList<RemoteBundleCandidate>.empty())
-    IList<RemoteBundleCandidate> candidates,
+    @Default(IList<RemoteBundleCandidate>.empty()) IList<RemoteBundleCandidate> candidates,
     String? error,
   }) = _RemoteBundleCatalogState;
 
   const RemoteBundleCatalogState._();
 
   IList<RemoteBundleCandidate> get recommended => candidates
-      .where(
-        (candidate) =>
-            candidate.state == RemoteBundleCandidateState.recommended,
-      )
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.recommended)
       .toIList();
 
   IList<RemoteBundleCandidate> get available => candidates
-      .where(
-        (candidate) => candidate.state == RemoteBundleCandidateState.available,
-      )
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.available)
       .toIList();
 
   IList<RemoteBundleCandidate> get installed => candidates
-      .where(
-        (candidate) => candidate.state == RemoteBundleCandidateState.installed,
-      )
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.installed)
       .toIList();
 
   IList<RemoteBundleCandidate> get unavailable => candidates
-      .where(
-        (candidate) =>
-            candidate.state == RemoteBundleCandidateState.unavailable,
-      )
+      .where((candidate) => candidate.state == RemoteBundleCandidateState.unavailable)
       .toIList();
 
   IList<RemoteBundleCandidate> get importable =>
@@ -255,9 +222,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       }
       final indexText = indexResult.response.data;
       if (indexText == null || indexText.isEmpty) {
-        throw const RemoteContentException(
-          "Remote index response body is empty.",
-        );
+        throw const RemoteContentException("Remote index response body is empty.");
       }
       final index = jsonDecode(indexText) as Map<String, dynamic>;
       final catalogPath = _readBundleCatalogPath(index, endpoint.channel);
@@ -268,9 +233,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       final bundles = index["bundles"] as Map<String, dynamic>?;
       final bundleRevision = bundles?["revision"] as String?;
       if (bundleRevision != null && bundleRevision == _lastBundleRevision) {
-        info(
-          "Remote bundle revision unchanged ($bundleRevision); skipping catalog fetch.",
-        );
+        info("Remote bundle revision unchanged ($bundleRevision); skipping catalog fetch.");
         final current = state.asData?.value;
         return RemoteBundleCatalogState(
           enabled: true,
@@ -286,10 +249,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         await fetchRemoteJson(_dio, endpoint.resolvePayloadUri(catalogPath)),
       );
       final appVersion = await _readAppVersion();
-      final candidates = _selectBundleCandidates(
-        catalog.artifacts,
-        appVersion: appVersion,
-      );
+      final candidates = _selectBundleCandidates(catalog.artifacts, appVersion: appVersion);
       info(
         "Discovered ${candidates.where((candidate) => candidate.canImport).length} "
         "compatible remote bundle artifacts.",
@@ -302,22 +262,12 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
         candidates: candidates,
       );
     } on Object catch (exception, stackTrace) {
-      warning(
-        "Remote bundle catalog sync failed: $exception",
-        stackTrace: stackTrace,
-      );
-      return RemoteBundleCatalogState(
-        enabled: true,
-        loaded: true,
-        error: exception.toString(),
-      );
+      warning("Remote bundle catalog sync failed: $exception", stackTrace: stackTrace);
+      return RemoteBundleCatalogState(enabled: true, loaded: true, error: exception.toString());
     }
   }
 
-  String? _readBundleCatalogPath(
-    Map<String, dynamic> index,
-    String expectedChannel,
-  ) {
+  String? _readBundleCatalogPath(Map<String, dynamic> index, String expectedChannel) {
     expectRemoteInt(index, "schemaVersion", remoteContentSchemaVersion);
     final minClientApi = readRemoteRequiredInt(index, "minClientApi");
     if (minClientApi > remoteContentClientApiVersion) {
@@ -336,9 +286,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       return null;
     }
     if (bundles is! Map<String, dynamic>) {
-      throw const RemoteContentException(
-        "Remote index bundles section is invalid.",
-      );
+      throw const RemoteContentException("Remote index bundles section is invalid.");
     }
     return readRemoteRequiredString(bundles, "catalogPath");
   }
@@ -351,13 +299,9 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     final installedRegistrars = <String, BundleRegistrar>{};
     for (final bundleId in registry.bundles.keys) {
       try {
-        installedRegistrars[bundleId] = BundleRegistryManager.getRegistrar(
-          bundleId,
-        );
+        installedRegistrars[bundleId] = BundleRegistryManager.getRegistrar(bundleId);
       } on Object catch (exception) {
-        warning(
-          "Skipping installed bundle $bundleId during remote matching: $exception",
-        );
+        warning("Skipping installed bundle $bundleId during remote matching: $exception");
       }
     }
 
@@ -369,20 +313,14 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
           installedRegistrars: installedRegistrars,
         ),
     ];
-    final recommendations = _recommendCandidates(
-      candidates,
-      installedRegistrars,
-    );
+    final recommendations = _recommendCandidates(candidates, installedRegistrars);
     final selected =
         candidates
             .map(
               (candidate) => recommendations.contains(candidate)
                   ? candidate.copyWith(
                       state: RemoteBundleCandidateState.recommended,
-                      recommendation: _recommendationFor(
-                        candidate,
-                        installedRegistrars,
-                      ),
+                      recommendation: _recommendationFor(candidate, installedRegistrars),
                     )
                   : candidate,
             )
@@ -396,32 +334,26 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     required String appVersion,
     required Map<String, BundleRegistrar> installedRegistrars,
   }) {
-    if (compareAppVersions(stripBuildNumber(artifact.appVersion), appVersion) >
-        0) {
+    if (compareAppVersions(artifact.appVersion, appVersion) > 0) {
       return RemoteBundleCandidate(
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
-        unavailableReason:
-            RemoteBundleCandidateUnavailableReason.appVersionMismatch,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.appVersionMismatch,
       );
     }
 
     final schemaCompat = artifact.compatibleBundleSchemaVersions.any(
-      (v) =>
-          v >= minSupportedBundleSchemaVersion &&
-          v <= currentBundleSchemaVersion,
+      (v) => v >= minSupportedBundleSchemaVersion && v <= currentBundleSchemaVersion,
     );
     if (!schemaCompat) {
       return RemoteBundleCandidate(
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
-        unavailableReason:
-            RemoteBundleCandidateUnavailableReason.incompatibleBundleSchema,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.incompatibleBundleSchema,
       );
     }
 
-    final schemaWarning =
-        artifact.bundleSchemaVersion != currentBundleSchemaVersion
+    final schemaWarning = artifact.bundleSchemaVersion != currentBundleSchemaVersion
         ? artifact.bundleSchemaVersion
         : null;
 
@@ -459,8 +391,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       return RemoteBundleCandidate(
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
-        unavailableReason:
-            RemoteBundleCandidateUnavailableReason.missingIncrementalMetadata,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.missingIncrementalMetadata,
         schemaVersionWarning: schemaWarning,
       );
     }
@@ -469,8 +400,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       return RemoteBundleCandidate(
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
-        unavailableReason:
-            RemoteBundleCandidateUnavailableReason.baseBundleNotInstalled,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.baseBundleNotInstalled,
         schemaVersionWarning: schemaWarning,
       );
     }
@@ -488,8 +418,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       return RemoteBundleCandidate(
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
-        unavailableReason:
-            RemoteBundleCandidateUnavailableReason.installedManifestMissing,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.installedManifestMissing,
         schemaVersionWarning: schemaWarning,
       );
     }
@@ -497,8 +426,7 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       return RemoteBundleCandidate(
         artifact: artifact,
         state: RemoteBundleCandidateState.unavailable,
-        unavailableReason:
-            RemoteBundleCandidateUnavailableReason.baseManifestMismatch,
+        unavailableReason: RemoteBundleCandidateUnavailableReason.baseManifestMismatch,
         installedManifestHash: baseInstalledManifestHash,
         schemaVersionWarning: schemaWarning,
       );
@@ -512,12 +440,8 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     );
   }
 
-  bool _registrarContainsManifest(
-    BundleRegistrar? registrar,
-    String manifestHash,
-  ) =>
-      registrar?.history.any((patch) => patch.manifestHash == manifestHash) ??
-      false;
+  bool _registrarContainsManifest(BundleRegistrar? registrar, String manifestHash) =>
+      registrar?.history.any((patch) => patch.manifestHash == manifestHash) ?? false;
 
   Set<RemoteBundleCandidate> _recommendCandidates(
     List<RemoteBundleCandidate> candidates,
@@ -529,33 +453,22 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
       (candidate) => candidate.state == RemoteBundleCandidateState.installed,
     )) {
       final current = newestInstalledByBundleId[candidate.artifact.bundleId];
-      if (current == null ||
-          candidate.artifact.generatedAt.isAfter(
-            current.artifact.generatedAt,
-          )) {
+      if (current == null || candidate.artifact.generatedAt.isAfter(current.artifact.generatedAt)) {
         newestInstalledByBundleId[candidate.artifact.bundleId] = candidate;
       }
     }
 
     final byBundleId = <String, List<RemoteBundleCandidate>>{};
-    for (final candidate in candidates.where(
-      (candidate) => candidate.canImport,
-    )) {
-      if (hasInstalledBundles &&
-          !installedRegistrars.containsKey(candidate.artifact.bundleId)) {
+    for (final candidate in candidates.where((candidate) => candidate.canImport)) {
+      if (hasInstalledBundles && !installedRegistrars.containsKey(candidate.artifact.bundleId)) {
         continue;
       }
-      final newestInstalled =
-          newestInstalledByBundleId[candidate.artifact.bundleId];
+      final newestInstalled = newestInstalledByBundleId[candidate.artifact.bundleId];
       if (newestInstalled != null &&
-          !candidate.artifact.generatedAt.isAfter(
-            newestInstalled.artifact.generatedAt,
-          )) {
+          !candidate.artifact.generatedAt.isAfter(newestInstalled.artifact.generatedAt)) {
         continue;
       }
-      byBundleId
-          .putIfAbsent(candidate.artifact.bundleId, () => [])
-          .add(candidate);
+      byBundleId.putIfAbsent(candidate.artifact.bundleId, () => []).add(candidate);
     }
 
     final recommendations = <RemoteBundleCandidate>{};
@@ -580,19 +493,15 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
   }
 
   int _compareCandidates(RemoteBundleCandidate a, RemoteBundleCandidate b) {
-    final stateOrder = _candidateStateSortOrder(
-      a,
-    ).compareTo(_candidateStateSortOrder(b));
+    final stateOrder = _candidateStateSortOrder(a).compareTo(_candidateStateSortOrder(b));
     if (stateOrder != 0) {
       return stateOrder;
     }
     return _compareArtifacts(a.artifact, b.artifact);
   }
 
-  int _compareImportableCandidates(
-    RemoteBundleCandidate a,
-    RemoteBundleCandidate b,
-  ) => _compareArtifacts(a.artifact, b.artifact);
+  int _compareImportableCandidates(RemoteBundleCandidate a, RemoteBundleCandidate b) =>
+      _compareArtifacts(a.artifact, b.artifact);
 
   int _compareArtifacts(RemoteBundleArtifact a, RemoteBundleArtifact b) {
     final variantOrder = _variantSortOrder(a).compareTo(_variantSortOrder(b));
@@ -610,16 +519,14 @@ class RemoteBundleCatalogManager extends _$RemoteBundleCatalogManager {
     return a.artifactId.compareTo(b.artifactId);
   }
 
-  int _candidateStateSortOrder(RemoteBundleCandidate candidate) =>
-      switch (candidate.state) {
-        RemoteBundleCandidateState.recommended => 0,
-        RemoteBundleCandidateState.available => 1,
-        RemoteBundleCandidateState.installed => 2,
-        RemoteBundleCandidateState.unavailable => 3,
-      };
+  int _candidateStateSortOrder(RemoteBundleCandidate candidate) => switch (candidate.state) {
+    RemoteBundleCandidateState.recommended => 0,
+    RemoteBundleCandidateState.available => 1,
+    RemoteBundleCandidateState.installed => 2,
+    RemoteBundleCandidateState.unavailable => 3,
+  };
 
-  int _variantSortOrder(RemoteBundleArtifact artifact) =>
-      artifact.isIncremental ? 0 : 1;
+  int _variantSortOrder(RemoteBundleArtifact artifact) => artifact.isIncremental ? 0 : 1;
 
   Future<String> _readAppVersion() => readFullAppVersion();
 }
