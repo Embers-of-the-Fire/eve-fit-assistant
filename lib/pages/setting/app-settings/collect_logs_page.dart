@@ -38,6 +38,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
     try {
       final dir = Directory(PathProvider.logsPath);
       if (!await dir.exists()) {
+        if (!mounted) return;
         setState(() {
           _allFiles = [];
           _loading = false;
@@ -45,6 +46,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
         return;
       }
       final entities = await dir.list().toList();
+      if (!mounted) return;
       entities.sort((a, b) {
         final aStat = a.statSync();
         final bStat = b.statSync();
@@ -53,6 +55,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
       setState(() => _allFiles = entities);
       _applyFilter(_activeFilter);
     } on Object {
+      if (!mounted) return;
       setState(() => _loading = false);
     }
   }
