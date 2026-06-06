@@ -10,7 +10,8 @@ import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:package_info_plus/package_info_plus.dart";
 
-const String _bundledCatalogAssetPath = "assets/content/documents/generated/index.json";
+const String _bundledCatalogAssetPath =
+    "assets/content/documents/generated/index.json";
 
 final documentRepositoryProvider = Provider<DocumentRepository>(
   (Ref ref) => const DocumentRepository(),
@@ -27,7 +28,9 @@ final readGenerationProvider = NotifierProvider<ReadGenerationNotifier, int>(
   ReadGenerationNotifier.new,
 );
 
-final documentReadServiceProvider = Provider<DocumentReadService>(DocumentReadService.new);
+final documentReadServiceProvider = Provider<DocumentReadService>(
+  DocumentReadService.new,
+);
 
 class DocumentReadService {
   DocumentReadService(this._ref);
@@ -66,7 +69,8 @@ final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
   ref.watch(readGenerationProvider);
   final feed = ref.watch(documentFeedProvider(DocumentFeedKind.announcement));
   return feed.when(
-    data: (records) => records.where((r) => DocumentStorage.isUnread(r.id)).length,
+    data: (records) =>
+        records.where((r) => DocumentStorage.isUnread(r.id)).length,
     loading: () => 0,
     error: (_, _) => 0,
   );
@@ -76,7 +80,8 @@ final unreadVersionCountProvider = Provider<int>((Ref ref) {
   ref.watch(readGenerationProvider);
   final feed = ref.watch(documentFeedProvider(DocumentFeedKind.version));
   return feed.when(
-    data: (records) => records.where((r) => DocumentStorage.isUnread(r.id)).length,
+    data: (records) =>
+        records.where((r) => DocumentStorage.isUnread(r.id)).length,
     loading: () => 0,
     error: (_, _) => 0,
   );
@@ -132,14 +137,15 @@ final availableUpdateProvider = Provider<DocumentRecord?>((Ref ref) {
   return latest;
 });
 
-final documentFeedProvider = FutureProvider.family<List<DocumentRecord>, DocumentFeedKind>((
-  Ref ref,
-  DocumentFeedKind feedKind,
-) async {
-  final locale = ref.watch(localeProvider);
-  final repository = ref.watch(documentRepositoryProvider);
-  return repository.loadFeed(feedKind: feedKind, localeCode: locale.name);
-});
+final documentFeedProvider =
+    FutureProvider.family<List<DocumentRecord>, DocumentFeedKind>((
+      Ref ref,
+      DocumentFeedKind feedKind,
+    ) async {
+      final locale = ref.watch(localeProvider);
+      final repository = ref.watch(documentRepositoryProvider);
+      return repository.loadFeed(feedKind: feedKind, localeCode: locale.name);
+    });
 
 class DocumentRepository {
   const DocumentRepository();
@@ -231,20 +237,24 @@ class DocumentRepository {
     required String localeCode,
   }) async {
     if (localization.bodyMarkdown case final markdown?) {
-      return markdown;
+      return _stripFrontMatter(markdown);
     }
     if (entry.source == DocumentEntrySource.remote) {
-      return DocumentStorage.cachedBody(entry.id, localeCode) ?? localization.summary;
+      final raw =
+          DocumentStorage.cachedBody(entry.id, localeCode) ??
+          localization.summary;
+      return _stripFrontMatter(raw);
     }
     if (localization.bodyAssetPath case final bodyAssetPath?) {
-      return _loadBundledMarkdown(
+      final raw = await _loadBundledMarkdown(
         entryId: entry.id,
         localeCode: localeCode,
         bodyAssetPath: bodyAssetPath,
         fallbackMarkdown: localization.summary,
       );
+      return _stripFrontMatter(raw);
     }
-    return localization.summary;
+    return _stripFrontMatter(localization.summary);
   }
 
   Future<String> _loadBundledMarkdown({
@@ -265,4 +275,11 @@ class DocumentRepository {
       return fallbackMarkdown;
     }
   }
+}
+
+String _stripFrontMatter(String content) {
+  if (!content.startsWith("---\n")) return content;
+  final parts = content.split("\n---\n");
+  if (parts.length < 2) return content;
+  return parts.sublist(1).join("\n---\n").trimLeft();
 }
