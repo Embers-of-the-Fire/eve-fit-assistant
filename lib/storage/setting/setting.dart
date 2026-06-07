@@ -45,6 +45,7 @@ abstract class AppSetting with _$AppSetting {
     )
     required TypeListReturnBehavior typeListReturnBehavior,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
+    @Default(1.0) double fontScale,
     String? lastNotifiedBundleUpdateKey,
   }) = _AppSetting;
 
@@ -53,6 +54,9 @@ abstract class AppSetting with _$AppSetting {
 
 @riverpodSingleton
 Locale locale(Ref ref) => ref.watch(appSettingServiceProvider).locale;
+
+@riverpodSingleton
+double fontScale(Ref ref) => ref.watch(appSettingServiceProvider).fontScale;
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {

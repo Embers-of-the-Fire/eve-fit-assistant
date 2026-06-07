@@ -46,6 +46,7 @@ class MyApp extends ConsumerWidget {
       dialogTheme: DialogThemeData(backgroundColor: colorScheme.surface),
       tabBarTheme: TabBarThemeData(indicatorColor: colorScheme.primary),
     );
+    final fontScale = ref.watch(fontScaleProvider);
     return MaterialApp.router(
       onGenerateTitle: (context) => context.l10n.appTitle,
       theme: theme,
@@ -74,13 +75,16 @@ class MyApp extends ConsumerWidget {
             );
           });
         }
-        return StartupBundleUpdateGate(
-          appRouter: _appRouter,
-          navigatorKey: _appRouter.navigatorKey,
-          child: StartupAnnouncementGate(
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
+          child: StartupBundleUpdateGate(
             appRouter: _appRouter,
             navigatorKey: _appRouter.navigatorKey,
-            child: initBuilder(context, child),
+            child: StartupAnnouncementGate(
+              appRouter: _appRouter,
+              navigatorKey: _appRouter.navigatorKey,
+              child: initBuilder(context, child),
+            ),
           ),
         );
       },

@@ -18,6 +18,7 @@ import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 part "debug_log.dart";
 part "developer_remote_content.dart";
+part "font_scale.dart";
 part "impact_warning.dart";
 part "locale.dart";
 part "select_list.dart";
@@ -33,6 +34,7 @@ class AppSettingsPage extends ConsumerWidget {
       children: [
         ConfigListTile.title(context.l10n.appSettingsPageSectionGeneral),
         const ConfigListTile.custom(LocaleTile()),
+        const ConfigListTile.custom(FontScaleTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionSelectList),
         const ConfigListTile.custom(ShipCreateListTile()),
         const ConfigListTile.custom(ListReturnBehaviorTile()),

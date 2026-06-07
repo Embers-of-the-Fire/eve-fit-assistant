@@ -84,72 +84,75 @@ class _FrontPageState extends State<FrontPage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
       // BottomAppBar with internal Divider as top border (so notch clips it).
-      bottomNavigationBar: BottomAppBar(
-        color:
-            context.theme.bottomNavigationBarTheme.backgroundColor ??
-            context.theme.colorScheme.surface,
-        elevation: 8,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 6,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: kBottomNavigationBarHeight,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        const Expanded(child: SizedBox()),
-                        _NavItem(
-                          index: 0,
-                          icon: pageIcons[0],
-                          label: pageTitles[0],
-                          selected: _currentIndex == 0,
-                          onTap: _selectPage,
-                        ),
-                        const Expanded(child: SizedBox()),
-                        _NavItem(
-                          index: 1,
-                          icon: pageIcons[1],
-                          label: pageTitles[1],
-                          selected: _currentIndex == 1,
-                          onTap: _selectPage,
-                        ),
-                        const Expanded(child: SizedBox()),
-                      ],
+      bottomNavigationBar: MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+        child: BottomAppBar(
+          color:
+              context.theme.bottomNavigationBarTheme.backgroundColor ??
+              context.theme.colorScheme.surface,
+          elevation: 8,
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 6,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: kBottomNavigationBarHeight,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          const Expanded(child: SizedBox()),
+                          _NavItem(
+                            index: 0,
+                            icon: pageIcons[0],
+                            label: pageTitles[0],
+                            selected: _currentIndex == 0,
+                            onTap: _selectPage,
+                          ),
+                          const Expanded(child: SizedBox()),
+                          _NavItem(
+                            index: 1,
+                            icon: pageIcons[1],
+                            label: pageTitles[1],
+                            selected: _currentIndex == 1,
+                            onTap: _selectPage,
+                          ),
+                          const Expanded(child: SizedBox()),
+                        ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        const Expanded(child: SizedBox()),
-                        _NavItem(
-                          index: 2,
-                          icon: pageIcons[2],
-                          label: pageTitles[2],
-                          selected: _currentIndex == 2,
-                          onTap: _selectPage,
-                        ),
-                        const Expanded(child: SizedBox()),
-                        _NavItem(
-                          index: 3,
-                          icon: pageIcons[3],
-                          label: pageTitles[3],
-                          selected: _currentIndex == 3,
-                          onTap: _selectPage,
-                        ),
-                        const Expanded(child: SizedBox()),
-                      ],
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          const Expanded(child: SizedBox()),
+                          _NavItem(
+                            index: 2,
+                            icon: pageIcons[2],
+                            label: pageTitles[2],
+                            selected: _currentIndex == 2,
+                            onTap: _selectPage,
+                          ),
+                          const Expanded(child: SizedBox()),
+                          _NavItem(
+                            index: 3,
+                            icon: pageIcons[3],
+                            label: pageTitles[3],
+                            selected: _currentIndex == 3,
+                            onTap: _selectPage,
+                          ),
+                          const Expanded(child: SizedBox()),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
