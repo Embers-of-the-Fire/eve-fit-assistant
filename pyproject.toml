@@ -29,3 +29,10 @@ convert = { workspace = true }
 
 [tool.uv.workspace]
 members = ["rust/lib/eve-fit-os"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["data*"]
