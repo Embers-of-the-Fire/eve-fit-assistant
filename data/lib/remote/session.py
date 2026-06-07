@@ -815,6 +815,7 @@ def _bundle_artifact_entry(
         "bundleId": _require_string(descriptor, "bundleId", str(archive_path)),
         "variant": variant,
         "appVersion": _require_string(descriptor, "appVersion", str(archive_path)),
+        "name": descriptor.get("name", {}),
         "gameVersion": _require_string(descriptor, "gameVersion", str(archive_path)),
         "gameBuild": _require_string(descriptor, "gameBuild", str(archive_path)),
         "gameRegion": _require_string(descriptor, "gameRegion", str(archive_path)),
