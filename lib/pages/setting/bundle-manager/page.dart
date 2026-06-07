@@ -51,6 +51,27 @@ extension RemoteBundleArtifactDisplay on RemoteBundleArtifact {
   }
 }
 
+class _BundleMetadataText extends StatelessWidget {
+  const _BundleMetadataText({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      children: [
+        TextSpan(
+          text: label,
+          style: context.theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        TextSpan(text: value),
+      ],
+    ),
+    style: context.theme.textTheme.bodyMedium,
+  );
+}
+
 final _remoteBundleImportOperationProvider =
     NotifierProvider<_RemoteBundleImportOperationNotifier, _RemoteBundleImportOperation?>(
       _RemoteBundleImportOperationNotifier.new,
@@ -715,7 +736,7 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
           color: _remoteCandidateColor(context, candidate),
         ),
         title: Text(
-          artifact.artifactId,
+          artifact.displayName(context),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -853,7 +874,7 @@ class _RemoteBundleImportOperationCard extends ConsumerWidget {
                         style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
-                      Text(artifact.artifactId, style: theme.textTheme.bodyMedium),
+                      Text(artifact.displayName(context), style: theme.textTheme.bodyMedium),
                       if (description != null) ...[
                         const SizedBox(height: 4),
                         Text(description, style: theme.textTheme.bodySmall),
