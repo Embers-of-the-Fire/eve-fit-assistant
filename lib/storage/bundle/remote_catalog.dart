@@ -39,6 +39,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     required String bundleId,
     required RemoteBundleArtifactVariant variant,
     required String appVersion,
+    @Default(IMap.empty()) IMap<String, String> name,
     required String gameVersion,
     required String gameBuild,
     required String gameRegion,
@@ -68,6 +69,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
       bundleId: readRemoteRequiredString(json, "bundleId"),
       variant: _readVariant(json),
       appVersion: readRemoteRequiredString(json, "appVersion"),
+      name: _readNameMap(json["name"]),
       bundleSchemaVersion: readRemoteOptionalInt(json, "bundleSchemaVersion", 1),
       compatibleBundleSchemaVersions: readRemoteOptionalIntList(
         json,
@@ -102,6 +104,13 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
       "incremental" => RemoteBundleArtifactVariant.incremental,
       _ => throw RemoteContentException("Unsupported remote bundle artifact variant: $value"),
     };
+  }
+
+  static IMap<String, String> _readNameMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      return raw.map((k, v) => MapEntry(k, v.toString())).toIMap();
+    }
+    return const IMap.empty();
   }
 }
 
