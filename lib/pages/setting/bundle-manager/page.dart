@@ -26,6 +26,50 @@ part "bundle_tile.dart";
 part "impact_warning.dart";
 part "remote_bundle_selection.dart";
 
+extension BundleInfoDisplay on BundleInfo {
+  String displayName(BuildContext context) {
+    final locale = context.locale.languageCode;
+    return name[locale] ?? name["en"] ?? bundleId;
+  }
+
+  String? get versionBadge => gameVersion.isNotEmpty ? "v$gameVersion" : null;
+
+  String buildLabel(BuildContext context) => context.l10n.bundleLabelBuild(build: build);
+
+  String? generatedLabel(BuildContext context, String Function(int) formatTs) {
+    if (generateTimestamp <= 0) return null;
+    return context.l10n.bundleLabelGenerated(date: formatTs(generateTimestamp * 1000));
+  }
+}
+
+extension RemoteBundleArtifactDisplay on RemoteBundleArtifact {
+  String displayName(BuildContext context) {
+    final locale = context.locale.languageCode;
+    return name[locale] ?? name["en"] ?? artifactId;
+  }
+}
+
+class _BundleMetadataText extends StatelessWidget {
+  const _BundleMetadataText({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      children: [
+        TextSpan(
+          text: label,
+          style: context.theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        TextSpan(text: value),
+      ],
+    ),
+    style: context.theme.textTheme.bodyMedium,
+  );
+}
+
 final _remoteBundleImportOperationProvider =
     NotifierProvider<_RemoteBundleImportOperationNotifier, _RemoteBundleImportOperation?>(
       _RemoteBundleImportOperationNotifier.new,
@@ -690,7 +734,7 @@ class _RemoteBundleArtifactTile extends StatelessWidget {
           color: _remoteCandidateColor(context, candidate),
         ),
         title: Text(
-          artifact.artifactId,
+          artifact.displayName(context),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -828,7 +872,7 @@ class _RemoteBundleImportOperationCard extends ConsumerWidget {
                         style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
-                      Text(artifact.artifactId, style: theme.textTheme.bodyMedium),
+                      Text(artifact.displayName(context), style: theme.textTheme.bodyMedium),
                       if (description != null) ...[
                         const SizedBox(height: 4),
                         Text(description, style: theme.textTheme.bodySmall),

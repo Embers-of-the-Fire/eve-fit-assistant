@@ -29,6 +29,8 @@ class Descriptor(BaseModel):
     bundleSchemaVersion: int
     compatibleBundleSchemaVersions: list[int]
 
+    name: dict[str, str]
+
     gameVersion: str
     gameBuild: str
     gameRegion: str
@@ -55,6 +57,7 @@ class Descriptor(BaseModel):
             baseBundleId=base_bundle_id,
             baseManifestHash=base_manifest_hash,
             appVersion=app_version,
+            name=datasource.config.metadata.name,
             bundleId=datasource.config.metadata.identifier,
             bundleSchemaVersion=CONFIGURATION.bundle_schema.current,
             compatibleBundleSchemaVersions=list(

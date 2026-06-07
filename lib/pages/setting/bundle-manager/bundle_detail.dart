@@ -64,7 +64,7 @@ class _BundleDetailPageState extends ConsumerState<BundleDetailPage> {
         yMMMMdHmsLocalized(context).format(DateTime.fromMillisecondsSinceEpoch(ts).toLocal());
 
     return Layout(
-      title: bundle.bundleId,
+      title: bundle.displayName(context),
       child: Padding(
         padding: const .symmetric(horizontal: 16, vertical: 14),
         child: Column(
@@ -87,7 +87,7 @@ class _BundleDetailPageState extends ConsumerState<BundleDetailPage> {
                         children: [
                           Flexible(
                             child: Text(
-                              bundle.bundleId,
+                              bundle.displayName(context),
                               style: context.theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: bundleIsSelected.thenSome(colorGreen),
