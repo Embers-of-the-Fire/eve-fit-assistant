@@ -31,7 +31,6 @@ class FontScaleTile extends ConsumerWidget {
           const SizedBox(height: 8),
           Slider(
             value: position.toDouble(),
-            min: 0,
             max: (_scaleFactors.length - 1).toDouble(),
             divisions: _scaleFactors.length - 1,
             onChanged: (value) {
@@ -45,12 +44,10 @@ class FontScaleTile extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(_scaleFactors.length, (i) {
-                return Text(
+              children: List.generate(_scaleFactors.length, (i) => Text(
                   labels[i],
                   textScaler: TextScaler.linear(_scaleFactors[i]),
-                );
-              }),
+                )),
             ),
           ),
           const SizedBox(height: 4),
