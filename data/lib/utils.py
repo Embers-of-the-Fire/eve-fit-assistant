@@ -49,7 +49,13 @@ def try_get_attr[T, R](obj: T | None, attr: str) -> R | None:
 
 
 def execute_command(
-    cmd: list, title: str, dry_run: bool = False, capture_stdout: bool = False, *args, **kwargs
+    cmd: list,
+    title: str,
+    dry_run: bool = False,
+    capture_stdout: bool = False,
+    live_stdout: bool = False,
+    *args,
+    **kwargs,
 ) -> str:
     if dry_run:
         info(f"[Dry-Run] {title}: " + " ".join(cmd))
@@ -64,6 +70,31 @@ def execute_command(
 
     debug("Executing command: " + " ".join(cmd))
     debug(title)
+
+    if live_stdout:
+        lines: list[str] = []
+        process = subprocess.Popen(
+            cmd,
+            *args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            **kwargs,
+        )
+        assert process.stdout is not None
+        for raw in process.stdout:
+            line = raw.rstrip("\n")
+            lines.append(line)
+            print(line)
+        return_code = process.wait()
+        if return_code != 0:
+            error(f"Failed to execute command [{return_code}]")
+            exit(return_code)
+        debug("-" * line_width)
+        return "\n".join(lines)
+
     out = subprocess.run(
         cmd, *args, capture_output=True, text=True, encoding="utf-8", errors="replace", **kwargs
     )

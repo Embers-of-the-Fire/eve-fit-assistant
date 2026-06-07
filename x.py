@@ -102,10 +102,12 @@ WorkspaceCache.load_from_global()
 DRY_RUN = False
 
 
-def __execute_command(cmd: list, title: str, capture_stdout: bool = False) -> str:
+def __execute_command(
+    cmd: list, title: str, capture_stdout: bool = False, live_stdout: bool = False
+) -> str:
     global DRY_RUN
 
-    return execute_command(cmd, title, DRY_RUN, capture_stdout)
+    return execute_command(cmd, title, DRY_RUN, capture_stdout, live_stdout)
 
 
 def __resolve_dev_path(path: Path) -> Path:
@@ -1049,32 +1051,6 @@ def dev_env_write_backend():
     lines = [f"{key}={value}" for key, value in values.items()]
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Wrote backend env: ") + str(env_path))
-
-
-@cli.group(cls=ClickAliasedGroup)
-def site():
-    """Landing page site commands."""
-
-
-@site.command("dev")
-def site_dev():
-    """Start the SvelteKit dev server."""
-    pnpm = get_command("pnpm")
-    __execute_command([pnpm, "--filter", "efa-tech", "dev"], "SITE DEV")
-
-
-@site.command("build")
-def site_build():
-    """Build the static site for Cloudflare Pages."""
-    pnpm = get_command("pnpm")
-    __execute_command([pnpm, "--filter", "efa-tech", "build"], "SITE BUILD")
-
-
-@site.command("check")
-def site_check():
-    """Type-check the SvelteKit site."""
-    pnpm = get_command("pnpm")
-    __execute_command([pnpm, "--filter", "efa-tech", "check"], "SITE CHECK")
 
 
 @cli.group(cls=ClickAliasedGroup)
@@ -4633,6 +4609,32 @@ def etc_codeart_cmd():
         styled([Style.BRIGHT, Fore.GREEN], "Codeart image generated successfully: ")
         + str(output_file)
     )
+
+
+@etc.group(cls=ClickAliasedGroup)
+def site():
+    """Landing page site commands."""
+
+
+@site.command("dev")
+def site_dev():
+    """Start the SvelteKit dev server."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "dev"], "SITE DEV", live_stdout=True)
+
+
+@site.command("build")
+def site_build():
+    """Build the static site for Cloudflare Pages."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "build"], "SITE BUILD", live_stdout=True)
+
+
+@site.command("check")
+def site_check():
+    """Type-check the SvelteKit site."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "check"], "SITE CHECK", live_stdout=True)
 
 
 cli()
