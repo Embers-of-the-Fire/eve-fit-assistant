@@ -1,0 +1,12 @@
+{
+  "name": "eve-fit-assistant",
+  "private": true,
+  "scripts": {
+    "dev:site": "pnpm --filter efa-tech dev",
+    "build:site": "pnpm --filter efa-tech build",
+    "check:site": "pnpm --filter efa-tech check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4"
+  }
+}
