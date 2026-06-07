@@ -39,7 +39,6 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     required String bundleId,
     required RemoteBundleArtifactVariant variant,
     required String appVersion,
-    @Default(IMap.empty()) IMap<String, String> name,
     required String gameVersion,
     required String gameBuild,
     required String gameRegion,
@@ -51,6 +50,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     required String artifactSha256,
     required String manifestPath,
     required String manifestHash,
+    @Default(IMap<String, String>.empty()) IMap<String, String> name,
     @Default(1) int bundleSchemaVersion,
     @Default(IList<int>.empty()) IList<int> compatibleBundleSchemaVersions,
     String? baseBundleId,
@@ -106,7 +106,7 @@ abstract class RemoteBundleArtifact with _$RemoteBundleArtifact {
     };
   }
 
-  static IMap<String, String> _readNameMap(dynamic raw) {
+  static IMap<String, String> _readNameMap(Object? raw) {
     if (raw is Map<String, dynamic>) {
       return raw.map((k, v) => MapEntry(k, v.toString())).toIMap();
     }

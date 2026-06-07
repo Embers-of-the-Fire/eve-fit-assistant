@@ -44,11 +44,11 @@ abstract class BundleInfo with _$BundleInfo {
     required String bundleId,
     required String version,
     required String build,
-    @Default("") String gameVersion,
     required String region,
+    @Default("") String gameVersion,
     @Default(1) int bundleSchemaVersion,
     @Default(0) int generateTimestamp,
-    @Default(IMap.empty()) IMap<String, String> name,
+    @Default(IMap<String, String>.empty()) IMap<String, String> name,
   }) = _BundleInfo;
 
   factory BundleInfo.fromJson(Map<String, dynamic> json) => _$BundleInfoFromJson(json);

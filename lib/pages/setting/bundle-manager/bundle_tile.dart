@@ -78,15 +78,13 @@ class _BundleTile extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  bundle.buildLabel(context),
-                  style: context.theme.textTheme.bodyMedium,
-                ),
+                Text(bundle.buildLabel(context), style: context.theme.textTheme.bodyMedium),
                 if (bundle.generatedLabel(
-                  (ts) =>
-                      yMMMMdHmsLocalized(context)
-                          .format(DateTime.fromMillisecondsSinceEpoch(ts).toLocal()),
-                )
+                      context,
+                      (ts) => yMMMMdHmsLocalized(
+                        context,
+                      ).format(DateTime.fromMillisecondsSinceEpoch(ts).toLocal()),
+                    )
                     case final label?)
                   Text(label, style: context.theme.textTheme.bodySmall),
               ],

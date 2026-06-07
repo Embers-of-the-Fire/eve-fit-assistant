@@ -36,11 +36,9 @@ extension BundleInfoDisplay on BundleInfo {
 
   String buildLabel(BuildContext context) => context.l10n.bundleLabelBuild(build: build);
 
-  String? generatedLabel(DateTime Function(int) formatTs) {
+  String? generatedLabel(BuildContext context, String Function(int) formatTs) {
     if (generateTimestamp <= 0) return null;
-    return context.l10n.bundleLabelGenerated(
-      date: formatTs(generateTimestamp * 1000),
-    );
+    return context.l10n.bundleLabelGenerated(date: formatTs(generateTimestamp * 1000));
   }
 }
 

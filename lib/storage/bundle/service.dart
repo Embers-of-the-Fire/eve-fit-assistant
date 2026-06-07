@@ -28,12 +28,12 @@ abstract class BundleDescriptor with _$BundleDescriptor {
     @JsonKey(defaultValue: false) required bool isIncremental,
     required String bundleId,
     required String appVersion,
-    @Default(IMap.empty()) IMap<String, String> name,
     required String gameVersion,
     required String gameBuild,
     required String gameRegion,
     required String gameBranch,
     required String gameServer,
+    @Default(IMap<String, String>.empty()) IMap<String, String> name,
     @Default(1) int bundleSchemaVersion,
     @Default(IList<int>.empty()) IList<int> compatibleBundleSchemaVersions,
     String? manifestHash,
@@ -67,11 +67,11 @@ abstract class BundleDescriptor with _$BundleDescriptor {
   }
 }
 
-IMap<String, String> _parseNameMap(dynamic raw) {
+IMap<String, String> _parseNameMap(Object? raw) {
   if (raw is Map<String, dynamic>) {
     return raw.map((k, v) => MapEntry(k, v.toString())).toIMap();
   }
-  return const IMap.empty();
+  return const IMap<String, String>.empty();
 }
 
 @freezed
