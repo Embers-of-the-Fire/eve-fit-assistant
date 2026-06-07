@@ -72,7 +72,6 @@ def execute_command(
     debug(title)
 
     if live_stdout:
-        lines: list[str] = []
         process = subprocess.Popen(
             cmd,
             *args,
@@ -85,15 +84,13 @@ def execute_command(
         )
         assert process.stdout is not None
         for raw in process.stdout:
-            line = raw.rstrip("\n")
-            lines.append(line)
-            print(line)
+            print(raw.rstrip("\n"))
         return_code = process.wait()
         if return_code != 0:
             error(f"Failed to execute command [{return_code}]")
             exit(return_code)
         debug("-" * line_width)
-        return "\n".join(lines)
+        return ""
 
     out = subprocess.run(
         cmd, *args, capture_output=True, text=True, encoding="utf-8", errors="replace", **kwargs
