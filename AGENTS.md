@@ -5,9 +5,11 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 ## Workspace Shape
 
 - Flutter/Dart app code is under `lib/`; generated Dart outputs include `lib/native/`, `lib/data/l10n/`, protobuf outputs, `*.g.dart`, and `*.freezed.dart`.
-- Rust has two layers: FRB bridge crate in `rust/` (`rust/src/api/*`) and the fitting engine submodule/crate in `rust/lib/eve-fit-os`.
+- Rust has two layers: FRB bridge crate in `rust/` (`rust/src/api/*`) and the fitting engine git-submodule crate in `rust/lib/eve-fit-os`.
 - Python in `data/` plus `x.py` owns workspace management, codegen orchestration, and static data bundle generation.
 - `rust_builder/` is the Flutter plugin/cargokit wrapper used by `pubspec.yaml`; avoid treating it as the main Rust source.
+- `site/` is a SvelteKit app deployed to Cloudflare Workers (pnpm workspace). `biome.json` governs JS/TS formatting/linting for this area.
+- `rust/lib/eve-fit-os` is a Git submodule; run `git submodule update --init` after clone if not already initialized.
 
 ## Environment And Setup
 
@@ -19,7 +21,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 
 ## Canonical Commands
 
-- Full fix/lint/format pass: `./x lint`.
+- Full fix/lint/format pass (all languages): `./x lint`.
 - Formatting only: `./x format` (`./x lint --no-check`).
 - Generate all code and then format: `./x generate all -f`.
 - Focused generators: `./x generate protobuf`, `./x generate rust`, `./x generate dart`, `./x generate l10n`, `./x generate values dogma-units`.
@@ -36,6 +38,15 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - Incremental patch bundles are strict: build a fresh full snapshot first, then run `./x build increment <baseline_manifest>` using the last published `bundle_manifest.json`.
 - Generated data depends on external EVE FSD/resource files described by `data/resources/*/descriptor.toml`; missing local resources can block data builds.
 
+## Version And Release
+
+- The canonical version lives in `efa.config.toml` under `[version]`. All other targets (`pubspec.yaml`, `rust/Cargo.toml`, `pyproject.toml`) are derived from it. The engine submodule `rust/lib/eve-fit-os` has independent versioning.
+- `./x release version show` — display current version.
+- `./x release version bump <major|minor|patch> [--pre-label ...] [--clear-pre]` — bump and auto-sync.
+- `./x release check` — runs 10 pre-release gates (version-sync, git-clean, schema-bump, persistence-check, submodule, generate, lint, changelog, etc.). Fatal gates block release unless `--force`.
+- `./x release commit` — creates a signed `chore: release v<version>` commit and annotated tag.
+- All releases happen from the `dev` branch; `main` is deprecated.
+
 ## Validation Expectations
 
 - After edits, run the relevant formatter and linter; for mixed-language or uncertain changes, run `./x lint`.
@@ -44,6 +55,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - Rust bridge minimum: `cargo fmt --package rust_lib_eve_fit_assistant` plus `cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant`.
 - Rust fitting-engine logic changes should also run targeted `cargo test -p eve-fit-os ...`.
 - Localization changes require `./x generate l10n`; `l10n/app_zh.arb` is the template ARB with placeholder metadata, while `l10n/app_en.arb` should contain translations only.
+- JS/TS (site/ dir): run `pnpm run check` in `site/` for SvelteKit type checks; `npx biome check --fix` for formatting/linting.
 
 ## Style And Generated-Code Gotchas
 
@@ -55,4 +67,5 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 
 ## Local Instruction Sources
 
-- No repo-local `opencode.json`, `.cursor/rules/`, `.cursorrules`, `CLAUDE.md`, or GitHub workflow files were present when this file was last updated.
+- No `.github/workflows/` (no CI). No `.cursor/rules/`, `.cursorrules`, or `opencode.json`.
+- `CLAUDE.md` is a copy of this file.
