@@ -813,6 +813,22 @@
   "bundleManagerDetailVariantIncremental": "增量",
   "bundleManagerDetailGeneratedAt": "生成时间：",
   "bundleManagerDetailLoadedAt": "加载时间：",
+  "bundleLabelBuild": "构建 {build}",
+  "@bundleLabelBuild": {
+    "placeholders": {
+      "build": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleLabelGenerated": "生成于 {date}",
+  "@bundleLabelGenerated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "bundleVerificationTitle": "完整性校验",
   "bundleVerificationAction": "校验已安装文件",
   "bundleVerificationConfirmTitle": "要校验已安装的数据包文件吗？",

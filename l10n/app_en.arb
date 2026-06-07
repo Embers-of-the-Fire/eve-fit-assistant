@@ -345,6 +345,8 @@
   "bundleManagerDetailVariantIncremental": "INCREMENTAL",
   "bundleManagerDetailGeneratedAt": "Generated At: ",
   "bundleManagerDetailLoadedAt": "Loaded At: ",
+  "bundleLabelBuild": "Build {build}",
+  "bundleLabelGenerated": "Generated {date}",
   "bundleVerificationTitle": "Verification",
   "bundleVerificationAction": "Verify installed files",
   "bundleVerificationConfirmTitle": "Verify installed bundle files?",
