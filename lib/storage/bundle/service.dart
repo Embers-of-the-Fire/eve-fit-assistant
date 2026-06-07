@@ -28,6 +28,7 @@ abstract class BundleDescriptor with _$BundleDescriptor {
     @JsonKey(defaultValue: false) required bool isIncremental,
     required String bundleId,
     required String appVersion,
+    @Default(IMap.empty()) IMap<String, String> name,
     required String gameVersion,
     required String gameBuild,
     required String gameRegion,
@@ -51,6 +52,7 @@ abstract class BundleDescriptor with _$BundleDescriptor {
       isIncremental: json["isIncremental"] as bool? ?? false,
       bundleId: json["bundleId"] as String,
       appVersion: json["appVersion"] as String,
+      name: _parseNameMap(json["name"]),
       gameVersion: json["gameVersion"] as String,
       gameBuild: json["gameBuild"] as String,
       gameRegion: json["gameRegion"] as String,
@@ -63,6 +65,13 @@ abstract class BundleDescriptor with _$BundleDescriptor {
       baseManifestHash: json["baseManifestHash"] as String?,
     );
   }
+}
+
+IMap<String, String> _parseNameMap(dynamic raw) {
+  if (raw is Map<String, dynamic>) {
+    return raw.map((k, v) => MapEntry(k, v.toString())).toIMap();
+  }
+  return const IMap.empty();
 }
 
 @freezed
