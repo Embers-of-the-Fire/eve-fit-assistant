@@ -26,6 +26,31 @@ part "bundle_tile.dart";
 part "impact_warning.dart";
 part "remote_bundle_selection.dart";
 
+extension BundleInfoDisplay on BundleInfo {
+  String displayName(BuildContext context) {
+    final locale = context.locale.languageCode;
+    return name[locale] ?? name["en"] ?? bundleId;
+  }
+
+  String? get versionBadge => gameVersion.isNotEmpty ? "v$gameVersion" : null;
+
+  String buildLabel(BuildContext context) => context.l10n.bundleLabelBuild(build: build);
+
+  String? generatedLabel(DateTime Function(int) formatTs) {
+    if (generateTimestamp <= 0) return null;
+    return context.l10n.bundleLabelGenerated(
+      date: formatTs(generateTimestamp * 1000),
+    );
+  }
+}
+
+extension RemoteBundleArtifactDisplay on RemoteBundleArtifact {
+  String displayName(BuildContext context) {
+    final locale = context.locale.languageCode;
+    return name[locale] ?? name["en"] ?? artifactId;
+  }
+}
+
 final _remoteBundleImportOperationProvider =
     NotifierProvider<_RemoteBundleImportOperationNotifier, _RemoteBundleImportOperation?>(
       _RemoteBundleImportOperationNotifier.new,

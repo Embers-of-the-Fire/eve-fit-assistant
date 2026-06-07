@@ -32,7 +32,7 @@ class _BundleTile extends ConsumerWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        bundle.bundleId,
+                        bundle.displayName(context),
                         style: context.theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: activated.thenSome(colorGreen),
@@ -49,17 +49,17 @@ class _BundleTile extends ConsumerWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ],
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const .symmetric(horizontal: 8, vertical: 2),
-                      child: Text(
-                        bundle.region,
-                        style: context.theme.textTheme.labelSmall?.copyWith(
-                          color: context.theme.colorScheme.secondary,
-                          fontWeight: FontWeight.w500,
+                    if (bundle.versionBadge case final v?)
+                      Container(
+                        padding: const .symmetric(horizontal: 8, vertical: 2),
+                        child: Text(
+                          v,
+                          style: context.theme.textTheme.labelSmall?.copyWith(
+                            color: context.theme.colorScheme.secondary,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
                     const SizedBox(width: 4),
                     Container(
                       padding: const .symmetric(horizontal: 6, vertical: 2),
@@ -78,20 +78,17 @@ class _BundleTile extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 2,
-                  children: [
-                    _BundleMetadataText(
-                      label: context.l10n.bundleManagerBundleAppVersion,
-                      value: bundle.version,
-                    ),
-                    _BundleMetadataText(
-                      label: context.l10n.bundleManagerBundleBuild,
-                      value: bundle.build,
-                    ),
-                  ],
+                Text(
+                  bundle.buildLabel(context),
+                  style: context.theme.textTheme.bodyMedium,
                 ),
+                if (bundle.generatedLabel(
+                  (ts) =>
+                      yMMMMdHmsLocalized(context)
+                          .format(DateTime.fromMillisecondsSinceEpoch(ts).toLocal()),
+                )
+                    case final label?)
+                  Text(label, style: context.theme.textTheme.bodySmall),
               ],
             ),
           ),
@@ -153,25 +150,4 @@ class _BundleTile extends ConsumerWidget {
     }
     await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
   }
-}
-
-class _BundleMetadataText extends StatelessWidget {
-  const _BundleMetadataText({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Text.rich(
-    TextSpan(
-      children: [
-        TextSpan(
-          text: label,
-          style: context.theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        TextSpan(text: value),
-      ],
-    ),
-    style: context.theme.textTheme.bodyMedium,
-  );
 }
