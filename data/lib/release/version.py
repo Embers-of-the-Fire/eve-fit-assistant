@@ -5,6 +5,7 @@ and writes to pubspec.yaml, Cargo.toml, and pyproject.toml.
 
 from __future__ import annotations
 
+import json
 import re
 
 from dataclasses import dataclass
@@ -94,12 +95,10 @@ def sync_pyproject(version: ProjectVersion, dry_run: bool = False) -> SyncTarget
 
 def sync_package_json(version: ProjectVersion, dry_run: bool = False) -> SyncTarget:
     semver = version.render_semver()
-    _replace_line(
-        PACKAGE_JSON_PATH,
-        r'^    "version": ".*",$',
-        f'    "version": "{semver}",',
-        dry_run,
-    )
+    data = json.loads(PACKAGE_JSON_PATH.read_text(encoding="utf-8"))
+    data["version"] = semver
+    if not dry_run:
+        PACKAGE_JSON_PATH.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
     return SyncTarget(path=PACKAGE_JSON_PATH, label="site/package.json", expected=semver)
 
 
@@ -122,9 +121,8 @@ def _read_pyproject_version() -> str | None:
 
 
 def _read_package_json_version() -> str | None:
-    content = PACKAGE_JSON_PATH.read_text(encoding="utf-8")
-    m = re.search(r'"version":\s*"(.+)"', content)
-    return m.group(1).strip() if m else None
+    data = json.loads(PACKAGE_JSON_PATH.read_text(encoding="utf-8"))
+    return data.get("version")
 
 
 def verify_sync(version: ProjectVersion) -> list[SyncTarget]:
