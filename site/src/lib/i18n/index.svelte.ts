@@ -18,7 +18,7 @@ function detectLocale(): Locale {
     return "en";
 }
 
-let _locale = $state<Locale>(detectLocale());
+let _locale = $state<Locale>("en");
 
 export const locale = {
     get current() {
@@ -42,6 +42,10 @@ export function t(key: TranslationKey): string {
 
 export function initLangAttribute() {
     if (typeof document !== "undefined") {
+        const detected = detectLocale();
+        if (_locale !== detected) {
+            _locale = detected;
+        }
         document.documentElement.lang = _locale === "zh" ? "zh-CN" : "en";
     }
 }
