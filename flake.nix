@@ -142,6 +142,9 @@
           flutter_rust_bridge_codegen
           git-cliff
           cargo-expand
+          nodejs_26
+          pnpm
+          wrangler
         ];
 
         LANG = "C.UTF-8";
