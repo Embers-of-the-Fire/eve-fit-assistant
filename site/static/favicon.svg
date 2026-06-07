@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="12" fill="#05080f"/>
+  <rect x="4" y="4" width="120" height="120" rx="10" fill="none" stroke="#1a2744" stroke-width="2"/>
+  <path d="M28 96V32l72 32-72 32z" fill="#c8a951" opacity="0.8"/>
+  <text x="64" y="84" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="28" fill="#0a1020" letter-spacing="2">EF</text>
+</svg>

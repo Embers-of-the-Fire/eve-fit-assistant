@@ -1,0 +1,257 @@
+@import "tailwindcss";
+
+@theme {
+    --color-eve-bg: #05080f;
+    --color-eve-surface: #0a1020;
+    --color-eve-surface-alt: #0f162a;
+    --color-eve-border: #1a2744;
+    --color-eve-border-accent: #2a3f6a;
+    --color-eve-gold: #c8a951;
+    --color-eve-gold-dim: #8a6d2b;
+    --color-eve-gold-glow: #3d3115;
+    --color-eve-cyan: #00e5ff;
+    --color-eve-cyan-dim: #0a2a3a;
+    --color-eve-text: #cdd4de;
+    --color-eve-text-muted: #6b7280;
+    --color-eve-red: #d32f2f;
+
+    --animate-glow-pulse: glow-pulse 3s ease-in-out infinite;
+    --animate-fade-in-up: fade-in-up 0.7s ease-out forwards;
+    --animate-scanline: scanline 8s linear infinite;
+    --animate-text-shimmer: text-shimmer 4s ease-in-out infinite;
+    --animate-float: float 6s ease-in-out infinite;
+    --animate-twinkle: twinkle 2s ease-in-out infinite;
+    --animate-border-glow: border-glow 3s ease-in-out infinite;
+    --animate-slide-right: slide-right 0.3s ease-out forwards;
+
+    @keyframes glow-pulse {
+        0%,
+        100% {
+            box-shadow: 0 0 20px rgba(200, 169, 81, 0.15), 0 0 40px rgba(200, 169, 81, 0.05);
+        }
+        50% {
+            box-shadow: 0 0 30px rgba(200, 169, 81, 0.3), 0 0 60px rgba(200, 169, 81, 0.1);
+        }
+    }
+
+    @keyframes fade-in-up {
+        from {
+            opacity: 0;
+            transform: translateY(24px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes scanline {
+        0% {
+            transform: translateY(-100%);
+        }
+        100% {
+            transform: translateY(100vh);
+        }
+    }
+
+    @keyframes text-shimmer {
+        0%,
+        100% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+    }
+
+    @keyframes float {
+        0%,
+        100% {
+            transform: translateY(0) scale(1);
+        }
+        50% {
+            transform: translateY(-12px) scale(1.05);
+        }
+    }
+
+    @keyframes twinkle {
+        0%,
+        100% {
+            opacity: 0.3;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+    @keyframes border-glow {
+        0%,
+        100% {
+            border-color: rgba(200, 169, 81, 0.15);
+        }
+        50% {
+            border-color: rgba(200, 169, 81, 0.4);
+        }
+    }
+
+    @keyframes slide-right {
+        from {
+            transform: translateX(0);
+        }
+        to {
+            transform: translateX(4px);
+        }
+    }
+
+    @keyframes gradient-shift {
+        0% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+        100% {
+            background-position: 0% 50%;
+        }
+    }
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background-color: var(--color-eve-bg);
+    color: var(--color-eve-text);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.eve-divider {
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--color-eve-border-accent) 50%,
+        transparent 100%
+    );
+}
+
+.eve-divider-gold {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--color-eve-gold) 50%, transparent 100%);
+}
+
+.eve-angle-cut {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 0);
+}
+
+.animate-on-scroll {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+.animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.card-glow {
+    position: relative;
+}
+
+.card-glow::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, transparent 30%, rgba(200, 169, 81, 0) 50%, transparent 70%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    transition: background 0.5s ease;
+    pointer-events: none;
+}
+
+.card-glow:hover::before {
+    background: linear-gradient(
+        135deg,
+        rgba(200, 169, 81, 0.6) 0%,
+        rgba(200, 169, 81, 0.1) 50%,
+        rgba(0, 229, 255, 0.4) 100%
+    );
+}
+
+.text-gradient-animate {
+    background-size: 200% 200%;
+    animation: gradient-shift 4s ease-in-out infinite;
+}
+
+.hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+}
+
+.card-hover-glow {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, background-color
+        0.3s ease;
+}
+
+.card-hover-glow:hover {
+    border-color: rgba(200, 169, 81, 0.35);
+    box-shadow: 0 0 30px rgba(200, 169, 81, 0.08), 0 0 60px rgba(200, 169, 81, 0.03);
+    transform: translateY(-2px);
+    background-color: var(--color-eve-surface-alt);
+}
+
+.card-hover-glow:hover .card-icon {
+    border-color: var(--color-eve-gold);
+    box-shadow: 0 0 15px rgba(200, 169, 81, 0.2);
+}
+
+.btn-glow {
+    position: relative;
+}
+
+.btn-glow::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    clip-path: inherit;
+    background: linear-gradient(135deg, rgba(200, 169, 81, 0.6), rgba(0, 229, 255, 0.3));
+    z-index: -1;
+    opacity: 0;
+    filter: blur(8px);
+    transition: opacity 0.3s ease;
+}
+
+.btn-glow:hover::after {
+    opacity: 1;
+}
+
+.nav-link {
+    position: relative;
+}
+
+.nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--color-eve-gold);
+    transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+    width: 100%;
+}
