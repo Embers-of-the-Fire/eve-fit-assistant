@@ -102,10 +102,12 @@ WorkspaceCache.load_from_global()
 DRY_RUN = False
 
 
-def __execute_command(cmd: list, title: str, capture_stdout: bool = False) -> str:
+def __execute_command(
+    cmd: list, title: str, capture_stdout: bool = False, live_stdout: bool = False
+) -> str:
     global DRY_RUN
 
-    return execute_command(cmd, title, DRY_RUN, capture_stdout)
+    return execute_command(cmd, title, DRY_RUN, capture_stdout, live_stdout)
 
 
 def __resolve_dev_path(path: Path) -> Path:
@@ -514,6 +516,26 @@ def lint(no_check: bool):
             [cargo, "clippy", "--fix", "--allow-dirty", "--package", "rust_lib_eve_fit_assistant"],
             "CARGO CLIPPY OUTPUT",
         )
+
+    if Path("site/package.json").exists():
+        pnpm = get_command("pnpm")
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + "pnpm biome format --write site/"
+        )
+        __execute_command(
+            [pnpm, "biome", "format", "--write", "site/"],
+            "BIOME FORMAT OUTPUT",
+        )
+
+        if not no_check:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm biome check site/"
+            )
+            __execute_command(
+                [pnpm, "biome", "check", "site/"],
+                "BIOME CHECK OUTPUT",
+            )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Linting completed successfully."))
 
@@ -946,6 +968,11 @@ def __env_install():
     flutter = get_command("flutter")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub get")
     __execute_command([flutter, "pub", "get"], "FLUTTER PUB GET OUTPUT")
+
+    if Path("package.json").exists():
+        pnpm = get_command("pnpm")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm install")
+        __execute_command([pnpm, "install"], "PNPM INSTALL OUTPUT")
 
 
 def __env_upgrade():
@@ -4582,6 +4609,32 @@ def etc_codeart_cmd():
         styled([Style.BRIGHT, Fore.GREEN], "Codeart image generated successfully: ")
         + str(output_file)
     )
+
+
+@etc.group(cls=ClickAliasedGroup)
+def site():
+    """Landing page site commands."""
+
+
+@site.command("dev")
+def site_dev():
+    """Start the SvelteKit dev server."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "dev"], "SITE DEV", live_stdout=True)
+
+
+@site.command("build")
+def site_build():
+    """Build the static site for Cloudflare Pages."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "build"], "SITE BUILD", live_stdout=True)
+
+
+@site.command("check")
+def site_check():
+    """Type-check the SvelteKit site."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "check"], "SITE CHECK", live_stdout=True)
 
 
 cli()

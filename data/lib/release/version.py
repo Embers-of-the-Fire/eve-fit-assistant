@@ -5,6 +5,7 @@ and writes to pubspec.yaml, Cargo.toml, and pyproject.toml.
 
 from __future__ import annotations
 
+import json
 import re
 
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
 PUBSPEC_PATH = PROJECT_ROOT / "pubspec.yaml"
 CARGO_BRIDGE_PATH = PROJECT_ROOT / "rust" / "Cargo.toml"
 PYPROJECT_PATH = PROJECT_ROOT / "pyproject.toml"
+PACKAGE_JSON_PATH = PROJECT_ROOT / "site" / "package.json"
 # The eve-fit-os engine is a git submodule with independent versioning;
 # it is not included in sync targets.
 
@@ -91,6 +93,15 @@ def sync_pyproject(version: ProjectVersion, dry_run: bool = False) -> SyncTarget
     return SyncTarget(path=PYPROJECT_PATH, label="pyproject.toml", expected=semver)
 
 
+def sync_package_json(version: ProjectVersion, dry_run: bool = False) -> SyncTarget:
+    semver = version.render_semver()
+    data = json.loads(PACKAGE_JSON_PATH.read_text(encoding="utf-8"))
+    data["version"] = semver
+    if not dry_run:
+        PACKAGE_JSON_PATH.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
+    return SyncTarget(path=PACKAGE_JSON_PATH, label="site/package.json", expected=semver)
+
+
 def _read_pubspec_version() -> str | None:
     content = PUBSPEC_PATH.read_text(encoding="utf-8")
     m = re.search(r"^version: (.+)$", content, re.MULTILINE)
@@ -107,6 +118,11 @@ def _read_pyproject_version() -> str | None:
     content = PYPROJECT_PATH.read_text(encoding="utf-8")
     m = re.search(r'^version = "(.+)"$', content, re.MULTILINE)
     return m.group(1).strip() if m else None
+
+
+def _read_package_json_version() -> str | None:
+    data = json.loads(PACKAGE_JSON_PATH.read_text(encoding="utf-8"))
+    return data.get("version")
 
 
 def verify_sync(version: ProjectVersion) -> list[SyncTarget]:
@@ -133,6 +149,12 @@ def verify_sync(version: ProjectVersion) -> list[SyncTarget]:
             SyncTarget(path=PYPROJECT_PATH, label="pyproject.toml", expected=expected_semver)
         )
 
+    pkg_ver = _read_package_json_version()
+    if pkg_ver is None or pkg_ver != expected_semver:
+        mismatches.append(
+            SyncTarget(path=PACKAGE_JSON_PATH, label="site/package.json", expected=expected_semver)
+        )
+
     return mismatches
 
 
@@ -143,6 +165,7 @@ def sync_all(version: ProjectVersion, dry_run: bool = False) -> SyncReport:
         (sync_pubspec, "pubspec.yaml"),
         (sync_cargo, "rust/Cargo.toml"),
         (sync_pyproject, "pyproject.toml"),
+        (sync_package_json, "site/package.json"),
     ]
 
     for sync_fn, label in targets:

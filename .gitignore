@@ -70,3 +70,16 @@ __pycache__/
 # nix
 /.direnv
 .envrc
+
+# Node.js / pnpm
+node_modules/
+.pnpm-store/
+
+# Site build outputs
+site/.svelte-kit/
+site/build/
+site/.wrangler/
+
+# Worker build outputs
+pkg/*/dist/
+pkg/*/.wrangler/
