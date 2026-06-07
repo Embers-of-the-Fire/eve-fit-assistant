@@ -515,6 +515,26 @@ def lint(no_check: bool):
             "CARGO CLIPPY OUTPUT",
         )
 
+    if Path("site/package.json").exists():
+        pnpm = get_command("pnpm")
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + "pnpm biome format --write site/"
+        )
+        __execute_command(
+            [pnpm, "biome", "format", "--write", "site/"],
+            "BIOME FORMAT OUTPUT",
+        )
+
+        if not no_check:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm biome check site/"
+            )
+            __execute_command(
+                [pnpm, "biome", "check", "site/"],
+                "BIOME CHECK OUTPUT",
+            )
+
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Linting completed successfully."))
 
 
@@ -947,6 +967,11 @@ def __env_install():
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub get")
     __execute_command([flutter, "pub", "get"], "FLUTTER PUB GET OUTPUT")
 
+    if Path("package.json").exists():
+        pnpm = get_command("pnpm")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm install")
+        __execute_command([pnpm, "install"], "PNPM INSTALL OUTPUT")
+
 
 def __env_upgrade():
     uv = get_command("uv")
@@ -1024,6 +1049,32 @@ def dev_env_write_backend():
     lines = [f"{key}={value}" for key, value in values.items()]
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Wrote backend env: ") + str(env_path))
+
+
+@cli.group(cls=ClickAliasedGroup)
+def site():
+    """Landing page site commands."""
+
+
+@site.command("dev")
+def site_dev():
+    """Start the SvelteKit dev server."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "dev"], "SITE DEV")
+
+
+@site.command("build")
+def site_build():
+    """Build the static site for Cloudflare Pages."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "build"], "SITE BUILD")
+
+
+@site.command("check")
+def site_check():
+    """Type-check the SvelteKit site."""
+    pnpm = get_command("pnpm")
+    __execute_command([pnpm, "--filter", "efa-tech", "check"], "SITE CHECK")
 
 
 @cli.group(cls=ClickAliasedGroup)
