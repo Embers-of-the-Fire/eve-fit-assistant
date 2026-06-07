@@ -44,10 +44,10 @@ class FontScaleTile extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(_scaleFactors.length, (i) => Text(
-                  labels[i],
-                  textScaler: TextScaler.linear(_scaleFactors[i]),
-                )),
+              children: List.generate(
+                _scaleFactors.length,
+                (i) => Text(labels[i], textScaler: TextScaler.linear(_scaleFactors[i])),
+              ),
             ),
           ),
           const SizedBox(height: 4),
