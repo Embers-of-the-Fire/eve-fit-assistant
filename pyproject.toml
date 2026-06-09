@@ -21,8 +21,16 @@ dependencies = [
 [dependency-groups]
 dev = [
     "matplotlib>=3.10.8",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
     "ruff>=0.15.11",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["data/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
 
 [tool.uv.sources]
 convert = { workspace = true }
