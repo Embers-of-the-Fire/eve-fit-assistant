@@ -29,6 +29,9 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - Bridge crate build/test: `cargo build -p rust_lib_eve_fit_assistant`, `cargo test -p rust_lib_eve_fit_assistant`.
 - Engine build/test: `cargo build -p eve-fit-os`, `cargo test -p eve-fit-os`.
 - Single Rust integration test file/function: `cargo test -p eve-fit-os --test test_basic_fit -- --nocapture`; `cargo test -p eve-fit-os test_basic_fit -- --exact --nocapture`.
+- Python tests: `./x test python` or `uv run pytest`.
+- Flutter/Dart tests: `./x test dart` or `flutter test`.
+- All tests: `./x test all`.
 
 ## Data Workspaces And Bundles
 
@@ -50,6 +53,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 ## Validation Expectations
 
 - After edits, run the relevant formatter and linter; for mixed-language or uncertain changes, run `./x lint`.
+- Run relevant tests before committing: `./x test python` or `./x test dart` depending on what changed.
 - Dart-only minimum: `dart format lib/` plus `dart analyze`; run `./x generate dart` when annotations/routes/Riverpod/freezed/json models change.
 - Python-only minimum: `uv run ruff format` plus `uv run ruff check --fix`.
 - Rust bridge minimum: `cargo fmt --package rust_lib_eve_fit_assistant` plus `cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant`.
@@ -68,4 +72,4 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 ## Local Instruction Sources
 
 - No `.github/workflows/` (no CI). No `.cursor/rules/`, `.cursorrules`, or `opencode.json`.
-- `CLAUDE.md` is a copy of this file.
+- `CLAUDE.md` is a symlink to this file.
