@@ -21,9 +21,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "matplotlib>=3.10.8",
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.25.0",
-    "pytest-cov>=6.0.0",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.15.11",
 ]
 
