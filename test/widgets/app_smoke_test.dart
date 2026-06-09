@@ -20,8 +20,16 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: Center(child: Text("Smoke Test"))),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final fontScale = ref.watch(fontScaleProvider);
+            return MaterialApp(
+              home: MediaQuery(
+                data: const MediaQueryData().copyWith(textScaler: TextScaler.linear(fontScale)),
+                child: const Scaffold(body: Center(child: Text("Smoke Test"))),
+              ),
+            );
+          },
         ),
       ),
     );
