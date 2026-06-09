@@ -4637,4 +4637,36 @@ def site_check():
     __execute_command([pnpm, "--filter", "efa-tech", "check"], "SITE CHECK", live_stdout=True)
 
 
+@cli.group(aliases=["t"], cls=ClickAliasedGroup)
+def test():
+    """Run project test suites."""
+
+
+@test.command("python")
+def test_python():
+    """Run Python tests via pytest."""
+    uv = get_command("uv")
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run pytest data/tests/"
+    )
+    __execute_command([uv, "run", "pytest", "data/tests/"], "PYTEST OUTPUT")
+
+
+@test.command("dart")
+def test_dart():
+    """Run Flutter/Dart tests."""
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter test")
+    __execute_command([flutter, "test"], "FLUTTER TEST OUTPUT")
+
+
+@test.command("all")
+def test_all():
+    """Run all test suites (Python + Dart)."""
+    ctx = click.get_current_context()
+    ctx.invoke(test_python)
+    click.echo()
+    ctx.invoke(test_dart)
+
+
 cli()
