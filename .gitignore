@@ -83,3 +83,7 @@ site/.wrangler/
 # Worker build outputs
 pkg/*/dist/
 pkg/*/.wrangler/
+
+# Python artifact
+*.egg-info/
+
