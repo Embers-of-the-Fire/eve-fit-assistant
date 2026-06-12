@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io" show Platform;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
@@ -34,7 +35,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   final _bugStepsCtrl = TextEditingController();
   final _bugExpectedCtrl = TextEditingController();
   final _bugActualCtrl = TextEditingController();
-  final _bugVersionCtrl = TextEditingController();
   final _bugLogsCtrl = TextEditingController();
 
   final _featureTitleCtrl = TextEditingController();
@@ -46,7 +46,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
 
   final _contactCtrl = TextEditingController();
 
-  ReportPlatform _bugPlatform = ReportPlatform.android;
   bool _submitting = false;
   bool _includeMetadata = true;
 
@@ -66,7 +65,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _bugStepsCtrl.dispose();
     _bugExpectedCtrl.dispose();
     _bugActualCtrl.dispose();
-    _bugVersionCtrl.dispose();
     _bugLogsCtrl.dispose();
     _featureTitleCtrl.dispose();
     _featureProblemCtrl.dispose();
@@ -121,70 +119,63 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     child: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildField(
-          context.l10n.reportFieldTitle,
-          _bugTitleCtrl,
-          1,
-          hint: context.l10n.reportFieldTitleHint,
-          required: context.l10n.reportFieldTitleRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldSummary,
-          _bugSummaryCtrl,
-          1,
-          hint: context.l10n.reportFieldSummaryHint,
-          required: context.l10n.reportFieldSummaryRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldSteps,
-          _bugStepsCtrl,
-          3,
-          hint: context.l10n.reportFieldStepsHint,
-          required: context.l10n.reportFieldStepsRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldExpected,
-          _bugExpectedCtrl,
-          3,
-          hint: context.l10n.reportFieldExpectedHint,
-          required: context.l10n.reportFieldExpectedRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldActual,
-          _bugActualCtrl,
-          3,
-          hint: context.l10n.reportFieldActualHint,
-          required: context.l10n.reportFieldActualRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildPlatformDropdown(),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldVersion,
-          _bugVersionCtrl,
-          1,
-          hint: context.l10n.reportFieldVersionHint,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldLogs,
-          _bugLogsCtrl,
-          4,
-          hint: context.l10n.reportFieldLogsHint,
-        ),
-        const SizedBox(height: 16),
-        _buildMetadataToggle(),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldContact,
-          _contactCtrl,
-          1,
-          hint: context.l10n.reportFieldContactHint,
-        ),
+        _buildCard([
+          _buildField(
+            context.l10n.reportFieldTitle,
+            _bugTitleCtrl,
+            1,
+            hint: context.l10n.reportFieldTitleHint,
+            required: context.l10n.reportFieldTitleRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldSummary,
+            _bugSummaryCtrl,
+            1,
+            hint: context.l10n.reportFieldSummaryHint,
+            required: context.l10n.reportFieldSummaryRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldSteps,
+            _bugStepsCtrl,
+            3,
+            hint: context.l10n.reportFieldStepsHint,
+            required: context.l10n.reportFieldStepsRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldExpected,
+            _bugExpectedCtrl,
+            3,
+            hint: context.l10n.reportFieldExpectedHint,
+            required: context.l10n.reportFieldExpectedRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldActual,
+            _bugActualCtrl,
+            3,
+            hint: context.l10n.reportFieldActualHint,
+            required: context.l10n.reportFieldActualRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldLogs,
+            _bugLogsCtrl,
+            4,
+            hint: context.l10n.reportFieldLogsHint,
+          ),
+          const SizedBox(height: 16),
+          _buildMetadataToggle(),
+          const SizedBox(height: 4),
+          _buildField(
+            context.l10n.reportFieldContact,
+            _contactCtrl,
+            1,
+            hint: context.l10n.reportFieldContactHint,
+          ),
+        ]),
         const SizedBox(height: 32),
       ],
     ),
@@ -195,78 +186,72 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     child: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildField(
-          context.l10n.reportFieldTitle,
-          _featureTitleCtrl,
-          1,
-          hint: context.l10n.reportFieldTitleHint,
-          required: context.l10n.reportFieldTitleRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldProblem,
-          _featureProblemCtrl,
-          3,
-          hint: context.l10n.reportFieldProblemHint,
-          required: context.l10n.reportFieldProblemRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldProposal,
-          _featureProposalCtrl,
-          3,
-          hint: context.l10n.reportFieldProposalHint,
-          required: context.l10n.reportFieldProposalRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldImpact,
-          _featureImpactCtrl,
-          3,
-          hint: context.l10n.reportFieldImpactHint,
-          required: context.l10n.reportFieldImpactRequired,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldAlternatives,
-          _featureAlternativesCtrl,
-          3,
-          hint: context.l10n.reportFieldAlternativesHint,
-        ),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldExtra,
-          _featureExtraCtrl,
-          3,
-          hint: context.l10n.reportFieldExtraHint,
-        ),
-        const SizedBox(height: 16),
-        _buildMetadataToggle(),
-        const SizedBox(height: 16),
-        _buildField(
-          context.l10n.reportFieldContact,
-          _contactCtrl,
-          1,
-          hint: context.l10n.reportFieldContactHint,
-        ),
+        _buildCard([
+          _buildField(
+            context.l10n.reportFieldTitle,
+            _featureTitleCtrl,
+            1,
+            hint: context.l10n.reportFieldTitleHint,
+            required: context.l10n.reportFieldTitleRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldProblem,
+            _featureProblemCtrl,
+            3,
+            hint: context.l10n.reportFieldProblemHint,
+            required: context.l10n.reportFieldProblemRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldProposal,
+            _featureProposalCtrl,
+            3,
+            hint: context.l10n.reportFieldProposalHint,
+            required: context.l10n.reportFieldProposalRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldImpact,
+            _featureImpactCtrl,
+            3,
+            hint: context.l10n.reportFieldImpactHint,
+            required: context.l10n.reportFieldImpactRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldAlternatives,
+            _featureAlternativesCtrl,
+            3,
+            hint: context.l10n.reportFieldAlternativesHint,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldExtra,
+            _featureExtraCtrl,
+            3,
+            hint: context.l10n.reportFieldExtraHint,
+          ),
+          const SizedBox(height: 16),
+          _buildMetadataToggle(),
+          const SizedBox(height: 4),
+          _buildField(
+            context.l10n.reportFieldContact,
+            _contactCtrl,
+            1,
+            hint: context.l10n.reportFieldContactHint,
+          ),
+        ]),
         const SizedBox(height: 32),
       ],
     ),
   );
 
-  Widget _buildPlatformDropdown() => DropdownButtonFormField<ReportPlatform>(
-    initialValue: _bugPlatform,
-    decoration: InputDecoration(
-      labelText: context.l10n.reportFieldPlatform,
-      border: const OutlineInputBorder(),
+  Widget _buildCard(List<Widget> children) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
     ),
-    items: ReportPlatform.values
-        .map((p) => DropdownMenuItem(value: p, child: Text(p.label)))
-        .toList(),
-    onChanged: (v) {
-      if (v != null) setState(() => _bugPlatform = v);
-    },
-    validator: (_) => context.l10n.reportFieldPlatformRequired,
   );
 
   Widget _buildField(
@@ -322,6 +307,14 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     ),
   );
 
+  ReportPlatform _detectPlatform() => switch (Platform.operatingSystem) {
+    "android" => ReportPlatform.android,
+    "ios" => ReportPlatform.ios,
+    "windows" => ReportPlatform.windows,
+    "linux" => ReportPlatform.linux,
+    _ => ReportPlatform.other,
+  };
+
   Future<void> _submit() async {
     final isBug = _tabController.index == 0;
     final formKey = isBug ? _bugFormKey : _featureFormKey;
@@ -343,8 +336,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             steps: _bugStepsCtrl.text.trim(),
             expected: _bugExpectedCtrl.text.trim(),
             actual: _bugActualCtrl.text.trim(),
-            platform: _bugPlatform,
-            version: _bugVersionCtrl.text.trim(),
+            platform: _detectPlatform(),
             logs: _bugLogsCtrl.text.trim(),
             contact: _contactCtrl.text.trim(),
           ),
@@ -384,7 +376,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _bugStepsCtrl.clear();
     _bugExpectedCtrl.clear();
     _bugActualCtrl.clear();
-    _bugVersionCtrl.clear();
     _bugLogsCtrl.clear();
     _featureTitleCtrl.clear();
     _featureProblemCtrl.clear();
@@ -393,10 +384,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _featureAlternativesCtrl.clear();
     _featureExtraCtrl.clear();
     _contactCtrl.clear();
-    setState(() {
-      _bugPlatform = ReportPlatform.android;
-      _includeMetadata = true;
-    });
+    setState(() => _includeMetadata = true);
   }
 
   void _showSuccessDialog(IssueResult result) {
@@ -497,14 +485,4 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
       }
     }
   }
-}
-
-extension on ReportPlatform {
-  String get label => switch (this) {
-    ReportPlatform.android => "Android",
-    ReportPlatform.ios => "iOS",
-    ReportPlatform.windows => "Windows 10/11",
-    ReportPlatform.linux => "Linux",
-    ReportPlatform.other => "Other",
-  };
 }
