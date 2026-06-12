@@ -21,6 +21,8 @@ enum ReportPlatform {
   other,
 }
 
+String reportPlatformToJson(ReportPlatform p) => _$ReportPlatformEnumMap[p]!;
+
 @freezed
 abstract class BugReport with _$BugReport {
   const factory BugReport({
@@ -72,7 +74,8 @@ abstract class FieldError with _$FieldError {
 
 @freezed
 abstract class ValidationError with _$ValidationError {
-  const factory ValidationError({required String error, List<FieldError>? details}) = _ValidationError;
+  const factory ValidationError({required String error, List<FieldError>? details}) =
+      _ValidationError;
 
   factory ValidationError.fromJson(Map<String, dynamic> json) => _$ValidationErrorFromJson(json);
 }

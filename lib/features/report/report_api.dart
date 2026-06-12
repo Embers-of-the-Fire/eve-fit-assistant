@@ -7,7 +7,8 @@ import "package:eve_fit_assistant/features/report/report_schema.dart";
 const _workerOrigin = "https://api.efa-tech.dev";
 
 class ReportApi {
-  ReportApi() : _dio = createRemoteDio(
+  ReportApi()
+    : _dio = createRemoteDio(
         connectTimeout: const Duration(seconds: 10),
         sendTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
@@ -25,7 +26,7 @@ class ReportApi {
       "steps": report.steps,
       "expected": report.expected,
       "actual": report.actual,
-      "platform": report.platform.toJson(),
+      "platform": reportPlatformToJson(report.platform),
       "metadata": metadata,
       if (report.version != null && report.version!.isNotEmpty) "version": report.version,
       if (report.logs != null && report.logs!.isNotEmpty) "logs": report.logs,
@@ -83,9 +84,7 @@ class ReportApi {
         "app_version": appVersion,
       };
     } on Object {
-      return {
-        "os_version": "${Platform.operatingSystem} ${Platform.operatingSystemVersion}",
-      };
+      return {"os_version": "${Platform.operatingSystem} ${Platform.operatingSystemVersion}"};
     }
   }
 }
