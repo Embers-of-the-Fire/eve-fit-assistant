@@ -2,7 +2,7 @@
 
 Cloudflare Worker that receives form submissions and creates GitHub issues via the GitHub App API.
 
-Target repo: `Embers-of-the-Fire/eve-fit-assistent`
+Target repo: `Embers-of-the-Fire/eve-fit-assistant`
 
 ## API
 
@@ -51,7 +51,7 @@ Create a feature request issue.
 
 ```json
 {
-    "issue_url": "https://github.com/Embers-of-the-Fire/eve-fit-assistent/issues/42",
+    "issue_url": "https://github.com/Embers-of-the-Fire/eve-fit-assistant/issues/42",
     "issue_number": 42
 }
 ```
@@ -98,7 +98,7 @@ Create a feature request issue.
 
 7. Scroll down to **Private keys** and click **Generate a private key**. A `.pem` file will download. Copy its full contents (including `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----`) — this is `GITHUB_APP_PRIVATE_KEY`.
 
-8. Go to the **Install App** tab in the sidebar, click **Install** next to your account, and select the repository `Embers-of-the-Fire/eve-fit-assistent`. Click **Install**.
+8. Go to the **Install App** tab in the sidebar, click **Install** next to your account, and select the repository `Embers-of-the-Fire/eve-fit-assistant`. Click **Install**.
 
 9. After installation, you will be redirected to the installation page. The URL looks like:
    `https://github.com/settings/installations/12345678`
