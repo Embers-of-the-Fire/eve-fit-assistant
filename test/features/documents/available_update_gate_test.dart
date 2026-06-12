@@ -18,13 +18,6 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
 
 class _FakeAdapter implements HttpClientAdapter {
-  _FakeAdapter({bool succeedSync = false});
-  factory _FakeAdapter.failing() => _FakeAdapter();
-  factory _FakeAdapter.succeeding() {
-    return _FakeAdapter._(succeedSync: true);
-  }
-  _FakeAdapter._({bool succeedSync = false});
-
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -69,7 +62,7 @@ class _ThrowingSyncService extends RemoteDocumentSyncService {
   _ThrowingSyncService(Ref ref)
     : super(
         ref: ref,
-        dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter.failing(),
+        dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(),
       );
 
   @override
@@ -105,7 +98,7 @@ void main() {
     });
 
     test("returns null when no newer version exists", () async {
-      final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter.failing();
+      final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter();
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
@@ -147,7 +140,7 @@ void main() {
     });
 
     test("returns latest newer version record when one exists", () async {
-      final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter.failing();
+      final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter();
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
@@ -170,7 +163,7 @@ void main() {
     });
 
     test("returns null when already notified about the latest version", () async {
-      final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter.failing();
+      final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter();
       DocumentStorage.setNotifiedAvailableVersion("2.0.0");
       final container = ProviderContainer(
         overrides: [
