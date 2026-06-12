@@ -37,6 +37,7 @@ $effect(() => {
 			<div class="flex items-center gap-8 text-sm text-eve-text-muted">
 				<a href="#features" class="nav-link pb-0.5 hover:text-eve-gold transition-colors">{t('nav.features')}</a>
 				<a href="#about" class="nav-link pb-0.5 hover:text-eve-gold transition-colors">{t('nav.about')}</a>
+				<a href="/report" class="nav-link pb-0.5 hover:text-eve-gold transition-colors">{t('nav.report')}</a>
 				<a
 					href="#get-started"
 					class="rounded border border-eve-gold/40 px-4 py-1.5 text-eve-gold hover:bg-eve-gold/10 transition-all duration-300 text-sm hover:border-eve-gold/60 hover:shadow-[0_0_20px_rgba(200,169,81,0.1)]"

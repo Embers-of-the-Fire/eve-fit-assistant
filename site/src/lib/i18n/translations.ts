@@ -4,6 +4,7 @@ export type TranslationKey = keyof typeof en;
 export const en = {
     "nav.features": "Features",
     "nav.about": "About",
+    "nav.report": "Report",
     "nav.get_started": "Get Started",
 
     "brand.name": "EVE Fit Assistant",
@@ -67,11 +68,85 @@ export const en = {
         "EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide.",
     "footer.trademark_2":
         "All other trademarks are the property of their respective owners. EVE Fit Assistant is a third-party tool and is not endorsed by CCP hf.",
+
+    "report.heading": "Report an Issue",
+    "report.description":
+        "Found a bug or have a feature idea? Let us know — submissions create GitHub issues the team can track.",
+
+    "report.bug.title": "Bug Report",
+    "report.bug.description": "Something isn't working right? Describe the problem and steps to reproduce it.",
+
+    "report.feature.title": "Feature Request",
+    "report.feature.description": "Have an idea to improve the app? Tell us what you need and why it matters.",
+
+    "report.form.title": "Title",
+    "report.form.title.placeholder": "Short, descriptive title for this submission",
+    "report.form.bug.prefix": "[Bug]: ",
+    "report.form.feature.prefix": "[Feature]: ",
+
+    "report.form.required": "(required)",
+    "report.form.optional": "(optional)",
+    "report.form.do_not_attach": "Do not attach",
+    "report.form.attach_extras": "Attach additional details",
+    "report.form.submit": "Submit",
+    "report.form.submitting": "Submitting...",
+
+    "report.form.bug.summary": "Summary",
+    "report.form.bug.summary.placeholder": "Briefly describe what went wrong",
+    "report.form.bug.steps": "Steps to Reproduce",
+    "report.form.bug.steps.placeholder": "1. Open the app\n2. Navigate to ...\n3. Observe the issue",
+    "report.form.bug.expected": "Expected Behavior",
+    "report.form.bug.expected.placeholder": "What should have happened",
+    "report.form.bug.actual": "Actual Behavior",
+    "report.form.bug.actual.placeholder": "What actually happened",
+    "report.form.bug.platform": "Platform",
+    "report.form.bug.version": "App Version",
+    "report.form.bug.version.placeholder": "e.g. 0.1.0",
+    "report.form.bug.logs": "Logs / Screenshots / Extra Context",
+    "report.form.bug.logs.placeholder": "Paste any relevant logs, error messages, or describe additional context",
+
+    "report.form.feature.problem": "Problem to Solve",
+    "report.form.feature.problem.placeholder": "What problem are you trying to solve?",
+    "report.form.feature.proposal": "Proposed Solution",
+    "report.form.feature.proposal.placeholder": "Describe your idea in detail",
+    "report.form.feature.impact": "Use Case / Impact",
+    "report.form.feature.impact.placeholder": "Why is this important? Who would benefit?",
+    "report.form.feature.alternatives": "Alternatives Considered",
+    "report.form.feature.alternatives.placeholder": "Any workarounds or alternative approaches you've thought of",
+    "report.form.feature.extra": "Mockups / References / Extra Context",
+    "report.form.feature.extra.placeholder": "Links to mockups, references, or any additional context",
+
+    "report.form.contact": "Contact",
+    "report.form.contact.placeholder": "Email, QQ, or other way to reach you (optional)",
+    "report.form.labels": "Labels",
+    "report.form.labels.placeholder": "Comma-separated labels, e.g. T-Bug, V-Needs Triage",
+    "report.form.metadata": "Metadata",
+    "report.form.metadata.key": "Key",
+    "report.form.metadata.value": "Value",
+    "report.form.metadata.add": "Add row",
+    "report.form.metadata.remove": "Remove",
+    "report.form.metadata.key.placeholder": "e.g. os_version",
+    "report.form.metadata.value.placeholder": "e.g. Android 14",
+
+    "report.form.platform.android": "Android",
+    "report.form.platform.ios": "iOS",
+    "report.form.platform.windows": "Windows 10/11",
+    "report.form.platform.linux": "Linux",
+    "report.form.platform.other": "Other",
+
+    "report.form.success.title": "Submitted!",
+    "report.form.success.view_on_github": "View on GitHub",
+
+    "report.form.error.title": "Something went wrong",
+    "report.form.error.network": "Network error — please check your connection and try again.",
+
+    "report.form.back": "Back to Reports",
 };
 
 export const zh: Record<TranslationKey, string> = {
     "nav.features": "功能特性",
     "nav.about": "关于",
+    "nav.report": "反馈",
     "nav.get_started": "开始使用",
 
     "brand.name": "EVE Fit Assistant",
@@ -134,4 +209,77 @@ export const zh: Record<TranslationKey, string> = {
     "footer.trademark_1": "EVE Online 和 EVE 标志是 CCP hf 的注册商标。保留所有权利。",
     "footer.trademark_2":
         "所有其他商标均为其各自所有者的财产。EVE Fit Assistant 是第三方工具，未经 CCP hf 认可。",
+
+    "report.heading": "反馈问题",
+    "report.description":
+        "发现了 Bug 或有功能建议？告诉我们 — 提交的内容会创建 GitHub Issue 供团队跟踪。",
+
+    "report.bug.title": "反馈 Bug",
+    "report.bug.description": "有什么功能无法正常工作？描述问题及复现步骤。",
+
+    "report.feature.title": "功能请求",
+    "report.feature.description": "有改进应用的想法？告诉我们你需要的功能以及为什么重要。",
+
+    "report.form.title": "标题",
+    "report.form.title.placeholder": "简短的描述性标题",
+    "report.form.bug.prefix": "[Bug]: ",
+    "report.form.feature.prefix": "[Feature]: ",
+
+    "report.form.required": "（必填）",
+    "report.form.optional": "（选填）",
+    "report.form.do_not_attach": "不附加",
+    "report.form.attach_extras": "附加额外信息",
+    "report.form.submit": "提交",
+    "report.form.submitting": "提交中...",
+
+    "report.form.bug.summary": "概述",
+    "report.form.bug.summary.placeholder": "简要描述出了什么问题",
+    "report.form.bug.steps": "复现步骤",
+    "report.form.bug.steps.placeholder": "1. 打开应用\n2. 进入 ...\n3. 观察问题",
+    "report.form.bug.expected": "预期行为",
+    "report.form.bug.expected.placeholder": "原本应该发生什么",
+    "report.form.bug.actual": "实际行为",
+    "report.form.bug.actual.placeholder": "实际发生了什么",
+    "report.form.bug.platform": "平台",
+    "report.form.bug.version": "应用版本",
+    "report.form.bug.version.placeholder": "例如 0.1.0",
+    "report.form.bug.logs": "日志 / 截图 / 其他补充",
+    "report.form.bug.logs.placeholder": "粘贴相关日志、错误信息或描述额外上下文",
+
+    "report.form.feature.problem": "要解决的问题",
+    "report.form.feature.problem.placeholder": "你想解决什么问题？",
+    "report.form.feature.proposal": "期望方案",
+    "report.form.feature.proposal.placeholder": "详细描述你的想法",
+    "report.form.feature.impact": "使用场景 / 影响",
+    "report.form.feature.impact.placeholder": "这为什么重要？谁会受益？",
+    "report.form.feature.alternatives": "替代方案",
+    "report.form.feature.alternatives.placeholder": "你考虑过的变通方案或替代方法",
+    "report.form.feature.extra": "原型 / 参考 / 其他补充",
+    "report.form.feature.extra.placeholder": "原型链接、参考资料或任何补充上下文",
+
+    "report.form.contact": "联系方式",
+    "report.form.contact.placeholder": "邮箱、QQ 或其他联系方式（选填）",
+    "report.form.labels": "标签",
+    "report.form.labels.placeholder": "逗号分隔的标签，例如 T-Bug, V-Needs Triage",
+    "report.form.metadata": "元数据",
+    "report.form.metadata.key": "键",
+    "report.form.metadata.value": "值",
+    "report.form.metadata.add": "添加行",
+    "report.form.metadata.remove": "移除",
+    "report.form.metadata.key.placeholder": "例如 os_version",
+    "report.form.metadata.value.placeholder": "例如 Android 14",
+
+    "report.form.platform.android": "Android",
+    "report.form.platform.ios": "iOS",
+    "report.form.platform.windows": "Windows 10/11",
+    "report.form.platform.linux": "Linux",
+    "report.form.platform.other": "其他",
+
+    "report.form.success.title": "提交成功！",
+    "report.form.success.view_on_github": "在 GitHub 上查看",
+
+    "report.form.error.title": "出了点问题",
+    "report.form.error.network": "网络错误 — 请检查网络连接后重试。",
+
+    "report.form.back": "返回反馈",
 };
