@@ -20,9 +20,7 @@ final startupAvailableUpdateProvider = FutureProvider<DocumentRecord?>((Ref ref)
   }
 
   try {
-    await ref.read(remoteDocumentSyncServiceProvider).sync().timeout(
-      const Duration(seconds: 5),
-    );
+    await ref.read(remoteDocumentSyncServiceProvider).sync().timeout(const Duration(seconds: 5));
   } on TimeoutException {
     // Proceed with whatever data is available
   }
@@ -37,9 +35,7 @@ final startupAvailableUpdateProvider = FutureProvider<DocumentRecord?>((Ref ref)
     return null;
   }
 
-  candidates.sort(
-    (DocumentRecord a, DocumentRecord b) => compareAppVersions(b.appVer!, a.appVer!),
-  );
+  candidates.sort((DocumentRecord a, DocumentRecord b) => compareAppVersions(b.appVer!, a.appVer!));
   final latest = candidates.first;
 
   if (latest.appVer == DocumentStorage.notifiedAvailableVersion) {
