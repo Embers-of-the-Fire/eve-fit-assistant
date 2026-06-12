@@ -477,48 +477,75 @@ def cli(dry_run, ws_name):
 
 @cli.command()
 @click.option("--no-check", "no_check", is_flag=True, default=False, help="Skip linting step.")
-def lint(no_check: bool):
+@click.option(
+    "--lang",
+    type=click.Choice(["all", "python", "dart", "rust", "site"]),
+    default="all",
+    help="Limit linting to a specific language (default: all).",
+)
+def lint(no_check: bool, lang: str):
     """Lint, fix and format code"""
-    # run ruff to format rust code
 
     uv = get_command("uv")
-    if not no_check:
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run ruff check --fix"
-        )
-        __execute_command([uv, "run", "ruff", "check", "--fix"], "RUFF CHECK OUTPUT")
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run ruff format")
-    __execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT")
-    dart = get_command("dart")
+    if lang in ("all", "python"):
+        if not no_check:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+                + "uv run ruff check --fix"
+            )
+            __execute_command([uv, "run", "ruff", "check", "--fix"], "RUFF CHECK OUTPUT")
 
-    if not no_check:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart fix --apply")
-        __execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT")
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart analyze")
-        __execute_command([dart, "analyze"], "DART ANALYZE OUTPUT")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run ruff format")
+        __execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT")
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart format lib/")
-    __execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT")
+    if lang in ("all", "dart", "rust"):
+        dart = get_command("dart")
 
-    cargo = get_command("cargo")
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-        + "cargo fmt --package rust_lib_eve_fit_assistant"
-    )
-    __execute_command([cargo, "fmt", "--package", "rust_lib_eve_fit_assistant"], "CARGO FMT OUTPUT")
+        if lang in ("all", "dart"):
+            if not no_check:
+                click.echo(
+                    styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart fix --apply"
+                )
+                __execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT")
+                click.echo(
+                    styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart analyze"
+                )
+                __execute_command([dart, "analyze"], "DART ANALYZE OUTPUT")
 
-    if not no_check:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart format lib/"
+            )
+            __execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT")
+
+        cargo = get_command("cargo")
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-            + "cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant"
+            + "cargo fmt --package rust_lib_eve_fit_assistant"
         )
         __execute_command(
-            [cargo, "clippy", "--fix", "--allow-dirty", "--package", "rust_lib_eve_fit_assistant"],
-            "CARGO CLIPPY OUTPUT",
+            [cargo, "fmt", "--package", "rust_lib_eve_fit_assistant"],
+            "CARGO FMT OUTPUT",
         )
 
-    if Path("site/package.json").exists():
+        if not no_check:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+                + "cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant"
+            )
+            __execute_command(
+                [
+                    cargo,
+                    "clippy",
+                    "--fix",
+                    "--allow-dirty",
+                    "--package",
+                    "rust_lib_eve_fit_assistant",
+                ],
+                "CARGO CLIPPY OUTPUT",
+            )
+
+    if lang in ("all", "site") and Path("site/package.json").exists():
         pnpm = get_command("pnpm")
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
@@ -4673,16 +4700,27 @@ def test_all():
 _SUITE_DEFINITIONS = [
     {
         "suite": "python",
+        "lint_command": "uv run x.py lint --lang python",
         "command": "uv run x.py test python",
         "patterns": ["data/**", "x.py", "pyproject.toml", "uv.lock"],
     },
     {
         "suite": "dart",
+        "lint_command": "uv run x.py lint --lang dart",
         "command": "uv run x.py test dart",
-        "patterns": ["lib/**", "test/**", "pubspec.yaml", "pubspec.lock"],
+        "patterns": [
+            "lib/**",
+            "test/**",
+            "rust/src/**",
+            "rust/Cargo.toml",
+            "rust/Cargo.lock",
+            "pubspec.yaml",
+            "pubspec.lock",
+        ],
     },
     {
         "suite": "site",
+        "lint_command": "uv run x.py lint --lang site",
         "command": "uv run x.py site check",
         "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
     },
@@ -4721,7 +4759,13 @@ def _calculate_ci_matrix(files: list[str]) -> list[dict]:
     result = []
     for suite_def in _SUITE_DEFINITIONS:
         if any(_match_any_pattern(f, suite_def["patterns"]) for f in files):
-            result.append({"suite": suite_def["suite"], "command": suite_def["command"]})
+            result.append(
+                {
+                    "suite": suite_def["suite"],
+                    "lint_command": suite_def["lint_command"],
+                    "command": suite_def["command"],
+                }
+            )
     return result
 
 
@@ -4736,7 +4780,10 @@ def ci():
 def ci_matrix(from_file, full):
     """Calculate CI job matrix from changed files. Outputs JSON to stdout."""
     if full:
-        suites = [{"suite": s["suite"], "command": s["command"]} for s in _SUITE_DEFINITIONS]
+        suites = [
+            {"suite": s["suite"], "lint_command": s["lint_command"], "command": s["command"]}
+            for s in _SUITE_DEFINITIONS
+        ]
     elif from_file:
         with open(from_file) as f:
             files = [line.strip() for line in f if line.strip()]
