@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/report/report_api.dart";
 import "package:eve_fit_assistant/features/report/report_schema.dart";
+import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -83,6 +84,15 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
       length: 2,
       child: Layout(
         title: context.l10n.reportPageTitle,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.open_in_new),
+            tooltip: context.l10n.reportExternalChannelsTitle,
+            onPressed: _submitting
+                ? null
+                : () => unawaited(context.router.push(const ReportExternalLinksRoute())),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
