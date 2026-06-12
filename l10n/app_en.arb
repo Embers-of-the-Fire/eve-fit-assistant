@@ -612,8 +612,7 @@
   "reportFieldActual": "Actual Behavior",
   "reportFieldActualHint": "Describe what actually happened",
   "reportFieldActualRequired": "Actual behavior is required",
-  "reportFieldLogs": "Logs / Screenshots / Extra Context",
-  "reportFieldLogsHint": "Attach logs, screenshots, or any information that may help",
+
   "reportFieldProblem": "Problem to Solve",
   "reportFieldProblemHint": "What user problem, pain point, or missing workflow does this request address?",
   "reportFieldProblemRequired": "Problem is required",

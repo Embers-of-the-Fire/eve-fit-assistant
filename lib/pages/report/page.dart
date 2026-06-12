@@ -35,7 +35,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   final _bugStepsCtrl = TextEditingController();
   final _bugExpectedCtrl = TextEditingController();
   final _bugActualCtrl = TextEditingController();
-  final _bugLogsCtrl = TextEditingController();
 
   final _featureTitleCtrl = TextEditingController();
   final _featureProblemCtrl = TextEditingController();
@@ -65,7 +64,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _bugStepsCtrl.dispose();
     _bugExpectedCtrl.dispose();
     _bugActualCtrl.dispose();
-    _bugLogsCtrl.dispose();
     _featureTitleCtrl.dispose();
     _featureProblemCtrl.dispose();
     _featureProposalCtrl.dispose();
@@ -123,7 +121,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldTitle,
             _bugTitleCtrl,
-            1,
             hint: context.l10n.reportFieldTitleHint,
             required: context.l10n.reportFieldTitleRequired,
           ),
@@ -131,7 +128,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldSummary,
             _bugSummaryCtrl,
-            1,
+            minLines: 2,
             hint: context.l10n.reportFieldSummaryHint,
             required: context.l10n.reportFieldSummaryRequired,
           ),
@@ -139,7 +136,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldSteps,
             _bugStepsCtrl,
-            3,
+            minLines: 3,
             hint: context.l10n.reportFieldStepsHint,
             required: context.l10n.reportFieldStepsRequired,
           ),
@@ -147,7 +144,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldExpected,
             _bugExpectedCtrl,
-            3,
+            minLines: 3,
             hint: context.l10n.reportFieldExpectedHint,
             required: context.l10n.reportFieldExpectedRequired,
           ),
@@ -155,16 +152,9 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldActual,
             _bugActualCtrl,
-            3,
+            minLines: 3,
             hint: context.l10n.reportFieldActualHint,
             required: context.l10n.reportFieldActualRequired,
-          ),
-          const SizedBox(height: 16),
-          _buildField(
-            context.l10n.reportFieldLogs,
-            _bugLogsCtrl,
-            4,
-            hint: context.l10n.reportFieldLogsHint,
           ),
           const SizedBox(height: 16),
           _buildMetadataToggle(),
@@ -172,7 +162,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldContact,
             _contactCtrl,
-            1,
             hint: context.l10n.reportFieldContactHint,
           ),
         ]),
@@ -190,7 +179,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldTitle,
             _featureTitleCtrl,
-            1,
             hint: context.l10n.reportFieldTitleHint,
             required: context.l10n.reportFieldTitleRequired,
           ),
@@ -198,7 +186,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldProblem,
             _featureProblemCtrl,
-            3,
+            minLines: 3,
             hint: context.l10n.reportFieldProblemHint,
             required: context.l10n.reportFieldProblemRequired,
           ),
@@ -206,7 +194,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldProposal,
             _featureProposalCtrl,
-            3,
+            minLines: 3,
             hint: context.l10n.reportFieldProposalHint,
             required: context.l10n.reportFieldProposalRequired,
           ),
@@ -214,7 +202,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldImpact,
             _featureImpactCtrl,
-            3,
+            minLines: 3,
             hint: context.l10n.reportFieldImpactHint,
             required: context.l10n.reportFieldImpactRequired,
           ),
@@ -222,14 +210,14 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldAlternatives,
             _featureAlternativesCtrl,
-            3,
+            minLines: 2,
             hint: context.l10n.reportFieldAlternativesHint,
           ),
           const SizedBox(height: 16),
           _buildField(
             context.l10n.reportFieldExtra,
             _featureExtraCtrl,
-            3,
+            minLines: 2,
             hint: context.l10n.reportFieldExtraHint,
           ),
           const SizedBox(height: 16),
@@ -238,7 +226,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           _buildField(
             context.l10n.reportFieldContact,
             _contactCtrl,
-            1,
             hint: context.l10n.reportFieldContactHint,
           ),
         ]),
@@ -256,25 +243,30 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
 
   Widget _buildField(
     String label,
-    TextEditingController ctrl,
-    int maxLines, {
+    TextEditingController ctrl, {
+    int minLines = 1,
+    int? maxLines,
     String? hint,
     String? required,
-  }) => TextFormField(
-    controller: ctrl,
-    maxLines: maxLines,
-    decoration: InputDecoration(
-      labelText: label,
-      hintText: hint,
-      border: const OutlineInputBorder(),
-    ),
-    validator: (value) {
-      if (required != null && (value == null || value.trim().isEmpty)) {
-        return required;
-      }
-      return null;
-    },
-  );
+  }) {
+    final effectiveMaxLines = maxLines ?? minLines;
+    return TextFormField(
+      controller: ctrl,
+      minLines: minLines,
+      maxLines: effectiveMaxLines == 1 ? 1 : null,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: const OutlineInputBorder(),
+      ),
+      validator: (value) {
+        if (required != null && (value == null || value.trim().isEmpty)) {
+          return required;
+        }
+        return null;
+      },
+    );
+  }
 
   Widget _buildMetadataToggle() => CheckboxListTile(
     value: _includeMetadata,
@@ -337,7 +329,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             expected: _bugExpectedCtrl.text.trim(),
             actual: _bugActualCtrl.text.trim(),
             platform: _detectPlatform(),
-            logs: _bugLogsCtrl.text.trim(),
             contact: _contactCtrl.text.trim(),
           ),
           language,
@@ -376,7 +367,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _bugStepsCtrl.clear();
     _bugExpectedCtrl.clear();
     _bugActualCtrl.clear();
-    _bugLogsCtrl.clear();
     _featureTitleCtrl.clear();
     _featureProblemCtrl.clear();
     _featureProposalCtrl.clear();
