@@ -127,6 +127,8 @@
   "versionBumpCardSubtitle": "{count} new updates",
   "versionBumpCardCloseTooltip": "Close",
   "versionBumpCardSubtitleFallback": "See version notes",
+  "availableUpdateDialogTitle": "v{version} is available",
+  "availableUpdateDialogSummary": "A new app version is available. Tap to see what's new.",
   "fitCreationPageTitle": "Create New Fit",
   "fitCreationPageDialogHint": "New Fit {count}",
   "fitCreationPageDialogErrorText": "Please enter fit name.",
