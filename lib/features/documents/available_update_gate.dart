@@ -21,8 +21,8 @@ final startupAvailableUpdateProvider = FutureProvider<DocumentRecord?>((Ref ref)
 
   try {
     await ref.read(remoteDocumentSyncServiceProvider).sync().timeout(const Duration(seconds: 5));
-  } on TimeoutException {
-    // Proceed with whatever data is available
+  } on Exception {
+    // Proceed with whatever data is already available (cached or bundled)
   }
 
   final appVer = await ref.read(appVersionProvider.future);

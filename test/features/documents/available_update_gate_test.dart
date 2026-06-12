@@ -65,6 +65,17 @@ DocumentRecord _versionRecord({required String id, required String appVer}) => D
   appVer: appVer,
 );
 
+class _ThrowingSyncService extends RemoteDocumentSyncService {
+  _ThrowingSyncService(Ref ref)
+    : super(
+        ref: ref,
+        dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter.failing(),
+      );
+
+  @override
+  Future<bool> sync() async => throw Exception("transient sync failure");
+}
+
 void main() {
   setUpAll(() async {
     final tempDir = await Directory.systemTemp.createTemp("efa_test_");
@@ -109,6 +120,27 @@ void main() {
 
       final result = await container.read(startupAvailableUpdateProvider.future);
       expect(result, isNull);
+    });
+
+    test("falls back to cached data when sync throws a non-timeout exception", () async {
+      final container = ProviderContainer(
+        overrides: [
+          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          remoteDocumentSyncServiceProvider.overrideWith(
+            (ref) => _ThrowingSyncService(ref),
+          ),
+          appVersionProvider.overrideWith((_) async => "1.0.0"),
+          documentFeedProvider(DocumentFeedKind.version).overrideWith((_) async => [
+            _versionRecord(id: "v1", appVer: "1.0.0"),
+            _versionRecord(id: "v2", appVer: "2.0.0"),
+          ]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final result = await container.read(startupAvailableUpdateProvider.future);
+      expect(result, isNotNull);
+      expect(result!.appVer, "2.0.0");
     });
 
     test("returns latest newer version record when one exists", () async {
