@@ -254,6 +254,15 @@
   },
   "versionBumpCardCloseTooltip": "关闭",
   "versionBumpCardSubtitleFallback": "查看版本说明",
+  "availableUpdateDialogTitle": "v{version} 已发布",
+  "@availableUpdateDialogTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "availableUpdateDialogSummary": "新版本已发布，点击查看更新内容。",
   "@@@_FIT_CREATION_PAGE": {},
   "fitCreationPageTitle": "创建新配置",
   "fitCreationPageDialogHint": "新配置 {count}",
