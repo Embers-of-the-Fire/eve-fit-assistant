@@ -26,7 +26,7 @@ class ReportExternalLinksPage extends ConsumerWidget {
     title: context.l10n.reportExternalChannelsTitle,
     child: ConfigListView(
       children: [
-        ConfigListTile.space(20),
+        const ConfigListTile.space(20),
         ConfigListTile.title(context.l10n.reportSectionGeneral),
         ConfigListTile.item(
           icon: const Icon(Icons.bug_report_outlined),
