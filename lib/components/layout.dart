@@ -6,18 +6,20 @@ class Layout extends StatelessWidget {
     required this.child,
     super.key,
     this.bottom,
+    this.actions,
     this.floatingActionButton,
     this.floatingActionButtonLocation,
   });
   final Widget child;
   final String title;
   final PreferredSizeWidget? bottom;
+  final List<Widget>? actions;
   final Widget? floatingActionButton;
   final FloatingActionButtonLocation? floatingActionButtonLocation;
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title), bottom: bottom),
+    appBar: AppBar(title: Text(title), bottom: bottom, actions: actions),
     body: SafeArea(child: child),
     floatingActionButton: floatingActionButton,
     floatingActionButtonLocation: floatingActionButtonLocation,
