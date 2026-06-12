@@ -139,8 +139,8 @@ export function formatIssueBody(type: TemplateType, req: BugReport | FeatureRequ
 }
 
 const DefaultLabels: Record<string, string[]> = {
-    bug_report: ["bug", "triage"],
-    feature_request: ["enhancement", "triage"],
+    bug_report: ["T-Bug", "V-Needs Triage"],
+    feature_request: ["T-Feature", "V-Needs Triage"],
 };
 
 export function resolveTitle(_type: TemplateType, req: BugReport | FeatureRequest): string {

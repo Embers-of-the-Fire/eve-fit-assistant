@@ -6,7 +6,7 @@ Target repo: `Embers-of-the-Fire/eve-fit-assistant`
 
 ## API
 
-### `POST /api/issue/bug-report`
+### `POST /bug-report`
 
 Create a bug report issue.
 
@@ -29,7 +29,7 @@ Create a bug report issue.
 }
 ```
 
-### `POST /api/issue/feature-request`
+### `POST /feature-request`
 
 Create a feature request issue.
 

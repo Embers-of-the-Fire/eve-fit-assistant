@@ -81,11 +81,9 @@ async function handleCreateIssue(
     }
 }
 
-app.post("/api/issue/bug-report", (c) => handleCreateIssue(c, "bug_report", BugReportSchema));
+app.post("/bug-report", (c) => handleCreateIssue(c, "bug_report", BugReportSchema));
 
-app.post("/api/issue/feature-request", (c) =>
-    handleCreateIssue(c, "feature_request", FeatureRequestSchema),
-);
+app.post("/feature-request", (c) => handleCreateIssue(c, "feature_request", FeatureRequestSchema));
 
 app.onError((err, c) => {
     const message = err instanceof Error ? err.message : String(err);
