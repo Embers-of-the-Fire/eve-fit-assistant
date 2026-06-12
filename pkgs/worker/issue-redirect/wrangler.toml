@@ -7,5 +7,5 @@ GITHUB_REPO_OWNER = "Embers-of-the-Fire"
 GITHUB_REPO_NAME = "eve-fit-assistant"
 
 [[routes]]
-pattern = "api.efa-tech.dev/issue-redirect"
+pattern = "api.efa-tech.dev/issue-redirect/*"
 zone_name = "efa-tech.dev"

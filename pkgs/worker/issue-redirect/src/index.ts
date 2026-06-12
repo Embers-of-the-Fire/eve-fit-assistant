@@ -91,4 +91,6 @@ app.onError((err, c) => {
     return c.json(resp, 500);
 });
 
-export default app;
+const root = new Hono<{ Bindings: Env }>();
+root.route("/issue-redirect", app);
+export default root;
