@@ -186,7 +186,7 @@ void main() {
   });
 
   group("AvailableUpdateGate", () {
-    testWidgets("renders child widget", (tester) async {
+    testWidgets("renders child widget and shows no dialog when disabled", (tester) async {
       final navigatorKey = GlobalKey<NavigatorState>();
 
       await tester.pumpWidget(
@@ -204,9 +204,10 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text("Hello"), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
     });
   });
 }
