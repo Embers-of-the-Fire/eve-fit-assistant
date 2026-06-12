@@ -26,6 +26,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -4667,6 +4668,83 @@ def test_all():
     ctx.invoke(test_python)
     click.echo()
     ctx.invoke(test_dart)
+
+
+_SUITE_DEFINITIONS = [
+    {
+        "suite": "python",
+        "command": "uv run x.py test python",
+        "patterns": ["data/**", "x.py", "pyproject.toml", "uv.lock"],
+    },
+    {
+        "suite": "dart",
+        "command": "uv run x.py test dart",
+        "patterns": ["lib/**", "test/**", "pubspec.yaml", "pubspec.lock"],
+    },
+    {
+        "suite": "site",
+        "command": "uv run x.py site check",
+        "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
+    },
+]
+
+
+def _glob_to_regex(pattern: str) -> str:
+    """Convert a glob-style pattern to a prefix-anchored regex."""
+    parts = []
+    i = 0
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "*":
+            if i + 1 < len(pattern) and pattern[i + 1] == "*":
+                parts.append(r".*")
+                i += 1
+            else:
+                parts.append(r"[^/]*")
+        elif c == "?":
+            parts.append(r"[^/]")
+        elif c == ".":
+            parts.append(r"\.")
+        else:
+            parts.append(re.escape(c))
+        i += 1
+    return "^" + "".join(parts) + "$"
+
+
+def _match_any_pattern(file_path: str, patterns: list[str]) -> bool:
+    """Check if a file path matches any of the given glob patterns."""
+    return any(re.match(_glob_to_regex(pattern), file_path) for pattern in patterns)
+
+
+def _calculate_ci_matrix(files: list[str]) -> list[dict]:
+    """Determine which CI suites to run based on changed files."""
+    result = []
+    for suite_def in _SUITE_DEFINITIONS:
+        if any(_match_any_pattern(f, suite_def["patterns"]) for f in files):
+            result.append({"suite": suite_def["suite"], "command": suite_def["command"]})
+    return result
+
+
+@cli.group(aliases=["c"], cls=ClickAliasedGroup)
+def ci():
+    """CI/CD helper commands."""
+
+
+@ci.command("matrix")
+@click.option("--from-file", type=click.Path(exists=True), default=None)
+@click.option("--full", is_flag=True, default=False)
+def ci_matrix(from_file, full):
+    """Calculate CI job matrix from changed files. Outputs JSON to stdout."""
+    if full:
+        suites = [{"suite": s["suite"], "command": s["command"]} for s in _SUITE_DEFINITIONS]
+    elif from_file:
+        with open(from_file) as f:
+            files = [line.strip() for line in f if line.strip()]
+        suites = _calculate_ci_matrix(files)
+    else:
+        suites = []
+
+    print(json.dumps(suites))
 
 
 cli()
