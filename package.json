@@ -4,7 +4,9 @@
   "scripts": {
     "dev:site": "pnpm --filter efa-tech dev",
     "build:site": "pnpm --filter efa-tech build",
-    "check:site": "pnpm --filter efa-tech check"
+    "check:site": "pnpm --filter efa-tech check",
+    "dev:redirect": "pnpm --filter issue-redirect dev",
+    "check:redirect": "pnpm --filter issue-redirect check"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4"
