@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - name: Install dependencies
+        run: nix develop --command bash -c 'uv run x.py dev env install'
+      - name: Generate code
+        run: nix develop --command bash -c 'uv run x.py generate all'
+      - name: Lint
+        run: nix develop --command bash -c 'uv run x.py lint'
+
+  calculate_matrix:
+    needs: lint
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.matrix.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get changed files
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff --name-only "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" > /tmp/changed.txt
+          else
+            echo "FULL" > /tmp/changed.txt
+          fi
+          echo "Changed files:"
+          cat /tmp/changed.txt
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - name: Calculate job matrix
+        id: matrix
+        run: |
+          if grep -q "^FULL$" /tmp/changed.txt; then
+            JOBS=$(nix develop --command bash -c 'uv run x.py ci matrix --full')
+          else
+            JOBS=$(nix develop --command bash -c 'uv run x.py ci matrix --from-file /tmp/changed.txt')
+          fi
+          echo "jobs=$JOBS" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: ${{ matrix.suite }}
+    needs: calculate_matrix
+    runs-on: ubuntu-latest
+    if: ${{ needs.calculate_matrix.outputs.jobs != '' && needs.calculate_matrix.outputs.jobs != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - name: Install dependencies
+        run: nix develop --command bash -c 'uv run x.py dev env install'
+      - name: Generate code
+        run: nix develop --command bash -c 'uv run x.py generate all'
+      - name: Run ${{ matrix.suite }} tests
+        run: nix develop --command bash -c '${{ matrix.command }}'
