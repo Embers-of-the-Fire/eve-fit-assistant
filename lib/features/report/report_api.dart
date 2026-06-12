@@ -17,8 +17,11 @@ class ReportApi {
 
   final Dio _dio;
 
-  Future<IssueResult> submitBugReport(BugReport report, String language) async {
-    final metadata = await _collectMetadata();
+  Future<IssueResult> submitBugReport(
+    BugReport report,
+    String language, {
+    bool includeMetadata = true,
+  }) async {
     final data = <String, dynamic>{
       "language": language,
       "title": "[Bug]: ${report.title}",
@@ -27,7 +30,7 @@ class ReportApi {
       "expected": report.expected,
       "actual": report.actual,
       "platform": reportPlatformToJson(report.platform),
-      "metadata": metadata,
+      if (includeMetadata) "metadata": await _collectMetadata(),
       if (report.version != null && report.version!.isNotEmpty) "version": report.version,
       if (report.logs != null && report.logs!.isNotEmpty) "logs": report.logs,
       if (report.contact != null && report.contact!.isNotEmpty) "contact": report.contact,
@@ -35,15 +38,18 @@ class ReportApi {
     return _post("bug-report", data);
   }
 
-  Future<IssueResult> submitFeatureRequest(FeatureRequest req, String language) async {
-    final metadata = await _collectMetadata();
+  Future<IssueResult> submitFeatureRequest(
+    FeatureRequest req,
+    String language, {
+    bool includeMetadata = true,
+  }) async {
     final data = <String, dynamic>{
       "language": language,
       "title": "[Feature]: ${req.title}",
       "problem": req.problem,
       "proposal": req.proposal,
       "impact": req.impact,
-      "metadata": metadata,
+      if (includeMetadata) "metadata": await _collectMetadata(),
       if (req.alternatives != null && req.alternatives!.isNotEmpty)
         "alternatives": req.alternatives,
       if (req.extra != null && req.extra!.isNotEmpty) "extra": req.extra,
@@ -70,7 +76,7 @@ class ReportApi {
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
-        throw ReportApiException("Network error: could not reach the report server.");
+        throw const ReportApiException("Network error: could not reach the report server.");
       }
       throw ReportApiException("An unexpected error occurred: ${e.message}");
     }

@@ -1698,6 +1698,8 @@
   "reportFieldAlternativesHint": "你是否考虑过其他方案或临时绕过方式？",
   "reportFieldExtra": "原型 / 参考 / 其他补充",
   "reportFieldExtraHint": "可附上截图、参考链接或其他说明",
+  "reportFieldIncludeMetadata": "包含设备信息",
+  "reportFieldIncludeMetadataHint": "自动附带操作系统版本和应用版本，帮助更快定位问题",
   "reportFieldContact": "联系方式",
   "reportFieldContactHint": "可选：邮箱或其他联系方式，方便我们跟进",
   "reportSubmit": "提交报告",

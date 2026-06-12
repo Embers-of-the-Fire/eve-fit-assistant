@@ -631,6 +631,8 @@
   "reportFieldAlternativesHint": "Have you considered any workarounds or alternative approaches?",
   "reportFieldExtra": "Mockups / References / Extra Context",
   "reportFieldExtraHint": "Add screenshots, references, or extra notes here",
+  "reportFieldIncludeMetadata": "Include device information",
+  "reportFieldIncludeMetadataHint": "Automatically attach OS version and app version to help diagnose issues",
   "reportFieldContact": "Contact",
   "reportFieldContactHint": "Optional: email or contact info for follow-up",
   "reportSubmit": "Submit Report",

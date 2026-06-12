@@ -48,6 +48,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
 
   ReportPlatform _bugPlatform = ReportPlatform.android;
   bool _submitting = false;
+  bool _includeMetadata = true;
 
   final _api = ReportApi();
 
@@ -176,6 +177,8 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           hint: context.l10n.reportFieldLogsHint,
         ),
         const SizedBox(height: 16),
+        _buildMetadataToggle(),
+        const SizedBox(height: 16),
         _buildField(
           context.l10n.reportFieldContact,
           _contactCtrl,
@@ -238,6 +241,8 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           hint: context.l10n.reportFieldExtraHint,
         ),
         const SizedBox(height: 16),
+        _buildMetadataToggle(),
+        const SizedBox(height: 16),
         _buildField(
           context.l10n.reportFieldContact,
           _contactCtrl,
@@ -250,7 +255,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   );
 
   Widget _buildPlatformDropdown() => DropdownButtonFormField<ReportPlatform>(
-    value: _bugPlatform,
+    initialValue: _bugPlatform,
     decoration: InputDecoration(
       labelText: context.l10n.reportFieldPlatform,
       border: const OutlineInputBorder(),
@@ -286,6 +291,15 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     },
   );
 
+  Widget _buildMetadataToggle() => CheckboxListTile(
+    value: _includeMetadata,
+    title: Text(context.l10n.reportFieldIncludeMetadata),
+    subtitle: Text(context.l10n.reportFieldIncludeMetadataHint),
+    controlAffinity: ListTileControlAffinity.leading,
+    contentPadding: EdgeInsets.zero,
+    onChanged: _submitting ? null : (v) => setState(() => _includeMetadata = v ?? true),
+  );
+
   Widget _buildSubmitButton() => SafeArea(
     child: Padding(
       padding: const EdgeInsets.all(16),
@@ -313,6 +327,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     final formKey = isBug ? _bugFormKey : _featureFormKey;
     if (!formKey.currentState!.validate()) return;
 
+    final includeMetadata = _includeMetadata;
     setState(() => _submitting = true);
 
     try {
@@ -334,6 +349,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             contact: _contactCtrl.text.trim(),
           ),
           language,
+          includeMetadata: includeMetadata,
         );
       } else {
         result = await _api.submitFeatureRequest(
@@ -347,6 +363,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             contact: _contactCtrl.text.trim(),
           ),
           language,
+          includeMetadata: includeMetadata,
         );
       }
 
@@ -376,7 +393,10 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _featureAlternativesCtrl.clear();
     _featureExtraCtrl.clear();
     _contactCtrl.clear();
-    setState(() => _bugPlatform = ReportPlatform.android);
+    setState(() {
+      _bugPlatform = ReportPlatform.android;
+      _includeMetadata = true;
+    });
   }
 
   void _showSuccessDialog(IssueResult result) {
