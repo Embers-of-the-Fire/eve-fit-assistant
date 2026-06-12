@@ -85,6 +85,9 @@ void main() {
     PathProvider.cachesPath = tempDir.path;
     GlobalLogger.init(tempDir.path, enableDebugLog: false);
     EtagCache.init();
+  });
+
+  setUp(() {
     DocumentStorage.init();
   });
 
@@ -168,7 +171,6 @@ void main() {
 
     test("returns null when already notified about the latest version", () async {
       final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter.failing();
-      DocumentStorage.init();
       DocumentStorage.setNotifiedAvailableVersion("2.0.0");
       final container = ProviderContainer(
         overrides: [
