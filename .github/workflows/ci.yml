@@ -17,9 +17,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+          persist-credentials: false
       - uses: DeterminateSystems/nix-installer-action@v16
       - name: Install dependencies
         run: nix develop --command bash -c 'uv run x.py dev env install'
@@ -34,9 +35,10 @@ jobs:
     outputs:
       jobs: ${{ steps.matrix.outputs.jobs }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Get changed files
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
@@ -68,9 +70,10 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+          persist-credentials: false
       - uses: DeterminateSystems/nix-installer-action@v16
       - name: Install dependencies
         run: nix develop --command bash -c 'uv run x.py dev env install'
