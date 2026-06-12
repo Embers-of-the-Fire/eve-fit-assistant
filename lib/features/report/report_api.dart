@@ -79,6 +79,8 @@ class ReportApi {
         throw const ReportApiException("Network error: could not reach the report server.");
       }
       throw ReportApiException("An unexpected error occurred: ${e.message}");
+    } on Object catch (e) {
+      throw ReportApiException("Failed to process server response: $e");
     }
   }
 

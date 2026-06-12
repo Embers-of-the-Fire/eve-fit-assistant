@@ -358,6 +358,10 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
       if (!mounted) return;
       setState(() => _submitting = false);
       _showErrorDialog(e.message);
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showErrorDialog("An unexpected error occurred: $e");
     }
   }
 
