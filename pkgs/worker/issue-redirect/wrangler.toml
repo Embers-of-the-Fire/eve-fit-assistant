@@ -1,0 +1,7 @@
+name = "issue-redirect"
+compatibility_date = "2026-06-10"
+main = "src/index.ts"
+
+[vars]
+GITHUB_REPO_OWNER = "Embers-of-the-Fire"
+GITHUB_REPO_NAME = "eve-fit-assistent"

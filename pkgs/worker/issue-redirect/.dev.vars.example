@@ -1,0 +1,7 @@
+# Copy this file to .dev.vars and fill in the values.
+# Secrets for local development (wrangler dev).
+# For production, use: wrangler secret put <KEY>
+
+GITHUB_APP_ID=123456
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_APP_INSTALLATION_ID=12345678

@@ -1,0 +1,21 @@
+{
+    "name": "issue-redirect",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "wrangler dev --port 8787",
+        "deploy": "wrangler deploy",
+        "check": "tsc --noEmit",
+        "lint": "biome check --write src/"
+    },
+    "dependencies": {
+        "@octokit/app": "^16.1.2",
+        "hono": "^4.9.6",
+        "zod": "^3.24.4"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20250610.0",
+        "typescript": "^5.9.3",
+        "wrangler": "^4.33.0"
+    }
+}
