@@ -470,7 +470,12 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
 
   Future<void> _openUrl(Uri uri) async {
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final didLaunch = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!didLaunch && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.reportOpenError)));
+      }
     } on Object {
       if (mounted) {
         ScaffoldMessenger.of(
