@@ -1,5 +1,1 @@
 blank_issues_enabled: true
-contact_links:
-  - name: "Report via EFA App (Recommended)"
-    url: "https://efa-tech.dev/report"
-    about: "Submit bugs or feature requests directly from the EFA app with automatic metadata collection."
