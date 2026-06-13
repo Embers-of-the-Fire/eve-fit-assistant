@@ -345,7 +345,7 @@ def check_generate(force: bool) -> CheckResult:
 
 
 def check_lint(force: bool) -> CheckResult:
-    rc, _, stderr = _shell(["uv", "run", "x.py", "lint"])
+    rc, _, stderr = _shell(["uv", "run", "x.py", "lint", "--check"])
     if rc != 0:
         return CheckResult(
             name="lint",
