@@ -5,6 +5,7 @@
 /.vscode
 
 pubspec.lock
+pnpm-lock.yaml
 Cargo.lock
 uv.lock
 
