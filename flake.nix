@@ -102,6 +102,7 @@
 
       runtimeLibraryPath = pkgs.lib.makeLibraryPath [
         pkgs.stdenv.cc.cc
+        pkgs.zlib
         pkgs.openssl
         pkgs.curl
       ];
@@ -233,6 +234,10 @@
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
           UV_PYTHON_DOWNLOADS = "never";
+
+          shellHook = ''
+            export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
         };
 
         # Minimal Dart/Flutter shell: linting, formatting, and tests
@@ -248,6 +253,10 @@
           UV_PYTHON = "${python3}/bin/python3";
           UV_PYTHON_DOWNLOADS = "never";
           JAVA_HOME = jdk17.home;
+
+          shellHook = ''
+            export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
         };
 
         # Minimal Rust shell: linting, formatting, and tests
@@ -264,6 +273,10 @@
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
           UV_PYTHON_DOWNLOADS = "never";
+
+          shellHook = ''
+            export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
         };
 
         # Minimal JS/TS shell: linting, formatting, and type checks
@@ -278,6 +291,10 @@
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
           UV_PYTHON_DOWNLOADS = "never";
+
+          shellHook = ''
+            export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
         };
       };
     };
