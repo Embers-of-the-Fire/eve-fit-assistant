@@ -1,7 +1,7 @@
 {
   description = "Development shell for EVE Fit Assistant";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/64c08a7ca051951c8eae34e3e3cb1e202fe36786";
 
   outputs =
     { nixpkgs, ... }:
@@ -80,6 +80,7 @@
         ];
         runScript = "bash";
       };
+
       androidEmulatorWrapper = pkgs.writeShellScript "android-emulator" ''
         export EFA_HOST_ANDROID_EMULATOR="$HOME/Android/Sdk/emulator"
         fhs_command='export LD_LIBRARY_PATH="$EFA_HOST_ANDROID_EMULATOR/lib64:$EFA_HOST_ANDROID_EMULATOR/lib64/qt/lib:$EFA_HOST_ANDROID_EMULATOR/lib64/gles_swiftshader:$LD_LIBRARY_PATH"; exec "$@"'
@@ -95,13 +96,16 @@
             ;;
         esac
       '';
+
       androidSdk = androidComposition.androidsdk;
       androidSdkRoot = "${androidSdk}/libexec/android-sdk";
+
       runtimeLibraryPath = pkgs.lib.makeLibraryPath [
         pkgs.stdenv.cc.cc
         pkgs.openssl
         pkgs.curl
       ];
+
       nativeRustToolchainPath = pkgs.lib.makeBinPath [
         pkgs.cargo
         pkgs.rustc
@@ -109,79 +113,89 @@
         pkgs.clippy
         pkgs.rust-analyzer
       ];
+
       inherit (pkgs)
         flutter
         jdk17
         python3
         ;
-    in
-    {
-      devShells.${system}.default = pkgs.mkShell {
-        packages = with pkgs; [
-          androidSdk
-          androidComposition.platform-tools
-          flutter
-          jdk17
-          uv
-          python3
-          rustup
-          rustc
-          cargo
-          rustfmt
-          clippy
-          rust-analyzer
-          pkg-config
-          cmake
-          ninja
-          minio
-          minio-client
-          clang
-          llvmPackages.libclang
-          protobuf
-          protoc-gen-dart
-          flutter_rust_bridge_codegen
-          git-cliff
-          cargo-expand
-          nodejs_26
-          pnpm
-          wrangler
-        ];
 
+      # --- Shared environment variables ---
+      localeEnv = {
         LANG = "C.UTF-8";
         LC_ALL = "C.UTF-8";
-        JAVA_HOME = jdk17.home;
-        NIX_ANDROID_SDK_ROOT = androidSdkRoot;
-        ANDROID_SDK_ROOT = androidSdkRoot;
-        ANDROID_HOME = androidSdkRoot;
-        ANDROID_NDK_ROOT = "${androidSdkRoot}/ndk-bundle";
-        NDK_HOME = "${androidSdkRoot}/ndk-bundle";
-        UV_PYTHON = "${python3}/bin/python3";
-        UV_PYTHON_DOWNLOADS = "never";
-        LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+      };
+    in
+    {
+      devShells.${system} = {
 
-        shellHook = ''
+        # Full development shell (unchanged behavior)
+        default = pkgs.mkShell {
+          packages = with pkgs; [
+            androidSdk
+            androidComposition.platform-tools
+            flutter
+            jdk17
+            uv
+            python3
+            rustup
+            rustc
+            cargo
+            rustfmt
+            clippy
+            rust-analyzer
+            pkg-config
+            cmake
+            ninja
+            minio
+            minio-client
+            clang
+            llvmPackages.libclang
+            protobuf
+            protoc-gen-dart
+            flutter_rust_bridge_codegen
+            git-cliff
+            cargo-expand
+            nodejs_26
+            pnpm
+            wrangler
+          ];
+
+          LANG = "C.UTF-8";
+          LC_ALL = "C.UTF-8";
+          JAVA_HOME = jdk17.home;
+          NIX_ANDROID_SDK_ROOT = androidSdkRoot;
+          ANDROID_SDK_ROOT = androidSdkRoot;
+          ANDROID_HOME = androidSdkRoot;
+          ANDROID_NDK_ROOT = "${androidSdkRoot}/ndk-bundle";
+          NDK_HOME = "${androidSdkRoot}/ndk-bundle";
+          UV_PYTHON = "${python3}/bin/python3";
+          UV_PYTHON_DOWNLOADS = "never";
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+          shellHook = ''
                             export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
                             # Prefer the Nix-wrapped Rust toolchain for local builds and codegen.
                             # rustup remains available later in PATH for target management via cargokit.
                             export PATH="${nativeRustToolchainPath}:$PATH"
 
-          host_android_sdk="$HOME/Android/Sdk"
-          if [ -x "$host_android_sdk/emulator/emulator" ]; then
-            sdk_shim="$PWD/.direnv/android-sdk"
-            mkdir -p "$sdk_shim/emulator"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/build-tools" "$sdk_shim/build-tools"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/cmake" "$sdk_shim/cmake"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/cmdline-tools" "$sdk_shim/cmdline-tools"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/licenses" "$sdk_shim/licenses"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/ndk" "$sdk_shim/ndk"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/ndk-bundle" "$sdk_shim/ndk-bundle"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/platform-tools" "$sdk_shim/platform-tools"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/platforms" "$sdk_shim/platforms"
-            ln -sfn "$NIX_ANDROID_SDK_ROOT/tools" "$sdk_shim/tools"
-            ln -sfn "$host_android_sdk/system-images" "$sdk_shim/system-images"
-            ln -sfn "${androidEmulatorWrapper}" "$sdk_shim/emulator/emulator"
+            host_android_sdk="$HOME/Android/Sdk"
+            if [ -x "$host_android_sdk/emulator/emulator" ]; then
+              sdk_shim="$PWD/.direnv/android-sdk"
+              mkdir -p "$sdk_shim/emulator"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/build-tools" "$sdk_shim/build-tools"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/cmake" "$sdk_shim/cmake"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/cmdline-tools" "$sdk_shim/cmdline-tools"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/licenses" "$sdk_shim/licenses"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/ndk" "$sdk_shim/ndk"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/ndk-bundle" "$sdk_shim/ndk-bundle"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/platform-tools" "$sdk_shim/platform-tools"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/platforms" "$sdk_shim/platforms"
+              ln -sfn "$NIX_ANDROID_SDK_ROOT/tools" "$sdk_shim/tools"
+              ln -sfn "$host_android_sdk/system-images" "$sdk_shim/system-images"
+              ln -sfn "${androidEmulatorWrapper}" "$sdk_shim/emulator/emulator"
 
-          export ANDROID_SDK_ROOT="$sdk_shim"
+            export ANDROID_SDK_ROOT="$sdk_shim"
                               export ANDROID_HOME="$sdk_shim"
                             fi
 
@@ -191,22 +205,80 @@
                             cmake_root="$(echo "$NIX_ANDROID_SDK_ROOT/cmake/"*/)"
                             export PATH="$cmake_root/bin:$PATH"
 
-          local_properties="android/local.properties"
-          marker="# Generated by nix develop from flake.nix"
+            local_properties="android/local.properties"
+            marker="# Generated by nix develop from flake.nix"
 
-          if [ ! -f "$local_properties" ] \
-            || grep -Fqx "$marker" "$local_properties" \
-            || grep -Fqx "sdk.dir=$ANDROID_SDK_ROOT" "$local_properties"; then
-            {
-              printf '%s\n' \
-                "$marker" \
-                "flutter.sdk=${flutter}" \
-                "sdk.dir=$ANDROID_SDK_ROOT" \
-                "ndk.dir=$ANDROID_SDK_ROOT/ndk-bundle" \
-                "cmake.dir=$ANDROID_SDK_ROOT/cmake/$(basename "$cmake_root")"
-            } > "$local_properties"
-          fi
-        '';
+            if [ ! -f "$local_properties" ] \
+              || grep -Fqx "$marker" "$local_properties" \
+              || grep -Fqx "sdk.dir=$ANDROID_SDK_ROOT" "$local_properties"; then
+              {
+                printf '%s\n' \
+                  "$marker" \
+                  "flutter.sdk=${flutter}" \
+                  "sdk.dir=$ANDROID_SDK_ROOT" \
+                  "ndk.dir=$ANDROID_SDK_ROOT/ndk-bundle" \
+                  "cmake.dir=$ANDROID_SDK_ROOT/cmake/$(basename "$cmake_root")"
+              } > "$local_properties"
+            fi
+          '';
+        };
+
+        # Minimal Python shell: linting, formatting, and tests
+        python = pkgs.mkShell {
+          packages = with pkgs; [
+            python3
+            uv
+          ];
+
+          inherit (localeEnv) LANG LC_ALL;
+          UV_PYTHON = "${python3}/bin/python3";
+          UV_PYTHON_DOWNLOADS = "never";
+        };
+
+        # Minimal Dart/Flutter shell: linting, formatting, and tests
+        dart = pkgs.mkShell {
+          packages = with pkgs; [
+            python3
+            uv
+            flutter
+            jdk17
+          ];
+
+          inherit (localeEnv) LANG LC_ALL;
+          UV_PYTHON = "${python3}/bin/python3";
+          UV_PYTHON_DOWNLOADS = "never";
+          JAVA_HOME = jdk17.home;
+        };
+
+        # Minimal Rust shell: linting, formatting, and tests
+        rust = pkgs.mkShell {
+          packages = with pkgs; [
+            python3
+            uv
+            rustc
+            cargo
+            rustfmt
+            clippy
+          ];
+
+          inherit (localeEnv) LANG LC_ALL;
+          UV_PYTHON = "${python3}/bin/python3";
+          UV_PYTHON_DOWNLOADS = "never";
+        };
+
+        # Minimal JS/TS shell: linting, formatting, and type checks
+        js = pkgs.mkShell {
+          packages = with pkgs; [
+            python3
+            uv
+            nodejs_26
+            pnpm
+          ];
+
+          inherit (localeEnv) LANG LC_ALL;
+          UV_PYTHON = "${python3}/bin/python3";
+          UV_PYTHON_DOWNLOADS = "never";
+        };
       };
     };
 }

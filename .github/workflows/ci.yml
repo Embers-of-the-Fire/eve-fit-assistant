@@ -59,10 +59,17 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
-      - uses: DeterminateSystems/nix-installer-action@v16
-      - name: Install dependencies
-        run: nix develop --command bash -c 'uv run x.py dev env install'
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+      - name: Install Dart dependencies
+        if: matrix.suite == 'dart'
+        run: nix develop .#dart --command bash -c 'flutter pub get'
+      - name: Install JS dependencies
+        if: matrix.suite == 'site'
+        run: nix develop .#js --command bash -c 'pnpm install'
       - name: Fetch native CI data
+        if: matrix.suite == 'dart'
         run: |
           curl -sfLo /tmp/ci-native-data.tar.gz \
             https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
@@ -77,8 +84,9 @@ jobs:
           OUTPUT_DIR=$GITHUB_WORKSPACE/ci-native
           EOF
       - name: Generate code
+        if: matrix.suite == 'dart'
         run: nix develop --command bash -c 'uv run x.py generate all'
       - name: Lint ${{ matrix.suite }}
-        run: nix develop --command bash -c '${{ matrix.lint_command }}'
+        run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.lint_command }}'
       - name: Test ${{ matrix.suite }}
-        run: nix develop --command bash -c '${{ matrix.command }}'
+        run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.command }}'

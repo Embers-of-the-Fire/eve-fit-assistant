@@ -4701,12 +4701,14 @@ def test_all():
 _SUITE_DEFINITIONS = [
     {
         "suite": "python",
+        "shell": "python",
         "lint_command": "uv run x.py lint --lang python",
         "command": "uv run x.py test python",
         "patterns": ["data/**", "x.py", "pyproject.toml", "uv.lock"],
     },
     {
         "suite": "dart",
+        "shell": "dart",
         "lint_command": "uv run x.py lint --lang dart",
         "command": "uv run x.py test dart",
         "patterns": [
@@ -4721,6 +4723,7 @@ _SUITE_DEFINITIONS = [
     },
     {
         "suite": "site",
+        "shell": "js",
         "lint_command": "uv run x.py lint --lang site",
         "command": "uv run x.py site check",
         "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
@@ -4763,6 +4766,7 @@ def _calculate_ci_matrix(files: list[str]) -> list[dict]:
             result.append(
                 {
                     "suite": suite_def["suite"],
+                    "shell": suite_def["shell"],
                     "lint_command": suite_def["lint_command"],
                     "command": suite_def["command"],
                 }
@@ -4782,7 +4786,12 @@ def ci_matrix(from_file, full):
     """Calculate CI job matrix from changed files. Outputs JSON to stdout."""
     if full:
         suites = [
-            {"suite": s["suite"], "lint_command": s["lint_command"], "command": s["command"]}
+            {
+                "suite": s["suite"],
+                "shell": s["shell"],
+                "lint_command": s["lint_command"],
+                "command": s["command"],
+            }
             for s in _SUITE_DEFINITIONS
         ]
     elif from_file:
@@ -4796,7 +4805,9 @@ def ci_matrix(from_file, full):
 
 
 @ci.command("pack-data")
-@click.option("--output", "-o", default="cache/ci/ci-native-data.tar.gz", help="Output tarball path")
+@click.option(
+    "--output", "-o", default="cache/ci/ci-native-data.tar.gz", help="Output tarball path"
+)
 @click.option("--upload", is_flag=True, default=False, help="Upload to CI storage after packing")
 def ci_pack_data(output, upload):
     """Pack native CI data into a tarball for upload to CI storage."""
@@ -4854,7 +4865,15 @@ def ci_pack_data(output, upload):
     if upload:
         mc = get_command("mc")
         execute_command(
-            [mc, "alias", "set", storage.alias, storage.endpoint, storage.access_key, storage.secret_key],
+            [
+                mc,
+                "alias",
+                "set",
+                storage.alias,
+                storage.endpoint,
+                storage.access_key,
+                storage.secret_key,
+            ],
             "CI STORAGE ALIAS",
         )
         execute_command([mc, "cp", str(out_path), remote_path], "CI STORAGE UPLOAD")
