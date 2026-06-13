@@ -1,0 +1,14 @@
+# CI-specific developer configuration.
+# Copied to efa.dev.toml in CI workflows.
+
+[workspace]
+default = "tranquility"
+
+[native]
+fsd_format = "msgpack"
+fsd_binary_dir = "/nonexistent"
+fsd_loc_en_dir = "/nonexistent"
+output_dir = "ci-native"
+
+[codegen]
+attr_id_source = "ci-native/json/dogmaAttributes.json"

@@ -77,12 +77,11 @@ jobs:
           tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
           mkdir -p rust/lib/eve-fit-os/data/out
           ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
-          cat > rust/lib/eve-fit-os/.env <<EOF
-          FSD_BINARY_DIR=/nonexistent
-          FSD_FORMAT=msgpack
-          FSD_LOC_EN_DIR=/nonexistent
-          OUTPUT_DIR=$GITHUB_WORKSPACE/ci-native
-          EOF
+      - name: Setup CI dev config
+        if: matrix.suite == 'dart'
+        run: |
+          cp ci/efa.dev.ci.toml efa.dev.toml
+          uv run x.py dev env write-backend
       - name: Generate code
         if: matrix.suite == 'dart'
         run: nix develop --command bash -c 'uv run x.py generate all'

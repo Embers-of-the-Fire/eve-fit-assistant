@@ -31,6 +31,11 @@ fsd_binary_dir = "data/resources/tranquility/fsd"
 fsd_loc_en_dir = "cache/workspaces/tranquility/index-cache/resources/localizationfsd/localization_fsd_en-us.pickle"
 output_dir = "cache/workspaces/tranquility/native"
 
+[codegen]
+# Path to native dogma attributes JSON used by attr_id codegen.
+# Only needed if you want to regenerate lib/constant/eve_attr_generated.dart.
+attr_id_source = "data/resources/tranquility/cache/native/json/dogmaAttributes.json"
+
 [remote]
 # Settings used by `./x remote` to materialize and launch local remote mocks
 # and publish content to S3-compatible storage.

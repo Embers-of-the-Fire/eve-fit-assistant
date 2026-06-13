@@ -206,6 +206,12 @@ class DeveloperWorkspace(BaseModel):
     default: str | None = Field(default=None)
 
 
+class DeveloperCodegen(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
+    attr_id_source: ProjectPath | None = Field(default=None)
+
+
 class DeveloperBuild(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
@@ -315,6 +321,7 @@ class DeveloperConfiguration(BaseModel):
     paths: DeveloperPaths = Field(default_factory=DeveloperPaths)
     workspace: DeveloperWorkspace = Field(default_factory=DeveloperWorkspace)
     build: DeveloperBuild = Field(default_factory=DeveloperBuild)
+    codegen: DeveloperCodegen = Field(default_factory=DeveloperCodegen)
     native: DeveloperNative = Field(default_factory=DeveloperNative)
     remote: DeveloperRemote = Field(default_factory=DeveloperRemote)
     ci: DeveloperCi = Field(default_factory=DeveloperCi)
