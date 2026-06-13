@@ -22,11 +22,8 @@ def codegen_dart() -> list[Path]:
     out_file = EVE_ATTR_OUT_PATH
     out_file.parent.mkdir(exist_ok=True, parents=True)
 
-    try:
-        with open(attrs_path, "r", encoding="utf-8") as f:
-            native_attrs = json.load(f)
-    except FileNotFoundError:
-        return []
+    with open(attrs_path, "r", encoding="utf-8") as f:
+        native_attrs = json.load(f)
 
     with open(out_file, "w+", encoding="utf-8") as f:
         f.write(
