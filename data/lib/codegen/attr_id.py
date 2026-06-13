@@ -4,8 +4,9 @@ import json
 
 from typing import TYPE_CHECKING
 
+import data.lib.config
+
 from data.lib.constant import EVE_ATTR_OUT_PATH
-from data.lib.constant import PROJECT_ROOT
 
 
 if TYPE_CHECKING:
@@ -13,20 +14,15 @@ if TYPE_CHECKING:
 
 
 def codegen_dart() -> list[Path]:
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    attrs_path = data.lib.config.DEV_CONFIGURATION.codegen.attr_id_source
+    if attrs_path is None:
+        return []
+
     out_file = EVE_ATTR_OUT_PATH
-    native_output_file = (
-        PROJECT_ROOT
-        / "data"
-        / "resources"
-        / "tranquility"
-        / "cache"
-        / "native"
-        / "json"
-        / "dogmaAttributes.json"
-    )
     out_file.parent.mkdir(exist_ok=True, parents=True)
 
-    with open(native_output_file, "r", encoding="utf-8") as f:
+    with open(attrs_path, "r", encoding="utf-8") as f:
         native_attrs = json.load(f)
 
     with open(out_file, "w+", encoding="utf-8") as f:

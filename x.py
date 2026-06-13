@@ -26,9 +26,11 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 import zipfile
 
@@ -474,70 +476,133 @@ def cli(dry_run, ws_name):
         WorkspaceCache.select_workspace(ws_name)
 
 
-@cli.command()
-@click.option("--no-check", "no_check", is_flag=True, default=False, help="Skip linting step.")
-def lint(no_check: bool):
-    """Lint, fix and format code"""
-    # run ruff to format rust code
+def _run_lint(lang: str, *, no_check: bool = False, check_only: bool = False) -> None:
+    """Shared lint/format logic parameterized by mode.
+
+    check_only=True: read-only verification (CI mode); exits non-zero on failures.
+    check_only=False: auto-fix mode; formatters modify in-place.
+    """
+
+    def _echo(cmd_str: str) -> None:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + cmd_str)
 
     uv = get_command("uv")
-    if not no_check:
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run ruff check --fix"
-        )
-        __execute_command([uv, "run", "ruff", "check", "--fix"], "RUFF CHECK OUTPUT")
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run ruff format")
-    __execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT")
-    dart = get_command("dart")
+    if lang in ("all", "python"):
+        if not no_check or check_only:
+            if check_only:
+                _echo("uv run ruff check")
+                __execute_command([uv, "run", "ruff", "check"], "RUFF CHECK OUTPUT")
+            else:
+                _echo("uv run ruff check --fix")
+                __execute_command([uv, "run", "ruff", "check", "--fix"], "RUFF CHECK OUTPUT")
 
-    if not no_check:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart fix --apply")
-        __execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT")
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart analyze")
-        __execute_command([dart, "analyze"], "DART ANALYZE OUTPUT")
+        if check_only:
+            _echo("uv run ruff format --check")
+            __execute_command([uv, "run", "ruff", "format", "--check"], "RUFF FORMAT OUTPUT")
+        else:
+            _echo("uv run ruff format")
+            __execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT")
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "dart format lib/")
-    __execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT")
+    if lang in ("all", "dart", "rust"):
+        dart = get_command("dart")
 
-    cargo = get_command("cargo")
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-        + "cargo fmt --package rust_lib_eve_fit_assistant"
-    )
-    __execute_command([cargo, "fmt", "--package", "rust_lib_eve_fit_assistant"], "CARGO FMT OUTPUT")
+        if lang in ("all", "dart"):
+            if not no_check or check_only:
+                if not check_only:
+                    _echo("dart fix --apply")
+                    __execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT")
+                _echo("dart analyze")
+                __execute_command([dart, "analyze"], "DART ANALYZE OUTPUT")
 
-    if not no_check:
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-            + "cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant"
-        )
-        __execute_command(
-            [cargo, "clippy", "--fix", "--allow-dirty", "--package", "rust_lib_eve_fit_assistant"],
-            "CARGO CLIPPY OUTPUT",
-        )
+            if check_only:
+                _echo("dart format --set-exit-if-changed lib/")
+                __execute_command(
+                    [dart, "format", "--set-exit-if-changed", "lib/"],
+                    "DART FORMAT OUTPUT",
+                )
+            else:
+                _echo("dart format lib/")
+                __execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT")
 
-    if Path("site/package.json").exists():
-        pnpm = get_command("pnpm")
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-            + "pnpm biome format --write site/"
-        )
-        __execute_command(
-            [pnpm, "biome", "format", "--write", "site/"],
-            "BIOME FORMAT OUTPUT",
-        )
-
-        if not no_check:
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm biome check site/"
+        cargo = get_command("cargo")
+        if check_only:
+            _echo("cargo fmt --check --package rust_lib_eve_fit_assistant")
+            __execute_command(
+                [cargo, "fmt", "--check", "--package", "rust_lib_eve_fit_assistant"],
+                "CARGO FMT OUTPUT",
             )
+        else:
+            _echo("cargo fmt --package rust_lib_eve_fit_assistant")
+            __execute_command(
+                [cargo, "fmt", "--package", "rust_lib_eve_fit_assistant"],
+                "CARGO FMT OUTPUT",
+            )
+
+        if not no_check or check_only:
+            if check_only:
+                _echo("cargo clippy --package rust_lib_eve_fit_assistant")
+                __execute_command(
+                    [cargo, "clippy", "--package", "rust_lib_eve_fit_assistant"],
+                    "CARGO CLIPPY OUTPUT",
+                )
+            else:
+                _echo("cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant")
+                __execute_command(
+                    [
+                        cargo,
+                        "clippy",
+                        "--fix",
+                        "--allow-dirty",
+                        "--package",
+                        "rust_lib_eve_fit_assistant",
+                    ],
+                    "CARGO CLIPPY OUTPUT",
+                )
+
+    if lang in ("all", "site") and Path("site/package.json").exists():
+        pnpm = get_command("pnpm")
+        if check_only:
+            _echo("pnpm biome format site/")
+            __execute_command(
+                [pnpm, "biome", "format", "site/"],
+                "BIOME FORMAT OUTPUT",
+            )
+        else:
+            _echo("pnpm biome format --write site/")
+            __execute_command(
+                [pnpm, "biome", "format", "--write", "site/"],
+                "BIOME FORMAT OUTPUT",
+            )
+
+        if not no_check or check_only:
+            _echo("pnpm biome check site/")
             __execute_command(
                 [pnpm, "biome", "check", "site/"],
                 "BIOME CHECK OUTPUT",
             )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Linting completed successfully."))
+
+
+@cli.command()
+@click.option("--no-check", "no_check", is_flag=True, default=False, help="Skip linting step.")
+@click.option(
+    "--check",
+    "check_only",
+    is_flag=True,
+    default=False,
+    help="Check-only mode: verify without modifying files.",
+)
+@click.option(
+    "--lang",
+    type=click.Choice(["all", "python", "dart", "rust", "site"]),
+    default="all",
+    help="Limit linting to a specific language (default: all).",
+)
+def lint(no_check: bool, check_only: bool, lang: str):
+    """Lint, fix and format code"""
+    _run_lint(lang, no_check=no_check, check_only=check_only)
 
 
 @cli.command("format", aliases=["fmt"])
@@ -4667,6 +4732,201 @@ def test_all():
     ctx.invoke(test_python)
     click.echo()
     ctx.invoke(test_dart)
+
+
+_SUITE_DEFINITIONS = [
+    {
+        "suite": "python",
+        "shell": "python",
+        "lint_command": "uv run x.py ci lint --lang python",
+        "command": "uv run x.py test python",
+        "patterns": ["data/**", "x.py", "pyproject.toml", "uv.lock"],
+    },
+    {
+        "suite": "dart",
+        "shell": "dart",
+        "lint_command": "uv run x.py ci lint --lang dart",
+        "command": "uv run x.py test dart",
+        "patterns": [
+            "lib/**",
+            "test/**",
+            "rust/src/**",
+            "rust/Cargo.toml",
+            "rust/Cargo.lock",
+            "pubspec.yaml",
+            "pubspec.lock",
+        ],
+    },
+    {
+        "suite": "site",
+        "shell": "js",
+        "lint_command": "uv run x.py ci lint --lang site",
+        "command": "uv run x.py site check",
+        "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
+    },
+]
+
+
+def _glob_to_regex(pattern: str) -> str:
+    """Convert a glob-style pattern to a prefix-anchored regex."""
+    parts = []
+    i = 0
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "*":
+            if i + 1 < len(pattern) and pattern[i + 1] == "*":
+                parts.append(r".*")
+                i += 1
+            else:
+                parts.append(r"[^/]*")
+        elif c == "?":
+            parts.append(r"[^/]")
+        elif c == ".":
+            parts.append(r"\.")
+        else:
+            parts.append(re.escape(c))
+        i += 1
+    return "^" + "".join(parts) + "$"
+
+
+def _match_any_pattern(file_path: str, patterns: list[str]) -> bool:
+    """Check if a file path matches any of the given glob patterns."""
+    return any(re.match(_glob_to_regex(pattern), file_path) for pattern in patterns)
+
+
+def _calculate_ci_matrix(files: list[str]) -> list[dict]:
+    """Determine which CI suites to run based on changed files."""
+    result = []
+    for suite_def in _SUITE_DEFINITIONS:
+        if any(_match_any_pattern(f, suite_def["patterns"]) for f in files):
+            result.append(
+                {
+                    "suite": suite_def["suite"],
+                    "shell": suite_def["shell"],
+                    "lint_command": suite_def["lint_command"],
+                    "command": suite_def["command"],
+                }
+            )
+    return result
+
+
+@cli.group(aliases=["c"], cls=ClickAliasedGroup)
+def ci():
+    """CI/CD helper commands."""
+
+
+@ci.command("matrix")
+@click.option("--from-file", type=click.Path(exists=True), default=None)
+@click.option("--full", is_flag=True, default=False)
+def ci_matrix(from_file, full):
+    """Calculate CI job matrix from changed files. Outputs JSON to stdout."""
+    if full:
+        suites = [
+            {
+                "suite": s["suite"],
+                "shell": s["shell"],
+                "lint_command": s["lint_command"],
+                "command": s["command"],
+            }
+            for s in _SUITE_DEFINITIONS
+        ]
+    elif from_file:
+        with open(from_file) as f:
+            files = [line.strip() for line in f if line.strip()]
+        suites = _calculate_ci_matrix(files)
+    else:
+        suites = []
+
+    print(json.dumps(suites))
+
+
+@ci.command("lint")
+@click.option(
+    "--lang",
+    type=click.Choice(["all", "python", "dart", "rust", "site"]),
+    default="all",
+    help="Limit linting to a specific language (default: all).",
+)
+def ci_lint(lang: str):
+    """Check formatting and linting without modifying files."""
+    _run_lint(lang, no_check=False, check_only=True)
+
+
+@ci.command("pack-data")
+@click.option(
+    "--output", "-o", default="cache/ci/ci-native-data.tar.gz", help="Output tarball path"
+)
+@click.option("--upload", is_flag=True, default=False, help="Upload to CI storage after packing")
+def ci_pack_data(output, upload):
+    """Pack native CI data into a tarball for upload to CI storage."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    storage = data.lib.config.DEV_CONFIGURATION.ci.require_storage()
+    native = data.lib.config.DEV_CONFIGURATION.native
+    if native.output_dir is None:
+        raise click.ClickException("Missing [native].output_dir in efa.dev.toml")
+
+    output_dir = native.output_dir
+    json_dir = output_dir / "json"
+    pb2_dir = output_dir / "pb2"
+
+    required_json = ["dogmaAttributes.json", "dogmaEffects.json"]
+    required_pb2 = [
+        "types.pb2",
+        "dogmaAttributes.pb2",
+        "dogmaEffects.pb2",
+        "typeDogma.pb2",
+        "dbuffcollections.pb2",
+    ]
+
+    missing = []
+    for f in required_json:
+        if not (json_dir / f).exists():
+            missing.append(f"json/{f}")
+    for f in required_pb2:
+        if not (pb2_dir / f).exists():
+            missing.append(f"pb2/{f}")
+
+    if missing:
+        raise click.ClickException(
+            "Missing files (run `./x build data` first):\n  " + "\n  ".join(missing)
+        )
+
+    out_path = Path(output).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(out_path, "w:gz") as tar:
+        for f in required_json:
+            tar.add(json_dir / f, arcname=f"json/{f}")
+        for f in required_pb2:
+            tar.add(pb2_dir / f, arcname=f"pb2/{f}")
+
+    total = len(required_json) + len(required_pb2)
+    size_mb = out_path.stat().st_size / (1024 * 1024)
+    click.echo(
+        styled(
+            [Style.BRIGHT, Fore.GREEN],
+            f"Packed {total} files ({size_mb:.1f} MiB) -> {out_path}",
+        )
+    )
+
+    remote_path = f"{storage.alias}/{storage.bucket}/build-dependencies/ci-native-data.tar.gz"
+
+    if upload:
+        mc = get_command("mc")
+        execute_command(
+            [
+                mc,
+                "alias",
+                "set",
+                storage.alias,
+                storage.endpoint,
+                storage.access_key,
+                storage.secret_key,
+            ],
+            "CI STORAGE ALIAS",
+        )
+        execute_command([mc, "cp", str(out_path), remote_path], "CI STORAGE UPLOAD")
+    else:
+        click.echo(f"Upload with: mc cp {out_path} {remote_path}")
 
 
 cli()
