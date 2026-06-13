@@ -283,12 +283,41 @@ class DeveloperRemote(BaseModel):
         return self.s3  # type: ignore[return-value]
 
 
+class DeveloperCiStorage(BaseModel):
+    """CI data storage configuration (Cloudflare R2). All fields required."""
+
+    endpoint: str
+    bucket: str
+    alias: str
+    access_key: str
+    secret_key: str
+    public_url: str
+
+
+class DeveloperCi(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
+    storage: DeveloperCiStorage | None = None
+
+    def require_storage(self) -> DeveloperCiStorage:
+        if self.storage is None:
+            print(
+                "Error: [ci.storage] is not configured in efa.dev.toml.\n"
+                "       Required for `./x ci pack-data`.\n"
+                "       See efa.dev.example.toml.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        return self.storage
+
+
 class DeveloperConfiguration(BaseModel):
     paths: DeveloperPaths = Field(default_factory=DeveloperPaths)
     workspace: DeveloperWorkspace = Field(default_factory=DeveloperWorkspace)
     build: DeveloperBuild = Field(default_factory=DeveloperBuild)
     native: DeveloperNative = Field(default_factory=DeveloperNative)
     remote: DeveloperRemote = Field(default_factory=DeveloperRemote)
+    ci: DeveloperCi = Field(default_factory=DeveloperCi)
 
     @staticmethod
     def load_from_global():

@@ -62,6 +62,20 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v16
       - name: Install dependencies
         run: nix develop --command bash -c 'uv run x.py dev env install'
+      - name: Fetch native CI data
+        run: |
+          curl -sfLo /tmp/ci-native-data.tar.gz \
+            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+          mkdir -p "$GITHUB_WORKSPACE/ci-native"
+          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
+          mkdir -p rust/lib/eve-fit-os/data/out
+          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+          cat > rust/lib/eve-fit-os/.env <<EOF
+          FSD_BINARY_DIR=/nonexistent
+          FSD_FORMAT=msgpack
+          FSD_LOC_EN_DIR=/nonexistent
+          OUTPUT_DIR=$GITHUB_WORKSPACE/ci-native
+          EOF
       - name: Generate code
         run: nix develop --command bash -c 'uv run x.py generate all'
       - name: Lint ${{ matrix.suite }}

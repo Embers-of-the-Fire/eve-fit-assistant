@@ -70,3 +70,14 @@ alias = "efa-remote-publish"
 public_download = true
 # verify_upload = true  # default: true; re-download and SHA256-verify after upload
 # verify_workers = 4    # default: 4; concurrent download threads for verification
+
+[ci.storage]
+# Cloudflare R2 bucket for CI build dependencies (e.g. native data tarball).
+# Used by `./x ci pack-data` to reference the upload destination.
+# The bucket should be publicly readable; the CI workflow fetches via public_url.
+endpoint = "https://<account_id>.r2.cloudflarestorage.com"
+bucket = "efa-ci-data"
+alias = "efa-ci-storage"
+access_key = "your-r2-access-key"
+secret_key = "your-r2-secret-key"
+public_url = "https://ci.storage.efa-tech.dev"
