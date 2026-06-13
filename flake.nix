@@ -211,7 +211,7 @@
 
             if [ ! -f "$local_properties" ] \
               || grep -Fqx "$marker" "$local_properties" \
-              || grep -Fqx "sdk.dir=$ANDROID_SDK_ROOT" "$local_properties"; then
+              || ! grep -Fqx "sdk.dir=$ANDROID_SDK_ROOT" "$local_properties"; then
               {
                 printf '%s\n' \
                   "$marker" \
