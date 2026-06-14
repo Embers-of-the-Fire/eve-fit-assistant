@@ -1,5 +1,18 @@
 <script lang="ts">
-    import { t } from "$lib/i18n/index.svelte";
+import { goto } from "$app/navigation";
+import { page } from "$app/state";
+import { t } from "$lib/i18n/index.svelte";
+
+$effect(() => {
+    const params = page.url.searchParams;
+    const variant = params.get("variant");
+    if (variant !== "bug" && variant !== "feature") return;
+
+    const forward = new URLSearchParams(params);
+    forward.delete("variant");
+    const qs = forward.toString();
+    goto(`/report/${variant}${qs ? `?${qs}` : ""}`, { replaceState: true });
+});
 </script>
 
 <svelte:head>

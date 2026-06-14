@@ -1,114 +1,144 @@
 <script lang="ts">
-    import { t } from "$lib/i18n/index.svelte";
-    import { locale } from "$lib/i18n/index.svelte";
-    import {
-        submitFeatureRequest,
-        type ApiError,
-        type IssueResult,
-        type ValidationError,
-    } from "$lib/api/report";
+import { page } from "$app/state";
+import {
+    type ApiError,
+    type IssueResult,
+    type ValidationError,
+    submitFeatureRequest,
+} from "$lib/api/report";
+import { t } from "$lib/i18n/index.svelte";
+import { locale } from "$lib/i18n/index.svelte";
 
-    let title = $state("");
-    let problem = $state("");
-    let proposal = $state("");
-    let impact = $state("");
+let title = $state("");
+let problem = $state("");
+let proposal = $state("");
+let impact = $state("");
 
-    let attachExtras = $state(false);
-    let alternatives = $state("");
-    let extra = $state("");
-    let contact = $state("");
-    let metadata = $state<{ id: number; key: string; value: string }[]>([]);
-    let metadataNextId = $state(0);
+let attachExtras = $state(false);
+let alternatives = $state("");
+let extra = $state("");
+let contact = $state("");
+let metadata = $state<{ id: number; key: string; value: string }[]>([]);
+let metadataNextId = $state(0);
 
-    let submitting = $state(false);
-    let success: IssueResult | null = $state(null);
-    let apiError: string = $state("");
-    let fieldErrors: ValidationError[] = $state([]);
+let submitting = $state(false);
+let success: IssueResult | null = $state(null);
+let apiError: string = $state("");
+let fieldErrors: ValidationError[] = $state([]);
 
-    function getFieldError(path: string): string {
-        return fieldErrors.find((e) => e.path === path)?.message ?? "";
-    }
+$effect(() => {
+    const params = page.url.searchParams;
 
-    function hasFieldError(path: string): boolean {
-        return fieldErrors.some((e) => e.path === path);
-    }
+    if (params.has("title")) title = params.get("title") ?? "";
+    if (params.has("problem")) problem = params.get("problem") ?? "";
+    if (params.has("proposal")) proposal = params.get("proposal") ?? "";
+    if (params.has("impact")) impact = params.get("impact") ?? "";
 
-    function addMetadataRow() {
-        metadata = [...metadata, { id: metadataNextId++, key: "", value: "" }];
-    }
-
-    function removeMetadataRow(id: number) {
-        metadata = metadata.filter((m) => m.id !== id);
-    }
-
-    function updateMetadataKey(id: number, key: string) {
-        metadata = metadata.map((m) => (m.id === id ? { ...m, key } : m));
-    }
-
-    function updateMetadataValue(id: number, value: string) {
-        metadata = metadata.map((m) => (m.id === id ? { ...m, value } : m));
-    }
-
-    async function handleSubmit(e: Event) {
-        e.preventDefault();
-        apiError = "";
-        fieldErrors = [];
-        success = null;
-
-        const requiredFields = [
-            { path: "title", value: title },
-            { path: "problem", value: problem },
-            { path: "proposal", value: proposal },
-            { path: "impact", value: impact },
-        ];
-
-        const missing = requiredFields.filter((f) => !f.value.trim());
-        if (missing.length > 0) {
-            fieldErrors = missing.map((f) => ({
-                path: f.path,
-                message: t("report.form.required"),
-            }));
-            return;
-        }
-
-        submitting = true;
+    const extrasKeys = ["alternatives", "extra", "contact", "metadata"];
+    if (extrasKeys.some((k) => params.has(k))) attachExtras = true;
+    if (params.has("alternatives")) alternatives = params.get("alternatives") ?? "";
+    if (params.has("extra")) extra = params.get("extra") ?? "";
+    if (params.has("contact")) contact = params.get("contact") ?? "";
+    if (params.has("metadata")) {
         try {
-            const payload: import("$lib/api/report").FeatureRequestPayload = {
-                language: locale.current,
-                title: t("report.form.feature.prefix") + title.trim(),
-                problem: problem.trim(),
-                proposal: proposal.trim(),
-                impact: impact.trim(),
-            };
-
-            if (attachExtras) {
-                if (alternatives.trim()) payload.alternatives = alternatives.trim();
-                if (extra.trim()) payload.extra = extra.trim();
-                if (contact.trim()) payload.contact = contact.trim();
-                const meta: Record<string, unknown> = {};
-                let hasMeta = false;
-                for (const m of metadata) {
-                    if (m.key.trim()) {
-                        meta[m.key.trim()] = m.value;
-                        hasMeta = true;
-                    }
-                }
-                if (hasMeta) payload.metadata = meta;
+            const obj = JSON.parse(params.get("metadata") ?? "");
+            const rows: typeof metadata = [];
+            let id = 0;
+            for (const [key, val] of Object.entries(obj)) {
+                rows.push({ id: id++, key, value: String(val) });
             }
-
-            const result = await submitFeatureRequest(payload);
-            success = result;
-        } catch (err) {
-            const apiErr = err as ApiError;
-            if (apiErr.errors && apiErr.errors.length > 0) {
-                fieldErrors = apiErr.errors;
-            } else {
-                apiError = apiErr.message || t("report.form.error.network");
-            }
-        } finally {
-            submitting = false;
+            metadata = rows;
+            metadataNextId = rows.length;
+        } catch {
+            // ignore malformed JSON
         }
     }
+});
+
+function getFieldError(path: string): string {
+    return fieldErrors.find((e) => e.path === path)?.message ?? "";
+}
+
+function hasFieldError(path: string): boolean {
+    return fieldErrors.some((e) => e.path === path);
+}
+
+function addMetadataRow() {
+    metadata = [...metadata, { id: metadataNextId++, key: "", value: "" }];
+}
+
+function removeMetadataRow(id: number) {
+    metadata = metadata.filter((m) => m.id !== id);
+}
+
+function updateMetadataKey(id: number, key: string) {
+    metadata = metadata.map((m) => (m.id === id ? { ...m, key } : m));
+}
+
+function updateMetadataValue(id: number, value: string) {
+    metadata = metadata.map((m) => (m.id === id ? { ...m, value } : m));
+}
+
+async function handleSubmit(e: Event) {
+    e.preventDefault();
+    apiError = "";
+    fieldErrors = [];
+    success = null;
+
+    const requiredFields = [
+        { path: "title", value: title },
+        { path: "problem", value: problem },
+        { path: "proposal", value: proposal },
+        { path: "impact", value: impact },
+    ];
+
+    const missing = requiredFields.filter((f) => !f.value.trim());
+    if (missing.length > 0) {
+        fieldErrors = missing.map((f) => ({
+            path: f.path,
+            message: t("report.form.required"),
+        }));
+        return;
+    }
+
+    submitting = true;
+    try {
+        const payload: import("$lib/api/report").FeatureRequestPayload = {
+            language: locale.current,
+            title: t("report.form.feature.prefix") + title.trim(),
+            problem: problem.trim(),
+            proposal: proposal.trim(),
+            impact: impact.trim(),
+        };
+
+        if (attachExtras) {
+            if (alternatives.trim()) payload.alternatives = alternatives.trim();
+            if (extra.trim()) payload.extra = extra.trim();
+            if (contact.trim()) payload.contact = contact.trim();
+            const meta: Record<string, unknown> = {};
+            let hasMeta = false;
+            for (const m of metadata) {
+                if (m.key.trim()) {
+                    meta[m.key.trim()] = m.value;
+                    hasMeta = true;
+                }
+            }
+            if (hasMeta) payload.metadata = meta;
+        }
+
+        const result = await submitFeatureRequest(payload);
+        success = result;
+    } catch (err) {
+        const apiErr = err as ApiError;
+        if (apiErr.errors && apiErr.errors.length > 0) {
+            fieldErrors = apiErr.errors;
+        } else {
+            apiError = apiErr.message || t("report.form.error.network");
+        }
+    } finally {
+        submitting = false;
+    }
+}
 </script>
 
 <svelte:head>

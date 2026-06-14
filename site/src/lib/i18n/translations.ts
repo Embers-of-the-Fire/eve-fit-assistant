@@ -74,10 +74,12 @@ export const en = {
         "Found a bug or have a feature idea? Let us know — submissions create GitHub issues the team can track.",
 
     "report.bug.title": "Bug Report",
-    "report.bug.description": "Something isn't working right? Describe the problem and steps to reproduce it.",
+    "report.bug.description":
+        "Something isn't working right? Describe the problem and steps to reproduce it.",
 
     "report.feature.title": "Feature Request",
-    "report.feature.description": "Have an idea to improve the app? Tell us what you need and why it matters.",
+    "report.feature.description":
+        "Have an idea to improve the app? Tell us what you need and why it matters.",
 
     "report.form.title": "Title",
     "report.form.title.placeholder": "Short, descriptive title for this submission",
@@ -94,7 +96,8 @@ export const en = {
     "report.form.bug.summary": "Summary",
     "report.form.bug.summary.placeholder": "Briefly describe what went wrong",
     "report.form.bug.steps": "Steps to Reproduce",
-    "report.form.bug.steps.placeholder": "1. Open the app\n2. Navigate to ...\n3. Observe the issue",
+    "report.form.bug.steps.placeholder":
+        "1. Open the app\n2. Navigate to ...\n3. Observe the issue",
     "report.form.bug.expected": "Expected Behavior",
     "report.form.bug.expected.placeholder": "What should have happened",
     "report.form.bug.actual": "Actual Behavior",
@@ -103,7 +106,8 @@ export const en = {
     "report.form.bug.version": "App Version",
     "report.form.bug.version.placeholder": "e.g. 0.1.0",
     "report.form.bug.logs": "Logs / Screenshots / Extra Context",
-    "report.form.bug.logs.placeholder": "Paste any relevant logs, error messages, or describe additional context",
+    "report.form.bug.logs.placeholder":
+        "Paste any relevant logs, error messages, or describe additional context",
 
     "report.form.feature.problem": "Problem to Solve",
     "report.form.feature.problem.placeholder": "What problem are you trying to solve?",
@@ -112,9 +116,11 @@ export const en = {
     "report.form.feature.impact": "Use Case / Impact",
     "report.form.feature.impact.placeholder": "Why is this important? Who would benefit?",
     "report.form.feature.alternatives": "Alternatives Considered",
-    "report.form.feature.alternatives.placeholder": "Any workarounds or alternative approaches you've thought of",
+    "report.form.feature.alternatives.placeholder":
+        "Any workarounds or alternative approaches you've thought of",
     "report.form.feature.extra": "Mockups / References / Extra Context",
-    "report.form.feature.extra.placeholder": "Links to mockups, references, or any additional context",
+    "report.form.feature.extra.placeholder":
+        "Links to mockups, references, or any additional context",
 
     "report.form.contact": "Contact",
     "report.form.contact.placeholder": "Email, QQ, or other way to reach you (optional)",
