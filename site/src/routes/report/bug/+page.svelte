@@ -1,15 +1,17 @@
 <script lang="ts">
-    import { t } from "$lib/i18n/index.svelte";
-    import { locale } from "$lib/i18n/index.svelte";
-    import {
-        submitBugReport,
-        type ApiError,
-        type IssueResult,
-        type Platform,
-        type ValidationError,
-    } from "$lib/api/report";
+import { page } from "$app/state";
+import {
+    type ApiError,
+    type IssueResult,
+    type Platform,
+    type ValidationError,
+    submitBugReport,
+} from "$lib/api/report";
+import { t } from "$lib/i18n/index.svelte";
+import { locale } from "$lib/i18n/index.svelte";
 
-    const platforms: { value: Platform; labelKey: import("$lib/i18n/translations").TranslationKey }[] = [
+const platforms: { value: Platform; labelKey: import("$lib/i18n/translations").TranslationKey }[] =
+    [
         { value: "Android", labelKey: "report.form.platform.android" },
         { value: "iOS", labelKey: "report.form.platform.ios" },
         { value: "Windows 10/11", labelKey: "report.form.platform.windows" },
@@ -17,110 +19,143 @@
         { value: "Other", labelKey: "report.form.platform.other" },
     ];
 
-    let title = $state("");
-    let summary = $state("");
-    let steps = $state("");
-    let expected = $state("");
-    let actual = $state("");
-    let platform: string = $state("Android");
+let title = $state("");
+let summary = $state("");
+let steps = $state("");
+let expected = $state("");
+let actual = $state("");
+let platform: string = $state("Android");
 
-    let attachExtras = $state(false);
-    let version = $state("");
-    let contact = $state("");
-    let metadata = $state<{ id: number; key: string; value: string }[]>([]);
-    let metadataNextId = $state(0);
+let attachExtras = $state(false);
+let version = $state("");
+let contact = $state("");
+let metadata = $state<{ id: number; key: string; value: string }[]>([]);
+let metadataNextId = $state(0);
 
-    let submitting = $state(false);
-    let success: IssueResult | null = $state(null);
-    let apiError: string = $state("");
-    let fieldErrors: ValidationError[] = $state([]);
+let submitting = $state(false);
+let success: IssueResult | null = $state(null);
+let apiError: string = $state("");
+let fieldErrors: ValidationError[] = $state([]);
 
-    function getFieldError(path: string): string {
-        return fieldErrors.find((e) => e.path === path)?.message ?? "";
+$effect(() => {
+    const params = page.url.searchParams;
+
+    if (params.has("title")) title = params.get("title") ?? "";
+    if (params.has("summary")) summary = params.get("summary") ?? "";
+    if (params.has("steps")) steps = params.get("steps") ?? "";
+    if (params.has("expected")) expected = params.get("expected") ?? "";
+    if (params.has("actual")) actual = params.get("actual") ?? "";
+    if (params.has("platform")) {
+        const raw = params.get("platform") ?? "";
+        if (platforms.some((p) => p.value === raw)) platform = raw;
     }
 
-    function hasFieldError(path: string): boolean {
-        return fieldErrors.some((e) => e.path === path);
-    }
-
-    function addMetadataRow() {
-        metadata = [...metadata, { id: metadataNextId++, key: "", value: "" }];
-    }
-
-    function removeMetadataRow(id: number) {
-        metadata = metadata.filter((m) => m.id !== id);
-    }
-
-    function updateMetadataKey(id: number, key: string) {
-        metadata = metadata.map((m) => (m.id === id ? { ...m, key } : m));
-    }
-
-    function updateMetadataValue(id: number, value: string) {
-        metadata = metadata.map((m) => (m.id === id ? { ...m, value } : m));
-    }
-
-    async function handleSubmit(e: Event) {
-        e.preventDefault();
-        apiError = "";
-        fieldErrors = [];
-        success = null;
-
-        const requiredFields = [
-            { path: "title", value: title },
-            { path: "summary", value: summary },
-            { path: "steps", value: steps },
-            { path: "expected", value: expected },
-            { path: "actual", value: actual },
-        ];
-
-        const missing = requiredFields.filter((f) => !f.value.trim());
-        if (missing.length > 0) {
-            fieldErrors = missing.map((f) => ({
-                path: f.path,
-                message: t("report.form.required"),
-            }));
-            return;
-        }
-
-        submitting = true;
+    const extrasKeys = ["version", "contact", "metadata"];
+    if (extrasKeys.some((k) => params.has(k))) attachExtras = true;
+    if (params.has("version")) version = params.get("version") ?? "";
+    if (params.has("contact")) contact = params.get("contact") ?? "";
+    if (params.has("metadata")) {
         try {
-            const payload: import("$lib/api/report").BugReportPayload = {
-                language: locale.current,
-                title: t("report.form.bug.prefix") + title.trim(),
-                summary: summary.trim(),
-                steps: steps.trim(),
-                expected: expected.trim(),
-                actual: actual.trim(),
-                platform: platform as Platform,
-            };
-
-            if (attachExtras) {
-                if (version.trim()) payload.version = version.trim();
-                if (contact.trim()) payload.contact = contact.trim();
-                const meta: Record<string, unknown> = {};
-                let hasMeta = false;
-                for (const m of metadata) {
-                    if (m.key.trim()) {
-                        meta[m.key.trim()] = m.value;
-                        hasMeta = true;
-                    }
-                }
-                if (hasMeta) payload.metadata = meta;
+            const obj = JSON.parse(params.get("metadata") ?? "");
+            const rows: typeof metadata = [];
+            let id = metadataNextId;
+            for (const [key, val] of Object.entries(obj)) {
+                rows.push({ id: id++, key, value: String(val) });
             }
-
-            const result = await submitBugReport(payload);
-            success = result;
-        } catch (err) {
-            const apiErr = err as ApiError;
-            if (apiErr.errors && apiErr.errors.length > 0) {
-                fieldErrors = apiErr.errors;
-            } else {
-                apiError = apiErr.message || t("report.form.error.network");
-            }
-        } finally {
-            submitting = false;
+            metadata = rows;
+            metadataNextId = id;
+        } catch {
+            // ignore malformed JSON
         }
     }
+});
+
+function getFieldError(path: string): string {
+    return fieldErrors.find((e) => e.path === path)?.message ?? "";
+}
+
+function hasFieldError(path: string): boolean {
+    return fieldErrors.some((e) => e.path === path);
+}
+
+function addMetadataRow() {
+    metadata = [...metadata, { id: metadataNextId++, key: "", value: "" }];
+}
+
+function removeMetadataRow(id: number) {
+    metadata = metadata.filter((m) => m.id !== id);
+}
+
+function updateMetadataKey(id: number, key: string) {
+    metadata = metadata.map((m) => (m.id === id ? { ...m, key } : m));
+}
+
+function updateMetadataValue(id: number, value: string) {
+    metadata = metadata.map((m) => (m.id === id ? { ...m, value } : m));
+}
+
+async function handleSubmit(e: Event) {
+    e.preventDefault();
+    apiError = "";
+    fieldErrors = [];
+    success = null;
+
+    const requiredFields = [
+        { path: "title", value: title },
+        { path: "summary", value: summary },
+        { path: "steps", value: steps },
+        { path: "expected", value: expected },
+        { path: "actual", value: actual },
+    ];
+
+    const missing = requiredFields.filter((f) => !f.value.trim());
+    if (missing.length > 0) {
+        fieldErrors = missing.map((f) => ({
+            path: f.path,
+            message: t("report.form.required"),
+        }));
+        return;
+    }
+
+    submitting = true;
+    try {
+        const payload: import("$lib/api/report").BugReportPayload = {
+            language: locale.current,
+            title: t("report.form.bug.prefix") + title.trim(),
+            summary: summary.trim(),
+            steps: steps.trim(),
+            expected: expected.trim(),
+            actual: actual.trim(),
+            platform: platform as Platform,
+        };
+
+        if (attachExtras) {
+            if (version.trim()) payload.version = version.trim();
+            if (contact.trim()) payload.contact = contact.trim();
+            const meta: Record<string, unknown> = {};
+            let hasMeta = false;
+            for (const m of metadata) {
+                if (m.key.trim()) {
+                    meta[m.key.trim()] = m.value;
+                    hasMeta = true;
+                }
+            }
+            if (hasMeta) payload.metadata = meta;
+        }
+
+        const result = await submitBugReport(payload);
+        success = result;
+    } catch (err) {
+        const apiErr = err as ApiError;
+        if (apiErr.errors && apiErr.errors.length > 0) {
+            fieldErrors = apiErr.errors;
+        } else {
+            apiError = apiErr.message || t("report.form.error.network");
+        }
+    } finally {
+        submitting = false;
+    }
+}
 </script>
 
 <svelte:head>

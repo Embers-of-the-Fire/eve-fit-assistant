@@ -34,5 +34,17 @@
         "useImportType": "error"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "include": ["site/**/*.svelte"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useConst": "off"
+          }
+        }
+      }
+    }
+  ]
 }
