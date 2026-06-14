@@ -562,27 +562,34 @@ def _run_lint(lang: str, *, no_check: bool = False, check_only: bool = False) ->
 
     if lang in ("all", "site") and Path("site/package.json").exists():
         pnpm = get_command("pnpm")
-        if check_only:
-            _echo("pnpm biome format site/")
-            __execute_command(
-                [pnpm, "biome", "format", "site/"],
-                "BIOME FORMAT OUTPUT",
-            )
-        else:
-            _echo("pnpm biome format --write site/")
-            __execute_command(
-                [pnpm, "biome", "format", "--write", "site/"],
-                "BIOME FORMAT OUTPUT",
-            )
-
-        if not no_check or check_only:
-            _echo("pnpm biome check site/")
-            __execute_command(
-                [pnpm, "biome", "check", "site/"],
-                "BIOME CHECK OUTPUT",
-            )
+        _run_site_checks(pnpm, no_check=no_check, check_only=check_only)
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Linting completed successfully."))
+
+
+def _run_site_checks(pnpm: str, *, no_check: bool = False, check_only: bool = False) -> None:
+    """Format and lint the SvelteKit site (biome + svelte-check).
+
+    check_only=True: read-only verification (CI mode); exits non-zero on failures.
+    check_only=False: auto-fix mode; formatters modify in-place.
+    """
+
+    def _echo(cmd_str: str) -> None:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + cmd_str)
+
+    if check_only:
+        _echo("pnpm biome format site/")
+        __execute_command([pnpm, "biome", "format", "site/"], "BIOME FORMAT OUTPUT")
+    else:
+        _echo("pnpm biome format --write site/")
+        __execute_command([pnpm, "biome", "format", "--write", "site/"], "BIOME FORMAT OUTPUT")
+
+    if not no_check or check_only:
+        _echo("pnpm biome check site/")
+        __execute_command([pnpm, "biome", "check", "site/"], "BIOME CHECK OUTPUT")
+
+        _echo("pnpm --filter efa-tech check")
+        __execute_command([pnpm, "--filter", "efa-tech", "check"], "SVELTE CHECK OUTPUT")
 
 
 @cli.command()
@@ -4695,13 +4702,6 @@ def site_build():
     __execute_command([pnpm, "--filter", "efa-tech", "build"], "SITE BUILD", live_stdout=True)
 
 
-@site.command("check")
-def site_check():
-    """Type-check the SvelteKit site."""
-    pnpm = get_command("pnpm")
-    __execute_command([pnpm, "--filter", "efa-tech", "check"], "SITE CHECK", live_stdout=True)
-
-
 @cli.group(aliases=["t"], cls=ClickAliasedGroup)
 def test():
     """Run project test suites."""
@@ -4761,7 +4761,7 @@ _SUITE_DEFINITIONS = [
         "suite": "site",
         "shell": "js",
         "lint_command": "uv run x.py ci lint --lang site",
-        "command": "uv run x.py site check",
+        "command": "true",
         "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
     },
 ]
