@@ -1,4 +1,5 @@
 <script lang="ts">
+import { page } from "$app/state";
 import {
     type ApiError,
     type IssueResult,
@@ -24,6 +25,35 @@ let submitting = $state(false);
 let success: IssueResult | null = $state(null);
 let apiError: string = $state("");
 let fieldErrors: ValidationError[] = $state([]);
+
+$effect(() => {
+    const params = page.url.searchParams;
+
+    if (params.has("title")) title = params.get("title") ?? "";
+    if (params.has("problem")) problem = params.get("problem") ?? "";
+    if (params.has("proposal")) proposal = params.get("proposal") ?? "";
+    if (params.has("impact")) impact = params.get("impact") ?? "";
+
+    const extrasKeys = ["alternatives", "extra", "contact", "metadata"];
+    if (extrasKeys.some((k) => params.has(k))) attachExtras = true;
+    if (params.has("alternatives")) alternatives = params.get("alternatives") ?? "";
+    if (params.has("extra")) extra = params.get("extra") ?? "";
+    if (params.has("contact")) contact = params.get("contact") ?? "";
+    if (params.has("metadata")) {
+        try {
+            const obj = JSON.parse(params.get("metadata") ?? "");
+            const rows: typeof metadata = [];
+            let id = metadataNextId;
+            for (const [key, val] of Object.entries(obj)) {
+                rows.push({ id: id++, key, value: String(val) });
+            }
+            metadata = rows;
+            metadataNextId = id;
+        } catch {
+            // ignore malformed JSON
+        }
+    }
+});
 
 function getFieldError(path: string): string {
     return fieldErrors.find((e) => e.path === path)?.message ?? "";
