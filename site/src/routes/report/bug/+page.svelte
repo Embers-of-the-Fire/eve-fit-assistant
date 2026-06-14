@@ -58,12 +58,12 @@ $effect(() => {
         try {
             const obj = JSON.parse(params.get("metadata") ?? "");
             const rows: typeof metadata = [];
-            let id = metadataNextId;
+            let id = 0;
             for (const [key, val] of Object.entries(obj)) {
                 rows.push({ id: id++, key, value: String(val) });
             }
             metadata = rows;
-            metadataNextId = id;
+            metadataNextId = rows.length;
         } catch {
             // ignore malformed JSON
         }
