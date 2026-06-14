@@ -79,9 +79,7 @@ jobs:
           ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
       - name: Setup CI dev config
         if: matrix.suite == 'dart'
-        run: |
-          cp ci/efa.dev.ci.toml efa.dev.toml
-          uv run x.py dev env write-backend
+        run: nix develop .#dart --command bash -c 'cp ci/efa.dev.ci.toml efa.dev.toml && uv run x.py dev env write-backend'
       - name: Generate code
         if: matrix.suite == 'dart'
         run: nix develop --command bash -c 'uv run x.py generate all'
