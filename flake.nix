@@ -121,6 +121,29 @@
         python3
         ;
 
+      # --- Named package sets ---
+      pythonPackages = with pkgs; [ python3 uv ];
+
+      rustPackages = with pkgs; [ rustc cargo rustfmt clippy rust-analyzer ];
+
+      nativeBuildPackages = with pkgs; [
+        pkg-config
+        cmake
+        ninja
+        clang
+        llvmPackages.libclang
+      ];
+
+      dartPackages = with pkgs; [ flutter jdk17 ];
+
+      protobufPackages = with pkgs; [ protobuf protoc-gen-dart ];
+
+      frbPackages = with pkgs; [ flutter_rust_bridge_codegen ];
+
+      jsPackages = with pkgs; [ nodejs_26 pnpm ];
+
+      releasePackages = with pkgs; [ git-cliff cargo-expand minio minio-client wrangler ];
+
       # --- Shared environment variables ---
       localeEnv = {
         LANG = "C.UTF-8";
@@ -132,35 +155,20 @@
 
         # Full development shell (unchanged behavior)
         default = pkgs.mkShell {
-          packages = with pkgs; [
-            androidSdk
-            androidComposition.platform-tools
-            flutter
-            jdk17
-            uv
-            python3
-            rustup
-            rustc
-            cargo
-            rustfmt
-            clippy
-            rust-analyzer
-            pkg-config
-            cmake
-            ninja
-            minio
-            minio-client
-            clang
-            llvmPackages.libclang
-            protobuf
-            protoc-gen-dart
-            flutter_rust_bridge_codegen
-            git-cliff
-            cargo-expand
-            nodejs_26
-            pnpm
-            wrangler
-          ];
+          packages =
+            pythonPackages
+            ++ rustPackages
+            ++ nativeBuildPackages
+            ++ dartPackages
+            ++ protobufPackages
+            ++ frbPackages
+            ++ jsPackages
+            ++ releasePackages
+            ++ [
+              androidSdk
+              androidComposition.platform-tools
+              pkgs.rustup
+            ];
 
           LANG = "C.UTF-8";
           LC_ALL = "C.UTF-8";
@@ -226,10 +234,7 @@
 
         # Minimal Python shell: linting, formatting, and tests
         python = pkgs.mkShell {
-          packages = with pkgs; [
-            python3
-            uv
-          ];
+          packages = pythonPackages;
 
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
@@ -242,12 +247,7 @@
 
         # Minimal Dart/Flutter shell: linting, formatting, and tests
         dart = pkgs.mkShell {
-          packages = with pkgs; [
-            python3
-            uv
-            flutter
-            jdk17
-          ];
+          packages = pythonPackages ++ dartPackages ++ protobufPackages;
 
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
@@ -261,14 +261,7 @@
 
         # Minimal Rust shell: linting, formatting, and tests
         rust = pkgs.mkShell {
-          packages = with pkgs; [
-            python3
-            uv
-            rustc
-            cargo
-            rustfmt
-            clippy
-          ];
+          packages = pythonPackages ++ rustPackages;
 
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
@@ -281,12 +274,7 @@
 
         # Minimal JS/TS shell: linting, formatting, and type checks
         js = pkgs.mkShell {
-          packages = with pkgs; [
-            python3
-            uv
-            nodejs_26
-            pnpm
-          ];
+          packages = pythonPackages ++ jsPackages;
 
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
@@ -294,6 +282,27 @@
 
           shellHook = ''
             export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
+        };
+        # Code generation shell: protobuf, FRB, dart build_runner, l10n
+        codegen = pkgs.mkShell {
+          packages =
+            pythonPackages
+            ++ rustPackages
+            ++ nativeBuildPackages
+            ++ dartPackages
+            ++ protobufPackages
+            ++ frbPackages;
+
+          inherit (localeEnv) LANG LC_ALL;
+          JAVA_HOME = jdk17.home;
+          UV_PYTHON = "${python3}/bin/python3";
+          UV_PYTHON_DOWNLOADS = "never";
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+          shellHook = ''
+            export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            export PATH="${nativeRustToolchainPath}:$PATH"
           '';
         };
       };
