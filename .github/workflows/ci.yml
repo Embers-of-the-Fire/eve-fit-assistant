@@ -81,8 +81,7 @@ jobs:
         if: matrix.suite == 'dart'
         run: nix develop .#dart --command bash -c 'cp ci/efa.dev.ci.toml efa.dev.toml && uv run x.py dev env write-backend'
       - name: Generate code
-        if: matrix.suite == 'dart'
-        run: nix develop .#codegen --command bash -c 'uv run x.py generate all -f'
+        run: nix develop .#codegen --command bash -c '${{ matrix.codegen_command }}'
       - name: Lint ${{ matrix.suite }}
         run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.lint_command }}'
       - name: Test ${{ matrix.suite }}

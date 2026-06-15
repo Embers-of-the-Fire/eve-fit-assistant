@@ -9,6 +9,7 @@ SUITE_DEFINITIONS = [
         "shell": "python",
         "lint_command": "uv run x.py ci lint --lang python",
         "command": "uv run x.py test python",
+        "codegen_command": "uv run x.py ci codegen --lang python",
         "patterns": ["data/**", "x.py", "pyproject.toml", "uv.lock"],
     },
     {
@@ -16,6 +17,7 @@ SUITE_DEFINITIONS = [
         "shell": "dart",
         "lint_command": "uv run x.py ci lint --lang dart",
         "command": "uv run x.py test dart",
+        "codegen_command": "uv run x.py ci codegen --lang dart",
         "patterns": [
             "lib/**",
             "test/**",
@@ -31,6 +33,7 @@ SUITE_DEFINITIONS = [
         "shell": "js",
         "lint_command": "uv run x.py ci lint --lang site",
         "command": "true",
+        "codegen_command": "true",
         "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
     },
     {
@@ -38,6 +41,7 @@ SUITE_DEFINITIONS = [
         "shell": "python",
         "lint_command": "true",
         "command": "true",
+        "codegen_command": "true",
         "patterns": ["ci/**", "flake.nix", ".github/workflows/**"],
     },
 ]
@@ -85,6 +89,7 @@ def calculate_ci_matrix(files: list[str]) -> list[dict]:
                         "shell": suite_def["shell"],
                         "lint_command": suite_def["lint_command"],
                         "command": suite_def["command"],
+                        "codegen_command": suite_def["codegen_command"],
                     }
                 )
     if infra_changed:
@@ -94,6 +99,7 @@ def calculate_ci_matrix(files: list[str]) -> list[dict]:
                 "shell": s["shell"],
                 "lint_command": s["lint_command"],
                 "command": s["command"],
+                "codegen_command": s["codegen_command"],
             }
             for s in SUITE_DEFINITIONS
             if s["suite"] != "ci"

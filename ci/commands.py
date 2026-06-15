@@ -11,6 +11,7 @@ from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
+from ci.codegen import run_codegen
 from ci.lint import run_lint
 from ci.suites import SUITE_DEFINITIONS
 from ci.suites import calculate_ci_matrix
@@ -36,6 +37,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
                     "shell": s["shell"],
                     "lint_command": s["lint_command"],
                     "command": s["command"],
+                    "codegen_command": s["codegen_command"],
                 }
                 for s in SUITE_DEFINITIONS
             ]
@@ -58,6 +60,18 @@ def register_ci_commands(cli_group: click.Group) -> None:
     def ci_lint(lang: str):
         """Check formatting and linting without modifying files."""
         run_lint(lang, no_check=False, check_only=True, dry_run=False)
+
+    @ci.command("codegen")
+    @click.option(
+        "--lang",
+        type=click.Choice(["all", "python", "dart", "site"]),
+        default="all",
+        help="Generate code for specific language (default: all).",
+    )
+    def ci_codegen(lang: str):
+        """Generate code and auto-format (CI-aware)."""
+        run_codegen(lang)
+        run_lint(lang, no_check=True, dry_run=False)
 
     @ci.command("pack-data")
     @click.option(

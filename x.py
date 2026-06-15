@@ -720,6 +720,7 @@ def generate(ctx: click.Context, format_source: bool):
 @click.pass_context
 def all_cmd(ctx: click.Context):
     """Generate all code."""
+    ctx.obj["_in_generate_all"] = True
     ctx.invoke(protobuf)
     ctx.invoke(rust_cmd)
     ctx.invoke(dart_build_runner)
@@ -779,7 +780,7 @@ def protobuf(ctx: click.Context):
             + "."
         )
 
-    if ctx.obj.get("format_source", False):
+    if ctx.obj.get("format_source", False) and not ctx.obj.get("_in_generate_all", False):
         ctx.invoke(format_cmd)
 
 
@@ -801,7 +802,7 @@ def rust_cmd(ctx: click.Context):
         styled([Style.BRIGHT, Fore.GREEN], "Rust bridge code generation completed successfully.")
     )
 
-    if ctx.obj.get("format_source", False):
+    if ctx.obj.get("format_source", False) and not ctx.obj.get("_in_generate_all", False):
         ctx.invoke(format_cmd)
 
 
@@ -835,7 +836,7 @@ def dart_build_runner(ctx: click.Context, watch: bool):
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
 
-    if ctx.obj.get("format_source", False):
+    if ctx.obj.get("format_source", False) and not ctx.obj.get("_in_generate_all", False):
         ctx.invoke(format_cmd)
 
 
@@ -881,7 +882,7 @@ def gen_l10n(ctx: click.Context, watch: bool):
         styled([Style.BRIGHT, Fore.GREEN], "Localization generation completed successfully.")
     )
 
-    if ctx.obj.get("format_source", False):
+    if ctx.obj.get("format_source", False) and not ctx.obj.get("_in_generate_all", False):
         ctx.invoke(format_cmd)
 
 

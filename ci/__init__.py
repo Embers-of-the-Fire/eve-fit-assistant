@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from ci.codegen import CODEGEN_STEPS
+from ci.codegen import LANGUAGE_STEPS
+from ci.codegen import run_codegen
 from ci.commands import register_ci_commands
 from ci.lint import run_lint
 from ci.lint import run_site_checks
@@ -10,11 +13,14 @@ from ci.suites import match_any_pattern
 
 
 __all__ = [
+    "CODEGEN_STEPS",
+    "LANGUAGE_STEPS",
     "SUITE_DEFINITIONS",
     "calculate_ci_matrix",
     "glob_to_regex",
     "match_any_pattern",
     "register_ci_commands",
+    "run_codegen",
     "run_lint",
     "run_site_checks",
 ]
