@@ -18,7 +18,8 @@ abstract class ResourceSnapshotMeta with _$ResourceSnapshotMeta {
     @Default("") String gameRegion,
     @Default("") String gameSync,
     @Default("") String gameBranch,
-    String? description,
+    @Default("") String author,
+    @Default("") String description,
   }) = _ResourceSnapshotMeta;
 
   factory ResourceSnapshotMeta.fromJson(Map<String, dynamic> json) =>
@@ -36,6 +37,8 @@ abstract class ReleaseSnapshotMeta with _$ReleaseSnapshotMeta {
     required String createdAt,
     String? versionMin,
     String? versionMax,
+    @Default("") String author,
+    @Default("") String description,
   }) = _ReleaseSnapshotMeta;
 
   factory ReleaseSnapshotMeta.fromJson(Map<String, dynamic> json) =>
@@ -51,6 +54,8 @@ abstract class AnnouncementSnapshotMeta with _$AnnouncementSnapshotMeta {
     required int schemaVersion,
     required int announcementCount,
     required String createdAt,
+    @Default("") String author,
+    @Default("") String description,
   }) = _AnnouncementSnapshotMeta;
 
   factory AnnouncementSnapshotMeta.fromJson(Map<String, dynamic> json) =>

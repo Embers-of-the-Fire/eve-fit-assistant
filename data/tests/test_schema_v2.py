@@ -403,9 +403,7 @@ class TestGenerationStore:
     def _make_dummy_gen(self, gen_store: GenerationStore, **kwargs) -> str:
         meta = GenerationMetadata(
             channel="testing",
-            author="pipeline",
             timestamp="2026-06-14T12:00:00Z",
-            description="test generation",
             **kwargs,
         )
         server_index = ServerIndex()
@@ -447,7 +445,6 @@ class TestGenerationStore:
 
         assert gen.hash == gen_hash
         assert gen.metadata.channel == "testing"
-        assert gen.metadata.author == "pipeline"
         assert len(gen.server_index.servers) == 1
         assert gen.server_index.servers[0].server_id == "tranquility"
         assert len(gen.resources.entries) == 1
@@ -634,9 +631,7 @@ class TestGarbageCollector:
         # Create generation
         gen_meta = GenerationMetadata(
             channel="testing",
-            author="pipeline",
             timestamp="2026-06-14T12:00:00Z",
-            description="test",
         )
         server_index = ServerIndex()
         server_index.schema_version = 1
@@ -735,9 +730,7 @@ class TestVerifier:
 
         gen_meta = GenerationMetadata(
             channel="testing",
-            author="pipeline",
             timestamp="2026-06-14T12:00:00Z",
-            description="test",
         )
         server_index = ServerIndex()
         server_index.schema_version = 1

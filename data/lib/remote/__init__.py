@@ -129,11 +129,11 @@ class SessionManager:
 
     # --- Head management -----------------------------------------------------
 
-    def push(self, channel: str, gen_hash: str, author: str = "pipeline") -> None:
-        self.head_store.push(channel, gen_hash, author)
+    def push(self, channel: str, gen_hash: str) -> None:
+        self.head_store.push(channel, gen_hash)
 
-    def revert(self, channel: str, target_hash: str, author: str = "pipeline") -> None:
-        self.head_store.revert(channel, target_hash, author)
+    def revert(self, channel: str, target_hash: str) -> None:
+        self.head_store.revert(channel, target_hash)
 
     def get_head(self, channel: str):
         return self.head_store.get_head(channel)

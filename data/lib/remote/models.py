@@ -32,6 +32,7 @@ class ResourceSnapshotMetadata(BaseModel):
     game_region: str = Field(default="", alias="gameRegion")
     game_sync: str = Field(default="", alias="gameSync")
     game_branch: str = Field(default="", alias="gameBranch")
+    author: str = Field(default="")
     description: str = Field(default="")
     resource_count: int = Field(alias="resourceCount")
     created_at: str = Field(alias="createdAt")
@@ -41,12 +42,16 @@ class ReleaseSnapshotMetadata(BaseModel):
     schema_version: int = Field(default=1, alias="schemaVersion")
     version_min: str | None = Field(default=None, alias="versionMin")
     version_max: str | None = Field(default=None, alias="versionMax")
+    author: str = Field(default="")
+    description: str = Field(default="")
     release_count: int = Field(alias="releaseCount")
     created_at: str = Field(alias="createdAt")
 
 
 class AnnouncementSnapshotMetadata(BaseModel):
     schema_version: int = Field(default=1, alias="schemaVersion")
+    author: str = Field(default="")
+    description: str = Field(default="")
     announcement_count: int = Field(alias="announcementCount")
     created_at: str = Field(alias="createdAt")
 
@@ -55,9 +60,7 @@ class GenerationMetadata(BaseModel):
     schema_version: int = Field(default=1, alias="schemaVersion")
     parent: str | None = None
     channel: str
-    author: str
     timestamp: str
-    description: str = ""
     subject: str = ""
 
 

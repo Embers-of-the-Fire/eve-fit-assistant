@@ -40,8 +40,6 @@ class Session(BaseModel):
 
     schema_version: int = Field(default=1, alias="schemaVersion")
     channel: str
-    author: str
-    description: str
     committed: bool = False
     staged: StagedSnapshots = Field(default_factory=StagedSnapshots)
 
@@ -50,20 +48,6 @@ class Session(BaseModel):
     def _validate_channel(cls, v: str) -> str:
         if v not in (Channel.TESTING, Channel.STABLE):
             raise ValueError(f"Invalid channel: {v!r}")
-        return v
-
-    @field_validator("author")
-    @classmethod
-    def _validate_author(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("author must not be empty")
-        return v
-
-    @field_validator("description")
-    @classmethod
-    def _validate_description(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("description must not be empty")
         return v
 
     @field_validator("schema_version")
@@ -117,8 +101,6 @@ class SessionStore:
     def init(
         self,
         channel: str,
-        author: str,
-        description: str,
         force_overwrite: bool = False,
     ) -> Session:
         """Create a new session.
@@ -137,8 +119,6 @@ class SessionStore:
 
         session = Session(
             channel=channel,
-            author=author,
-            description=description,
             committed=False,
             staged=StagedSnapshots(),
         )

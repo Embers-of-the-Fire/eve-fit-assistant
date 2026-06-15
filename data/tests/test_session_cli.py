@@ -150,10 +150,8 @@ def _make_announcement_snapshot(tmp_root: Path) -> str:
 def _init_session(
     store: SessionStore,
     channel: str = "testing",
-    author: str = "pipeline",
-    description: str = "test session",
 ) -> Session:
-    return store.init(channel=channel, author=author, description=description)
+    return store.init(channel=channel)
 
 
 def _make_full_generation(
@@ -191,9 +189,7 @@ def _make_full_generation(
 
     meta = GenerationMetadata(
         channel=channel,
-        author="pipeline",
         timestamp=utc_timestamp(),
-        description="full gen",
         parent="",
         subject="",
     )
@@ -219,45 +215,27 @@ class TestSessionInit:
         assert store.session_path.is_file()
         session = store.load()
         assert session.channel == "testing"
-        assert session.author == "pipeline"
-        assert session.description == "test session"
         assert session.committed is False
         assert session.schema_version == 1
         assert session.staged.resources == []
         assert session.staged.releases == []
         assert session.staged.announcements == []
 
-    def test_init_fails_without_author(self, store: SessionStore) -> None:
-        from pydantic import ValidationError
-
-        with pytest.raises(ValidationError, match="author must not be empty"):
-            store.init(channel="testing", author="", description="test")
-
-    def test_init_fails_without_description(self, store: SessionStore) -> None:
-        from pydantic import ValidationError
-
-        with pytest.raises(ValidationError, match="description must not be empty"):
-            store.init(channel="testing", author="dev", description="")
-
     def test_init_overwrite_requires_force(self, store: SessionStore) -> None:
         _init_session(store)
         with pytest.raises(SessionExistsError, match="A session already exists"):
-            store.init(channel="testing", author="dev", description="second")
+            store.init(channel="testing")
 
     def test_init_overwrite_with_force(self, store: SessionStore) -> None:
-        _init_session(store, author="old")
-        store.init(
-            channel="stable", author="new", description="second session", force_overwrite=True
-        )
+        _init_session(store)
+        store.init(channel="stable", force_overwrite=True)
         session = store.load()
         assert session.channel == "stable"
-        assert session.author == "new"
-        assert session.description == "second session"
 
     def test_init_overwrite_committed_with_force(self, store: SessionStore) -> None:
         _init_session(store)
         store.mark_committed()
-        store.init(channel="stable", author="new", description="replacement", force_overwrite=True)
+        store.init(channel="stable", force_overwrite=True)
         session = store.load()
         assert session.channel == "stable"
         assert session.committed is False
@@ -266,11 +244,11 @@ class TestSessionInit:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError, match="Invalid channel"):
-            store.init(channel="bogus", author="dev", description="test")
+            store.init(channel="bogus")
 
     def test_init_valid_channels(self, store: SessionStore) -> None:
         for ch in ("testing", "stable"):
-            store.init(channel=ch, author="dev", description="test", force_overwrite=True)
+            store.init(channel=ch, force_overwrite=True)
             session = store.load()
             assert session.channel == ch
 
@@ -289,8 +267,6 @@ class TestSessionStatus:
         assert store.exists() is True
         session = store.load()
         assert session.channel == "testing"
-        assert session.author == "pipeline"
-        assert session.description == "test session"
         assert session.committed is False
 
     def test_status_json_serializable(self, store: SessionStore) -> None:
@@ -299,7 +275,6 @@ class TestSessionStatus:
         data = json.loads(session.model_dump_json(by_alias=True))
         assert data["schemaVersion"] == 1
         assert data["channel"] == "testing"
-        assert data["author"] == "pipeline"
         assert data["committed"] is False
         assert "staged" in data
 
@@ -512,9 +487,7 @@ class TestSessionDiff:
         gen_hash = mgr.create_generation(
             metadata=GenerationMetadata(
                 channel="testing",
-                author="pipeline",
                 timestamp=utc_timestamp(),
-                description="base",
                 parent="",
                 subject="",
             ),
@@ -865,9 +838,7 @@ class TestSessionCommit:
 
         gen_meta = GenerationMetadata(
             channel="testing",
-            author=store.load().author,
             timestamp=utc_timestamp(),
-            description=store.load().description,
             parent="",
             subject="",
         )
@@ -911,9 +882,7 @@ class TestSessionCommit:
 
         gen_meta = GenerationMetadata(
             channel="testing",
-            author=store.load().author,
             timestamp=utc_timestamp(),
-            description=store.load().description,
             parent="",
             subject="",
         )
@@ -980,9 +949,7 @@ class TestSessionCommit:
 
         gen_meta = GenerationMetadata(
             channel="testing",
-            author="pipeline",
             timestamp=utc_timestamp(),
-            description="idempotent test",
             parent="",
             subject="",
         )
@@ -1036,9 +1003,7 @@ class TestSessionCommit:
 
         gen_meta = GenerationMetadata(
             channel="testing",
-            author=store.load().author,
             timestamp=utc_timestamp(),
-            description=store.load().description,
             parent="",
             subject="",
         )
@@ -1085,9 +1050,7 @@ class TestSessionCommit:
 
         gen_meta = GenerationMetadata(
             channel="testing",
-            author=store.load().author,
             timestamp=utc_timestamp(),
-            description=store.load().description,
             parent="",
             subject="",
         )
@@ -1139,9 +1102,7 @@ class TestSessionCommit:
 
         gen_meta = GenerationMetadata(
             channel="testing",
-            author=store.load().author,
             timestamp=utc_timestamp(),
-            description=store.load().description,
             parent="",
             subject="",
         )
@@ -1169,11 +1130,10 @@ class TestFullWorkflow:
     def test_full_workflow_end_to_end(
         self, store: SessionStore, mgr: SessionManager, tmp_root: Path
     ) -> None:
-        _init_session(store, channel="stable", author="admin", description="E2E workflow test")
+        _init_session(store, channel="stable")
         mgr.ensure_channel("stable")
         session = store.load()
         assert session.channel == "stable"
-        assert session.author == "admin"
 
         res_hash = _make_resource_snapshot(tmp_root)
         store.add_snapshot("resource", res_hash)
@@ -1206,9 +1166,7 @@ class TestFullWorkflow:
 
         gen_meta = GenerationMetadata(
             channel="stable",
-            author=store.load().author,
             timestamp=utc_timestamp(),
-            description=store.load().description,
             parent="",
             subject="",
         )
@@ -1244,14 +1202,14 @@ class TestSessionEdgeCases:
         store.add_snapshot("resource", "aaa")
         store.add_snapshot("release", "bbb")
 
-        store.init(channel="testing", author="dev", description="fresh", force_overwrite=True)
+        store.init(channel="testing", force_overwrite=True)
         session = store.load()
         assert session.staged.resources == []
         assert session.staged.releases == []
         assert session.staged.announcements == []
 
     def test_session_roundtrip_json_alias(self, store: SessionStore) -> None:
-        _init_session(store, channel="stable", author="bot", description="alias test")
+        _init_session(store, channel="stable")
         store.add_snapshot("resource", "res-hash")
         store.add_snapshot("announcement", "ann-hash")
 
@@ -1260,7 +1218,6 @@ class TestSessionEdgeCases:
 
         assert data["schemaVersion"] == 1
         assert data["channel"] == "stable"
-        assert data["author"] == "bot"
         assert data["committed"] is False
         assert "resources" in data["staged"]
 

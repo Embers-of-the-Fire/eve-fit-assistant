@@ -921,7 +921,15 @@ def dogma_units_cmd(ctx: click.Context):
     default=None,
     help="Unified schema root directory (default from dev config).",
 )
-def generate_schema_cmd(build_dir: Path, server_id: str, schema_root: Path | None):
+@click.option("--author", default=None, help="Author identifier for the snapshot.")
+@click.option("--description", default=None, help="Description for the snapshot.")
+def generate_schema_cmd(
+    build_dir: Path,
+    server_id: str,
+    schema_root: Path | None,
+    author: str | None,
+    description: str | None,
+):
     """Generate a V2 schema checkout from workspace build output."""
     from data.lib.workspace.generate.schema import generate_schema_checkout
 
@@ -934,6 +942,8 @@ def generate_schema_cmd(build_dir: Path, server_id: str, schema_root: Path | Non
         build_dir=build_dir,
         schema_root=schema_root,
         server_id=server_id,
+        author=author,
+        description=description,
     )
     if hash_:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Checkout hash: {hash_}"))
@@ -1127,8 +1137,6 @@ def _require_session(store: SessionStore, operation: str) -> Session:
 
 @remote_session.command("init")
 @click.argument("channel")
-@click.option("--author", required=True, help="Author identifier.")
-@click.option("--description", required=True, help="Description for the generation.")
 @click.option(
     "--force-overwrite",
     is_flag=True,
@@ -1143,8 +1151,6 @@ def _require_session(store: SessionStore, operation: str) -> Session:
 )
 def remote_session_init(
     channel: str,
-    author: str,
-    description: str,
     force_overwrite: bool,
     schema_root: Path | None,
 ):
@@ -1157,8 +1163,6 @@ def remote_session_init(
     try:
         store.init(
             resolved_channel.value,
-            author,
-            description,
             force_overwrite=force_overwrite,
         )
     except SessionExistsError as e:
@@ -1167,8 +1171,6 @@ def remote_session_init(
         styled([Style.BRIGHT, Fore.GREEN], "Session initialized on channel ")
         + resolved_channel.value
     )
-    click.echo(f"  Author:      {author}")
-    click.echo(f"  Description: {description}")
     click.echo(styled(Style.DIM, f"  Session file: {store.session_path}"))
 
 
@@ -1204,8 +1206,6 @@ def remote_session_status(as_json: bool, schema_root: Path | None):
                 {
                     "active": True,
                     "channel": session.channel,
-                    "author": session.author,
-                    "description": session.description,
                     "committed": session.committed,
                     "staged_counts": {
                         "resources": len(staged.resources),
@@ -1223,8 +1223,6 @@ def remote_session_status(as_json: bool, schema_root: Path | None):
         else:
             committed_label = styled([Style.BRIGHT, Fore.YELLOW], " (uncommitted)")
         click.echo(f"Session on channel {session.channel}{committed_label}")
-        click.echo(f"  Author:      {session.author}")
-        click.echo(f"  Description: {session.description}")
         click.echo(
             f"  Staged:      "
             f"R:{len(staged.resources)} "
@@ -2195,9 +2193,7 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
     ts = utc_timestamp()
     meta = GenerationMetadata(
         channel=resolved_channel,
-        author=session.author,
         timestamp=ts,
-        description=session.description,
         subject="",
         parent=parent,
     )
@@ -2224,7 +2220,7 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
 
     # Advance head (unless --no-push)
     if not no_push:
-        mgr.push(resolved_channel, gen_hash, author=session.author)
+        mgr.push(resolved_channel, gen_hash)
 
     # Mark session committed
     store.mark_committed()
@@ -2266,7 +2262,6 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
 @remote.command("revert")
 @click.argument("channel")
 @click.argument("gen_hash")
-@click.option("--author", default="pipeline", help="Author identifier for the revert.")
 @click.option(
     "--schema-root",
     type=click.Path(path_type=Path),
@@ -2276,7 +2271,6 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
 def remote_revert(
     channel: str,
     gen_hash: str,
-    author: str,
     schema_root: Path | None,
 ):
     """Revert the channel head to a previous generation (pointer move only)."""
@@ -2284,7 +2278,7 @@ def remote_revert(
     mgr = SessionManager(root)
 
     resolved_channel = __validate_remote_channel(channel)
-    mgr.revert(resolved_channel, gen_hash, author=author)
+    mgr.revert(resolved_channel, gen_hash)
 
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], f"Channel {resolved_channel} reverted to")
@@ -2555,18 +2549,14 @@ def remote_sync(
 
     if channel is not None:
         resolved_channel = __validate_remote_channel(channel)
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], f"Syncing channel {resolved_channel}...")
-        )
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Syncing channel {resolved_channel}..."))
         result = syncer.sync_channel(resolved_channel, max_depth=depth)
         _print_sync_result(result)
     else:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Syncing all channels..."))
         results = syncer.sync_all_channels(max_depth=depth)
         if not results:
-            click.echo(
-                styled([Style.BRIGHT, Fore.YELLOW], "No channels found in remote registry.")
-            )
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "No channels found in remote registry."))
             return
         for _ch, r in results.items():
             _print_sync_result(r)
@@ -3137,7 +3127,9 @@ _GENERATOR_TYPES = {"static", "native", "localization", "images"}
     multiple=True,
     help=f"Skip specified data generators. Values: {', '.join(_GENERATOR_TYPES)}",
 )
-def data_cmd(skip: list[str]):
+@click.option("--author", default=None, help="Author identifier for the snapshot.")
+@click.option("--description", default=None, help="Description for the snapshot.")
+def data_cmd(skip: list[str], author: str | None, description: str | None):
     """Build data files."""
     from data.lib.workspace.generate import run_generator
 
@@ -3153,7 +3145,11 @@ def data_cmd(skip: list[str]):
         click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
         exit(1)
 
-    asyncio.run(run_generator(__get_current_workspace_descriptor(), to_skip))
+    asyncio.run(
+        run_generator(
+            __get_current_workspace_descriptor(), to_skip, author=author, description=description
+        )
+    )
 
 
 @build.command("docs", aliases=["doc"])

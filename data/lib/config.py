@@ -219,6 +219,9 @@ class DeveloperCodegen(BaseModel):
 class DeveloperBuild(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
+    author: str = Field(default="")
+    description: str = Field(default="")
+
 
 class DeveloperNative(BaseModel):
     model_config = ConfigDict(validate_default=True)

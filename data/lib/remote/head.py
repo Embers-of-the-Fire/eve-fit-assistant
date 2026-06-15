@@ -87,7 +87,7 @@ class ChannelHeadStore:
             raise FileNotFoundError(f"Channel head not found: {meta_path}")
         return ChannelHeadMetadata.model_validate(read_json(meta_path))
 
-    def push(self, channel: str, gen_hash: str, author: str = "pipeline") -> None:
+    def push(self, channel: str, gen_hash: str) -> None:
         """Advance the channel head to a new generation.
 
         Appends a reflog entry (op="push"), then atomically updates metadata.json.
@@ -100,7 +100,7 @@ class ChannelHeadStore:
         self._append_reflog(channel, current_hash, gen_hash, "push", ts)
         self._update_head_metadata(channel, gen_hash, current.label if current else {})
 
-    def revert(self, channel: str, target_hash: str, author: str = "pipeline") -> None:
+    def revert(self, channel: str, target_hash: str) -> None:
         """Revert the channel head to a previous generation.
 
         Appends a reflog entry (op="revert"), then atomically updates metadata.json.

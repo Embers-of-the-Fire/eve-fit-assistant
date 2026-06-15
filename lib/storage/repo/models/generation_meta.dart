@@ -11,10 +11,8 @@ abstract class GenerationMeta with _$GenerationMeta {
   const factory GenerationMeta({
     required int schemaVersion,
     required String channel,
-    required String author,
     required String timestamp,
     String? parent,
-    String? description,
     String? subject,
   }) = _GenerationMeta;
 

@@ -20,7 +20,12 @@ if TYPE_CHECKING:
     from data.lib.workspace.config import WorkspaceConfig
 
 
-async def run_generator(config: WorkspaceConfig, skip: set[str]):
+async def run_generator(
+    config: WorkspaceConfig,
+    skip: set[str],
+    author: str | None = None,
+    description: str | None = None,
+):
     info("Running data generator...")
     datasource = GeneratorDatasource(config)
     try:
@@ -46,6 +51,8 @@ async def run_generator(config: WorkspaceConfig, skip: set[str]):
             config,
             build_dir=datasource.paths.full_generate_out_path,
             schema_root=DEV_CONFIGURATION.paths.schema_dir,
+            author=author,
+            description=description,
         )
 
         info("Data generator finished.")

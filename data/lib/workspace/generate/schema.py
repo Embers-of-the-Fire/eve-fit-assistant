@@ -54,6 +54,8 @@ def generate_resource_snapshot(
     schema_root: Path,
     *,
     server_id: str | None = None,
+    author: str | None = None,
+    description: str | None = None,
 ) -> str | None:
     """Generate a V2 resource snapshot from workspace build output.
 
@@ -68,6 +70,10 @@ def generate_resource_snapshot(
             (static/, localization/, etc.).
         schema_root: Root for the schema V2 storage (typically cache/remote/).
         server_id: Server ID override when config is None.
+        author: Author identifier for the snapshot. Falls back to
+            DEV_CONFIGURATION.build.author, then "".
+        description: Description for the snapshot. Falls back to
+            DEV_CONFIGURATION.build.description, then "".
 
     Returns:
         The resource snapshot hash on success, or None if build_dir is empty.
@@ -95,6 +101,18 @@ def generate_resource_snapshot(
         game_branch = start_config.get("main", "branch", fallback="")
     elif resolved_server_id:
         pass
+
+    # Resolve author/description: CLI override > dev config > empty string
+    from data.lib.config import DEV_CONFIGURATION
+
+    resolved_author = author
+    resolved_description = description
+    if resolved_author is None and DEV_CONFIGURATION is not None:
+        resolved_author = DEV_CONFIGURATION.build.author
+    if resolved_description is None and DEV_CONFIGURATION is not None:
+        resolved_description = DEV_CONFIGURATION.build.description
+    resolved_author = resolved_author or ""
+    resolved_description = resolved_description or ""
 
     entries: list[tuple[str, str, int]] = []
     file_count = 0
@@ -156,7 +174,8 @@ def generate_resource_snapshot(
         gameRegion=game_region,
         gameSync=game_sync,
         gameBranch=game_branch,
-        description="",
+        author=resolved_author,
+        description=resolved_description,
         resourceCount=file_count,
         createdAt=created_at,
     )
@@ -179,6 +198,8 @@ def generate_schema_checkout(
     schema_root: Path,
     *,
     server_id: str | None = None,
+    author: str | None = None,
+    description: str | None = None,
 ) -> str | None:
     """Legacy wrapper — delegates to generate_resource_snapshot.
 
@@ -186,4 +207,11 @@ def generate_schema_checkout(
     (e.g. cache/remote/). The returned string is the resource snapshot hash
     (previously was a checkout hash — same purpose, new algorithm).
     """
-    return generate_resource_snapshot(config, build_dir, schema_root, server_id=server_id)
+    return generate_resource_snapshot(
+        config,
+        build_dir,
+        schema_root,
+        server_id=server_id,
+        author=author,
+        description=description,
+    )

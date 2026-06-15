@@ -39,6 +39,8 @@ class AnnouncementService {
     final metaPath = "${tempDir.path}/metadata.json";
     final meta = {
       "schemaVersion": 1,
+      "author": "",
+      "description": "",
       "announcementCount": index.entries.length,
       "createdAt": DateTime.now().toUtc().toIso8601String(),
     };
