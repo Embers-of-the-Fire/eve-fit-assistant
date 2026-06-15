@@ -31,6 +31,7 @@ import time
 import zipfile
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import unquote
 from urllib.request import urlopen
 
@@ -78,6 +79,10 @@ from data.lib.remote.session_model import Session
 from data.lib.remote.session_model import SessionExistsError
 from data.lib.remote.session_model import SessionStore
 from data.lib.remote.verify import Verifier
+
+
+if TYPE_CHECKING:
+    from data.lib.remote.sync import SyncResult
 from data.lib.utils import execute_command
 from data.lib.utils import get_bin_size
 from data.lib.utils import get_command
@@ -2459,6 +2464,130 @@ def remote_publish(
     click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Publishing channel {resolved_channel}..."))
     pub.publish_all_for_head(resolved_channel)
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Publish complete."))
+
+
+# ---- sync -------------------------------------------------------------------
+
+
+@remote.command("sync")
+@click.option(
+    "--target",
+    type=click.Choice(["minio", "s3"], case_sensitive=False),
+    required=True,
+    help="S3-compatible sync target (reads defaults from efa.dev.toml).",
+)
+@click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
+@click.option(
+    "--depth",
+    type=int,
+    default=-1,
+    show_default=True,
+    help="Max generations to walk (-1 = all).",
+)
+@click.option(
+    "--workers",
+    type=int,
+    default=8,
+    show_default=True,
+    help="Number of parallel download workers.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+@click.option(
+    "--channel",
+    default=None,
+    help="Sync a specific channel (default: all channels).",
+)
+def remote_sync(
+    target: str,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    depth: int,
+    workers: int,
+    schema_root: Path | None,
+    channel: str | None,
+):
+    """Sync remote metadata/catalog to local schema root (no blobs).
+
+    By default syncs all channels found in the remote registry.
+    Use --channel to limit to a specific channel.
+    """
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+
+    if target == "minio":
+        minio_cfg = remote_cfg.require_minio()
+        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}"
+        resolved_bucket = bucket or minio_cfg.bucket
+        resolved_access_key = access_key or minio_cfg.access_key
+        resolved_secret_key = secret_key or minio_cfg.secret_key
+        resolved_alias = alias_name or minio_cfg.alias
+    else:
+        s3_cfg = remote_cfg.require_s3()
+        resolved_endpoint = endpoint or s3_cfg.endpoint
+        resolved_bucket = bucket or s3_cfg.bucket
+        resolved_access_key = access_key or s3_cfg.access_key
+        resolved_secret_key = secret_key or s3_cfg.secret_key
+        resolved_alias = alias_name or s3_cfg.alias
+
+    root = _resolve_schema_root(schema_root)
+    mgr = SessionManager(root)
+
+    syncer = mgr.make_syncer(
+        endpoint=resolved_endpoint,
+        bucket=resolved_bucket,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+        alias_name=resolved_alias,
+        workers=workers,
+    )
+
+    if channel is not None:
+        resolved_channel = __validate_remote_channel(channel)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Syncing channel {resolved_channel}...")
+        )
+        result = syncer.sync_channel(resolved_channel, max_depth=depth)
+        _print_sync_result(result)
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Syncing all channels..."))
+        results = syncer.sync_all_channels(max_depth=depth)
+        if not results:
+            click.echo(
+                styled([Style.BRIGHT, Fore.YELLOW], "No channels found in remote registry.")
+            )
+            return
+        for _ch, r in results.items():
+            _print_sync_result(r)
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Sync complete."))
+
+
+def _print_sync_result(result: SyncResult) -> None:
+    """Print a human-readable sync result summary."""
+    parts: list[str] = [f"  Channel: {result.channel}"]
+    if result.registry:
+        parts.append("registry ✓")
+    if result.head_meta:
+        parts.append("head ✓")
+    if result.reflog:
+        parts.append("reflog ✓")
+    parts.append(f"generations: {result.generations}")
+    parts.append(f"resource snapshots: {result.resource_snapshots}")
+    parts.append(f"release snapshots: {result.release_snapshots}")
+    parts.append(f"announcement snapshots: {result.announcement_snapshots}")
+    click.echo("  " + "  ".join(parts))
 
 
 @remote.group(cls=ClickAliasedGroup)

@@ -26,6 +26,7 @@ from data.lib.remote.generation import GenerationStore
 from data.lib.remote.head import ChannelHeadStore
 from data.lib.remote.publish import Publisher
 from data.lib.remote.snapshot import SnapshotStore
+from data.lib.remote.sync import Syncer
 from data.lib.remote.verify import Verifier
 
 
@@ -163,6 +164,30 @@ class SessionManager:
             secret_key=secret_key,
             alias_name=alias_name,
             origin_dir=origin_dir,
+            workers=workers,
+        )
+
+    # --- Syncing -------------------------------------------------------------
+
+    def make_syncer(
+        self,
+        *,
+        mc_bin: str | None = None,
+        endpoint: str | None = None,
+        bucket: str | None = None,
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        alias_name: str | None = None,
+        workers: int = 8,
+    ) -> Syncer:
+        return Syncer(
+            local_root=self.root,
+            mc_bin=mc_bin,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            alias_name=alias_name,
             workers=workers,
         )
 
