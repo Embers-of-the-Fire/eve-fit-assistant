@@ -2177,6 +2177,7 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
     # Build GenerationPointer for releases (last staged hash wins)
     release_ptr = GenerationPointer()
     release_ptr.schema_version = 1
+    release_ptr.snapshot_hash = ""
     release_hash: str | None = None
     if session.staged.releases:
         release_hash = session.staged.releases[-1]
@@ -2185,6 +2186,7 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
     # Build GenerationPointer for announcements (last staged hash wins)
     announcement_ptr = GenerationPointer()
     announcement_ptr.schema_version = 1
+    announcement_ptr.snapshot_hash = ""
     announcement_hash: str | None = None
     if session.staged.announcements:
         announcement_hash = session.staged.announcements[-1]
@@ -2355,11 +2357,13 @@ def remote_push(
 
     release_ptr = GenerationPointer()
     release_ptr.schema_version = 1
+    release_ptr.snapshot_hash = ""
     if release_snapshot:
         release_ptr.snapshot_hash = release_snapshot
 
     announcement_ptr = GenerationPointer()
     announcement_ptr.schema_version = 1
+    announcement_ptr.snapshot_hash = ""
     if announcement_snapshot:
         announcement_ptr.snapshot_hash = announcement_snapshot
 
@@ -2529,13 +2533,13 @@ def remote_verify(repair: bool, schema_root: Path | None):
     "--target",
     type=click.Choice(["minio", "s3"], case_sensitive=False),
     required=True,
-    help="S3-compatible upload target.",
+    help="S3-compatible upload target (reads defaults from efa.dev.toml).",
 )
-@click.option("--endpoint", required=True, help="S3-compatible endpoint URL.")
-@click.option("--bucket", required=True, help="Bucket name.")
-@click.option("--access-key", required=True, help="Access key.")
-@click.option("--secret-key", required=True, help="Secret key.")
-@click.option("--alias", "alias_name", required=True, help="mc alias name.")
+@click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
 @click.option(
     "--schema-root",
     type=click.Path(path_type=Path),
@@ -2545,25 +2549,43 @@ def remote_verify(repair: bool, schema_root: Path | None):
 def remote_publish(
     channel: str,
     target: str,
-    endpoint: str,
-    bucket: str,
-    access_key: str,
-    secret_key: str,
-    alias_name: str,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
     schema_root: Path | None,
 ):
     """Publish the channel's current head to a remote S3/MinIO bucket."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+
+    if target == "minio":
+        minio_cfg = remote_cfg.require_minio()
+        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}"
+        resolved_bucket = bucket or minio_cfg.bucket
+        resolved_access_key = access_key or minio_cfg.access_key
+        resolved_secret_key = secret_key or minio_cfg.secret_key
+        resolved_alias = alias_name or minio_cfg.alias
+    else:
+        s3_cfg = remote_cfg.require_s3()
+        resolved_endpoint = endpoint or s3_cfg.endpoint
+        resolved_bucket = bucket or s3_cfg.bucket
+        resolved_access_key = access_key or s3_cfg.access_key
+        resolved_secret_key = secret_key or s3_cfg.secret_key
+        resolved_alias = alias_name or s3_cfg.alias
+
     root = _resolve_schema_root(schema_root)
     mgr = SessionManager(root)
 
     resolved_channel = __validate_remote_channel(channel)
 
     pub = mgr.make_publisher(
-        endpoint=endpoint,
-        bucket=bucket,
-        access_key=access_key,
-        secret_key=secret_key,
-        alias_name=alias_name,
+        endpoint=resolved_endpoint,
+        bucket=resolved_bucket,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+        alias_name=resolved_alias,
     )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Publishing channel {resolved_channel}..."))
