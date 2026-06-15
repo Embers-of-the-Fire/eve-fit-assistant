@@ -3,12 +3,9 @@ import "dart:convert";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
-
-const _testMeta = GameMetadata(gameServer: "Serenity", gameBuild: "21.06", gameVersion: "EQUINOX");
 
 FitStorage _makeFitStorage() => FitStorage(
   metadata: FitMetadata(
@@ -17,7 +14,7 @@ FitStorage _makeFitStorage() => FitStorage(
     name: "Test Fit",
     lastModified: 0,
     description: "",
-    checkoutRef: CheckoutRef(checkoutId: "checkout-abc", serverId: "Serenity", metadata: _testMeta),
+    checkoutRef: const CheckoutRef(checkoutId: "checkout-abc", serverId: "Serenity"),
   ),
   body: FitStorageBody(
     shipTypeId: 1234,
@@ -72,7 +69,6 @@ void main() {
       expect(decoded.fit.metadata.fitId, "test-fit-1");
       expect(decoded.fit.metadata.checkoutRef.checkoutId, "checkout-abc");
       expect(decoded.fit.metadata.checkoutRef.serverId, "Serenity");
-      expect(decoded.fit.metadata.checkoutRef.metadata, _testMeta);
     });
   });
 

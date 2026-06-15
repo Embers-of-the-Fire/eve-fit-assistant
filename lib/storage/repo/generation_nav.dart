@@ -26,17 +26,36 @@ class ChannelOverview {
 }
 
 class ServerSummary {
-  const ServerSummary({required this.serverId, required this.gameBuild, required this.gameVersion});
+  const ServerSummary({
+    required this.serverId,
+    required this.gameBuild,
+    required this.gameVersion,
+    this.name,
+    this.region,
+    this.sync,
+    this.branch,
+  });
 
   factory ServerSummary.fromEntry(ServerIndex_Entry entry) => ServerSummary(
     serverId: entry.serverId,
     gameBuild: entry.gameBuild,
     gameVersion: entry.gameVersion,
+    name: Map<String, String>.from(entry.name),
+    region: entry.hasRegion() ? entry.region : null,
+    sync: entry.hasSync() ? entry.sync : null,
+    branch: entry.hasBranch() ? entry.branch : null,
   );
 
   final String serverId;
   final String gameBuild;
   final String gameVersion;
+  final Map<String, String>? name;
+  final String? region;
+  final String? sync;
+  final String? branch;
+
+  /// Returns the display name for [locale], falling back to serverId.
+  String displayName(String locale) => name?[locale] ?? serverId;
 }
 
 /// Data source for the setup page's channel/server browser.

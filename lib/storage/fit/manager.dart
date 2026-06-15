@@ -8,7 +8,6 @@ import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -96,11 +95,7 @@ class FitManager extends _$FitManager {
         final checkoutId = ref
             .read(activeCheckoutIdProvider)
             .match(() => throw StateError("A valid checkout must be active."), (id) => id);
-        return CheckoutRef(
-          checkoutId: checkoutId,
-          serverId: entry.serverId,
-          metadata: GameMetadata(gameServer: entry.serverId, gameBuild: "", gameVersion: ""),
-        );
+        return CheckoutRef(checkoutId: checkoutId, serverId: entry.serverId);
       });
 
   Future<FitMetadata> newFit(int shipId, String name) async {

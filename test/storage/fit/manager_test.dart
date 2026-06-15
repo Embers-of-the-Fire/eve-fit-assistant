@@ -11,14 +11,11 @@ import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
 import "package:riverpod/riverpod.dart";
-
-const _testMeta = GameMetadata(gameServer: "Serenity", gameBuild: "21.06", gameVersion: "EQUINOX");
 
 Option<CheckoutRegistryEntry> _active(String checkoutId, String serverId) => Some(
   CheckoutRegistryEntry(
@@ -95,11 +92,7 @@ void main() {
 
   group("newFit", () {
     test("throws StateError when no active checkout", () {
-      final container = _container(
-        active: const None(),
-        activeCheckoutId: "",
-        ship: _testShip(),
-      );
+      final container = _container(active: const None(), activeCheckoutId: "", ship: _testShip());
       addTearDown(container.dispose);
 
       expect(
@@ -128,11 +121,7 @@ void main() {
 
   group("importFit", () {
     test("throws StateError when no active checkout", () {
-      final container = _container(
-        active: const None(),
-        activeCheckoutId: "",
-        ship: _testShip(),
-      );
+      final container = _container(active: const None(), activeCheckoutId: "", ship: _testShip());
       addTearDown(container.dispose);
 
       final imported = FitStorage.empty(
@@ -142,11 +131,7 @@ void main() {
           name: "Source Fit",
           lastModified: 0,
           description: "",
-          checkoutRef: CheckoutRef(
-            checkoutId: "old-checkout",
-            serverId: "Serenity",
-            metadata: _testMeta,
-          ),
+          checkoutRef: const CheckoutRef(checkoutId: "old-checkout", serverId: "Serenity"),
         ),
         _testShip(),
       );
@@ -172,11 +157,7 @@ void main() {
           name: "Imported",
           lastModified: 0,
           description: "",
-          checkoutRef: CheckoutRef(
-            checkoutId: "old-checkout",
-            serverId: "Serenity",
-            metadata: _testMeta,
-          ),
+          checkoutRef: CheckoutRef(checkoutId: "old-checkout", serverId: "Serenity"),
         ),
         ship,
       );

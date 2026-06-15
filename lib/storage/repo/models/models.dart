@@ -16,7 +16,7 @@
 /// | Diff + DiffAdd + DiffDelete + DiffModify | — | On-demand diff between resource index snapshots |
 /// | CompatibilityCheck / CheckoutResolution | — | Compatibility check result and checkout resolution strategies |
 /// | MissingFiles | — | Verification result listing missing or hash-mismatched asset files |
-/// | GameMetadata / VersionRange / AssetFile | — | Shared leaf types reused across multiple models |
+/// | VersionRange / AssetFile | — | Shared leaf types reused across multiple models |
 library;
 
 export "blob_ident.dart";

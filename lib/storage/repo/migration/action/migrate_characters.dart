@@ -25,11 +25,7 @@ class MigrateCharacters {
     final bundleId = json["bundleId"];
     final serverId = bundleId is String ? serverIdFromBundleId(bundleId) : "";
 
-    final checkoutRefJson = <String, dynamic>{
-      "checkoutId": checkoutId,
-      "serverId": serverId,
-      "metadata": <String, dynamic>{"gameServer": "", "gameBuild": "", "gameVersion": ""},
-    };
+    final checkoutRefJson = <String, dynamic>{"checkoutId": checkoutId, "serverId": serverId};
 
     return Map<String, dynamic>.from(json)
       ..["checkoutRef"] = checkoutRefJson

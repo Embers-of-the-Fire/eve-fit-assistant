@@ -130,21 +130,6 @@ class AssetStore {
     }
   }
 
-  /// Reads the resource snapshot metadata.
-  ///
-  /// Returns [None] if the snapshot does not exist.
-  Option<ResourceSnapshotMeta> readResourceSnapshotMetaSync(String snapshotHash) => _readJsonFile(
-    RepoPaths.resourceSnapshotMetaPath(snapshotHash),
-    ResourceSnapshotMeta.fromJson,
-  );
-
-  /// Reads the announcement snapshot metadata.
-  Option<AnnouncementSnapshotMeta> readAnnouncementSnapshotMetaSync(String snapshotHash) =>
-      _readJsonFile(
-        RepoPaths.announcementSnapshotMetaPath(snapshotHash),
-        AnnouncementSnapshotMeta.fromJson,
-      );
-
   /// Verifies every blob referenced by [resourceIndex] exists on disk with
   /// correct content hash.
   ///
@@ -319,16 +304,4 @@ class AssetStore {
   }
 
   String _resourceTempPath() => "${RepoPaths.assetsPath}/tmp_resource_snapshot";
-
-  Option<T> _readJsonFile<T>(String path, T Function(Map<String, dynamic>) fromJson) {
-    final file = File(path);
-    if (!file.existsSync()) return const None();
-    try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      return Some(fromJson(json));
-    } on Exception catch (e, stackTrace) {
-      warning("Failed to read JSON: $path", stackTrace: stackTrace);
-      return const None();
-    }
-  }
 }

@@ -2,7 +2,6 @@ import "dart:convert";
 
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:flutter_test/flutter_test.dart";
 
 Map<String, dynamic> _roundTripJson(Map<String, dynamic> json) =>
@@ -16,15 +15,7 @@ void main() {
         name: "Test Character",
         description: "A test character",
         lastModified: 0,
-        checkoutRef: CheckoutRef(
-          checkoutId: "checkout-abc",
-          serverId: "Serenity",
-          metadata: GameMetadata(
-            gameServer: "Serenity",
-            gameBuild: "21.06",
-            gameVersion: "EQUINOX",
-          ),
-        ),
+        checkoutRef: const CheckoutRef(checkoutId: "checkout-abc", serverId: "Serenity"),
         skills: {123: 5, 456: 4},
       );
 
@@ -47,15 +38,7 @@ void main() {
         name: "Round Trip",
         description: "",
         lastModified: 42,
-        checkoutRef: CheckoutRef(
-          checkoutId: "co-id",
-          serverId: "Tranquility",
-          metadata: GameMetadata(
-            gameServer: "Tranquility",
-            gameBuild: "21.06",
-            gameVersion: "EQUINOX",
-          ),
-        ),
+        checkoutRef: const CheckoutRef(checkoutId: "co-id", serverId: "Tranquility"),
         skills: {1: 1, 2: 2},
       );
 
@@ -93,15 +76,7 @@ void main() {
         "name": "C",
         "description": "",
         "lastModified": 0,
-        "checkoutRef": <String, dynamic>{
-          "checkoutId": "existing-checkout",
-          "serverId": "Serenity",
-          "metadata": <String, dynamic>{
-            "gameServer": "Serenity",
-            "gameBuild": "21.06",
-            "gameVersion": "EQUINOX",
-          },
-        },
+        "checkoutRef": <String, dynamic>{"checkoutId": "existing-checkout", "serverId": "Serenity"},
         "bundleSnapshot": "should-ignore",
         "skills": <String, dynamic>{},
       };
@@ -119,11 +94,7 @@ void main() {
         name: "All V",
         description: "Built-in",
         lastModified: 0,
-        checkoutRef: CheckoutRef(
-          checkoutId: "",
-          serverId: "",
-          metadata: GameMetadata(gameServer: "", gameBuild: "", gameVersion: ""),
-        ),
+        checkoutRef: const CheckoutRef(checkoutId: "", serverId: ""),
         skills: <int, int>{},
       );
 

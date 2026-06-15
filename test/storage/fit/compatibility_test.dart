@@ -6,14 +6,11 @@ import "package:eve_fit_assistant/storage/fit/compatibility.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
 import "package:path/path.dart" as p;
 import "package:riverpod/riverpod.dart";
-
-const _testMeta = GameMetadata(gameServer: "Serenity", gameBuild: "21.06", gameVersion: "EQUINOX");
 
 FitMetadata _fitMeta(String fitId, String checkoutId, String serverId) => FitMetadata(
   fitId: fitId,
@@ -21,7 +18,7 @@ FitMetadata _fitMeta(String fitId, String checkoutId, String serverId) => FitMet
   name: "Test Fit",
   lastModified: 0,
   description: "",
-  checkoutRef: CheckoutRef(checkoutId: checkoutId, serverId: serverId, metadata: _testMeta),
+  checkoutRef: CheckoutRef(checkoutId: checkoutId, serverId: serverId),
 );
 
 Option<CheckoutRegistryEntry> _active(String serverId) => Some(
@@ -51,12 +48,14 @@ ProviderContainer _container({
     }),
   );
 
-  return ProviderContainer(overrides: [
-    activeCheckoutProvider.overrideWithValue(active),
-    activeCheckoutIdProvider.overrideWithValue(
-      activeCheckoutId.isEmpty ? const None() : Some(activeCheckoutId),
-    ),
-  ]);
+  return ProviderContainer(
+    overrides: [
+      activeCheckoutProvider.overrideWithValue(active),
+      activeCheckoutIdProvider.overrideWithValue(
+        activeCheckoutId.isEmpty ? const None() : Some(activeCheckoutId),
+      ),
+    ],
+  );
 }
 
 void main() {

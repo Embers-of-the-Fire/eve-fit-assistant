@@ -11,5 +11,8 @@ message ServerIndex {
     map<string, string> name = 2;     // locale -> display name
     required string game_build = 3;
     required string game_version = 4;
+    optional string region = 5;
+    optional string sync = 6;
+    optional string branch = 7;
   }
 }

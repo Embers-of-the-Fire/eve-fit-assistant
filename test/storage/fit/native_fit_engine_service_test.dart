@@ -193,9 +193,7 @@ void main() {
     test("starts in notInitialized state", () {
       final container = _container(
         activeSnapshotHash: const None(),
-        nativeDirResolver: _StubNativeDirResolver(
-          resolveResult: (_, __) async => _tempDir,
-        ),
+        nativeDirResolver: _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir),
       );
       addTearDown(container.dispose);
 
@@ -204,9 +202,7 @@ void main() {
     });
 
     test("initializes via retry when snapshot hash is available", () async {
-      final resolver = _StubNativeDirResolver(
-        resolveResult: (_, __) async => _tempDir,
-      );
+      final resolver = _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir);
       final container = _container(
         activeSnapshotHash: Some(_snapshotHash),
         nativeDirResolver: resolver,
@@ -220,9 +216,7 @@ void main() {
     });
 
     test("retry re-initializes successfully on second call", () async {
-      final resolver = _StubNativeDirResolver(
-        resolveResult: (_, __) async => _tempDir,
-      );
+      final resolver = _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir);
       final container = _container(
         activeSnapshotHash: Some(_snapshotHash),
         nativeDirResolver: resolver,
@@ -255,9 +249,7 @@ void main() {
     test("retry is no-op when no snapshot hash is available", () async {
       final container = _container(
         activeSnapshotHash: const None(),
-        nativeDirResolver: _StubNativeDirResolver(
-          resolveResult: (_, __) async => _tempDir,
-        ),
+        nativeDirResolver: _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir),
       );
       addTearDown(container.dispose);
 

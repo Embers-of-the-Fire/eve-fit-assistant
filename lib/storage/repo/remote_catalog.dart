@@ -4,7 +4,6 @@ import "package:dio/dio.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart" as remote_http;
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
-import "package:eve_fit_assistant/storage/repo/models/generation_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:fpdart/fpdart.dart";
 
@@ -71,12 +70,6 @@ class RemoteCatalogService {
 
   // ── Generation fetch (§13.2) ───────────────────────────────────────────────
 
-  /// GET `channels/refs/{generationHash}/metadata.json`
-  Future<Either<CatalogError, GenerationMeta>> fetchGenerationMeta(String generationHash) async {
-    final uri = _buildUri("channels/refs/$generationHash/metadata.json");
-    return _fetchJson(uri, GenerationMeta.fromJson);
-  }
-
   /// GET `channels/refs/{generationHash}/server.pb2`
   Future<Either<CatalogError, Uint8List>> fetchServerIndex(String generationHash) async {
     final uri = _buildUri("channels/refs/$generationHash/server.pb2");
@@ -119,14 +112,6 @@ class RemoteCatalogService {
 
   // ── Announcement fetch (§13.3) ────────────────────────────────────────────
 
-  /// GET `assets/announcements/{snapshotHash}/metadata.json`
-  Future<Either<CatalogError, AnnouncementSnapshotMeta>> fetchAnnouncementSnapshotMeta(
-    String snapshotHash,
-  ) async {
-    final uri = _buildUri("assets/announcements/$snapshotHash/metadata.json");
-    return _fetchJson(uri, AnnouncementSnapshotMeta.fromJson);
-  }
-
   /// GET `assets/announcements/{snapshotHash}/announcements.pb2`
   Future<Either<CatalogError, Uint8List>> fetchAnnouncementIndex(String snapshotHash) async {
     final uri = _buildUri("assets/announcements/$snapshotHash/announcements.pb2");
@@ -134,14 +119,6 @@ class RemoteCatalogService {
   }
 
   // ── Release fetch (§13.4) ─────────────────────────────────────────────────
-
-  /// GET `assets/releases/{snapshotHash}/metadata.json`
-  Future<Either<CatalogError, ReleaseSnapshotMeta>> fetchReleaseSnapshotMeta(
-    String snapshotHash,
-  ) async {
-    final uri = _buildUri("assets/releases/$snapshotHash/metadata.json");
-    return _fetchJson(uri, ReleaseSnapshotMeta.fromJson);
-  }
 
   /// GET `assets/releases/{snapshotHash}/releases.pb2`
   Future<Either<CatalogError, Uint8List>> fetchReleaseIndex(String snapshotHash) async {

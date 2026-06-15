@@ -14,7 +14,6 @@ import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fpdart/fpdart.dart";
@@ -248,11 +247,8 @@ class Fit extends _$Fit {
       lastModified: DateTime.now().millisecondsSinceEpoch,
       checkoutRef: active.match(
         () => currentFit.metadata.checkoutRef,
-        (a) => CheckoutRef(
-          checkoutId: checkoutId.match(() => "", (id) => id),
-          serverId: a.serverId,
-          metadata: GameMetadata(gameServer: a.serverId, gameBuild: "", gameVersion: ""),
-        ),
+        (a) =>
+            CheckoutRef(checkoutId: checkoutId.match(() => "", (id) => id), serverId: a.serverId),
       ),
     );
     final fit = pruneDynamicRegistry(updater(currentFit)).copyWith(metadata: updatedMetadata);

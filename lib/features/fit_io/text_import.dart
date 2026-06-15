@@ -8,7 +8,6 @@ import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -131,11 +130,7 @@ class FitTextImporter {
         name: header.$2,
         lastModified: 0,
         description: "",
-        checkoutRef: const CheckoutRef(
-          checkoutId: "",
-          serverId: "",
-          metadata: GameMetadata(gameServer: "", gameBuild: "", gameVersion: ""),
-        ),
+        checkoutRef: const CheckoutRef(checkoutId: "", serverId: ""),
       ),
       ship,
     );

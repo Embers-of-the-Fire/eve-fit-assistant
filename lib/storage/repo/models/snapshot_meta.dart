@@ -15,6 +15,9 @@ abstract class ResourceSnapshotMeta with _$ResourceSnapshotMeta {
     required String gameVersion,
     required int resourceCount,
     required String createdAt,
+    @Default("") String gameRegion,
+    @Default("") String gameSync,
+    @Default("") String gameBranch,
     String? description,
   }) = _ResourceSnapshotMeta;
 

@@ -35,11 +35,7 @@ class MigrateFits {
     final bundleId = metadata["bundleId"];
     final serverId = bundleId is String ? serverIdFromBundleId(bundleId) : "";
 
-    final checkoutRefJson = <String, dynamic>{
-      "checkoutId": checkoutId,
-      "serverId": serverId,
-      "metadata": <String, dynamic>{"gameServer": "", "gameBuild": "", "gameVersion": ""},
-    };
+    final checkoutRefJson = <String, dynamic>{"checkoutId": checkoutId, "serverId": serverId};
 
     final updatedMetadata = Map<String, dynamic>.from(metadata)
       ..["checkoutRef"] = checkoutRefJson

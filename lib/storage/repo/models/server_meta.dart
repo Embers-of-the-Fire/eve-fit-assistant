@@ -9,12 +9,18 @@ class ServerMeta {
     required this.gameBuild,
     required this.gameVersion,
     this.name,
+    this.region,
+    this.sync,
+    this.branch,
   });
 
   final String serverId;
   final String gameBuild;
   final String gameVersion;
   final Map<String, String>? name;
+  final String? region;
+  final String? sync;
+  final String? branch;
 
   /// Returns the display name for [locale], falling back to serverId.
   String displayName(String locale) => name?[locale] ?? serverId;

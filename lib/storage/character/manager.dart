@@ -10,7 +10,6 @@ import "package:eve_fit_assistant/storage/repo/compatibility.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/compatibility.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -371,21 +370,14 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     );
   }
 
-  CheckoutRef _checkoutRefFor(CheckoutRegistryEntry entry, String checkoutId) => CheckoutRef(
-    checkoutId: checkoutId,
-    serverId: entry.serverId,
-    metadata: GameMetadata(gameServer: entry.serverId, gameBuild: "", gameVersion: ""),
-  );
+  CheckoutRef _checkoutRefFor(CheckoutRegistryEntry entry, String checkoutId) =>
+      CheckoutRef(checkoutId: checkoutId, serverId: entry.serverId);
 
   CheckoutRef _checkoutRefForOrSentinel(
     Option<CheckoutRegistryEntry> entryOpt,
     String checkoutId,
   ) => entryOpt.match(
-    () => const CheckoutRef(
-      checkoutId: "",
-      serverId: "",
-      metadata: GameMetadata(gameServer: "", gameBuild: "", gameVersion: ""),
-    ),
+    () => const CheckoutRef(checkoutId: "", serverId: ""),
     (entry) => _checkoutRefFor(entry, checkoutId),
   );
 

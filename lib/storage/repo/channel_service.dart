@@ -118,6 +118,9 @@ class ChannelService {
             gameBuild: e.gameBuild,
             gameVersion: e.gameVersion,
             name: e.name,
+            region: e.hasRegion() ? e.region : null,
+            sync: e.hasSync() ? e.sync : null,
+            branch: e.hasBranch() ? e.branch : null,
           ),
         )
         .toIList();

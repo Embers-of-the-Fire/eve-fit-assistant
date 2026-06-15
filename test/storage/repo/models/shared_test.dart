@@ -4,30 +4,6 @@ import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
-  group("GameMetadata", () {
-    test("JSON round-trip", () {
-      const metadata = GameMetadata(
-        gameServer: "Serenity",
-        gameBuild: "21.06",
-        gameVersion: "EQUINOX",
-      );
-      final restored = GameMetadata.fromJson(
-        jsonDecode(jsonEncode(metadata.toJson())) as Map<String, dynamic>,
-      );
-      expect(restored, metadata);
-    });
-
-    test("fromJson with known shape", () {
-      final json =
-          jsonDecode('{"gameServer":"Serenity","gameBuild":"21.06","gameVersion":"EQUINOX"}')
-              as Map<String, dynamic>;
-      final metadata = GameMetadata.fromJson(json);
-      expect(metadata.gameServer, "Serenity");
-      expect(metadata.gameBuild, "21.06");
-      expect(metadata.gameVersion, "EQUINOX");
-    });
-  });
-
   group("VersionRange", () {
     test("JSON round-trip with both fields", () {
       const range = VersionRange(min: "1.0.0", max: "2.0.0");

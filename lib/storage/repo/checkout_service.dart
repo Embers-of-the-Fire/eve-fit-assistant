@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
@@ -53,6 +54,32 @@ class CheckoutService {
     final checkoutId = const Uuid().v4();
     final now = formatTimestamp(DateTime.now().toUtc());
 
+    // Look up server metadata from the local server index
+    String gameBuild = "";
+    String gameVersion = "";
+    String region = "";
+    String sync = "";
+    String branch = "";
+    try {
+      final siPath = RepoPaths.channelServerIndexPath(channel.value);
+      final siFile = File(siPath);
+      if (siFile.existsSync()) {
+        final si = ServerIndex.fromBuffer(siFile.readAsBytesSync());
+        for (final entry in si.servers) {
+          if (entry.serverId == serverId) {
+            gameBuild = entry.gameBuild;
+            gameVersion = entry.gameVersion;
+            if (entry.hasRegion()) region = entry.region;
+            if (entry.hasSync()) sync = entry.sync;
+            if (entry.hasBranch()) branch = entry.branch;
+            break;
+          }
+        }
+      }
+    } on Exception {
+      // Best-effort: keep defaults if server index is unavailable
+    }
+
     // Write checkout metadata
     final meta = CheckoutMeta(
       schemaVersion: 1,
@@ -61,6 +88,11 @@ class CheckoutService {
       serverId: serverId,
       name: name,
       createdAt: now,
+      gameBuild: gameBuild,
+      gameVersion: gameVersion,
+      region: region,
+      sync: sync,
+      branch: branch,
     );
     if (!_writeCheckoutMeta(checkoutId, meta)) {
       warning("Failed to write checkout metadata for $checkoutId");
@@ -254,8 +286,11 @@ class CheckoutService {
         : ResourceSnapshotMeta(
             schemaVersion: 1,
             serverId: m.serverId,
-            gameBuild: "",
-            gameVersion: "",
+            gameBuild: m.gameBuild,
+            gameVersion: m.gameVersion,
+            gameRegion: m.region,
+            gameSync: m.sync,
+            gameBranch: m.branch,
             resourceCount: newIndex.entries.length,
             createdAt: formatTimestamp(DateTime.now().toUtc()),
           );

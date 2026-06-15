@@ -16,6 +16,11 @@ abstract class CheckoutMeta with _$CheckoutMeta {
     required String serverId,
     required String createdAt,
     @Default(IMap<String, String>.empty()) IMap<String, String> name,
+    @Default("") String gameBuild,
+    @Default("") String gameVersion,
+    @Default("") String region,
+    @Default("") String sync,
+    @Default("") String branch,
   }) = _CheckoutMeta;
 
   factory CheckoutMeta.fromJson(Map<String, dynamic> json) => _$CheckoutMetaFromJson(json);

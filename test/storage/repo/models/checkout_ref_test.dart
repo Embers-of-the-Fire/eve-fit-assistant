@@ -1,7 +1,6 @@
 import "dart:convert";
 
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
-import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
@@ -10,7 +9,6 @@ void main() {
       final ref = CheckoutRef(
         checkoutId: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         serverId: "serenity",
-        metadata: GameMetadata(gameServer: "Serenity", gameBuild: "21.06", gameVersion: "EQUINOX"),
       );
       final restored = CheckoutRef.fromJson(
         jsonDecode(jsonEncode(ref.toJson())) as Map<String, dynamic>,
@@ -19,11 +17,7 @@ void main() {
     });
 
     test("JSON round-trip with empty checkoutId (sentinel)", () {
-      final ref = CheckoutRef(
-        checkoutId: "",
-        serverId: "serenity",
-        metadata: GameMetadata(gameServer: "Serenity", gameBuild: "21.06", gameVersion: "EQUINOX"),
-      );
+      const ref = CheckoutRef(checkoutId: "", serverId: "serenity");
       final restored = CheckoutRef.fromJson(
         jsonDecode(jsonEncode(ref.toJson())) as Map<String, dynamic>,
       );
@@ -37,19 +31,13 @@ void main() {
           jsonDecode(
                 '{'
                 '  "checkoutId": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",'
-                '  "serverId": "serenity",'
-                '  "metadata": {'
-                '    "gameServer": "Serenity",'
-                '    "gameBuild": "21.06",'
-                '    "gameVersion": "EQUINOX"'
-                '  }'
+                '  "serverId": "serenity"'
                 '}',
               )
               as Map<String, dynamic>;
       final ref = CheckoutRef.fromJson(json);
       expect(ref.checkoutId, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
       expect(ref.serverId, "serenity");
-      expect(ref.metadata.gameServer, "Serenity");
     });
   });
 }

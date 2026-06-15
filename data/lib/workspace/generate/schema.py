@@ -81,12 +81,18 @@ def generate_resource_snapshot(
     resolved_server_id = server_id or ""
     game_build = ""
     game_version = ""
+    game_region = ""
+    game_sync = ""
+    game_branch = ""
 
     if config is not None:
         start_config = _read_start_config(config)
         resolved_server_id = start_config.get("main", "server", fallback=resolved_server_id)
         game_build = start_config.get("main", "build", fallback="")
         game_version = start_config.get("main", "version", fallback="")
+        game_region = start_config.get("main", "region", fallback="")
+        game_sync = start_config.get("main", "sync", fallback="")
+        game_branch = start_config.get("main", "branch", fallback="")
     elif resolved_server_id:
         pass
 
@@ -147,6 +153,9 @@ def generate_resource_snapshot(
         serverId=resolved_server_id,
         gameBuild=game_build,
         gameVersion=game_version,
+        gameRegion=game_region,
+        gameSync=game_sync,
+        gameBranch=game_branch,
         description="",
         resourceCount=file_count,
         createdAt=created_at,

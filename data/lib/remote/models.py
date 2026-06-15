@@ -29,6 +29,9 @@ class ResourceSnapshotMetadata(BaseModel):
     server_id: str = Field(alias="serverId")
     game_build: str = Field(alias="gameBuild")
     game_version: str = Field(alias="gameVersion")
+    game_region: str = Field(default="", alias="gameRegion")
+    game_sync: str = Field(default="", alias="gameSync")
+    game_branch: str = Field(default="", alias="gameBranch")
     description: str = Field(default="")
     resource_count: int = Field(alias="resourceCount")
     created_at: str = Field(alias="createdAt")
@@ -110,6 +113,11 @@ class CheckoutMetadata(BaseModel):
     channel: str
     resource_snapshot_hash: str = Field(alias="resourceSnapshotHash")
     server_id: str = Field(alias="serverId")
+    game_build: str = Field(default="", alias="gameBuild")
+    game_version: str = Field(default="", alias="gameVersion")
+    game_region: str = Field(default="", alias="gameRegion")
+    game_sync: str = Field(default="", alias="gameSync")
+    game_branch: str = Field(default="", alias="gameBranch")
     name: dict[str, str]
     created_at: str = Field(alias="createdAt")
 
@@ -206,18 +214,25 @@ def make_resource_index(entries: list[tuple[str, str, int]]) -> ResourceIndex:
 
 
 def make_server_index(
-    servers: list[tuple[str, dict[str, str], str, str]],
+    servers: list[tuple[str, dict[str, str], str, str, str, str, str]],
 ) -> ServerIndex:
-    """Build a ServerIndex from (server_id, name_map, game_build, game_version) tuples."""
+    """Build a ServerIndex from (server_id, name_map, game_build, game_version,
+    region, sync, branch) tuples."""
     msg = _load_pb2_type("ServerIndex")()
     msg.schema_version = 1
-    for sid, name_map, build, version in servers:
+    for sid, name_map, build, version, region, sync, branch in servers:
         entry = msg.servers.add()
         entry.server_id = sid
         for locale, display_name in name_map.items():
             entry.name[locale] = display_name
         entry.game_build = build
         entry.game_version = version
+        if region:
+            entry.region = region
+        if sync:
+            entry.sync = sync
+        if branch:
+            entry.branch = branch
     return msg
 
 
