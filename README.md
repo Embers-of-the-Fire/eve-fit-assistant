@@ -143,7 +143,7 @@ OUTPUT_DIR=/home/admin/develop/eve-fit-assistant/eve-fit-assistant/cache/workspa
 Generate code and localization after schema, FRB, Dart model, or l10n changes.
 
 ```bash
-./x generate all -f
+./x generate -f all
 ```
 
 Generate backend data. For more information, see [data readme](./data/README.md).
@@ -190,7 +190,7 @@ Common manager commands:
 - `./x dev env write-backend`: generate the backend `.env` from `efa.dev.toml`.
 - `./x lint`: run the canonical fix, lint, and format pass.
 - `./x format`: format project sources without lint checks.
-- `./x generate all -f`: regenerate protobuf, Rust bridge, Dart generated files,
+- `./x generate -f all`: regenerate protobuf, Rust bridge, Dart generated files,
   and localization, then format.
 - `./x generate protobuf`: regenerate Python and Dart protobuf outputs.
 - `./x generate rust`: regenerate Flutter Rust Bridge glue.

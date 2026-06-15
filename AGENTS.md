@@ -23,7 +23,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 
 - Full fix/lint/format pass (all languages): `./x lint`.
 - Formatting only: `./x format` (`./x lint --no-check`).
-- Generate all code and then format: `./x generate all -f`.
+- Generate all code and then format: `./x generate -f all`.
 - Focused generators: `./x generate protobuf`, `./x generate rust`, `./x generate dart`, `./x generate l10n`, `./x generate values dogma-units`.
 - Android build: `flutter build apk`.
 - Bridge crate build/test: `cargo build -p rust_lib_eve_fit_assistant`, `cargo test -p rust_lib_eve_fit_assistant`.

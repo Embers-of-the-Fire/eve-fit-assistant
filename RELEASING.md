@@ -81,7 +81,7 @@ Fatal failures block the release unless `--force` is used.
 ### 4. Generate and lint
 
 ```bash
-./x generate all -f
+./x generate -f all
 ./x lint
 ```
 
@@ -339,7 +339,7 @@ Follow the interactive promotion workflow to move content between channels.
 | 5 | `schema-bump` | FATAL | `bundle_schema.current` was bumped when proto files changed |
 | 6 | `persistence-check` | FATAL | Fit storage version changed (migration may be needed) |
 | 7 | `submodule` | FATAL | `rust/lib/eve-fit-os` submodule is clean and initialized |
-| 8 | `generate` | FATAL | `./x generate all -f` succeeds and produces no diff |
+| 8 | `generate` | FATAL | `./x generate -f all` succeeds and produces no diff |
 | 9 | `lint` | FATAL | `./x lint` passes |
 | 10 | `changelog` | WARN | `CHANGELOG.md` has an entry for the current version |
 
