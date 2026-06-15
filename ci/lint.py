@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 
 from colorama import Fore
 from colorama import Style
+
 from data.lib.color import styled
 from data.lib.utils import execute_command
 from data.lib.utils import get_command
-from pathlib import Path
+
 
 __all__ = ["run_lint", "run_site_checks"]
 
@@ -33,15 +36,11 @@ def run_lint(
                 execute_command([uv, "run", "ruff", "check"], "RUFF CHECK OUTPUT", dry_run)
             else:
                 _echo("uv run ruff check --fix")
-                execute_command(
-                    [uv, "run", "ruff", "check", "--fix"], "RUFF CHECK OUTPUT", dry_run
-                )
+                execute_command([uv, "run", "ruff", "check", "--fix"], "RUFF CHECK OUTPUT", dry_run)
 
         if check_only:
             _echo("uv run ruff format --check")
-            execute_command(
-                [uv, "run", "ruff", "format", "--check"], "RUFF FORMAT OUTPUT", dry_run
-            )
+            execute_command([uv, "run", "ruff", "format", "--check"], "RUFF FORMAT OUTPUT", dry_run)
         else:
             _echo("uv run ruff format")
             execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT", dry_run)

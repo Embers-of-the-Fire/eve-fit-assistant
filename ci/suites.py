@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+
 SUITE_DEFINITIONS = [
     {
         "suite": "python",

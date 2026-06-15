@@ -7,12 +7,13 @@ from pathlib import Path
 
 import click
 
-from ci.lint import run_lint
-from ci.suites import SUITE_DEFINITIONS
-from ci.suites import calculate_ci_matrix
 from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
+
+from ci.lint import run_lint
+from ci.suites import SUITE_DEFINITIONS
+from ci.suites import calculate_ci_matrix
 from data.lib.color import styled
 from data.lib.utils import execute_command
 from data.lib.utils import get_command
@@ -118,9 +119,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
             )
         )
 
-        remote_path = (
-            f"{storage.alias}/{storage.bucket}/build-dependencies/ci-native-data.tar.gz"
-        )
+        remote_path = f"{storage.alias}/{storage.bucket}/build-dependencies/ci-native-data.tar.gz"
 
         if upload:
             mc = get_command("mc")

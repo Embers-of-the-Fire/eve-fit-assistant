@@ -26,11 +26,9 @@ import datetime
 import hashlib
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
-import tarfile
 import time
 import zipfile
 
@@ -68,6 +66,8 @@ __fix_env()
 
 import data.lib.config
 
+from ci.commands import register_ci_commands
+from ci.lint import run_lint as _ci_lint
 from data.lib.color import styled
 from data.lib.config import ProjectConfiguration
 from data.lib.config import WorkspaceCache
@@ -86,9 +86,6 @@ from data.lib.utils import get_bin_size
 from data.lib.utils import get_command
 from data.lib.utils import get_file_sha1
 from data.lib.workspace.config import WorkspaceConfig
-
-from ci.lint import run_lint as _ci_lint
-from ci.commands import register_ci_commands
 
 
 init(autoreset=True)
