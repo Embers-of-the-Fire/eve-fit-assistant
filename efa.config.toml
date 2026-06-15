@@ -13,10 +13,10 @@ patch = 0
 pre_label = "beta"
 pre_num = 6
 build = 6
+data_schema = 2
 
-[bundle_schema]
-current = 1
-min = 1
+[data_schema]
+resource_root = "efa/v2"
 
 [paths]
 log = "data/log"

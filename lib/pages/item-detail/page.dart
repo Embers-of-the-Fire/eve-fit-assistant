@@ -16,10 +16,10 @@ import "package:eve_fit_assistant/data/proto/utils.pb.dart" show LocalizationID;
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/item-detail/dogma_unit_display.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
-import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart" show localeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:eve_fit_assistant/utils/skill.dart";
@@ -106,7 +106,7 @@ class ItemDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+    final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
     if (type == null) {
       final unavailable = context.l10n.fallbackTypeUnavailable(typeId: typeId);
       return Layout(
@@ -385,10 +385,12 @@ class AttributeDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final columns = columnCount(context);
-    final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
-    final attribute = ref.watch(bundleCollectionGetDogmaAttributeProvider(attributeId));
+    final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
+    final attribute = ref.watch(
+      repoCollectionProvider.select((c) => c?.getDogmaAttribute(attributeId)),
+    );
     final unit = attribute?.hasUnitId() ?? false
-        ? ref.watch(bundleCollectionGetDogmaUnitProvider(attribute!.unitId))
+        ? ref.watch(repoCollectionProvider.select((c) => c?.getDogmaUnit(attribute!.unitId)))
         : null;
     final fit = fitReference == null ? null : ref.watch(fitProvider(fitReference!.fitId));
     final emulated = fitReference == null
@@ -564,7 +566,9 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
               const SizedBox(height: 16),
               for (final entry in rows)
                 () {
-                  final attribute = ref.watch(bundleCollectionGetDogmaAttributeProvider(entry.key));
+                  final attribute = ref.watch(
+                    repoCollectionProvider.select((c) => c?.getDogmaAttribute(entry.key)),
+                  );
                   return _DynamicAttributeEditorRow(
                     dynamicItemId: dynamicEditor.dynamicItemId,
                     attributeId: entry.key,
@@ -1084,8 +1088,10 @@ class _HeaderCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final metaGroup = ref.watch(bundleCollectionGetMetaGroupProvider(type.metaGroupId));
-    final group = ref.watch(bundleCollectionGetGroupProvider(type.groupId));
+    final metaGroup = ref.watch(
+      repoCollectionProvider.select((c) => c?.getMetaGroup(type.metaGroupId)),
+    );
+    final group = ref.watch(repoCollectionProvider.select((c) => c?.getGroup(type.groupId)));
 
     return Card(
       child: Padding(
@@ -1128,12 +1134,12 @@ class _ClassificationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final group = ref.watch(bundleCollectionGetGroupProvider(type.groupId));
+    final group = ref.watch(repoCollectionProvider.select((c) => c?.getGroup(type.groupId)));
     final category = group == null
         ? null
-        : ref.watch(bundleCollectionGetCategoryProvider(group.categoryId));
+        : ref.watch(repoCollectionProvider.select((c) => c?.getCategory(group.categoryId)));
     final marketGroup = type.hasMarketGroupId()
-        ? ref.watch(bundleCollectionGetMarketGroupProvider(type.marketGroupId))
+        ? ref.watch(repoCollectionProvider.select((c) => c?.getMarketGroup(type.marketGroupId)))
         : null;
 
     return _SectionCard(
@@ -1243,7 +1249,9 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
 
   @override
   Widget build(BuildContext context) {
-    final skillType = ref.watch(bundleCollectionGetTypeProvider(widget.requirement.skillTypeId));
+    final skillType = ref.watch(
+      repoCollectionProvider.select((c) => c?.getType(widget.requirement.skillTypeId)),
+    );
     final childRequirements =
         skillType?.requiredSkills.toList() ?? const <pb_types.Type_SkillRequirement>[];
     final hasChildren = childRequirements.isNotEmpty;
@@ -1309,9 +1317,9 @@ class _SlotSummaryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ship = ref.watch(bundleCollectionGetShipProvider(typeId));
-    final subsystem = ref.watch(bundleCollectionGetSubsystemProvider(typeId));
-    final slots = ref.watch(bundleCollectionGetSlotsProvider);
+    final ship = ref.watch(repoCollectionProvider.select((c) => c?.getShip(typeId)));
+    final subsystem = ref.watch(repoCollectionProvider.select((c) => c?.getSubsystem(typeId)));
+    final slots = ref.watch(repoCollectionProvider.select((c) => c?.slots));
 
     final rows = <Widget>[];
     if (ship != null) {
@@ -1470,7 +1478,7 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
     final detail = modifier.source.when(
       effect: (effect) {
         final attribute = ref.watch(
-          bundleCollectionGetDogmaAttributeProvider(effect.sourceAttributeId),
+          repoCollectionProvider.select((c) => c?.getDogmaAttribute(effect.sourceAttributeId)),
         );
         final attributeName =
             _attributeDisplayName(ref, attribute) ?? "Attribute ${effect.sourceAttributeId}";
@@ -1893,10 +1901,14 @@ _DynamicEditorContext? _resolveDynamicEditor(
   }
 
   final dynamicMutator = ref
-      .watch(bundleCollectionProvider)
+      .watch(repoCollectionProvider)
       ?.getDynamicMutator(dynamicItem.modifierTypeId);
-  final originType = ref.watch(bundleCollectionGetTypeProvider(dynamicItem.originTypeId));
-  final modifierType = ref.watch(bundleCollectionGetTypeProvider(dynamicItem.modifierTypeId));
+  final originType = ref.watch(
+    repoCollectionProvider.select((c) => c?.getType(dynamicItem.originTypeId)),
+  );
+  final modifierType = ref.watch(
+    repoCollectionProvider.select((c) => c?.getType(dynamicItem.modifierTypeId)),
+  );
   if (dynamicMutator == null || originType == null || modifierType == null) {
     return null;
   }
@@ -1931,10 +1943,13 @@ String _formatDynamicValue(double value) {
   return value.toStringAsFixed(3);
 }
 
-String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) => switch (localization) {
-  null => null,
-  _ => ref.watch(localizationProvider(localization.id)),
-};
+String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) {
+  if (localization == null) return null;
+  final locale = ref.watch(localeProvider).name;
+  return ref.watch(
+    repoCollectionProvider.select((c) => c?.getLocalizedName(localization.id, locale)),
+  );
+}
 
 String? _attributeDisplayName(WidgetRef ref, DogmaAttribute? attribute) {
   if (attribute == null) return null;
@@ -1962,13 +1977,15 @@ String _formatItemDetailDogmaValue(
 );
 
 String? _resolveGroupName(WidgetRef ref, int groupId) {
-  final group = ref.watch(bundleCollectionGetGroupProvider(groupId));
+  final group = ref.watch(repoCollectionProvider.select((c) => c?.getGroup(groupId)));
   if (group == null) return null;
   return _resolveLocalization(ref, group.groupName);
 }
 
 String? _resolveAttributeName(WidgetRef ref, int attributeId) {
-  final attribute = ref.watch(bundleCollectionGetDogmaAttributeProvider(attributeId));
+  final attribute = ref.watch(
+    repoCollectionProvider.select((c) => c?.getDogmaAttribute(attributeId)),
+  );
   return _attributeDisplayName(ref, attribute);
 }
 
@@ -2010,9 +2027,9 @@ double? _staticAttributeValue(pb_types.Type? type, int attributeId) {
 }
 
 bool _hasSlotSummary(WidgetRef ref, int typeId) {
-  final ship = ref.watch(bundleCollectionGetShipProvider(typeId));
-  final subsystem = ref.watch(bundleCollectionGetSubsystemProvider(typeId));
-  final slots = ref.watch(bundleCollectionGetSlotsProvider);
+  final ship = ref.watch(repoCollectionProvider.select((c) => c?.getShip(typeId)));
+  final subsystem = ref.watch(repoCollectionProvider.select((c) => c?.getSubsystem(typeId)));
+  final slots = ref.watch(repoCollectionProvider.select((c) => c?.slots));
   if (ship != null || subsystem != null) return true;
   return slots != null && _hasRenderedSlotClass(slots, typeId);
 }
@@ -2084,7 +2101,9 @@ List<_InspectableAttribute> _collectInspectableAttributes(
 
   final attributes = <_InspectableAttribute>[];
   for (final attributeId in allIds) {
-    final metadata = ref.watch(bundleCollectionGetDogmaAttributeProvider(attributeId));
+    final metadata = ref.watch(
+      repoCollectionProvider.select((c) => c?.getDogmaAttribute(attributeId)),
+    );
     final staticValue = _staticAttributeValue(type, attributeId) ?? metadata?.defaultValue ?? 0;
     final currentValue = item?.attributes[attributeId]?.value;
     final shouldDisplay =
@@ -2095,7 +2114,7 @@ List<_InspectableAttribute> _collectInspectableAttributes(
     if (!shouldDisplay) continue;
 
     final unit = metadata?.hasUnitId() ?? false
-        ? ref.watch(bundleCollectionGetDogmaUnitProvider(metadata!.unitId))
+        ? ref.watch(repoCollectionProvider.select((c) => c?.getDogmaUnit(metadata!.unitId)))
         : null;
     attributes.add(
       _InspectableAttribute(
@@ -2350,13 +2369,13 @@ String _traitEntryMarkup(WidgetRef ref, BuildContext context, pb_types.Type_Trai
   if (!entry.hasBonus()) return text;
 
   final unit = entry.hasUnitId()
-      ? ref.watch(bundleCollectionGetDogmaUnitProvider(entry.unitId))
+      ? ref.watch(repoCollectionProvider.select((c) => c?.getDogmaUnit(entry.unitId)))
       : null;
   return "${_formatItemDetailDogmaValue(context, ref, unit, entry.bonus)} $text";
 }
 
 String? _resolveTypeName(WidgetRef ref, int typeId) {
-  final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+  final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
   if (type == null) return null;
   return _resolveLocalization(ref, type.typeName);
 }

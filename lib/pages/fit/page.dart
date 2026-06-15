@@ -29,12 +29,6 @@ import "package:eve_fit_assistant/native/api/validation.dart" as native_validati
 import "package:eve_fit_assistant/pages/fit/components/add_item_dialog.dart";
 import "package:eve_fit_assistant/pages/fit/components/attribute/damage_profile_dialog.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
-import "package:eve_fit_assistant/pages/setting/bundle-manager/page.dart";
-import "package:eve_fit_assistant/storage/bundle/impact.dart";
-import "package:eve_fit_assistant/storage/bundle/manager.dart";
-import "package:eve_fit_assistant/storage/bundle/service.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
-import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
@@ -42,6 +36,10 @@ import "package:eve_fit_assistant/storage/fit/compatibility_notice.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/repo/repo_state.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/datetime.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
@@ -108,22 +106,14 @@ class _FitPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fitMetadata = ref.watch(fitRegistryManagerProvider.select((t) => t.fits[fitId]));
-    final compatibility = ref.watch(fitBundleCompatibilityProvider(fitId));
-    final compatibilityNotice = localizeFitBundleCompatibility(context.l10n, compatibility);
-    final bundleManagerState = ref.watch(bundleManagerProvider);
-    final bundleState = ref.watch(bundleServiceProvider);
-    final bundleCollectionLoading = ref.watch(
-      bundleCollectionServiceProvider.select(
-        (status) => status.maybeWhen(loading: () => true, orElse: () => false),
-      ),
-    );
-    final activeBundle = ref.watch(currentBundleProvider);
-    final pendingBundleId = bundleState.isInitializing
-        ? ref.read(bundleServiceProvider.notifier).pendingBundleId ?? bundleState.bundleId
-        : null;
-    final showBundleSwitchOverlay = bundleState.isInitializing && activeBundle != null;
-    final isBundleSwitching =
-        bundleManagerState.isLoading || bundleState.isInitializing || bundleCollectionLoading;
+    final compatibility = ref.watch(fitCheckoutCompatibilityProvider(fitId));
+    final compatibilityNotice = localizeFitCheckoutCompatibility(context.l10n, compatibility);
+    final repoState = ref.watch(repoStateProvider);
+    final repoCollection = ref.watch(repoCollectionProvider);
+    final activeCheckout = ref.watch(activeCheckoutProvider);
+    final showCheckoutSwitchOverlay = repoState is RepoStateInitializing && activeCheckout.isSome();
+    final isCheckoutSwitching = repoState is RepoStateInitializing || repoCollection == null;
+    final overlayCheckoutId = activeCheckout.match(() => "", (a) => a.checkoutId);
     if (fitMetadata == null) {
       return Layout(
         title: context.l10n.fitPageUnavailableTitle,
@@ -142,9 +132,11 @@ class _FitPage extends ConsumerWidget {
       );
     }
     final fit = ref.watch(fitProvider(fitId));
-    final ship = ref.watch(bundleCollectionGetTypeProvider(fitMetadata.shipTypeId));
+    final ship = ref.watch(
+      repoCollectionProvider.select((c) => c?.getType(fitMetadata.shipTypeId)),
+    );
     if (ship == null) {
-      if (isBundleSwitching) {
+      if (isCheckoutSwitching) {
         return Layout(
           title: fitMetadata.name,
           child: const Center(
@@ -176,7 +168,12 @@ class _FitPage extends ConsumerWidget {
         ),
       );
     }
-    final shipName = ref.watch(localizationProvider(ship.typeName.id).select((t) => t ?? ""));
+    final locale = context.locale.languageCode;
+    final shipName =
+        ref.watch(
+          repoCollectionProvider.select((c) => c?.getLocalizedName(ship.typeName.id, locale)),
+        ) ??
+        "";
 
     if (!fit.isInitialized) {
       if (fit.hasError) {
@@ -212,10 +209,12 @@ class _FitPage extends ConsumerWidget {
       );
     }
 
-    final shipInfo = ref.watch(bundleCollectionGetShipProvider(fit.fit.body.shipTypeId));
+    final shipInfo = ref.watch(
+      repoCollectionProvider.select((c) => c?.getShip(fit.fit.body.shipTypeId)),
+    );
 
     if (shipInfo == null) {
-      if (isBundleSwitching) {
+      if (isCheckoutSwitching) {
         return Layout(
           title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
           child: const Center(
@@ -273,18 +272,18 @@ class _FitPage extends ConsumerWidget {
       child: Stack(
         children: [
           FitDisplayColumns(fitContext: fitContext, compatibilityNotice: compatibilityNotice),
-          if (showBundleSwitchOverlay)
-            _FitBundleSwitchOverlay(pendingBundleId: pendingBundleId ?? activeBundle.bundleId),
+          if (showCheckoutSwitchOverlay)
+            _FitCheckoutSwitchOverlay(pendingCheckoutId: overlayCheckoutId),
         ],
       ),
     );
   }
 }
 
-class _FitBundleSwitchOverlay extends StatelessWidget {
-  const _FitBundleSwitchOverlay({required this.pendingBundleId});
+class _FitCheckoutSwitchOverlay extends StatelessWidget {
+  const _FitCheckoutSwitchOverlay({required this.pendingCheckoutId});
 
-  final String pendingBundleId;
+  final String pendingCheckoutId;
 
   @override
   Widget build(BuildContext context) {
@@ -312,13 +311,13 @@ class _FitBundleSwitchOverlay extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      context.l10n.bundleManagerLoadingTitle,
+                      context.l10n.repoLoadingTitle,
                       style: context.theme.textTheme.titleMedium,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      context.l10n.bundleManagerLoadingDescription(bundleId: pendingBundleId),
+                      context.l10n.repoLoadingDescription(bundleId: pendingCheckoutId),
                       textAlign: TextAlign.center,
                     ),
                   ],

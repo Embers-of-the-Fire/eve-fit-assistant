@@ -20,7 +20,6 @@ abstract class RemoteContentSetting with _$RemoteContentSetting {
     @Default(true) bool enabled,
     @Default(false) bool exposed,
     @Default("https://prod.storage.efa-tech.dev") String originUrl,
-    @Default("efa/v1/") String resourceRoot,
     @Default("testing") String channel,
   }) = _RemoteContentSetting;
 
@@ -38,7 +37,7 @@ abstract class AppSetting with _$AppSetting {
       defaultValue: TypeListDisplayVariant.marketGroup,
     )
     required TypeListDisplayVariant shipSelectListDisplayVariant,
-    @JsonKey(defaultValue: true) required bool showBundleImpactWarnings,
+    @JsonKey(defaultValue: true) required bool showCheckoutImpactWarnings,
     @JsonKey(
       unknownEnumValue: TypeListReturnBehavior.previousPage,
       defaultValue: TypeListReturnBehavior.previousPage,
@@ -46,7 +45,6 @@ abstract class AppSetting with _$AppSetting {
     required TypeListReturnBehavior typeListReturnBehavior,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default(1.0) double fontScale,
-    String? lastNotifiedBundleUpdateKey,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);

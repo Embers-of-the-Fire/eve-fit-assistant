@@ -238,13 +238,13 @@ class _CharacterImplantTab extends ConsumerWidget {
       initialMarketGroupId: EveConstMarketGroupId.implant,
       validator: (node) => switch (node) {
         EveSelectListRootType(:final typeId) =>
-          ref.read(bundleCollectionGetSlotsProvider)?.implantSlots.containsKey(typeId) ?? false,
+          ref.read(repoCollectionProvider)?.slots.implantSlots.containsKey(typeId) ?? false,
         _ => true,
       },
     );
     if (typeId == null) return;
 
-    final slotId = ref.read(bundleCollectionGetSlotsProvider)?.implantSlots[typeId]?.slotIndex;
+    final slotId = ref.read(repoCollectionProvider)?.slots.implantSlots[typeId]?.slotIndex;
     final storageIndex = slotId == null ? null : slotId - 1;
     if (storageIndex == null || storageIndex < 0 || storageIndex >= _maxImplantSlots) return;
     await fitContext.fitWrapper.equipSlot(SlotIdentifier.implant(index: storageIndex), typeId, ref);
@@ -300,7 +300,7 @@ class _CharacterBoosterTab extends ConsumerWidget {
       initialMarketGroupId: slotIdent.baseMarketGroupId,
       validator: (node) => switch (node) {
         EveSelectListRootType(:final typeId) =>
-          ref.read(bundleCollectionGetSlotsProvider)?.boosterSlots.containsKey(typeId) ?? false,
+          ref.read(repoCollectionProvider)?.slots.boosterSlots.containsKey(typeId) ?? false,
         _ => true,
       },
     );
@@ -308,7 +308,7 @@ class _CharacterBoosterTab extends ConsumerWidget {
 
     // Booster types already encode their logical slot in bundle metadata, so
     // add flows can infer the destination slot directly from the chosen type.
-    final slotId = ref.read(bundleCollectionGetSlotsProvider)?.boosterSlots[typeId]?.slotIndex;
+    final slotId = ref.read(repoCollectionProvider)?.slots.boosterSlots[typeId]?.slotIndex;
     if (slotId == null) return;
     await fitContext.fitWrapper.setBooster(slotId, typeId);
   }
@@ -335,13 +335,13 @@ class _ImplantRow extends ConsumerWidget {
       return ListTile(title: Text(context.l10n.fitUnknownImplantAtSlot(slot: slotId + 1)));
     }
 
-    final typeDef = ref.watch(bundleCollectionGetTypeProvider(itemId.asId));
+    final typeDef = ref.watch(repoCollectionProvider.select((c) => c?.getType(itemId.asId)));
     if (typeDef == null) {
       return ListTile(title: Text(context.l10n.fitUnknownImplant(typeId: itemId.asId)));
     }
 
     final metaGroupIcon = ref.watch(
-      bundleCollectionGetMetaGroupProvider(typeDef.metaGroupId).select((t) => t?.icon),
+      repoCollectionProvider.select((c) => c?.getMetaGroup(typeDef.metaGroupId)?.icon),
     );
     final slotIssues = _collectFitIssuesForSlot(
       context,
@@ -467,13 +467,13 @@ class _BoosterRow extends ConsumerWidget {
       return ListTile(title: Text(context.l10n.fitUnknownBoosterAtSlot(slot: slotId)));
     }
 
-    final typeDef = ref.watch(bundleCollectionGetTypeProvider(itemId.asId));
+    final typeDef = ref.watch(repoCollectionProvider.select((c) => c?.getType(itemId.asId)));
     if (typeDef == null) {
       return ListTile(title: Text(context.l10n.fitUnknownBooster(typeId: itemId.asId)));
     }
 
     final metaGroupIcon = ref.watch(
-      bundleCollectionGetMetaGroupProvider(typeDef.metaGroupId).select((t) => t?.icon),
+      repoCollectionProvider.select((c) => c?.getMetaGroup(typeDef.metaGroupId)?.icon),
     );
     final slotIssues = _collectFitIssuesForSlot(
       context,
@@ -560,12 +560,12 @@ class _BoosterRow extends ConsumerWidget {
 bool Function(EveSelectListRoot) _boosterValidator(WidgetRef ref, int slotId) =>
     (node) => switch (node) {
       EveSelectListRootType(:final typeId) =>
-        ref.read(bundleCollectionGetSlotsProvider)?.boosterSlots[typeId]?.slotIndex == slotId,
+        ref.read(repoCollectionProvider)?.slots.boosterSlots[typeId]?.slotIndex == slotId,
       _ => true,
     };
 
 Map<int, int> _buildImplantAssignments(FitStorage fit, WidgetRef ref) {
-  final slotsInfo = ref.watch(bundleCollectionGetSlotsProvider);
+  final slotsInfo = ref.watch(repoCollectionProvider)?.slots;
   if (slotsInfo == null) return const {};
 
   final assignments = <int, int>{};

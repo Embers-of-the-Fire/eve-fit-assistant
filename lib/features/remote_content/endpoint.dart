@@ -1,49 +1,65 @@
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
 const int remoteContentClientApiVersion = 1;
 const int remoteContentSchemaVersion = 1;
-const String supportedRemoteContentResourceRoot = "efa/v1/";
+const String supportedRemoteContentResourceRoot = "efa/v2/";
 
 class RemoteContentEndpoint {
+  factory RemoteContentEndpoint({required Uri originUri, required String channel}) =>
+      RemoteContentEndpoint._(
+        originUri: originUri,
+        resourceRoot: supportedRemoteContentResourceRoot,
+        channel: channel,
+      );
   RemoteContentEndpoint._({
     required this.originUri,
     required this.resourceRoot,
     required this.channel,
   });
 
-  factory RemoteContentEndpoint.fromSetting(RemoteContentSetting setting) {
-    final originUrl = setting.originUrl.trim();
-    if (originUrl.isEmpty) {
-      throw const RemoteContentException("Remote origin URL must not be empty.");
-    }
-    final originUri = Uri.tryParse(originUrl);
-    if (originUri == null || !originUri.hasScheme || originUri.host.isEmpty) {
-      throw RemoteContentException("Remote origin URL is invalid: $originUrl");
-    }
-    if (originUri.scheme != "http" && originUri.scheme != "https") {
-      throw RemoteContentException("Remote origin URL must use HTTP or HTTPS: $originUrl");
-    }
-    final resourceRoot = normalizeRemoteResourceRoot(setting.resourceRoot);
-    if (resourceRoot != supportedRemoteContentResourceRoot) {
-      throw RemoteContentException(
-        "Unsupported remote resource root '$resourceRoot'; "
-        "expected '$supportedRemoteContentResourceRoot'.",
-      );
-    }
-    return RemoteContentEndpoint._(
-      originUri: originUri,
-      resourceRoot: resourceRoot,
-      channel: validateRemoteChannel(setting.channel),
-    );
-  }
-
   final Uri originUri;
   final String resourceRoot;
   final String channel;
 
-  Uri get indexUri => resolvePayloadUri("channels/$channel/index.json");
+  // ── URL builders ──────────────────────────────────────────────────────────
+
+  Uri get indexUri => resolvePayloadUri("manifest/index.json");
+
+  Uri get generationsUri => resolvePayloadUri("manifest/generations.json");
+
+  Uri checkoutCatalogUri(String checkoutId) =>
+      resolvePayloadUri("manifest/checkouts/${checkoutId.substring(0, 2)}/$checkoutId.json");
+
+  Uri resourcesCatalogUri(String genId) =>
+      resolvePayloadUri("manifest/.generations/$genId/resources/catalog.json");
+
+  Uri generationCheckoutCatalogUri(String genId, String checkoutId) =>
+      resolvePayloadUri("manifest/.generations/$genId/resources/checkouts/$checkoutId.json");
+
+  Uri generationCatalogUri(String genId) =>
+      resolvePayloadUri("manifest/.generations/$genId/catalog.json");
+
+  Uri announcementCatalogUri(String genId) =>
+      resolvePayloadUri("manifest/.generations/$genId/announcements/catalog.json");
+
+  Uri announcementRecordUri(String id) => resolvePayloadUri("announcements/registry/$id.json");
+
+  Uri announcementContentUri(String locale, String id) =>
+      resolvePayloadUri("announcements/files/$locale/$id");
+
+  Uri releaseCatalogUri(String genId) =>
+      resolvePayloadUri("manifest/.generations/$genId/releases/catalog.json");
+
+  Uri releaseFileUri(String hash) =>
+      resolvePayloadUri("resources/releases/${hash.substring(0, 2)}/$hash");
+
+  Uri assetUri(String pathHash, String contentHash) =>
+      resolvePayloadUri("resources/assets/${pathHash.substring(0, 2)}/$pathHash/$contentHash");
+
+  Uri get announcementsRoot => resolvePayloadUri("announcements/");
+
+  Uri get releasesRoot => resolvePayloadUri("resources/releases/");
 
   Uri resolvePayloadUri(String relativePath) {
     final normalizedPath = validateRemoteRelativePayloadPath(relativePath);

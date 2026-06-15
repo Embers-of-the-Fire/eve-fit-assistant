@@ -1,5 +1,5 @@
 """
-Pre-release check orchestrator — runs all 12 gates, produces a report,
+Pre-release check orchestrator — runs all 11 gates, produces a report,
 and exits with an appropriate code.
 """
 
@@ -220,52 +220,53 @@ def check_schema_diff(force: bool, since_tag: str | None = None) -> CheckResult:
     )
 
 
-def check_schema_bump(force: bool, since_tag: str | None = None) -> CheckResult:
+def check_schema_version(force: bool, since_tag: str | None = None) -> CheckResult:
+    """Verify v2 schema_version bump when repo model files change."""
     from data.lib.release.git_util import find_last_release_tag
     from data.lib.release.schema_diff import run_schema_diff
 
     tag = since_tag or find_last_release_tag()
     if tag is None:
         return CheckResult(
-            name="schema-bump",
+            name="schema-version",
             passed=True,
             severity=CheckSeverity.INFO,
-            message="No previous release tag — cannot verify bundle_schema bump",
+            message="No previous release tag — cannot verify schema_version bump",
         )
 
     report = run_schema_diff(tag)
+    rv = report.repo_version_verification
 
-    if not report.bump_verification.proto_changed:
+    if not rv.repo_file_changed:
         return CheckResult(
-            name="schema-bump",
+            name="schema-version",
             passed=True,
             severity=CheckSeverity.FATAL,
-            message="No proto changes — bundle_schema bump not required",
+            message="No v2 repo model changes — schema_version bump not required",
         )
 
-    bv = report.bump_verification
-    if bv.current_bumped:
+    if rv.schema_version_bumped:
         return CheckResult(
-            name="schema-bump",
+            name="schema-version",
             passed=True,
             severity=CheckSeverity.FATAL,
-            message=bv.message,
+            message=rv.message,
         )
-    elif bv.old_current is None:
+    elif rv.old_schema_version is None:
         return CheckResult(
-            name="schema-bump",
+            name="schema-version",
             passed=False,
             severity=CheckSeverity.WARN if force else CheckSeverity.FATAL,
-            message=bv.message,
-            details="Manually verify bundle_schema.current is correct",
+            message=rv.message,
+            details="Manually verify [version].data_schema in efa.config.toml",
         )
     else:
         return CheckResult(
-            name="schema-bump",
+            name="schema-version",
             passed=False,
             severity=CheckSeverity.WARN if force else CheckSeverity.FATAL,
-            message=bv.message,
-            details="Increment bundle_schema.current in efa.config.toml, then run `./x generate -f all`",
+            message=rv.message,
+            details="Increment [version].data_schema in efa.config.toml, then run `./x generate -f all`",
         )
 
 
@@ -386,7 +387,7 @@ _CHECK_FUNCTIONS = [
     check_git_clean,
     check_git_tag,
     check_schema_diff,
-    check_schema_bump,
+    check_schema_version,
     check_persistence,
     check_submodule,
     check_generate,

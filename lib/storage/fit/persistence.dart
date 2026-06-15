@@ -1,6 +1,6 @@
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 
-const currentFitStorageVersion = 2;
+const currentFitStorageVersion = 3;
 const currentFitRegistryVersion = 2;
 const currentNativeFitPayloadVersion = 1;
 

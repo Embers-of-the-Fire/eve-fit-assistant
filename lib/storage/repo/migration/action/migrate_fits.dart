@@ -1,0 +1,71 @@
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/repo/migration/action/migrate_runner.dart";
+import "package:eve_fit_assistant/storage/repo/utils.dart";
+
+class MigrateFits {
+  const MigrateFits();
+
+  Future<MigrateFitsResult> migrate({required String fittingsPath}) async {
+    final (:migrated, :skipped, :errors) = await MigrateRunner.run(
+      directory: fittingsPath,
+      needsUpgrade: _needsV3Upgrade,
+      upgrade: _migrateFitRecord,
+      onError: (exception, filePath) => warning("Failed to migrate fit file $filePath: $exception"),
+    );
+    return MigrateFitsResult(migrated: migrated, skipped: skipped, errors: errors);
+  }
+
+  bool _needsV3Upgrade(Map<String, dynamic> json) {
+    final version = json["version"];
+    if (version is! int || version != 2) return false;
+    final payload = json["fit"];
+    if (payload is! Map<String, dynamic>) return false;
+    final metadata = payload["metadata"];
+    if (metadata is! Map<String, dynamic>) return false;
+    if (metadata["checkoutRef"] != null) return false;
+    return true;
+  }
+
+  Map<String, dynamic> _migrateFitRecord(Map<String, dynamic> json) {
+    final payload = json["fit"] as Map<String, dynamic>;
+    final metadata = payload["metadata"] as Map<String, dynamic>;
+
+    final bundleSnapshot = metadata["bundleSnapshot"];
+    final checkoutId = bundleSnapshot is String ? bundleSnapshot : "";
+    final bundleId = metadata["bundleId"];
+    final serverId = bundleId is String ? serverIdFromBundleId(bundleId) : "";
+
+    final checkoutRefJson = <String, dynamic>{
+      "checkoutId": checkoutId,
+      "serverId": serverId,
+      "metadata": <String, dynamic>{"gameServer": "", "gameBuild": "", "gameVersion": ""},
+    };
+
+    final updatedMetadata = Map<String, dynamic>.from(metadata)
+      ..["checkoutRef"] = checkoutRefJson
+      ..remove("bundleId")
+      ..remove("bundleSnapshot");
+
+    final updatedPayload = Map<String, dynamic>.from(payload)..["metadata"] = updatedMetadata;
+
+    return Map<String, dynamic>.from(json)
+      ..["version"] = 3
+      ..["fit"] = updatedPayload;
+  }
+}
+
+class MigrateFitsResult {
+  const MigrateFitsResult({required this.migrated, required this.skipped, required this.errors});
+
+  factory MigrateFitsResult.fromJson(Map<String, dynamic> json) => MigrateFitsResult(
+    migrated: json["migrated"] as int,
+    skipped: json["skipped"] as int,
+    errors: json["errors"] as int,
+  );
+
+  final int migrated;
+  final int skipped;
+  final int errors;
+
+  Map<String, dynamic> toJson() => {"migrated": migrated, "skipped": skipped, "errors": errors};
+}

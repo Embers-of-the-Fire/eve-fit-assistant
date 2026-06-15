@@ -13,7 +13,7 @@ class ShipInfo extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ship = fitContext.ship;
-    final shipInfo = ref.watch(bundleCollectionGetTypeProvider(ship.typeId));
+    final shipInfo = ref.watch(repoCollectionProvider.select((c) => c?.getType(ship.typeId)));
     if (shipInfo == null) {
       return ListTile(title: Text(context.l10n.fitUnknownShip(typeId: ship.typeId)));
     }

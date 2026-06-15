@@ -19,6 +19,8 @@ from data.lib.workspace.generate.paths import GraphicVariantType
 if TYPE_CHECKING:
     from data.lib.workspace.generate import GeneratorDatasource
 
+_graphic_semaphore = asyncio.Semaphore(32)
+
 
 class GraphicIconInfo(BaseModel):
     folder: str | None = Field(default=None)
@@ -76,11 +78,12 @@ async def __download_graphic(graphic_id: int, graphic_folder: str, data: Generat
             continue
 
         target_dir = data.paths.get_graphic_path(graphic_id, variant=ty)
-        if target_dir.exists():
+        if target_dir.exists() and target_dir.stat().st_size > 0:
             debug(f"Graphic at {target_dir} already exists, skipping.")
             continue
 
         async with (
+            _graphic_semaphore,
             graphic_file.open() as f_input,
             aiofiles.open(target_dir, "wb+") as f_output,
         ):

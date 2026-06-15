@@ -18,11 +18,6 @@ root = "cache"
 default = "tranquility"
 
 [build]
-# Shortcut default for `./x build data --no-hash`.
-skip_hash = false
-
-# Shortcut default for `./x build increment <baseline>`.
-baseline = "cache/workspaces/tranquility/output/bundle_manifest.json"
 
 [native]
 # Settings used to generate the backend `.env` file for local Rust tooling.
@@ -39,7 +34,6 @@ attr_id_source = "data/resources/tranquility/cache/native/json/dogmaAttributes.j
 [remote]
 # Settings used by `./x remote` to materialize and launch local remote mocks
 # and publish content to S3-compatible storage.
-resource_root = "efa/v1"
 channel = "testing"
 
 # Common mock host for both MinIO and static mocks.

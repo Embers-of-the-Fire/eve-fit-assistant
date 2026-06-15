@@ -86,7 +86,9 @@ class _SubsystemSlotRow extends ConsumerWidget {
       );
     }
 
-    final subsystemDef = ref.watch(bundleCollectionGetSubsystemProvider(originTypeId));
+    final subsystemDef = ref.watch(
+      repoCollectionProvider.select((c) => c?.getSubsystem(originTypeId)),
+    );
     if (subsystemDef == null) {
       return _buildRecoveryRow(
         context,
@@ -96,10 +98,10 @@ class _SubsystemSlotRow extends ConsumerWidget {
     }
 
     final subsystemType = subsystemDef.subsystemType;
-    final type = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
+    final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(displayTypeId)));
 
     final metaGroupIcon = type != null
-        ? ref.watch(bundleCollectionGetMetaGroupProvider(type.metaGroupId).select((t) => t?.icon))
+        ? ref.watch(repoCollectionProvider.select((c) => c?.getMetaGroup(type.metaGroupId)?.icon))
         : null;
 
     final content = ListTile(

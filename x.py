@@ -47,12 +47,10 @@ from dotenv import load_dotenv
 from watchfiles import awatch
 
 from data.lib.codegen import CODEGEN_DART
-from data.lib.constant import DEFAULT_WORKSPACE_MANIFEST_ENV_VAR
 from data.lib.constant import DEV_CONFIG_PATH
 from data.lib.constant import I18N_ROOT
 from data.lib.constant import NATIVE_LIB_ROOT
 from data.lib.constant import PROJECT_ROOT
-from data.lib.constant import SKIP_FULL_MANIFEST_UPDATE_ENV_VAR
 from data.lib.etc.codeart import generate_codeart
 from data.lib.remote.channel import Channel
 
@@ -76,11 +74,9 @@ from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
 from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import info
 from data.lib.log import warning
-from data.lib.remote.promote import PromotionSessionCommittedError
-from data.lib.remote.promote import PromotionSessionNotActiveError
-from data.lib.remote.session import SessionCommittedError
 from data.lib.remote.session import SessionManager
-from data.lib.remote.session import SessionNotActiveError
+from data.lib.remote.session import SessionManagerCommittedError
+from data.lib.remote.session import SessionManagerInvalidError
 from data.lib.utils import execute_command
 from data.lib.utils import get_bin_size
 from data.lib.utils import get_command
@@ -907,6 +903,46 @@ def dogma_units_cmd(ctx: click.Context):
         ctx.invoke(format_cmd)
 
 
+@generate.command("schema")
+@click.option(
+    "--dir",
+    "build_dir",
+    type=click.Path(path_type=Path),
+    required=True,
+    help="Build directory containing workspace output.",
+)
+@click.option(
+    "--server",
+    "server_id",
+    required=True,
+    help="Server ID for the checkout catalog (e.g., 'serenity').",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Unified schema root directory (default from dev config).",
+)
+def generate_schema_cmd(build_dir: Path, server_id: str, schema_root: Path | None):
+    """Generate a V2 schema checkout from workspace build output."""
+    from data.lib.workspace.generate.schema import generate_schema_checkout
+
+    if schema_root is None:
+        data.lib.config.DeveloperConfiguration.ensure_loaded()
+        schema_root = data.lib.config.DEV_CONFIGURATION.paths.schema_dir
+
+    hash_ = generate_schema_checkout(
+        config=None,
+        build_dir=build_dir,
+        schema_root=schema_root,
+        server_id=server_id,
+    )
+    if hash_:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Checkout hash: {hash_}"))
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No files found — checkout not generated."))
+
+
 def __env_install():
     protoc_gen_dart = get_command("protoc-gen-dart")
     if protoc_gen_dart is None:
@@ -1044,6 +1080,7 @@ def __redact_remote_config(config: dict[str, object]) -> dict[str, object]:
 def remote_config_display(pretty: bool, as_json: bool):
     """Print effective remote developer configuration and current session status."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     paths = data.lib.config.DEV_CONFIGURATION.paths
     origin_path = __resolve_dev_path(remote_cfg.mock_origin_dir)
@@ -1061,7 +1098,7 @@ def remote_config_display(pretty: bool, as_json: bool):
         resolved["minioDataPath"] = str(minio_data_path)
         resolved["minioIndexUrl"] = __remote_channel_index_url(
             origin_url=minio_origin_url,
-            resource_root=remote_cfg.resource_root,
+            resource_root=data.lib.config.CONFIGURATION.data_schema.resource_root,
             channel=remote_cfg.channel,
         )
 
@@ -1170,904 +1207,9 @@ def remote_config_display(pretty: bool, as_json: bool):
     click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Sessions root: {sessions_root}"))
 
 
-@remote.group(cls=ClickAliasedGroup)
-def prepare():
-    """Session-based remote content preparation."""
-
-
 def __get_session_root() -> Path:
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     return __resolve_dev_path(data.lib.config.DEV_CONFIGURATION.paths.session_dir)
-
-
-def __get_session(session_id: str | None = None) -> SessionManager:
-    root = __get_session_root()
-    if session_id:
-        return SessionManager.from_session_id(root, session_id)
-    return SessionManager.from_current(root)
-
-
-@prepare.command("start")
-@click.option(
-    "--backend",
-    type=click.Choice(["minio", "s3"]),
-    default=None,
-    help="Which backend to fetch remote state from. Required unless --origin-dir is used.",
-)
-@click.option(
-    "--origin-dir",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Local origin directory to copy state from instead of fetching.",
-)
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
-def remote_prepare_start(
-    backend: str | None,
-    origin_dir: Path | None,
-    resource_root: str | None,
-    channel: str | None,
-):
-    """Start a new session (fetch remote state, write lockfile, emit session id)."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    sessions_root = __get_session_root()
-
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
-
-    if origin_dir is not None:
-        resolved_backend = "local"
-    elif backend is None:
-        raise click.UsageError("--backend (minio|s3) is required when --origin-dir is not used.")
-    else:
-        resolved_backend = backend
-
-    kwargs: dict[str, object] = {
-        "backend": resolved_backend,
-        "origin_dir": origin_dir,
-        "resource_root": resolved_resource_root,
-        "channel": resolved_channel,
-    }
-
-    if origin_dir is None:
-        if resolved_backend == "minio":
-            sub = remote_cfg.require_minio()
-            kwargs["mc_bin"] = get_command("mc")
-            kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
-            kwargs["bucket"] = sub.bucket
-            kwargs["access_key"] = sub.access_key
-            kwargs["secret_key"] = sub.secret_key
-            kwargs["alias_name"] = sub.alias
-        else:
-            sub = remote_cfg.require_s3()
-            kwargs["mc_bin"] = get_command("mc")
-            kwargs["endpoint"] = sub.endpoint
-            kwargs["bucket"] = sub.bucket
-            kwargs["access_key"] = sub.access_key
-            kwargs["secret_key"] = sub.secret_key
-            kwargs["alias_name"] = sub.alias
-
-    mgr = SessionManager.start(sessions_root, **kwargs)  # type: ignore[arg-type]
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
-    click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
-    click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
-    click.echo(styled(Style.DIM, f"  session dir: {mgr.session_dir}"))
-
-
-@prepare.command("status")
-@click.option("--session", "session_id", default=None, help="Session ID. Defaults to current.")
-def remote_prepare_status(session_id: str | None):
-    """Show session summary."""
-    try:
-        mgr = __get_session(session_id)
-    except SessionNotActiveError as exc:
-        raise click.ClickException(str(exc)) from exc
-    except FileNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    st = mgr.status()
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session: ") + st.session_id)
-    click.echo(f"  backend:    {st.backend}")
-    click.echo(f"  timestamp:  {st.timestamp}")
-    click.echo(f"  host:       {st.host}")
-    click.echo(f"  pid:        {st.pid}")
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo(f"  committed:  {st.committed}")
-
-
-# ---- add sub-group ---------------------------------------------------------
-
-
-@prepare.group(cls=ClickAliasedGroup)
-def add():
-    """Add content to the pending session."""
-
-
-@add.command("announcement")
-@click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
-@click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
-@click.option(
-    "--id",
-    "document_id",
-    default=None,
-    help="Remote document id prefix (timestamp suffix appended). Defaults to auto-generated.",
-)
-@click.option("--title-zh", required=True, help="Chinese announcement title.")
-@click.option("--title-en", required=True, help="English announcement title.")
-@click.option("--summary-zh", required=True, help="Chinese announcement summary.")
-@click.option("--summary-en", required=True, help="English announcement summary.")
-@click.option("--published-at", default=None, help="UTC ISO timestamp. Defaults to now.")
-@click.option("--min-app-ver", default=None, help="Minimum app version. Defaults to current app.")
-@click.option(
-    "--all-app-ver",
-    is_flag=True,
-    default=False,
-    help="Publish for all app versions by writing minAppVer as null.",
-)
-@click.option("--startup/--no-startup", default=True, show_default=True)
-@click.option(
-    "--tag", "tags", multiple=True, help="Announcement tag. Can be passed multiple times."
-)
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_add_announcement(
-    zh_path: Path,
-    en_path: Path,
-    document_id: str | None,
-    title_zh: str,
-    title_en: str,
-    summary_zh: str,
-    summary_en: str,
-    published_at: str | None,
-    min_app_ver: str | None,
-    all_app_ver: bool,
-    startup: bool,
-    tags: tuple[str, ...],
-    session_id: str | None,
-):
-    """Stage an announcement in the pending session."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if all_app_ver and min_app_ver is not None:
-        raise click.ClickException("--all-app-ver cannot be used together with --min-app-ver.")
-    if not zh_path.is_file():
-        raise click.ClickException(f"Chinese Markdown file does not exist: {zh_path}")
-    if not en_path.is_file():
-        raise click.ClickException(f"English Markdown file does not exist: {en_path}")
-
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id_base = document_id or "announcement"
-    resolved_document_id = __validate_remote_document_id(resolved_document_id_base)
-    resolved_published_at = published_at or __utc_timestamp()
-    resolved_min_app_ver = None if all_app_ver else (min_app_ver or __read_current_app_version())
-    resolved_tags = list(tags or ("announcement",))
-    resolved_resource_root = remote_cfg.resource_root
-    resolved_channel = remote_cfg.channel
-
-    try:
-        mgr = __get_session(session_id)
-        resolved_document_id = mgr.add_announcement(
-            zh_path=zh_path,
-            en_path=en_path,
-            document_id=resolved_document_id,
-            title_zh=title_zh,
-            title_en=title_en,
-            summary_zh=summary_zh,
-            summary_en=summary_en,
-            published_at=resolved_published_at,
-            min_app_ver=resolved_min_app_ver,
-            startup=startup,
-            tags=resolved_tags,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-        )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged announcement: ") + resolved_document_id)
-
-
-@add.command("version")
-@click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
-@click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
-@click.option(
-    "--id",
-    "document_id",
-    default=None,
-    help="Remote document id (auto-generated from app-ver if omitted).",
-)
-@click.option("--title-zh", required=True, help="Chinese version title.")
-@click.option("--title-en", required=True, help="English version title.")
-@click.option("--summary-zh", required=True, help="Chinese version summary.")
-@click.option("--summary-en", required=True, help="English version summary.")
-@click.option("--app-ver", required=True, help="App version this release note describes.")
-@click.option("--published-at", default=None, help="UTC ISO timestamp. Defaults to now.")
-@click.option(
-    "--tag",
-    "tags",
-    multiple=True,
-    default=("release-note", "version"),
-    show_default=True,
-    help="Tags (repeatable).",
-)
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_add_version(
-    zh_path: Path,
-    en_path: Path,
-    document_id: str | None,
-    title_zh: str,
-    title_en: str,
-    summary_zh: str,
-    summary_en: str,
-    app_ver: str,
-    published_at: str | None,
-    tags: tuple[str, ...],
-    session_id: str | None,
-):
-    """Stage a version release note in the pending session."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if not zh_path.is_file():
-        raise click.ClickException(f"Chinese Markdown file does not exist: {zh_path}")
-    if not en_path.is_file():
-        raise click.ClickException(f"English Markdown file does not exist: {en_path}")
-
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id = __validate_remote_document_id(document_id) if document_id else None
-    resolved_published_at = published_at or __utc_timestamp()
-    resolved_tags = list(tags)
-    resolved_resource_root = remote_cfg.resource_root
-    resolved_channel = remote_cfg.channel
-
-    try:
-        mgr = __get_session(session_id)
-        mgr.add_version(
-            zh_path=zh_path,
-            en_path=en_path,
-            document_id=resolved_document_id,
-            title_zh=title_zh,
-            title_en=title_en,
-            summary_zh=summary_zh,
-            summary_en=summary_en,
-            app_ver=app_ver,
-            published_at=resolved_published_at,
-            tags=resolved_tags,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-        )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Staged version: ")
-        + (resolved_document_id or f"version-{app_ver}")
-    )
-
-
-@add.command("bundle")
-@click.option("--full", "full_path", type=click.Path(path_type=Path), required=True)
-@click.option("--manifest", "manifest_path", type=click.Path(path_type=Path), required=True)
-@click.option(
-    "--artifact-id",
-    default=None,
-    help="Artifact id for the full bundle (auto-generated from descriptor if omitted).",
-)
-@click.option("--increment", "increment_path", type=click.Path(path_type=Path), default=None)
-@click.option(
-    "--increment-artifact-id",
-    default=None,
-    help="Artifact id for the incremental bundle (auto-generated from descriptor if omitted).",
-)
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_add_bundle(
-    full_path: Path,
-    manifest_path: Path,
-    artifact_id: str | None,
-    increment_path: Path | None,
-    increment_artifact_id: str | None,
-    session_id: str | None,
-):
-    """Stage a bundle in the pending session."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if increment_path is None and increment_artifact_id is not None:
-        raise click.ClickException("--increment-artifact-id requires --increment.")
-    if not manifest_path.is_file():
-        raise click.ClickException(f"Bundle manifest file does not exist: {manifest_path}")
-
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_artifact_id = __validate_remote_artifact_id(artifact_id) if artifact_id else None
-    resolved_increment_artifact_id = (
-        __validate_remote_artifact_id(increment_artifact_id) if increment_artifact_id else None
-    )
-    resolved_resource_root = remote_cfg.resource_root
-    resolved_channel = remote_cfg.channel
-
-    try:
-        mgr = __get_session(session_id)
-        resolved_artifact_id, resolved_increment_artifact_id = mgr.add_bundle(
-            full_path=full_path,
-            manifest_path=manifest_path,
-            artifact_id=resolved_artifact_id,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-            increment_path=increment_path,
-            increment_artifact_id=resolved_increment_artifact_id,
-        )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    parts = [styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id]
-    if resolved_increment_artifact_id is not None:
-        parts.append(
-            styled([Style.BRIGHT, Fore.GREEN], "  increment: ") + resolved_increment_artifact_id
-        )
-    click.echo("\n".join(parts))
-
-
-# ---- remove ----------------------------------------------------------------
-
-
-@prepare.command("remove")
-@click.option("--artifact-id", default=None, help="Bundle artifact id to remove.")
-@click.option("--document-id", default=None, help="Document id to remove.")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_remove(
-    artifact_id: str | None,
-    document_id: str | None,
-    session_id: str | None,
-):
-    """Stage a removal in the pending session."""
-    if artifact_id is not None and document_id is not None:
-        raise click.ClickException("Pass either --artifact-id or --document-id, not both.")
-    if artifact_id is None and document_id is None:
-        raise click.ClickException("Pass either --artifact-id or --document-id.")
-
-    try:
-        mgr = __get_session(session_id)
-        if artifact_id is not None:
-            resolved = __validate_remote_artifact_id(artifact_id)
-            mgr.remove(target_type="artifact", target_id=resolved)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged removal of artifact: ") + resolved
-            )
-        else:
-            assert document_id is not None
-            resolved = __validate_remote_document_id(document_id)
-            mgr.remove(target_type="document", target_id=resolved)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged removal of document: ") + resolved
-            )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-
-# ---- diff ------------------------------------------------------------------
-
-
-def _print_diff(diff: dict[str, object]) -> None:
-    """Recursively print a human-readable diff tree produced by diff_catalogs."""
-
-    def _walk(d: dict[str, object], depth: int) -> int:
-        """Recurse into nested diff dicts. Returns count of leaf entries printed."""
-        count = 0
-        for key, val in sorted(d.items()):
-            if not isinstance(val, dict):
-                continue
-            if "type" in val:
-                ctype = val.get("type", "?")
-                indent = "  " * depth
-                if ctype == "added":
-                    click.echo(styled(Fore.GREEN, f"{indent}+ {key}"))
-                elif ctype == "removed":
-                    click.echo(styled(Fore.RED, f"{indent}- {key}"))
-                elif ctype == "changed":
-                    click.echo(styled(Fore.YELLOW, f"{indent}~ {key}"))
-                else:
-                    click.echo(f"{indent}? {key}")
-                count += 1
-            else:
-                sub = _walk(val, depth + 1)
-                if sub > 0:
-                    count += sub
-        return count
-
-    top_total = 0
-    for section, section_val in sorted(diff.items()):
-        if not isinstance(section_val, dict) or not section_val:
-            continue
-        if "type" in section_val:
-            ctype = section_val.get("type", "?")
-            if ctype == "added":
-                click.echo(styled(Fore.GREEN, f"  + {section}"))
-            elif ctype == "removed":
-                click.echo(styled(Fore.RED, f"  - {section}"))
-            elif ctype == "changed":
-                click.echo(styled(Fore.YELLOW, f"  ~ {section}"))
-            else:
-                click.echo(f"  ? {section}")
-            top_total += 1
-        else:
-            n = _walk(section_val, 2)
-            if n > 0:
-                top_total += n
-
-    if top_total > 0:
-        click.echo(
-            styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:") + f"  ({top_total} change(s))"
-        )
-    else:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "No differences detected."))
-
-
-@prepare.command("diff")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
-@click.option(
-    "--json", "as_json", is_flag=True, default=False, help="Output as machine-readable JSON."
-)
-def remote_prepare_diff(
-    session_id: str | None,
-    resource_root: str | None,
-    channel: str | None,
-    as_json: bool,
-):
-    """Show catalog/index diffs between remote-state and merged output."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-
-    try:
-        mgr = __get_session(session_id)
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    diff = mgr.diff(channel=resolved_channel, resource_root=resolved_resource_root)
-    if as_json:
-        click.echo(json.dumps(diff, indent=4, sort_keys=True))
-    else:
-        _print_diff(diff)
-
-
-# ---- verify ----------------------------------------------------------------
-
-
-@prepare.command("verify")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
-def remote_prepare_verify(
-    session_id: str | None,
-    resource_root: str | None,
-    channel: str | None,
-):
-    """Validate merged output is internally consistent."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-
-    try:
-        mgr = __get_session(session_id)
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    lock = mgr._load_lockfile()
-    backend = lock.backend if lock.backend != "local" else None
-
-    kwargs: dict[str, object] = {"resource_root": resolved_resource_root}
-    if backend == "minio":
-        sub = remote_cfg.require_minio()
-        kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
-    elif backend == "s3":
-        sub = remote_cfg.require_s3()
-        kwargs["endpoint"] = sub.endpoint
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
-
-    errors = mgr.verify(
-        channel=resolved_channel,
-        backend=backend,
-        **kwargs,  # type: ignore[arg-type]
-    )
-    if errors:
-        for err in errors:
-            click.echo(styled([Style.BRIGHT, Fore.RED], "ERROR: ") + err)
-        raise click.ClickException(f"Verification failed with {len(errors)} error(s).")
-    else:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Verification passed."))
-
-
-# ---- commit ----------------------------------------------------------------
-
-
-@prepare.command("commit")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_commit(session_id: str | None):
-    """Finalize session (immutable todo, remove lockfile). Emits summary."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    try:
-        mgr = __get_session(session_id)
-        st = mgr.commit(
-            channel=remote_cfg.channel,
-            resource_root=remote_cfg.resource_root,
-        )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo("  committed:  true")
-
-
-# ---- abort -----------------------------------------------------------------
-
-
-@prepare.command("abort")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-@click.option("--force", is_flag=True, default=False, help="Skip confirmation prompt.")
-def remote_prepare_abort(session_id: str | None, force: bool):
-    """Discard session, remove session dir."""
-    try:
-        mgr = __get_session(session_id)
-    except (SessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    if not force:
-        click.confirm(
-            f"Discard session {mgr.session_id} and all staged content?",
-            abort=True,
-        )
-
-    session_dir = mgr.session_dir
-    mgr.abort()
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
-
-
-# ---------------------------------------------------------------------------
-# remote promote
-# ---------------------------------------------------------------------------
-
-
-@remote.group(cls=ClickAliasedGroup)
-def promote_cmd():
-    """Promotion commands for testing -> stable content flow."""
-
-
-def __get_promote_session(
-    session_id: str | None = None,
-) -> data.lib.remote.promote.PromotionSessionManager:
-    from data.lib.remote import promote as _promote
-
-    root = __get_session_root()
-    if session_id:
-        return _promote.PromotionSessionManager.from_session_id(root, session_id)
-    return _promote.PromotionSessionManager.from_current(root)
-
-
-@promote_cmd.command("start")
-@click.option(
-    "--backend",
-    type=click.Choice(["minio", "s3"]),
-    default=None,
-    help="Which backend to fetch remote state from. Required unless --origin-dir is used.",
-)
-@click.option(
-    "--origin-dir",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Local origin directory to copy state from instead of fetching.",
-)
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-def remote_promote_start(
-    backend: str | None,
-    origin_dir: Path | None,
-    resource_root: str | None,
-):
-    """Start a promotion session (testing -> stable). Fetches both channels."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    from data.lib.remote import promote as _promote
-
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    sessions_root = __get_session_root()
-
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-
-    resolved_backend = "local" if origin_dir is not None or backend is None else backend
-
-    kwargs: dict[str, object] = {
-        "backend": resolved_backend,
-        "origin_dir": origin_dir or __resolve_dev_path(remote_cfg.mock_origin_dir),
-        "resource_root": resolved_resource_root,
-    }
-
-    if resolved_backend == "minio":
-        sub = remote_cfg.require_minio()
-        kwargs["mc_bin"] = get_command("mc")
-        kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
-    elif resolved_backend == "s3":
-        sub = remote_cfg.require_s3()
-        kwargs["mc_bin"] = get_command("mc")
-        kwargs["endpoint"] = sub.endpoint
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
-
-    mgr = _promote.PromotionSessionManager.start(sessions_root, **kwargs)  # type: ignore[arg-type]
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
-    click.echo(styled(Style.DIM, f"  source: {_promote._SOURCE_CHANNEL.value}"))
-    click.echo(styled(Style.DIM, f"  target: {_promote._TARGET_CHANNEL.value}"))
-
-    available = mgr.available_items()
-    bundles = available.get("bundles", [])
-    documents = available.get("documents", [])
-
-    if not bundles and not documents:
-        click.echo(styled(Style.DIM, "\n  No items to promote. Testing and stable are in sync."))
-        return
-
-    click.echo()
-    if bundles:
-        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Bundles ({len(bundles)}):"))
-        for b in bundles:
-            aid = b.get("artifactId", "?")
-            variant = b.get("variant", "?")
-            click.echo(styled(Style.DIM, f"    {aid}  [{variant}]"))
-
-    if documents:
-        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Documents ({len(documents)}):"))
-        for d in documents:
-            did = d.get("id", "?")
-            kind = d.get("kind", "?")
-            localizations = d.get("localizations", {})
-            title = ""
-            if isinstance(localizations, dict):
-                en_loc = localizations.get("en", {})
-                if isinstance(en_loc, dict):
-                    title = str(en_loc.get("title", ""))
-            click.echo(styled(Style.DIM, f"    {did}  [{kind}]  {title}"))
-
-
-@promote_cmd.command("status")
-@click.option("--session", "session_id", default=None, help="Session ID. Defaults to current.")
-def remote_promote_status(session_id: str | None):
-    """Show promotion session summary."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    st = mgr.status()
-    from data.lib.remote import promote as _promote
-
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session: ") + st.session_id)
-    click.echo(f"  source:     {_promote._SOURCE_CHANNEL.value}")
-    click.echo(f"  target:     {_promote._TARGET_CHANNEL.value}")
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo(f"  committed:  {st.committed}")
-
-
-# ---- promote add ---------------------------------------------------------
-
-
-@promote_cmd.command("add")
-@click.option("--bundle", "bundle_id", default=None, help="Artifact id to promote.")
-@click.option("--document", "document_id", default=None, help="Document id to promote.")
-@click.option("--all", "add_all", is_flag=True, default=False, help="Stage all eligible items.")
-@click.option("--no-increment", is_flag=True, default=False, help="Skip associated increments.")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-def remote_promote_add(
-    bundle_id: str | None,
-    document_id: str | None,
-    add_all: bool,
-    no_increment: bool,
-    session_id: str | None,
-):
-    """Stage items for promotion from testing to stable."""
-    try:
-        mgr = __get_promote_session(session_id)
-
-        if add_all:
-            if bundle_id or document_id:
-                raise click.ClickException("--all cannot be combined with --bundle or --document.")
-            mgr.add_all()
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion.")
-            )
-            return
-
-        if bundle_id:
-            mgr.add_bundle(bundle_id, no_increment=no_increment)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ") + bundle_id
-            )
-            if no_increment:
-                click.echo(styled(Style.DIM, "  (increments skipped)"))
-
-        elif document_id:
-            mgr.add_document(document_id)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ") + document_id
-            )
-        else:
-            raise click.ClickException("Specify --bundle <id>, --document <id>, or --all.")
-    except (
-        PromotionSessionNotActiveError,
-        PromotionSessionCommittedError,
-        FileNotFoundError,
-    ) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-
-# ---- promote remove -----------------------------------------------------
-
-
-@promote_cmd.command("remove")
-@click.option("--bundle", "bundle_id", default=None, help="Artifact id to un-stage.")
-@click.option("--document", "document_id", default=None, help="Document id to un-stage.")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-def remote_promote_remove(
-    bundle_id: str | None,
-    document_id: str | None,
-    session_id: str | None,
-):
-    """Remove a staged promotion."""
-    try:
-        mgr = __get_promote_session(session_id)
-
-        if bundle_id:
-            mgr.remove(target_type="artifact", target_id=bundle_id)
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged bundle: ") + bundle_id)
-        elif document_id:
-            mgr.remove(target_type="document", target_id=document_id)
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged document: ") + document_id)
-        else:
-            raise click.ClickException("Specify --bundle <id> or --document <id>.")
-    except (
-        PromotionSessionNotActiveError,
-        PromotionSessionCommittedError,
-        FileNotFoundError,
-    ) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-
-# ---- promote diff -------------------------------------------------------
-
-
-@promote_cmd.command("diff")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-def remote_promote_diff(
-    session_id: str | None,
-    resource_root: str | None,
-):
-    """Diff current stable against the promoted result."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-
-    diff = mgr.diff(resource_root=resolved_resource_root)
-    click.echo(json.dumps(diff, indent=4, ensure_ascii=False))
-
-
-# ---- promote verify -----------------------------------------------------
-
-
-@promote_cmd.command("verify")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-def remote_promote_verify(session_id: str | None, resource_root: str | None):
-    """Verify the integrity of the promoted state."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    errors = mgr.verify(resource_root=resource_root)
-    if errors:
-        click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification found {len(errors)} issue(s):"))
-        for err in errors:
-            click.echo(f"  - {err}")
-        raise click.ClickException(f"Verification failed with {len(errors)} error(s).")
-    else:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Verification passed."))
-
-
-# ---- promote commit -----------------------------------------------------
-
-
-@promote_cmd.command("commit")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-def remote_promote_commit(session_id: str | None):
-    """Commit the promotion session, writing the stable channel merged output."""
-    try:
-        mgr = __get_promote_session(session_id)
-        st = mgr.commit()
-    except (
-        PromotionSessionNotActiveError,
-        PromotionSessionCommittedError,
-        FileNotFoundError,
-    ) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo("  committed:  true")
-    click.echo(
-        styled(
-            Style.DIM,
-            f"  merged:     {mgr.merged_dir}",
-        )
-    )
-
-
-# ---- promote abort ------------------------------------------------------
-
-
-@promote_cmd.command("abort")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-@click.option("--force", is_flag=True, default=False, help="Skip confirmation.")
-def remote_promote_abort(session_id: str | None, force: bool):
-    """Abort a promotion session and discard all staged changes."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    if not force:
-        click.confirm(
-            styled(
-                [Fore.YELLOW, Style.BRIGHT],
-                f"Discard promotion session {mgr.session_id} and all staged content?",
-            ),
-            abort=True,
-        )
-
-    session_dir = mgr.session_dir
-    mgr.abort()
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
 
 
 @remote.group(cls=ClickAliasedGroup)
@@ -2088,11 +1230,11 @@ def __resolve_publish_source(
             raise click.ClickException(f"Source directory does not exist: {resolved}")
         return resolved, None
     if session_id:
-        mgr = __get_session(session_id)
+        mgr = _get_session(session_id)
         if not mgr.status().committed:
             raise click.ClickException(
                 f"Session has not been committed."
-                f" Run `./x remote prepare commit --session {mgr.session_id}` first."
+                f" Run `./x remote prepare publish --session-id {mgr.session_id}` first."
             )
     else:
         try:
@@ -2102,7 +1244,8 @@ def __resolve_publish_source(
     merged = mgr.session_dir / "merged"
     if not merged.is_dir():
         raise click.ClickException(
-            f"Session has no merged output. Run `./x remote prepare diff` first: {mgr.session_id}"
+            f"Session has no merged output."
+            f" Run `./x remote prepare publish --session-id {mgr.session_id}` first."
         )
     return merged, mgr.session_id
 
@@ -2118,7 +1261,7 @@ def __resolve_publish_generation(
 
     resolved_resource_root = __validate_remote_resource_root(resource_root)
     if session_id is not None:
-        mgr = __get_session(session_id)
+        mgr = _get_session(session_id)
         todo = mgr._load_todo()
         if todo.generation:
             return todo.generation
@@ -2918,12 +2061,13 @@ def remote_publish_upload(
 ):
     """Upload a local remote origin or committed session to S3-compatible object storage."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_source_dir, resolved_session_id = __resolve_publish_source(
         source_dir=source_dir, session_id=session_id
     )
     resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
@@ -3005,7 +2149,7 @@ def remote_publish_upload(
         click.echo(summary)
 
     if source_dir is None and not keep_session and resolved_session_id:
-        mgr = __get_session(resolved_session_id)
+        mgr = _get_session(resolved_session_id)
         mgr.abort()
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ") + str(mgr.session_dir)
@@ -3060,9 +2204,10 @@ def remote_publish_gc(
             "--keep-generations must be >= 1 to preserve at least the current live generation."
         )
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
@@ -3273,11 +2418,14 @@ def remote_mock_launch(
 ):
     """Launch a local MinIO remote mock."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     minio = remote_cfg.require_minio()
 
     resolved_host = host or remote_cfg.host
-    resolved_resource_root = resource_root or remote_cfg.resource_root
+    resolved_resource_root = (
+        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
+    )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
 
@@ -3338,10 +2486,11 @@ def remote_validate(
 ):
     """Validate a local origin tree for internal consistency."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
     resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
@@ -3421,6 +2570,7 @@ def remote_fetch(
 ):
     """Download remote state into a local directory (for debugging/backup)."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
 
     if output_dir is None:
@@ -3428,7 +2578,7 @@ def remote_fetch(
         output_dir = __get_session_root() / f"fetch-{stamp}"
 
     resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
@@ -3463,6 +2613,849 @@ def remote_fetch(
         output_dir=output_dir,
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Fetched remote state to: ") + str(output_dir))
+
+
+# ---- status ----------------------------------------------------------------
+
+
+@remote.command("status")
+@click.option(
+    "--session-id",
+    default=None,
+    help="Inspect a specific session instead of the active one.",
+)
+def remote_status(session_id: str | None):
+    """Show the current session status and staged changes."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    sessions_root = __get_session_root()
+
+    if session_id:
+        try:
+            mgr = SessionManager.from_session_id(sessions_root, session_id)
+        except FileNotFoundError as exc:
+            raise click.ClickException(f"Session not found: {session_id}") from exc
+    else:
+        try:
+            mgr = _get_session()
+        except SessionManagerInvalidError:
+            click.echo()
+            click.echo(styled([Style.BRIGHT, Fore.CYAN], "Remote status"))
+            click.echo()
+            click.echo("  No active session.")
+            _print_session_list(sessions_root)
+            return
+
+    _print_session_status(mgr, remote_cfg)
+
+
+def _print_session_list(sessions_root: Path) -> None:
+    if not sessions_root.is_dir():
+        click.echo()
+        return
+    entries = sorted(
+        [
+            d
+            for d in sessions_root.iterdir()
+            if d.is_dir() and d.name not in ("current", "current-promote")
+        ],
+        reverse=True,
+    )
+    if not entries:
+        click.echo()
+        return
+
+    click.echo()
+    click.echo(styled(Style.DIM, "  Available sessions:"))
+    for d in entries:
+        todo_path = d / "todo.json"
+        committed = False
+        op_count = 0
+        if todo_path.is_file():
+            try:
+                from data.lib.remote.models import TodoList
+                from data.lib.remote.models import _load_json_model
+
+                todo = _load_json_model(todo_path, TodoList)
+                committed = todo.committed
+                op_count = len(todo.operations)
+            except Exception:
+                pass
+        state = "committed" if committed else "active"
+        marker = " " if committed else "*"
+        prefix = styled([Style.BRIGHT, Fore.GREEN], marker)
+        click.echo(f"  {prefix} {d.name}  [{state}]  ({op_count} ops)")
+
+
+def _print_session_status(mgr: SessionManager, remote_cfg) -> None:
+    from data.lib.remote.diff import diff_generations
+    from data.lib.remote.diff import read_generation_from_remote
+    from data.lib.remote.diff import read_generation_from_staged
+
+    todo = mgr._load_todo()
+    gen_id = todo.generation or "unknown"
+    channel = mgr.channel or remote_cfg.channel.value
+
+    lockfile_active = mgr.lockfile_path.is_file()
+    try:
+        lock = mgr._load_lockfile()
+    except Exception:
+        lock = None
+
+    state = "active" if lockfile_active else "committed"
+    state_color = Fore.GREEN if lockfile_active else Fore.YELLOW
+
+    click.echo()
+    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Remote status"))
+    click.echo()
+
+    click.echo(
+        f"  {styled(Style.DIM, 'Session:')}   "
+        f"{styled([Style.BRIGHT, state_color], mgr.session_id)}  [{state}]"
+    )
+    click.echo(f"  {styled(Style.DIM, 'Channel:')}   {channel}")
+    if lock:
+        click.echo(f"  {styled(Style.DIM, 'Backend:')}   {lock.backend}")
+        click.echo(
+            f"  {styled(Style.DIM, 'Created:')}   {lock.timestamp} by {lock.host} (PID {lock.pid})"
+        )
+    click.echo(f"  {styled(Style.DIM, 'Generation:')} {gen_id}")
+
+    staged_resources_dir = mgr.staged_dir / "manifest" / ".generations" / gen_id / "resources"
+    has_staged = staged_resources_dir.is_dir() and any(staged_resources_dir.rglob("*.json"))
+
+    if not has_staged:
+        click.echo()
+        click.echo(f"  {styled(Style.DIM, 'Nothing staged.')}")
+        click.echo()
+        click.echo(styled(Style.DIM, f"  Path: {mgr.session_dir}"))
+        click.echo()
+        return
+
+    remote_state_channel_dir = mgr.remote_state_dir / channel
+    has_baseline = remote_state_channel_dir.is_dir()
+
+    if has_baseline:
+        pending = read_generation_from_staged(mgr.staged_dir, gen_id)
+
+        try:
+            baseline = read_generation_from_remote(mgr.remote_state_dir, channel)
+        except (FileNotFoundError, ValueError):
+            has_baseline = False
+
+    if has_baseline:
+        diff = diff_generations(pending, baseline)
+
+        server_counts = {"added": 0, "removed": 0, "changed": 0, "unchanged": 0}
+        for sd in diff.servers:
+            server_counts[sd.status] += 1
+        ck_added = sum(len(sd.checkout_changes.added) for sd in diff.servers if sd.checkout_changes)
+        ck_removed = sum(
+            len(sd.checkout_changes.removed) for sd in diff.servers if sd.checkout_changes
+        )
+
+        has_changes = (
+            server_counts["added"]
+            or server_counts["removed"]
+            or server_counts["changed"]
+            or ck_added
+            or ck_removed
+            or len(diff.releases.added)
+            or len(diff.releases.removed)
+            or len(diff.announcements.added)
+            or len(diff.announcements.changed)
+        )
+
+        if not has_changes:
+            click.echo()
+            click.echo(f"  {styled(Style.DIM, 'Nothing staged.')}")
+        else:
+            click.echo()
+            click.echo(f"  {styled(Style.DIM, 'Changes to be published:')}")
+            click.echo()
+
+            if server_counts["added"]:
+                click.echo(
+                    f"    {styled(Fore.GREEN, '+')} {server_counts['added']} server(s) added"
+                )
+            if server_counts["changed"]:
+                click.echo(
+                    f"    {styled(Fore.YELLOW, '~')} {server_counts['changed']} server(s) modified"
+                )
+            if server_counts["removed"]:
+                click.echo(
+                    f"    {styled(Fore.RED, '-')} {server_counts['removed']} server(s) removed"
+                )
+            if ck_added:
+                click.echo(f"    {styled(Fore.GREEN, '+')} {ck_added} checkout(s) added")
+            if ck_removed:
+                click.echo(f"    {styled(Fore.RED, '-')} {ck_removed} checkout(s) removed")
+            if len(diff.releases.added):
+                click.echo(
+                    f"    {styled(Fore.GREEN, '+')} {len(diff.releases.added)} release(s) added"
+                )
+            if len(diff.releases.removed):
+                click.echo(
+                    f"    {styled(Fore.RED, '-')} {len(diff.releases.removed)} release(s) removed"
+                )
+            if len(diff.announcements.added):
+                click.echo(
+                    f"    {styled(Fore.GREEN, '+')} "
+                    f"{len(diff.announcements.added)} announcement(s) added"
+                )
+            if len(diff.announcements.changed):
+                click.echo(
+                    f"    {styled(Fore.YELLOW, '~')} "
+                    f"{len(diff.announcements.changed)} announcement(s) modified"
+                )
+    else:
+        total_servers = 0
+        total_checkouts = 0
+        servers_dir = staged_resources_dir / "servers"
+        if servers_dir.is_dir():
+            total_servers = len(list(servers_dir.glob("*.json")))
+        checkouts_dir = staged_resources_dir / "checkouts"
+        if checkouts_dir.is_dir():
+            total_checkouts = len(list(checkouts_dir.glob("*.json")))
+
+        ann_added = 0
+        rel_added = 0
+        for op in todo.operations:
+            from data.lib.remote.models import AddAnnouncementsOp
+            from data.lib.remote.models import AddReleaseOp
+
+            if isinstance(op, AddReleaseOp):
+                rel_added += 1
+            elif isinstance(op, AddAnnouncementsOp):
+                ann_added += 1
+
+        click.echo()
+        click.echo(
+            f"  {
+                styled(
+                    Style.DIM,
+                    'Staged (no baseline for diff — start a session with ./x remote prepare init):',
+                )
+            }"
+        )
+        click.echo()
+        if total_servers:
+            click.echo(f"    {total_servers} server(s)")
+        if total_checkouts:
+            click.echo(f"    {total_checkouts} checkout(s)")
+        if rel_added:
+            click.echo(f"    {rel_added} release(s)")
+        if ann_added:
+            click.echo(f"    {ann_added} announcement(s)")
+
+    click.echo()
+    click.echo(styled(Style.DIM, f"  Path: {mgr.session_dir}"))
+    click.echo()
+
+
+# ---- prepare (V2) sub-group -------------------------------------------------
+
+
+def _get_session(session_id: str | None = None) -> SessionManager:
+    root = __get_session_root()
+    if session_id:
+        return SessionManager.from_session_id(root, session_id)
+    return SessionManager.from_current(root)
+
+
+@remote.group(cls=ClickAliasedGroup)
+def prepare():
+    """V2 schema remote content management (efa/v2/ layout)."""
+
+
+@prepare.command("init")
+@click.option(
+    "--backend",
+    type=click.Choice(["minio", "s3"]),
+    default=None,
+    help="Which backend to fetch remote state from (required for --fresh).",
+)
+@click.option("--resource-root", default=None, help="Override remote resource root.")
+@click.option("--channel", default=None, help="Override remote channel.")
+@click.option("--description", required=True, help="Description for this generation.")
+@click.option(
+    "--fresh",
+    is_flag=True,
+    default=False,
+    help="Fetch remote state from S3 instead of auto-chaining from a committed session.",
+)
+@click.option(
+    "--base-session",
+    "base_session_id",
+    default=None,
+    help="Explicitly chain from this committed session ID (overrides auto-chain).",
+)
+def schema_init(
+    backend: str | None,
+    resource_root: str | None,
+    channel: str | None,
+    description: str,
+    fresh: bool,
+    base_session_id: str | None,
+):
+    """Start a new V2 schema content session.
+
+    By default auto-chains from the latest committed session (local-only,
+    no remote fetch).  Use --fresh to fetch from S3.  Use --base-session to
+    chain from a specific committed session.
+    """
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    sessions_root = __get_session_root()
+
+    resolved_resource_root = __validate_remote_resource_root(
+        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
+    )
+    resolved_channel = Channel(channel or remote_cfg.channel.value)
+
+    kwargs: dict[str, object] = {
+        "description": description,
+        "channel": resolved_channel,
+        "resource_root": resolved_resource_root,
+    }
+
+    # Decide origin base
+    if base_session_id:
+        base_mgr = SessionManager.from_session_id(sessions_root, base_session_id)
+        base_todo_path = base_mgr.session_dir / "todo.json"
+        if not base_todo_path.is_file():
+            raise click.ClickException(
+                f"Base session {base_session_id} has no todo.json (not a valid session)."
+            )
+        base_todo = data.lib.remote.models._load_json_model(
+            base_todo_path, data.lib.remote.models.TodoList
+        )
+        if not base_todo.committed:
+            raise click.ClickException(
+                f"Base session {base_session_id} is not committed. Commit it first."
+            )
+        kwargs["backend"] = "local"
+        kwargs["origin_dir"] = base_mgr.merged_dir
+        kwargs["parent_session_id"] = base_session_id
+        click.echo(
+            styled(
+                Style.DIM,
+                f"Chaining from committed session: {base_session_id}",
+            )
+        )
+    elif not fresh:
+        # Auto-chain: find latest committed session
+        try:
+            base_mgr = SessionManager.find_latest_committed(sessions_root)
+            kwargs["backend"] = "local"
+            kwargs["origin_dir"] = base_mgr.merged_dir
+            kwargs["parent_session_id"] = base_mgr.session_id
+            click.echo(
+                styled(
+                    Style.DIM,
+                    f"Auto-chaining from latest committed session: {base_mgr.session_id}",
+                )
+            )
+        except FileNotFoundError:
+            # No committed sessions exist — fall through to fresh fetch
+            click.echo(
+                styled(
+                    Style.DIM,
+                    "No committed sessions found; fetching from remote.",
+                )
+            )
+            fresh = True
+
+    if fresh:
+        if backend is None:
+            raise click.UsageError("--backend (minio|s3) is required with --fresh.")
+        kwargs["backend"] = backend
+        if backend == "minio":
+            sub = remote_cfg.require_minio()
+            kwargs["mc_bin"] = get_command("mc")
+            kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
+            kwargs["bucket"] = sub.bucket
+            kwargs["access_key"] = sub.access_key
+            kwargs["secret_key"] = sub.secret_key
+            kwargs["alias_name"] = sub.alias
+        else:
+            sub = remote_cfg.require_s3()
+            kwargs["mc_bin"] = get_command("mc")
+            kwargs["endpoint"] = sub.endpoint
+            kwargs["bucket"] = sub.bucket
+            kwargs["access_key"] = sub.access_key
+            kwargs["secret_key"] = sub.secret_key
+            kwargs["alias_name"] = sub.alias
+
+    mgr = SessionManager.prepare(sessions_root, **kwargs)  # type: ignore[arg-type]
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Session started: {mgr.session_id}"))
+
+
+@prepare.command("add-resources")
+@click.option(
+    "--checkout",
+    "checkout_path",
+    type=click.Path(path_type=Path, exists=True),
+    required=True,
+    multiple=True,
+    help="Path to checkout catalog JSON (can repeat).",
+)
+@click.option("--server", "server_id", required=True, help="Server ID.")
+@click.option("--name-en", required=True, help="Server display name (English).")
+@click.option("--name-zh", required=True, help="Server display name (Chinese).")
+@click.option("--session-id", default=None, help="Override active session.")
+def schema_add_resources(
+    checkout_path: list[Path],
+    server_id: str,
+    name_en: str,
+    name_zh: str,
+    session_id: str | None,
+):
+    """Register server and checkout catalogs in the active session."""
+    import datetime as _dt
+
+    checkout_catalogs = []
+    for p in checkout_path:
+        with p.open("r", encoding="utf-8") as f:
+            checkout_catalogs.append(json.load(f))
+
+    server_catalog = {
+        "id": server_id,
+        "lastUpdatedAt": _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "name": {"en": name_en, "zh": name_zh},
+        "metadata": checkout_catalogs[0]["metadata"] if checkout_catalogs else {},
+        "checkouts": [
+            {"id": cc["id"], "createdAt": cc["createdAt"], "metadata": cc["metadata"]}
+            for cc in checkout_catalogs
+        ],
+    }
+
+    try:
+        mgr = _get_session(session_id)
+        mgr.add_resources(
+            server_catalogs=[server_catalog],
+            checkout_catalogs=checkout_catalogs,
+        )
+    except SessionManagerCommittedError as exc:
+        raise click.ClickException("Session is already committed.") from exc
+    except SessionManagerInvalidError as exc:
+        raise click.ClickException("No active session.") from exc
+
+    click.echo(
+        styled(
+            [Style.BRIGHT, Fore.GREEN],
+            f"Resources added: server={server_id}, checkouts={len(checkout_catalogs)}",
+        )
+    )
+
+
+@prepare.command("diff")
+@click.option(
+    "--session-id",
+    default=None,
+    help="Use a specific committed session instead of the active one.",
+)
+@click.option(
+    "--generation",
+    "generation_id",
+    default=None,
+    help="Diff against a specific remote generation instead of the activated one.",
+)
+def schema_diff(session_id: str | None, generation_id: str | None):
+    """Compare the session's staged generation against remote state."""
+    from data.lib.remote.diff import diff_generations
+    from data.lib.remote.diff import read_generation_from_remote
+    from data.lib.remote.diff import read_generation_from_staged
+
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+
+    try:
+        mgr = _get_session(session_id)
+    except SessionManagerInvalidError as exc:
+        raise click.ClickException("No active session.") from exc
+
+    todo = mgr._load_todo()
+    gen_id = todo.generation or "unknown"
+    channel = mgr.channel or remote_cfg.channel.value
+
+    pending = read_generation_from_staged(mgr.staged_dir, gen_id)
+
+    try:
+        baseline = read_generation_from_remote(mgr.remote_state_dir, channel, generation_id)
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(
+            f"{exc}\n"
+            "  Hint: The remote server has no published content.\n"
+            "  Run './x remote prepare publish' to publish, or\n"
+            "  specify a generation ID with '--generation <id>'."
+        ) from exc
+
+    diff = diff_generations(pending, baseline)
+
+    pending_id_short = pending.gen_id[:16] if len(pending.gen_id) > 16 else pending.gen_id
+    baseline_id_short = baseline.gen_id[:16] if len(baseline.gen_id) > 16 else baseline.gen_id
+    click.echo(
+        f"\nGeneration diff: {styled([Style.BRIGHT, Fore.CYAN], gen_id)} ({pending_id_short}..., pending)"
+    )
+    click.echo(
+        f"              vs {styled([Style.BRIGHT, Fore.CYAN], baseline.gen_id)} ({baseline_id_short}..., baseline)\n"
+    )
+
+    if diff.servers:
+        click.echo(styled([Style.BOLD], "  Servers:"))
+        for sd in diff.servers:
+            marker = {"added": "+", "removed": "-", "unchanged": "=", "changed": "~"}[sd.status]
+            color = {
+                "added": Fore.GREEN,
+                "removed": Fore.RED,
+                "unchanged": Fore.RESET,
+                "changed": Fore.YELLOW,
+            }[sd.status]
+            click.echo(f"    {styled([Style.BRIGHT, color], marker)} {sd.server_id}")
+            if sd.checkout_changes:
+                click.echo("      Checkouts:")
+                for cid in sd.checkout_changes.added:
+                    ck = pending.checkouts.get(cid, {})
+                    fc = ck.get("fileCount", "?")
+                    ts = ck.get("totalSize", 0)
+                    size_str = f"{ts / 1_000_000:.1f} MB" if ts else "?"
+                    label = f"        {styled([Style.BRIGHT, Fore.GREEN], '+')} {cid}"
+                    click.echo(f"{label} ({fc} files, {size_str})")
+                for cid in sd.checkout_changes.removed:
+                    ck = baseline.checkouts.get(cid, {})
+                    fc = ck.get("fileCount", "?")
+                    ts = ck.get("totalSize", 0)
+                    size_str = f"{ts / 1_000_000:.1f} MB" if ts else "?"
+                    line = f"        {styled([Style.BRIGHT, Fore.RED], '-')} {cid}"
+                    click.echo(f"{line} ({fc} files, {size_str}) [removed]")
+                for cid in sd.checkout_changes.unchanged:
+                    click.echo(f"        {styled([Style.BRIGHT, Fore.RESET], '=')} {cid}")
+
+    if diff.releases.added or diff.releases.removed or diff.releases.changed:
+        click.echo("\n  Releases:")
+        for rid in diff.releases.added:
+            rel = pending.releases.get(rid, {})
+            version = rel.get("version", rid)
+            apk_hash = rel.get("apk_hash", "?")
+            click.echo(
+                f"    {styled([Style.BRIGHT, Fore.GREEN], '+')} {version}  (apk: {apk_hash})"
+            )
+        for rid in diff.releases.removed:
+            rel = baseline.releases.get(rid, {})
+            version = rel.get("version", rid)
+            click.echo(f"    {styled([Style.BRIGHT, Fore.RED], '-')} {version}")
+
+    if diff.announcements.added or diff.announcements.removed or diff.announcements.changed:
+        click.echo("\n  Announcements:")
+        for aid in diff.announcements.added:
+            click.echo(f"    {styled([Style.BRIGHT, Fore.GREEN], '+')} {aid}")
+        for aid in diff.announcements.removed:
+            click.echo(f"    {styled([Style.BRIGHT, Fore.RED], '-')} {aid}")
+        for aid in diff.announcements.changed:
+            click.echo(
+                f"    {styled([Style.BRIGHT, Fore.YELLOW], '~')} {aid}      content hash changed"
+            )
+
+    server_counts = {"added": 0, "removed": 0, "changed": 0, "unchanged": 0}
+    for sd in diff.servers:
+        server_counts[sd.status] += 1
+
+    ck_added = sum(len(sd.checkout_changes.added) for sd in diff.servers if sd.checkout_changes)
+    ck_removed = sum(len(sd.checkout_changes.removed) for sd in diff.servers if sd.checkout_changes)
+
+    click.echo("\n  Summary:")
+    if server_counts["added"]:
+        click.echo(f"    {server_counts['added']} server(s) added")
+    if server_counts["changed"]:
+        click.echo(f"    {server_counts['changed']} server(s) changed")
+    if server_counts["removed"]:
+        click.echo(f"    {server_counts['removed']} server(s) removed")
+    if ck_added:
+        click.echo(f"    {ck_added} checkout(s) added")
+    if ck_removed:
+        click.echo(f"    {ck_removed} checkout(s) removed")
+    if len(diff.releases.added):
+        click.echo(f"    {len(diff.releases.added)} release(s) added")
+    if len(diff.releases.removed):
+        click.echo(f"    {len(diff.releases.removed)} release(s) removed")
+    if len(diff.announcements.added):
+        click.echo(f"    {len(diff.announcements.added)} announcement(s) added")
+    if len(diff.announcements.changed):
+        click.echo(f"    {len(diff.announcements.changed)} announcement(s) changed")
+
+
+@prepare.command("verify")
+@click.option(
+    "--session-id",
+    default=None,
+    help="Which session to verify (uses active session if omitted).",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Unified schema root directory (default from dev config).",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Show per-file results (default: summary only).",
+)
+def schema_verify(
+    session_id: str | None,
+    schema_root: Path | None,
+    verbose: bool,
+):
+    """Verify checkout assets in the session's staged area (local only)."""
+    import json as _json
+
+    from data.lib.workspace.generate.schema import verify_checkout_assets
+
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    if schema_root is None:
+        schema_root = data.lib.config.DEV_CONFIGURATION.paths.schema_dir
+
+    try:
+        mgr = _get_session(session_id)
+    except SessionManagerInvalidError as exc:
+        raise click.ClickException("No active session.") from exc
+
+    gen_id = mgr._load_todo().generation
+    ck_dir = mgr.staged_dir / "manifest" / ".generations" / gen_id / "resources" / "checkouts"
+    if not ck_dir.exists():
+        raise click.ClickException(
+            f"No checkout catalogs found in session staged area for generation {gen_id}."
+        )
+
+    catalogs_to_verify: list[dict] = []
+    for ck_file in sorted(ck_dir.glob("*.json")):
+        with ck_file.open("r", encoding="utf-8") as f:
+            catalogs_to_verify.append(_json.load(f))
+
+    total_ok = 0
+    total_fail = 0
+    total_missing = 0
+
+    for catalog in catalogs_to_verify:
+        catalog_id = catalog.get("id", "unknown")
+        if verbose:
+            click.echo(f"\nVerifying checkout: {catalog_id}")
+
+        results = verify_checkout_assets(catalog, schema_root)
+        for r in results:
+            if verbose:
+                status_color = {
+                    "OK": Fore.GREEN,
+                    "FAIL": Fore.RED,
+                    "MISSING": Fore.YELLOW,
+                }[r.status]
+                size_str = f" ({r.size:,} bytes)" if r.size is not None else ""
+                label = f"  {r.path} "
+                dots = "." * max(1, 70 - len(label) - len(str(r.status)) - len(size_str))
+                line = f"{label}{dots} {styled([Style.BRIGHT, status_color], r.status)}{size_str}"
+                click.echo(line)
+                if r.details:
+                    click.echo(f"    {r.details}")
+
+            if r.status == "OK":
+                total_ok += 1
+            elif r.status == "FAIL":
+                total_fail += 1
+            else:
+                total_missing += 1
+
+    click.echo(
+        f"\n  Summary: "
+        f"{styled([Style.BRIGHT, Fore.GREEN], str(total_ok))} OK, "
+        f"{styled([Style.BRIGHT, Fore.RED], str(total_fail))} FAIL, "
+        f"{styled([Style.BRIGHT, Fore.YELLOW], str(total_missing))} MISSING"
+    )
+
+
+@prepare.command("add-release")
+@click.option("--version", required=True, help="Semantic version (e.g., 0.2.0).")
+@click.option(
+    "--apk",
+    "apk_path",
+    type=click.Path(path_type=Path, exists=True),
+    required=True,
+    help="Path to the APK file.",
+)
+@click.option(
+    "--announcement",
+    "announcement_id",
+    default=None,
+    help="Announcement ID link.",
+)
+@click.option("--session-id", default=None, help="Override active session.")
+def schema_add_release(
+    version: str,
+    apk_path: Path,
+    announcement_id: str | None,
+    session_id: str | None,
+):
+    """Register an APK release artifact."""
+    try:
+        mgr = _get_session(session_id)
+        mgr.add_release(
+            version=version,
+            apk_path=apk_path,
+            announcement_id=announcement_id,
+        )
+    except SessionManagerCommittedError as exc:
+        raise click.ClickException("Session is already committed.") from exc
+    except SessionManagerInvalidError as exc:
+        raise click.ClickException("No active session.") from exc
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Release added: version={version}"))
+
+
+@prepare.command("commit")
+@click.option("--session-id", default=None, help="Override active session.")
+def schema_commit(session_id: str | None):
+    """Regenerate merged tree and freeze the session locally.
+
+    After commit the session is immutable and can be published.
+    Commit does not upload to S3/R2 — use `publish` for that.
+    """
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
+
+    try:
+        mgr = _get_session(session_id)
+    except SessionManagerInvalidError as exc:
+        raise click.ClickException("No active session.") from exc
+
+    try:
+        merged_root = mgr.commit(channel=Channel(mgr.channel))
+    except SessionManagerCommittedError as exc:
+        raise click.ClickException(
+            "Session is already committed.  Start a new session with `prepare init`."
+        ) from exc
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Committed: {mgr.session_id}"))
+    click.echo(styled(Style.DIM, f"  Merged tree: {merged_root}"))
+
+
+@prepare.command("publish")
+@click.option("--session-id", default=None, help="Publish a specific committed session.")
+@click.option(
+    "--all-generations",
+    is_flag=True,
+    default=False,
+    help="Publish each committed generation separately instead of squashing.",
+)
+def schema_publish(session_id: str | None, all_generations: bool):
+    """Upload committed generations to S3/R2.
+
+    By default squashes all committed generations into one.  Use
+    --all-generations to publish each generation separately.  After a
+    successful publish all committed session directories are cleaned up.
+    """
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    s3_cfg = remote_cfg.require_s3()
+    sessions_root = __get_session_root()
+
+    mc_bin = get_command("mc")
+    endpoint = s3_cfg.endpoint
+    bucket = s3_cfg.bucket
+    access_key = s3_cfg.access_key
+    secret_key = s3_cfg.secret_key
+    alias_name = s3_cfg.alias
+
+    if session_id:
+        mgr = SessionManager.from_session_id(sessions_root, session_id)
+        channel = Channel(mgr.channel)
+        mgr.publish(
+            channel=channel,
+            mc_bin=mc_bin,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            alias_name=alias_name,
+            squash=not all_generations,
+        )
+        mgr.abort()
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Published: {mgr.session_id}"))
+        return
+
+    if all_generations:
+        chain = SessionManager.find_committed_chain(sessions_root)
+        if not chain:
+            raise click.ClickException("No committed sessions found.  Run `prepare commit` first.")
+        channel = Channel(chain[0].channel)
+        click.echo(
+            styled(
+                Style.DIM,
+                f"Publishing {len(chain)} generation(s) separately (--all-generations)...",
+            )
+        )
+        for mgr in chain:
+            mgr.publish(
+                channel=channel,
+                mc_bin=mc_bin,
+                endpoint=endpoint,
+                bucket=bucket,
+                access_key=access_key,
+                secret_key=secret_key,
+                alias_name=alias_name,
+                squash=False,
+            )
+            click.echo(styled(Style.DIM, f"  Published generation: {mgr.session_id}"))
+    else:
+        try:
+            tip = SessionManager.find_latest_committed(sessions_root)
+        except FileNotFoundError:
+            raise click.ClickException(
+                "No committed sessions found.  Run `prepare commit` first."
+            ) from None
+        channel = Channel(tip.channel)
+        click.echo(styled(Style.DIM, "Publishing squashed generation..."))
+        tip.publish(
+            channel=channel,
+            mc_bin=mc_bin,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            alias_name=alias_name,
+            squash=True,
+        )
+
+    removed = SessionManager.cleanup_committed_sessions(sessions_root)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], f"Published. Cleaned up {removed} committed session(s).")
+    )
+
+
+@prepare.command("abort")
+@click.option("--session-id", default=None, help="Override active session.")
+@click.option("--force", is_flag=True, default=False, help="Skip confirmation prompt.")
+def schema_abort(session_id: str | None, force: bool):
+    """Discard a session and its directory."""
+    try:
+        mgr = _get_session(session_id)
+    except (SessionManagerInvalidError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if not force:
+        click.confirm(
+            f"Discard session {mgr.session_id} and all staged content?",
+            abort=True,
+        )
+
+    session_dir = mgr.session_dir
+    mgr.abort()
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
 
 
 @cli.group(aliases=["env"], cls=ClickAliasedGroup)
@@ -3780,19 +3773,9 @@ _GENERATOR_TYPES = {"static", "native", "localization", "images"}
     multiple=True,
     help=f"Skip specified data generators. Values: {', '.join(_GENERATOR_TYPES)}",
 )
-@click.option(
-    "--no-hash",
-    envvar=SKIP_FULL_MANIFEST_UPDATE_ENV_VAR,
-    is_flag=True,
-    default=False,
-    help="Do not generate the snapshot manifest for the data bundle.",
-)
-def data_cmd(skip: list[str], no_hash: bool):
+def data_cmd(skip: list[str]):
     """Build data files."""
     from data.lib.workspace.generate import run_generator
-
-    if not no_hash:
-        no_hash = data.lib.config.DEV_CONFIGURATION.build.skip_hash
 
     to_skip = set()
     for it in skip:
@@ -3806,7 +3789,7 @@ def data_cmd(skip: list[str], no_hash: bool):
         click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
         exit(1)
 
-    asyncio.run(run_generator(__get_current_workspace_descriptor(), to_skip, not no_hash))
+    asyncio.run(run_generator(__get_current_workspace_descriptor(), to_skip))
 
 
 @build.command("docs", aliases=["doc"])
@@ -3818,24 +3801,6 @@ def build_docs_cmd():
         build_documents()
     except ValueError as exception:
         raise click.ClickException(str(exception)) from exception
-
-
-@build.command("increment", aliases=["inc", "incremental"])
-@click.argument("baseline_manifest_path", required=False, envvar=DEFAULT_WORKSPACE_MANIFEST_ENV_VAR)
-def build_increment_cmd(baseline_manifest_path: str | None):
-    """Build incremental patch bundle."""
-    from data.lib.workspace.build_increment import build_increment_bundle
-
-    if baseline_manifest_path is None:
-        baseline_manifest = data.lib.config.DEV_CONFIGURATION.build.baseline
-        if baseline_manifest is None:
-            raise click.ClickException(
-                "Missing baseline manifest. Pass one as an argument or set build.baseline in efa.dev.toml."
-            )
-    else:
-        baseline_manifest = Path(baseline_manifest_path)
-
-    build_increment_bundle(__get_current_workspace_descriptor(), baseline_manifest)
 
 
 _ABI_FLUTTER_TO_APK = {
@@ -4097,9 +4062,9 @@ def release_check(since_tag: str | None, force: bool):
     """Run all pre-release checks.
 
     \b
-    Runs 10 verification gates: version-sync, git-clean, git-tag,
-    schema-diff, schema-bump, persistence-check, submodule, generate,
-    lint, and changelog.  Fatal failures block the
+    Runs 11 verification gates: version-sync, git-clean, git-tag,
+    schema-diff, schema-bump, schema-version, persistence-check, submodule,
+    generate, lint, and changelog.  Fatal failures block the
     release unless --force is used.
     """
     from data.lib.release.check import CheckSeverity
@@ -4306,21 +4271,13 @@ def release_changelog_detail(no_edit: bool):
 
 
 @release_changelog.command("stage")
-@click.option(
-    "--commit",
-    "do_commit",
-    is_flag=True,
-    default=False,
-    help="Commit the session after staging (otherwise diff only).",
-)
-def release_changelog_stage(do_commit: bool):
+def release_changelog_stage():
     """Stage version release notes in a remote prepare session.
 
     Reads the generated version documents from assets/content/documents/,
-    creates a remote prepare session, and stages the version entry.
-    Use the --commit flag to finalize; without it, the command shows a diff
-    without committing. Run ``./x remote publish upload`` afterwards to
-    actually upload to the remote server.
+    creates a remote prepare session, and stages the version entry as an
+    announcement.  Use ``./x remote prepare publish --session-id <id>``
+    afterwards to publish to the remote server.
     """
 
     from data.lib.constant import PROJECT_ROOT
@@ -4347,11 +4304,12 @@ def release_changelog_stage(do_commit: bool):
             f"  Run './x release changelog detail' first."
         )
 
-    zh_meta, zh_title, zh_summary = _parse_version_document(zh_path)
-    _en_meta, en_title, en_summary = _parse_version_document(en_path)
+    zh_meta, zh_title, _zh_summary = _parse_version_document(zh_path)
+    _en_meta, _en_title, _en_summary = _parse_version_document(en_path)
     app_ver = zh_meta.get("appVer", semver)
-    tags = zh_meta.get("tags", ["release-note", "version"])
     published_at = zh_meta.get("publishedAt", None)
+    if published_at is None:
+        published_at = __utc_timestamp()
 
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Staging version document: ")
@@ -4360,13 +4318,43 @@ def release_changelog_stage(do_commit: bool):
     click.echo(styled(Style.DIM, f"  zh: {zh_path}"))
     click.echo(styled(Style.DIM, f"  en: {en_path}"))
     click.echo(styled(Style.DIM, f"  appVer: {app_ver}"))
-    click.echo(styled(Style.DIM, f"  tags: {tags}"))
     click.echo("")
 
+    # Build temporary announcement directory ----------------------------------
+    import tempfile
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="efa-stage-"))
+    ann_dir = tmp_dir / "announcements"
+    files_dir = ann_dir / "files"
+    registry_dir = ann_dir / "registry"
+
+    for locale, path in (("en", en_path), ("zh", zh_path)):
+        locale_dir = files_dir / locale
+        locale_dir.mkdir(parents=True)
+        shutil.copy2(str(path), str(locale_dir / doc_id))
+
+    registry_dir.mkdir(parents=True)
+    registry: dict[str, object] = {
+        "id": doc_id,
+        "firstPublishedAt": published_at,
+        "updatedAt": published_at,
+        "isVersionUpdate": True,
+    }
+    (registry_dir / f"{doc_id}.json").write_text(
+        json.dumps(registry, indent=4, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+    # Start session ------------------------------------------------------------
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_resource_root = __validate_remote_resource_root(remote_cfg.resource_root)
+    resolved_resource_root = __validate_remote_resource_root(
+        data.lib.config.CONFIGURATION.data_schema.resource_root
+    )
     resolved_channel = Channel(remote_cfg.channel.value)
+    description = f"Version {semver}: {zh_title}" if zh_title else f"Version {semver}"
+
     resolved_backend, origin_dir, start_kwargs = _resolve_stage_backend(
         remote_cfg=remote_cfg,
         resource_root=resolved_resource_root,
@@ -4375,83 +4363,49 @@ def release_changelog_stage(do_commit: bool):
 
     sessions_root = __get_session_root()
     try:
-        mgr = SessionManager.start(
+        mgr = SessionManager.prepare(
             sessions_root=sessions_root,
             backend=resolved_backend,
-            origin_dir=origin_dir,
+            description=description,
             resource_root=resolved_resource_root,
             channel=resolved_channel,
+            origin_dir=origin_dir,
             **start_kwargs,
         )
     except (OSError, FileNotFoundError) as exc:
         click.echo(styled([Style.BRIGHT, Fore.YELLOW], f"Remote state unavailable: {exc}"))
-        click.echo(styled(Style.DIM, "Falling back to local-only session (no diff available)."))
-        mgr = SessionManager.start(
+        click.echo(styled(Style.DIM, "Falling back to local-only session."))
+        mgr = SessionManager.prepare(
             sessions_root=sessions_root,
             backend="local",
-            origin_dir=None,
-            resource_root=resolved_resource_root,
+            description=description,
             channel=resolved_channel,
         )
         resolved_backend = "local"
-        start_kwargs = {}
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
     click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
     click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
 
+    # Stage announcement -------------------------------------------------------
     try:
-        mgr.add_version(
-            zh_path=zh_path,
-            en_path=en_path,
-            document_id=doc_id,
-            title_zh=zh_title,
-            title_en=en_title,
-            summary_zh=zh_summary,
-            summary_en=en_summary,
-            app_ver=str(app_ver),
-            published_at=published_at or __utc_timestamp(),
-            tags=[str(t) for t in tags],
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-        )
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + doc_id)
+        mgr.add_announcements(source_dir=tmp_dir)
     except Exception as exc:
         mgr.abort()
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         raise click.ClickException(str(exc)) from exc
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
     click.echo("")
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Diff:"))
-    try:
-        diff = mgr.diff(resolved_channel, resolved_resource_root)
-        if isinstance(diff, dict) and diff:
-            for path, change in sorted(diff.items()):
-                if isinstance(change, dict) and change.get("type") == "added":
-                    click.echo(styled([Fore.GREEN], f"  + {path}"))
-                elif isinstance(change, dict) and change.get("type") == "removed":
-                    click.echo(styled([Fore.RED], f"  - {path}"))
-                elif isinstance(change, dict):
-                    click.echo(styled([Fore.YELLOW], f"  ~ {path}"))
-        else:
-            click.echo(styled(Style.DIM, "  (no changes)"))
-    except FileNotFoundError:
-        click.echo(styled(Style.DIM, "  (no remote state available — session is local-only)"))
-
-    if not do_commit:
-        click.echo("")
-        click.echo(
-            styled([Style.BRIGHT, Fore.YELLOW], "Session not committed (use --commit to finalize).")
-        )
-        click.echo(f"  Review and commit:  ./x remote prepare commit --session {mgr.session_id}")
-        click.echo(f"  Upload:             ./x remote publish upload --session {mgr.session_id}")
-        return
-
-    status = mgr.commit(channel=resolved_channel, resource_root=resolved_resource_root)
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version announcement:"))
+    click.echo(styled(Style.DIM, f"  id:      {doc_id}"))
+    click.echo(styled(Style.DIM, f"  title:   {zh_title}"))
+    click.echo(styled(Style.DIM, f"  version: {semver}"))
+    click.echo(styled(Style.DIM, "  locales: en, zh"))
     click.echo("")
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Session committed: ")
-        + f"{mgr.session_id}  ({status.operation_count} operation(s))"
-    )
-    click.echo(f"  Upload:  ./x remote publish upload --session {mgr.session_id}")
+    click.echo(styled([Style.BRIGHT, Fore.YELLOW], "Session staged but not published."))
+    click.echo(f"  Publish:  ./x remote prepare publish --session-id {mgr.session_id}")
+    click.echo(f"  Upload:   ./x remote publish upload --target s3 --session {mgr.session_id}")
 
 
 def _parse_version_document(path: Path) -> tuple[dict[str, object], str, str]:

@@ -93,7 +93,7 @@ class _SlotRow extends ConsumerWidget {
           );
         }
 
-        final type = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
+        final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(displayTypeId)));
         if (type == null) {
           return ListTile(
             title: Text(
@@ -102,7 +102,12 @@ class _SlotRow extends ConsumerWidget {
           );
         }
 
-        final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));
+        final locale = ref.watch(localeProvider).name;
+        final typeName =
+            ref.watch(
+              repoCollectionProvider.select((c) => c?.getLocalizedName(type.typeName.id, locale)),
+            ) ??
+            "";
 
         return _SlotRowDisplay(
           fitContext: fitContext,
@@ -139,11 +144,16 @@ class _SlotRowDisplay extends ConsumerWidget {
 
     if (slotInfo.slot.charge.isSome()) {
       final chargeId = slotInfo.slot.charge.toNullable()!.typeId;
-      final chargeType = ref.watch(bundleCollectionGetTypeProvider(chargeId));
+      final chargeType = ref.watch(repoCollectionProvider.select((c) => c?.getType(chargeId)));
       if (chargeType != null) {
-        final chargeName = ref.watch(
-          localizationProvider(chargeType.typeName.id).select((t) => t ?? ""),
-        );
+        final locale = ref.watch(localeProvider).name;
+        final chargeName =
+            ref.watch(
+              repoCollectionProvider.select(
+                (c) => c?.getLocalizedName(chargeType.typeName.id, locale),
+              ),
+            ) ??
+            "";
         subtitleWidgets.add(
           InkWell(
             onTap: interactionOptions.allowInspect
@@ -186,7 +196,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     final endActions = _buildEndActions(context, ref);
 
     final metaGroupIcon = ref.watch(
-      bundleCollectionGetMetaGroupProvider(itemType.metaGroupId).select((t) => t?.icon),
+      repoCollectionProvider.select((c) => c?.getMetaGroup(itemType.metaGroupId)?.icon),
     );
     final slotIssues = _collectFitIssuesForSlot(context, ref, fitContext, slotIdent);
 
@@ -341,7 +351,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
     if (originTypeId == null) return false;
 
-    final slots = ref.read(bundleCollectionGetSlotsProvider);
+    final slots = ref.read(repoCollectionProvider)?.slots;
     if (slots == null) return false;
     return switch (slotIdent) {
       SlotIdentifierHigh _ => slots.highSlots[originTypeId]?.chargeGroups.isNotEmpty ?? false,
@@ -363,7 +373,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
     if (originTypeId == null) return const [];
 
-    final collection = ref.read(bundleCollectionProvider);
+    final collection = ref.read(repoCollectionProvider);
     return collection?.getDynamicTypeOptions(originTypeId)?.modifierTypeIds.toList() ?? const [];
   }
 
@@ -395,7 +405,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
     if (originTypeId == null) return;
 
-    final slots = ref.read(bundleCollectionGetSlotsProvider);
+    final slots = ref.read(repoCollectionProvider)?.slots;
     if (slots == null) return;
 
     final chargeGroups = switch (slotIdent) {
@@ -426,14 +436,19 @@ class _DynamicModifierDialog extends ConsumerWidget {
       itemCount: modifierTypeIds.length,
       itemBuilder: (context, index) {
         final modifierTypeId = modifierTypeIds[index];
-        final type = ref.watch(bundleCollectionGetTypeProvider(modifierTypeId));
+        final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(modifierTypeId)));
         if (type == null) {
           return ListTile(
             title: Text(context.l10n.fallbackTypeUnavailable(typeId: modifierTypeId)),
           );
         }
 
-        final typeName = ref.watch(localizationProvider(type.typeName.id).select((t) => t ?? ""));
+        final locale = ref.watch(localeProvider).name;
+        final typeName =
+            ref.watch(
+              repoCollectionProvider.select((c) => c?.getLocalizedName(type.typeName.id, locale)),
+            ) ??
+            "";
 
         return ListTile(
           onTap: () => Navigator.of(context).pop(modifierTypeId),

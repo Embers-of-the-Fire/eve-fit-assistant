@@ -17,6 +17,28 @@ class PathProvider {
   static String get logsPath => p.join(documentsPath, "logs");
   static String get cacheResourcesPath => p.join(cachesPath, "resources");
 
+  // ── Schema storage root ─────────────────────────────────────────────────────────
+
+  static String get schemaResourcesPath => p.join(resourcesPath, "v2");
+
+  static String get schemaAssetsPath => p.join(schemaResourcesPath, "assets");
+
+  static String get schemaMetadataPath => p.join(schemaResourcesPath, "metadata");
+
+  static String get schemaCheckoutsPath => p.join(schemaMetadataPath, "checkouts");
+
+  static String get schemaBranchesPath => p.join(schemaResourcesPath, "branches");
+
+  // ── Schema runtime data root ─────────────────────────────────────────────────────
+
+  static String get runtimeDataPath => p.join(documentsPath, "runtime", "v2", "data");
+
+  static String get runtimeFittingsPath => p.join(runtimeDataPath, "fittings");
+
+  static String get runtimeCharactersPath => p.join(runtimeDataPath, "characters");
+
+  static String get runtimeAnnouncementsPath => p.join(runtimeDataPath, "announcements");
+
   static Future<void> init() async {
     documentsPath = (await getApplicationDocumentsDirectory()).path;
     tempPath = (await getTemporaryDirectory()).path;

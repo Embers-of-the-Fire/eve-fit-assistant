@@ -68,6 +68,17 @@ def _log_download_retry(retry_state: tenacity.RetryCallState) -> None:
     )
 
 
+_download_locks: dict[str, asyncio.Lock] = {}
+
+
+def _get_download_lock(url: str) -> asyncio.Lock:
+    lock = _download_locks.get(url)
+    if lock is None:
+        lock = asyncio.Lock()
+        _download_locks[url] = lock
+    return lock
+
+
 @dataclass(kw_only=True)
 class _ResourceNode:
     full_path: str
@@ -132,18 +143,21 @@ class _ResourceNode:
             raise ValueError(f"Cannot download a node without URL: {self.full_path}")
         if not self.local_path:
             raise ValueError(f"Cannot download a node without local path: {self.full_path}")
-        if self.local_path.exists():
-            return
 
-        debug(f"Downloading resource: {self.url} -> {self.local_path}")
-        session = await self.session_factory()
-        async with session.get(self.url) as response:
-            response.raise_for_status()
-            content = await response.read()
-        if not self.local_path.parent.exists():
-            self.local_path.parent.mkdir(parents=True, exist_ok=True)
-        async with aiofiles.open(self.local_path, "wb") as f:
-            await f.write(content)
+        lock = _get_download_lock(self.url)
+        async with lock:
+            if self.local_path.exists():
+                return
+
+            debug(f"Downloading resource: {self.url} -> {self.local_path}")
+            session = await self.session_factory()
+            async with session.get(self.url) as response:
+                response.raise_for_status()
+                content = await response.read()
+            if not self.local_path.parent.exists():
+                self.local_path.parent.mkdir(parents=True, exist_ok=True)
+            async with aiofiles.open(self.local_path, "wb") as f:
+                await f.write(content)
 
     def download_blocking(self):
         asyncio.get_event_loop().run_until_complete(self.download())

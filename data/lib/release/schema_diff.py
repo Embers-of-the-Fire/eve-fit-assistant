@@ -8,6 +8,7 @@ from __future__ import annotations
 import enum
 import re
 import subprocess
+import tomllib
 
 from dataclasses import dataclass
 from dataclasses import field
@@ -32,17 +33,6 @@ class DiffEntry:
 
 
 @dataclass
-class BumpVerification:
-    """Result of verifying whether a schema version bump is needed."""
-
-    proto_changed: bool = False
-    current_bumped: bool = False
-    old_current: int | None = None
-    new_current: int | None = None
-    message: str = ""
-
-
-@dataclass
 class PersistenceVerification:
     fit_version_changed: bool = False
     fit_old_version: int | None = None
@@ -51,12 +41,25 @@ class PersistenceVerification:
 
 
 @dataclass
+class RepoVersionVerification:
+    """Result of verifying whether the v2 repo schema_version was bumped."""
+
+    repo_file_changed: bool = False
+    schema_version_bumped: bool = False
+    old_schema_version: int | None = None
+    new_schema_version: int | None = None
+    message: str = ""
+
+
+@dataclass
 class SchemaDiffReport:
     since_tag: str
     entries: list[DiffEntry] = field(default_factory=list)
-    bump_verification: BumpVerification = field(default_factory=BumpVerification)
     persistence_verification: PersistenceVerification = field(
         default_factory=PersistenceVerification
+    )
+    repo_version_verification: RepoVersionVerification = field(
+        default_factory=RepoVersionVerification
     )
 
     @property
@@ -80,7 +83,7 @@ _CATEGORIES: list[tuple[str, DiffSeverity, str]] = [
     (
         r"^data/schema/.*\.proto$",
         DiffSeverity.BREAKING,
-        "bundle_schema.current must be bumped in efa.config.toml",
+        "protobuf schema changed — verify client compatibility",
     ),
     (
         r"^lib/storage/fit/persistence\.dart$",
@@ -98,14 +101,44 @@ _CATEGORIES: list[tuple[str, DiffSeverity, str]] = [
         "character persistence version changed — verify migration code",
     ),
     (
-        r"^lib/storage/bundle/schema_version\.dart$",
-        DiffSeverity.BREAKING,
-        "generated schema constant changed — must match efa.config.toml",
-    ),
-    (
         r"^lib/features/remote_content/endpoint\.dart$",
         DiffSeverity.BREAKING,
-        "remote API version changed — verify client/server compatibility",
+        "REMOTE_API: remote API version changed — verify client/server compatibility",
+    ),
+    (
+        r"^lib/storage/repo/repo_version\.dart$",
+        DiffSeverity.BREAKING,
+        "generated repo schema constant changed — must match efa.config.toml [version]",
+    ),
+    (
+        r"^lib/storage/repo/schema_version\.dart$",
+        DiffSeverity.BREAKING,
+        "repo schema version service changed — verify schema_version in efa.config.toml",
+    ),
+    (
+        r"^lib/storage/repo/models/",
+        DiffSeverity.BREAKING,
+        "DART_MODEL: repo schema model changed — breaking change requiring version bump",
+    ),
+    (
+        r"^lib/storage/repo/paths\.dart$",
+        DiffSeverity.BREAKING,
+        "repo path resolution changed — verify schema compatibility",
+    ),
+    (
+        r"^lib/storage/repo/providers\.dart$",
+        DiffSeverity.BREAKING,
+        "repo state providers changed — verify initialization flow compatibility",
+    ),
+    (
+        r"^lib/storage/repo/migration/",
+        DiffSeverity.INFO,
+        "migration code changed — informational (no bump required)",
+    ),
+    (
+        r"^lib/features/schema_guard/",
+        DiffSeverity.BREAKING,
+        "startup schema guard changed — verify migration compatibility and schema version",
     ),
     (
         r"^rust/lib/eve-fit-os$",
@@ -120,7 +153,7 @@ _CATEGORIES: list[tuple[str, DiffSeverity, str]] = [
     (
         r"^efa\.config\.toml$",
         DiffSeverity.COMPATIBLE,
-        "project config changed — verify version sync and bundle_schema",
+        "project config changed — verify version sync",
     ),
     (
         r"^l10n/.*\.arb$",
@@ -189,41 +222,6 @@ def _parse_dart_const_int(content: str, name: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def _verify_bundle_schema_bump(since_tag: str) -> BumpVerification:
-    """Check if bundle_schema.current was bumped when protos changed."""
-    old_config = _get_file_at_tag(since_tag, "efa.config.toml")
-    old_current = None
-    if old_config is not None:
-        old_current = _parse_toml_int(old_config, "current", "bundle_schema")
-
-    ProjectConfiguration.ensure_loaded()
-    new_current = data.lib.config.CONFIGURATION.bundle_schema.current
-
-    result = BumpVerification(
-        proto_changed=False,
-        current_bumped=False,
-        old_current=old_current,
-        new_current=new_current,
-    )
-
-    if old_current is None:
-        result.message = (
-            f"Could not determine previous bundle_schema.current from tag {since_tag} "
-            f"(current = {new_current})"
-        )
-        return result
-
-    result.current_bumped = new_current > old_current
-    if new_current > old_current:
-        result.message = f"bundle_schema.current bumped: {old_current} -> {new_current}"
-    else:
-        result.message = (
-            f"bundle_schema.current has NOT been bumped (was {old_current}, still {new_current})"
-        )
-
-    return result
-
-
 def _verify_persistence_versions(since_tag: str) -> PersistenceVerification:
     """Check if fit persistence version changed."""
     result = PersistenceVerification()
@@ -261,6 +259,48 @@ def _verify_persistence_versions(since_tag: str) -> PersistenceVerification:
     return result
 
 
+def _verify_repo_schema_version(since_tag: str) -> RepoVersionVerification:
+    """Check if [version].data_schema was bumped when v2 repo files changed."""
+    old_config = _get_file_at_tag(since_tag, "efa.config.toml")
+    old_schema_version = None
+    if old_config is not None:
+        try:
+            old_parsed = tomllib.loads(old_config)
+            old_schema_version = old_parsed.get("version", {}).get("data_schema")
+        except Exception:
+            pass
+
+    ProjectConfiguration.ensure_loaded()
+    new_schema_version = data.lib.config.CONFIGURATION.version.data_schema
+
+    result = RepoVersionVerification(
+        repo_file_changed=False,
+        schema_version_bumped=False,
+        old_schema_version=old_schema_version,
+        new_schema_version=new_schema_version,
+    )
+
+    if old_schema_version is None:
+        result.message = (
+            f"Could not determine previous [version].data_schema from tag {since_tag} "
+            f"(current = {new_schema_version})"
+        )
+        return result
+
+    if new_schema_version > old_schema_version:
+        result.schema_version_bumped = True
+        result.message = (
+            f"[version].data_schema bumped: {old_schema_version} -> {new_schema_version}"
+        )
+    else:
+        result.message = (
+            f"[version].data_schema has NOT been bumped "
+            f"(was {old_schema_version}, still {new_schema_version})"
+        )
+
+    return result
+
+
 def run_schema_diff(since_tag: str) -> SchemaDiffReport:
     """Run a schema impact analysis since the given tag."""
 
@@ -280,17 +320,19 @@ def run_schema_diff(since_tag: str) -> SchemaDiffReport:
 
     report = SchemaDiffReport(since_tag=since_tag)
 
-    has_proto_change = False
+    has_repo_model_change = False
     for path in changed_paths:
         severity, action = _categorize_path(path)
         report.entries.append(DiffEntry(path=path, severity=severity, action=action))
-        if re.search(r"^data/schema/.*\.proto$", path):
-            has_proto_change = True
+        if re.search(r"^lib/storage/repo/", path) and severity == DiffSeverity.BREAKING:
+            has_repo_model_change = True
+        if re.search(r"^lib/features/schema_guard/", path):
+            has_repo_model_change = True
 
-    # Only verify bump if protos actually changed
-    if has_proto_change:
-        report.bump_verification = _verify_bundle_schema_bump(since_tag)
-        report.bump_verification.proto_changed = True
+    # Only verify v2 schema version bump if repo files changed
+    if has_repo_model_change:
+        report.repo_version_verification = _verify_repo_schema_version(since_tag)
+        report.repo_version_verification.repo_file_changed = True
 
     # Check persistence regardless — it handles its own diff detection
     report.persistence_verification = _verify_persistence_versions(since_tag)

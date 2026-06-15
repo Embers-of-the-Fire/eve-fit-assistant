@@ -1,12 +1,8 @@
 import "dart:convert";
-import "dart:io";
 
 import "package:archive/archive.dart";
-import "package:eve_fit_assistant/data/proto/localizations.pb.dart" as pb_l10n;
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
-import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
-import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 enum FitTextExportFormat { native, eft }
@@ -138,38 +134,20 @@ class FitTextExporter {
 }
 
 class _FitTextNameResolver {
-  const _FitTextNameResolver({required this.ref, required this.englishLocalization});
+  const _FitTextNameResolver({required this.ref});
 
   final WidgetRef ref;
-  final pb_l10n.Localization? englishLocalization;
 
-  static Future<_FitTextNameResolver> load(WidgetRef ref) async {
-    final path = ref.read(localizationPathProvider("en"));
-    if (path == null) {
-      return _FitTextNameResolver(ref: ref, englishLocalization: null);
-    }
-
-    final file = File(path);
-    if (!file.existsSync()) {
-      return _FitTextNameResolver(ref: ref, englishLocalization: null);
-    }
-
-    final bytes = await file.readAsBytes();
-    return _FitTextNameResolver(
-      ref: ref,
-      englishLocalization: pb_l10n.Localization.fromBuffer(bytes),
-    );
-  }
+  static Future<_FitTextNameResolver> load(WidgetRef ref) async => _FitTextNameResolver(ref: ref);
 
   String typeName(int typeId) {
-    final type = ref.read(bundleCollectionGetTypeProvider(typeId));
+    final type = ref.read(repoCollectionProvider)?.getType(typeId);
     if (type == null) {
       return "Unknown Type[$typeId]";
     }
 
     final localizationKey = type.typeName.id;
-    return englishLocalization?.localizedStrings[localizationKey] ??
-        ref.read(localizationProvider(localizationKey)) ??
+    return ref.read(repoCollectionProvider)?.getLocalizedName(localizationKey, "en") ??
         "Unknown Type[$typeId]";
   }
 }

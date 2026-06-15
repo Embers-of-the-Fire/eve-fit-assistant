@@ -1,75 +1,17 @@
-"""Fetch remote state from S3-compatible storage or HTTP origin."""
+"""Fetch remote state from S3-compatible storage or local origin."""
 
 from __future__ import annotations
 
-import datetime
 import json
 import subprocess
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from data.lib.remote.channel import Channel
-
-
-def _channel_subdir(channel: Channel) -> str:
-    return f"channels/{channel.value}"
-
-
-def _remote_state_output_paths(output_dir: Path, channel: Channel) -> dict[str, Path]:
-    ch = _channel_subdir(channel)
-    return {
-        "index": output_dir / ch / "index.json",
-        "documents_catalog": output_dir / ch / "documents" / "catalog.json",
-        "bundles_catalog": output_dir / ch / "bundles" / "catalog.json",
-    }
-
-
-def _write_empty_remote_state(output_dir: Path, channel: Channel) -> None:
-    """Create empty initial remote state files for a blank bucket."""
-    ch = _channel_subdir(channel)
-    timestamp = datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat()
-    index = {
-        "schemaVersion": 1,
-        "generatedAt": timestamp,
-        "minClientApi": 1,
-        "channel": channel.value,
-        "region": "global",
-        "documents": {
-            "catalogPath": f"{ch}/documents/catalog.json",
-            "revision": "empty",
-        },
-        "bundles": {
-            "catalogPath": f"{ch}/bundles/catalog.json",
-            "revision": "empty",
-        },
-        "app": {
-            "releasesPath": f"{ch}/app/releases.json",
-            "revision": "empty",
-        },
-    }
-    documents_catalog = {
-        "schemaVersion": 1,
-        "version": 1,
-        "entries": [],
-    }
-    bundles_catalog = {
-        "schemaVersion": 1,
-        "artifacts": [],
-    }
-
-    def _write(path: Path, data: dict[str, object]) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(data, indent=4, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-
-    _write(output_dir / ch / "index.json", index)
-    _write(output_dir / ch / "documents" / "catalog.json", documents_catalog)
-    _write(output_dir / ch / "bundles" / "catalog.json", bundles_catalog)
 
 
 def fetch_remote_state_s3(
@@ -84,11 +26,12 @@ def fetch_remote_state_s3(
     channel: Channel,
     output_dir: Path,
 ) -> None:
-    """Download channel catalogs + index from S3-compatible storage via ``mc``."""
+    """Download efa/v2/<channel>/ manifest tree from S3 via ``mc``."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     bucket_target = f"{alias_name}/{bucket}"
-    channel_prefix = f"{resource_root}/{_channel_subdir(channel)}"
+    normalized_root = resource_root.rstrip("/")
+    channel_prefix = f"{normalized_root}/{channel.value}"
     channel_target = f"{bucket_target}/{channel_prefix}"
 
     redacted = "<redacted>"
@@ -105,14 +48,14 @@ def fetch_remote_state_s3(
                 "cp",
                 "--recursive",
                 channel_target + "/",
-                str(output_dir / _channel_subdir(channel)) + "/",
+                str(output_dir / channel.value) + "/",
             ],
             [
                 mc_bin,
                 "cp",
                 "--recursive",
                 channel_target + "/",
-                str(output_dir / _channel_subdir(channel)) + "/",
+                str(output_dir / channel.value) + "/",
             ],
             "FETCH REMOTE STATE",
         )
@@ -134,131 +77,38 @@ def fetch_remote_state_local(
     """Copy remote state from a local origin directory."""
     import shutil
 
-    src_channel_dir = origin_dir / resource_root / _channel_subdir(channel)
+    src_channel_dir = origin_dir / resource_root / channel.value
     if not src_channel_dir.exists():
         raise FileNotFoundError(f"Local origin channel dir does not exist: {src_channel_dir}")
 
-    dst_channel_dir = output_dir / _channel_subdir(channel)
+    dst_channel_dir = output_dir / channel.value
     dst_channel_dir.mkdir(parents=True, exist_ok=True)
     shutil.copytree(src_channel_dir, dst_channel_dir, dirs_exist_ok=True)
 
 
-def fetch_remote_state_http(
-    *,
-    origin_url: str,
-    resource_root: str,
-    channel: Channel,
-    output_dir: Path,
-) -> None:
-    """Download channel catalogs + index over HTTP."""
-    from urllib.error import URLError
-    from urllib.parse import urlparse
-    from urllib.request import urlopen
+def _write_empty_remote_state(output_dir: Path, channel: Channel) -> None:
+    """Create minimal empty remote state for a blank bucket."""
+    ch_dir = output_dir / channel.value
+    manifest_dir = ch_dir / "manifest"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
 
-    scheme = urlparse(origin_url).scheme
-    if scheme not in ("http", "https"):
-        raise ValueError(f"origin_url scheme must be http or https, got {scheme!r}")
+    index = {"manifestVersion": 1, "activatedGeneration": ""}
+    generations: dict[str, object] = {}
 
-    ch_prefix = f"{origin_url.rstrip('/')}/{resource_root}/{_channel_subdir(channel)}"
-    paths = _remote_state_output_paths(output_dir, channel)
+    def _write(path: Path, data: dict[str, object]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(data, indent=4, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
 
-    def _fetch(local: Path, label: str) -> None:
-        remote_path = f"{ch_prefix}/{local.relative_to(output_dir)}"
-        try:
-            with urlopen(remote_path, timeout=300) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except (URLError, ValueError) as exc:
-            raise OSError(f"Failed to fetch {label} from {remote_path}: {exc}") from exc
-        local.parent.mkdir(parents=True, exist_ok=True)
-        local.write_text(json.dumps(data, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    # Download index first — it may reference generation-scoped catalogs.
-    _fetch(paths["index"], "index")
-    index = _json_loads_dict(paths["index"].read_text(encoding="utf-8"), "index")
-
-    for section, legacy_path, label in [
-        ("documents", paths["documents_catalog"], "documents_catalog"),
-        ("bundles", paths["bundles_catalog"], "bundles_catalog"),
-    ]:
-        resolved, _from_index = _resolve_catalog_local_path(output_dir, index, section, legacy_path)
-        # Always download the legacy path so consumers that don't read the
-        # index still work.
-        _fetch(legacy_path, label)
-        # Also download the generation-scoped catalog if the index references
-        # a different path.
-        if resolved != legacy_path:
-            _fetch(resolved, f"{label} (generation-scoped)")
+    _write(manifest_dir / "index.json", index)
+    _write(manifest_dir / "generations.json", generations)
 
 
-def read_local_remote_state(
-    remote_state_dir: Path,
-    channel: Channel,
-) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
-    """Read previously-fetched remote state from a local directory.
-
-    Returns (index, documents_catalog, bundles_catalog) as dicts.
-    """
-    paths = _remote_state_output_paths(remote_state_dir, channel)
-    if not paths["index"].is_file():
-        raise FileNotFoundError(f"Remote index file not found in {remote_state_dir}")
-
-    index = _json_loads_dict(paths["index"].read_text(encoding="utf-8"), "index")
-
-    docs_catalog_path, docs_from_index = _resolve_catalog_local_path(
-        remote_state_dir, index, "documents", paths["documents_catalog"]
-    )
-    bundles_catalog_path, bundles_from_index = _resolve_catalog_local_path(
-        remote_state_dir, index, "bundles", paths["bundles_catalog"]
-    )
-
-    def _read_catalog(path: Path, from_index: bool, label: str) -> dict[str, object]:
-        if path.is_file():
-            return _json_loads_dict(path.read_text(encoding="utf-8"), label)
-        if from_index:
-            raise FileNotFoundError(
-                f"Index-referenced {label} not found: {path}."
-                f" The remote state may be incomplete; re-fetch and try again."
-            )
-        return {}
-
-    docs = _read_catalog(docs_catalog_path, docs_from_index, "documents_catalog")
-    bundles = _read_catalog(bundles_catalog_path, bundles_from_index, "bundles_catalog")
-    return index, docs, bundles
-
-
-def _validate_catalog_path(catalog_path: str) -> None:
-    """Reject remote catalogPath values that could escape the base directory."""
-    p = Path(catalog_path)
-    if p.is_absolute():
-        raise ValueError(f"catalogPath must be relative, got {catalog_path!r}")
-    if ".." in p.parts:
-        raise ValueError(f"catalogPath must not contain '..' components, got {catalog_path!r}")
-
-
-def _resolve_catalog_local_path(
-    base_dir: Path, index: dict[str, object], section: str, fallback: Path
-) -> tuple[Path, bool]:
-    """Resolve the local path for a catalog file from index.json's catalogPath.
-
-    Returns ``(path, is_from_index)`` — *is_from_index* is True when the
-    resolved path came from the index's ``catalogPath`` field rather than
-    the legacy fallback.
-    """
-    sec = index.get(section, {})
-    if isinstance(sec, dict):
-        catalog_path = sec.get("catalogPath")
-        if isinstance(catalog_path, str):
-            _validate_catalog_path(catalog_path)
-            resolved = (base_dir / catalog_path).resolve()
-            try:
-                resolved.relative_to(base_dir.resolve())
-            except ValueError:
-                raise ValueError(
-                    f"catalogPath resolves outside base_dir:"
-                    f" base_dir={base_dir}, catalogPath={catalog_path!r}"
-                ) from None
-            return resolved, True
-    return fallback, False
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
 
 def _json_loads_dict(text: str, label: str) -> dict[str, object]:

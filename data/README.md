@@ -57,11 +57,9 @@ see [`collections.proto`](./schema/collections.proto) for details.
 And, the localizations are stored in separate protobuf messages per language,
 see [`localizations.proto`](./schema/localizations.proto) for details.
 
-The converted output shall be a zip archive containing:
+The converted output shall contain:
 ```text
 - /
-  - descriptor.json             # metadata about the generation
-  - manifest.json               # snapshot manifest for strict patch compatibility
   - static/
     - native/                   # native data, used by eve-fit-os
       - *.pb2                   # native static data collection
@@ -75,10 +73,10 @@ The converted output shall be a zip archive containing:
         - <graphic_id>_bpc.png  # high quality image file
   - localization/
     - localization_<lang>.pb2   # for each supported language
+  - schema/
+    - checkouts/<hash>.json     # V2 checkout catalog
+    - assets/                   # content-addressed asset store
 ```
-
-Incremental patch bundles reuse the same root layout for changed files,
-and also include `deleted_files.json` so the app can remove files that no longer exist in the target snapshot.
 
 ## Generate Routine
 
@@ -99,5 +97,5 @@ The data generation process contains the following steps:
 5. **Image Extraction**:  
    Extract the icon and graphic images from the extracted FSD files and/or the resource files.  
    Save them into the output directory.
-6. **Packaging**:  
-   Save all generated files into a zip archive.
+6. **Schema Checkout Generation**:  
+   Generate the V2 content-addressed checkout catalog and asset store.

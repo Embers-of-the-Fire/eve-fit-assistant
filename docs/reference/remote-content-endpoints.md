@@ -81,20 +81,7 @@ https://updates.example.com/efa/v1/channels/testing/index.json
 
 ## Canonical Object Layout
 
-The canonical v1 object layout is:
-
-```text
-efa/v1/channels/<channel>/index.json
-efa/v1/channels/<channel>/documents/catalog.json
-efa/v1/channels/<channel>/app/releases.json
-efa/v1/channels/<channel>/bundles/catalog.json
-efa/v1/documents/body/<locale>/<document-id>.md
-efa/v1/bundles/<bundle-id>/<artifact-id>.zip
-efa/v1/bundles/<bundle-id>/<artifact-id>.manifest.json
-```
-
-Channel-scoped JSON files are mutable metadata. Document body objects and bundle objects should be
-treated as immutable when their object names include revisioned document ids or artifact ids.
+The canonical object layout follows the V2 schema specification (`efa/v2/`).
 
 ## Channel Semantics
 
@@ -363,29 +350,8 @@ Example:
       "artifactPath": "bundles/tranquility/data-tranquility-1234567.zip",
       "artifactSize": 123456789,
       "artifactSha256": "zip-sha256",
-      "manifestPath": "bundles/tranquility/data-tranquility-1234567.manifest.json",
-      "manifestHash": "manifest-json-sha256",
       "baseBundleId": null,
       "baseManifestHash": null
-    },
-    {
-      "artifactId": "data-tranquility-1234568-inc",
-      "bundleId": "tranquility",
-      "variant": "incremental",
-      "appVersion": "0.0.1+1",
-      "gameVersion": "2026.05",
-      "gameBuild": "1234568",
-      "gameRegion": "global",
-      "gameBranch": "release",
-      "gameServer": "tranquility",
-      "generatedAt": "2026-05-21T00:00:00Z",
-      "artifactPath": "bundles/tranquility/data-tranquility-1234568-inc.zip",
-      "artifactSize": 123456,
-      "artifactSha256": "zip-sha256",
-      "manifestPath": "bundles/tranquility/data-tranquility-1234568.manifest.json",
-      "manifestHash": "new-manifest-json-sha256",
-      "baseBundleId": "tranquility",
-      "baseManifestHash": "required-installed-manifest-hash"
     }
   ]
 }
@@ -396,10 +362,9 @@ Field semantics:
 - `schemaVersion`: JSON schema version for this payload.
 - `artifacts`: available bundle artifacts.
 - `artifactId`: stable, auto-generated artifact id in the form
-  `data-{gameServer}-{gameBuild}` (full) or `data-{gameServer}-{gameBuild}-inc` (incremental).
-  Can be overridden during preparation with `--artifact-id`.
+  `data-{gameServer}-{gameBuild}`.
 - `bundleId`: bundle identity installed by the app.
-- `variant`: artifact variant. Supported values are `full` and `incremental`.
+- `variant`: artifact variant. Supported value is `full` (legacy format).
 - `appVersion`: app version that generated or supports the artifact.
 - `gameVersion`: EVE game version represented by the bundle.
 - `gameBuild`: EVE game build represented by the bundle.
@@ -410,14 +375,11 @@ Field semantics:
 - `artifactPath`: relative path to the bundle archive.
 - `artifactSize`: bundle archive byte size.
 - `artifactSha256`: bundle archive SHA-256 digest.
-- `manifestPath`: relative path to the bundle manifest snapshot.
-- `manifestHash`: SHA-256 digest of the bundle manifest snapshot.
-- `baseBundleId`: bundle id that must already be installed before applying an incremental artifact.
-- `baseManifestHash`: required installed manifest hash for incremental artifacts.
+- `baseBundleId`: bundle id that must already be installed before applying a legacy incremental artifact.
+- `baseManifestHash`: required installed manifest hash for legacy incremental artifacts.
 
-Bundle download and import behavior is outside this contract, but `artifactSize` and
-`artifactSha256` are part of the v1 metadata contract so downloaded archives can be verified before
-import.
+This is a legacy bundle catalog format. New data distribution uses the V2 schema
+with content-addressed checkout catalogs.
 
 Client behavior used by EVE Fit Assistant:
 
@@ -564,16 +526,16 @@ mc cp <alias>/<bucket>/efa/v1/channels/<channel>/.generations/<prev_gen>/index.j
 Recommended cache policy:
 
 ```text
-efa/v1/channels/<channel>/index.json
+efa/v2/channels/<channel>/index.json
   Cache-Control: no-cache or max-age=30
 
-efa/v1/channels/<channel>/.generations/<gen>/**/*.json
+efa/v2/channels/<channel>/.generations/<gen>/**/*.json
   Cache-Control: max-age=60..300
 
-efa/v1/documents/body/**
+efa/v2/announcements/**
   Cache-Control: immutable, max-age=31536000 when ids are revisioned
 
-efa/v1/bundles/**
+efa/v2/resources/**
   Cache-Control: immutable, max-age=31536000
 ```
 
@@ -629,14 +591,363 @@ The MinIO object store persists under the configured developer data directory. W
 configuration this is `cache/remote/minio-data/`. Change `[paths].root` or
 `[remote].minio_data_dir` in `efa.dev.toml` to move that persistent store.
 
-## Compatibility And Evolution
+## V2 Storage Contract
 
-Additive fields may be introduced while keeping `schemaVersion: 1` when old clients can safely
-ignore them. Breaking changes require a new resource root, for example:
+Schema V2 introduces a fundamentally different remote storage model: **content-addressed checkouts**
+and **generation-based atomic publishing** at `efa/v2/<channel>/`. This section documents the v2
+contract.
+
+The v2 storage contract covers:
+
+- Content-addressed asset storage and checkout (data snapshot) catalogs.
+- Generation-based atomic publishing under `manifest/`.
+- App release metadata with per-platform content-addressed APKs.
+- Announcement catalogs with XOR-hashed content verification.
+
+### Resource Root
 
 ```text
 efa/v2/
 ```
 
-Existing v1 clients continue to read `efa/v1/` objects and should not be redirected to a newer
-resource root without an explicit client update.
+`v2` is a different resource root from v1. Breaking changes to object layout, JSON semantics,
+or required fields use a new resource root. Existing v1 clients continue to read `efa/v1/`
+objects and are not redirected without an explicit client update.
+
+### Canonical Object Layout
+
+```text
+efa/v2/<channel>/
+  manifest/
+    index.json                          # Activated generation pointer.
+    generations.json                    # Append-only generation index.
+    .generations/<gen_id>/
+      catalog.json                      # Generation catalog (id, createdAt, description).
+      resources/
+        catalog.json                    # Server ID listing.
+        servers/<server_id>.json        # Server catalog.
+        checkouts/<checkout_hash>.json  # Checkout catalog (full file manifest).
+      releases/
+        catalog.json                    # Release catalog (version, offering, downloadHash).
+      announcements/
+        catalog.json                    # Announcement catalog (hash, versions, isVersionUpdate).
+    checkouts/
+      <2c>/<hash>.json                  # Flat content-addressed checkout registry.
+  resources/
+    releases/
+      <2c>/<hash>                       # Content-addressed APK binaries.
+    assets/
+      <2c pathHash>/<pathHash>/<contentHash>  # Content-addressed data files.
+  announcements/
+    files/<locale>/<id>                 # Markdown announcement bodies.
+    registry/<id>.json                  # Full announcement records (title, excerpt, tags).
+```
+
+### Manifest Index
+
+Located at `manifest/index.json`. The sole mutable pointer in the tree — changing it is an
+atomic publish:
+
+```json
+{
+  "manifestVersion": 1,
+  "activatedGeneration": "<generation uuid>"
+}
+```
+
+Field semantics:
+
+- `manifestVersion`: JSON schema version for this payload.
+- `activatedGeneration`: ID of the active generation. Changing this atomically commits
+  a new publish. The previous generation remains intact under `.generations/<prev_gen>/`.
+
+### Generations Index
+
+Located at `manifest/generations.json`. Append-only history of all published generations:
+
+```json
+{
+  "generations": {
+    "<gen_id>": {
+      "id": "<gen_id>",
+      "createdAt": "2026-06-13T00:00:00Z",
+      "description": "Generation description."
+    }
+  }
+}
+```
+
+### Generation Catalog
+
+Each generation has a `catalog.json` in `.generations/<gen_id>/`:
+
+```json
+{
+  "catalogVersion": 1,
+  "createdAt": "2026-06-13T00:00:00Z",
+  "description": "Catalog description."
+}
+```
+
+### Server Catalog and Resources
+
+**Resources catalog** (`resources/catalog.json`) — server listing:
+
+```json
+{
+  "resourcesVersion": 1,
+  "servers": {
+    "<server_id>": "<server_id>"
+  }
+}
+```
+
+**Server catalog** (`resources/servers/<server_id>.json`) — server metadata and checkout list:
+
+```json
+{
+  "id": "<server_id>",
+  "lastUpdatedAt": "2026-06-13T00:00:00Z",
+  "name": { "en": "Server Name", "zh": "服务器名称" },
+  "metadata": {
+    "gameServer": "<game server>",
+    "gameBuild": "<game build>",
+    "gameVersion": "<game version>"
+  },
+  "checkouts": [
+    {
+      "id": "<checkout hash>",
+      "createdAt": "2026-06-13T00:00:00Z",
+      "metadata": { "gameServer": "...", "gameBuild": "...", "gameVersion": "..." }
+    }
+  ]
+}
+```
+
+**Checkout catalog** (`resources/checkouts/<checkout_hash>.json` and
+`manifest/checkouts/<2c>/<hash>.json`) — full file manifest:
+
+```json
+{
+  "id": "<checkout hash>",
+  "createdAt": "2026-06-13T00:00:00Z",
+  "serverId": "<server_id>",
+  "metadata": { "gameServer": "...", "gameBuild": "...", "gameVersion": "..." },
+  "files": {
+    "<relative file path>": {
+      "pathHash": "<filepath hash>",
+      "hash": "<content hash>",
+      "size": 0
+    }
+  }
+}
+```
+
+The checkout hash is recomputed by the client to verify integrity:
+
+```
+checkoutId = SHA-256(
+    "efa:checkout:v2\n" +
+    "count:" + str(len(files)) + "\n" +
+    for path in sorted(files.keys):
+        "\t" + path + "\t" + content_hash + "\n"
+)
+```
+
+The flat checkout registry at `manifest/checkouts/<2c>/<hash>.json` mirrors
+the generation-scoped catalog so clients can resolve arbitrary checkout hashes
+without knowing the generation.
+
+### Release Catalog
+
+Located at `.generations/<gen_id>/releases/catalog.json`:
+
+```json
+{
+  "releasesVersion": 1,
+  "releases": {
+    "<release id>": {
+      "id": "<release id>",
+      "createdAt": "2026-06-13T00:00:00Z",
+      "version": "<semantic version>",
+      "offering": ["apk"],
+      "downloadHash": "<apk content hash>"
+    }
+  }
+}
+```
+
+Field semantics:
+
+- `releasesVersion`: JSON schema version for this payload.
+- `releases`: map of release entries keyed by release ID.
+- `id`: stable release identifier.
+- `createdAt`: UTC release timestamp (ISO 8601, second precision).
+- `version`: semantic version string visible to the user.
+- `offering`: available artifact types (currently `["apk"]`).
+- `downloadHash`: content hash resolving to `resources/releases/<2c>/<hash>`.
+
+### Release Item Record
+
+Individual release records stored content-addressed at
+`resources/releases/<2c>/<downloadHash>`:
+
+```json
+{
+  "id": "<release id>",
+  "createdAt": "2026-06-13T00:00:00Z",
+  "version": "0.2.0",
+  "versionUpdateAnnouncement": "<announcement id>",
+  "files": {
+    "apk": {
+      "arm64": "<content hash>",
+      "x86_64": "<content hash>",
+      "combined": "<content hash>"
+    }
+  }
+}
+```
+
+The `files` field is a nested map: offering name → (platform/ABI key → content hash).
+Platform keys include `arm64`, `x86_64`, `arm32`, and `combined` (universal APK).
+
+### Announcement Catalog
+
+Located at `.generations/<gen_id>/announcements/catalog.json`:
+
+```json
+{
+  "announcementsVersion": 1,
+  "announcements": {
+    "<announcement id>": {
+      "id": "<announcement id>",
+      "firstPublishedAt": "2026-06-13T00:00:00Z",
+      "updatedAt": "2026-06-13T00:00:00Z",
+      "versionRange": { "min": "0.1.0", "max": "0.2.0" },
+      "contentHash": "<XOR composite hash of all locale bodies>",
+      "isVersionUpdate": false
+    }
+  }
+}
+```
+
+The catalog contains only the fields needed for update detection. Full localized
+title, excerpt, and tags are stored in individual announcement record files at
+`announcements/registry/<id>.json`. Markdown bodies live at
+`announcements/files/<locale>/<id>`.
+
+The `contentHash` is an XOR composite of all locale body hashes (see the
+[schema specification](../../../../agent/schemav2/spec.md) § Content Hash).
+
+### Publishing Rules
+
+Each publish produces a **generation** — a self-contained snapshot written to
+`manifest/.generations/<gen_id>/`. The `manifest/index.json` S3 PUT is atomic,
+making the entire publish an atomic commit.
+
+Recommended publishing order:
+
+1. Upload shared immutable resources first:
+   ```text
+   efa/v2/<channel>/resources/releases/**
+   efa/v2/<channel>/resources/assets/**
+   efa/v2/<channel>/announcements/**
+   efa/v2/<channel>/manifest/checkouts/**
+   ```
+
+2. Upload generation-specific catalog metadata:
+   ```text
+   efa/v2/<channel>/manifest/.generations/<gen_id>/**
+   ```
+
+3. Update `manifest/index.json` (atomic S3 PUT to activate the generation):
+   ```text
+   efa/v2/<channel>/manifest/index.json
+   ```
+
+4. Append to `manifest/generations.json`:
+   ```text
+   efa/v2/<channel>/manifest/generations.json
+   ```
+
+This order ensures that interruption at any point leaves the live state consistent:
+before the index update clients see the previous generation; after the index update
+they see the fully-uploaded new generation.
+
+### Garbage Collection
+
+Old generations are pruned automatically, keeping a configurable number of
+recent generations (default: 2 — current + 1 previous for rollback).
+
+### Rollback
+
+Move the generation pointer in `manifest/index.json` to a previous generation ID.
+
+### Client Discovery
+
+Clients start from the configured origin + channel:
+
+```text
+<originUrl>/efa/v2/<channel>/manifest/index.json
+```
+
+From the index they resolve:
+1. The active generation → generation catalog → resources catalog.
+2. Server catalogs → checkout catalog → file manifest → asset paths.
+3. Release catalog → download hash → APK binary.
+4. Announcement catalog → content hash comparison → registry + body files.
+
+### Local Mock Layout
+
+Local static mocks for v2 use the same object layout. Committed fixture source:
+
+```text
+docs/examples/remote/mock-origin/efa/v2/
+```
+
+The `./x remote prepare` CLI manages v2 publishing. For local development with
+MinIO, configure `[remote]` in `efa.dev.toml`:
+
+```bash
+./x remote prepare prepare --backend minio --channel testing --description "Local test"
+./x remote prepare add-resources --checkout <path> --server <id> --name-en "..." --name-zh "..."
+./x remote prepare add-release --version "0.2.0" --apk <path>
+./x remote prepare publish
+```
+
+### Path Safety Rules
+
+Path safety rules from v1 apply with equal strictness to v2:
+
+- All relative paths must resolve under `efa/v2/`.
+- No `..` segments or URI-encoded traversal.
+- `manifest/index.json` and `manifest/generations.json` under each channel
+  are the mutable surface; `.generations/<gen>/` content is immutable after publish.
+
+### S3-Compatible Publishing
+
+The `./x remote prepare publish` command follows the same `mc`-based atomic
+publish pattern as v1:
+
+```bash
+./x remote prepare publish
+```
+
+Config defaults read from `efa.dev.toml` `[remote]` section (endpoint, bucket,
+credentials, alias). Production credentials are managed by release tooling
+and must not be shipped in the app.
+
+
+## Compatibility And Evolution
+
+Additive fields may be introduced while keeping `schemaVersion: 1` (v1) or
+`manifestVersion: 1` / `releasesVersion: 1` (v2) when old clients can safely
+ignore them. Breaking changes require a new resource root:
+
+```text
+efa/v2/   (current schema v2)
+efa/v3/   (future, for v3-breaking changes)
+```
+
+Existing v1 clients continue to read `efa/v1/` objects and should not be
+redirected to a newer resource root without an explicit client update.

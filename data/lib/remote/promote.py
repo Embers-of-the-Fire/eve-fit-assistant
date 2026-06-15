@@ -231,39 +231,13 @@ class PromotionSessionManager(_BaseSessionManager):
                 return e
         raise ValueError(f"Document {document_id!r} not found in testing catalog")
 
-    def _find_associated_increments(self, entry: dict[str, object]) -> list[dict[str, object]]:
-        """Find incremental artifacts that share the same bundleId as the given entry."""
-        bundle_id = entry.get("bundleId")
-        if not isinstance(bundle_id, str):
-            return []
-
-        _t_idx, _t_docs, t_bundles = _fetch_mod.read_local_remote_state(
-            self.remote_state_dir, self._source_channel
-        )
-        increments: list[dict[str, object]] = []
-        for a in t_bundles.get("artifacts", []):  # type: ignore[assignment]
-            if (
-                isinstance(a, dict)
-                and a.get("bundleId") == bundle_id
-                and a.get("variant") == "incremental"
-                and a.get("artifactId") != entry.get("artifactId")
-            ):
-                increments.append(a)
-        return increments
-
     # ---- add operations ----------------------------------------------------
 
     def add_bundle(
         self,
         artifact_id: str,
-        *,
-        no_increment: bool = False,
     ) -> None:
-        """Stage a bundle for promotion from testing to stable.
-
-        Associated incremental artifacts are included by default.
-        Pass ``no_increment=True`` to skip them.
-        """
+        """Stage a bundle for promotion from testing to stable."""
         self._ensure_not_committed()
         todo = self._load_todo()
 
@@ -286,28 +260,6 @@ class PromotionSessionManager(_BaseSessionManager):
             fields=entry,
         )
         todo.operations.append(op)
-
-        if not no_increment:
-            increments = self._find_associated_increments(entry)
-            for inc in increments:
-                inc_artifact_id = inc.get("artifactId", "")
-                if not isinstance(inc_artifact_id, str):
-                    continue
-                already_staged = any(
-                    isinstance(o, PromoteBundleOp) and o.artifact_id == inc_artifact_id
-                    for o in todo.operations
-                )
-                if already_staged:
-                    continue
-                inc_entry = dict(inc)
-                inc_entry["generatedAt"] = _utc_timestamp()
-                inc_op = PromoteBundleOp(
-                    artifact_id=inc_artifact_id,
-                    bundle_id=bundle_id,
-                    variant="incremental",
-                    fields=inc_entry,
-                )
-                todo.operations.append(inc_op)
 
         self._save_todo()
 

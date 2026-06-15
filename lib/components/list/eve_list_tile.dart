@@ -1,6 +1,6 @@
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
@@ -24,7 +24,7 @@ class GroupListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupInfo = ref.watch(bundleCollectionGetGroupProvider(groupId));
+    final groupInfo = ref.watch(repoCollectionProvider.select((c) => c?.getGroup(groupId)));
 
     if (groupInfo == null) {
       return ListTile(title: Text(context.l10n.fallbackGroupUnavailable(groupId: groupId)));
@@ -49,7 +49,7 @@ class GroupNameText extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupNameId = ref.watch(
-      bundleCollectionGetGroupProvider(groupId).select((t) => t?.groupName),
+      repoCollectionProvider.select((c) => c?.getGroup(groupId)?.groupName),
     );
     if (groupNameId == null) {
       return Text(context.l10n.fallbackGroupUnavailable(groupId: groupId));
@@ -76,7 +76,9 @@ class CategoryListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final categoryInfo = ref.watch(bundleCollectionGetCategoryProvider(categoryId));
+    final categoryInfo = ref.watch(
+      repoCollectionProvider.select((c) => c?.getCategory(categoryId)),
+    );
 
     if (categoryInfo == null) {
       return ListTile(
@@ -103,7 +105,7 @@ class CategoryNameText extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoryNameId = ref.watch(
-      bundleCollectionGetCategoryProvider(categoryId).select((t) => t?.categoryName),
+      repoCollectionProvider.select((c) => c?.getCategory(categoryId)?.categoryName),
     );
     if (categoryNameId == null) {
       return Text(context.l10n.fallbackCategoryUnavailable(categoryId: categoryId));
@@ -130,7 +132,9 @@ class MarketGroupListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final marketGroupInfo = ref.watch(bundleCollectionGetMarketGroupProvider(marketGroupId));
+    final marketGroupInfo = ref.watch(
+      repoCollectionProvider.select((c) => c?.getMarketGroup(marketGroupId)),
+    );
 
     if (marketGroupInfo == null) {
       return ListTile(
@@ -161,7 +165,7 @@ class MarketGroupNameText extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final marketGroupNameId = ref.watch(
-      bundleCollectionGetMarketGroupProvider(marketGroupId).select((t) => t?.marketGroupName),
+      repoCollectionProvider.select((c) => c?.getMarketGroup(marketGroupId)?.marketGroupName),
     );
     if (marketGroupNameId == null) {
       return Text(context.l10n.fallbackMarketGroupUnavailable(marketGroupId: marketGroupId));
@@ -190,13 +194,13 @@ class TypeListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final typeInfo = ref.watch(bundleCollectionGetTypeProvider(typeId));
+    final typeInfo = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
 
     if (typeInfo == null) {
       return ListTile(title: Text(context.l10n.fallbackTypeUnavailable(typeId: typeId)));
     }
     final metaGroupIcon = ref.watch(
-      bundleCollectionGetMetaGroupProvider(typeInfo.metaGroupId).select((t) => t?.icon),
+      repoCollectionProvider.select((c) => c?.getMetaGroup(typeInfo.metaGroupId)?.icon),
     );
 
     return ListTile(
@@ -221,7 +225,7 @@ class TypeNameText extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final typeNameId = ref.watch(
-      bundleCollectionGetTypeProvider(typeId).select((t) => t?.typeName),
+      repoCollectionProvider.select((c) => c?.getType(typeId)?.typeName),
     );
     if (typeNameId == null) {
       return Text(context.l10n.fallbackTypeUnavailable(typeId: typeId), textAlign: textAlign);

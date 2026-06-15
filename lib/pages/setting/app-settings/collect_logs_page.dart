@@ -41,7 +41,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
     });
     try {
       final dir = Directory(PathProvider.logsPath);
-      if (!await dir.exists()) {
+      if (!dir.existsSync()) {
         if (!mounted) return;
         setState(() {
           _allFiles = [];

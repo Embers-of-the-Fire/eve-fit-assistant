@@ -41,7 +41,7 @@ AppSetting _testAppSetting({bool remoteEnabled = true}) => AppSetting(
   locale: Locale.en,
   enableDebugLog: false,
   shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
-  showBundleImpactWarnings: true,
+  showCheckoutImpactWarnings: true,
   typeListReturnBehavior: TypeListReturnBehavior.previousPage,
   remoteContent: RemoteContentSetting(enabled: remoteEnabled),
 );
@@ -60,10 +60,7 @@ DocumentRecord _versionRecord({required String id, required String appVer}) => D
 
 class _ThrowingSyncService extends RemoteDocumentSyncService {
   _ThrowingSyncService(Ref ref)
-    : super(
-        ref: ref,
-        dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(),
-      );
+    : super(ref: ref, dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter());
 
   @override
   Future<bool> sync() async => throw Exception("transient sync failure");
@@ -106,10 +103,12 @@ void main() {
             (ref) => RemoteDocumentSyncService(ref: ref, dio: dio),
           ),
           appVersionProvider.overrideWith((_) async => "1.0.0"),
-          documentFeedProvider(DocumentFeedKind.version).overrideWith((_) async => [
-            _versionRecord(id: "v1", appVer: "1.0.0"),
-            _versionRecord(id: "v0", appVer: "0.9.0"),
-          ]),
+          documentFeedProvider(DocumentFeedKind.version).overrideWith(
+            (_) async => [
+              _versionRecord(id: "v1", appVer: "1.0.0"),
+              _versionRecord(id: "v0", appVer: "0.9.0"),
+            ],
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -122,14 +121,14 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
-          remoteDocumentSyncServiceProvider.overrideWith(
-            (ref) => _ThrowingSyncService(ref),
-          ),
+          remoteDocumentSyncServiceProvider.overrideWith((ref) => _ThrowingSyncService(ref)),
           appVersionProvider.overrideWith((_) async => "1.0.0"),
-          documentFeedProvider(DocumentFeedKind.version).overrideWith((_) async => [
-            _versionRecord(id: "v1", appVer: "1.0.0"),
-            _versionRecord(id: "v2", appVer: "2.0.0"),
-          ]),
+          documentFeedProvider(DocumentFeedKind.version).overrideWith(
+            (_) async => [
+              _versionRecord(id: "v1", appVer: "1.0.0"),
+              _versionRecord(id: "v2", appVer: "2.0.0"),
+            ],
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -148,11 +147,13 @@ void main() {
             (ref) => RemoteDocumentSyncService(ref: ref, dio: dio),
           ),
           appVersionProvider.overrideWith((_) async => "1.0.0"),
-          documentFeedProvider(DocumentFeedKind.version).overrideWith((_) async => [
-            _versionRecord(id: "v1", appVer: "1.0.0"),
-            _versionRecord(id: "v2", appVer: "2.0.0"),
-            _versionRecord(id: "v3", appVer: "1.5.0"),
-          ]),
+          documentFeedProvider(DocumentFeedKind.version).overrideWith(
+            (_) async => [
+              _versionRecord(id: "v1", appVer: "1.0.0"),
+              _versionRecord(id: "v2", appVer: "2.0.0"),
+              _versionRecord(id: "v3", appVer: "1.5.0"),
+            ],
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -172,10 +173,12 @@ void main() {
             (ref) => RemoteDocumentSyncService(ref: ref, dio: dio),
           ),
           appVersionProvider.overrideWith((_) async => "1.0.0"),
-          documentFeedProvider(DocumentFeedKind.version).overrideWith((_) async => [
-            _versionRecord(id: "v1", appVer: "1.0.0"),
-            _versionRecord(id: "v2", appVer: "2.0.0"),
-          ]),
+          documentFeedProvider(DocumentFeedKind.version).overrideWith(
+            (_) async => [
+              _versionRecord(id: "v1", appVer: "1.0.0"),
+              _versionRecord(id: "v2", appVer: "2.0.0"),
+            ],
+          ),
         ],
       );
       addTearDown(container.dispose);

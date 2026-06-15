@@ -9,7 +9,6 @@ import "package:eve_fit_assistant/pages/fit-list/page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/page.dart";
 import "package:eve_fit_assistant/pages/workspace/page.dart";
-import "package:eve_fit_assistant/storage/bundle/guard.dart";
 import "package:eve_fit_assistant/storage/loading_indicator.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -67,9 +66,6 @@ class _FrontPageState extends State<FrontPage> {
           onDoubleTap: () => showFitImportDialog(context, ref),
           child: FloatingActionButton(
             onPressed: () async {
-              if (!await ensureUsableBundle(context, ref)) {
-                return;
-              }
               if (context.mounted) {
                 unawaited(context.router.push(const FitCreationRoute()));
               }

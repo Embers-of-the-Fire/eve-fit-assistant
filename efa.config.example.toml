@@ -31,15 +31,14 @@ patch = 0
 pre_label = "beta"
 pre_num = 1
 build = 1
+# `data_schema` is the data schema version used for storage and bundle format.
+# Increment when data format or storage layout changes.
+data_schema = 1
 
-[bundle_schema]
-# The `bundle_schema` section defines the schema versioning for built bundles.
-# `current` is the schema version the current app build creates.
-# `min` is the oldest bundle schema version the app can consume.
-# Schema versions are cumulative — a version N bundle never removes what N-1 provided.
-# The supported range is implicitly [min, current].
-current = 1
-min = 1
+[data_schema]
+# The `data_schema` section defines the v2 schema configuration.
+# `resource_root` is the server-side URL path prefix for remote content.
+resource_root = "efa/v2"
 
 [paths]
 # `paths` section defines some global paths used to store resources or outputs

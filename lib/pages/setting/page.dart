@@ -8,7 +8,6 @@ import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 class SettingPage extends ConsumerWidget {
   const SettingPage({super.key});
@@ -33,9 +32,14 @@ class SettingPage extends ConsumerWidget {
             onTap: () => unawaited(context.router.push(const RemoteContentSettingsRoute())),
           ),
         ConfigListTile.item(
-          icon: const FaIcon(FontAwesomeIcons.box),
-          title: context.l10n.settingTileBundleManagerTitle,
-          onTap: () => unawaited(context.router.push(const BundleManagerRoute())),
+          icon: const Icon(Icons.storage_outlined),
+          title: context.l10n.settingTileDataStorageTitle,
+          onTap: () => unawaited(context.router.push(const StorageManagement())),
+        ),
+        ConfigListTile.item(
+          icon: const Icon(Icons.folder_outlined),
+          title: context.l10n.settingTileDataSourcesTitle,
+          onTap: () => unawaited(context.router.push(const BranchSettings())),
         ),
         ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),

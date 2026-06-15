@@ -110,12 +110,6 @@
   "characterSkillAllGroups": "全部技能组",
   "@@_WORKSPACE_TAB": {},
   "workspaceTabActionCreateFitName": "创建新配置",
-  "bundleAccessRequiredTitle": "需要数据包",
-  "bundleAccessNotSelectedDescription": "在选择活动数据包之前，无法创建或导入配置。",
-  "bundleAccessLoadingDescription": "当前数据包仍在加载中。请等待加载完成后再试。",
-  "bundleAccessInvalidDescription": "当前数据包不完整或无效。请先导入有效归档文件，或切换到其他数据包。",
-  "bundleAccessReadyDescription": "当前活动数据包已就绪。",
-  "bundleAccessManageAction": "打开数据包管理",
   "startupPersistenceRepairSummary": "已恢复本地存储：{details}。",
   "@startupPersistenceRepairSummary": {
     "placeholders": {
@@ -153,58 +147,16 @@
       }
     }
   },
-  "startupPersistenceRepairRemovedMissingBundles": "移除了 {count} 条缺失数据包的记录",
-  "@startupPersistenceRepairRemovedMissingBundles": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "startupPersistenceRepairRestoredBundles": "恢复了 {count} 个已安装数据包",
-  "@startupPersistenceRepairRestoredBundles": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "startupPersistenceRepairUpdatedSelectedBundle": "已更新当前选中的数据包",
   "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "设置",
   "settingTileRemoteContentTitle": "远程内容",
-  "settingTileBundleManagerTitle": "数据包",
   "settingTileVersionTitle": "版本",
   "settingTileVersionSubtitle": "发布说明与更新日志",
-  "appSettingsPageSectionBundle": "数据包",
-  "appSettingsPageBundleImpactWarningTitle": "数据包影响警告",
-  "appSettingsPageBundleImpactWarningDescription": "当切换数据包或导入增量包可能影响已保存的配置或角色时显示警告。",
-  "bundleImpactDisableConfirmTitle": "关闭数据包影响警告？",
-  "bundleImpactDisableConfirmDescription": "在重新启用此设置之前，数据包切换和增量包导入将不再显示影响警告。",
-  "bundleImpactWarningTitle": "潜在数据包影响",
-  "bundleImpactSwitchWarningDescription": "切换到数据包 {bundleId} 可能影响已保存的本地数据。",
-  "bundleImpactIncrementalWarningDescription": "导入数据包 {bundleId} 的增量补丁可能影响已保存的本地数据。",
-  "bundleImpactContinueAction": "继续",
-  "bundleImpactFitsSummary": "{count} 个配置会受到影响",
-  "bundleImpactCharactersSummary": "{count} 个角色会受到影响",
-  "bundleImpactBundleDataSummary": "数据包内容将被更新",
-  "bundleImpactDetailPageTitle": "数据包影响",
-  "bundleImpactDetailDescription": "使用数据包 {bundleId} 时的潜在影响。",
-  "bundleImpactNoImpacts": "未发现本地影响。",
-  "bundleImpactFitsSection": "配置",
-  "bundleImpactCharactersSection": "角色",
-  "bundleImpactBundleDataSection": "数据包内容",
-  "bundleImpactSavedBundleLabel": "保存时数据包：",
-  "bundleImpactTargetBundleLabel": "目标数据包：",
-  "bundleImpactReasonLabel": "原因：",
-  "bundleImpactReasonBundleMismatch": "数据包 ID 不同",
-  "bundleImpactReasonMissingRevision": "缺少可比较的版本元数据",
-  "bundleImpactReasonManifestMismatch": "Manifest 哈希不同",
-  "bundleImpactReasonGenerationMismatch": "生成时间戳不同",
-  "bundleImpactReasonBuildMismatch": "游戏构建版本不同",
-  "bundleImpactReasonAppVersionMismatch": "应用版本不同",
-  "bundleImpactReasonIncrementalPatch": "增量补丁包含变更",
-  "bundleImpactReasonFullReplacement": "完整替换包包含变更",
+  "appSettingsPageSectionCheckout": "数据集检查",
+  "appSettingsPageCheckoutImpactWarningTitle": "数据集影响警告",
+  "appSettingsPageCheckoutImpactWarningDescription": "当切换数据集或导入增量补丁可能影响已保存的配置或角色时显示警告。",
+  "checkoutImpactDisableConfirmTitle": "关闭数据集影响警告？",
+  "checkoutImpactDisableConfirmDescription": "在重新启用此设置之前，数据集切换和增量补丁导入将不再显示影响警告。",
   "workspaceTabAnnouncementTitle": "更新动态",
   "documentAnnouncementPageTitle": "更新动态",
   "documentVersionPageTitle": "版本",
@@ -298,14 +250,12 @@
   "fitPageUnavailableTitle": "配置不可用",
   "fitPageMissingMessage": "找不到该配置。",
   "fitPageBrokenMessage": "无法加载该配置。",
-  "fitPageShipUnavailableMessage": "该配置引用了当前数据包中不可用的舰船数据。",
-  "fitBundleChangedTitle": "数据包已变更",
-  "fitBundleChangedDescription": "该配置保存于当前活动数据包的旧版本。您仍可查看和导出该配置，但在重新导入兼容的数据包版本，或基于当前数据重新创建配置前，将保持只读。",
-  "fitBundleLegacyTitle": "需要重新确认数据包",
-  "fitBundleLegacyDescription": "该配置保存时尚未记录数据包版本信息。您仍可查看和导出该配置，但在使用兼容数据包重新打开，或基于当前数据包重新创建配置前，将保持只读。",
-  "fitBundleMismatchTitle": "数据包不匹配",
-  "fitBundleMismatchDescription": "该配置保存于数据包 {savedBundleId}，而当前活动数据包为 {activeBundleId}。您仍可查看和导出该配置，但编辑将保持禁用。",
-  "@fitBundleMismatchDescription": {
+  "fitPageShipUnavailableMessage": "该配置引用了当前数据源中不可用的舰船数据。",
+  "fitCheckoutChangedTitle": "数据集已变更",
+  "fitCheckoutChangedDescription": "该配置保存于当前活动数据集的旧版本。您仍可查看和导出该配置，但在重新导入兼容的数据集版本，或基于当前数据重新创建配置前，将保持只读。",
+  "fitCheckoutMismatchTitle": "数据集不匹配",
+  "fitCheckoutMismatchDescription": "该配置保存于数据集 {savedBundleId}，而当前活动数据集为 {activeBundleId}。您仍可查看和导出该配置，但编辑将保持禁用。",
+  "@fitCheckoutMismatchDescription": {
     "placeholders": {
       "savedBundleId": {
         "type": "String"
@@ -315,49 +265,12 @@
       }
     }
   },
-  "fitBundleMismatchSwitchDescription": "该配置保存于数据包 {savedBundleId}，而当前活动数据包为 {activeBundleId}。如需直接编辑该配置，请切回 {savedBundleId}；如果您想在当前数据包下保留一个新的可编辑副本，请先确认当前数据差异，再导出并重新导入该配置。",
-  "@fitBundleMismatchSwitchDescription": {
-    "placeholders": {
-      "savedBundleId": {
-        "type": "String"
-      },
-      "activeBundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "fitBundleMismatchImportDescription": "该配置保存于数据包 {savedBundleId}，而当前活动数据包为 {activeBundleId}。如需直接编辑该配置，请先重新导入数据包 {savedBundleId}；如果您想迁移到当前数据包，请导出后在当前数据包下重新导入。",
-  "@fitBundleMismatchImportDescription": {
-    "placeholders": {
-      "savedBundleId": {
-        "type": "String"
-      },
-      "activeBundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "fitBundleSwitchLabel": "切换数据包后编辑",
-  "fitBundleImportLabel": "重新导入数据包数据",
-  "fitBundleSwitchAction": "切换数据包",
-  "fitBundleSwitchErrorMessage": "无法切换数据包。将保留当前数据包。",
-  "fitBundleOpenManagerAction": "打开数据包管理",
-  "fitBundleUnavailableTitle": "数据包不可用",
-  "fitBundleUnavailableDescription": "当前没有活动数据包，无法确认兼容性。在数据包可用前，该配置将保持只读。",
-  "fitBundleUnavailableSwitchDescription": "当前没有活动数据包。请选择 {savedBundleId} 后再编辑该配置；如果您暂时不想切换应用的数据上下文，也可以继续只读查看。",
-  "@fitBundleUnavailableSwitchDescription": {
-    "placeholders": {
-      "savedBundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "fitBundleUnavailableImportDescription": "当前没有活动数据包，且该配置对应的已保存数据包尚未安装。请先在数据包管理中导入所需数据，再进行编辑；或者基于当前可用数据包重新创建配置。",
+  "fitCheckoutOpenManagerAction": "打开数据管理",
   "fitPageStatsUnavailableTitle": "属性不可用",
   "fitPageStatsUnavailableMessage": "在计算恢复期间，您仍然可以查看和编辑该配置。",
   "fitPageSaveErrorTitle": "更改未保存",
   "fitPageSaveErrorMessage": "最新的配置更改无法保存。",
-  "fitPageReadOnlyMessage": "在启用兼容的数据包之前，该配置将保持只读。",
+  "fitPageReadOnlyMessage": "在启用兼容的数据源之前，该配置将保持只读。",
   "fitPageRetryAction": "重试",
   "fitPageBackAction": "返回",
   "fitIssueDialogTitle": "配置问题",
@@ -398,76 +311,108 @@
   "fitIssueIncompatibleChargeSizeDetails": "期望尺寸：{expected}；实际尺寸：{actual}。",
   "@fitIssueIncompatibleChargeSizeDetails": {
     "placeholders": {
-      "expected": { "type": "String" },
-      "actual": { "type": "String" }
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
     }
   },
   "fitIssueIncompatibleChargeCapacity": "弹药体积超过装备容量。",
   "fitIssueIncompatibleChargeCapacityDetails": "最大容量：{max} m³；实际体积：{actual} m³。",
   "@fitIssueIncompatibleChargeCapacityDetails": {
     "placeholders": {
-      "max": { "type": "String" },
-      "actual": { "type": "String" }
+      "max": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
     }
   },
   "fitIssueIncompatibleChargeGroup": "该装备不接受此弹药类型。",
   "fitIssueIncompatibleChargeGroupDetails": "期望弹药分组：{expected}；实际分组：{actual}。",
   "@fitIssueIncompatibleChargeGroupDetails": {
     "placeholders": {
-      "expected": { "type": "String" },
-      "actual": { "type": "String" }
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
     }
   },
   "fitIssueTooMuchTurret": "炮台数量过多。",
   "fitIssueTooMuchTurretDetails": "最大数量：{expected}；实际数量：{actual}。",
   "@fitIssueTooMuchTurretDetails": {
     "placeholders": {
-      "expected": { "type": "int" },
-      "actual": { "type": "int" }
+      "expected": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
     }
   },
   "fitIssueTooMuchLauncher": "发射器数量过多。",
   "fitIssueTooMuchLauncherDetails": "最大数量：{expected}；实际数量：{actual}。",
   "@fitIssueTooMuchLauncherDetails": {
     "placeholders": {
-      "expected": { "type": "int" },
-      "actual": { "type": "int" }
+      "expected": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
     }
   },
   "fitIssueConflictItem": "主动装备冲突。",
   "fitIssueConflictItemDetails": "物品组 {groupName} 中启用了多个受限制装备。",
   "@fitIssueConflictItemDetails": {
     "placeholders": {
-      "groupName": { "type": "String" }
+      "groupName": {
+        "type": "String"
+      }
     }
   },
   "fitIssueDuplicateBooster": "增效剂槽位重复。",
   "fitIssueDuplicateBoosterDetails": "增效剂槽位 {slot} 已被占用。",
   "@fitIssueDuplicateBoosterDetails": {
     "placeholders": {
-      "slot": { "type": "int" }
+      "slot": {
+        "type": "int"
+      }
     }
   },
   "fitIssueIncompatibleShipGroup": "物品无法安装到该舰船分组。",
   "fitIssueIncompatibleShipGroupDetails": "期望舰船分组：{expected}。",
   "@fitIssueIncompatibleShipGroupDetails": {
     "placeholders": {
-      "expected": { "type": "String" }
+      "expected": {
+        "type": "String"
+      }
     }
   },
   "fitIssueIncompatibleShipType": "物品无法安装到该舰船类型。",
   "fitIssueIncompatibleShipTypeDetails": "期望舰船类型：{expected}。",
   "@fitIssueIncompatibleShipTypeDetails": {
     "placeholders": {
-      "expected": { "type": "String" }
+      "expected": {
+        "type": "String"
+      }
     }
   },
   "fitIssueIncompatibleRigSize": "改装件尺寸不匹配。",
   "fitIssueIncompatibleRigSizeDetails": "期望尺寸：{expected}；实际尺寸：{actual}。",
   "@fitIssueIncompatibleRigSizeDetails": {
     "placeholders": {
-      "expected": { "type": "String" },
-      "actual": { "type": "String" }
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
     }
   },
   "fitIssueMissingCharge": "缺少弹药。",
@@ -658,7 +603,7 @@
   "fitImportErrorUnsupportedNativeVersion": "该 EFA 导出内容来自较新的应用版本，当前版本暂时无法导入。",
   "fitImportErrorInvalidNativePayload": "该 EFA 导出内容已损坏或不完整。",
   "fitImportErrorInvalidEft": "该 EFT 文本无效，或包含当前测试版本暂不支持的段落。",
-  "fitImportErrorUnknownType": "当前数据包无法识别“{typeName}”。",
+  "fitImportErrorUnknownType": "当前数据源无法识别“{typeName}”。",
   "@fitImportErrorUnknownType": {
     "placeholders": {
       "typeName": {
@@ -666,7 +611,7 @@
       }
     }
   },
-  "fitImportErrorUnavailableShip": "当前数据包中没有舰船“{shipName}”。",
+  "fitImportErrorUnavailableShip": "当前数据源中没有舰船“{shipName}”。",
   "@fitImportErrorUnavailableShip": {
     "placeholders": {
       "shipName": {
@@ -674,7 +619,7 @@
       }
     }
   },
-  "fitImportErrorUnavailableData": "导入所需的数据暂未就绪。请等待应用完成数据包加载后再试。",
+  "fitImportErrorUnavailableData": "导入所需的数据暂未就绪。请等待应用完成数据源加载后再试。",
   "fitImportSuccess": "已导入 {fitName}",
   "@fitImportSuccess": {
     "placeholders": {
@@ -754,9 +699,15 @@
   "appSettingsPageRemoteContentEndpointDescription": "源：{origin}\n根路径：{resourceRoot}\n频道：{channel}",
   "@appSettingsPageRemoteContentEndpointDescription": {
     "placeholders": {
-      "origin": { "type": "String" },
-      "resourceRoot": { "type": "String" },
-      "channel": { "type": "String" }
+      "origin": {
+        "type": "String"
+      },
+      "resourceRoot": {
+        "type": "String"
+      },
+      "channel": {
+        "type": "String"
+      }
     }
   },
   "appSettingsPageRemoteContentNotSet": "未设置",
@@ -780,559 +731,27 @@
   "collectLogsTotalSize": "{size}，共 {count} 个文件",
   "@collectLogsTotalSize": {
     "placeholders": {
-      "size": { "type": "String" },
-      "count": { "type": "int" }
+      "size": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
     }
   },
   "collectLogsLoadError": "加载日志文件失败",
   "appSettingsPageSectionDeveloper": "开发者选项",
   "appSettingsPageDebugLogTitle": "启用调试日志",
   "appSettingsPageDebugLogDescription": "启用调试日志后，应用将会输出所有日志到日志目录中。\n建议仅当开发者要求开启此功能时才开启。",
-  "@@@_BUNDLE_MANAGER_PAGE": {},
-  "bundleManagerPageTitle": "数据包管理",
-  "bundleImportOverwriteTitle": "要替换现有数据包吗？",
-  "bundleManagerBundleAppVersion": "打包应用版本：",
-  "bundleManagerBundleBuild": "构建版本：",
-  "bundleManagerBundleGameVersion": "游戏版本：",
-  "bundleManagerBundleServer": "服务器：",
-  "bundleManagerBundleRegion": "服务地区：",
-  "bundleManagerBundleBranch": "游戏分支：",
-  "bundleManagerBundleSchemaVersion": "架构 v{num}",
-  "@bundleManagerBundleSchemaVersion": {
-    "placeholders": {
-      "num": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleManagerDeleteBundleConfirmTitle": "删除数据包",
-  "bundleManagerDeleteBundleConfirmContent": "您确定要删除数据包 {bundleId} 吗？",
-  "@bundleManagerDeleteBundleConfirmContent": {
+  "repoLoadingTitle": "正在加载数据",
+  "repoLoadingDescription": "正在准备数据集 {bundleId}。",
+  "@repoLoadingDescription": {
     "placeholders": {
       "bundleId": {
         "type": "String"
       }
     }
   },
-  "bundleManagerDeleteBundleInUseWarning": "该数据包正在被使用，删除后可能导致某些功能无法正常工作。",
-  "bundleManagerDetailPageTitle": "数据包详情",
-  "bundleManagerDetailSectionTitleLatestPatch": "最新补丁",
-  "bundleManagerDetailSectionTitleHistory": "历史版本",
-  "bundleManagerDetailVariantFull": "完整",
-  "bundleManagerDetailVariantIncremental": "增量",
-  "bundleManagerDetailGeneratedAt": "生成时间：",
-  "bundleManagerDetailLoadedAt": "加载时间：",
-  "bundleLabelBuild": "构建 {build}",
-  "@bundleLabelBuild": {
-    "placeholders": {
-      "build": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleLabelGenerated": "生成于 {date}",
-  "@bundleLabelGenerated": {
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationTitle": "完整性校验",
-  "bundleVerificationAction": "校验已安装文件",
-  "bundleVerificationConfirmTitle": "要校验已安装的数据包文件吗？",
-  "bundleVerificationConfirmMessage": "此操作会读取已安装的数据包文件，并根据本地清单比较文件大小和 SHA-256 哈希。大型数据包可能需要一些时间。不会修改任何文件。",
-  "bundleVerificationValid": "已安装文件与本地清单一致。",
-  "bundleVerificationWarning": "校验完成，但存在警告。",
-  "bundleVerificationInvalid": "校验发现数据包完整性问题。",
-  "bundleVerificationNeverRun": "尚未执行校验。",
-  "bundleVerificationCheckedAt": "校验时间：{time}",
-  "@bundleVerificationCheckedAt": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationMissingFiles": "缺失：{count}",
-  "@bundleVerificationMissingFiles": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleVerificationHashMismatches": "哈希不匹配：{count}",
-  "@bundleVerificationHashMismatches": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleVerificationSizeMismatches": "大小不匹配：{count}",
-  "@bundleVerificationSizeMismatches": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleVerificationExtraFiles": "额外文件：{count}",
-  "@bundleVerificationExtraFiles": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleVerificationMoreIssues": "另有 {count} 个问题",
-  "@bundleVerificationMoreIssues": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleVerificationRemoteRepairUnavailable": "在可用的远程数据包元数据实现前，暂不支持远程修复。",
-  "bundleVerificationIssueMissingManifest": "缺少清单：{path}",
-  "@bundleVerificationIssueMissingManifest": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueInvalidManifest": "清单无效 {path}：{error}",
-  "@bundleVerificationIssueInvalidManifest": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      },
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueManifestHashMissing": "安装记录中没有最新清单哈希。",
-  "bundleVerificationIssueManifestHashMismatch": "清单哈希不匹配：应为 {expected}，实际为 {actual}",
-  "@bundleVerificationIssueManifestHashMismatch": {
-    "placeholders": {
-      "expected": {
-        "type": "String"
-      },
-      "actual": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueUnsafeManifestPath": "清单路径不安全：{path}",
-  "@bundleVerificationIssueUnsafeManifestPath": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueMissingFile": "缺少文件：{path}",
-  "@bundleVerificationIssueMissingFile": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueSizeMismatch": "文件大小不匹配 {path}：应为 {expected}，实际为 {actual}",
-  "@bundleVerificationIssueSizeMismatch": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      },
-      "expected": {
-        "type": "int"
-      },
-      "actual": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleVerificationIssueHashMismatch": "文件哈希不匹配 {path}：应为 {expected}，实际为 {actual}",
-  "@bundleVerificationIssueHashMismatch": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      },
-      "expected": {
-        "type": "String"
-      },
-      "actual": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueExtraFile": "额外文件：{path}",
-  "@bundleVerificationIssueExtraFile": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueReadError": "读取失败 {path}：{error}",
-  "@bundleVerificationIssueReadError": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      },
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleVerificationIssueUnsupportedSchemaVersion": "数据包架构 v{version} 不受支持（支持版本: v{min}–v{max})。",
-  "@bundleVerificationIssueUnsupportedSchemaVersion": {
-    "placeholders": {
-      "version": {
-        "type": "int"
-      },
-      "min": {
-        "type": "int"
-      },
-      "max": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleVerificationIssueSchemaVersionMismatch": "数据包架构 v{version} 与当前应用架构 v{current} 不同。",
-  "@bundleVerificationIssueSchemaVersionMismatch": {
-    "placeholders": {
-      "version": {
-        "type": "int"
-      },
-      "current": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleManagerSetupTitle": "导入第一个数据包",
-  "bundleManagerSetupDescription": "装配和相关功能需要先加载一个有效的数据包。请先导入数据包归档文件。",
-  "bundleManagerAlphaScope": "Alpha 范围：应用可以安装多个数据包，但全局同一时间只会启用一个活动数据包。",
-  "bundleManagerImportSelectionBehavior": "导入数据包时会保留当前活动数据包。只有在您确实想切换应用数据上下文时，才需要在下方选择其他已安装数据包。",
-  "bundleManagerSelectionTitle": "选择活动数据包",
-  "bundleManagerSelectionDescription": "请从下方已安装的数据包中选择一个，或重新导入新的归档文件来恢复数据。",
-  "bundleManagerLoadingTitle": "正在加载数据包",
-  "bundleManagerLoadingDescription": "正在准备数据包 {bundleId}。",
-  "@bundleManagerLoadingDescription": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleManagerInvalidTitle": "数据包需要处理",
-  "bundleManagerInvalidDescription": "当前选中的数据包缺少必要文件或元数据。请导入有效归档，或切换到其他已安装的数据包。",
-  "bundleManagerReadyTitle": "数据包可用",
-  "bundleManagerReadyDescription": "当前活动数据包：{bundleId}",
-  "@bundleManagerReadyDescription": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleManagerImportAction": "导入数据包",
-  "bundleRemoteSectionTitle": "远程数据包",
-  "bundleRemoteSectionDescription": "从已配置的远程内容端点发现兼容的数据包归档。只有在您选择后才会开始下载。",
-  "bundleRemoteRefreshAction": "刷新远程数据包",
-  "bundleRemoteEmpty": "没有可用的兼容远程数据包。",
-  "bundleRemoteChecking": "正在检查远程数据包目录……",
-  "bundleRemoteCatalogMissing": "远程索引未在此频道提供数据包目录。",
-  "bundleRemoteCatalogEmpty": "远程数据包目录为空。",
-  "bundleRemoteAlternativesOnly": "存在可用的远程数据包，但当前安装状态下没有首选项。请先检查备选项再下载。",
-  "bundleRemoteCurrent": "已安装的数据包已经匹配最新兼容的远程产物。",
-  "bundleRemoteNoImportable": "已找到远程数据包元数据，但当前设备暂时没有可导入的产物。",
-  "bundleRemoteReviewAction": "检查数据包",
-  "bundleRemoteDownloadRecommendedAction": "下载推荐项",
-  "bundleRemoteSelectionPageTitle": "远程数据包",
-  "bundleRemoteDisabled": "远程内容已禁用。请先在远程内容设置中启用，再检查远程数据包。",
-  "bundleRemoteRecommendedCount": "推荐：{count}",
-  "@bundleRemoteRecommendedCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleRemoteAvailableCount": "可用：{count}",
-  "@bundleRemoteAvailableCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleRemoteInstalledCount": "已安装：{count}",
-  "@bundleRemoteInstalledCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleRemoteUnavailableCount": "不可用：{count}",
-  "@bundleRemoteUnavailableCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleRemoteRecommendedSection": "推荐",
-  "bundleRemoteRecommendedSectionDescription": "根据已安装清单元数据，为已安装数据包选择最佳后续下载。同一数据包的较旧产物会保留为备选项。",
-  "bundleRemoteAvailableSection": "可用备选",
-  "bundleRemoteAvailableSectionDescription": "可导入但不是首选推荐的完整数据包或补丁。",
-  "bundleRemoteInstalledSection": "已安装",
-  "bundleRemoteInstalledSectionDescription": "与已安装数据包清单匹配的远程产物。",
-  "bundleRemoteUnavailableSection": "不可用",
-  "bundleRemoteUnavailableSectionDescription": "由于应用版本或本地基线元数据不匹配，当前无法导入的产物。",
-  "bundleRemoteSelectionSummaryTitle": "选择建议",
-  "bundleRemoteSelectionSummaryDescription": "当增量补丁匹配已安装基线清单时，会优先推荐增量补丁。完整数据包仍可手动用于新安装或替换安装。",
-  "bundleRemoteRecommendationIncremental": "推荐为 {bundleId} 使用增量更新。",
-  "@bundleRemoteRecommendationIncremental": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteRecommendationFullInstall": "推荐完整安装数据包：{bundleId}。",
-  "@bundleRemoteRecommendationFullInstall": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteRecommendationFullReplacement": "当前没有匹配的增量路径；请使用 {bundleId} 的完整替换包。",
-  "@bundleRemoteRecommendationFullReplacement": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteRecommendedFallback": "推荐的远程数据包。",
-  "bundleRemoteAvailableDescription": "此产物可以下载并导入。",
-  "bundleRemoteInstalledDescription": "此产物已存在于已安装数据包历史中。",
-  "bundleRemoteUnknownAppVersion": "未知",
-  "bundleRemoteUnavailableAppVersion": "需要应用版本 {requiredVersion}；当前应用为 {currentVersion}。",
-  "@bundleRemoteUnavailableAppVersion": {
-    "placeholders": {
-      "requiredVersion": {
-        "type": "String"
-      },
-      "currentVersion": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteUnavailableIncompatibleSchema": "数据包架构 v{version} 不被当前应用版本支持。",
-  "@bundleRemoteUnavailableIncompatibleSchema": {
-    "placeholders": {
-      "version": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleRemoteUnavailableMissingIncrementalMetadata": "增量产物缺少基线数据包元数据。",
-  "bundleRemoteUnavailableBaseNotInstalled": "请先安装基线数据包 {bundleId}，再应用此增量补丁。",
-  "@bundleRemoteUnavailableBaseNotInstalled": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteUnavailableInstalledManifestMissing": "已安装数据包元数据没有记录清单哈希。",
-  "bundleRemoteUnavailableBaseManifestMismatch": "已安装清单与此增量补丁基线不匹配。请改用完整数据包。",
-  "bundleRemoteUnavailableUnknown": "此产物当前无法导入。",
-  "bundleRemoteError": "远程数据包发现失败：{message}",
-  "@bundleRemoteError": {
-    "placeholders": {
-      "message": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteArtifactDescription": "{variant}数据包 {bundleId} · 构建 {gameBuild} · {gameServer}",
-  "@bundleRemoteArtifactDescription": {
-    "placeholders": {
-      "variant": {
-        "type": "String"
-      },
-      "bundleId": {
-        "type": "String"
-      },
-      "gameBuild": {
-        "type": "String"
-      },
-      "gameServer": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteDownloadAction": "下载",
-  "bundleRemoteDownloadImportAction": "下载并导入",
-  "bundleRemoteImportBehaviorHint": "将导入为已安装数据包。活动数据包会保持不变，直到您在下方手动选择。",
-  "bundleRemoteArtifactSize": "大小：{size}",
-  "@bundleRemoteArtifactSize": {
-    "placeholders": {
-      "size": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteArtifactGenerated": "生成时间：{time}",
-  "@bundleRemoteArtifactGenerated": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteArtifactBaseBundle": "修补已安装基线：{bundleId}",
-  "@bundleRemoteArtifactBaseBundle": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteArtifactBaseManifest": "基线清单：{hash}",
-  "@bundleRemoteArtifactBaseManifest": {
-    "placeholders": {
-      "hash": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteSchemaVersionWarning": "架构 v{version} — 可能与当前应用架构不同",
-  "@bundleRemoteSchemaVersionWarning": {
-    "placeholders": {
-      "version": {
-        "type": "int"
-      }
-    }
-  },
-  "bundleRemoteProgressPreparing": "正在准备远程请求",
-  "bundleRemoteProgressDownloading": "正在下载归档",
-  "bundleRemoteProgressVerifying": "正在校验大小和 SHA-256",
-  "bundleRemoteProgressUnpacking": "正在解包归档",
-  "bundleRemoteProgressImporting": "正在导入数据包文件",
-  "bundleRemoteProgressApplyingIncrementalPatch": "正在应用增量补丁",
-  "bundleRemoteProgressRefreshingRegistry": "正在刷新已安装数据包列表",
-  "bundleRemoteProgressCompleted": "已导入，未激活",
-  "bundleRemoteProgressCancelled": "导入已取消",
-  "bundleRemoteProgressQueued": "等待开始",
-  "bundleRemoteProgressDownloadingKnown": "{received} / {total}（{percent}%）",
-  "@bundleRemoteProgressDownloadingKnown": {
-    "placeholders": {
-      "received": {
-        "type": "String"
-      },
-      "total": {
-        "type": "String"
-      },
-      "percent": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteProgressDownloadingUnknown": "已下载 {received}",
-  "@bundleRemoteProgressDownloadingUnknown": {
-    "placeholders": {
-      "received": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteProgressCompletedDescription": "{bundleId} 已安装。需要切换应用活动数据时，请手动选择它。",
-  "@bundleRemoteProgressCompletedDescription": {
-    "placeholders": {
-      "bundleId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteProgressCancelledDescription": "当前数据包保持不变。",
-  "bundleRemoteProgressFailedTitle": "导入失败",
-  "bundleRemoteProgressFailedDescription": "在“{stage}”阶段失败：{message}",
-  "@bundleRemoteProgressFailedDescription": {
-    "placeholders": {
-      "stage": {
-        "type": "String"
-      },
-      "message": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteProgressRetryAction": "重试",
-  "bundleRemoteProgressKeepCurrentAction": "保留当前数据包",
-  "bundleRemoteProgressViewInstalledAction": "查看已安装数据包",
-  "bundleRemoteProgressLoadBundleAction": "加载此数据包",
-  "bundleRemoteImportConfirmTitle": "要下载远程数据包吗？",
-  "bundleRemoteImportConfirmDescription": "下载、校验并导入 {artifactId}？当前活动数据包不会自动切换。",
-  "@bundleRemoteImportConfirmDescription": {
-    "placeholders": {
-      "artifactId": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleRemoteImportSucceeded": "远程数据包已导入。",
-  "bundleRemoteImportFailed": "远程数据包导入失败：{message}",
-  "@bundleRemoteImportFailed": {
-    "placeholders": {
-      "message": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleManagerErrorMissingPath": "缺少必要路径：{path}",
-  "@bundleManagerErrorMissingPath": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleManagerErrorExpectFile": "该位置应为文件：{fileName}",
-  "@bundleManagerErrorExpectFile": {
-    "placeholders": {
-      "fileName": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleManagerErrorExpectDirectory": "该位置应为目录：{dirName}",
-  "@bundleManagerErrorExpectDirectory": {
-    "placeholders": {
-      "dirName": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleManagerErrorBadDescriptor": "无法读取数据包元数据。",
-  "bundleManagerErrorBadPatch": "数据包历史记录无效：{reason}",
-  "@bundleManagerErrorBadPatch": {
-    "placeholders": {
-      "reason": {
-        "type": "String"
-      }
-    }
-  },
-  "bundleManagerDetailUnavailableMessage": "在修复或重新导入数据包元数据之前，无法显示该数据包详情。",
   "fallbackTypeUnavailable": "物品数据不可用（{typeId}）",
   "@fallbackTypeUnavailable": {
     "placeholders": {
@@ -1608,46 +1027,9 @@
   "itemDetailEffectCategoryDungeon": "副本",
   "itemDetailEffectCategorySystem": "系统",
   "@_LOADING_TEXT": {},
-  "loadingTextExtractingBundle": "正在解压 {archiveName}...",
-  "@loadingTextExtractingBundle": {
-    "placeholders": {
-      "archiveName": {
-        "type": "String"
-      }
-    }
-  },
   "@_ANNOUCENEMENT_TEXT": {},
   "dontShowAgain": "下次不再提示",
   "showDetails": "显示详情",
-  "startupBundleUpdateTitle": "有可用的数据包更新",
-  "startupBundleUpdateSingleDescription": "有一个新的推荐数据包更新可用。请在数据包管理中查看后再下载。",
-  "startupBundleUpdateMultipleDescription": "有 {count} 个推荐的数据包更新可用。请在数据包管理中查看后再下载。",
-  "@startupBundleUpdateMultipleDescription": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "startupBundleUpdateSummaryRecommended": "{firstId} 被推荐",
-  "@startupBundleUpdateSummaryRecommended": {
-    "placeholders": {
-      "firstId": {
-        "type": "String"
-      }
-    }
-  },
-  "startupBundleUpdateSummaryWithCount": "{firstId} 及其他 {moreCount} 个被推荐",
-  "@startupBundleUpdateSummaryWithCount": {
-    "placeholders": {
-      "firstId": {
-        "type": "String"
-      },
-      "moreCount": {
-        "type": "int"
-      }
-    }
-  },
   "@@_REPORT_PAGE": {},
   "reportPageTitle": "报告与反馈",
   "reportSectionGeneral": "通用反馈",
@@ -1688,7 +1070,6 @@
   "reportFieldActual": "实际行为",
   "reportFieldActualHint": "描述实际发生了什么",
   "reportFieldActualRequired": "实际行为不能为空",
-
   "reportFieldProblem": "要解决的问题",
   "reportFieldProblemHint": "这个请求要解决什么用户问题、痛点或缺失流程？",
   "reportFieldProblemRequired": "问题描述不能为空",
@@ -1726,5 +1107,165 @@
   "reportExternalChannelsTitle": "其他反馈渠道",
   "reportExternalChannelsDescription": "以下方式也可以提交反馈或联系我们：",
   "fitDamageProfileDialogTitle": "修改伤害分布",
-  "fitDamageProfileDialogGroupTitle": "伤害分布"
+  "fitDamageProfileDialogGroupTitle": "伤害分布",
+  "@@_BRANCH_PAGES": {},
+  "branchPageTitle": "数据管理",
+  "branchListTitle": "数据源",
+  "branchActiveBadge": "当前使用",
+  "branchPinnedBadge": "已固定",
+  "branchUpdateAvailable": "有更新",
+  "branchDetailTitle": "数据源详情",
+  "branchServerLabel": "服务器",
+  "branchBuildLabel": "版本号",
+  "branchSourceLabel": "来源",
+  "branchReflogTitle": "更新记录",
+  "branchDiffAdds": "新增 {count} 个文件",
+  "@branchDiffAdds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "branchDiffDeletes": "删除 {count} 个文件",
+  "@branchDiffDeletes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "branchDiffModifies": "修改 {count} 个文件",
+  "@branchDiffModifies": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "branchSetupTitle": "添加数据源",
+  "branchSetupStepServer": "选择服务器",
+  "branchSetupStepCheckout": "选择版本",
+  "branchSetupStepName": "命名与确认",
+  "branchSetupCreate": "创建数据源",
+  "checkoutSelectTitle": "选择数据版本",
+  "checkoutFilterInstalled": "已下载",
+  "checkoutFilterKnown": "可下载",
+  "checkoutFilterAll": "全部",
+  "branchActionDelete": "删除",
+  "branchActionSetActive": "设为当前使用",
+  "branchActionPin": "固定",
+  "branchActionUnpin": "取消固定",
+  "branchDeleteConfirmTitle": "删除数据源",
+  "branchDeleteConfirmContent": "确定要删除数据源 {name} 吗？已下载的数据不会被删除。",
+  "@branchDeleteConfirmContent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "branchRevertTitle": "回退版本",
+  "branchRevertConfirm": "确认回退到版本 {checkoutId}？",
+  "@branchRevertConfirm": {
+    "placeholders": {
+      "checkoutId": {
+        "type": "String"
+      }
+    }
+  },
+  "branchChannelLabel": "频道",
+  "branchServerSelectHint": "请选择服务器",
+  "branchNameZhLabel": "中文名称",
+  "branchNameEnLabel": "英文名称",
+  "branchNameRequired": "请输入名称",
+  "branchCreateSuccess": "数据源创建完成",
+  "branchCreateError": "创建数据源失败：{message}",
+  "@branchCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "branchSetActiveSuccess": "已切换当前数据源",
+  "branchSetActiveError": "切换数据源失败：{message}",
+  "@branchSetActiveError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "settingTileDataStorageTitle": "数据存储",
+  "settingTileDataSourcesTitle": "数据源",
+  "storagePageTitle": "存储管理",
+  "storageVerifyButton": "验证完整性",
+  "storagePruneButton": "清理未引用文件",
+  "storagePruneConfirm": "这将删除未被任何已安装版本引用的文件。",
+  "storageTotalSize": "总占用空间",
+  "storageFileCount": "文件数量",
+  "storageVerifiedOk": "所有文件完整",
+  "storageMissingFiles": "缺失 {count} 个文件",
+  "@storageMissingFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "storageHashMismatches": "{count} 个哈希不匹配",
+  "@storageHashMismatches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "storageRedownload": "重新下载",
+  "storagePrunedCount": "已清理 {count} 个文件",
+  "@storagePrunedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "storageNoCheckouts": "未找到已安装的数据版本。",
+  "storageAssetStoreSize": "资源库大小",
+  "storageAssetStoreFileCount": "资源库文件数",
+  "storageCacheInfoHint": "清理功能会删除未被任何已安装版本引用的文件。",
+  "storageNoManifest": "清单缺失",
+  "storageVerifyRunning": "验证中...",
+  "storagePruneRunning": "清理中...",
+  "storageHash": "哈希",
+  "storageSize": "大小",
+  "storageFiles": "文件数",
+  "storageStateInstalled": "已安装",
+  "storageCopyHash": "复制哈希",
+  "branchSettingsTitle": "数据源设置",
+  "branchRenameTitle": "重命名",
+  "branchRenameHint": "输入新名称",
+  "branchRenameSuccess": "数据源已重命名",
+  "branchRenameError": "重命名数据源失败：{message}",
+  "@branchRenameError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "branchPinSuccess": "已固定数据源",
+  "branchUnpinSuccess": "已取消固定数据源",
+  "branchDeleteSuccess": "数据源已删除",
+  "branchActiveSetSuccess": "已设为当前数据源",
+  "branchEmptyHint": "暂无数据源，点击右下角添加。",
+  "loadingTextExtractingBundle": "正在解压 {archiveName}...",
+  "@loadingTextExtractingBundle": {
+    "placeholders": {
+      "archiveName": {
+        "type": "String"
+      }
+    }
+  }
 }

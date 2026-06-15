@@ -54,21 +54,6 @@ class ProjectResource(BaseModel):
     descriptor: ProjectPath
 
 
-class BundleSchema(BaseModel):
-    current: int
-    min: int
-
-    @model_validator(mode="after")
-    def _validate_schema(self) -> BundleSchema:
-        if self.current <= 0:
-            raise ValueError(f"current must be positive, got {self.current}")
-        if self.min <= 0:
-            raise ValueError(f"min must be positive, got {self.min}")
-        if self.min > self.current:
-            raise ValueError(f"min ({self.min}) must be <= current ({self.current})")
-        return self
-
-
 class ProjectVersion(BaseModel):
     major: int
     minor: int
@@ -76,6 +61,7 @@ class ProjectVersion(BaseModel):
     pre_label: str = ""
     pre_num: int = 0
     build: int = 0
+    data_schema: int = Field(default=2)
 
     @model_validator(mode="after")
     def _validate_version(self) -> ProjectVersion:
@@ -146,10 +132,24 @@ class ProjectVersion(BaseModel):
         return self
 
 
+class SchemaConfig(BaseModel):
+    """Schema version configuration."""
+
+    resource_root: str = Field(default="efa/v2")
+    channel: Channel = Field(default=Channel.TESTING)
+    schema_version: int = Field(default=2)
+
+    @model_validator(mode="after")
+    def _validate_schema(self) -> SchemaConfig:
+        if self.schema_version <= 0:
+            raise ValueError(f"schema_version must be positive, got {self.schema_version}")
+        return self
+
+
 class ProjectConfiguration(BaseModel):
     localizations: ProjectLocalizations
     paths: ProjectPaths
-    bundle_schema: BundleSchema
+    data_schema: SchemaConfig = Field(default_factory=SchemaConfig)
     version: ProjectVersion
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 
@@ -201,6 +201,10 @@ class DeveloperPaths(BaseModel):
     def session_dir(self) -> ProjectPath:
         return self.root / "remote" / "sessions"
 
+    @property
+    def schema_dir(self) -> ProjectPath:
+        return self.root / "schema"
+
 
 class DeveloperWorkspace(BaseModel):
     default: str | None = Field(default=None)
@@ -214,9 +218,6 @@ class DeveloperCodegen(BaseModel):
 
 class DeveloperBuild(BaseModel):
     model_config = ConfigDict(validate_default=True)
-
-    skip_hash: bool = Field(default=False)
-    baseline: ProjectPath | None = Field(default=None)
 
 
 class DeveloperNative(BaseModel):
@@ -269,7 +270,6 @@ def _fail_remote_sub(toml_key: str, command_group: str) -> None:
 class DeveloperRemote(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
-    resource_root: str = Field(default="efa/v1")
     channel: Channel = Field(default=Channel.TESTING)
     host: str = Field(default="127.0.0.1")
     mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))

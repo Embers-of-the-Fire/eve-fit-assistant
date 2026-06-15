@@ -136,16 +136,16 @@ sealed class SlotIdentifier {
   };
 
   bool Function(EveSelectListRoot) validator(WidgetRef ref) {
-    final slotsInfo = ref.watch(bundleCollectionGetSlotsProvider);
+    final slotsInfo = ref.watch(repoCollectionProvider.select((c) => c?.slots));
     if (slotsInfo == null) return (_) => true;
 
     bool isBaseType(int typeId) {
-      final type = ref.read(bundleCollectionGetTypeProvider(typeId));
+      final type = ref.read(repoCollectionProvider.select((c) => c?.getType(typeId)));
       return type != null && !type.isDynamicType;
     }
 
     bool isFighterType(int typeId) {
-      final type = ref.read(bundleCollectionGetTypeProvider(typeId));
+      final type = ref.read(repoCollectionProvider.select((c) => c?.getType(typeId)));
       return type != null && EveConstGroupId.fighter.contains(type.groupId);
     }
 

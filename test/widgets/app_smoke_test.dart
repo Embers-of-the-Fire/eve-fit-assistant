@@ -15,7 +15,7 @@ void main() {
               locale: Locale.en,
               enableDebugLog: false,
               shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
-              showBundleImpactWarnings: true,
+              showCheckoutImpactWarnings: true,
               typeListReturnBehavior: TypeListReturnBehavior.previousPage,
             ),
           ),

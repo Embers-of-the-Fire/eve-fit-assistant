@@ -1,16 +1,15 @@
 import "dart:convert";
-import "dart:io";
 
 import "package:archive/archive.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
-import "package:eve_fit_assistant/data/proto/localizations.pb.dart" as pb_l10n;
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
-import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
-import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/models/shared.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
@@ -115,12 +114,12 @@ class FitTextImporter {
       throw FitTextImportException(FitTextImportErrorCode.unknownType, detail: header.$1);
     }
 
-    final ship = ref.read(bundleCollectionGetShipProvider(shipTypeId));
+    final ship = ref.read(repoCollectionProvider)?.getShip(shipTypeId);
     if (ship == null) {
       throw FitTextImportException(FitTextImportErrorCode.unavailableShip, detail: header.$1);
     }
 
-    final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
+    final slotsInfo = ref.read(repoCollectionProvider)?.slots;
     if (slotsInfo == null) {
       throw const FitTextImportException(FitTextImportErrorCode.unavailableData);
     }
@@ -132,8 +131,11 @@ class FitTextImporter {
         name: header.$2,
         lastModified: 0,
         description: "",
-        bundleId: "",
-        bundleSnapshot: const FitBundleSnapshot(bundleId: ""),
+        checkoutRef: const CheckoutRef(
+          checkoutId: "",
+          serverId: "",
+          metadata: GameMetadata(gameServer: "", gameBuild: "", gameVersion: ""),
+        ),
       ),
       ship,
     );
@@ -159,7 +161,7 @@ class FitTextImporter {
           if (typeId == null) {
             throw FitTextImportException(FitTextImportErrorCode.unknownType, detail: parsed.$1);
           }
-          final type = ref.read(bundleCollectionGetTypeProvider(typeId));
+          final type = ref.read(repoCollectionProvider)?.getType(typeId);
           if (type == null) {
             throw const FitTextImportException(FitTextImportErrorCode.unavailableData);
           }
@@ -476,32 +478,27 @@ class _FitTypeNameIndex {
   final Map<String, int> shipNames;
 
   static Future<_FitTypeNameIndex> load(WidgetRef ref) async {
-    final allTypes = ref.read(bundleCollectionGetAllTypesProvider);
-    pb_l10n.Localization? englishLocalization;
-    final englishPath = ref.read(localizationPathProvider("en"));
-    if (englishPath != null) {
-      final file = File(englishPath);
-      if (file.existsSync()) {
-        englishLocalization = pb_l10n.Localization.fromBuffer(await file.readAsBytes());
-      }
-    }
+    final allTypes = ref.read(repoCollectionProvider)?.getAllTypes() ?? const IList.empty();
+    final locale = ref.watch(localeProvider).name;
     final names = <String, int>{};
     final shipNames = <String, int>{};
 
     for (final type in allTypes) {
       final localizationKey = type.typeName.id;
-      final localizedName = ref.read(localizationProvider(localizationKey));
+      final localizedName = ref
+          .read(repoCollectionProvider)
+          ?.getLocalizedName(localizationKey, locale);
       if (localizedName != null && localizedName.trim().isNotEmpty) {
         names.putIfAbsent(localizedName.trim(), () => type.typeId);
-        if (ref.read(bundleCollectionGetShipProvider(type.typeId)) != null) {
+        if (ref.read(repoCollectionProvider)?.getShip(type.typeId) != null) {
           shipNames.putIfAbsent(localizedName.trim(), () => type.typeId);
         }
       }
 
-      final englishName = englishLocalization?.localizedStrings[localizationKey];
+      final englishName = ref.read(repoCollectionProvider)?.getLocalizedName(localizationKey, "en");
       if (englishName != null && englishName.trim().isNotEmpty) {
         names.putIfAbsent(englishName.trim(), () => type.typeId);
-        if (ref.read(bundleCollectionGetShipProvider(type.typeId)) != null) {
+        if (ref.read(repoCollectionProvider)?.getShip(type.typeId) != null) {
           shipNames.putIfAbsent(englishName.trim(), () => type.typeId);
         }
       }

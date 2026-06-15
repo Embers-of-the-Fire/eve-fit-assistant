@@ -5,11 +5,11 @@ import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility_notice.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/datetime.dart";
 import "package:flutter/material.dart";
@@ -81,13 +81,15 @@ class _FitListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final typeInfo = ref.watch(bundleCollectionGetTypeProvider(metadata.shipTypeId));
-    final compatibility = ref.watch(fitBundleCompatibilityProvider(metadata.fitId));
-    final compatibilityNotice = localizeFitBundleCompatibility(context.l10n, compatibility);
+    final typeInfo = ref.watch(
+      repoCollectionProvider.select((c) => c?.getType(metadata.shipTypeId)),
+    );
+    final compatibility = ref.watch(fitCheckoutCompatibilityProvider(metadata.fitId));
+    final compatibilityNotice = localizeFitCheckoutCompatibility(context.l10n, compatibility);
     final metaGroupIcon = typeInfo == null
         ? null
         : ref.watch(
-            bundleCollectionGetMetaGroupProvider(typeInfo.metaGroupId).select((t) => t?.icon),
+            repoCollectionProvider.select((c) => c?.getMetaGroup(typeInfo.metaGroupId)?.icon),
           );
     final lastModified = yMMMMdHmsLocalized(
       context,

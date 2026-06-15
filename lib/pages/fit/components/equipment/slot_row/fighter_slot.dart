@@ -82,7 +82,7 @@ class _FighterSlotRow extends ConsumerWidget {
       );
     }
 
-    final typeDef = ref.watch(bundleCollectionGetTypeProvider(displayTypeId));
+    final typeDef = ref.watch(repoCollectionProvider.select((c) => c?.getType(displayTypeId)));
     if (typeDef == null) {
       return ListTile(
         title: Text(
@@ -92,7 +92,7 @@ class _FighterSlotRow extends ConsumerWidget {
     }
 
     final metaGroupIcon = ref.watch(
-      bundleCollectionGetMetaGroupProvider(typeDef.metaGroupId).select((t) => t?.icon),
+      repoCollectionProvider.select((c) => c?.getMetaGroup(typeDef.metaGroupId)?.icon),
     );
     final fighterItems =
         fitContext.emulated?.modules

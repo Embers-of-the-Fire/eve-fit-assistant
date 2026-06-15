@@ -65,7 +65,7 @@ class AddBundleOp(BaseModel):
     type: Literal["add-bundle"] = "add-bundle"
     artifact_id: str
     bundle_id: str
-    variant: Literal["full", "incremental"]
+    variant: Literal["full"] = "full"
     fields: dict[str, object] = Field(default_factory=dict)
     staged_files: dict[str, str] = Field(default_factory=dict)
 
@@ -86,7 +86,7 @@ class PromoteBundleOp(BaseModel):
     type: Literal["promote-bundle"] = "promote-bundle"
     artifact_id: str
     bundle_id: str
-    variant: Literal["full", "incremental"]
+    variant: Literal["full"] = "full"
     fields: dict[str, object] = Field(default_factory=dict)
 
 
@@ -102,6 +102,7 @@ class TodoList(BaseModel):
     version: int = 1
     session_id: str
     committed: bool = False
+    parent_session_id: str | None = Field(default=None)
     generation: str | None = Field(default=None)
     operations: list[
         AddAnnouncementOp
@@ -110,6 +111,9 @@ class TodoList(BaseModel):
         | RemoveOp
         | PromoteDocumentOp
         | PromoteBundleOp
+        | AddResourcesOp
+        | AddAnnouncementsOp
+        | AddReleaseOp
     ] = Field(default_factory=list)
     lock_snapshot: dict[str, object] = Field(default_factory=dict)
 
@@ -140,6 +144,39 @@ class RemoteState(BaseModel):
     index: dict[str, object]
     documents_catalog: dict[str, object]
     bundles_catalog: dict[str, object]
+
+
+# ---------------------------------------------------------------------------
+# Operations — used by SessionManager
+# ---------------------------------------------------------------------------
+
+
+class AddResourcesOp(BaseModel):
+    """Register checkout + server catalogs for a generation."""
+
+    op: Literal["add_resources"] = "add_resources"
+    generation_id: str
+    description: str = ""
+    checkout_catalogs: list[dict[str, object]] = Field(default_factory=list)
+    server_catalogs: list[dict[str, object]] = Field(default_factory=list)
+
+
+class AddAnnouncementsOp(BaseModel):
+    """Register announcements for a generation."""
+
+    op: Literal["add_announcements"] = "add_announcements"
+    generation_id: str
+    source_dir: str
+
+
+class AddReleaseOp(BaseModel):
+    """Register a release with APK artifact."""
+
+    op: Literal["add_release"] = "add_release"
+    generation_id: str
+    version: str
+    apk_hash: str
+    announcement_id: str | None = Field(default=None)
 
 
 # ---------------------------------------------------------------------------

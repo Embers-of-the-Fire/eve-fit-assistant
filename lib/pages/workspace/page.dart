@@ -5,7 +5,6 @@ import "package:eve_fit_assistant/components/badge/notification_dot.dart";
 import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
 import "package:eve_fit_assistant/features/documents/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
-import "package:eve_fit_assistant/storage/bundle/guard.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -30,9 +29,6 @@ class WorkspacePage extends ConsumerWidget {
         title: context.l10n.workspaceTabActionCreateFitName,
         icon: Icons.add_circle_outline,
         onTap: () async {
-          if (!await ensureUsableBundle(context, ref)) {
-            return;
-          }
           if (context.mounted) {
             unawaited(context.router.push(const FitCreationRoute()));
           }
@@ -47,11 +43,6 @@ class WorkspacePage extends ConsumerWidget {
         title: context.l10n.workspaceTabReportTitle,
         icon: Icons.feedback_outlined,
         onTap: () => context.router.push(const ReportFeedbackRoute()),
-      ),
-      _WorkspaceShortcutItem(
-        title: context.l10n.settingTileBundleManagerTitle,
-        icon: Icons.archive_outlined,
-        onTap: () => context.router.push(const BundleManagerRoute()),
       ),
       _WorkspaceShortcutItem(
         title: context.l10n.settingTileAppSettingsTitle,

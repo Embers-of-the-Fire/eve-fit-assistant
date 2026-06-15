@@ -110,7 +110,7 @@ def _enum_name(name: str, unit_id: int) -> str:
 
 async def codegen_dart(config: WorkspaceConfig) -> list[Path]:
     out_file = EVE_DOGMA_UNIT_OUT_PATH
-    datasource = GeneratorDatasource(config, is_incremental=False)
+    datasource = GeneratorDatasource(config)
     try:
         dogma_units = await datasource.resources.fsd.get("dogmaUnits")
     finally:

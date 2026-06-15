@@ -2,9 +2,9 @@ import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/documents/available_update_gate.dart";
 import "package:eve_fit_assistant/features/documents/startup_announcement.dart";
+import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart";
 import "package:eve_fit_assistant/init.dart";
 import "package:eve_fit_assistant/pages/router.dart";
-import "package:eve_fit_assistant/storage/bundle/startup_bundle_update.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -22,7 +22,6 @@ class MyApp extends ConsumerWidget {
   static final _appRouter = AppRouter();
   static final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     initWithRef(ref);
@@ -48,51 +47,50 @@ class MyApp extends ConsumerWidget {
       tabBarTheme: TabBarThemeData(indicatorColor: colorScheme.primary),
     );
     final fontScale = ref.watch(fontScaleProvider);
-    return MaterialApp.router(
-      onGenerateTitle: (context) => context.l10n.appTitle,
-      theme: theme,
-      scaffoldMessengerKey: _scaffoldMessengerKey,
-      locale: Locale(ref.watch(localeProvider).name),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      routerConfig: _appRouter.config(),
-      builder: (context, child) {
-        final report = StartupPersistenceRepairReporter.instance.peek();
-        if (report != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final messenger = _scaffoldMessengerKey.currentState;
-            if (messenger == null) {
-              return;
-            }
-            final consumedReport = StartupPersistenceRepairReporter.instance.consume();
-            if (consumedReport == null) {
-              return;
-            }
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(_formatStartupPersistenceReport(context.l10n, consumedReport)),
-                duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
-              ),
-            );
-          });
-        }
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
-          child: StartupBundleUpdateGate(
-            appRouter: _appRouter,
-            navigatorKey: _appRouter.navigatorKey,
-            child: StartupAnnouncementGate(
+
+    return SchemaGuard(
+      builder: (active) => MaterialApp.router(
+        onGenerateTitle: (context) => context.l10n.appTitle,
+        theme: theme,
+        scaffoldMessengerKey: _scaffoldMessengerKey,
+        locale: Locale(ref.watch(localeProvider).name),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: _appRouter.config(),
+        builder: (context, child) {
+          final report = StartupPersistenceRepairReporter.instance.peek();
+          if (report != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final messenger = _scaffoldMessengerKey.currentState;
+              if (messenger == null) {
+                return;
+              }
+              final consumedReport = StartupPersistenceRepairReporter.instance.consume();
+              if (consumedReport == null) {
+                return;
+              }
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(_formatStartupPersistenceReport(context.l10n, consumedReport)),
+                  duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
+                ),
+              );
+            });
+          }
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
+            child: AvailableUpdateGate(
               appRouter: _appRouter,
               navigatorKey: _appRouter.navigatorKey,
-              child: AvailableUpdateGate(
+              child: StartupAnnouncementGate(
                 appRouter: _appRouter,
                 navigatorKey: _appRouter.navigatorKey,
                 child: initBuilder(context, child),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -102,17 +100,11 @@ String _formatStartupPersistenceReport(
   StartupPersistenceRepairReport report,
 ) {
   final details = <String>[
-    if (report.rewroteFitRegistry || report.rewroteBundleRegistry)
-      l10n.startupPersistenceRepairRebuiltMetadata,
+    if (report.rewroteFitRegistry) l10n.startupPersistenceRepairRebuiltMetadata,
     if (report.removedMissingFitEntries > 0)
       l10n.startupPersistenceRepairRemovedMissingFits(count: report.removedMissingFitEntries),
     if (report.restoredFitEntries > 0)
       l10n.startupPersistenceRepairRestoredFits(count: report.restoredFitEntries),
-    if (report.removedMissingBundleEntries > 0)
-      l10n.startupPersistenceRepairRemovedMissingBundles(count: report.removedMissingBundleEntries),
-    if (report.restoredBundleEntries > 0)
-      l10n.startupPersistenceRepairRestoredBundles(count: report.restoredBundleEntries),
-    if (report.selectedBundleChanged) l10n.startupPersistenceRepairUpdatedSelectedBundle,
   ];
 
   final detailsText = details.isEmpty && report.hasWarnings

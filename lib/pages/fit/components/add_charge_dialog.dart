@@ -20,7 +20,7 @@ class _AddChargeDialog extends ConsumerWidget {
 
   bool _isSupportedChargeNode(WidgetRef ref, EveSelectListRoot node) => switch (node) {
     EveSelectListRootType(:final typeId) => switch (ref.read(
-      bundleCollectionGetTypeProvider(typeId),
+      repoCollectionProvider.select((c) => c?.getType(typeId)),
     )) {
       null => false,
       final type => chargeGroups.contains(type.groupId),
