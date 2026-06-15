@@ -14,7 +14,6 @@ from data.lib.remote.generation import utc_timestamp
 from data.lib.remote.models import ChannelHeadMetadata
 from data.lib.remote.models import ChannelInfo
 from data.lib.remote.models import ChannelRegistry
-from data.lib.remote.models import HeadReflog
 from data.lib.remote.models import append_head_reflog_entry
 from data.lib.remote.models import read_json
 from data.lib.remote.models import read_pb2
@@ -28,6 +27,8 @@ from data.lib.remote.paths import head_reflog_path
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from data.lib.remote.models import HeadReflog
 
 
 class ChannelHeadStore:
@@ -64,6 +65,8 @@ class ChannelHeadStore:
 
         reflog_path = head_reflog_path(self.root, name)
         if not reflog_path.is_file():
+            from data.lib.remote.models import HeadReflog
+
             empty_reflog = HeadReflog()
             empty_reflog.schema_version = 1
             write_pb2(reflog_path, empty_reflog)
@@ -114,6 +117,8 @@ class ChannelHeadStore:
     # --- Reflog --------------------------------------------------------------
 
     def get_reflog(self, channel: str) -> HeadReflog:
+        from data.lib.remote.models import HeadReflog
+
         path = head_reflog_path(self.root, channel)
         if not path.is_file():
             empty = HeadReflog()

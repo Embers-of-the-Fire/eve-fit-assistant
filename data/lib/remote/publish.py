@@ -13,9 +13,6 @@ from typing import TYPE_CHECKING
 from data.lib.remote.generation import GenerationStore
 from data.lib.remote.hash import ident_hash
 from data.lib.remote.head import ChannelHeadStore
-from data.lib.remote.models import GenerationPointer
-from data.lib.remote.models import GenerationResources
-from data.lib.remote.models import ResourceIndex
 from data.lib.remote.models import read_pb2
 from data.lib.remote.paths import announcement_snapshot_dir
 from data.lib.remote.paths import blob_path
@@ -29,6 +26,9 @@ from data.lib.remote.snapshot import SnapshotStore
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from data.lib.remote.models import GenerationPointer
+    from data.lib.remote.models import GenerationResources
 
 
 class Publisher:
@@ -128,6 +128,8 @@ class Publisher:
             self._upload_dir(snap_dir, prefixes + f"assets/resources/{snap_hash}")
 
             try:
+                from data.lib.remote.models import ResourceIndex
+
                 index = read_pb2(snap_dir / "resources.pb2", ResourceIndex)
             except Exception:
                 continue

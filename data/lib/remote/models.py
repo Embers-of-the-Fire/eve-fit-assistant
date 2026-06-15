@@ -1,7 +1,10 @@
 """Data models for EFA V2 schema — JSON metadata and protobuf wrappers."""
 
+# ruff: noqa: F821 (protobuf types are provided lazily via __getattr__)
+
 from __future__ import annotations
 
+import importlib
 import json
 
 from dataclasses import dataclass
@@ -10,15 +13,6 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 from pydantic import Field
-
-from data.lib.schema import announcement_index_pb2
-from data.lib.schema import checkout_reflog_pb2
-from data.lib.schema import generation_pointer_pb2
-from data.lib.schema import generation_resources_pb2
-from data.lib.schema import head_reflog_pb2
-from data.lib.schema import release_index_pb2
-from data.lib.schema import resource_index_pb2
-from data.lib.schema import server_index_pb2
 
 
 if TYPE_CHECKING:
@@ -169,22 +163,39 @@ def write_pb2_atomic(path: Path, message) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Protobuf constructors (mirror spec)
+# Lazy protobuf type access — avoids triggering imports before protobuf files
+# are generated (e.g. when x.py is imported on a fresh checkout).
 # ---------------------------------------------------------------------------
 
-ResourceIndex = resource_index_pb2.ResourceIndex
-ReleaseIndex = release_index_pb2.ReleaseIndex
-AnnouncementIndex = announcement_index_pb2.AnnouncementIndex
-ServerIndex = server_index_pb2.ServerIndex
-GenerationResources = generation_resources_pb2.GenerationResources
-GenerationPointer = generation_pointer_pb2.GenerationPointer
-HeadReflog = head_reflog_pb2.HeadReflog
-CheckoutReflog = checkout_reflog_pb2.CheckoutReflog
+_PB2_ALIAS_MAP: dict[str, tuple[str, str]] = {
+    "ResourceIndex": ("resource_index_pb2", "ResourceIndex"),
+    "ReleaseIndex": ("release_index_pb2", "ReleaseIndex"),
+    "AnnouncementIndex": ("announcement_index_pb2", "AnnouncementIndex"),
+    "ServerIndex": ("server_index_pb2", "ServerIndex"),
+    "GenerationResources": ("generation_resources_pb2", "GenerationResources"),
+    "GenerationPointer": ("generation_pointer_pb2", "GenerationPointer"),
+    "HeadReflog": ("head_reflog_pb2", "HeadReflog"),
+    "CheckoutReflog": ("checkout_reflog_pb2", "CheckoutReflog"),
+}
+
+
+def _load_pb2_type(name: str) -> type:
+    module_name, class_name = _PB2_ALIAS_MAP[name]
+    module = importlib.import_module(f"data.lib.schema.{module_name}")
+    return getattr(module, class_name)
+
+
+def __getattr__(name: str):
+    if name in _PB2_ALIAS_MAP:
+        val = _load_pb2_type(name)
+        globals()[name] = val
+        return val
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def make_resource_index(entries: list[tuple[str, str, int]]) -> ResourceIndex:
     """Build a ResourceIndex from (resource_id, content_hash, size) tuples."""
-    msg = ResourceIndex()
+    msg = _load_pb2_type("ResourceIndex")()
     msg.schema_version = 1
     for rid, content, size in entries:
         entry = msg.entries.add()
@@ -198,7 +209,7 @@ def make_server_index(
     servers: list[tuple[str, dict[str, str], str, str]],
 ) -> ServerIndex:
     """Build a ServerIndex from (server_id, name_map, game_build, game_version) tuples."""
-    msg = ServerIndex()
+    msg = _load_pb2_type("ServerIndex")()
     msg.schema_version = 1
     for sid, name_map, build, version in servers:
         entry = msg.servers.add()
@@ -214,7 +225,7 @@ def make_generation_resources(
     mappings: list[tuple[str, str]],
 ) -> GenerationResources:
     """Build a GenerationResources from (server_id, snapshot_hash) tuples."""
-    msg = GenerationResources()
+    msg = _load_pb2_type("GenerationResources")()
     msg.schema_version = 1
     for sid, snap_hash in mappings:
         entry = msg.entries.add()
@@ -224,7 +235,7 @@ def make_generation_resources(
 
 
 def make_generation_pointer(snapshot_hash: str) -> GenerationPointer:
-    msg = GenerationPointer()
+    msg = _load_pb2_type("GenerationPointer")()
     msg.schema_version = 1
     msg.snapshot_hash = snapshot_hash
     return msg
@@ -234,7 +245,7 @@ def make_release_index(
     entries: list[tuple[str, str, list[str], str]],
 ) -> ReleaseIndex:
     """Build a ReleaseIndex from (id, version, offerings, ident_hash) tuples."""
-    msg = ReleaseIndex()
+    msg = _load_pb2_type("ReleaseIndex")()
     msg.schema_version = 1
     for rid, version, offerings, ihash in entries:
         entry = msg.entries.add()
@@ -253,7 +264,7 @@ def make_announcement_index(
     Each dict can have: id, first_published_at, updated_at, content_hashes,
     version_min, version_max, is_version_update.
     """
-    msg = AnnouncementIndex()
+    msg = _load_pb2_type("AnnouncementIndex")()
     msg.schema_version = 1
     for e in entries:
         entry = msg.entries.add()
@@ -278,7 +289,7 @@ def make_head_reflog_entry(
     timestamp: str,
 ) -> HeadReflog:
     """Build a single-entry HeadReflog."""
-    msg = HeadReflog()
+    msg = _load_pb2_type("HeadReflog")()
     msg.schema_version = 1
     entry = msg.entries.add()
     setattr(entry, "from", from_hash)
@@ -304,7 +315,7 @@ def append_head_reflog_entry(
 
 
 def make_checkout_reflog() -> CheckoutReflog:
-    msg = CheckoutReflog()
+    msg = _load_pb2_type("CheckoutReflog")()
     msg.schema_version = 1
     return msg
 

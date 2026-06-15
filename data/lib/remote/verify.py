@@ -21,8 +21,6 @@ from data.lib.remote.hash import generation_hash as _generation_hash
 from data.lib.remote.hash import ident_hash as _ident_hash
 from data.lib.remote.hash import snapshot_hash as _snapshot_hash
 from data.lib.remote.head import ChannelHeadStore
-from data.lib.remote.models import HeadReflog
-from data.lib.remote.models import ResourceIndex
 from data.lib.remote.models import read_pb2 as _models_read_pb2
 from data.lib.remote.paths import blob_path
 from data.lib.remote.paths import generation_dir
@@ -117,6 +115,8 @@ class Verifier:
             reflog_path = head_reflog_path(self.root, channel_name)
             if reflog_path.is_file():
                 try:
+                    from data.lib.remote.models import HeadReflog
+
                     reflog = _models_read_pb2(reflog_path, HeadReflog)
                     if reflog.entries:
                         last = reflog.entries[-1]
@@ -280,6 +280,8 @@ class Verifier:
                 continue
 
             try:
+                from data.lib.remote.models import ResourceIndex
+
                 index = _models_read_pb2(proto_path, ResourceIndex)
             except Exception:
                 continue

@@ -24,7 +24,6 @@ from data.lib.log import info
 from data.lib.log import warning
 from data.lib.remote.hash import content_hash as sha256_content
 from data.lib.remote.hash import ident_hash as ident_hash_fn
-from data.lib.remote.models import ResourceIndex
 from data.lib.remote.models import ResourceSnapshotMetadata
 from data.lib.remote.snapshot import SnapshotStore
 
@@ -126,6 +125,8 @@ def generate_resource_snapshot(
     if not entries:
         warning("No files found in build directory")
         return None
+
+    from data.lib.remote.models import ResourceIndex
 
     index = ResourceIndex()
     index.schema_version = 1

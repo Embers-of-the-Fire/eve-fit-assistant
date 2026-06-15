@@ -14,11 +14,8 @@ from typing import TYPE_CHECKING
 from typing import Literal
 
 from data.lib.remote.hash import snapshot_hash as _compute_snapshot_hash
-from data.lib.remote.models import AnnouncementIndex
 from data.lib.remote.models import AnnouncementSnapshotMetadata
-from data.lib.remote.models import ReleaseIndex
 from data.lib.remote.models import ReleaseSnapshotMetadata
-from data.lib.remote.models import ResourceIndex
 from data.lib.remote.models import ResourceSnapshotMetadata
 from data.lib.remote.models import read_json
 from data.lib.remote.models import read_pb2
@@ -35,6 +32,10 @@ from data.lib.remote.paths import temp_resource_snapshot_dir
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from data.lib.remote.models import AnnouncementIndex
+    from data.lib.remote.models import ReleaseIndex
+    from data.lib.remote.models import ResourceIndex
+
 
 SnapshotType = Literal["resource", "release", "announcement"]
 
@@ -44,11 +45,17 @@ _PROTO_NAME: dict[SnapshotType, str] = {
     "announcement": "announcements.pb2",
 }
 
-_PROTO_CLASS: dict[SnapshotType, type] = {
-    "resource": ResourceIndex,
-    "release": ReleaseIndex,
-    "announcement": AnnouncementIndex,
-}
+
+def _get_proto_class(snap_type: SnapshotType) -> type:
+    from data.lib.remote.models import AnnouncementIndex
+    from data.lib.remote.models import ReleaseIndex
+    from data.lib.remote.models import ResourceIndex
+
+    return {
+        "resource": ResourceIndex,
+        "release": ReleaseIndex,
+        "announcement": AnnouncementIndex,
+    }[snap_type]
 
 
 class SnapshotStore:
@@ -69,6 +76,8 @@ class SnapshotStore:
     def load_resource_snapshot(
         self, snapshot_hash: str
     ) -> tuple[ResourceSnapshotMetadata, ResourceIndex]:
+        from data.lib.remote.models import ResourceIndex
+
         return self._load_snapshot(
             "resource", snapshot_hash, ResourceSnapshotMetadata, ResourceIndex
         )
@@ -91,6 +100,8 @@ class SnapshotStore:
     def load_release_snapshot(
         self, snapshot_hash: str
     ) -> tuple[ReleaseSnapshotMetadata, ReleaseIndex]:
+        from data.lib.remote.models import ReleaseIndex
+
         return self._load_snapshot("release", snapshot_hash, ReleaseSnapshotMetadata, ReleaseIndex)
 
     def delete_release_snapshot(self, snapshot_hash: str) -> None:
@@ -111,6 +122,8 @@ class SnapshotStore:
     def load_announcement_snapshot(
         self, snapshot_hash: str
     ) -> tuple[AnnouncementSnapshotMetadata, AnnouncementIndex]:
+        from data.lib.remote.models import AnnouncementIndex
+
         return self._load_snapshot(
             "announcement", snapshot_hash, AnnouncementSnapshotMetadata, AnnouncementIndex
         )

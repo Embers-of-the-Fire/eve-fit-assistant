@@ -18,7 +18,6 @@ from data.lib.remote.generation import GenerationStore
 from data.lib.remote.hash import ident_hash
 from data.lib.remote.head import ChannelHeadStore
 from data.lib.remote.models import ReachabilitySet
-from data.lib.remote.models import ResourceIndex
 from data.lib.remote.models import read_pb2
 from data.lib.remote.paths import resource_snapshot_dir
 
@@ -70,6 +69,8 @@ class GarbageCollector:
         return reachable
 
     def _collect_resource_blobs(self, snap_hash: str, reachable: ReachabilitySet) -> None:
+        from data.lib.remote.models import ResourceIndex
+
         snap_dir = resource_snapshot_dir(self.root, snap_hash)
         proto_path = snap_dir / "resources.pb2"
         if not proto_path.is_file():

@@ -14,9 +14,6 @@ from typing import TYPE_CHECKING
 
 from data.lib.remote.hash import generation_hash as _compute_generation_hash
 from data.lib.remote.models import GenerationMetadata
-from data.lib.remote.models import GenerationPointer
-from data.lib.remote.models import GenerationResources
-from data.lib.remote.models import ServerIndex
 from data.lib.remote.models import read_json
 from data.lib.remote.models import read_pb2
 from data.lib.remote.models import write_json
@@ -28,6 +25,10 @@ from data.lib.remote.paths import temp_generation_dir
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
+
+    from data.lib.remote.models import GenerationPointer
+    from data.lib.remote.models import GenerationResources
+    from data.lib.remote.models import ServerIndex
 
 
 @dataclass
@@ -92,6 +93,10 @@ class GenerationStore:
         gen_dir = generation_dir(self.root, gen_hash)
         if not gen_dir.is_dir():
             raise FileNotFoundError(f"Generation not found: {gen_dir}")
+
+        from data.lib.remote.models import GenerationPointer
+        from data.lib.remote.models import GenerationResources
+        from data.lib.remote.models import ServerIndex
 
         meta = GenerationMetadata.model_validate(read_json(gen_dir / "metadata.json"))
         return Generation(
