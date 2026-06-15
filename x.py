@@ -367,7 +367,20 @@ def __publish_remote_origin_to_s3(
     index_path = gen_dir / "index.json"
 
     if not index_path.exists() or not index_path.is_file():
-        raise click.ClickException(f"Remote publish generation index does not exist: {index_path}")
+        if not channel_dir.is_dir():
+            raise click.ClickException(
+                f"Remote publish channel directory does not exist: {channel_dir}"
+            )
+        gen_dir.mkdir(parents=True, exist_ok=True)
+        for item in channel_dir.iterdir():
+            if item.name == ".generations":
+                continue
+            dst = gen_dir / item.name
+            if item.is_dir():
+                if not dst.exists():
+                    shutil.copytree(item, dst)
+            elif not dst.exists():
+                shutil.copy2(item, dst)
 
     mc = get_command("mc")
     bucket_target = f"{resolved_alias}/{resolved_bucket}"
