@@ -73,6 +73,12 @@ from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import info
 from data.lib.log import warning
 from data.lib.remote import SessionManager
+from data.lib.remote import SessionManagerCommittedError
+from data.lib.remote import SessionManagerInvalidError
+from data.lib.remote.session_model import Session
+from data.lib.remote.session_model import SessionExistsError
+from data.lib.remote.session_model import SessionStore
+from data.lib.remote.verify import Verifier
 from data.lib.utils import execute_command
 from data.lib.utils import get_bin_size
 from data.lib.utils import get_command
@@ -1093,7 +1099,171 @@ def remote_config_display(pretty: bool, as_json: bool):
     click.echo(json.dumps(payload, indent=4 if pretty else None))
 
 
-# ---- push -------------------------------------------------------------------
+@remote.group("session", cls=ClickAliasedGroup)
+def remote_session():
+    """Staged generation assembly — build, stage, review, commit."""
+
+
+# ---------------------------------------------------------------------------
+
+
+def _require_session(store: SessionStore, operation: str) -> Session:
+    """Load the session, raise ClickException if not present."""
+    try:
+        return store.load()
+    except FileNotFoundError:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+
+@remote_session.command("init")
+@click.argument("channel")
+@click.option("--author", required=True, help="Author identifier.")
+@click.option("--description", required=True, help="Description for the generation.")
+@click.option(
+    "--force-overwrite",
+    is_flag=True,
+    default=False,
+    help="Overwrite an existing session.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_init(
+    channel: str,
+    author: str,
+    description: str,
+    force_overwrite: bool,
+    schema_root: Path | None,
+):
+    """Create a new staging session for generation assembly."""
+    root = _resolve_schema_root(schema_root)
+    resolved_channel = __validate_remote_channel(channel)
+    mgr = SessionManager(root)
+    mgr.ensure_channel(resolved_channel.value)
+    store = SessionStore(root)
+    try:
+        store.init(
+            resolved_channel.value,
+            author,
+            description,
+            force_overwrite=force_overwrite,
+        )
+    except SessionExistsError as e:
+        raise click.ClickException(str(e)) from None
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Session initialized on channel ")
+        + resolved_channel.value
+    )
+    click.echo(f"  Author:      {author}")
+    click.echo(f"  Description: {description}")
+    click.echo(styled(Style.DIM, f"  Session file: {store.session_path}"))
+
+
+@remote_session.command("status")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Machine-readable output.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_status(as_json: bool, schema_root: Path | None):
+    """Show current session summary."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+    if not store.exists():
+        if as_json:
+            click.echo(json.dumps({"active": False}))
+        else:
+            click.echo(styled(Style.DIM, "No active session."))
+        return
+    session = store.load()
+    staged = session.staged
+    if as_json:
+        click.echo(
+            json.dumps(
+                {
+                    "active": True,
+                    "channel": session.channel,
+                    "author": session.author,
+                    "description": session.description,
+                    "committed": session.committed,
+                    "staged_counts": {
+                        "resources": len(staged.resources),
+                        "releases": len(staged.releases),
+                        "announcements": len(staged.announcements),
+                    },
+                    "file": str(store.session_path),
+                }
+            )
+        )
+    else:
+        committed_label = ""
+        if session.committed:
+            committed_label = styled([Style.BRIGHT, Fore.GREEN], " (committed)")
+        else:
+            committed_label = styled([Style.BRIGHT, Fore.YELLOW], " (uncommitted)")
+        click.echo(f"Session on channel {session.channel}{committed_label}")
+        click.echo(f"  Author:      {session.author}")
+        click.echo(f"  Description: {session.description}")
+        click.echo(
+            f"  Staged:      "
+            f"R:{len(staged.resources)} "
+            f"L:{len(staged.releases)} "
+            f"A:{len(staged.announcements)}"
+        )
+        click.echo(styled(Style.DIM, f"  File:        {store.session_path}"))
+        if session.committed:
+            mgr = SessionManager(root)
+            try:
+                head = mgr.get_head(session.channel)
+                gen_hash = head.generation_hash if head.generation_hash else None
+            except Exception:
+                gen_hash = None
+            if gen_hash:
+                click.echo(styled(Style.DIM, f"  Head:        {gen_hash[:16]}..."))
+
+
+@remote_session.command("discard")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Discard even if session is committed.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_discard(force: bool, schema_root: Path | None):
+    """Delete the current session."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+    try:
+        store.discard(force=force)
+    except SessionManagerInvalidError:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+    except SessionManagerCommittedError:
+        raise click.ClickException("Session is committed. Use --force to discard.") from None
+    click.echo(f"Session discarded: {store.session_path}")
+
+
+# ---- session add / remove ---------------------------------------------------
 
 
 def _resolve_schema_root(schema_root: Path | None) -> Path:
@@ -1101,6 +1271,986 @@ def _resolve_schema_root(schema_root: Path | None) -> Path:
     if schema_root is not None:
         return __resolve_dev_path(schema_root)
     return __resolve_dev_path(data.lib.config.DEV_CONFIGURATION.paths.schema_dir)
+
+
+def _validate_add_args(
+    snap_type_flag: str | None,
+    source_hash: str | None,
+    source_file: Path | None,
+) -> str:
+    """Validate mutually exclusive add flags. Returns the snap type."""
+    if snap_type_flag is None:
+        raise click.ClickException(
+            "Must specify exactly one of --resource, --release, --announcement."
+        )
+    if source_hash is None and source_file is None:
+        raise click.ClickException("Must specify exactly one of --hash or --file.")
+    if source_hash is not None and source_file is not None:
+        raise click.ClickException("Cannot specify both --hash and --file.")
+    return snap_type_flag
+
+
+_SNAPSHOT_TYPE_DIR: dict[str, str] = {
+    "resource": "resources",
+    "release": "releases",
+    "announcement": "announcements",
+}
+
+
+def _check_snapshot_metadata(
+    snap_type: str,
+    snap_dir: Path,
+) -> None:
+    """Verify that metadata.json matches the expected snapshot type.
+
+    Tries parsing with the expected metadata model. On parse failure
+    (ValidationError) or on success with the wrong model having unexpected
+    fields, raises ClickException.
+    """
+    from data.lib.remote.models import AnnouncementSnapshotMetadata
+    from data.lib.remote.models import ReleaseSnapshotMetadata
+    from data.lib.remote.models import ResourceSnapshotMetadata
+    from data.lib.remote.models import read_json
+
+    metadata_path = snap_dir / "metadata.json"
+    if not metadata_path.is_file():
+        raise click.ClickException(f"Snapshot directory missing metadata.json: {snap_dir}")
+
+    meta_raw = read_json(metadata_path)
+
+    # Try the expected model first; if it parses OK we are done
+    model_for_type = {
+        "resource": ResourceSnapshotMetadata,
+        "release": ReleaseSnapshotMetadata,
+        "announcement": AnnouncementSnapshotMetadata,
+    }
+
+    # Try expected model — success means match
+    try:
+        model_for_type[snap_type].model_validate(meta_raw)
+        return
+    except Exception:
+        pass
+
+    # If expected model fails, check whether any OTHER model succeeds
+    for other_type, other_model in model_for_type.items():
+        if other_type == snap_type:
+            continue
+        try:
+            other_model.model_validate(meta_raw)
+            raise click.ClickException(
+                f"Snapshot metadata at {snap_dir} declares type '{other_type}', not '{snap_type}'."
+            ) from None
+        except Exception:
+            continue
+
+    raise click.ClickException(
+        f"Snapshot metadata at {snap_dir} is not a valid '{snap_type}' metadata JSON."
+    )
+
+
+def _add_snapshot_by_hash(
+    store: SessionStore,
+    root: Path,
+    snap_type: str,
+    hash_value: str,
+) -> None:
+    """Verify snapshot existence + metadata type, then stage."""
+    from data.lib.remote.paths import announcement_snapshot_dir
+    from data.lib.remote.paths import release_snapshot_dir
+    from data.lib.remote.paths import resource_snapshot_dir
+
+    dir_for_type = {
+        "resource": resource_snapshot_dir,
+        "release": release_snapshot_dir,
+        "announcement": announcement_snapshot_dir,
+    }
+    snap_dir = dir_for_type[snap_type](root, hash_value)
+    if not snap_dir.is_dir():
+        raise click.ClickException(f"Snapshot {hash_value[:16]}... not found at {snap_dir}")
+    _check_snapshot_metadata(snap_type, snap_dir)
+    store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
+
+
+def _add_snapshot_by_file(
+    store: SessionStore,
+    root: Path,
+    snap_type: str,
+    source_file: Path,
+) -> None:
+    """Read a catalog/registry file, compute snapshot, and stage."""
+    import json as _json
+
+    from data.lib.remote.models import AnnouncementSnapshotMetadata
+    from data.lib.remote.models import ReleaseSnapshotMetadata
+    from data.lib.remote.models import ResourceSnapshotMetadata
+    from data.lib.remote.snapshot import SnapshotStore
+
+    raw = source_file.read_text(encoding="utf-8")
+    try:
+        data = _json.loads(raw)
+    except _json.JSONDecodeError as e:
+        raise click.ClickException(f"Cannot parse {source_file}: {e}") from None
+
+    snap_store = SnapshotStore(root)
+
+    if snap_type == "resource":
+        from data.lib.remote.models import make_resource_index
+
+        try:
+            metadata = ResourceSnapshotMetadata.model_validate(data["metadata"])
+            entries = data["entries"]
+        except KeyError as e:
+            raise click.ClickException(
+                f"Invalid resource catalog in {source_file}: "
+                f"missing key {e} (expected 'metadata' and 'entries')"
+            ) from None
+        except Exception as e:
+            raise click.ClickException(
+                f"Cannot parse resource metadata in {source_file}: {e}"
+            ) from None
+
+        index_entries: list[tuple[str, str, int]] = []
+        for entry in entries:
+            index_entries.append((entry["resource_id"], entry["content_hash"], int(entry["size"])))
+        index = make_resource_index(index_entries)
+        hash_value = snap_store.create_resource_snapshot(metadata, index)
+
+    elif snap_type == "release":
+        from data.lib.remote.models import make_release_index
+
+        try:
+            metadata = ReleaseSnapshotMetadata.model_validate(data["metadata"])
+            entries = data["entries"]
+        except KeyError as e:
+            raise click.ClickException(
+                f"Invalid release registry in {source_file}: "
+                f"missing key {e} (expected 'metadata' and 'entries')"
+            ) from None
+        except Exception as e:
+            raise click.ClickException(
+                f"Cannot parse release metadata in {source_file}: {e}"
+            ) from None
+
+        index_entries: list[tuple[str, str, list[str], str]] = []
+        for entry in entries:
+            index_entries.append(
+                (
+                    entry["id"],
+                    entry["version"],
+                    entry.get("offerings", []),
+                    entry.get("ident_hash", ""),
+                )
+            )
+        index = make_release_index(index_entries)
+        hash_value = snap_store.create_release_snapshot(metadata, index)
+
+    elif snap_type == "announcement":
+        from data.lib.remote.models import make_announcement_index
+
+        try:
+            metadata = AnnouncementSnapshotMetadata.model_validate(data["metadata"])
+            entries = data["entries"]
+        except KeyError as e:
+            raise click.ClickException(
+                f"Invalid announcement registry in {source_file}: "
+                f"missing key {e} (expected 'metadata' and 'entries')"
+            ) from None
+        except Exception as e:
+            raise click.ClickException(
+                f"Cannot parse announcement metadata in {source_file}: {e}"
+            ) from None
+
+        index_entries: list[dict] = []
+        for entry in entries:
+            e_dict: dict = {
+                "id": entry["id"],
+                "first_published_at": entry["first_published_at"],
+                "updated_at": entry["updated_at"],
+            }
+            if "content_hashes" in entry:
+                e_dict["content_hashes"] = entry["content_hashes"]
+            if "version_min" in entry:
+                e_dict["version_min"] = entry["version_min"]
+            if "version_max" in entry:
+                e_dict["version_max"] = entry["version_max"]
+            if entry.get("is_version_update", False):
+                e_dict["is_version_update"] = True
+            index_entries.append(e_dict)
+        index = make_announcement_index(index_entries)
+        hash_value = snap_store.create_announcement_snapshot(metadata, index)
+
+    else:
+        raise click.ClickException(f"Unknown snapshot type: {snap_type}")
+
+    store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
+
+
+@remote_session.command("add")
+@click.option(
+    "--resource",
+    "snap_type_flag",
+    flag_value="resource",
+    help="Stage a resource snapshot.",
+)
+@click.option(
+    "--release",
+    "snap_type_flag",
+    flag_value="release",
+    help="Stage a release snapshot.",
+)
+@click.option(
+    "--announcement",
+    "snap_type_flag",
+    flag_value="announcement",
+    help="Stage an announcement snapshot.",
+)
+@click.option(
+    "--hash",
+    "source_hash",
+    default=None,
+    help="Snapshot hash to stage.",
+)
+@click.option(
+    "--file",
+    "source_file",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="File to compute snapshot hash from (checkout catalog, registry).",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Add to a committed session.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_add(
+    snap_type_flag: str | None,
+    source_hash: str | None,
+    source_file: Path | None,
+    force: bool,
+    schema_root: Path | None,
+):
+    """Stage a snapshot for the next generation commit."""
+    snap_type = _validate_add_args(snap_type_flag, source_hash, source_file)
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+
+    try:
+        _require_session(store, "add")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+    if not force:
+        store.ensure_editable()
+
+    if source_hash is not None:
+        _add_snapshot_by_hash(store, root, snap_type, source_hash)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Staged {snap_type} snapshot ")
+            + f"{source_hash[:16]}..."
+        )
+    elif source_file is not None:
+        _add_snapshot_by_file(store, root, snap_type, source_file)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Staged {snap_type} snapshot ")
+            + f"from {source_file}"
+        )
+
+
+@remote_session.command("remove")
+@click.option(
+    "--resource",
+    "snap_type_flag",
+    flag_value="resource",
+    help="Remove a resource snapshot.",
+)
+@click.option(
+    "--release",
+    "snap_type_flag",
+    flag_value="release",
+    help="Remove a release snapshot.",
+)
+@click.option(
+    "--announcement",
+    "snap_type_flag",
+    flag_value="announcement",
+    help="Remove an announcement snapshot.",
+)
+@click.option(
+    "--hash",
+    "source_hash",
+    required=True,
+    help="Snapshot hash to remove.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Remove from a committed session.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_remove(
+    snap_type_flag: str | None,
+    source_hash: str,
+    force: bool,
+    schema_root: Path | None,
+):
+    """Unstage a snapshot."""
+    if snap_type_flag is None:
+        raise click.ClickException(
+            "Must specify exactly one of --resource, --release, --announcement."
+        )
+
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+
+    try:
+        _require_session(store, "remove")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+    if not force:
+        store.ensure_editable()
+
+    try:
+        store.remove_snapshot(snap_type_flag, source_hash)  # type: ignore[arg-type]
+    except ValueError as e:
+        raise click.ClickException(str(e)) from None
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], f"Removed {snap_type_flag} snapshot ")
+        + f"{source_hash[:16]}..."
+    )
+
+
+# ---- session diff ------------------------------------------------------------
+
+
+def _get_snapshot_summary(
+    root: Path,
+    snap_type: str,
+    hash_value: str,
+) -> str:
+    """Return a human-readable metadata summary for a staged snapshot."""
+    from data.lib.remote.snapshot import SnapshotStore
+
+    snap_store = SnapshotStore(root)
+    try:
+        if snap_type == "resource":
+            meta, _ = snap_store.load_resource_snapshot(hash_value)
+            return f"server_id={meta.server_id}  game_build={meta.game_build}"
+        elif snap_type == "release":
+            meta, _ = snap_store.load_release_snapshot(hash_value)
+            vmin = meta.version_min or "?"
+            vmax = meta.version_max or "?"
+            return f"version_min={vmin}  version_max={vmax}"
+        elif snap_type == "announcement":
+            meta, _ = snap_store.load_announcement_snapshot(hash_value)
+            return f"announcement_count={meta.announcement_count}"
+    except Exception:
+        return "(metadata unavailable)"
+    return ""
+
+
+def _compute_diff(root: Path, session: Session) -> dict:
+    """Compare session staged hashes against the current channel head.
+
+    Returns a dict with keys:
+      channel, head, resources, releases, announcements.
+    Each snapshot-type key maps to {"added": [...], "removed": [...], "unchanged": [...]}.
+    """
+    from data.lib.remote.generation import GenerationStore
+    from data.lib.remote.head import ChannelHeadStore
+
+    head_store = ChannelHeadStore(root)
+    gen_store = GenerationStore(root)
+
+    head_hash: str | None = None
+    head_sets: dict[str, set[str]] = {
+        "resources": set(),
+        "releases": set(),
+        "announcements": set(),
+    }
+
+    try:
+        head = head_store._safe_get_head(session.channel)
+        if head and head.generation_hash:
+            head_hash = head.generation_hash
+            generation = gen_store.load(head.generation_hash)
+            for entry in generation.resources.entries:
+                head_sets["resources"].add(entry.snapshot_hash)
+            if generation.release_pointer.snapshot_hash:
+                head_sets["releases"].add(generation.release_pointer.snapshot_hash)
+            if generation.announcement_pointer.snapshot_hash:
+                head_sets["announcements"].add(generation.announcement_pointer.snapshot_hash)
+    except Exception:
+        pass
+
+    session_sets = {
+        "resources": set(session.staged.resources),
+        "releases": set(session.staged.releases),
+        "announcements": set(session.staged.announcements),
+    }
+
+    diff: dict = {"channel": session.channel, "head": head_hash}
+    for snap_type in ("resources", "releases", "announcements"):
+        s_set = session_sets[snap_type]
+        h_set = head_sets[snap_type]
+        diff[snap_type] = {
+            "added": sorted(s_set - h_set),
+            "removed": sorted(h_set - s_set),
+            "unchanged": sorted(s_set & h_set),
+        }
+    return diff
+
+
+@remote_session.command("diff")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Machine-readable diff output.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_diff(as_json: bool, schema_root: Path | None):
+    """Show changes between staged snapshots and the current channel head."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+
+    try:
+        session = _require_session(store, "diff")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+    diff = _compute_diff(root, session)
+
+    if as_json:
+        click.echo(json.dumps(diff, indent=2))
+        return
+
+    head_str = diff["head"][:16] + "..." if diff["head"] else "none"
+    click.echo(
+        styled([Style.BRIGHT], f'Diff: staging → channel "{diff["channel"]}"')
+        + styled(Style.DIM, f" (head: {head_str})")
+    )
+
+    if diff["head"] is None:
+        click.echo(styled(Style.DIM, "  No channel head (uninitialized channel)."))
+        click.echo(styled(Style.DIM, "  All staged snapshots are new."))
+        click.echo()
+
+    type_labels = {
+        "resources": "Resources",
+        "releases": "Releases",
+        "announcements": "Announcements",
+    }
+    for snap_type in ("resources", "releases", "announcements"):
+        data = diff[snap_type]
+        if not data["added"] and not data["removed"] and not data["unchanged"]:
+            continue
+        click.echo(f"\n{type_labels[snap_type]}:")
+        for h in data["added"]:
+            summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], f"  + {h[:16]}...")
+                + styled(Style.DIM, f"  {summary}")
+            )
+        for h in data["removed"]:
+            summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], f"  - {h[:16]}...")
+                + styled(Style.DIM, f"  {summary}")
+            )
+        for h in data["unchanged"]:
+            summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+            click.echo(styled(Style.DIM, f"  = {h[:16]}...  {summary}"))
+
+
+# ---- session verify ----------------------------------------------------------
+
+
+def _check_staged_resource_blobs(
+    root: Path,
+    hash_value: str,
+    issues: list,
+) -> None:
+    """Verify all blobs referenced by a staged resource snapshot exist."""
+    from data.lib.remote.hash import content_hash as _content_hash
+    from data.lib.remote.hash import ident_hash as _ident_hash
+    from data.lib.remote.models import ResourceIndex
+    from data.lib.remote.models import read_pb2
+    from data.lib.remote.paths import blob_path
+    from data.lib.remote.paths import resource_snapshot_dir
+    from data.lib.remote.verify import Issue
+
+    proto_path = resource_snapshot_dir(root, hash_value) / "resources.pb2"
+    try:
+        index = read_pb2(proto_path, ResourceIndex)
+    except Exception:
+        issues.append(
+            Issue(
+                entity=hash_value[:12] + "...",
+                entity_type="resource_snapshot",
+                severity="error",
+                message=f"Cannot read ResourceIndex from {proto_path}",
+            )
+        )
+        return
+
+    for entry in index.entries:
+        ihash = _ident_hash(entry.resource_id)
+        bpath = blob_path(root, ihash, entry.content_hash)
+        if not bpath.is_file():
+            issues.append(
+                Issue(
+                    entity=entry.resource_id,
+                    entity_type="blob",
+                    severity="error",
+                    message=f"Missing blob: {bpath}",
+                )
+            )
+            continue
+
+        try:
+            actual_hash = _content_hash(bpath.read_bytes())
+            if actual_hash != entry.content_hash:
+                issues.append(
+                    Issue(
+                        entity=entry.resource_id,
+                        entity_type="blob",
+                        severity="error",
+                        message=(
+                            f"Content hash mismatch: expected"
+                            f" {entry.content_hash[:12]}..."
+                            f", got {actual_hash[:12]}..."
+                        ),
+                    )
+                )
+        except Exception as exc:
+            issues.append(
+                Issue(
+                    entity=entry.resource_id,
+                    entity_type="blob",
+                    severity="error",
+                    message=str(exc),
+                )
+            )
+
+
+def _verify_staged(root: Path, session: Session) -> list:
+    """Validate staged snapshots across all four verification phases.
+
+    Returns a list of Issue objects.
+    """
+    from data.lib.remote.hash import snapshot_hash as _snapshot_hash
+    from data.lib.remote.paths import announcement_snapshot_dir
+    from data.lib.remote.paths import release_snapshot_dir
+    from data.lib.remote.paths import resource_snapshot_dir
+    from data.lib.remote.verify import Issue
+
+    issues: list = []
+
+    dir_for_type: dict[str, callable] = {
+        "resource": resource_snapshot_dir,
+        "release": release_snapshot_dir,
+        "announcement": announcement_snapshot_dir,
+    }
+    proto_names: dict[str, str] = {
+        "resource": "resources.pb2",
+        "release": "releases.pb2",
+        "announcement": "announcements.pb2",
+    }
+    staged_map: dict[str, list[str]] = {
+        "resource": session.staged.resources,
+        "release": session.staged.releases,
+        "announcement": session.staged.announcements,
+    }
+
+    # Phase 1: Per-snapshot integrity
+    # Phase 2: Blob integrity (inline for resource snapshots)
+    for snap_type in ("resource", "release", "announcement"):
+        proto_name = proto_names[snap_type]
+        staged_hashes = staged_map[snap_type]
+        for h in staged_hashes:
+            snap_dir = dir_for_type[snap_type](root, h)
+            if not snap_dir.is_dir():
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message=f"Directory not found: {snap_dir}",
+                    )
+                )
+                continue
+
+            meta_path = snap_dir / "metadata.json"
+            proto_path = snap_dir / proto_name
+
+            if not meta_path.is_file():
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message="Missing metadata.json",
+                    )
+                )
+                continue
+
+            if not proto_path.is_file():
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message=f"Missing {proto_name}",
+                    )
+                )
+                continue
+
+            # Hash integrity
+            try:
+                files = {
+                    "metadata.json": meta_path.read_bytes(),
+                    proto_name: proto_path.read_bytes(),
+                }
+                computed = _snapshot_hash(snap_type, files)
+                if computed != h:
+                    issues.append(
+                        Issue(
+                            entity=h[:12] + "...",
+                            entity_type=f"{snap_type}_snapshot",
+                            severity="error",
+                            message=(
+                                f"Hash mismatch: expected {h[:12]}..., computed {computed[:12]}..."
+                            ),
+                        )
+                    )
+            except Exception as exc:
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message=f"Hash computation failed: {exc}",
+                    )
+                )
+
+        # Phase 2: Blob check for resources only
+        if snap_type == "resource":
+            for h in staged_hashes:
+                # Skip if snapshot already had directory/meta errors
+                snap_dir = dir_for_type[snap_type](root, h)
+                if snap_dir.is_dir() and (snap_dir / proto_name).is_file():
+                    _check_staged_resource_blobs(root, h, issues)
+
+    # Phase 3: Channel check
+    try:
+        from data.lib.remote.head import ChannelHeadStore
+
+        head_store = ChannelHeadStore(root)
+        registry = head_store.get_registry()
+        if session.channel not in registry.channels:
+            issues.append(
+                Issue(
+                    entity=session.channel,
+                    entity_type="channel",
+                    severity="warning",
+                    message=(
+                        f"Channel {session.channel!r} not in registry "
+                        "(will be auto-created on commit)"
+                    ),
+                )
+            )
+    except Exception as exc:
+        issues.append(
+            Issue(
+                entity=session.channel,
+                entity_type="channel",
+                severity="warning",
+                message=f"Channel check failed: {exc}",
+            )
+        )
+
+    return issues
+
+
+@remote_session.command("verify")
+@click.option(
+    "--repair",
+    is_flag=True,
+    default=False,
+    help="Attempt automatic repairs.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_verify(repair: bool, schema_root: Path | None):
+    """Validate the staged generation integrity."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+
+    try:
+        session = _require_session(store, "verify")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+    if repair:
+        verifier = Verifier(root)
+        fixed = verifier.repair()
+        if fixed > 0:
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Repaired {fixed} entity(ies)."))
+        else:
+            click.echo("No entities needed repair.")
+        return
+
+    issues = _verify_staged(root, session)
+    error_count = sum(1 for i in issues if i.severity == "error")
+
+    staged_counts = {
+        "Resources": len(session.staged.resources),
+        "Releases": len(session.staged.releases),
+        "Announcements": len(session.staged.announcements),
+    }
+
+    if not issues:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session verification passed."))
+        for label, count in staged_counts.items():
+            click.echo(styled(Style.DIM, f"  {label}: {count} staged, {count} ok"))
+        return
+
+    click.echo()
+    click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification failed ({error_count} error(s)):"))
+    for issue in issues:
+        color = Fore.RED if issue.severity == "error" else Fore.YELLOW
+        click.echo(
+            f"  {issue.entity[:16] if len(issue.entity) > 16 else issue.entity}"
+            + styled(Style.DIM, f"  [{issue.entity_type}]")
+            + styled([Style.BRIGHT, color], f"  {issue.severity}")
+            + styled(Style.DIM, f"  {issue.message}")
+        )
+
+    if error_count:
+        raise SystemExit(1)
+
+
+# ---- commit ----------------------------------------------------------------
+
+
+@remote_session.command("commit")
+@click.option(
+    "--no-push",
+    is_flag=True,
+    default=False,
+    help="Create generation but do not advance channel head.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Skip verification and override committed session.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
+    """Assemble a generation from staged snapshots and advance the channel head."""
+    from data.lib.remote.generation import utc_timestamp
+    from data.lib.remote.models import GenerationMetadata
+    from data.lib.remote.models import GenerationPointer
+    from data.lib.remote.models import GenerationResources
+    from data.lib.remote.models import ServerIndex
+
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+    session = _require_session(store, "commit")
+
+    if session.committed and not force:
+        raise click.ClickException("Session is committed. Use --force to override.")
+
+    if not any(
+        [
+            session.staged.resources,
+            session.staged.releases,
+            session.staged.announcements,
+        ]
+    ):
+        raise click.ClickException(
+            "No snapshots staged. Use './x remote session add' to stage snapshots."
+        )
+
+    if not force:
+        issues = _verify_staged(root, session)
+        error_count = sum(1 for i in issues if i.severity == "error")
+        if error_count:
+            click.echo()
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], f"Verification failed ({error_count} error(s)):")
+            )
+            for issue in issues:
+                color = Fore.RED if issue.severity == "error" else Fore.YELLOW
+                click.echo(
+                    f"  {issue.entity[:16] if len(issue.entity) > 16 else issue.entity}"
+                    + styled(Style.DIM, f"  [{issue.entity_type}]")
+                    + styled([Style.BRIGHT, color], f"  {issue.severity}")
+                    + styled(Style.DIM, f"  {issue.message}")
+                )
+            raise click.ClickException(
+                "Verification failed. Use --force to skip or fix issues first."
+            )
+
+    # Assemble generation
+    mgr = SessionManager(root)
+    snap_store = mgr.snap_store
+    head_store = mgr.head_store
+
+    resolved_channel = __validate_remote_channel(session.channel)
+
+    # Build ServerIndex from staged resource snapshot metadata
+    server_index = ServerIndex()
+    server_index.schema_version = 1
+
+    gen_resources = GenerationResources()
+    gen_resources.schema_version = 1
+
+    server_ids: list[str] = []
+    for hash_val in session.staged.resources:
+        meta, _index = snap_store.load_resource_snapshot(hash_val)
+        entry = server_index.servers.add()
+        entry.server_id = meta.server_id
+        entry.name["en"] = meta.server_id
+        entry.game_build = meta.game_build
+        entry.game_version = meta.game_version
+
+        gentry = gen_resources.entries.add()
+        gentry.server_id = meta.server_id
+        gentry.snapshot_hash = hash_val
+
+        server_ids.append(meta.server_id)
+
+    # Build GenerationPointer for releases (last staged hash wins)
+    release_ptr = GenerationPointer()
+    release_ptr.schema_version = 1
+    release_hash: str | None = None
+    if session.staged.releases:
+        release_hash = session.staged.releases[-1]
+        release_ptr.snapshot_hash = release_hash
+
+    # Build GenerationPointer for announcements (last staged hash wins)
+    announcement_ptr = GenerationPointer()
+    announcement_ptr.schema_version = 1
+    announcement_hash: str | None = None
+    if session.staged.announcements:
+        announcement_hash = session.staged.announcements[-1]
+        announcement_ptr.snapshot_hash = announcement_hash
+
+    # Determine parent hash from current head
+    current_head = head_store._safe_get_head(resolved_channel)
+    parent = current_head.generation_hash if current_head and current_head.generation_hash else None
+
+    # Create generation metadata
+    ts = utc_timestamp()
+    meta = GenerationMetadata(
+        channel=resolved_channel,
+        author=session.author,
+        timestamp=ts,
+        description=session.description,
+        subject="",
+        parent=parent,
+    )
+
+    mgr.ensure_channel(resolved_channel)
+
+    # Check for idempotent reuse: scan existing generation hashes before creation
+    refs_dir = root / "channels" / "refs"
+    existing_hashes: set[str] = set()
+    if refs_dir.is_dir():
+        for entry in refs_dir.iterdir():
+            if entry.is_dir() and not entry.name.startswith("tmp"):
+                existing_hashes.add(entry.name)
+
+    gen_hash = mgr.create_generation(
+        metadata=meta,
+        server_index=server_index,
+        resources=gen_resources,
+        release_pointer=release_ptr,
+        announcement_pointer=announcement_ptr,
+    )
+
+    reused = gen_hash in existing_hashes
+
+    # Advance head (unless --no-push)
+    if not no_push:
+        mgr.push(resolved_channel, gen_hash, author=session.author)
+
+    # Mark session committed
+    store.mark_committed()
+
+    # Output
+    if reused:
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.GREEN],
+                f"Generation {gen_hash[:16]}... already exists (reused).",
+            )
+        )
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Generation created: {gen_hash[:16]}..."))
+
+    if not no_push:
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Head advanced on channel {resolved_channel}")
+        )
+    click.echo(
+        styled(Style.DIM, f"  Parent:        {parent[:16] + '...' if parent else 'none (root)'}")
+    )
+    click.echo(
+        styled(
+            Style.DIM,
+            f"  Resources:     {len(session.staged.resources)} snapshots"
+            f" ({', '.join(server_ids) if server_ids else 'none'})",
+        )
+    )
+    release_label = f"{release_hash[:16]}..." if release_hash else "none"
+    click.echo(styled(Style.DIM, f"  Releases:      {release_label}"))
+    announcement_label = f"{announcement_hash[:16]}..." if announcement_hash else "none"
+    click.echo(styled(Style.DIM, f"  Announcements: {announcement_label}"))
+
+
+# ---- push -------------------------------------------------------------------
 
 
 @remote.command("push")
