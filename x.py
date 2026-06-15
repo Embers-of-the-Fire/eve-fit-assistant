@@ -4764,6 +4764,13 @@ _SUITE_DEFINITIONS = [
         "command": "true",
         "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
     },
+    {
+        "suite": "ci",
+        "shell": "python",
+        "lint_command": "true",
+        "command": "true",
+        "patterns": ["ci/**", "flake.nix", ".github/workflows/**"],
+    },
 ]
 
 
@@ -4797,16 +4804,31 @@ def _match_any_pattern(file_path: str, patterns: list[str]) -> bool:
 def _calculate_ci_matrix(files: list[str]) -> list[dict]:
     """Determine which CI suites to run based on changed files."""
     result = []
+    infra_changed = False
     for suite_def in _SUITE_DEFINITIONS:
         if any(_match_any_pattern(f, suite_def["patterns"]) for f in files):
-            result.append(
-                {
-                    "suite": suite_def["suite"],
-                    "shell": suite_def["shell"],
-                    "lint_command": suite_def["lint_command"],
-                    "command": suite_def["command"],
-                }
-            )
+            if suite_def["suite"] == "ci":
+                infra_changed = True
+            else:
+                result.append(
+                    {
+                        "suite": suite_def["suite"],
+                        "shell": suite_def["shell"],
+                        "lint_command": suite_def["lint_command"],
+                        "command": suite_def["command"],
+                    }
+                )
+    if infra_changed:
+        return [
+            {
+                "suite": s["suite"],
+                "shell": s["shell"],
+                "lint_command": s["lint_command"],
+                "command": s["command"],
+            }
+            for s in _SUITE_DEFINITIONS
+            if s["suite"] != "ci"
+        ]
     return result
 
 
