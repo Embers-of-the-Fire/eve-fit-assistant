@@ -39,8 +39,8 @@ FitCheckoutCompatibilityNotice? localizeFitCheckoutCompatibility(
     FitCheckoutCompatibilityKind.incompatible => FitCheckoutCompatibilityNotice(
       title: l10n.fitCheckoutMismatchTitle,
       message: l10n.fitCheckoutMismatchDescription(
-        savedBundleId: compatibility.checkoutRef.checkoutId,
-        activeBundleId: compatibility.activeCheckoutId,
+        savedCheckoutId: compatibility.checkoutRef.checkoutId,
+        activeCheckoutId: compatibility.activeCheckoutId,
       ),
       label: l10n.fitCheckoutMismatchTitle,
       action: FitCheckoutCompatibilityAction.openBranchManager,

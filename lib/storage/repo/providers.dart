@@ -201,7 +201,7 @@ class RepoStateNotifier extends _$RepoStateNotifier {
   }
 }
 
-// ── Legacy compatibility providers ─────────────────────────────────────────────
+// ── Checkout-derived providers ─────────────────────────────────────────────────
 
 /// The absolute path to the resolved `native/` directory for the Rust engine,
 /// or `null` if no active checkout is installed.
@@ -223,14 +223,6 @@ String? assetStaticRoot(Ref ref) {
 /// new schema are considered installed once resource data is fetched).
 @riverpodSingleton
 IList<String> installedCheckoutIds(Ref ref) {
-  final registry = ref.watch(checkoutRegistryServiceProvider).readRegistry();
-  return registry.match(() => const IList.empty(), (r) => r.checkouts.keys.toIList());
-}
-
-/// All known checkout IDs (same as installed in the new schema — unused
-/// state machine is removed).
-@riverpodSingleton
-IList<String> knownCheckoutIds(Ref ref) {
   final registry = ref.watch(checkoutRegistryServiceProvider).readRegistry();
   return registry.match(() => const IList.empty(), (r) => r.checkouts.keys.toIList());
 }

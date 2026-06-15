@@ -254,13 +254,13 @@
   "fitCheckoutChangedTitle": "数据集已变更",
   "fitCheckoutChangedDescription": "该配置保存于当前活动数据集的旧版本。您仍可查看和导出该配置，但在重新导入兼容的数据集版本，或基于当前数据重新创建配置前，将保持只读。",
   "fitCheckoutMismatchTitle": "数据集不匹配",
-  "fitCheckoutMismatchDescription": "该配置保存于数据集 {savedBundleId}，而当前活动数据集为 {activeBundleId}。您仍可查看和导出该配置，但编辑将保持禁用。",
+  "fitCheckoutMismatchDescription": "该配置保存于数据集 {savedCheckoutId}，而当前活动数据集为 {activeCheckoutId}。您仍可查看和导出该配置，但编辑将保持禁用。",
   "@fitCheckoutMismatchDescription": {
     "placeholders": {
-      "savedBundleId": {
+      "savedCheckoutId": {
         "type": "String"
       },
-      "activeBundleId": {
+      "activeCheckoutId": {
         "type": "String"
       }
     }
@@ -744,10 +744,10 @@
   "appSettingsPageDebugLogTitle": "启用调试日志",
   "appSettingsPageDebugLogDescription": "启用调试日志后，应用将会输出所有日志到日志目录中。\n建议仅当开发者要求开启此功能时才开启。",
   "repoLoadingTitle": "正在加载数据",
-  "repoLoadingDescription": "正在准备数据集 {bundleId}。",
+  "repoLoadingDescription": "正在准备数据集 {checkoutId}。",
   "@repoLoadingDescription": {
     "placeholders": {
-      "bundleId": {
+      "checkoutId": {
         "type": "String"
       }
     }

@@ -5,11 +5,11 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/migrate_characters.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/migrate_fits.dart";
+import "package:eve_fit_assistant/storage/repo/migration/action/legacy_utils.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/progress.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/service.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
-import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:path/path.dart" as p;
 import "package:test/test.dart";
 

@@ -126,8 +126,7 @@ class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveCli
   Future<void> _handleSave() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    // Keep metadata editing local to the tab so it mirrors the deprecated misc
-    // panel without introducing another dedicated settings service.
+    // Keep metadata editing local to the tab.
     await widget.fitContext.fitWrapper.update(
       (storage) => storage.copyWith(
         metadata: storage.metadata.copyWith(

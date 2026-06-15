@@ -260,22 +260,6 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     await _flushRegistrySync();
   }
 
-  // ignore: unused_element
-  void _syncFromDisk() {
-    final registryFile = File(_characterRegistryPath);
-    if (!registryFile.existsSync()) {
-      registryFile
-        ..createSync(recursive: true)
-        ..writeAsStringSync("{}");
-    }
-    final registryContent = registryFile.readAsStringSync();
-    final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = CharacterRegistry.fromJson(registryJson);
-    _setRegistry(
-      _ensureBuiltInCharacters(registry, activeCheckout: ref.read(activeCheckoutProvider)),
-    );
-  }
-
   void _scheduleRegistrySync() {
     _registrySyncTimer?.cancel();
     _registrySyncTimer = Timer(_registrySyncDebounce, () {
@@ -485,17 +469,4 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       "(${result.result.name}) while $context.",
     );
   }
-}
-
-@riverpodSingleton
-class FitManager extends _$FitManager {
-  static const _idGenerator = Uuid();
-
-  @override
-  Future<DateTime> build() async {
-    ref.read(characterRegistryManagerProvider);
-    return DateTime.now();
-  }
-
-  static String generateFitId() => _idGenerator.v4();
 }

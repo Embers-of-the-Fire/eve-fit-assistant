@@ -5,9 +5,9 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 ## Workspace Shape
 
 - Flutter/Dart app code is under `lib/`; generated Dart outputs include `lib/native/`, `lib/data/l10n/`, protobuf outputs, `*.g.dart`, and `*.freezed.dart`.
-  - `lib/storage/repo/` implements a content-addressed repository system for data versioning with branch-based checkouts and diff chains.
+  - `lib/storage/repo/` implements a content-addressed repository system for data versioning with checkout-based data management and diff chains.
 - Rust has two layers: FRB bridge crate in `rust/` (`rust/src/api/*`) and the fitting engine git-submodule crate in `rust/lib/eve-fit-os`.
-- Python in `data/` plus `x.py` owns workspace management, codegen orchestration, and static data bundle generation.
+- Python in `data/` plus `x.py` owns workspace management, codegen orchestration, and static data packaging.
 - `rust_builder/` is the Flutter plugin/cargokit wrapper used by `pubspec.yaml`; avoid treating it as the main Rust source.
 - `site/` is a SvelteKit app deployed to Cloudflare Workers (pnpm workspace). `biome.json` governs JS/TS formatting/linting for this area.
 - `rust/lib/eve-fit-os` is a Git submodule; run `git submodule update --init` after clone if not already initialized.
@@ -28,12 +28,6 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 | Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole type-data source; pre-loads type data (ships, skills, items, localization, icons) from active checkout's ResourceIndex. |
 | Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit/character storage schemas; fit supports storageVersion 3 with CheckoutRef |
-| Data Source Pages | `lib/pages/branch/` | Branch list, detail (reflog/diffs), setup (server selection + checkout picker) — **needs UI rewrite for new schema** |
-| Storage Settings | `lib/pages/setting/data/` | Storage management (prune/verify) and branch settings (rename/pin/delete) — **needs UI rewrite** |
-| Schema Guard | `lib/features/schema_guard/` | Startup gate: `SchemaGuard` manages initialization; `MigrationGate` offers a one-time v1→v2 migration prompt |
-| Repo State | `lib/storage/repo/repo_state.dart` | `RepoState` union (uninitialized/initializing/active/error) and `RepoStateNotifier` |
-| Repo Errors | `lib/storage/repo/repo_error.dart` | `RepoError` sealed class (network/storage/corrupt/remoteData) for typed error propagation |
-| Branch Widgets | `lib/features/branch_management/` | Reusable branch tile, reflog timeline, diff summary, server/checkout selection tiles — **needs UI rewrite for new schema** |
 | Settings | `lib/storage/setting/` | User settings including remote content configuration |
 
 All writes to `checkouts.json` are mutex-guarded; reads are lock-free. The checkout registry provides a reactive stream for live UI updates.
@@ -97,7 +91,7 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - `./x release version bump <major|minor|patch> [--pre-label ...] [--clear-pre]` — bump and auto-sync.
 - `./x release check` — runs 10 pre-release gates (version-sync, git-clean, schema-bump, persistence-check, submodule, generate, lint, changelog, etc.). Fatal gates block release unless `--force`.
 - `./x release commit` — creates a signed `chore: release v<version>` commit and annotated tag.
-- All releases happen from the `dev` branch; `main` is deprecated.
+- All releases happen from the `dev` branch.
 
 ## Validation Expectations
 

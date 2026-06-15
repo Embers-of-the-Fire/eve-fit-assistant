@@ -1422,10 +1422,9 @@ class FitWrapper {
       newLow = defs.fold<int>(0, (sum, s) => sum + s.lowSlots);
     }
 
-    // Subsystems can redefine the ship's slot topology. We intentionally keep
-    // legacy behavior here: when the new layout shrinks, tail slots are dropped
-    // outright so the resulting fit shape matches the deprecated fitter and the
-    // native engine never sees modules in now-invalid slots.
+    // Subsystems can redefine the ship's slot topology. When the new layout
+    // shrinks, tail slots are dropped so the native engine never sees modules
+    // in now-invalid slots.
     IList<Option<FitModuleItem>> resize(IList<Option<FitModuleItem>> current, int target) {
       if (target == current.length) return current;
       if (target < current.length) {

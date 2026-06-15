@@ -64,24 +64,6 @@ class FitRegistryManager extends _$FitRegistryManager {
     _syncToDisk();
   }
 
-  // ignore: unused_element
-  void _syncFromDisk() {
-    final registryFile = File(_fitRegistryPath);
-    if (!registryFile.existsSync()) {
-      registryFile
-        ..createSync(recursive: true)
-        ..writeAsStringSync(jsonEncode(encodeFitRegistry(FitRegistry(fits: IMap()))));
-    }
-    final registryContent = registryFile.readAsStringSync();
-    final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final decodedRegistry = decodeFitRegistry(registryJson);
-    final registry = decodedRegistry.registry;
-    if (decodedRegistry.didMigrate) {
-      _rewriteMigratedRegistry(registryFile, registry);
-    }
-    state = registry;
-  }
-
   void _syncToDisk() {
     final registryFile = File(_fitRegistryPath);
     if (!registryFile.existsSync()) {

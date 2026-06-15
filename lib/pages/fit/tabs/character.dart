@@ -386,7 +386,7 @@ class _ImplantRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: [
           SlidableAction(
-            // The deprecated page replaced implants in-place for the same slot.
+            // Replace the implant in the same slot.
             onPressed: (_) => _handleReplace(context, ref),
             backgroundColor: Colors.green,
             foregroundColor: Colors.white,

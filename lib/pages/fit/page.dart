@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 import "dart:math" as math;
+
 import "dart:ui" as ui;
 
 import "package:auto_route/auto_route.dart";
@@ -317,7 +318,7 @@ class _FitCheckoutSwitchOverlay extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      context.l10n.repoLoadingDescription(bundleId: pendingCheckoutId),
+                      context.l10n.repoLoadingDescription(checkoutId: pendingCheckoutId),
                       textAlign: TextAlign.center,
                     ),
                   ],

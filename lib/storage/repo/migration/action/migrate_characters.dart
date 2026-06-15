@@ -1,6 +1,6 @@
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/repo/migration/action/legacy_utils.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/migrate_runner.dart";
-import "package:eve_fit_assistant/storage/repo/utils.dart";
 
 class MigrateCharacters {
   const MigrateCharacters();
