@@ -2,17 +2,17 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
-import "package:eve_fit_assistant/storage/repo/models/asset_manifest.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:path/path.dart" as p;
 
-/// Assembles a virtual native directory from a content-addressed [AssetManifest].
+/// Assembles a virtual native directory from a resource snapshot.
 ///
 /// The Rust fitting engine expects a flat directory of protobuf database files at a
 /// path passed via `FitEngineData::init(staticRootPath:)`. Under the repo system,
-/// these files are stored content-addressed under `<schema root>/assets/`. This class
+/// these files are stored content-addressed under `assets/blobs/`. This class
 /// creates a temporary filesystem tree where each asset appears at its original path,
 /// using a symlink-first strategy with copy fallback to avoid data duplication.
 class NativeDirResolver {
@@ -20,24 +20,21 @@ class NativeDirResolver {
 
   final AssetStore assetStore;
 
-  /// Computes the expected native directory path for [manifest] without I/O.
+  /// Computes the expected native directory path for [snapshotHash] and
+  /// [resourceIndex] without I/O.
   ///
-  /// Shared by [prepareNativeDir] and `assetStaticRootProvider`. The returned
-  /// path is deterministic given the same manifest.
-  String resolvePathFromManifest(AssetManifest manifest) {
-    final entries = manifest.files.entries.map(
-      (e) => (pathHash: e.value.pathHash, contentHash: e.value.hash),
-    );
-    final manifestHash = RepoHash.hashCheckout(entries);
-    return p.join(PathProvider.tempPath, "efa", "native", manifestHash);
-  }
+  /// Shared by [prepareNativeDir] and the `assetStaticRootProvider`. The returned
+  /// path is deterministic given the same snapshot hash.
+  String resolvePathFromSnapshot(String snapshotHash) =>
+      p.join(PathProvider.tempPath, "efa", "native", snapshotHash);
 
-  /// Creates a temporary native directory populated with all files from [manifest].
+  /// Creates a temporary native directory populated with all files referenced by
+  /// [resourceIndex].
   ///
   /// Returns the root path of the native directory suitable for passing to
   /// `FitEngineData.init`.
-  Future<String> prepareNativeDir(AssetManifest manifest) async {
-    final nativeRoot = resolvePathFromManifest(manifest);
+  Future<String> prepareNativeDir(String snapshotHash, ResourceIndex resourceIndex) async {
+    final nativeRoot = resolvePathFromSnapshot(snapshotHash);
     final dir = Directory(nativeRoot);
 
     if (dir.existsSync()) return nativeRoot;
@@ -45,10 +42,12 @@ class NativeDirResolver {
     dir.createSync(recursive: true);
 
     try {
-      for (final entry in manifest.files.entries) {
-        final logicalPath = entry.key;
-        final assetFile = entry.value;
-        final assetPath = RepoPaths.assetPath(assetFile.pathHash, assetFile.hash);
+      for (final entry in resourceIndex.entries) {
+        final logicalPath = _logicalPath(entry.resourceId);
+        final blobPath = RepoPaths.blobPath(
+          RepoHash.hashIdent(entry.resourceId),
+          entry.contentHash,
+        );
         final targetPath = _resolveSafeChild(nativeRoot, logicalPath);
         if (targetPath == null) {
           warning("Skipping path traversal attempt: $logicalPath");
@@ -63,7 +62,7 @@ class NativeDirResolver {
           parent.createSync(recursive: true);
         }
 
-        _linkOrCopy(assetPath, targetPath);
+        _linkOrCopy(blobPath, targetPath);
       }
 
       return nativeRoot;
@@ -71,6 +70,15 @@ class NativeDirResolver {
       dir.deleteSync(recursive: true);
       rethrow;
     }
+  }
+
+  /// Strips the `resource://` scheme prefix to recover the logical file path.
+  ///
+  /// Example: `"resource://static/native/types.pb2"` → `"static/native/types.pb2"`
+  static String _logicalPath(String resourceId) {
+    const prefix = "resource://";
+    if (resourceId.startsWith(prefix)) return resourceId.substring(prefix.length);
+    return resourceId;
   }
 
   /// Resolves [child] relative to [root], returning the normalized path only if
@@ -96,23 +104,16 @@ class NativeDirResolver {
     }
   }
 
-  /// Removes native directories for checkouts not referenced by any
-  /// [activeManifests].
-  void cleanup(Iterable<AssetManifest> activeManifests) {
+  /// Removes native directories for snapshots not in [activeSnapshotHashes].
+  void cleanup(Iterable<String> activeSnapshotHashes) {
     final nativeBase = p.join(PathProvider.tempPath, "efa", "native");
     final baseDir = Directory(nativeBase);
     if (!baseDir.existsSync()) return;
 
-    final activeHashes = <String>{};
-    for (final manifest in activeManifests) {
-      final entries = manifest.files.entries.map(
-        (e) => (pathHash: e.value.pathHash, contentHash: e.value.hash),
-      );
-      activeHashes.add(RepoHash.hashCheckout(entries));
-    }
+    final activeSet = activeSnapshotHashes.toSet();
 
     for (final entity in baseDir.listSync().whereType<Directory>()) {
-      if (!activeHashes.contains(p.basename(entity.path))) {
+      if (!activeSet.contains(p.basename(entity.path))) {
         try {
           entity.deleteSync(recursive: true);
         } on FileSystemException catch (e, stackTrace) {

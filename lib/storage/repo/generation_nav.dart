@@ -1,5 +1,6 @@
+import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/storage/repo/models/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -17,105 +18,69 @@ class GenerationNavNetworkError extends GenerationNavError {
   String toString() => message;
 }
 
-class GenerationTree {
-  const GenerationTree({
-    required this.activatedGeneration,
-    required this.generations,
-    required this.servers,
-  });
+class ChannelOverview {
+  const ChannelOverview({required this.channels, required this.defaultChannel});
 
-  final String activatedGeneration;
-  final IList<GenerationEntry> generations;
-  final IList<ServerSummary> servers;
+  final IMap<String, ChannelEntry> channels;
+  final String defaultChannel;
 }
 
 class ServerSummary {
-  const ServerSummary({required this.serverId, required this.lastUpdatedAt, required this.name});
+  const ServerSummary({required this.serverId, required this.gameBuild, required this.gameVersion});
+
+  factory ServerSummary.fromEntry(ServerIndex_Entry entry) => ServerSummary(
+    serverId: entry.serverId,
+    gameBuild: entry.gameBuild,
+    gameVersion: entry.gameVersion,
+  );
 
   final String serverId;
-  final String lastUpdatedAt;
-  final IMap<String, String> name;
+  final String gameBuild;
+  final String gameVersion;
 }
 
-class GenerationServerDetail {
-  const GenerationServerDetail({required this.server, required this.checkouts});
-
-  final GenerationServer server;
-  final IList<GenerationCheckoutEntry> checkouts;
-}
-
-/// Data source for the branch management page's server/checkout browser.
+/// Data source for the setup page's channel/server browser.
 ///
-/// Drills down from generations → resources (servers) → individual server
-/// checkouts, using cached remote catalog fetches via [RemoteCatalogService].
+/// Uses the channel registry and server index from the generation chain.
 class GenerationNavigationService {
   const GenerationNavigationService({required this.remoteCatalogService});
 
   final RemoteCatalogService remoteCatalogService;
 
-  /// Fetches the full generation tree for [channel]:
-  ///
-  /// 1. Activated generation ID from manifest index
-  /// 2. All generations from generations index
-  /// 3. Server list from the activated generation's resources catalog
-  ///
-  /// Returns [GenerationTree] on success.
-  Future<Either<GenerationNavError, GenerationTree>> fetchTree(Channel channel) async {
-    final manifestResult = await remoteCatalogService.fetchManifestIndex(channel);
-    if (manifestResult.isLeft()) {
-      return const Left(GenerationNavNetworkError(message: "Failed to fetch manifest index"));
+  /// Fetches the available channels from remote.
+  Future<Either<GenerationNavError, ChannelOverview>> fetchChannels() async {
+    final result = await remoteCatalogService.fetchChannelRegistry();
+    if (result.isLeft()) {
+      return const Left(GenerationNavNetworkError(message: "Failed to fetch channels"));
     }
-    final manifest = manifestResult.getRight().toNullable()!;
-    final activatedGeneration = manifest.activatedGeneration;
-
-    final genIndexResult = await remoteCatalogService.fetchGenerations(channel);
-    if (genIndexResult.isLeft()) {
-      return const Left(GenerationNavNetworkError(message: "Failed to fetch generations index"));
-    }
-    final genIndex = genIndexResult.getRight().toNullable()!;
-
-    final resourcesResult = await remoteCatalogService.fetchResourcesCatalog(
-      channel,
-      activatedGeneration,
-    );
-    if (resourcesResult.isLeft()) {
-      return Left(
-        GenerationNavNetworkError(
-          message: "Failed to fetch resources catalog for generation $activatedGeneration",
-        ),
-      );
-    }
-    final resources = resourcesResult.getRight().toNullable()!;
-
-    final servers = resources.servers.entries.map(
-      (e) =>
-          ServerSummary(serverId: e.key, lastUpdatedAt: e.value.lastUpdatedAt, name: e.value.name),
-    );
-
+    final registry = result.getRight().toNullable()!;
     return Right(
-      GenerationTree(
-        activatedGeneration: activatedGeneration,
-        generations: genIndex.generations.values.toIList(),
-        servers: servers.toIList(),
+      ChannelOverview(
+        channels: registry.channels,
+        defaultChannel: registry.active.isEmpty ? "testing" : registry.active,
       ),
     );
   }
 
-  /// Fetches the server detail (with its checkout list) for [serverId] in
-  /// [genId] on [channel].
-  Future<Either<GenerationNavError, GenerationServerDetail>> fetchServerDetail(
-    Channel channel,
-    String genId,
-    String serverId,
-  ) async {
-    final serverResult = await remoteCatalogService.fetchServerCatalog(channel, genId, serverId);
-    if (serverResult.isLeft()) {
-      return Left(
-        GenerationNavNetworkError(message: "Failed to fetch server catalog for $serverId"),
-      );
+  /// Fetches the server list for [channelName] from the current generation.
+  Future<Either<GenerationNavError, IList<ServerSummary>>> fetchServers({
+    required Channel channel,
+    required String channelName,
+  }) async {
+    // Get current generation hash
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    if (headResult.isLeft()) {
+      return const Left(GenerationNavNetworkError(message: "Failed to fetch head metadata"));
     }
-    final server = serverResult.getRight().toNullable()!;
+    final generationHash = headResult.getRight().toNullable()!.generationHash;
 
-    return Right(GenerationServerDetail(server: server, checkouts: server.checkouts));
+    // Fetch server index from generation
+    final serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
+    if (serverResult.isLeft()) {
+      return const Left(GenerationNavNetworkError(message: "Failed to fetch server index"));
+    }
+    final serverIndex = ServerIndex.fromBuffer(serverResult.getRight().toNullable()!);
+
+    return Right(serverIndex.servers.map(ServerSummary.fromEntry).toIList());
   }
 }

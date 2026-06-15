@@ -11,6 +11,7 @@ import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fpdart/fpdart.dart";
 
 @RoutePage(name: "StorageManagement")
 class StorageManagementPage extends ConsumerStatefulWidget {
@@ -82,19 +83,25 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
   }
 
   ConfigListTile _checkoutTile(String checkoutId) {
-    final manifest = ref.watch(checkoutServiceProvider).readManifest(checkoutId);
+    final entry = ref
+        .watch(checkoutRegistryServiceProvider)
+        .readRegistry()
+        .flatMap((r) => Option.fromNullable(r.checkouts[checkoutId]));
+    final ri = entry.flatMap(
+      (e) => ref.watch(assetStoreProvider).readResourceIndexSync(e.resourceSnapshotHash),
+    );
     final displayHash = checkoutId.length > 12 ? checkoutId.substring(0, 12) : checkoutId;
-    final fileCount = manifest.fold(() => 0, (m) => m.files.length);
-    final totalSize = manifest.fold(
+    final fileCount = ri.fold(() => 0, (r) => r.entries.length);
+    final totalSize = ri.fold(
       () => 0,
-      (m) => m.files.values.fold(0, (sum, f) => sum + f.size),
+      (r) => r.entries.fold<int>(0, (sum, e) => sum + e.size.toInt()),
     );
     final l10n = context.l10n;
 
     return ConfigListTile.item(
       icon: const Icon(Icons.inventory_2_outlined),
       title: displayHash,
-      subtitle: manifest.isNone()
+      subtitle: ri.isNone()
           ? l10n.storageNoManifest
           : "${l10n.storageFiles}: $fileCount, ${l10n.storageSize}: ${_formatSize(totalSize)}",
       onTap: () {
@@ -132,24 +139,19 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         children: issues.map((issue) {
           final hash = _truncateHash(issue.checkoutId);
           if (issue is VerificationMissingFiles) {
-            final missingCount = issue.missingFiles.missing.length;
-            final mismatchCount = issue.missingFiles.hashMismatches.length;
+            final missingCount = issue.missingIdents.length;
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
                   const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "$hash: ${l10n.storageMissingFiles(count: missingCount)}, ${l10n.storageHashMismatches(count: mismatchCount)}",
-                    ),
-                  ),
+                  Expanded(child: Text("$hash: ${l10n.storageMissingFiles(count: missingCount)}")),
                 ],
               ),
             );
           }
-          if (issue is VerificationNoManifest) {
+          if (issue is VerificationNoMeta) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
@@ -185,12 +187,20 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     var totalSize = 0;
     var totalFiles = 0;
     for (final id in checkoutIds) {
-      final manifest = ref.watch(checkoutServiceProvider).readManifest(id);
-      if (manifest.isSome()) {
-        for (final file in manifest.toNullable()!.files.values) {
-          if (seen.add(file.hash)) {
-            totalFiles++;
-            totalSize += file.size;
+      final entry = ref
+          .read(checkoutRegistryServiceProvider)
+          .readRegistry()
+          .flatMap((r) => Option.fromNullable(r.checkouts[id]));
+      if (entry.isSome()) {
+        final ri = ref
+            .read(assetStoreProvider)
+            .readResourceIndexSync(entry.toNullable()!.resourceSnapshotHash);
+        if (ri.isSome()) {
+          for (final file in ri.toNullable()!.entries) {
+            if (seen.add(file.resourceId)) {
+              totalFiles++;
+              totalSize += file.size.toInt();
+            }
           }
         }
       }

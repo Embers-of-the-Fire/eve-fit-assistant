@@ -1,13 +1,16 @@
+import "dart:convert";
+import "dart:io";
+
+import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
+import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
-import "package:eve_fit_assistant/storage/repo/branch.dart";
-import "package:eve_fit_assistant/storage/repo/checkout.dart";
-import "package:eve_fit_assistant/storage/repo/models/asset_manifest.dart";
-import "package:eve_fit_assistant/storage/repo/models/checkout_index.dart";
-import "package:eve_fit_assistant/storage/repo/models/missing_files.dart";
+import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
+import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
+import "package:eve_fit_assistant/storage/repo/hash.dart";
+import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
-import "package:fpdart/fpdart.dart";
 
 /// Represents a single integrity issue found during verification.
 sealed class VerificationIssue {
@@ -17,13 +20,18 @@ sealed class VerificationIssue {
 }
 
 class VerificationMissingFiles extends VerificationIssue {
-  const VerificationMissingFiles({required super.checkoutId, required this.missingFiles});
+  const VerificationMissingFiles({
+    required super.checkoutId,
+    required this.snapshotHash,
+    required this.missingIdents,
+  });
 
-  final MissingFiles missingFiles;
+  final String snapshotHash;
+  final IList<String> missingIdents;
 }
 
-class VerificationNoManifest extends VerificationIssue {
-  const VerificationNoManifest({required super.checkoutId});
+class VerificationNoMeta extends VerificationIssue {
+  const VerificationNoMeta({required super.checkoutId});
 }
 
 class VerificationPartialDownload extends VerificationIssue {
@@ -32,114 +40,198 @@ class VerificationPartialDownload extends VerificationIssue {
   final String reason;
 }
 
-/// Failure cases for repair operations.
-sealed class VerificationFailure {
-  const VerificationFailure();
-}
-
-class VerificationRepairFailed extends VerificationFailure {
-  const VerificationRepairFailed({required this.reason});
-
-  final String reason;
-}
-
 /// Verifies local integrity, repairs interrupted operations, and prunes
 /// unreferenced data.
+///
+/// Follows agent/schemav2/workflow.md §2.7 (Client GC) and §3.7 (Verification).
 class VerificationService {
   const VerificationService({
     required this.checkoutService,
     required this.assetStore,
-    required this.branchService,
+    required this.checkoutRegistry,
     required this.remoteCatalogService,
   });
 
   final CheckoutService checkoutService;
   final AssetStore assetStore;
-  final BranchService branchService;
+  final CheckoutRegistryService checkoutRegistry;
   final RemoteCatalogService remoteCatalogService;
 
-  /// Verifies every installed checkout by checking its manifest against the
-  /// asset store. Missing files are reported; re-download from the remote
-  /// asset store is triggered automatically via
-  /// [repairInterruptedDownload].
+  /// Verifies every checkout's resource snapshot integrity.
   ///
-  /// Returns a list of issues found. An empty list means all checkouts are
-  /// intact.
+  /// Checks that ResourceIndex protobuf files exist and verifies blob integrity.
+  /// Returns a list of issues found. An empty list means all checkouts are intact.
   IList<VerificationIssue> verify() {
-    final index = checkoutService.readIndex();
-    if (index.isNone()) return const IList.empty();
+    final registry = checkoutRegistry.readRegistry();
+    if (registry.isNone()) return const IList.empty();
 
     final issues = <VerificationIssue>[];
 
-    for (final entry in index.toNullable()!.entries.entries) {
-      if (entry.value.state != CheckoutState.installed) continue;
+    for (final entry in registry.toNullable()!.checkouts.entries) {
       final checkoutId = entry.key;
+      final checkoutEntry = entry.value;
 
-      final manifest = checkoutService.readManifest(checkoutId);
-      if (manifest.isNone()) {
-        issues.add(VerificationNoManifest(checkoutId: checkoutId));
+      final meta = checkoutService.readCheckoutMeta(checkoutId);
+      if (meta.isNone()) {
+        issues.add(VerificationNoMeta(checkoutId: checkoutId));
         continue;
       }
 
-      assetStore.verifyManifestSync(manifest.toNullable()!).match((missing) {
-        if (missing.missing.isNotEmpty || missing.hashMismatches.isNotEmpty) {
-          issues.add(VerificationMissingFiles(checkoutId: checkoutId, missingFiles: missing));
-        }
-      }, (_) {});
+      final snapshotHash = checkoutEntry.resourceSnapshotHash;
+      final ri = assetStore.readResourceIndexSync(snapshotHash);
+      if (ri.isNone()) {
+        issues.add(
+          VerificationMissingFiles(
+            checkoutId: checkoutId,
+            snapshotHash: snapshotHash,
+            missingIdents: const IList.empty(),
+          ),
+        );
+        continue;
+      }
+
+      final missing = assetStore.verifyResourceIndexSync(ri.toNullable()!);
+      if (missing.isNotEmpty) {
+        issues.add(
+          VerificationMissingFiles(
+            checkoutId: checkoutId,
+            snapshotHash: snapshotHash,
+            missingIdents: missing,
+          ),
+        );
+      }
     }
 
     return issues.toIList();
   }
 
-  /// Prunes unreferenced assets and orphaned historical checkouts.
+  /// Prunes unreferenced data.
   ///
-  /// Delegates to [AssetStore.pruneSync] for asset-level cleanup and removes
-  /// [CheckoutState.historical] entries from the index that are not referenced
-  /// by any branch reflog.
+  /// Follows spec §12.2 client deletion rules:
+  /// 1. Collect reachable snapshot hashes from all checkouts and reflogs
+  /// 2. Collect referenced blobs from reachable ResourceIndexes
+  /// 3. Collect announcement snapshot hashes from channel metadata (spec §12.1)
+  /// 4. Delete unreferenced snapshots, blobs, empty dirs, tmp dirs
   ///
-  /// Returns the total number of items pruned (files + historical index entries).
+  /// Returns the total number of items pruned.
   int prune() {
-    final activeManifests = <AssetManifest>[];
+    final registry = checkoutRegistry.readRegistry();
+    if (registry.isNone()) return 0;
 
-    final index = checkoutService.readIndex();
-    if (index.isSome()) {
-      for (final entry in index.toNullable()!.entries.entries) {
-        if (entry.value.state != CheckoutState.installed) continue;
-        final manifest = checkoutService.readManifest(entry.key);
-        if (manifest.isSome()) {
-          activeManifests.add(manifest.toNullable()!);
+    final activeSnapshotHashes = <String>{};
+    final activeResourceIndexes = <ResourceIndex>[];
+
+    for (final entry in registry.toNullable()!.checkouts.entries) {
+      final checkoutEntry = entry.value;
+
+      // From checkout metadata
+      activeSnapshotHashes.add(checkoutEntry.resourceSnapshotHash);
+
+      // From reflog
+      final reflogHashes = checkoutService.collectReflogSnapshotHashes(entry.key);
+      activeSnapshotHashes.addAll(reflogHashes);
+
+      // Load ResourceIndex for current snapshot
+      final ri = assetStore.readResourceIndexSync(checkoutEntry.resourceSnapshotHash);
+      if (ri.isSome()) {
+        activeResourceIndexes.add(ri.toNullable()!);
+      }
+      // Also load for historical snapshots from reflog
+      for (final hash in reflogHashes) {
+        if (hash == checkoutEntry.resourceSnapshotHash) continue;
+        final histRi = assetStore.readResourceIndexSync(hash);
+        if (histRi.isSome()) {
+          activeResourceIndexes.add(histRi.toNullable()!);
         }
       }
     }
 
-    final assetCount = assetStore.pruneSync(activeManifests.toIList());
-    final historicalCount = _cleanupOrphanedHistorical();
+    // Collect announcement snapshot hashes from channel metadata (spec §12.1)
+    final activeAnnouncementHashes = _collectAnnouncementHashes();
 
-    return assetCount + historicalCount;
+    return assetStore.pruneSync(
+      activeSnapshotHashes: activeSnapshotHashes,
+      activeResourceIndexes: activeResourceIndexes,
+      activeAnnouncementHashes: activeAnnouncementHashes,
+    );
   }
 
-  /// Extends [verify] to also re-download missing files from the remote asset
-  /// store for each [VerificationMissingFiles] issue, and resets no-manifest
-  /// checkouts to [CheckoutState.known] so they can be re-downloaded.
+  /// Collects announcement snapshot hashes reachable from channel metadata.
   ///
-  /// [VerificationPartialDownload] issues are returned unresolved for the
-  /// caller to trigger a retry of the full/incremental download pipeline.
+  /// Walks each channel's metadata.json → generationHash, then reads the
+  /// generation's announcements pointer (if cached locally) to collect
+  /// the referenced announcement snapshot hash.
+  Set<String> _collectAnnouncementHashes() {
+    final hashes = <String>{};
+    final channelsDir = Directory(RepoPaths.channelsPath);
+    if (!channelsDir.existsSync()) return hashes;
+
+    for (final entity in channelsDir.listSync().whereType<Directory>()) {
+      final channelName = entity.uri.pathSegments.last;
+      if (channelName.startsWith(".")) continue;
+
+      // Read channel head metadata to get generationHash
+      final headPath = RepoPaths.channelHeadMetaPath(channelName);
+      final headFile = File(headPath);
+      if (!headFile.existsSync()) continue;
+
+      try {
+        final json = jsonDecode(headFile.readAsStringSync()) as Map<String, dynamic>;
+        final genHash = json["generationHash"] as String?;
+        if (genHash == null) continue;
+
+        // Try to read the generation's announcement pointer (may not exist on client)
+        final pointerPath = "${RepoPaths.channelsPath}/refs/$genHash/announcements.pb2";
+        final pointerFile = File(pointerPath);
+        if (!pointerFile.existsSync()) continue;
+
+        final pointer = GenerationPointer.fromBuffer(pointerFile.readAsBytesSync());
+        if (pointer.snapshotHash.isNotEmpty) {
+          hashes.add(pointer.snapshotHash);
+        }
+      } on Exception {
+        // best-effort: skip unreadable files
+      }
+    }
+
+    return hashes;
+  }
+
+  /// Repairs missing files by re-downloading from remote.
+  ///
+  /// Returns unresolved issues (partial downloads or network failures).
   Future<IList<VerificationIssue>> repairAll({required Channel channel}) async {
     final issues = verify();
     final unresolved = <VerificationIssue>[];
 
     for (final issue in issues) {
       if (issue is VerificationMissingFiles) {
-        final repaired = await _redownloadMissingFiles(
-          checkoutId: issue.checkoutId,
-          missingFiles: issue.missingFiles,
-          channel: channel,
-        );
-        if (!repaired) {
-          unresolved.add(issue);
+        for (final resourceId in issue.missingIdents) {
+          // We need the content hash from the ResourceIndex to fetch
+          final ri = assetStore.readResourceIndexSync(issue.snapshotHash);
+          if (ri.isNone()) {
+            unresolved.add(issue);
+            continue;
+          }
+          final entry = ri
+              .toNullable()!
+              .entries
+              .where((e) => e.resourceId == resourceId)
+              .firstOrNull;
+          if (entry == null) {
+            unresolved.add(issue);
+            continue;
+          }
+          final ihash = RepoHash.hashIdent(resourceId);
+          final blobResult = await remoteCatalogService.fetchBlob(ihash, entry.contentHash);
+          if (blobResult.isRight()) {
+            assetStore.writeBlobSync(ihash, blobResult.getRight().toNullable()!);
+          } else {
+            unresolved.add(issue);
+          }
         }
-      } else if (issue is VerificationNoManifest) {
-        checkoutService.setState(issue.checkoutId, CheckoutState.known);
+      } else if (issue is VerificationNoMeta) {
+        unresolved.add(issue);
       } else if (issue is VerificationPartialDownload) {
         unresolved.add(issue);
       }
@@ -147,104 +239,13 @@ class VerificationService {
 
     return unresolved.toIList();
   }
+}
 
-  /// Detects and repairs partial download states for [checkoutId].
-  ///
-  /// | Index state | Manifest | Asset files | Action |
-  /// |:------------|:---------|:------------|:-------|
-  /// | installed   | missing  | —           | Roll back to [CheckoutState.known] |
-  /// | installed   | present  | missing     | Roll back to [CheckoutState.known] for re-download |
-  /// | installed   | present  | intact      | No action |
-  /// | known       | —        | —           | No action |
-  /// | not found   | —        | —           | No action |
-  Either<VerificationFailure, Unit> repairInterruptedDownload(String checkoutId) {
-    final state = checkoutService.lookup(checkoutId);
-
-    if (state.isNone()) return const Right(unit);
-
-    if (state.toNullable()! != CheckoutState.installed) {
-      return const Right(unit);
+extension _WhereFirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    for (final item in this) {
+      return item;
     }
-
-    final manifest = checkoutService.readManifest(checkoutId);
-    if (manifest.isNone()) {
-      checkoutService.setState(checkoutId, CheckoutState.known);
-      return const Right(unit);
-    }
-
-    final verifyResult = assetStore.verifyManifestSync(manifest.toNullable()!);
-    return verifyResult.match((missing) {
-      if (missing.missing.isNotEmpty || missing.hashMismatches.isNotEmpty) {
-        checkoutService.setState(checkoutId, CheckoutState.known);
-      }
-      return const Right(unit);
-    }, (_) => const Right(unit));
-  }
-
-  // ── Private helpers ──────────────────────────────────────────────────────────
-
-  Future<bool> _redownloadMissingFiles({
-    required String checkoutId,
-    required MissingFiles missingFiles,
-    required Channel channel,
-  }) async {
-    final manifest = checkoutService.readManifest(checkoutId);
-    if (manifest.isNone()) return false;
-
-    var allSucceeded = true;
-    final manifestData = manifest.toNullable()!;
-    final affectedSet = {...missingFiles.missing, ...missingFiles.hashMismatches};
-
-    for (final entry in manifestData.files.entries) {
-      final pathHash = entry.key;
-      final assetFile = entry.value;
-
-      if (!affectedSet.contains(pathHash)) continue;
-
-      final result = await remoteCatalogService.fetchAsset(channel, pathHash, assetFile.hash);
-      result.fold((_) => allSucceeded = false, (bytes) {
-        assetStore
-          ..deleteFileSync(pathHash, assetFile.hash)
-          ..writeFileByHashesSync(pathHash, assetFile.hash, bytes);
-      });
-    }
-
-    final recheck = assetStore.verifyManifestSync(manifestData);
-    return allSucceeded && recheck.isRight();
-  }
-
-  int _cleanupOrphanedHistorical() {
-    final index = checkoutService.readIndex();
-    if (index.isNone()) return 0;
-
-    final referencedCheckouts = <String>{};
-    final branches = branchService.discoverBranches();
-    for (final branch in branches) {
-      referencedCheckouts.add(branch.checkout);
-      for (final entry in branch.reflog) {
-        referencedCheckouts
-          ..add(entry.from)
-          ..add(entry.to);
-      }
-    }
-
-    var modified = false;
-    var removed = 0;
-    var updated = index.toNullable()!;
-    for (final entry in index.toNullable()!.entries.entries) {
-      if (entry.value.state != CheckoutState.historical) continue;
-      if (!referencedCheckouts.contains(entry.key)) {
-        updated = updated.copyWith(entries: updated.entries.remove(entry.key));
-        modified = true;
-        removed++;
-      }
-    }
-
-    if (modified) {
-      if (!checkoutService.writeIndex(updated)) {
-        // Best-effort cleanup — log but don't propagate.
-      }
-    }
-    return removed;
+    return null;
   }
 }

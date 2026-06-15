@@ -2,182 +2,107 @@ import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
-import "package:crypto/crypto.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/storage/repo/models/announcement.dart";
+import "package:eve_fit_assistant/data/proto/announcement_index.pb.dart";
+import "package:eve_fit_assistant/storage/repo/hash.dart";
+import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
-import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fpdart/fpdart.dart";
 
+/// Manages announcement index, content, and read state.
+///
+/// Uses the AnnouncementIndex protobuf from the generation chain
+/// and stores snapshots in `announcements/{snapshotHash}/`.
+/// Content blobs are stored in the shared `assets/blobs/` store
+/// via `announcement://` idents (spec §4.4).
 class AnnouncementService {
   const AnnouncementService();
 
-  static const int _indexSchemaVersion = 2;
+  /// Saves an announcement snapshot to disk atomically.
+  ///
+  /// Writes metadata.json and announcements.pb2 to a temp directory, then
+  /// renames to `announcements/{snapshotHash}/` (spec §11.1).
+  void saveAnnouncementSnapshot(String snapshotHash, AnnouncementIndex index) {
+    final targetDir = Directory(RepoPaths.announcementSnapshotPath(snapshotHash));
+    if (targetDir.existsSync()) return;
 
-  AnnouncementIndex readIndex() {
-    final file = File(RepoPaths.announcementsIndexPath);
-    if (!file.existsSync()) {
-      return const AnnouncementIndex(schemaVersion: _indexSchemaVersion);
-    }
-    try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      return AnnouncementIndex.fromJson(json);
-    } on Exception catch (e, stackTrace) {
-      warning("Failed to read announcement index", stackTrace: stackTrace);
-      return const AnnouncementIndex(schemaVersion: _indexSchemaVersion);
-    }
+    final tempDir = Directory("${RepoPaths.schemaResourcesPath}/tmp_announcement_snapshot");
+    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    tempDir.createSync(recursive: true);
+
+    // Write announcements.pb2
+    final indexPath = "${tempDir.path}/announcements.pb2";
+    writeProtobufSync(indexPath, index);
+
+    // Write metadata.json
+    final metaPath = "${tempDir.path}/metadata.json";
+    final meta = {
+      "schemaVersion": 1,
+      "announcementCount": index.entries.length,
+      "createdAt": DateTime.now().toUtc().toIso8601String(),
+    };
+    File(metaPath).writeAsStringSync(jsonEncode(meta), flush: true);
+
+    targetDir.parent.createSync(recursive: true);
+    tempDir.renameSync(targetDir.path);
   }
 
-  void writeIndex(AnnouncementIndex index) {
-    final path = RepoPaths.announcementsIndexPath;
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
-    try {
-      tmp
-        ..writeAsStringSync(jsonEncode(index.toJson()), flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
-      warning("Failed to write announcement index", stackTrace: stackTrace);
-      rethrow;
-    }
-  }
-
-  Option<AnnouncementRecord> readRecord(String id) {
-    final file = File(RepoPaths.announcementRegistryPath(id));
+  /// Reads a cached AnnouncementIndex.
+  ///
+  /// Returns [None] if not present.
+  Option<AnnouncementIndex> readCachedIndex(String snapshotHash) {
+    final indexPath = RepoPaths.announcementIndexPath(snapshotHash);
+    final file = File(indexPath);
     if (!file.existsSync()) return const None();
     try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      return Some(AnnouncementRecord.fromJson(json));
-    } on Exception catch (e, stackTrace) {
-      warning("Failed to read announcement record $id", stackTrace: stackTrace);
+      return Some(AnnouncementIndex.fromBuffer(file.readAsBytesSync()));
+    } on Exception {
       return const None();
     }
   }
 
-  void writeRecord(AnnouncementRecord record) {
-    final path = RepoPaths.announcementRegistryPath(record.id);
-    final file = File(path);
+  /// Caches announcement content as a blob in the shared `assets/blobs/` store.
+  ///
+  /// The ident_hash is computed from `announcement://{locale}/{id}`.
+  /// The content_hash is computed from [content] bytes.
+  /// Returns the content_hash so the caller can cross-check against the
+  /// AnnouncementIndex entry.
+  void cacheContent(String locale, String announcementId, String content) {
+    final ident = BlobIdent.announcement(locale, announcementId);
+    final contentBytes = utf8.encode(content);
+    final contentHash = RepoHash.hashContent(Uint8List.fromList(contentBytes));
+    final blobPath = RepoPaths.blobPath(ident.identHash, contentHash);
+
+    final file = File(blobPath);
+    if (file.existsSync()) return;
+
     if (!file.parent.existsSync()) {
       file.parent.createSync(recursive: true);
     }
-    final tmp = File("$path.tmp");
+    final tmp = File("$blobPath.tmp");
     try {
       tmp
-        ..writeAsStringSync(jsonEncode(record.toJson()), flush: true)
-        ..renameSync(path);
+        ..writeAsBytesSync(contentBytes, flush: true)
+        ..renameSync(blobPath);
     } on FileSystemException catch (e, stackTrace) {
-      warning("Failed to write announcement record ${record.id}", stackTrace: stackTrace);
-      rethrow;
+      warning("Failed to cache announcement blob $locale/$announcementId", stackTrace: stackTrace);
     }
   }
 
-  Option<String> readContent(String locale, String id) {
-    final file = File(RepoPaths.announcementFilePath(locale, id));
+  /// Reads cached announcement content from the blob store.
+  ///
+  /// [contentHash] must match the value from the AnnouncementIndex entry's
+  /// content_hashes map for the given locale.
+  Option<String> readCachedContent(String locale, String announcementId, String contentHash) {
+    final ident = BlobIdent.announcement(locale, announcementId);
+    final blobPath = RepoPaths.blobPath(ident.identHash, contentHash);
+    final file = File(blobPath);
     if (!file.existsSync()) return const None();
     try {
-      return Some(file.readAsStringSync());
-    } on Exception catch (e, stackTrace) {
-      warning("Failed to read announcement content $locale/$id", stackTrace: stackTrace);
+      return Some(utf8.decode(file.readAsBytesSync()));
+    } on Exception {
       return const None();
     }
-  }
-
-  void writeContent(String locale, String id, String markdown) {
-    final path = RepoPaths.announcementFilePath(locale, id);
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
-    try {
-      tmp
-        ..writeAsStringSync(markdown, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
-      warning("Failed to write announcement content $locale/$id", stackTrace: stackTrace);
-      rethrow;
-    }
-  }
-
-  String computeContentHash(AnnouncementRecord record, Map<String, String> localeContents) {
-    final idHash = sha256.convert(utf8.encode(record.id)).toString();
-
-    final xorResult = _xorLocaleHashes(localeContents);
-    final xorHex = _uint8ListToHex(xorResult);
-
-    final combined = "$idHash:${record.updatedAt}:$xorHex";
-    return sha256.convert(utf8.encode(combined)).toString();
-  }
-
-  void updateAnnouncementIndex(String id, {bool? isVersionUpdate, String? contentHash}) {
-    final index = readIndex();
-    final existingEntryIndex = index.records.indexWhere((e) => e.id == id);
-
-    if (existingEntryIndex >= 0) {
-      final existing = index.records[existingEntryIndex];
-      final updatedEntry = existing.copyWith(
-        isVersionUpdate: isVersionUpdate ?? existing.isVersionUpdate,
-        contentHash: contentHash ?? existing.contentHash,
-      );
-      final updatedRecords = IList(index.records.toList()..[existingEntryIndex] = updatedEntry);
-      final updatedIndex = index.copyWith(records: updatedRecords);
-      writeIndex(updatedIndex);
-    } else {
-      final newEntry = AnnouncementIndexEntry(
-        id: id,
-        contentHash: contentHash ?? "",
-        isVersionUpdate: isVersionUpdate ?? false,
-      );
-      final updatedIndex = index.copyWith(records: index.records.add(newEntry));
-      writeIndex(updatedIndex);
-    }
-  }
-
-  void markRead(String id) {
-    final index = readIndex();
-    final existingEntryIndex = index.records.indexWhere((e) => e.id == id);
-
-    if (existingEntryIndex < 0) return;
-
-    final existing = index.records[existingEntryIndex];
-    if (existing.isRead) return;
-
-    final updatedEntry = existing.copyWith(isRead: true);
-    final updatedRecords = IList(index.records.toList()..[existingEntryIndex] = updatedEntry);
-    final updatedIndex = index.copyWith(records: updatedRecords);
-    writeIndex(updatedIndex);
-  }
-
-  // ── Private helpers ───────────────────────────────────────────────────────────
-
-  static Uint8List _xorLocaleHashes(Map<String, String> localeContents) {
-    if (localeContents.isEmpty) return Uint8List(32);
-
-    final entries = localeContents.entries.toList();
-    var result = Uint8List.fromList(sha256.convert(utf8.encode(entries.first.value)).bytes);
-    for (var i = 1; i < entries.length; i++) {
-      final bytes = Uint8List.fromList(sha256.convert(utf8.encode(entries[i].value)).bytes);
-      result = _xorBytes(result, bytes);
-    }
-    return result;
-  }
-
-  static Uint8List _xorBytes(Uint8List a, Uint8List b) {
-    final result = Uint8List(32);
-    for (var i = 0; i < 32; i++) {
-      result[i] = a[i] ^ b[i];
-    }
-    return result;
-  }
-
-  static String _uint8ListToHex(Uint8List bytes) {
-    final buffer = StringBuffer();
-    for (final b in bytes) {
-      buffer.write(b.toRadixString(16).padLeft(2, "0"));
-    }
-    return buffer.toString();
   }
 }

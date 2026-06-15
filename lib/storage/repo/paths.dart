@@ -1,7 +1,10 @@
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:path/path.dart" as p;
 
-/// Path resolution for all schema resource and runtime data directories.
+/// Path resolution for the EFA V2 unified storage schema.
+///
+/// All paths share the `resources/v2/` root. The layout follows
+/// agent/schemav2/schema.md §2 (client-side).
 class RepoPaths {
   const RepoPaths._();
 
@@ -9,46 +12,90 @@ class RepoPaths {
 
   static String get schemaResourcesPath => p.join(PathProvider.resourcesPath, "v2");
 
-  static String get activePath => p.join(schemaResourcesPath, "active.json");
-
   static String get schemaVersionPath => p.join(schemaResourcesPath, "schema_version.json");
 
-  // assets/
+  // ── assets/ ─────────────────────────────────────────────────────────────────
+
   static String get assetsPath => p.join(schemaResourcesPath, "assets");
 
-  static String assetPath(String pathHash, String contentHash) {
-    if (pathHash.length < 2) {
-      throw ArgumentError.value(pathHash, "pathHash", "Must be at least 2 characters");
+  /// Path to a blob in the shared content-addressed store.
+  ///
+  /// `identHash` is SHA-256 of the identifier URI (e.g. `resource://...`).
+  /// `contentHash` is SHA-256 of the raw blob bytes.
+  static String blobPath(String identHash, String contentHash) {
+    if (identHash.length < 2) {
+      throw ArgumentError.value(identHash, "identHash", "Must be at least 2 characters");
     }
-    return p.join(assetsPath, pathHash.substring(0, 2), pathHash, contentHash);
+    return p.join(assetsPath, "blobs", identHash.substring(0, 2), identHash, contentHash);
   }
 
-  static String assetContentDir(String pathHash) {
-    if (pathHash.length < 2) {
-      throw ArgumentError.value(pathHash, "pathHash", "Must be at least 2 characters");
+  /// Directory containing all content versions for a single ident_hash.
+  static String blobIdentDir(String identHash) {
+    if (identHash.length < 2) {
+      throw ArgumentError.value(identHash, "identHash", "Must be at least 2 characters");
     }
-    return p.join(assetsPath, pathHash.substring(0, 2), pathHash);
+    return p.join(assetsPath, "blobs", identHash.substring(0, 2), identHash);
   }
 
-  // metadata/
-  static String get metadataPath => p.join(schemaResourcesPath, "metadata");
+  // ── assets/resources/ ───────────────────────────────────────────────────────
 
-  // metadata/checkouts/
-  static String get checkoutsPath => p.join(metadataPath, "checkouts");
+  /// Directory for a single resource snapshot.
+  static String resourceSnapshotPath(String snapshotHash) =>
+      p.join(assetsPath, "resources", snapshotHash);
 
-  static String get checkoutsIndexPath => p.join(checkoutsPath, "index.json");
+  /// metadata.json for a resource snapshot.
+  static String resourceSnapshotMetaPath(String snapshotHash) =>
+      p.join(resourceSnapshotPath(snapshotHash), "metadata.json");
 
-  static String get checkoutsRefsPath => p.join(checkoutsPath, "refs.json");
+  /// resources.pb2 for a resource snapshot (ResourceIndex protobuf).
+  static String resourceIndexPath(String snapshotHash) =>
+      p.join(resourceSnapshotPath(snapshotHash), "resources.pb2");
 
-  static String checkoutManifestPath(String checkoutId) =>
-      p.join(checkoutsPath, checkoutId, "assets.json");
+  // ── announcements/ (client-side, per spec §2.3) ─────────────────────────────
 
-  // branches/
-  static String get branchesPath => p.join(schemaResourcesPath, "branches");
+  /// Root announcements directory.
+  static String get announcementsRootPath => p.join(schemaResourcesPath, "announcements");
 
-  static String branchPath(String branchId) => p.join(branchesPath, "$branchId.json");
+  static String announcementSnapshotPath(String snapshotHash) =>
+      p.join(schemaResourcesPath, "announcements", snapshotHash);
 
-  // ── Runtime data ─────────────────────────────────────────────────────────────
+  static String announcementSnapshotMetaPath(String snapshotHash) =>
+      p.join(announcementSnapshotPath(snapshotHash), "metadata.json");
+
+  static String announcementIndexPath(String snapshotHash) =>
+      p.join(announcementSnapshotPath(snapshotHash), "announcements.pb2");
+
+  // ── channels/ (client-side) ─────────────────────────────────────────────────
+
+  static String get channelsPath => p.join(schemaResourcesPath, "channels");
+
+  /// channels/channels.json — client channel registry.
+  static String get channelRegistryPath => p.join(channelsPath, "channels.json");
+
+  /// channels/{channel}/metadata.json — client channel head metadata.
+  static String channelHeadMetaPath(String channelName) =>
+      p.join(channelsPath, channelName, "metadata.json");
+
+  /// channels/{channel}/server.pb2 — ServerIndex copied from generation.
+  static String channelServerIndexPath(String channelName) =>
+      p.join(channelsPath, channelName, "server.pb2");
+
+  // ── checkouts/ (client-side) ────────────────────────────────────────────────
+
+  static String get checkoutsPath => p.join(schemaResourcesPath, "checkouts");
+
+  /// checkouts/checkouts.json — checkout registry.
+  static String get checkoutRegistryPath => p.join(checkoutsPath, "checkouts.json");
+
+  /// checkouts/{id}/metadata.json — individual checkout metadata.
+  static String checkoutMetaPath(String checkoutId) =>
+      p.join(checkoutsPath, checkoutId, "metadata.json");
+
+  /// checkouts/{id}/reflog.pb2 — CheckoutReflog.
+  static String checkoutReflogPath(String checkoutId) =>
+      p.join(checkoutsPath, checkoutId, "reflog.pb2");
+
+  // ── Runtime data (unchanged) ────────────────────────────────────────────────
 
   static String get runtimeDataPath => p.join(PathProvider.documentsPath, "runtime", "v2", "data");
 
@@ -66,15 +113,4 @@ class RepoPaths {
 
   static String runtimeCharacterPath(String characterId) =>
       p.join(runtimeCharactersPath, "$characterId.json");
-
-  // announcements/
-  static String get runtimeAnnouncementsPath => p.join(runtimeDataPath, "announcements");
-
-  static String get announcementsIndexPath => p.join(runtimeAnnouncementsPath, "index.json");
-
-  static String announcementFilePath(String locale, String id) =>
-      p.join(runtimeAnnouncementsPath, "files", locale, id);
-
-  static String announcementRegistryPath(String id) =>
-      p.join(runtimeAnnouncementsPath, "registry", "$id.json");
 }

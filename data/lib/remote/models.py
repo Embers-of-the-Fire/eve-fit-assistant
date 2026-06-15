@@ -1,22 +1,24 @@
-"""Data models for remote content sessions.
-
-LockFile  — session identity and liveness.
-TodoList  — ordered, idempotent sequence of staged operations.
-SessionStatus — lightweight summary for the status command.
-"""
+"""Data models for EFA V2 schema — JSON metadata and protobuf wrappers."""
 
 from __future__ import annotations
 
-import datetime
 import json
-import uuid
 
+from dataclasses import dataclass
+from dataclasses import field
 from typing import TYPE_CHECKING
-from typing import Literal
 
 from pydantic import BaseModel
-from pydantic import ConfigDict
 from pydantic import Field
+
+from data.lib.schema import announcement_index_pb2
+from data.lib.schema import checkout_reflog_pb2
+from data.lib.schema import generation_pointer_pb2
+from data.lib.schema import generation_resources_pb2
+from data.lib.schema import head_reflog_pb2
+from data.lib.schema import release_index_pb2
+from data.lib.schema import resource_index_pb2
+from data.lib.schema import server_index_pb2
 
 
 if TYPE_CHECKING:
@@ -24,206 +26,311 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# Session lockfile
+# JSON metadata models
 # ---------------------------------------------------------------------------
 
 
-class LockFile(BaseModel):
-    """Identity record written at session start; removed at commit or abort."""
+class ResourceSnapshotMetadata(BaseModel):
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    server_id: str = Field(alias="serverId")
+    game_build: str = Field(alias="gameBuild")
+    game_version: str = Field(alias="gameVersion")
+    description: str = Field(default="")
+    resource_count: int = Field(alias="resourceCount")
+    created_at: str = Field(alias="createdAt")
 
-    model_config = ConfigDict(frozen=True)
 
-    session_id: str
+class ReleaseSnapshotMetadata(BaseModel):
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    version_min: str | None = Field(default=None, alias="versionMin")
+    version_max: str | None = Field(default=None, alias="versionMax")
+    release_count: int = Field(alias="releaseCount")
+    created_at: str = Field(alias="createdAt")
+
+
+class AnnouncementSnapshotMetadata(BaseModel):
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    announcement_count: int = Field(alias="announcementCount")
+    created_at: str = Field(alias="createdAt")
+
+
+class GenerationMetadata(BaseModel):
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    parent: str | None = None
+    channel: str
+    author: str
     timestamp: str
-    host: str
-    pid: int
-    backend: Literal["minio", "s3", "local"]
-    origin_dir: str | None = Field(default=None)
-    resource_root: str | None = Field(default=None)
-
-
-# ---------------------------------------------------------------------------
-# Operations (todo.json entries)
-# ---------------------------------------------------------------------------
-
-
-class AddAnnouncementOp(BaseModel):
-    type: Literal["add-announcement"] = "add-announcement"
-    document_id: str
-    fields: dict[str, object] = Field(default_factory=dict)
-    staged_files: dict[str, str] = Field(default_factory=dict)
-
-
-class AddVersionOp(BaseModel):
-    type: Literal["add-version"] = "add-version"
-    document_id: str
-    fields: dict[str, object] = Field(default_factory=dict)
-    staged_files: dict[str, str] = Field(default_factory=dict)
-
-
-class AddBundleOp(BaseModel):
-    type: Literal["add-bundle"] = "add-bundle"
-    artifact_id: str
-    bundle_id: str
-    variant: Literal["full"] = "full"
-    fields: dict[str, object] = Field(default_factory=dict)
-    staged_files: dict[str, str] = Field(default_factory=dict)
-
-
-class RemoveOp(BaseModel):
-    type: Literal["remove"] = "remove"
-    target_type: Literal["document", "artifact"]
-    target_id: str
-
-
-class PromoteDocumentOp(BaseModel):
-    type: Literal["promote-document"] = "promote-document"
-    document_id: str
-    fields: dict[str, object] = Field(default_factory=dict)
-
-
-class PromoteBundleOp(BaseModel):
-    type: Literal["promote-bundle"] = "promote-bundle"
-    artifact_id: str
-    bundle_id: str
-    variant: Literal["full"] = "full"
-    fields: dict[str, object] = Field(default_factory=dict)
-
-
-# ---------------------------------------------------------------------------
-# Todo list (the ordered journal of staged operations)
-# ---------------------------------------------------------------------------
-
-
-class TodoList(BaseModel):
-    """Mutable journal persisted at session/todo.json.  Operations are
-    applied in order when regenerating merged output."""
-
-    version: int = 1
-    session_id: str
-    committed: bool = False
-    parent_session_id: str | None = Field(default=None)
-    generation: str | None = Field(default=None)
-    operations: list[
-        AddAnnouncementOp
-        | AddVersionOp
-        | AddBundleOp
-        | RemoveOp
-        | PromoteDocumentOp
-        | PromoteBundleOp
-        | AddResourcesOp
-        | AddAnnouncementsOp
-        | AddReleaseOp
-    ] = Field(default_factory=list)
-    lock_snapshot: dict[str, object] = Field(default_factory=dict)
-
-
-# ---------------------------------------------------------------------------
-# Session status (for the status command)
-# ---------------------------------------------------------------------------
-
-
-class SessionStatus(BaseModel):
-    session_id: str
-    backend: str
-    timestamp: str
-    host: str
-    pid: int
-    operation_count: int
-    committed: bool
-
-
-# ---------------------------------------------------------------------------
-# Remote state (snapshot of remote catalogs + index)
-# ---------------------------------------------------------------------------
-
-
-class RemoteState(BaseModel):
-    """The three JSON files that make up a channel's remote state."""
-
-    index: dict[str, object]
-    documents_catalog: dict[str, object]
-    bundles_catalog: dict[str, object]
-
-
-# ---------------------------------------------------------------------------
-# Operations — used by SessionManager
-# ---------------------------------------------------------------------------
-
-
-class AddResourcesOp(BaseModel):
-    """Register checkout + server catalogs for a generation."""
-
-    op: Literal["add_resources"] = "add_resources"
-    generation_id: str
     description: str = ""
-    checkout_catalogs: list[dict[str, object]] = Field(default_factory=list)
-    server_catalogs: list[dict[str, object]] = Field(default_factory=list)
+    subject: str = ""
 
 
-class AddAnnouncementsOp(BaseModel):
-    """Register announcements for a generation."""
+class ChannelHeadMetadata(BaseModel):
+    """Server-side channel head metadata."""
 
-    op: Literal["add_announcements"] = "add_announcements"
-    generation_id: str
-    source_dir: str
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    generation_hash: str = Field(alias="generationHash")
+    label: dict[str, str] = Field(default_factory=dict)
 
 
-class AddReleaseOp(BaseModel):
-    """Register a release with APK artifact."""
+class ChannelHeadMetadataClient(BaseModel):
+    """Client-side channel head metadata — adds updatedAt."""
 
-    op: Literal["add_release"] = "add_release"
-    generation_id: str
-    version: str
-    apk_hash: str
-    announcement_id: str | None = Field(default=None)
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    generation_hash: str = Field(alias="generationHash")
+    updated_at: str = Field(alias="updatedAt")
+    label: dict[str, str] = Field(default_factory=dict)
+
+
+class ChannelInfo(BaseModel):
+    label: dict[str, str] = Field(default_factory=dict)
+
+
+class ChannelRegistry(BaseModel):
+    """Server-side channel registry (channels.json)."""
+
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    default_channel: str = Field(alias="defaultChannel")
+    channels: dict[str, ChannelInfo] = Field(default_factory=dict)
+
+
+class CheckoutEntry(BaseModel):
+    channel: str
+    server_id: str = Field(alias="serverId")
+    resource_snapshot_hash: str = Field(alias="resourceSnapshotHash")
+    name: dict[str, str]
+    created_at: str = Field(alias="createdAt")
+
+
+class CheckoutRegistry(BaseModel):
+    """Client-side checkout registry (checkouts.json)."""
+
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    active_checkout_id: str | None = Field(default=None, alias="activeCheckoutId")
+    checkouts: dict[str, CheckoutEntry] = Field(default_factory=dict)
+
+
+class CheckoutMetadata(BaseModel):
+    """Client-side checkout metadata."""
+
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    channel: str
+    resource_snapshot_hash: str = Field(alias="resourceSnapshotHash")
+    server_id: str = Field(alias="serverId")
+    name: dict[str, str]
+    created_at: str = Field(alias="createdAt")
 
 
 # ---------------------------------------------------------------------------
-# Misc / helpers
+# JSON read/write helpers
 # ---------------------------------------------------------------------------
 
 
-def _session_path(sessions_root: Path, session_id: str) -> Path:
-    """Return the canonical session directory path."""
-    return sessions_root / session_id
+def read_json(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-def _persist_json(path: Path, model: BaseModel) -> None:
+def write_json(path: Path, data: dict | BaseModel) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(model.model_dump_json(indent=4, by_alias=True) + "\n", encoding="utf-8")
+    if isinstance(data, BaseModel):
+        text = data.model_dump_json(indent=2, by_alias=True) + "\n"
+    else:
+        text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    path.write_text(text, encoding="utf-8")
 
 
-def _load_json_model[T: BaseModel](path: Path, model_cls: type[T]) -> T:
-    text = path.read_text(encoding="utf-8")
-    return model_cls.model_validate(json.loads(text))
+def write_json_atomic(path: Path, data: dict | BaseModel) -> None:
+    """Write to .tmp then atomically rename to path."""
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    write_json(tmp_path, data)
+    tmp_path.rename(path)
 
 
-def _utc_timestamp() -> str:
-    """Return an ISO-8601 UTC timestamp string."""
-    return (
-        datetime.datetime.now(datetime.UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+# ---------------------------------------------------------------------------
+# Protobuf read/write helpers
+# ---------------------------------------------------------------------------
 
 
-def _write_json(path: Path, data: dict[str, object]) -> None:
+def read_pb2(path: Path, message_cls):
+    msg = message_cls()
+    msg.ParseFromString(path.read_bytes())
+    return msg
+
+
+def write_pb2(path: Path, message) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(data, indent=4, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    path.write_bytes(message.SerializeToString())
 
 
-def _validate_backend(backend: str) -> Literal["minio", "s3", "local"]:
-    if backend not in ("minio", "s3", "local"):
-        raise ValueError(f"Invalid backend {backend!r}; must be one of 'minio', 's3', 'local'")
-    return backend  # type: ignore[return-value]
+def write_pb2_atomic(path: Path, message) -> None:
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    write_pb2(tmp_path, message)
+    tmp_path.rename(path)
 
 
-def _generate_session_id(prefix: str) -> str:
-    stamp = _utc_timestamp().replace("-", "").replace(":", "")
-    short_uuid = uuid.uuid4().hex[:8]
-    return f"{prefix}-{stamp}-{short_uuid}"
+# ---------------------------------------------------------------------------
+# Protobuf constructors (mirror spec)
+# ---------------------------------------------------------------------------
+
+ResourceIndex = resource_index_pb2.ResourceIndex
+ReleaseIndex = release_index_pb2.ReleaseIndex
+AnnouncementIndex = announcement_index_pb2.AnnouncementIndex
+ServerIndex = server_index_pb2.ServerIndex
+GenerationResources = generation_resources_pb2.GenerationResources
+GenerationPointer = generation_pointer_pb2.GenerationPointer
+HeadReflog = head_reflog_pb2.HeadReflog
+CheckoutReflog = checkout_reflog_pb2.CheckoutReflog
+
+
+def make_resource_index(entries: list[tuple[str, str, int]]) -> ResourceIndex:
+    """Build a ResourceIndex from (resource_id, content_hash, size) tuples."""
+    msg = ResourceIndex()
+    msg.schema_version = 1
+    for rid, content, size in entries:
+        entry = msg.entries.add()
+        entry.resource_id = rid
+        entry.content_hash = content
+        entry.size = size
+    return msg
+
+
+def make_server_index(
+    servers: list[tuple[str, dict[str, str], str, str]],
+) -> ServerIndex:
+    """Build a ServerIndex from (server_id, name_map, game_build, game_version) tuples."""
+    msg = ServerIndex()
+    msg.schema_version = 1
+    for sid, name_map, build, version in servers:
+        entry = msg.servers.add()
+        entry.server_id = sid
+        for locale, display_name in name_map.items():
+            entry.name[locale] = display_name
+        entry.game_build = build
+        entry.game_version = version
+    return msg
+
+
+def make_generation_resources(
+    mappings: list[tuple[str, str]],
+) -> GenerationResources:
+    """Build a GenerationResources from (server_id, snapshot_hash) tuples."""
+    msg = GenerationResources()
+    msg.schema_version = 1
+    for sid, snap_hash in mappings:
+        entry = msg.entries.add()
+        entry.server_id = sid
+        entry.snapshot_hash = snap_hash
+    return msg
+
+
+def make_generation_pointer(snapshot_hash: str) -> GenerationPointer:
+    msg = GenerationPointer()
+    msg.schema_version = 1
+    msg.snapshot_hash = snapshot_hash
+    return msg
+
+
+def make_release_index(
+    entries: list[tuple[str, str, list[str], str]],
+) -> ReleaseIndex:
+    """Build a ReleaseIndex from (id, version, offerings, ident_hash) tuples."""
+    msg = ReleaseIndex()
+    msg.schema_version = 1
+    for rid, version, offerings, ihash in entries:
+        entry = msg.entries.add()
+        entry.id = rid
+        entry.version = version
+        entry.offerings.extend(offerings)
+        entry.ident_hash = ihash
+    return msg
+
+
+def make_announcement_index(
+    entries: list[dict],
+) -> AnnouncementIndex:
+    """Build an AnnouncementIndex from a list of entry dicts.
+
+    Each dict can have: id, first_published_at, updated_at, content_hashes,
+    version_min, version_max, is_version_update.
+    """
+    msg = AnnouncementIndex()
+    msg.schema_version = 1
+    for e in entries:
+        entry = msg.entries.add()
+        entry.id = e["id"]
+        entry.first_published_at = e["first_published_at"]
+        entry.updated_at = e["updated_at"]
+        for locale, chash in e.get("content_hashes", {}).items():
+            entry.content_hashes[locale] = chash
+        if "version_min" in e:
+            entry.version_min = e["version_min"]
+        if "version_max" in e:
+            entry.version_max = e["version_max"]
+        if e.get("is_version_update", False):
+            entry.is_version_update = True
+    return msg
+
+
+def make_head_reflog_entry(
+    from_hash: str,
+    to_hash: str,
+    op: str,
+    timestamp: str,
+) -> HeadReflog:
+    """Build a single-entry HeadReflog."""
+    msg = HeadReflog()
+    msg.schema_version = 1
+    entry = msg.entries.add()
+    setattr(entry, "from", from_hash)
+    entry.to = to_hash
+    entry.op = op
+    entry.timestamp = timestamp
+    return msg
+
+
+def append_head_reflog_entry(
+    reflog: HeadReflog,
+    from_hash: str,
+    to_hash: str,
+    op: str,
+    timestamp: str,
+) -> HeadReflog:
+    entry = reflog.entries.add()
+    setattr(entry, "from", from_hash)
+    entry.to = to_hash
+    entry.op = op
+    entry.timestamp = timestamp
+    return reflog
+
+
+def make_checkout_reflog() -> CheckoutReflog:
+    msg = CheckoutReflog()
+    msg.schema_version = 1
+    return msg
+
+
+def append_checkout_reflog_entry(
+    reflog: CheckoutReflog,
+    from_hash: str,
+    to_hash: str,
+    timestamp: str,
+) -> CheckoutReflog:
+    entry = reflog.entries.add()
+    setattr(entry, "from", from_hash)
+    entry.to = to_hash
+    entry.timestamp = timestamp
+    return reflog
+
+
+# ---------------------------------------------------------------------------
+# Reachability set (used by GC)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ReachabilitySet:
+    generations: set[str] = field(default_factory=set)
+    resource_snapshots: set[str] = field(default_factory=set)
+    release_snapshots: set[str] = field(default_factory=set)
+    announcement_snapshots: set[str] = field(default_factory=set)
+    blobs: set[tuple[str, str]] = field(default_factory=set)

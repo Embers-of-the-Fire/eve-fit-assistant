@@ -3,7 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/schema_guard/migration_gate.dart";
 import "package:eve_fit_assistant/pages/router.dart";
-import "package:eve_fit_assistant/storage/repo/models/active.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
 import "package:flutter/material.dart";
@@ -12,7 +12,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 class SchemaGuard extends ConsumerStatefulWidget {
   const SchemaGuard({required this.builder, super.key});
 
-  final Widget Function(Active active) builder;
+  final Widget Function(CheckoutRegistryEntry? entry) builder;
 
   @override
   ConsumerState<SchemaGuard> createState() => _SchemaGuardState();
@@ -53,7 +53,7 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
 
     return switch (state) {
       RepoStateInitializing() => _buildLoading(),
-      RepoStateActive(:final active) => _buildActive(context, active),
+      RepoStateActive(:final entry) => _buildActive(context, entry),
       RepoStateError(:final error) => _buildError(context, ref, error.message),
       _ => _buildLoading(),
     };
@@ -61,15 +61,15 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
 
   Widget _buildLoading() => const Scaffold(body: Center(child: CircularProgressIndicator()));
 
-  Widget _buildActive(BuildContext context, Active active) {
-    if (active.checkoutId.isEmpty) {
+  Widget _buildActive(BuildContext context, CheckoutRegistryEntry? entry) {
+    if (entry == null) {
       final router = context.router;
-      if (router.current.name != BranchSetupRoute.name) {
-        unawaited(router.replace(const BranchSetupRoute()));
+      if (router.current.name != FrontRoute.name) {
+        unawaited(router.replace(const FrontRoute()));
       }
       return _buildLoading();
     }
-    return widget.builder(active);
+    return widget.builder(entry);
   }
 
   Widget _buildError(BuildContext context, WidgetRef ref, String message) => Scaffold(

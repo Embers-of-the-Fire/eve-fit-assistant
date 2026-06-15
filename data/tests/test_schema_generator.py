@@ -1,7 +1,8 @@
+"""Tests for schema V2 resource snapshot generator."""
+
 from __future__ import annotations
 
 import hashlib
-import json
 import tempfile
 
 from configparser import ConfigParser
@@ -9,16 +10,17 @@ from pathlib import Path
 
 import pytest
 
+from data.lib.remote.hash import content_hash
+from data.lib.remote.hash import generation_hash
+from data.lib.remote.hash import ident_hash
+from data.lib.remote.hash import snapshot_hash
 from data.lib.workspace.config import WorkspaceConfig
 from data.lib.workspace.config import WorkspaceMetadata
 from data.lib.workspace.config import WorkspacePaths
 from data.lib.workspace.config import WorkspaceResources
 from data.lib.workspace.config import WorkspaceServices
-from data.lib.workspace.generate.schema import _compute_checkout_hash
 from data.lib.workspace.generate.schema import _normalize_path
-from data.lib.workspace.generate.schema import _sha256_hex
 from data.lib.workspace.generate.schema import generate_schema_checkout
-from data.lib.workspace.generate.schema import verify_checkout_hash
 
 
 def _make_start_ini(dir_path: Path) -> Path:
@@ -78,73 +80,101 @@ class TestNormalizePath:
         assert _normalize_path("") == "."
 
 
-class TestComputeCheckoutHash:
-    def test_deterministic(self):
-        files = {
-            "a.txt": {"hash": "abc123", "size": 100},
-            "b.txt": {"hash": "def456", "size": 200},
-        }
-        h1 = _compute_checkout_hash(files)
-        h2 = _compute_checkout_hash(files)
-        assert h1 == h2
-
-    def test_order_independent(self):
-        files1 = {
-            "b.txt": {"hash": "def456", "size": 200},
-            "a.txt": {"hash": "abc123", "size": 100},
-        }
-        files2 = {
-            "a.txt": {"hash": "abc123", "size": 100},
-            "b.txt": {"hash": "def456", "size": 200},
-        }
-        assert _compute_checkout_hash(files1) == _compute_checkout_hash(files2)
-
-    def test_different_content_produces_different_hash(self):
-        files1 = {"a.txt": {"hash": "abc123", "size": 100}}
-        files2 = {"a.txt": {"hash": "xyz789", "size": 100}}
-        assert _compute_checkout_hash(files1) != _compute_checkout_hash(files2)
-
-    def test_empty_files_produces_hash(self):
-        files: dict[str, dict[str, object]] = {}
-        result = _compute_checkout_hash(files)
-        assert isinstance(result, str)
-        assert len(result) == 64
-
-
-class TestSha256Hex:
+class TestContentHash:
     def test_known_value(self):
-        result = _sha256_hex(b"hello")
+        result = content_hash(b"hello")
         expected = hashlib.sha256(b"hello").hexdigest()
         assert result == expected
         assert len(result) == 64
+
+    def test_different_content_different_hash(self):
+        h1 = content_hash(b"hello")
+        h2 = content_hash(b"world")
+        assert h1 != h2
+
+
+class TestIdentHash:
+    def test_resource_uri(self):
+        h = ident_hash("resource://proto/ships.bin")
+        assert len(h) == 64
+        assert all(c in "0123456789abcdef" for c in h)
+
+    def test_different_uri_different_hash(self):
+        h1 = ident_hash("resource://a.bin")
+        h2 = ident_hash("resource://b.bin")
+        assert h1 != h2
+
+
+class TestSnapshotHash:
+    def test_deterministic_resource(self):
+        files = {
+            "metadata.json": b'{"schemaVersion":1}',
+            "resources.pb2": b"fake proto bytes",
+        }
+        h1 = snapshot_hash("resource", files)
+        h2 = snapshot_hash("resource", files)
+        assert h1 == h2
+        assert len(h1) == 64
+
+    def test_different_type_different_hash(self):
+        files = {
+            "metadata.json": b'{"schemaVersion":1}',
+            "resources.pb2": b"data",
+        }
+        h1 = snapshot_hash("resource", files)
+        h2 = snapshot_hash("release", files)
+        assert h1 != h2
+
+
+class TestGenerationHash:
+    def test_deterministic(self):
+        files = dict.fromkeys(
+            ["metadata.json", "server.pb2", "resources.pb2", "releases.pb2", "announcements.pb2"],
+            b"data",
+        )
+        h1 = generation_hash(files)
+        h2 = generation_hash(files)
+        assert h1 == h2
+        assert len(h1) == 64
+
+    def test_missing_file_raises(self):
+        files = dict.fromkeys(["metadata.json", "server.pb2"], b"data")
+        with pytest.raises(ValueError, match="Missing required"):
+            generation_hash(files)
 
 
 class TestGenerateSchemaCheckout:
     def test_basic_generation(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
-
             start_ini = _make_start_ini(tmp)
 
             build_dir = tmp / "build"
             static_dir = build_dir / "static"
             static_dir.mkdir(parents=True)
             (static_dir / "collection.pb2").write_bytes(b"fake collection data")
-            (static_dir / "types.json").write_text("[]")
-
-            localization_dir = build_dir / "localization"
-            localization_dir.mkdir(parents=True)
-            (localization_dir / "localization_en.pb2").write_bytes(b"en data")
 
             schema_root = tmp / "output"
             config = _make_workspace_config(start_ini)
-            checkout_hash = generate_schema_checkout(
+            snapshot_hash = generate_schema_checkout(
                 config, build_dir=build_dir, schema_root=schema_root
             )
 
-            assert checkout_hash is not None
+            assert snapshot_hash is not None
+            assert len(snapshot_hash) == 64
+
             assets_dir = schema_root / "assets"
             assert assets_dir.is_dir()
+
+            blobs_dir = assets_dir / "blobs"
+            assert blobs_dir.is_dir()
+
+            resources_dir = assets_dir / "resources"
+            assert resources_dir.is_dir()
+            snap_dir = resources_dir / snapshot_hash
+            assert snap_dir.is_dir()
+            assert (snap_dir / "metadata.json").is_file()
+            assert (snap_dir / "resources.pb2").is_file()
 
     def test_deterministic_hash(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -163,7 +193,7 @@ class TestGenerateSchemaCheckout:
             assert h2 is not None
             assert h1 == h2
 
-    def test_file_deduplication(self):
+    def test_content_deduplication(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
             start_ini = _make_start_ini(tmp)
@@ -174,32 +204,23 @@ class TestGenerateSchemaCheckout:
             sub_b = build_dir / "b"
             sub_b.mkdir(parents=True)
 
-            identical_content = b"same content"
-            (sub_a / "f1.bin").write_bytes(identical_content)
-            (sub_b / "f2.bin").write_bytes(identical_content)
+            identical = b"same content"
+            (sub_a / "f1.bin").write_bytes(identical)
+            (sub_b / "f2.bin").write_bytes(identical)
 
             schema_root = tmp / "out"
             config = _make_workspace_config(start_ini)
-            checkout_hash = generate_schema_checkout(
+            snapshot_hash = generate_schema_checkout(
                 config, build_dir=build_dir, schema_root=schema_root
             )
 
-            assert checkout_hash is not None
-            catalog_path = schema_root / "checkouts" / f"{checkout_hash}.json"
-            with catalog_path.open("r") as f:
-                catalog = json.load(f)
+            assert snapshot_hash is not None
+            chash = content_hash(identical)
+            ihash_a = ident_hash("resource://a/f1.bin")
+            ihash_b = ident_hash("resource://b/f2.bin")
 
-            assert len(catalog["files"]) == 2
-            hash1 = catalog["files"]["a/f1.bin"]["hash"]
-            hash2 = catalog["files"]["b/f2.bin"]["hash"]
-            assert hash1 == hash2
-
-            assets_dir = schema_root / "assets"
-            entry = catalog["files"]["a/f1.bin"]
-            path_hash = entry["pathHash"]
-            prefix = path_hash[:2]
-            dest = assets_dir / prefix / path_hash / hash1
-            assert dest.is_file()
+            assert (schema_root / "assets" / "blobs" / ihash_a[:2] / ihash_a / chash).is_file()
+            assert (schema_root / "assets" / "blobs" / ihash_b[:2] / ihash_b / chash).is_file()
 
     def test_empty_build_dir(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -211,7 +232,6 @@ class TestGenerateSchemaCheckout:
 
             config = _make_workspace_config(start_ini)
             result = generate_schema_checkout(config, build_dir=build_dir, schema_root=tmp / "out")
-
             assert result is None
 
     def test_nonexistent_build_dir(self):
@@ -223,87 +243,4 @@ class TestGenerateSchemaCheckout:
             result = generate_schema_checkout(
                 config, build_dir=tmp / "nonexistent", schema_root=tmp / "out"
             )
-
             assert result is None
-
-
-class TestVerifyCheckoutHash:
-    def test_valid_catalog(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp = Path(tmpdir)
-            start_ini = _make_start_ini(tmp)
-
-            build_dir = tmp / "build"
-            build_dir.mkdir()
-            (build_dir / "data.bin").write_bytes(b"test data")
-
-            schema_root = tmp / "out"
-            config = _make_workspace_config(start_ini)
-            checkout_hash = generate_schema_checkout(
-                config, build_dir=build_dir, schema_root=schema_root
-            )
-            assert checkout_hash is not None
-
-            catalog_path = schema_root / "checkouts" / f"{checkout_hash}.json"
-            assert verify_checkout_hash(catalog_path) is True
-
-    def test_tampered_catalog(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp = Path(tmpdir)
-            start_ini = _make_start_ini(tmp)
-
-            build_dir = tmp / "build"
-            build_dir.mkdir()
-            (build_dir / "data.bin").write_bytes(b"test data")
-
-            schema_root = tmp / "out"
-            config = _make_workspace_config(start_ini)
-            checkout_hash = generate_schema_checkout(
-                config, build_dir=build_dir, schema_root=schema_root
-            )
-            assert checkout_hash is not None
-
-            catalog_path = schema_root / "checkouts" / f"{checkout_hash}.json"
-            with catalog_path.open("r") as f:
-                catalog = json.load(f)
-
-            orig_id = catalog["id"]
-            catalog["id"] = "0000000000000000000000000000000000000000000000000000000000000000"
-            with catalog_path.open("w") as f:
-                json.dump(catalog, f)
-
-            assert verify_checkout_hash(catalog_path) is False
-            assert orig_id != "0000000000000000000000000000000000000000000000000000000000000000"
-
-
-class TestAssetPathResolution:
-    def test_asset_path_matches_catalog(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp = Path(tmpdir)
-            start_ini = _make_start_ini(tmp)
-
-            build_dir = tmp / "build"
-            build_dir.mkdir()
-            file_path = build_dir / "icons" / "test.png"
-            file_path.parent.mkdir(parents=True)
-            file_path.write_bytes(b"image data")
-
-            schema_root = tmp / "out"
-            config = _make_workspace_config(start_ini)
-            checkout_hash = generate_schema_checkout(
-                config, build_dir=build_dir, schema_root=schema_root
-            )
-            assert checkout_hash is not None
-
-            catalog_path = schema_root / "checkouts" / f"{checkout_hash}.json"
-            with catalog_path.open("r") as f:
-                catalog = json.load(f)
-
-            entry = catalog["files"]["icons/test.png"]
-            path_hash = entry["pathHash"]
-            content_hash = entry["hash"]
-
-            prefix = path_hash[:2]
-            asset_path = schema_root / "assets" / prefix / path_hash / content_hash
-            assert asset_path.is_file()
-            assert asset_path.read_bytes() == b"image data"

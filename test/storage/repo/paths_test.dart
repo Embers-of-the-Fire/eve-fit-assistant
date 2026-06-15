@@ -1,149 +1,99 @@
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:path/path.dart" as p;
 
 void main() {
-  setUp(() {
-    PathProvider.documentsPath = "/fake/documents";
+  setUpAll(() {
+    // Initialize PathProvider with test values
+    PathProvider.documentsPath = "/test/docs";
+    PathProvider.tempPath = "/test/tmp";
+    PathProvider.appSupportPath = "/test/support";
+    PathProvider.cachesPath = "/test/cache";
   });
 
-  group("RepoPaths schema resource paths", () {
-    test("schemaResourcesPath is under resourcesPath", () {
-      expect(RepoPaths.schemaResourcesPath, p.join(PathProvider.resourcesPath, "v2"));
+  group("blobPath", () {
+    test("constructs path with first 2 chars of ident_hash", () {
+      const identHash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+      const contentHash = "1111111111111111111111111111111100000000000000000000000000000000";
+      final path = RepoPaths.blobPath(identHash, contentHash);
+      expect(path, contains("blobs/ab/"));
+      expect(path, contains(identHash));
+      expect(path, contains(contentHash));
     });
 
-    test("activePath is under schemaResourcesPath", () {
-      expect(RepoPaths.activePath, p.join(RepoPaths.schemaResourcesPath, "active.json"));
-    });
-
-    test("schemaVersionPath is under schemaResourcesPath", () {
-      expect(
-        RepoPaths.schemaVersionPath,
-        p.join(RepoPaths.schemaResourcesPath, "schema_version.json"),
-      );
-    });
-
-    test("assetsPath is under schemaResourcesPath", () {
-      expect(RepoPaths.assetsPath, p.join(RepoPaths.schemaResourcesPath, "assets"));
-    });
-
-    test("assetPath uses 2-char prefix from pathHash", () {
-      const pathHash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
-      const contentHash = "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321";
-      final assetPath = RepoPaths.assetPath(pathHash, contentHash);
-      expect(assetPath, p.join(RepoPaths.assetsPath, "ab", pathHash, contentHash));
-    });
-
-    test("metadataPath is under schemaResourcesPath", () {
-      expect(RepoPaths.metadataPath, p.join(RepoPaths.schemaResourcesPath, "metadata"));
-    });
-
-    test("checkoutsPath is under metadataPath", () {
-      expect(RepoPaths.checkoutsPath, p.join(RepoPaths.metadataPath, "checkouts"));
-    });
-
-    test("checkoutsIndexPath is under checkoutsPath", () {
-      expect(RepoPaths.checkoutsIndexPath, p.join(RepoPaths.checkoutsPath, "index.json"));
-    });
-
-    test("checkoutsRefsPath is under checkoutsPath", () {
-      expect(RepoPaths.checkoutsRefsPath, p.join(RepoPaths.checkoutsPath, "refs.json"));
-    });
-
-    test("checkoutManifestPath uses checkout hash as directory", () {
-      const checkoutId = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-      expect(
-        RepoPaths.checkoutManifestPath(checkoutId),
-        p.join(RepoPaths.checkoutsPath, checkoutId, "assets.json"),
-      );
-    });
-
-    test("branchesPath is under schemaResourcesPath", () {
-      expect(RepoPaths.branchesPath, p.join(RepoPaths.schemaResourcesPath, "branches"));
-    });
-
-    test("branchPath uses branchId as filename with .json extension", () {
-      const branchId = "550e8400-e29b-41d4-a716-446655440000";
-      expect(
-        RepoPaths.branchPath(branchId),
-        p.join(RepoPaths.branchesPath, "550e8400-e29b-41d4-a716-446655440000.json"),
-      );
+    test("throws on short ident_hash", () {
+      expect(() => RepoPaths.blobPath("a", "c" * 64), throwsA(isA<ArgumentError>()));
     });
   });
 
-  group("RepoPaths runtime data paths", () {
-    test("runtimeDataPath is under documentsPath", () {
-      expect(
-        RepoPaths.runtimeDataPath,
-        p.join(PathProvider.documentsPath, "runtime", "v2", "data"),
-      );
+  group("blobIdentDir", () {
+    test("returns directory containing all versions of an ident", () {
+      const identHash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+      final dir = RepoPaths.blobIdentDir(identHash);
+      expect(dir, contains("blobs/ab/"));
+      expect(dir, contains(identHash));
+    });
+  });
+
+  group("resource snapshot paths", () {
+    test("snapshot path includes hash", () {
+      final hash = "a" * 64;
+      expect(RepoPaths.resourceSnapshotPath(hash), contains(hash));
+      expect(RepoPaths.resourceSnapshotPath(hash), contains("resources/"));
     });
 
-    test("runtimeFittingsPath is under runtimeDataPath", () {
-      expect(RepoPaths.runtimeFittingsPath, p.join(RepoPaths.runtimeDataPath, "fittings"));
+    test("metadata and proto paths are under snapshot", () {
+      final hash = "a" * 64;
+      final meta = RepoPaths.resourceSnapshotMetaPath(hash);
+      final proto = RepoPaths.resourceIndexPath(hash);
+      expect(meta, endsWith("metadata.json"));
+      expect(proto, endsWith("resources.pb2"));
+    });
+  });
+
+  group("channel paths", () {
+    test("registry path", () {
+      expect(RepoPaths.channelRegistryPath, contains("channels/channels.json"));
     });
 
-    test("fittingsRegistryPath is under runtimeFittingsPath", () {
-      expect(
-        RepoPaths.fittingsRegistryPath,
-        p.join(RepoPaths.runtimeFittingsPath, "registry.json"),
-      );
+    test("head meta path by channel name", () {
+      final path = RepoPaths.channelHeadMetaPath("testing");
+      expect(path, contains("channels/testing/metadata.json"));
     });
 
-    test("runtimeFittingPath uses fitId as filename with .json extension", () {
-      const fitId = "my-fit-123";
-      expect(
-        RepoPaths.runtimeFittingPath(fitId),
-        p.join(RepoPaths.runtimeFittingsPath, "my-fit-123.json"),
-      );
+    test("server index path by channel name", () {
+      final path = RepoPaths.channelServerIndexPath("testing");
+      expect(path, contains("channels/testing/server.pb2"));
+    });
+  });
+
+  group("checkout paths", () {
+    test("registry path", () {
+      expect(RepoPaths.checkoutRegistryPath, contains("checkouts/checkouts.json"));
     });
 
-    test("runtimeCharactersPath is under runtimeDataPath", () {
-      expect(RepoPaths.runtimeCharactersPath, p.join(RepoPaths.runtimeDataPath, "characters"));
+    test("meta path by checkout id", () {
+      final path = RepoPaths.checkoutMetaPath("uuid-1234");
+      expect(path, contains("checkouts/uuid-1234/metadata.json"));
     });
 
-    test("charactersRegistryPath is under runtimeCharactersPath", () {
-      expect(
-        RepoPaths.charactersRegistryPath,
-        p.join(RepoPaths.runtimeCharactersPath, "registry.json"),
-      );
+    test("reflog path by checkout id", () {
+      final path = RepoPaths.checkoutReflogPath("uuid-1234");
+      expect(path, contains("checkouts/uuid-1234/reflog.pb2"));
+    });
+  });
+
+  group("runtime paths", () {
+    test("fittings registry path", () {
+      expect(RepoPaths.fittingsRegistryPath, contains("fittings/registry.json"));
     });
 
-    test("runtimeCharacterPath uses characterId as filename with .json extension", () {
-      const characterId = "char-abc";
-      expect(
-        RepoPaths.runtimeCharacterPath(characterId),
-        p.join(RepoPaths.runtimeCharactersPath, "char-abc.json"),
-      );
+    test("characters registry path", () {
+      expect(RepoPaths.charactersRegistryPath, contains("characters/registry.json"));
     });
 
-    test("runtimeAnnouncementsPath is under runtimeDataPath", () {
-      expect(
-        RepoPaths.runtimeAnnouncementsPath,
-        p.join(RepoPaths.runtimeDataPath, "announcements"),
-      );
-    });
-
-    test("announcementsIndexPath is under runtimeAnnouncementsPath", () {
-      expect(
-        RepoPaths.announcementsIndexPath,
-        p.join(RepoPaths.runtimeAnnouncementsPath, "index.json"),
-      );
-    });
-
-    test("announcementFilePath uses locale and id", () {
-      expect(
-        RepoPaths.announcementFilePath("en", "msg-001"),
-        p.join(RepoPaths.runtimeAnnouncementsPath, "files", "en", "msg-001"),
-      );
-    });
-
-    test("announcementRegistryPath uses id", () {
-      expect(
-        RepoPaths.announcementRegistryPath("msg-001"),
-        p.join(RepoPaths.runtimeAnnouncementsPath, "registry", "msg-001.json"),
-      );
+    test("schema version path", () {
+      expect(RepoPaths.schemaVersionPath, endsWith("schema_version.json"));
     });
   });
 }

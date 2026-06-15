@@ -16,24 +16,27 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 
 | System | Path | Description |
 |--------|------|-------------|
-| Repo System | `lib/storage/repo/` | Content-addressed repository with branch/checkout model, diff chains, Riverpod providers, and async orchestration for full download, incremental update, revert, update discovery, verification recovery, and branch lifecycle. |
+| Repo System | `lib/storage/repo/` | Content-addressed repository implementing the EFA V2 unified storage schema (generation-based, protobuf-driven) with blob store, resource snapshots, channel discovery, checkout lifecycle, and Riverpod providers. |
 | Schema Version | `lib/storage/repo/schema_version.dart` | `SchemaVersionService` — reads/writes `schema_version.json`, determines active storage system |
-| Announcements | `lib/storage/repo/announcements.dart` | `AnnouncementService` — manages `runtime/v2/data/announcements/` (index, records, markdown content, content hash, isRead tracking) |
-| Announcement Sync | `lib/storage/repo/announcement_sync.dart` | Syncs remote announcement catalog with local index; fetches records + content on change |
-| Release Sync | `lib/storage/repo/release_sync.dart` | Checks remote release catalog for newer APK versions; downloads APK binary |
-| Generation Navigation | `lib/storage/repo/generation_nav.dart` | Drill-down data source: generation → servers → checkouts for branch management page |
-| Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole type-data source; pre-loads type data (ships, skills, items, localization, icons) from active checkout's asset store. |
+| Channel Discovery | `lib/storage/repo/channel_service.dart` | `ChannelService` — fetches channel registry, head metadata, server index; update detection |
+| Checkout Management | `lib/storage/repo/checkout_registry_service.dart` | `CheckoutRegistryService` — manages `checkouts/checkouts.json`, active checkout pointer, reactive stream |
+| Checkout Lifecycle | `lib/storage/repo/checkout_service.dart` | `CheckoutService` — checkout CRUD, reflog management, resource fetch orchestration |
+| Announcements | `lib/storage/repo/announcements.dart` | `AnnouncementService` — manages announcement snapshot caching and content retrieval via `AnnouncementIndex` protobuf |
+| Announcement Sync | `lib/storage/repo/announcement_sync.dart` | `AnnouncementSyncService` — fetches announcement snapshots from the generation chain |
+| Release Sync | `lib/storage/repo/release_sync.dart` | `ReleaseSyncService` — checks remote release index for newer APK versions via `ReleaseIndex` protobuf |
+| Generation Navigation | `lib/storage/repo/generation_nav.dart` | `GenerationNavigationService` — channel → server browser for setup page |
+| Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole type-data source; pre-loads type data (ships, skills, items, localization, icons) from active checkout's ResourceIndex. |
 | Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit/character storage schemas; fit supports storageVersion 3 with CheckoutRef |
-| Data Source Pages | `lib/pages/branch/` | Branch list, detail (reflog/diffs), setup (server selection + checkout picker) |
-| Storage Settings | `lib/pages/setting/data/` | Storage management (prune/verify) and branch settings (rename/pin/delete) |
+| Data Source Pages | `lib/pages/branch/` | Branch list, detail (reflog/diffs), setup (server selection + checkout picker) — **needs UI rewrite for new schema** |
+| Storage Settings | `lib/pages/setting/data/` | Storage management (prune/verify) and branch settings (rename/pin/delete) — **needs UI rewrite** |
 | Schema Guard | `lib/features/schema_guard/` | Startup gate: `SchemaGuard` manages initialization; `MigrationGate` offers a one-time v1→v2 migration prompt |
 | Repo State | `lib/storage/repo/repo_state.dart` | `RepoState` union (uninitialized/initializing/active/error) and `RepoStateNotifier` |
 | Repo Errors | `lib/storage/repo/repo_error.dart` | `RepoError` sealed class (network/storage/corrupt/remoteData) for typed error propagation |
-| Branch Widgets | `lib/features/branch_management/` | Reusable branch tile, reflog timeline, diff summary, server/checkout selection tiles |
+| Branch Widgets | `lib/features/branch_management/` | Reusable branch tile, reflog timeline, diff summary, server/checkout selection tiles — **needs UI rewrite for new schema** |
 | Settings | `lib/storage/setting/` | User settings including remote content configuration |
 
-All writes to `active.json` are mutex-guarded; reads are lock-free. File watchers provide reactive streams for `active.json` and branch directory changes.
+All writes to `checkouts.json` are mutex-guarded; reads are lock-free. The checkout registry provides a reactive stream for live UI updates.
 
 The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` watches the state and renders appropriate screens. `MigrationGate` checks for v1 data remnants and offers a one-time migration prompt before the repo system activates.
 
@@ -41,13 +44,14 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 
 | Workflow | Entry Point | Service |
 |----------|------------|---------|
-| Full checkout download | `downloadAndActivateCheckout()` | `RepoService` → `CheckoutService.downloadFullCheckout()` |
-| Incremental update | `updateActiveBranchToCheckout()` | `RepoService` → `CheckoutService.applyIncrementalUpdate()` |
-| Revert | `revertActiveBranchTo()` | `RepoService` → `BranchService.revertTo()` |
-| Remote resolution | `resolveCheckoutRefAsync()` | `RepoService` → `CheckoutResolver.resolveAsync()` |
-| Update discovery | `checkForUpdates()` | `RepoService` → `BranchService.checkForUpdates()` |
+| Channel discovery | `discoverChannels()` | `RepoService` → `ChannelService.discoverChannels()` |
+| Resource fetch | `fetchResourcesForActiveCheckout()` | `RepoService` → `CheckoutService.fetchResourcesForCheckout()` |
+| Create checkout | `createCheckout()` | `RepoService` → `CheckoutService.createCheckout()` |
+| Revert | `revertActiveCheckoutTo()` | `RepoService` → `CheckoutService.revertCheckoutTo()` |
+| Checkout resolution | `resolveCheckoutRefAsync()` | `RepoService` → `CheckoutResolver.resolveAsync()` |
+| Update discovery | `checkForUpdates()` | `RepoService` → `ChannelService.hasUpdates()` |
 | Verification repair | `verifyAndRepair()` | `RepoService` → `VerificationService.repairAll()` |
-| Branch lifecycle | `createRemoteBranch()` / `createLocalBranch()` / `deleteBranchWithDetach()` | `RepoService` |
+| Checkout lifecycle | `switchActiveCheckout()` / `deleteCheckout()` | `RepoService`
 | Prune | `prune()` | `RepoService` → `VerificationService.prune()` |
 | Startup recovery | `recoverPartialDownloads()` | `RepoService` (called from `ensureInitialized()`) |
 

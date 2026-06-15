@@ -125,6 +125,8 @@ class MigrateService {
   }
 
   void _finalize() {
+    // Write new schema_version.json with schemaVersion 1
+    // (matches the new EFA V2 unified storage schema)
     schemaVersionService.ensure();
   }
 }

@@ -1,93 +1,73 @@
 /// Barrel export for the repo module.
 ///
-/// The repo system is a content-addressed data versioning layer that coexists with the legacy
-/// v1 bundle system. Selection is governed by `schema_version.json`.
+/// The repo system is a content-addressed data versioning layer implementing the
+/// EFA V2 unified storage schema (agent/schemav2/).
 ///
 /// ## Component Map
 ///
 /// - **RepoService** (`service.dart`) — Riverpod singleton orchestrator. Provides
-///   `downloadAndActivateCheckout()`, `updateActiveBranchToCheckout()`,
-///   `revertActiveBranchTo()`, `createRemoteBranch()`, `createLocalBranch()`,
-///   `deleteBranchWithDetach()`, `checkForUpdates()`, `verifyAndRepair()`, and
-///   `recoverPartialDownloads()`.
-/// - **ActiveService** (`active.dart`) — manages `active.json`, the single-source-of-truth for
-///   "what's loaded" and the active branch pointer. Writes are mutex-guarded; reads are
-///   lock-free. Emits a reactive stream via [ActiveService.watch].
-/// - **SchemaVersionService** (`schema_version.dart`) — reads and writes `schema_version.json`;
-///   determines whether the repo system (schema >= 2) is the active storage system.
-/// - **BranchService** (`branch.dart`) — creates, selects, and manages named branches backed
-///   by a reflog and forward-diff chain. Discovers branches via directory scan; exposes a
-///   debounced reactive stream via [BranchService.watchBranches].
-/// - **CheckoutService** (`checkout.dart`) — handles checkout download, installation, and
-///   lifecycle (installed/historical/known).
-/// - **AssetStore** (`assets.dart`) — content-addressed file I/O under `<schema root>/assets/`.
-/// - **DiffEngine** (`diff.dart`) — pure-computation diff compute, apply, and invert.
-/// - **CheckoutResolver** (`checkout_resolution.dart`) — resolves which checkout a user's
-///   fit/character should use (compatible / offer-re-sync / offer-download / approximate).
-/// - **CompatibilityService** (`compatibility.dart`) — checks compatibility between a fit and
-///   available checkouts.
-/// - **AnnouncementService** (`announcements.dart`) — manages announcement index, records,
-///   markdown content, content hashing, and isRead tracking under
-///   `<schema runtime>/data/announcements/`.
-/// - **VerificationService** (`verification.dart`) — verifies local integrity and prunes
-///   unreferenced assets.
-/// - **RemoteCatalogService** (`remote_catalog.dart`) — HTTP-based remote catalog syncing
-///   with ETag cache.
-/// - **GenerationNavigationService** (`generation_nav.dart`) — navigates the
-///   generations → servers → checkouts tree for the branch management page.
+///   channel discovery, checkout lifecycle, resource fetch, update detection,
+///   revert, announcement fetch, and verification.
+/// - **CheckoutRegistryService** (`checkout_registry_service.dart`) — manages
+///   `checkouts/checkouts.json`, the active checkout pointer, and emits a
+///   reactive stream for UI observation.
+/// - **CheckoutService** (`checkout_service.dart`) — checkout CRUD, reflog
+///   management, and resource fetch orchestration.
+/// - **ChannelService** (`channel_service.dart`) — channel discovery, head
+///   metadata, server index management, update detection.
+/// - **SchemaVersionService** (`schema_version.dart`) — reads and writes
+///   `schema_version.json`; determines the active storage schema.
+/// - **AssetStore** (`assets.dart`) — content-addressed blob I/O under
+///   `<schema root>/assets/blobs/` with atomic writes.
+/// - **DiffEngine** (`diff.dart`) — on-demand diff between ResourceIndex
+///   protobufs.
+/// - **RemoteCatalogService** (`remote_catalog.dart`) — HTTP-based remote
+///   catalog syncing under `efa/v2/`.
+/// - **VerificationService** (`verification.dart`) — verifies local integrity
+///   and prunes unreferenced data.
 /// - **RepoCollectionService** (`collection.dart`) — pre-loads type data
 ///   (ships, skills, items, localization, icon paths) from the active
-///   checkout's content-addressed asset store; `null` when no checkout is active.
-/// - **NativeDirResolver** (`native_dir.dart`) — resolves a virtual native directory for the
-///   Rust fitting engine based on the active checkout.
-/// - **PathProvider** (`paths.dart`) — path resolution for the `<schema root>/` and
-///   `<schema runtime>/` layouts.
-/// - **Hash utilities** (`hash.dart`) — content-hash computation.
-/// - **Riverpod providers** (`providers.dart`) — all Riverpod singletons, reactive stream
-///   providers (`activeWatch`, `branchesWatch`), and derived convenience providers.
+///   checkout's resource snapshot via the ResourceIndex protobuf.
+/// - **NativeDirResolver** (`native_dir.dart`) — resolves a virtual native
+///   directory for the Rust fitting engine based on the active checkout's
+///   resource index.
+/// - **AnnouncementService** (`announcements.dart`) — manages announcement
+///   snapshot caching and content retrieval.
+/// - **AnnouncementSyncService** (`announcement_sync.dart`) — fetches
+///   announcement snapshots from the generation chain.
+/// - **ReleaseSyncService** (`release_sync.dart`) — checks for newer APK
+///   releases via the release index.
+/// - **CheckoutResolver** (`checkout_resolution.dart`) — resolves fit/character
+///   CheckoutRef against the local checkout registry.
+/// - **CompatibilityService** (`compatibility.dart`) — pure-function
+///   compatibility check between checkout refs.
+/// - **GenerationNavigationService** (`generation_nav.dart`) — navigates the
+///   channel → server tree for the setup page.
+/// - **RepoPaths** (`paths.dart`) — path resolution for the
+///   `<schema root>/resources/v2/` layout.
+/// - **RepoHash** (`hash.dart`) — SHA-256 primitives and structured hash
+///   formulas (resource snapshot, release snapshot, announcement snapshot,
+///   generation).
 /// - **RepoState** (`repo_state.dart`) — lifecycle state union (uninitialized /
-///   initializing / active / error). Emitted by `RepoStateNotifier` (Riverpod
-///   Notifier) and watched by `SchemaGuard` for startup gating.
+///   initializing / active / error).
 /// - **RepoError** (`repo_error.dart`) — sealed class with `network`, `storage`,
-///   `corrupt`, `remoteData` variants for typed error propagation.
-/// - **models/** — freezed data models (Active, Branch, CheckoutIndex, CheckoutRefs,
-///   AssetManifest, Diff, ReflogEntry, AnnouncementIndex/AnnouncementRecord,
-///   remote catalog types, ReleaseItemRecord, CompatibilityCheck/CheckoutResolution,
-///   MissingFiles, shared types).
+///   `corrupt`, `remoteData` variants.
+/// - **Riverpod providers** (`providers.dart`) — all Riverpod singletons,
+///   reactive stream providers, and the RepoStateNotifier lifecycle manager.
+/// - **models/** — freezed data models (channel registry, checkout registry,
+///   head metadata, checkout metadata, snapshot metadata, generation metadata,
+///   diff, compatibility, shared types).
 /// - **Migration subsystem** (`migration/`) — `MigrateService`, `MigrateFits`,
-///   `MigrateCharacters`, `MigrateProgress`, and deprecated v1 fit/character
-///   schemas. The `RepoService` does NOT import migration code.
-///   Migration is triggered by the `MigrationGate` widget at startup.
-/// - **RepoVersion** (`repo_version.dart`) — generated constant
-///   `currentSchemaVersion` (source: `efa.config.toml` `[schema].schema_version`).
-///   Auto-generated by `./x generate dart`.
-///
-/// ## Key Concepts
-///
-/// 1. **Content addressing**: file identity = content hash; checkout identity = composite hash.
-/// 2. **Immutable identity, mutable pointer**: checkout records are append-only; only branch HEAD
-///    and `active.json` are mutable.
-/// 3. **Diff chain for history**: branches accumulate forward diffs; revert walks
-///    backwards through the reflog, inverting diffs. A forward diff is precomputed
-///    during revert for O(1) subsequent forward moves.
-/// 4. **Recoverable by design**: atomic write-to-temp-then-rename for all JSON;
-///    the downloading sentinel (`checkout=""`) on branches enables interruption
-///    recovery; `verifyAndRepair()` re-downloads missing assets.
-/// 5. **Idempotent operations**: asset writes skip if file already exists; ref
-///    appends skip duplicate IDs; full download and incremental update can be
-///    retried safely after interruption.
+///   `MigrateCharacters`, `MigrateProgress`, and v1→v2 fit/character upgrade.
 library;
 
-import "package:eve_fit_assistant/storage/repo/active.dart" show ActiveService;
-import "package:eve_fit_assistant/storage/repo/branch.dart" show BranchService;
-
-export "active.dart";
 export "announcement_sync.dart";
 export "announcements.dart";
 export "assets.dart";
-export "branch.dart";
-export "checkout.dart";
+export "channel_service.dart";
+export "checkout_registry_service.dart";
 export "checkout_resolution.dart";
+export "checkout_service.dart";
 export "collection.dart";
 export "compatibility.dart";
 export "diff.dart";

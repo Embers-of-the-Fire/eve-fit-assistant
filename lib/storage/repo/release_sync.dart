@@ -1,8 +1,9 @@
 import "dart:typed_data";
 
+import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
+import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
-import "package:eve_fit_assistant/storage/repo/models/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fpdart/fpdart.dart";
 
@@ -30,6 +31,9 @@ class AppRelease {
   final String createdAt;
 }
 
+/// Checks for newer APK releases against the remote release index.
+///
+/// Follows agent/schemav2/workflow.md §13.4.
 class ReleaseSyncService {
   const ReleaseSyncService({
     required this.remoteCatalogService,
@@ -39,27 +43,32 @@ class ReleaseSyncService {
   final RemoteCatalogService remoteCatalogService;
   final Future<String> Function() currentVersionProvider;
 
-  Future<Either<ReleaseSyncError, Option<AppRelease>>> check(Channel channel) async {
-    final manifestResult = await remoteCatalogService.fetchManifestIndex(channel);
-    if (manifestResult.isLeft()) {
-      final err = manifestResult.getLeft().toNullable()!;
-      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch manifest";
+  Future<Either<ReleaseSyncError, Option<AppRelease>>> check({
+    required Channel channel,
+    required String generationHash,
+  }) async {
+    // Step 1: Get the release snapshot hash via GenerationPointer
+    final pointerResult = await remoteCatalogService.fetchGenerationPointer(generationHash);
+    if (pointerResult.isLeft()) {
+      final err = pointerResult.getLeft().toNullable()!;
+      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch generation pointer";
       return Left(ReleaseSyncNetworkError(message: msg));
     }
-    final generationId = manifestResult.getRight().toNullable()!.activatedGeneration;
+    final pointer = GenerationPointer.fromBuffer(pointerResult.getRight().toNullable()!);
+    final snapshotHash = pointer.snapshotHash;
 
-    final catalogResult = await remoteCatalogService.fetchReleaseCatalog(channel, generationId);
-    if (catalogResult.isLeft()) {
-      final err = catalogResult.getLeft().toNullable()!;
-      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch release catalog";
+    // Step 2: Fetch ReleaseIndex
+    final indexResult = await remoteCatalogService.fetchReleaseIndex(snapshotHash);
+    if (indexResult.isLeft()) {
+      final err = indexResult.getLeft().toNullable()!;
+      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch release index";
       return Left(ReleaseSyncNetworkError(message: msg));
     }
-    final catalog = catalogResult.getRight().toNullable()!;
+    final index = ReleaseIndex.fromBuffer(indexResult.getRight().toNullable()!);
 
     final installedVersionRaw = await currentVersionProvider();
     final installedVersion = _stripBuildMetadata(installedVersionRaw);
 
-    // Validate installed version before comparison loop
     if (_compareVersions(installedVersion, installedVersion) == null) {
       return Left(
         ReleaseSyncVersionParseError(
@@ -68,12 +77,12 @@ class ReleaseSyncService {
       );
     }
 
-    ReleaseCatalogEntry? newest;
-    for (final entry in catalog.releases.values) {
-      if (!entry.offering.contains("apk")) continue;
+    ReleaseIndex_Entry? newest;
+    for (final entry in index.entries) {
+      if (entry.offerings.isEmpty) continue;
+      if (!entry.offerings.contains("android")) continue;
       final cmp = _compareVersions(entry.version, installedVersion);
-      if (cmp == null) continue;
-      if (cmp <= 0) continue;
+      if (cmp == null || cmp <= 0) continue;
       if (newest == null) {
         newest = entry;
         continue;
@@ -87,15 +96,23 @@ class ReleaseSyncService {
     if (newest == null) return const Right(None());
 
     return Right(
-      Some(AppRelease(releaseId: newest.id, version: newest.version, createdAt: newest.createdAt)),
+      Some(
+        AppRelease(
+          releaseId: newest.id,
+          version: newest.version,
+          createdAt: "", // ReleaseIndex doesn't have createdAt; we use identHash
+        ),
+      ),
     );
   }
 
+  /// Downloads a release APK blob.
   Future<Either<ReleaseSyncError, Uint8List>> downloadApk(
     Channel channel,
-    String releaseHash,
+    String identHash,
+    String contentHash,
   ) async {
-    final result = await remoteCatalogService.fetchReleaseFile(channel, releaseHash);
+    final result = await remoteCatalogService.fetchBlob(identHash, contentHash);
     if (result.isLeft()) {
       final err = result.getLeft().toNullable()!;
       final msg = err is CatalogNetworkError ? err.message : "Failed to download APK";
@@ -105,17 +122,14 @@ class ReleaseSyncService {
   }
 }
 
-/// Strips build metadata (`+...`) from a full app version string.
+// ── Version comparison helpers (unchanged) ───────────────────────────────────
+
 String _stripBuildMetadata(String version) {
   final plusIndex = version.indexOf("+");
   if (plusIndex == -1) return version;
   return version.substring(0, plusIndex);
 }
 
-/// Compares two semantic version strings (e.g. "2.1.0", "2.1.0-rc1").
-///
-/// Returns a negative integer if [a] < [b], zero if equal, positive if [a] > [b].
-/// Returns `null` if either version has unparseable numeric components.
 int? _compareVersions(String a, String b) {
   final aStripped = _stripVPrefix(a);
   final bStripped = _stripVPrefix(b);
@@ -145,12 +159,6 @@ int? _compareVersions(String a, String b) {
   return 0;
 }
 
-/// Compares prerelease identifiers per semver 2.0 precedence rules.
-///
-/// Numeric identifiers are compared numerically; non-numeric identifiers are
-/// compared lexicographically. Numeric identifiers have lower precedence than
-/// non-numeric ones. A shorter set of identifiers has lower precedence than a
-/// longer one when all preceding identifiers are equal.
 int _comparePrerelease(List<String> aPre, List<String> bPre) {
   final aIds = aPre.join("-").split(".");
   final bIds = bPre.join("-").split(".");

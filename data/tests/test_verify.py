@@ -1,143 +1,140 @@
+"""Tests for schema V2 verification functionality."""
+
 from __future__ import annotations
 
 import tempfile
 
 from pathlib import Path
 
-from data.lib.workspace.generate.schema import _compute_checkout_hash
-from data.lib.workspace.generate.schema import _sha256_hex
-from data.lib.workspace.generate.schema import verify_checkout_assets
+from data.lib.remote.hash import content_hash
+from data.lib.remote.hash import ident_hash
+from data.lib.remote.hash import snapshot_hash
+from data.lib.remote.models import ResourceIndex
+from data.lib.remote.models import ResourceSnapshotMetadata
+from data.lib.remote.paths import blob_path
+from data.lib.remote.snapshot import SnapshotStore
+from data.lib.remote.verify import Verifier
 
 
-def _make_asset_file(schema_root: Path, path_hash: str, content_hash: str, content: bytes) -> Path:
-    prefix = path_hash[:2]
-    dest_dir = schema_root / "assets" / prefix / path_hash
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_file = dest_dir / content_hash
-    dest_file.write_bytes(content)
-    return dest_file
-
-
-def _make_catalog(files: dict[str, dict], *, catalog_id: str | None = None) -> dict:
-    cid = catalog_id or _compute_checkout_hash(files)
-    return {"id": cid, "files": files}
-
-
-class TestVerifyCheckoutAssets:
-    def test_all_ok(self):
+class TestVerifierBlobs:
+    def test_blob_ok(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            schema_root = Path(tmpdir)
+            root = Path(tmpdir)
+
+            rid = "resource://test/file.bin"
+            ident = ident_hash(rid)
             content = b"hello world"
-            normalized = "data/file.txt"
-            content_hash = _sha256_hex(content)
-            path_hash = _sha256_hex(normalized.encode("utf-8"))
+            chash = content_hash(content)
+            bpath = blob_path(root, ident, chash)
+            bpath.parent.mkdir(parents=True, exist_ok=True)
+            bpath.write_bytes(content)
 
-            _make_asset_file(schema_root, path_hash, content_hash, content)
+            snap_store = SnapshotStore(root)
 
-            files = {
-                normalized: {
-                    "pathHash": path_hash,
-                    "hash": content_hash,
-                    "size": len(content),
-                }
-            }
-            catalog = _make_catalog(files)
+            index = ResourceIndex()
+            index.schema_version = 1
+            entry = index.entries.add()
+            entry.resource_id = rid
+            entry.content_hash = chash
+            entry.size = len(content)
 
-            results = verify_checkout_assets(catalog, schema_root)
-            assert len(results) == 2
-            assert results[0].status == "OK"
-            assert results[0].path == normalized
-            assert results[0].size == len(content)
-            assert results[1].path == "[catalog integrity]"
-            assert results[1].status == "OK"
+            meta = ResourceSnapshotMetadata(
+                serverId="test",
+                gameBuild="1.0",
+                gameVersion="Test",
+                resourceCount=1,
+                createdAt="2026-01-01T00:00:00Z",
+            )
+            snap_store.create_resource_snapshot(meta, index)
 
-    def test_missing_asset(self):
+            verifier = Verifier(root)
+            issues = verifier.verify_blob_integrity()
+            assert len(issues) == 0
+
+    def test_missing_blob_detected(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            schema_root = Path(tmpdir)
-            normalized = "data/missing.txt"
-            path_hash = _sha256_hex(normalized.encode("utf-8"))
-            content_hash = "d" * 64
+            root = Path(tmpdir)
 
-            files = {
-                normalized: {
-                    "pathHash": path_hash,
-                    "hash": content_hash,
-                    "size": 100,
-                }
-            }
-            catalog = _make_catalog(files)
+            rid = "resource://test/missing.bin"
+            chash = "f" * 64
 
-            results = verify_checkout_assets(catalog, schema_root)
-            assert results[0].status == "MISSING"
-            assert "not found" in (results[0].details or "")
+            snap_store = SnapshotStore(root)
 
-    def test_hash_mismatch(self):
+            index = ResourceIndex()
+            index.schema_version = 1
+            entry = index.entries.add()
+            entry.resource_id = rid
+            entry.content_hash = chash
+            entry.size = 100
+
+            meta = ResourceSnapshotMetadata(
+                serverId="test",
+                gameBuild="1.0",
+                gameVersion="Test",
+                resourceCount=1,
+                createdAt="2026-01-01T00:00:00Z",
+            )
+            snap_store.create_resource_snapshot(meta, index)
+
+            verifier = Verifier(root)
+            issues = verifier.verify_blob_integrity()
+            assert len(issues) == 1
+            assert issues[0].entity_type == "blob"
+            assert issues[0].severity == "error"
+            assert "Missing blob" in issues[0].message
+
+    def test_hash_mismatch_detected(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            schema_root = Path(tmpdir)
-            normalized = "data/corrupt.txt"
-            path_hash = _sha256_hex(normalized.encode("utf-8"))
-            real_content = b"correct content"
-            wrong_hash = "f" * 64
+            root = Path(tmpdir)
 
-            _make_asset_file(schema_root, path_hash, wrong_hash, real_content)
+            rid = "resource://test/corrupt.bin"
+            ident = ident_hash(rid)
+            content = b"correct content"
+            chash = content_hash(content)
+            bpath = blob_path(root, ident, chash)
+            bpath.parent.mkdir(parents=True, exist_ok=True)
+            bpath.write_bytes(b"tampered content")
 
-            files = {
-                normalized: {
-                    "pathHash": path_hash,
-                    "hash": wrong_hash,
-                    "size": len(real_content),
-                }
-            }
-            catalog = _make_catalog(files)
+            snap_store = SnapshotStore(root)
 
-            results = verify_checkout_assets(catalog, schema_root)
-            assert results[0].status == "FAIL"
-            assert "hash mismatch" in (results[0].details or "").lower()
+            index = ResourceIndex()
+            index.schema_version = 1
+            entry = index.entries.add()
+            entry.resource_id = rid
+            entry.content_hash = chash
+            entry.size = len(content)
 
-    def test_size_mismatch(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            schema_root = Path(tmpdir)
-            normalized = "data/wrong_size.txt"
-            path_hash = _sha256_hex(normalized.encode("utf-8"))
-            content = b"four"
-            content_hash = _sha256_hex(content)
+            meta = ResourceSnapshotMetadata(
+                serverId="test",
+                gameBuild="1.0",
+                gameVersion="Test",
+                resourceCount=1,
+                createdAt="2026-01-01T00:00:00Z",
+            )
+            snap_store.create_resource_snapshot(meta, index)
 
-            _make_asset_file(schema_root, path_hash, content_hash, content)
+            verifier = Verifier(root)
+            issues = verifier.verify_blob_integrity()
+            assert len(issues) == 1
+            assert issues[0].severity == "error"
+            assert "hash mismatch" in issues[0].message.lower()
 
-            files = {
-                normalized: {
-                    "pathHash": path_hash,
-                    "hash": content_hash,
-                    "size": 99999,
-                }
-            }
-            catalog = _make_catalog(files)
 
-            results = verify_checkout_assets(catalog, schema_root)
-            assert results[0].status == "FAIL"
-            assert "size mismatch" in (results[0].details or "").lower()
+class TestSnapshotHash:
+    def test_snapshot_hash_valid(self):
+        files = {
+            "metadata.json": b'{"schemaVersion":1,"serverId":"test"}',
+            "resources.pb2": b"proto data",
+        }
+        h = snapshot_hash("resource", files)
+        assert len(h) == 64
+        assert all(c in "0123456789abcdef" for c in h)
 
-    def test_catalog_integrity_fail(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            schema_root = Path(tmpdir)
-            normalized = "data/ok.txt"
-            path_hash = _sha256_hex(normalized.encode("utf-8"))
-            content = b"ok"
-            content_hash = _sha256_hex(content)
-
-            _make_asset_file(schema_root, path_hash, content_hash, content)
-
-            files = {
-                normalized: {
-                    "pathHash": path_hash,
-                    "hash": content_hash,
-                    "size": len(content),
-                }
-            }
-            fake_id = "0" * 64
-            catalog = {"id": fake_id, "files": files}
-
-            results = verify_checkout_assets(catalog, schema_root)
-            assert results[0].status == "OK"
-            assert results[1].path == "[catalog integrity]"
-            assert results[1].status == "FAIL"
+    def test_snapshot_hash_deterministic(self):
+        files = {
+            "metadata.json": b'{"schemaVersion":1}',
+            "resources.pb2": b"data",
+        }
+        h1 = snapshot_hash("resource", files)
+        h2 = snapshot_hash("resource", files)
+        assert h1 == h2

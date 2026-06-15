@@ -37,11 +37,6 @@ class SettingPage extends ConsumerWidget {
           onTap: () => unawaited(context.router.push(const StorageManagement())),
         ),
         ConfigListTile.item(
-          icon: const Icon(Icons.folder_outlined),
-          title: context.l10n.settingTileDataSourcesTitle,
-          onTap: () => unawaited(context.router.push(const BranchSettings())),
-        ),
-        ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),
           title: context.l10n.workspaceTabReportTitle,
           onTap: () => unawaited(context.router.push(const ReportFeedbackRoute())),

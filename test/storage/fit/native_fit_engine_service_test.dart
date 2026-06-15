@@ -2,13 +2,14 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native_output;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
-import "package:eve_fit_assistant/storage/repo/models/asset_manifest.dart";
+import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart";
@@ -103,33 +104,69 @@ class _StubRustLibApi extends RustLibApi {
 class _StubNativeDirResolver implements NativeDirResolver {
   _StubNativeDirResolver({required this.resolveResult});
 
-  final Future<String> Function(AssetManifest) resolveResult;
+  final Future<String> Function(String snapshotHash, ResourceIndex resourceIndex) resolveResult;
 
   @override
   final AssetStore assetStore = const AssetStore();
 
   @override
-  String resolvePathFromManifest(AssetManifest manifest) => "/tmp/efa/native/stub";
+  String resolvePathFromSnapshot(String snapshotHash) => "/tmp/efa/native/stub";
 
   @override
-  Future<String> prepareNativeDir(AssetManifest manifest) => resolveResult(manifest);
+  Future<String> prepareNativeDir(String snapshotHash, ResourceIndex resourceIndex) =>
+      resolveResult(snapshotHash, resourceIndex);
 
   @override
-  void cleanup(Iterable<AssetManifest> activeManifests) {}
+  void cleanup(Iterable<String> activeSnapshotHashes) {}
+}
+
+class _TrackingNativeDirResolver implements NativeDirResolver {
+  _TrackingNativeDirResolver({required this.resolveResult, required this.onCleanup});
+
+  final Future<String> Function(String snapshotHash, ResourceIndex resourceIndex) resolveResult;
+  final void Function() onCleanup;
+
+  @override
+  final AssetStore assetStore = const AssetStore();
+
+  @override
+  String resolvePathFromSnapshot(String snapshotHash) => "/tmp/efa/native/tracking";
+
+  @override
+  Future<String> prepareNativeDir(String snapshotHash, ResourceIndex resourceIndex) =>
+      resolveResult(snapshotHash, resourceIndex);
+
+  @override
+  void cleanup(Iterable<String> activeSnapshotHashes) => onCleanup();
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
-AssetManifest _emptyManifest() => const AssetManifest(assetsVersion: 1);
+/// Writes a minimal ResourceIndex to disk so that [NativeFitEngineService] can
+/// resolve it during build. Returns the snapshot hash.
+String _writeTestResourceSnapshot() {
+  final assetStore = const AssetStore();
+  final resourceIndex = ResourceIndex();
+  final meta = const ResourceSnapshotMeta(
+    schemaVersion: 1,
+    serverId: "test-server",
+    gameBuild: "test-build",
+    gameVersion: "test-version",
+    resourceCount: 0,
+    createdAt: "2024-01-01T00:00:00Z",
+  );
+  return assetStore.writeResourceSnapshotSync(meta: meta, resourceIndex: resourceIndex);
+}
 
 late String _tempDir;
+late String _snapshotHash;
 
 ProviderContainer _container({
-  required Option<AssetManifest> manifest,
+  required Option<String> activeSnapshotHash,
   required NativeDirResolver nativeDirResolver,
 }) => ProviderContainer(
   overrides: [
-    activeCheckoutManifestProvider.overrideWithValue(manifest),
+    activeSnapshotHashProvider.overrideWithValue(activeSnapshotHash),
     nativeDirResolverProvider.overrideWithValue(nativeDirResolver),
   ],
 );
@@ -144,6 +181,7 @@ void main() {
   setUp(() {
     _tempDir = Directory.systemTemp.createTempSync("efa_engine_test_").path;
     PathProvider.documentsPath = _tempDir;
+    _snapshotHash = _writeTestResourceSnapshot();
   });
 
   tearDown(() {
@@ -154,8 +192,10 @@ void main() {
   group("NativeFitEngineService", () {
     test("starts in notInitialized state", () {
       final container = _container(
-        manifest: const None(),
-        nativeDirResolver: _StubNativeDirResolver(resolveResult: (_) async => _tempDir),
+        activeSnapshotHash: const None(),
+        nativeDirResolver: _StubNativeDirResolver(
+          resolveResult: (_, __) async => _tempDir,
+        ),
       );
       addTearDown(container.dispose);
 
@@ -163,9 +203,14 @@ void main() {
       expect(state.debugOnlyDisplayState, "not initialized");
     });
 
-    test("initializes via retry when manifest is available", () async {
-      final resolver = _StubNativeDirResolver(resolveResult: (_) async => _tempDir);
-      final container = _container(manifest: Some(_emptyManifest()), nativeDirResolver: resolver);
+    test("initializes via retry when snapshot hash is available", () async {
+      final resolver = _StubNativeDirResolver(
+        resolveResult: (_, __) async => _tempDir,
+      );
+      final container = _container(
+        activeSnapshotHash: Some(_snapshotHash),
+        nativeDirResolver: resolver,
+      );
       addTearDown(container.dispose);
 
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
@@ -175,8 +220,13 @@ void main() {
     });
 
     test("retry re-initializes successfully on second call", () async {
-      final resolver = _StubNativeDirResolver(resolveResult: (_) async => _tempDir);
-      final container = _container(manifest: Some(_emptyManifest()), nativeDirResolver: resolver);
+      final resolver = _StubNativeDirResolver(
+        resolveResult: (_, __) async => _tempDir,
+      );
+      final container = _container(
+        activeSnapshotHash: Some(_snapshotHash),
+        nativeDirResolver: resolver,
+      );
       addTearDown(container.dispose);
 
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
@@ -188,9 +238,12 @@ void main() {
 
     test("transitions to error when native dir resolution fails", () async {
       final resolver = _StubNativeDirResolver(
-        resolveResult: (_) async => throw Exception("Simulated failure"),
+        resolveResult: (_, __) async => throw Exception("Simulated failure"),
       );
-      final container = _container(manifest: Some(_emptyManifest()), nativeDirResolver: resolver);
+      final container = _container(
+        activeSnapshotHash: Some(_snapshotHash),
+        nativeDirResolver: resolver,
+      );
       addTearDown(container.dispose);
 
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
@@ -199,10 +252,12 @@ void main() {
       expect(state.debugOnlyDisplayState, contains("error"));
     });
 
-    test("retry is no-op when no manifest is available", () async {
+    test("retry is no-op when no snapshot hash is available", () async {
       final container = _container(
-        manifest: const None(),
-        nativeDirResolver: _StubNativeDirResolver(resolveResult: (_) async => _tempDir),
+        activeSnapshotHash: const None(),
+        nativeDirResolver: _StubNativeDirResolver(
+          resolveResult: (_, __) async => _tempDir,
+        ),
       );
       addTearDown(container.dispose);
 
@@ -215,10 +270,13 @@ void main() {
     test("cleanup is called on dispose", () async {
       var cleanupCalled = false;
       final resolver = _TrackingNativeDirResolver(
-        resolveResult: (_) async => _tempDir,
+        resolveResult: (_, __) async => _tempDir,
         onCleanup: () => cleanupCalled = true,
       );
-      final container = _container(manifest: Some(_emptyManifest()), nativeDirResolver: resolver);
+      final container = _container(
+        activeSnapshotHash: Some(_snapshotHash),
+        nativeDirResolver: resolver,
+      );
 
       // Trigger init
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
@@ -231,23 +289,4 @@ void main() {
       expect(cleanupCalled, isTrue);
     });
   });
-}
-
-class _TrackingNativeDirResolver implements NativeDirResolver {
-  _TrackingNativeDirResolver({required this.resolveResult, required this.onCleanup});
-
-  final Future<String> Function(AssetManifest) resolveResult;
-  final void Function() onCleanup;
-
-  @override
-  final AssetStore assetStore = const AssetStore();
-
-  @override
-  String resolvePathFromManifest(AssetManifest manifest) => "/tmp/efa/native/tracking";
-
-  @override
-  Future<String> prepareNativeDir(AssetManifest manifest) => resolveResult(manifest);
-
-  @override
-  void cleanup(Iterable<AssetManifest> activeManifests) => onCleanup();
 }

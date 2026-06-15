@@ -1,10 +1,11 @@
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
-import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart" as remote_http;
-import "package:eve_fit_assistant/storage/repo/models/announcement.dart";
-import "package:eve_fit_assistant/storage/repo/models/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
+import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
+import "package:eve_fit_assistant/storage/repo/models/generation_meta.dart";
+import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:fpdart/fpdart.dart";
 
 /// Errors that may occur during remote catalog operations.
@@ -31,332 +32,153 @@ class CatalogParseError extends CatalogError {
   final String message;
 }
 
-/// Fetches remote catalog data under `efa/v2/<channel>/` with ETag caching.
+/// Fetches remote catalog data under `efa/v2/` with ETag caching.
 ///
-/// Reuses the existing [remote_http.fetchRemoteJson] infrastructure which
-/// handles conditional requests via EtagCache and Dio.
+/// Implements the fetch protocol from agent/schemav2/workflow.md §2.2-§2.6.
 class RemoteCatalogService {
   const RemoteCatalogService({required this.dio, required this.originUrl});
 
   final Dio dio;
   final String originUrl;
 
-  Uri _buildUri(Channel channel, String relativePath) {
+  Uri _buildUri(String relativePath) {
     final normalizedOrigin = originUrl.endsWith("/") ? originUrl : "$originUrl/";
-    return Uri.parse("${normalizedOrigin}efa/v2/${channel.value}/$relativePath");
+    return Uri.parse("${normalizedOrigin}efa/v2/$relativePath");
   }
 
-  /// Fetches the manifest index for [channel].
+  // ── Channel discovery (§13.1) ──────────────────────────────────────────────
+
+  /// GET `channels/heads/channels.json`
   ///
-  /// GET `efa/v2/<channel>/manifest/index.json`
-  Future<Either<CatalogError, ManifestIndex>> fetchManifestIndex(Channel channel) async {
-    final uri = _buildUri(channel, "manifest/index.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(ManifestIndex.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return const Left(CatalogNotFoundError(message: "Manifest index not found"));
+  /// Remote spec §7.3 uses `defaultChannel`, while the client model stores
+  /// `active`. We map the key before parsing.
+  Future<Either<CatalogError, ChannelRegistry>> fetchChannelRegistry() async {
+    final uri = _buildUri("channels/heads/channels.json");
+    return _fetchJson(uri, (json) {
+      final mapped = Map<String, dynamic>.from(json);
+      if (mapped.containsKey("defaultChannel") && !mapped.containsKey("active")) {
+        mapped["active"] = mapped["defaultChannel"];
       }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
+      return ChannelRegistry.fromJson(mapped);
+    });
   }
 
-  /// Fetches the generations index for [channel].
-  ///
-  /// GET `efa/v2/<channel>/manifest/generations.json`
-  Future<Either<CatalogError, GenerationsIndex>> fetchGenerations(Channel channel) async {
-    final uri = _buildUri(channel, "manifest/generations.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(GenerationsIndex.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return const Left(CatalogNotFoundError(message: "Generations index not found"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
+  /// GET `channels/heads/{channel}/metadata.json`
+  Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(String channelName) async {
+    final uri = _buildUri("channels/heads/$channelName/metadata.json");
+    return _fetchJson(uri, ChannelHeadMeta.fromJson);
   }
 
-  /// Fetches the server catalog for [genId] and [serverId] on [channel].
-  ///
-  /// GET `efa/v2/<channel>/manifest/.generations/<gen>/resources/servers/<serverId>.json`
-  Future<Either<CatalogError, GenerationServer>> fetchServerCatalog(
-    Channel channel,
-    String genId,
-    String serverId,
-  ) async {
-    final uri = _buildUri(channel, "manifest/.generations/$genId/resources/servers/$serverId.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(GenerationServer.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Server catalog not found: $serverId"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
+  // ── Generation fetch (§13.2) ───────────────────────────────────────────────
+
+  /// GET `channels/refs/{generationHash}/metadata.json`
+  Future<Either<CatalogError, GenerationMeta>> fetchGenerationMeta(String generationHash) async {
+    final uri = _buildUri("channels/refs/$generationHash/metadata.json");
+    return _fetchJson(uri, GenerationMeta.fromJson);
   }
 
-  /// Fetches the checkout catalog for [checkoutHash] on [channel] from the
-  /// flat content-addressed registry.
-  ///
-  /// GET `efa/v2/<channel>/manifest/checkouts/<first-2-chars>/<checkoutHash>.json`
-  Future<Either<CatalogError, GenerationCheckoutCatalog>> fetchCheckoutCatalog(
-    Channel channel,
-    String checkoutHash,
-  ) async {
-    if (checkoutHash.length < 2) {
-      return const Left(CatalogParseError(message: "checkoutHash must be at least 2 characters"));
-    }
-    final prefix = checkoutHash.substring(0, 2);
-    final uri = _buildUri(channel, "manifest/checkouts/$prefix/$checkoutHash.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(GenerationCheckoutCatalog.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Checkout catalog not found: $checkoutHash"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches the resources catalog for [genId] on [channel].
-  ///
-  /// GET `efa/v2/<channel>/manifest/.generations/<gen>/resources/catalog.json`
-  Future<Either<CatalogError, GenerationResources>> fetchResourcesCatalog(
-    Channel channel,
-    String genId,
-  ) async {
-    final uri = _buildUri(channel, "manifest/.generations/$genId/resources/catalog.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(GenerationResources.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Resources catalog not found: $genId"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches a generation-scoped checkout catalog for [genId] and [checkoutId].
-  ///
-  /// GET `efa/v2/<channel>/manifest/.generations/<gen>/resources/checkouts/<checkoutId>.json`
-  ///
-  /// This is distinct from the flat-registry [fetchCheckoutCatalog]: the flat
-  /// registry is for checkout discovery (unknown hash lookup), while this
-  /// generation-scoped endpoint is for navigation through a generation's server list.
-  Future<Either<CatalogError, GenerationCheckoutCatalog>> fetchGenerationCheckoutCatalog(
-    Channel channel,
-    String genId,
-    String checkoutId,
-  ) async {
-    final uri = _buildUri(
-      channel,
-      "manifest/.generations/$genId/resources/checkouts/$checkoutId.json",
-    );
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(GenerationCheckoutCatalog.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Checkout catalog not found: $checkoutId"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches the generation catalog for [genId] on [channel].
-  ///
-  /// GET `efa/v2/<channel>/manifest/.generations/<gen>/catalog.json`
-  Future<Either<CatalogError, GenerationCatalog>> fetchGenerationCatalog(
-    Channel channel,
-    String genId,
-  ) async {
-    final uri = _buildUri(channel, "manifest/.generations/$genId/catalog.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(GenerationCatalog.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Generation catalog not found: $genId"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches the announcement catalog for [genId] on [channel].
-  ///
-  /// GET `efa/v2/<channel>/manifest/.generations/<gen>/announcements/catalog.json`
-  Future<Either<CatalogError, AnnouncementCatalog>> fetchAnnouncementCatalog(
-    Channel channel,
-    String genId,
-  ) async {
-    final uri = _buildUri(channel, "manifest/.generations/$genId/announcements/catalog.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(AnnouncementCatalog.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Announcement catalog not found: $genId"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches an announcement record by [id] on [channel].
-  ///
-  /// GET `efa/v2/<channel>/announcements/registry/<id>.json`
-  Future<Either<CatalogError, AnnouncementRecord>> fetchAnnouncementRecord(
-    Channel channel,
-    String id,
-  ) async {
-    final uri = _buildUri(channel, "announcements/registry/$id.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(AnnouncementRecord.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Announcement record not found: $id"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches raw announcement markdown content for [locale] and [id].
-  ///
-  /// GET `efa/v2/<channel>/announcements/files/<locale>/<id>`
-  ///
-  /// Returns the raw markdown body as a string, not a JSON model.
-  Future<Either<CatalogError, String>> fetchAnnouncementContent(
-    Channel channel,
-    String locale,
-    String id,
-  ) async {
-    final uri = _buildUri(channel, "announcements/files/$locale/$id");
-    try {
-      final result = await remote_http.getRemoteUri<String>(dio, uri);
-      if (result.notModified) {
-        return Left(CatalogNotFoundError(message: "Not modified, no cached content: $uri"));
-      }
-      final data = result.response.data;
-      if (data is! String) {
-        return Left(CatalogParseError(message: "Content not text: $uri"));
-      }
-      return Right(data);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Announcement content not found: $id"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches the release catalog for [genId] on [channel].
-  ///
-  /// GET `efa/v2/<channel>/manifest/.generations/<gen>/releases/catalog.json`
-  Future<Either<CatalogError, ReleaseCatalog>> fetchReleaseCatalog(
-    Channel channel,
-    String genId,
-  ) async {
-    final uri = _buildUri(channel, "manifest/.generations/$genId/releases/catalog.json");
-    try {
-      final json = await remote_http.fetchRemoteJson(dio, uri);
-      return Right(ReleaseCatalog.fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Release catalog not found: $genId"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
-    }
-  }
-
-  /// Fetches a release file (binary blob) by [hash] on [channel].
-  ///
-  /// GET `efa/v2/<channel>/resources/releases/<first-2-chars>/<hash>`
-  Future<Either<CatalogError, Uint8List>> fetchReleaseFile(Channel channel, String hash) async {
-    final prefix = hash.substring(0, 2);
-    final uri = _buildUri(channel, "resources/releases/$prefix/$hash");
+  /// GET `channels/refs/{generationHash}/server.pb2`
+  Future<Either<CatalogError, Uint8List>> fetchServerIndex(String generationHash) async {
+    final uri = _buildUri("channels/refs/$generationHash/server.pb2");
     return _fetchBytes(uri);
   }
 
-  /// Fetches a single asset file (binary blob) by [pathHash] and [contentHash].
-  ///
-  /// GET `efa/v2/<channel>/resources/assets/<first-2-chars>/<pathHash>/<contentHash>`
-  Future<Either<CatalogError, Uint8List>> fetchAsset(
-    Channel channel,
-    String pathHash,
-    String contentHash,
-  ) async {
-    final prefix = pathHash.substring(0, 2);
-    final uri = _buildUri(channel, "resources/assets/$prefix/$pathHash/$contentHash");
+  /// GET `channels/refs/{generationHash}/resources.pb2`
+  Future<Either<CatalogError, Uint8List>> fetchGenerationResources(String generationHash) async {
+    final uri = _buildUri("channels/refs/$generationHash/resources.pb2");
     return _fetchBytes(uri);
+  }
+
+  /// GET `channels/refs/{generationHash}/releases.pb2`
+  Future<Either<CatalogError, Uint8List>> fetchGenerationPointer(String generationHash) async {
+    final uri = _buildUri("channels/refs/$generationHash/releases.pb2");
+    return _fetchBytes(uri);
+  }
+
+  /// GET `channels/refs/{generationHash}/announcements.pb2`
+  Future<Either<CatalogError, Uint8List>> fetchAnnouncementPointer(String generationHash) async {
+    final uri = _buildUri("channels/refs/$generationHash/announcements.pb2");
+    return _fetchBytes(uri);
+  }
+
+  // ── Resource snapshot fetch (§13.2) ───────────────────────────────────────
+
+  /// GET `assets/resources/{snapshotHash}/metadata.json`
+  Future<Either<CatalogError, ResourceSnapshotMeta>> fetchResourceSnapshotMeta(
+    String snapshotHash,
+  ) async {
+    final uri = _buildUri("assets/resources/$snapshotHash/metadata.json");
+    return _fetchJson(uri, ResourceSnapshotMeta.fromJson);
+  }
+
+  /// GET `assets/resources/{snapshotHash}/resources.pb2`
+  Future<Either<CatalogError, Uint8List>> fetchResourceIndex(String snapshotHash) async {
+    final uri = _buildUri("assets/resources/$snapshotHash/resources.pb2");
+    return _fetchBytes(uri);
+  }
+
+  // ── Announcement fetch (§13.3) ────────────────────────────────────────────
+
+  /// GET `assets/announcements/{snapshotHash}/metadata.json`
+  Future<Either<CatalogError, AnnouncementSnapshotMeta>> fetchAnnouncementSnapshotMeta(
+    String snapshotHash,
+  ) async {
+    final uri = _buildUri("assets/announcements/$snapshotHash/metadata.json");
+    return _fetchJson(uri, AnnouncementSnapshotMeta.fromJson);
+  }
+
+  /// GET `assets/announcements/{snapshotHash}/announcements.pb2`
+  Future<Either<CatalogError, Uint8List>> fetchAnnouncementIndex(String snapshotHash) async {
+    final uri = _buildUri("assets/announcements/$snapshotHash/announcements.pb2");
+    return _fetchBytes(uri);
+  }
+
+  // ── Release fetch (§13.4) ─────────────────────────────────────────────────
+
+  /// GET `assets/releases/{snapshotHash}/metadata.json`
+  Future<Either<CatalogError, ReleaseSnapshotMeta>> fetchReleaseSnapshotMeta(
+    String snapshotHash,
+  ) async {
+    final uri = _buildUri("assets/releases/$snapshotHash/metadata.json");
+    return _fetchJson(uri, ReleaseSnapshotMeta.fromJson);
+  }
+
+  /// GET `assets/releases/{snapshotHash}/releases.pb2`
+  Future<Either<CatalogError, Uint8List>> fetchReleaseIndex(String snapshotHash) async {
+    final uri = _buildUri("assets/releases/$snapshotHash/releases.pb2");
+    return _fetchBytes(uri);
+  }
+
+  // ── Blob fetch ─────────────────────────────────────────────────────────────
+
+  /// GET `assets/blobs/{2c}/{identHash}/{contentHash}`
+  Future<Either<CatalogError, Uint8List>> fetchBlob(String identHash, String contentHash) async {
+    final prefix = identHash.substring(0, 2);
+    final uri = _buildUri("assets/blobs/$prefix/$identHash/$contentHash");
+    return _fetchBytes(uri);
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  Future<Either<CatalogError, T>> _fetchJson<T>(
+    Uri uri,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    try {
+      final json = await remote_http.fetchRemoteJson(dio, uri);
+      return Right(fromJson(json));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return Left(CatalogNotFoundError(message: "Not found: $uri"));
+      }
+      return Left(
+        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
+      );
+    } on FormatException catch (e) {
+      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
+    } on Exception catch (e) {
+      return Left(CatalogNetworkError(message: e.toString()));
+    }
   }
 
   Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri) async {
@@ -376,7 +198,7 @@ class RemoteCatalogService {
       return Right(data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Asset not found: $uri"));
+        return Left(CatalogNotFoundError(message: "Not found: $uri"));
       }
       return Left(
         CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),

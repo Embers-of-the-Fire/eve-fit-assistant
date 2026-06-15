@@ -113,7 +113,7 @@ class _FitPage extends ConsumerWidget {
     final activeCheckout = ref.watch(activeCheckoutProvider);
     final showCheckoutSwitchOverlay = repoState is RepoStateInitializing && activeCheckout.isSome();
     final isCheckoutSwitching = repoState is RepoStateInitializing || repoCollection == null;
-    final overlayCheckoutId = activeCheckout.match(() => "", (a) => a.checkoutId);
+    final overlayCheckoutId = ref.watch(activeCheckoutIdProvider).match(() => "", (id) => id);
     if (fitMetadata == null) {
       return Layout(
         title: context.l10n.fitPageUnavailableTitle,

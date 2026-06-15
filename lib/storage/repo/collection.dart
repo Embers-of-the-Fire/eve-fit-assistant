@@ -9,23 +9,25 @@ import "package:eve_fit_assistant/data/proto/groups.pb.dart" as pb_groups;
 import "package:eve_fit_assistant/data/proto/localizations.pb.dart";
 import "package:eve_fit_assistant/data/proto/market_groups.pb.dart" as pb_market;
 import "package:eve_fit_assistant/data/proto/meta_groups.pb.dart" as pb_meta;
+import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/type_materials.pb.dart" as pb_materials;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/storage/repo/assets.dart";
-import "package:eve_fit_assistant/storage/repo/models/asset_manifest.dart";
+import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart"
-    show activeCheckoutProvider, assetStoreProvider, checkoutServiceProvider;
+    show activeCheckoutProvider, assetStoreProvider;
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter/foundation.dart" show visibleForTesting;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "collection.g.dart";
 
-/// Pre-loaded type data from the active checkout's asset store.
+/// Pre-loaded type data from the active checkout's resource snapshot.
 ///
 /// Built on checkout activation. Provides ship, skill, item, localization,
-/// and icon path queries from the content-addressed asset store via the
-/// active checkout's manifest.
+/// and icon path queries from the content-addressed blob store via the
+/// active checkout's ResourceIndex.
 ///
 /// Returns `null` when no checkout is active. Clears on deactivation,
 /// re-builds on activation.
@@ -34,27 +36,29 @@ RepoCollectionService? repoCollection(Ref ref) {
   final activeOpt = ref.watch(activeCheckoutProvider);
   if (activeOpt.isNone()) return null;
   final active = activeOpt.toNullable()!;
-  if (active.checkoutId.isEmpty) return null;
+  if (active.resourceSnapshotHash.isEmpty) return null;
 
-  final manifestOpt = ref.watch(checkoutServiceProvider).readManifest(active.checkoutId);
-  if (manifestOpt.isNone()) return null;
-  final manifest = manifestOpt.toNullable()!;
+  final snapshotHash = active.resourceSnapshotHash;
+
+  final riOpt = ref.watch(assetStoreProvider).readResourceIndexSync(snapshotHash);
+  if (riOpt.isNone()) return null;
+  final ri = riOpt.toNullable()!;
 
   final assetStore = ref.read(assetStoreProvider);
 
   try {
-    return RepoCollectionService._fromManifest(manifest, assetStore);
+    return RepoCollectionService._fromResourceIndex(ri, assetStore);
   } on StateError {
     return null;
   }
 }
 
-/// Pre-loaded type data proxy backed by the content-addressed asset store.
+/// Pre-loaded type data proxy backed by the content-addressed blob store.
 ///
-/// Same query surface reads from the repo's
-/// manifest-referenced protobuf files. All data is loaded synchronously at
-/// construction from a single `Collection.toBuffer` file and optional per-locale
-/// `Localization` files found in the manifest.
+/// Same query surface but reads from the repo's ResourceIndex-referenced
+/// protobuf files. All data is loaded synchronously at construction from
+/// a single Collection.toBuffer file and optional per-locale Localization
+/// files found in the ResourceIndex.
 class RepoCollectionService {
   const RepoCollectionService._({
     required Collection collection,
@@ -90,21 +94,72 @@ class RepoCollectionService {
        _dynamicMutators = dynamicMutators,
        _dynamicTypeOptions = dynamicTypeOptions;
 
-  /// Builds a [RepoCollectionService] by reading the `collection.pb2` protobuf
-  /// and localization files from the asset store via [manifest].
-  factory RepoCollectionService._fromManifest(AssetManifest manifest, AssetStore assetStore) {
-    // ── Read collection.pb2 ──
-    final collectionEntry = manifest.files["static/collection.pb2"];
-    if (collectionEntry == null) {
-      throw StateError("No collection.pb2 entry in asset manifest");
+  /// Builds a [RepoCollectionService] from a [Collection] protobuf for testing.
+  ///
+  /// Skips reading from the blob store and ResourceIndex.
+  @visibleForTesting
+  factory RepoCollectionService.forTest({required Collection collection}) {
+    final ships = IMap.fromEntries(collection.ships.entries.map((e) => MapEntry(e.key, e.value)));
+    final types = IMap.fromEntries(collection.types.entries.map((e) => MapEntry(e.key, e.value)));
+
+    final skillGroupIds = collection.groups.values
+        .where((group) => group.categoryId == EveConstCategoryId.skill)
+        .map((group) => group.groupId)
+        .toSet();
+
+    final skillTypeIds = collection.types.values
+        .where((type) => skillGroupIds.contains(type.groupId))
+        .map((type) => type.typeId)
+        .toIList();
+
+    return RepoCollectionService._(
+      collection: collection,
+      localizedNames: const IMap.empty(),
+      ships: ships,
+      types: types,
+      skillTypeIds: skillTypeIds,
+      skillProfiles: const IMap.empty(),
+      categories: const IMap.empty(),
+      groups: const IMap.empty(),
+      marketGroups: const IMap.empty(),
+      metaGroups: const IMap.empty(),
+      dogmaUnits: const IMap.empty(),
+      dogmaAttributes: const IMap.empty(),
+      subsystems: const IMap.empty(),
+      typeMaterials: const IMap.empty(),
+      dynamicMutators: const IMap.empty(),
+      dynamicTypeOptions: const IMap.empty(),
+    );
+  }
+
+  /// Builds a [RepoCollectionService] by reading protobuf files from the
+  /// blob store using [resourceIndex] and [assetStore].
+  factory RepoCollectionService._fromResourceIndex(
+    ResourceIndex resourceIndex,
+    AssetStore assetStore,
+  ) {
+    // Build a lookup map from resource_id → content_hash
+    final lookup = <String, String>{};
+    for (final entry in resourceIndex.entries) {
+      lookup[entry.resourceId] = entry.contentHash;
     }
-    final collectionBytes = assetStore.readFileSync(collectionEntry.pathHash, collectionEntry.hash);
+
+    // Read collection.pb2
+    final collectionIdent = BlobIdent.resource("static/collection.pb2");
+    final collectionContentHash = lookup[collectionIdent.uri];
+    if (collectionContentHash == null) {
+      throw StateError("No collection.pb2 entry in ResourceIndex");
+    }
+    final collectionBytes = assetStore.readBlobSync(
+      collectionIdent.identHash,
+      collectionContentHash,
+    );
     if (collectionBytes.isNone()) {
-      throw StateError("collection.pb2 not found in asset store");
+      throw StateError("collection.pb2 not found in blob store");
     }
     final collection = Collection.fromBuffer(collectionBytes.toNullable()!);
 
-    // ── Build type indexes ──
+    // Build type indexes (same as before)
     final ships = IMap.fromEntries(collection.ships.entries.map((e) => MapEntry(e.key, e.value)));
     final types = IMap.fromEntries(collection.types.entries.map((e) => MapEntry(e.key, e.value)));
     final categories = IMap.fromEntries(
@@ -136,7 +191,7 @@ class RepoCollectionService {
       collection.dynamicTypeOptions.entries.map((e) => MapEntry(e.key, e.value)),
     );
 
-    // ── Derive skill type IDs ──
+    // Derive skill type IDs
     final skillGroupIds = collection.groups.values
         .where((group) => group.categoryId == EveConstCategoryId.skill)
         .map((group) => group.groupId)
@@ -147,7 +202,7 @@ class RepoCollectionService {
         .map((type) => type.typeId)
         .toIList();
 
-    // ── Build skill profiles ──
+    // Build skill profiles
     final skillProfiles = <String, IMap<int, int>>{};
     for (final entry in collection.skillProfiles.entries) {
       skillProfiles[entry.key] = IMap.fromEntries(
@@ -155,14 +210,14 @@ class RepoCollectionService {
       );
     }
 
-    // ── Build localization maps ──
+    // Build localization maps
     final localizedNames = <String, IMap<int, String>>{};
     for (final locale in ["en", "zh"]) {
-      final locKey = "localization/localization_$locale.pb2";
-      final locEntry = manifest.files[locKey];
-      if (locEntry == null) continue;
+      final locIdent = BlobIdent.resource("localization/localization_$locale.pb2");
+      final locContentHash = lookup[locIdent.uri];
+      if (locContentHash == null) continue;
 
-      final locBytes = assetStore.readFileSync(locEntry.pathHash, locEntry.hash);
+      final locBytes = assetStore.readBlobSync(locIdent.identHash, locContentHash);
       if (locBytes.isSome()) {
         final localization = Localization.fromBuffer(locBytes.toNullable()!);
         localizedNames[locale] = IMap.fromEntries(
@@ -242,7 +297,7 @@ class RepoCollectionService {
   String getLocalizedName(int id, String locale) => _localizedNames[locale]?[id] ?? "";
 
   /// Returns the asset store identifier for the icon of [typeId] at the given
-  /// [size] (e.g. 32, 64, 128, 256), in `"pathHash:contentHash"` format.
+  /// [size] (e.g. 32, 64, 128, 256), in `"identHash:contentHash"` format.
   ///
   /// Consumers should resolve the returned value through an [AssetStore] or the
   /// `NativeDirResolver` to obtain a displayable file path or widget.
@@ -254,20 +309,12 @@ class RepoCollectionService {
     final iconId = icon.hasIconId() ? icon.iconId : null;
     final graphicId = icon.hasGraphicId() ? icon.graphicId : null;
 
-    // Try icon first, then graphic fallback
     final id = iconId ?? graphicId;
     if (id == null) return "";
 
-    // Build a candidate manifest key. The actual file path in the manifest
-    // follows the convention `static/images/icons/<id>.png` or
-    // `static/images/graphics/<id>.png`.  Since this method returns the
-    // asset store identifier token rather than a filesystem path, downstream
-    // code resolves it via the manifest's `AssetFile` entries.
     final iconKey = iconId != null ? "static/images/icons/$iconId.png" : null;
     final graphicKey = graphicId != null ? "static/images/graphics/$graphicId.png" : null;
 
-    // We return a token format for consumers to resolve; actual resolution
-    // uses the active manifest and AssetStore.
     return iconKey ?? graphicKey ?? "";
   }
 

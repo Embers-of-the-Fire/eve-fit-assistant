@@ -7,8 +7,8 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/compatibility.dart";
-import "package:eve_fit_assistant/storage/repo/models/active.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/compatibility.dart";
 import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -124,7 +124,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     _scheduleRegistrySync();
   }
 
-  void refreshBuiltInCharacters(Option<Active> activeCheckout) {
+  void refreshBuiltInCharacters(Option<CheckoutRegistryEntry> activeCheckout) {
     _setRegistry(_ensureBuiltInCharacters(state, activeCheckout: activeCheckout));
     _scheduleRegistrySync();
   }
@@ -231,9 +231,13 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
     _warnIfCheckoutNeedsAttention(character, context: "saving character");
     final activeCheckout = ref.read(activeCheckoutProvider);
+    final checkoutId = ref.read(activeCheckoutIdProvider).match(() => "", (id) => id);
     final savedCharacter = character.copyWith(
       lastModified: touch ? DateTime.now().millisecondsSinceEpoch : character.lastModified,
-      checkoutRef: activeCheckout.match(() => character.checkoutRef, _checkoutRefFor),
+      checkoutRef: activeCheckout.match(
+        () => character.checkoutRef,
+        (entry) => _checkoutRefFor(entry, checkoutId),
+      ),
       skills: character.skills.map(
         (typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level)),
       ),
@@ -328,7 +332,8 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final activeCheckout = ref.read(activeCheckoutProvider);
-    final checkoutRef = _checkoutRefForOrSentinel(activeCheckout);
+    final checkoutId = ref.read(activeCheckoutIdProvider).match(() => "", (id) => id);
+    final checkoutRef = _checkoutRefForOrSentinel(activeCheckout, checkoutId);
     final character = CharacterStorage(
       characterId: generateCharacterId(),
       name: name,
@@ -345,7 +350,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   CharacterRegistry _ensureBuiltInCharacters(
     CharacterRegistry registry, {
-    required Option<Active> activeCheckout,
+    required Option<CheckoutRegistryEntry> activeCheckout,
   }) {
     var nextRegistry = registry;
 
@@ -382,23 +387,27 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     );
   }
 
-  static CheckoutRef _checkoutRefFor(Active active) => CheckoutRef(
-    checkoutId: active.checkoutId,
-    serverId: active.serverId,
-    metadata: active.metadata,
+  CheckoutRef _checkoutRefFor(CheckoutRegistryEntry entry, String checkoutId) => CheckoutRef(
+    checkoutId: checkoutId,
+    serverId: entry.serverId,
+    metadata: GameMetadata(gameServer: entry.serverId, gameBuild: "", gameVersion: ""),
   );
 
-  static CheckoutRef _checkoutRefForOrSentinel(Option<Active> activeOpt) => activeOpt.match(
+  CheckoutRef _checkoutRefForOrSentinel(
+    Option<CheckoutRegistryEntry> entryOpt,
+    String checkoutId,
+  ) => entryOpt.match(
     () => const CheckoutRef(
       checkoutId: "",
       serverId: "",
       metadata: GameMetadata(gameServer: "", gameBuild: "", gameVersion: ""),
     ),
-    _checkoutRefFor,
+    (entry) => _checkoutRefFor(entry, checkoutId),
   );
 
-  static Iterable<CharacterMetadata> _builtInMetadata(Option<Active> activeOpt) {
-    final checkoutRef = _checkoutRefForOrSentinel(activeOpt);
+  Iterable<CharacterMetadata> _builtInMetadata(Option<CheckoutRegistryEntry> entryOpt) {
+    final checkoutId = ref.read(activeCheckoutIdProvider).match(() => "", (id) => id);
+    final checkoutRef = _checkoutRefForOrSentinel(entryOpt, checkoutId);
     return [
       CharacterMetadata(
         characterId: predefinedMaxCharacterId,
@@ -441,7 +450,8 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       return;
     }
     final active = activeOpt.toNullable()!;
-    if (active.checkoutId.isEmpty) {
+    final checkoutId = ref.read(activeCheckoutIdProvider);
+    if (checkoutId.isNone() || checkoutId.toNullable()!.isEmpty) {
       return;
     }
 
@@ -451,7 +461,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
         serverId: checkoutRef.serverId,
         checkoutId: checkoutRef.checkoutId,
         targetServerId: active.serverId,
-        targetCheckoutId: active.checkoutId,
+        targetCheckoutId: checkoutId.toNullable()!,
       ),
     );
 
@@ -462,7 +472,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final warningKey = [
       character.characterId,
       checkoutRef.checkoutId,
-      active.checkoutId,
+      checkoutId.toNullable()!,
       result.result.name,
     ].join(":");
     if (!_reportedRepoWarnings.add(warningKey)) {
@@ -471,7 +481,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
     warning(
       "Character ${character.characterId} was saved against checkout "
-      "${checkoutRef.checkoutId}, but active checkout is ${active.checkoutId} "
+      "${checkoutRef.checkoutId}, but active checkout is ${checkoutId.toNullable()!} "
       "(${result.result.name}) while $context.",
     );
   }

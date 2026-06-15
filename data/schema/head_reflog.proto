@@ -1,0 +1,15 @@
+syntax = "proto2";
+package efa.v2;
+
+/// Append-only log of every channel head pointer movement.
+message HeadReflog {
+  required int32 schema_version = 1;
+  repeated Entry entries = 2;
+
+  message Entry {
+    required string from = 1;        // Empty string for initial push
+    required string to = 2;          // Generation hash
+    required string op = 3;          // "push" | "revert"
+    required string timestamp = 4;   // ISO 8601
+  }
+}

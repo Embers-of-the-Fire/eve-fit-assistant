@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/character/manager.dart";
@@ -12,8 +13,8 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
-import "package:eve_fit_assistant/storage/repo/models/asset_manifest.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fpdart/fpdart.dart";
@@ -197,10 +198,11 @@ class Fit extends _$Fit {
   Future<void> _mount(String fitId) => _loadFromDisk(fitId);
 
   FitCheckoutCompatibility _compatibilityFor(FitStorage fit) {
+    final checkoutId = ref.read(activeCheckoutIdProvider);
     final active = ref.read(activeCheckoutProvider);
     return checkFitCompatibility(
       fit.metadata,
-      activeCheckoutId: active.match(() => "", (a) => a.checkoutId),
+      activeCheckoutId: checkoutId.match(() => "", (id) => id),
       activeServerId: active.match(() => "", (a) => a.serverId),
     );
   }
@@ -241,11 +243,16 @@ class Fit extends _$Fit {
     }
 
     final active = ref.read(activeCheckoutProvider);
+    final checkoutId = ref.read(activeCheckoutIdProvider);
     final updatedMetadata = currentFit.metadata.copyWith(
       lastModified: DateTime.now().millisecondsSinceEpoch,
       checkoutRef: active.match(
         () => currentFit.metadata.checkoutRef,
-        (a) => CheckoutRef(checkoutId: a.checkoutId, serverId: a.serverId, metadata: a.metadata),
+        (a) => CheckoutRef(
+          checkoutId: checkoutId.match(() => "", (id) => id),
+          serverId: a.serverId,
+          metadata: GameMetadata(gameServer: a.serverId, gameBuild: "", gameVersion: ""),
+        ),
       ),
     );
     final fit = pruneDynamicRegistry(updater(currentFit)).copyWith(metadata: updatedMetadata);
@@ -467,40 +474,65 @@ class NativeFitEngineState with _$NativeFitEngineState {
 
 @riverpodSingleton
 class NativeFitEngineService extends _$NativeFitEngineService {
-  AssetManifest? _lastManifest;
+  String? _lastSnapshotHash;
+  ResourceIndex? _lastResourceIndex;
   Future<void>? _pendingInit;
 
-  void _scheduleManifestInit(AssetManifest manifest) {
-    unawaited(Future(() => _initializeFromManifest(manifest)));
+  void _scheduleInit(String snapshotHash, ResourceIndex resourceIndex) {
+    unawaited(Future(() => _initializeFromResourceIndex(snapshotHash, resourceIndex)));
   }
 
   @override
   NativeFitEngineState build() {
     final resolver = ref.read(nativeDirResolverProvider);
+    final assetStore = ref.read(assetStoreProvider);
     ref
       ..onDispose(() => resolver.cleanup([]))
-      ..listen(activeCheckoutManifestProvider, (prev, next) {
+      ..listen(activeSnapshotHashProvider, (prev, next) {
         if (prev == next || next.isNone()) return;
-        _lastManifest = next.toNullable();
-        _scheduleManifestInit(_lastManifest!);
+        final hash = next.toNullable()!;
+        final ri = assetStore.readResourceIndexSync(hash);
+        if (ri.isNone()) return;
+        _lastSnapshotHash = hash;
+        _lastResourceIndex = ri.toNullable();
+        _scheduleInit(hash, ri.toNullable()!);
       }, weak: true);
 
-    final initialManifest = ref.read(activeCheckoutManifestProvider);
-    if (initialManifest case Some(:final value)) {
-      _lastManifest = value;
-      _scheduleManifestInit(value);
+    final initialHash = ref.read(activeSnapshotHashProvider);
+    if (initialHash case Some(:final value)) {
+      final ri = assetStore.readResourceIndexSync(value);
+      if (ri.isSome()) {
+        _lastSnapshotHash = value;
+        _lastResourceIndex = ri.toNullable();
+        _scheduleInit(value, ri.toNullable()!);
+      }
     }
 
     return const NativeFitEngineState.notInitialized();
   }
 
   Future<void> retry() async {
-    final manifest = _lastManifest ?? ref.read(activeCheckoutManifestProvider).toNullable();
-    if (manifest == null) return;
-    await _initializeFromManifest(manifest);
+    final hash = _lastSnapshotHash;
+    final ri = _lastResourceIndex;
+    if (hash == null || ri == null) {
+      final initialHash = ref.read(activeSnapshotHashProvider);
+      if (initialHash case Some(:final value)) {
+        final freshRi = ref.read(assetStoreProvider).readResourceIndexSync(value);
+        if (freshRi.isSome()) {
+          _lastSnapshotHash = value;
+          _lastResourceIndex = freshRi.toNullable();
+          await _initializeFromResourceIndex(value, freshRi.toNullable()!);
+        }
+      }
+      return;
+    }
+    await _initializeFromResourceIndex(hash, ri);
   }
 
-  Future<void> _initializeFromManifest(AssetManifest manifest) async {
+  Future<void> _initializeFromResourceIndex(
+    String snapshotHash,
+    ResourceIndex resourceIndex,
+  ) async {
     if (!ref.mounted) return;
     if (_pendingInit != null) return _pendingInit!;
 
@@ -509,7 +541,9 @@ class NativeFitEngineService extends _$NativeFitEngineService {
 
     state = const NativeFitEngineState.initializing();
     try {
-      final nativePath = await ref.read(nativeDirResolverProvider).prepareNativeDir(manifest);
+      final nativePath = await ref
+          .read(nativeDirResolverProvider)
+          .prepareNativeDir(snapshotHash, resourceIndex);
       if (!ref.mounted) return;
       final engine = native_server.FitEngine(
         data: await native_server.FitEngineData.init(staticRootPath: nativePath),
@@ -520,7 +554,7 @@ class NativeFitEngineService extends _$NativeFitEngineService {
     } on Object catch (errorValue, stackTrace) {
       if (!ref.mounted) return;
       error(
-        "Failed to initialize native fit engine from repo manifest: $errorValue",
+        "Failed to initialize native fit engine from resource index: $errorValue",
         stackTrace: stackTrace,
       );
       state = const NativeFitEngineState.error(

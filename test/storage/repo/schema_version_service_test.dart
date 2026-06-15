@@ -36,7 +36,7 @@ void main() {
       expect(file.existsSync(), isTrue);
 
       final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      expect(json["version"], 2);
+      expect(json["schemaVersion"], 2);
     });
 
     test("is idempotent on second call", () {
@@ -54,7 +54,7 @@ void main() {
   });
 
   group("SchemaVersionService.read", () {
-    test("returns Some(2) after ensure", () {
+    test("returns Some(1) after ensure", () {
       service.ensure();
 
       expect(service.read(), const Some(2));
@@ -72,7 +72,7 @@ void main() {
       expect(service.read(), const None());
     });
 
-    test("returns None when version field is missing", () {
+    test("returns None when schemaVersion field is missing", () {
       final file = File(RepoPaths.schemaVersionPath);
       file.parent.createSync(recursive: true);
       file.writeAsStringSync(jsonEncode({"other": 1}));

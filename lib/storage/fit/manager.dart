@@ -6,8 +6,9 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
-import "package:eve_fit_assistant/storage/repo/models/active.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
+import "package:eve_fit_assistant/storage/repo/models/shared.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -108,14 +109,17 @@ class FitManager extends _$FitManager {
 
   static String generateFitId() => _idGenerator.v4();
 
-  CheckoutRef _checkoutRefForActive(Option<Active> activeOpt) => activeOpt.match(
-    () => throw StateError("A valid checkout must be active."),
-    (active) => CheckoutRef(
-      checkoutId: active.checkoutId,
-      serverId: active.serverId,
-      metadata: active.metadata,
-    ),
-  );
+  CheckoutRef _checkoutRefForActive(Option<CheckoutRegistryEntry> entryOpt) =>
+      entryOpt.match(() => throw StateError("A valid checkout must be active."), (entry) {
+        final checkoutId = ref
+            .read(activeCheckoutIdProvider)
+            .match(() => throw StateError("A valid checkout must be active."), (id) => id);
+        return CheckoutRef(
+          checkoutId: checkoutId,
+          serverId: entry.serverId,
+          metadata: GameMetadata(gameServer: entry.serverId, gameBuild: "", gameVersion: ""),
+        );
+      });
 
   Future<FitMetadata> newFit(int shipId, String name) async {
     final ship = ref.watch(repoCollectionProvider.select((c) => c?.getShip(shipId)));

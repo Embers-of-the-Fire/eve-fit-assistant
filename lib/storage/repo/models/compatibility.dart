@@ -25,9 +25,8 @@ class CheckoutResolutionCompatible extends CheckoutResolution {
 }
 
 class CheckoutResolutionOfferReSync extends CheckoutResolution {
-  const CheckoutResolutionOfferReSync({required this.checkoutId, required this.branchCheckoutId});
+  const CheckoutResolutionOfferReSync({required this.checkoutId});
   final String checkoutId;
-  final String branchCheckoutId;
 }
 
 class CheckoutResolutionOfferDownload extends CheckoutResolution {

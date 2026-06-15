@@ -4,13 +4,15 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "diff.freezed.dart";
 part "diff.g.dart";
 
+/// A diff between two resource index snapshots.
+///
+/// Computed on-demand from two ResourceIndex protobufs.
+/// No longer stored — computed when needed.
 @freezed
 abstract class Diff with _$Diff {
   const factory Diff({
-    required String from,
-    required String to,
-    required String fromCreatedAt,
-    required String toCreatedAt,
+    required String fromSnapshotHash,
+    required String toSnapshotHash,
     @Default(IList<DiffAdd>.empty()) IList<DiffAdd> adds,
     @Default(IList<DiffDelete>.empty()) IList<DiffDelete> deletes,
     @Default(IList<DiffModify>.empty()) IList<DiffModify> modifies,
@@ -22,9 +24,9 @@ abstract class Diff with _$Diff {
 @freezed
 abstract class DiffAdd with _$DiffAdd {
   const factory DiffAdd({
-    required String path,
-    required String pathHash,
-    required String hash,
+    required String logicalPath,
+    required String resourceId,
+    required String contentHash,
     required int size,
   }) = _DiffAdd;
 
@@ -34,10 +36,10 @@ abstract class DiffAdd with _$DiffAdd {
 @freezed
 abstract class DiffDelete with _$DiffDelete {
   const factory DiffDelete({
-    required String path,
-    required String pathHash,
+    required String logicalPath,
+    required String resourceId,
     required int size,
-    String? hash,
+    String? contentHash,
   }) = _DiffDelete;
 
   factory DiffDelete.fromJson(Map<String, dynamic> json) => _$DiffDeleteFromJson(json);
@@ -46,23 +48,11 @@ abstract class DiffDelete with _$DiffDelete {
 @freezed
 abstract class DiffModify with _$DiffModify {
   const factory DiffModify({
-    required String path,
-    required String pathHash,
-    required String hash,
+    required String logicalPath,
+    required String resourceId,
+    required String contentHash,
     required int size,
   }) = _DiffModify;
 
   factory DiffModify.fromJson(Map<String, dynamic> json) => _$DiffModifyFromJson(json);
-}
-
-@freezed
-abstract class ReflogEntry with _$ReflogEntry {
-  const factory ReflogEntry({
-    required String id,
-    required String timestamp,
-    required String from,
-    required String to,
-  }) = _ReflogEntry;
-
-  factory ReflogEntry.fromJson(Map<String, dynamic> json) => _$ReflogEntryFromJson(json);
 }

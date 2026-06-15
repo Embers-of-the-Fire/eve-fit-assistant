@@ -82,10 +82,11 @@ final fitCheckoutCompatibilityProvider = Provider.family<FitCheckoutCompatibilit
     return null;
   }
 
+  final checkoutId = ref.watch(activeCheckoutIdProvider);
   final active = ref.watch(activeCheckoutProvider);
   return checkFitCompatibility(
     metadata,
-    activeCheckoutId: active.match(() => "", (a) => a.checkoutId),
+    activeCheckoutId: checkoutId.match(() => "", (id) => id),
     activeServerId: active.match(() => "", (a) => a.serverId),
   );
 });
