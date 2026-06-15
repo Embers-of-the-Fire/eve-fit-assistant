@@ -21,7 +21,6 @@ Please use the configuration files to configure the tool, or pass parameters dir
 from __future__ import annotations
 
 import asyncio
-import datetime
 import hashlib
 import json
 import os
@@ -197,15 +196,6 @@ def __validate_remote_artifact_id(artifact_id: str) -> str:
     ):
         raise click.ClickException(f"Invalid remote bundle artifact id: {artifact_id!r}")
     return normalized
-
-
-def __utc_timestamp() -> str:
-    return (
-        datetime.datetime.now(datetime.UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
 
 
 def __read_current_app_version() -> str:
@@ -2265,137 +2255,6 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
     click.echo(styled(Style.DIM, f"  Announcements: {announcement_label}"))
 
 
-# ---- push -------------------------------------------------------------------
-
-
-@remote.command("push")
-@click.argument("channel")
-@click.option("--author", default="pipeline", help="Author identifier for the generation.")
-@click.option("--description", required=True, help="Description for this generation.")
-@click.option(
-    "--schema-root",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Schema V2 storage root (default from dev config).",
-)
-@click.option(
-    "--release-snapshot",
-    default=None,
-    help="Release snapshot hash to include in the generation.",
-)
-@click.option(
-    "--announcement-snapshot",
-    default=None,
-    help="Announcement snapshot hash to include in the generation.",
-)
-def remote_push(
-    channel: str,
-    author: str,
-    description: str,
-    schema_root: Path | None,
-    release_snapshot: str | None,
-    announcement_snapshot: str | None,
-):
-    """Create a new generation from current resource snapshots and advance the channel head."""
-
-    from data.lib.remote.models import GenerationMetadata
-    from data.lib.remote.models import GenerationPointer
-    from data.lib.remote.models import GenerationResources
-    from data.lib.remote.models import ServerIndex
-
-    root = _resolve_schema_root(schema_root)
-    mgr = SessionManager(root)
-
-    resolved_channel = __validate_remote_channel(channel)
-    mgr.ensure_channel(resolved_channel)
-
-    resources_dir = root / "assets" / "resources"
-    snap_store = mgr.snap_store
-
-    servers: list[tuple[str, dict[str, str], str, str]] = []
-    mappings: list[tuple[str, str]] = []
-
-    if resources_dir.is_dir():
-        for snap_dir in sorted(resources_dir.iterdir()):
-            if not snap_dir.is_dir():
-                continue
-            if snap_dir.name.startswith("tmp"):
-                continue
-            try:
-                meta, _index = snap_store.load_resource_snapshot(snap_dir.name)
-            except Exception:
-                continue
-            server_id = meta.server_id
-            if not server_id:
-                continue
-
-            name_map = {"en": server_id}
-            servers.append((server_id, name_map, meta.game_build, meta.game_version))
-            mappings.append((server_id, snap_dir.name))
-
-    if not servers:
-        raise click.ClickException(
-            "No resource snapshots found. Run './x build data' first to generate snapshots."
-        )
-
-    server_index = ServerIndex()
-    server_index.schema_version = 1
-    for sid, name_map, build, version in servers:
-        entry = server_index.servers.add()
-        entry.server_id = sid
-        for loc, dn in name_map.items():
-            entry.name[loc] = dn
-        entry.game_build = build
-        entry.game_version = version
-
-    gen_resources = GenerationResources()
-    gen_resources.schema_version = 1
-    for sid, snap_hash in mappings:
-        entry = gen_resources.entries.add()
-        entry.server_id = sid
-        entry.snapshot_hash = snap_hash
-
-    release_ptr = GenerationPointer()
-    release_ptr.schema_version = 1
-    release_ptr.snapshot_hash = ""
-    if release_snapshot:
-        release_ptr.snapshot_hash = release_snapshot
-
-    announcement_ptr = GenerationPointer()
-    announcement_ptr.schema_version = 1
-    announcement_ptr.snapshot_hash = ""
-    if announcement_snapshot:
-        announcement_ptr.snapshot_hash = announcement_snapshot
-
-    current_head = mgr.head_store._safe_get_head(resolved_channel)
-    parent = current_head.generation_hash if current_head and current_head.generation_hash else None
-
-    ts = __utc_timestamp()
-    meta = GenerationMetadata(
-        channel=resolved_channel,
-        author=author,
-        timestamp=ts,
-        description=description,
-        subject="",
-        parent=parent,
-    )
-
-    gen_hash = mgr.create_generation(
-        metadata=meta,
-        server_index=server_index,
-        resources=gen_resources,
-        release_pointer=release_ptr,
-        announcement_pointer=announcement_ptr,
-    )
-
-    mgr.push(resolved_channel, gen_hash, author=author)
-
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Generation created: {gen_hash[:16]}..."))
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Head advanced on channel {resolved_channel}"))
-    click.echo(styled(Style.DIM, f"  Servers: {', '.join(s[0] for s in servers)}"))
-    click.echo(styled(Style.DIM, f"  Parent:  {parent or 'none (root)'}"))
-
-
 # ---- revert -----------------------------------------------------------------
 
 
@@ -2541,6 +2400,13 @@ def remote_verify(repair: bool, schema_root: Path | None):
 @click.option("--secret-key", default=None, help="Override secret key.")
 @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
 @click.option(
+    "--workers",
+    type=int,
+    default=8,
+    show_default=True,
+    help="Number of parallel upload workers.",
+)
+@click.option(
     "--schema-root",
     type=click.Path(path_type=Path),
     default=None,
@@ -2554,6 +2420,7 @@ def remote_publish(
     access_key: str | None,
     secret_key: str | None,
     alias_name: str | None,
+    workers: int,
     schema_root: Path | None,
 ):
     """Publish the channel's current head to a remote S3/MinIO bucket."""
@@ -2586,6 +2453,7 @@ def remote_publish(
         access_key=resolved_access_key,
         secret_key=resolved_secret_key,
         alias_name=resolved_alias,
+        workers=workers,
     )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Publishing channel {resolved_channel}..."))
@@ -2683,7 +2551,9 @@ def __start_minio_remote_mock(
                 [mc, "rm", "--recursive", "--force", bucket_target],
                 "REMOTE CLEAN BUCKET",
             )
-        mock_generation = __utc_timestamp().replace("-", "").replace(":", "") + "Z"
+        from data.lib.remote.generation import utc_timestamp
+
+        mock_generation = utc_timestamp().replace("-", "").replace(":", "") + "Z"
         __publish_remote_origin_to_s3(
             source_dir=origin_dir,
             endpoint=endpoint,

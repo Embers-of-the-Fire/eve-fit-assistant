@@ -152,6 +152,7 @@ class SessionManager:
         secret_key: str | None = None,
         alias_name: str | None = None,
         origin_dir: Path | None = None,
+        workers: int = 8,
     ) -> Publisher:
         return Publisher(
             local_root=self.root,
@@ -162,11 +163,12 @@ class SessionManager:
             secret_key=secret_key,
             alias_name=alias_name,
             origin_dir=origin_dir,
+            workers=workers,
         )
 
-    def publish(self, channel: str, **kwargs) -> None:
+    def publish(self, channel: str, *, workers: int | None = None, **kwargs) -> None:
         """Publish the full chain (head → generation → snapshots → blobs)."""
-        pub = self.make_publisher(**kwargs)
+        pub = self.make_publisher(workers=workers if workers is not None else 8, **kwargs)
         pub.publish_all_for_head(channel)
 
     def publish_to_origin(self, channel: str, origin_dir: Path) -> None:
