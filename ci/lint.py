@@ -45,26 +45,26 @@ def run_lint(
             _echo("uv run ruff format")
             execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT", dry_run)
 
-    if lang in ("all", "dart", "rust"):
+    if lang in ("all", "dart"):
         dart = get_command("dart")
 
-        if lang in ("all", "dart"):
-            if not no_check or check_only:
-                if not check_only:
-                    _echo("dart fix --apply")
-                    execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT", dry_run)
-                _echo("dart analyze")
-                execute_command([dart, "analyze"], "DART ANALYZE OUTPUT", dry_run)
+        if not no_check or check_only:
+            if not check_only:
+                _echo("dart fix --apply")
+                execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT", dry_run)
+            _echo("dart analyze")
+            execute_command([dart, "analyze"], "DART ANALYZE OUTPUT", dry_run)
 
-            if check_only:
-                _echo("dart format --set-exit-if-changed lib/")
-                execute_command(
-                    [dart, "format", "--set-exit-if-changed", "lib/"], "DART FORMAT OUTPUT", dry_run
-                )
-            else:
-                _echo("dart format lib/")
-                execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT", dry_run)
+        if check_only:
+            _echo("dart format --set-exit-if-changed lib/")
+            execute_command(
+                [dart, "format", "--set-exit-if-changed", "lib/"], "DART FORMAT OUTPUT", dry_run
+            )
+        else:
+            _echo("dart format lib/")
+            execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT", dry_run)
 
+    if lang in ("all", "rust"):
         cargo = get_command("cargo")
         if check_only:
             _echo("cargo fmt --check --package rust_lib_eve_fit_assistant")
