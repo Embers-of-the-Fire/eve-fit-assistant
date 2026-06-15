@@ -684,6 +684,10 @@ class TestGarbageCollector:
         deleted = gc.prune(dry_run=True)
 
         # Blob data referenced by the resource index should NOT be pruned
+        from data.lib.remote.hash import content_hash
+
+        chash_a = content_hash(b"blob data aa")
+        chash_c = content_hash(b"blob data cc")
         for d in deleted:
             assert chash_a not in d
             assert chash_c not in d
