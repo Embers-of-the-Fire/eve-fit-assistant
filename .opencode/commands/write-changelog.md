@@ -11,12 +11,26 @@ default to `0.0.0`.
 
 ## Steps
 
-1. Categorize commits into Keep-a-Changelog groups using conventional-commit prefixes:
+This changelog is for the **EVE Fit Assistant mobile app** only. Omit commits
+unrelated to the end-user-facing Flutter/Dart app: CI/CD, the SvelteKit website
+(scope `site`), Cloudflare Workers (scopes `worker`, `issue`), developer
+tooling, test infrastructure, and documentation. The auto-generated commit
+reference at the bottom may include all commits.
+
+1. Filter out non-EFA-app commits first. Skip commits scoped to `ci`, `site`,
+   `worker`, `issue`, `codeart`, `docs`, build-infrastructure, and commits about
+   CI/CD, Cloudflare, GitHub Actions, or test tooling. Keep only commits that
+   affect the Flutter/Dart app end-users. Categorize remaining commits into
+   Keep-a-Changelog groups using conventional-commit prefixes:
    feat → Added | refactor,perf,style,ui,ux → Improved | fix → Fixed |
-   change,revert → Changed | build,ci,chore,deps,test,docs → Architecture
+   change,revert → Changed.
+   Architecture — only for user-visible infrastructure changes such as
+   dependency upgrades that alter app behavior or persistence schema migrations.
+   Skip pure dev-infra commits.
 2. Merge related commits into a single bullet. Prefer fewer, high-quality bullets.
    Skip merge commits and release-bump noise. Only emit categories that have content.
 3. Draft an en-us body with `## Category` headings and `- bullet` lines.
+   Each bullet describes a user-visible change in the EFA mobile app.
    Each bullet is a single line, starts capitalized, no trailing period.
 4. Translate to publication-quality zh-cn. Headings: 新增 / 改进 / 修复 / 架构.
    Keep EVE technical terms in English (Dogma, abyssal, mutaplasmid, etc.).
