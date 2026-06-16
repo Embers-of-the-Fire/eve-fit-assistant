@@ -4,6 +4,7 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -37,6 +38,18 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       child: ConfigListView(
         children: [
           const ConfigListTile.space(20),
+          ConfigListTile.item(
+            icon: const Icon(Icons.info_outline),
+            title: l10n.channelMetadataPageTitle,
+            subtitle: l10n.channelMetadataTabOverview,
+            onTap: () => unawaited(context.router.push(const ChannelMetadataRoute())),
+          ),
+          ConfigListTile.item(
+            icon: const Icon(Icons.inventory_2_outlined),
+            title: l10n.checkoutManagementPageTitle,
+            subtitle: l10n.checkoutCreateButton,
+            onTap: () => unawaited(context.router.push(const CheckoutManagementRoute())),
+          ),
           ConfigListTile.title(l10n.storageStateInstalled),
           if (checkoutIds.isEmpty)
             ConfigListTile.custom(

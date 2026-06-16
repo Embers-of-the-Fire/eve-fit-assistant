@@ -1272,5 +1272,175 @@
         "type": "String"
       }
     }
-  }
+  },
+  "@@_CHANNEL_METADATA_PAGE": {},
+  "channelMetadataPageTitle": "频道元数据",
+  "channelMetadataSwitchChannel": "切换频道",
+  "channelMetadataTabOverview": "概览",
+  "channelMetadataTabServers": "服务器",
+  "channelMetadataTabResources": "资源",
+  "channelMetadataTabReleases": "版本",
+  "channelMetadataTabAnnouncements": "公告",
+  "channelMetadataNoData": "无频道数据 — 尚未同步。",
+  "channelMetadataFieldActiveChannel": "当前频道",
+  "channelMetadataFieldGeneration": "代数哈希",
+  "channelMetadataFieldSynced": "同步时间",
+  "channelMetadataFieldLabel": "标签",
+  "channelMetadataFieldChannels": "可用频道",
+  "channelMetadataNotSynced": "未同步",
+  "channelMetadataNoServers": "无服务器数据 — 运行同步或创建数据版本。",
+  "channelMetadataServerCount": "{count} 个服务器",
+  "@channelMetadataServerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "channelMetadataNoResources": "无资源数据。",
+  "channelMetadataEntryCount": "共 {count} 条记录",
+  "@channelMetadataEntryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "channelMetadataNoReleaseData": "无版本数据 — 尚未同步。",
+  "channelMetadataNoReleaseAvailable": "已同步 — 此代数无版本数据。",
+  "channelMetadataNoAnnouncementData": "无公告数据 — 尚未同步。",
+  "channelMetadataNoAnnouncementAvailable": "已同步 — 此代数无公告数据。",
+  "channelMetadataLoadRelease": "加载版本索引",
+  "channelMetadataLoadAnnouncement": "加载公告索引",
+  "channelMetadataLoadFailed": "加载失败",
+  "channelMetadataFieldPointerHash": "指针哈希",
+  "channelMetadataReleaseCount": "{count} 个版本",
+  "@channelMetadataReleaseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "channelMetadataLatestRelease": "最新 (Android): {version}",
+  "@channelMetadataLatestRelease": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "channelMetadataReload": "重新加载",
+  "channelMetadataAnnouncementCount": "{total} 条公告，{versionUpdates} 条版本更新",
+  "@channelMetadataAnnouncementCount": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "versionUpdates": {
+        "type": "int"
+      }
+    }
+  },
+  "channelMetadataPublished": "发布于",
+  "channelMetadataUpdated": "更新于",
+  "channelMetadataLocales": "语言",
+  "channelMetadataHashArrow": "→",
+  "storageDiagnosticToolsTitle": "诊断工具",
+  "storageChannelMetadataTitle": "频道元数据",
+  "storageChannelMetadataDescription": "查看本地频道同步状态和数据",
+  "storageCheckoutManagementTitle": "数据版本管理",
+  "storageCheckoutManagementDescription": "管理已安装的数据版本并创建新版本",
+
+  "@_CHECKOUT_MANAGEMENT": {},
+  "checkoutManagementPageTitle": "数据版本管理",
+  "checkoutCreateButton": "创建数据版本",
+  "checkoutNoCheckoutsTitle": "尚未安装数据版本",
+  "checkoutNoCheckoutsHint": "创建一个数据版本以开始使用。",
+  "checkoutStatusActive": "当前",
+  "checkoutStatusInactive": "未激活",
+  "checkoutFieldChannel": "频道",
+  "checkoutFieldServerId": "服务器",
+  "checkoutFieldSnapshotHash": "数据快照",
+  "checkoutFieldFileCount": "文件数",
+  "checkoutFieldTotalSize": "总大小",
+  "checkoutNA": "N/A",
+  "checkoutActivate": "激活",
+  "checkoutActivateTitle": "激活数据版本",
+  "checkoutActivateConfirm": "激活数据版本 {name}？应用程序引擎将从此版本重新加载数据。",
+  "@checkoutActivateConfirm": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "checkoutActivateSuccess": "已激活数据版本 {name}",
+  "@checkoutActivateSuccess": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "checkoutActivateFailed": "激活失败: {message}",
+  "@checkoutActivateFailed": {
+    "placeholders": { "message": { "type": "String" } }
+  },
+  "checkoutDelete": "删除",
+  "checkoutDeleteTitle": "删除数据版本",
+  "checkoutDeleteConfirm": "删除数据版本 {name}？这将移除该版本的所有本地数据，且不可撤销。",
+  "@checkoutDeleteConfirm": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "checkoutDeleteConfirmActive": "删除当前激活的数据版本 {name}？这将移除该版本的所有本地数据，且不可撤销。删除后应用程序需要重新选择数据版本。",
+  "@checkoutDeleteConfirmActive": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "checkoutDeleteSuccess": "已删除数据版本 {name}",
+  "@checkoutDeleteSuccess": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "checkoutDeleteFailed": "删除失败: {message}",
+  "@checkoutDeleteFailed": {
+    "placeholders": { "message": { "type": "String" } }
+  },
+  "checkoutCreateTitle": "创建数据版本",
+  "checkoutCreateNeedSync": "频道代数数据尚未同步，请先同步以获取可用服务器列表。",
+  "checkoutCreateSyncNow": "立即同步",
+  "checkoutCreateSyncing": "同步中...",
+  "checkoutCreateSelectServer": "选择服务器数据源 (共 {count} 个)",
+  "@checkoutCreateSelectServer": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "checkoutCreateMetaFailed": "元数据加载失败",
+  "checkoutCreateFieldId": "服务器 ID",
+  "checkoutCreateFieldAuthor": "作者",
+  "checkoutCreateFieldDescription": "描述",
+  "checkoutCreateFieldResourceCount": "资源数量",
+  "checkoutCreateFieldCreatedAt": "创建时间",
+  "checkoutCreateFieldRegion": "区域",
+  "checkoutCreateFieldSync": "数据同步",
+  "checkoutCreateFieldBranch": "分支",
+  "checkoutCreateConfirm": "确认创建",
+  "checkoutCreateConfirmWithCount": "确认创建 (约 {count} 个资源)",
+  "@checkoutCreateConfirmWithCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "checkoutCreateProgressTitle": "创建数据版本 — {server}",
+  "@checkoutCreateProgressTitle": {
+    "placeholders": { "server": { "type": "String" } }
+  },
+  "checkoutCreateProgressTitleComplete": "创建完成",
+  "checkoutCreateProgressTitleFailed": "创建失败",
+  "checkoutCreateProgressFetchingIndex": "正在获取资源索引...",
+  "checkoutCreateProgressDownloading": "正在下载资产 (共 {count} 个)...",
+  "@checkoutCreateProgressDownloading": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "checkoutCreateProgressDownloading2": "下载资产 ({current}/{total})...",
+  "@checkoutCreateProgressDownloading2": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "checkoutCreateProgressFinalizing": "正在完成...",
+  "checkoutCreateProgressCreatingCheckout": "正在创建数据版本条目...",
+  "checkoutCreateProgressComplete": "数据版本创建成功！",
+  "checkoutCreateProgressIndexFailed": "资源索引获取失败",
+  "checkoutCreateProgressCheckoutFailed": "数据版本创建失败",
+  "checkoutCreateSuccess": "数据版本创建完成并已激活"
 }
