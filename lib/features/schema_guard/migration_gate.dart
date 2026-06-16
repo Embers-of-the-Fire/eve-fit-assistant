@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/service.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:flutter/material.dart";
@@ -18,6 +19,7 @@ class MigrationGate extends StatefulWidget {
 }
 
 class _MigrationGateState extends State<MigrationGate> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
   bool _checking = true;
 
   @override
@@ -100,9 +102,10 @@ class _MigrationGateState extends State<MigrationGate> {
   }
 
   Future<void> _startMigration() async {
+    final navigator = _navigatorKey.currentState!;
     unawaited(
       showDialog<void>(
-        context: context,
+        context: navigator.context,
         barrierDismissible: false,
         builder: (_) => const _MigrationProgressDialog(),
       ),
@@ -114,14 +117,16 @@ class _MigrationGateState extends State<MigrationGate> {
       await MigrateService(schemaVersionService: const SchemaVersionService()).migrate();
 
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        navigator.popUntil((route) => route.isFirst);
         _activateRepoAndReload();
       }
     } catch (e, stackTrace) {
       warning("Migration failed: $e", stackTrace: stackTrace);
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Migration failed: $e")));
+        navigator.popUntil((route) => route.isFirst);
+        ScaffoldMessenger.of(
+          navigator.context,
+        ).showSnackBar(SnackBar(content: Text("Migration failed: $e")));
       }
     }
   }
@@ -129,12 +134,18 @@ class _MigrationGateState extends State<MigrationGate> {
   @override
   Widget build(BuildContext context) {
     if (_checking) {
-      return const MaterialApp(
-        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      return MaterialApp(
+        navigatorKey: _navigatorKey,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SafeArea(
           child: Center(
@@ -168,9 +179,10 @@ class _MigrationGateState extends State<MigrationGate> {
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () {
+                      final navigator = _navigatorKey.currentState!;
                       unawaited(
                         showDialog<void>(
-                          context: context,
+                          context: navigator.context,
                           builder: (dialogContext) => AlertDialog(
                             title: const Text("Skip Migration?"),
                             content: const Text(
