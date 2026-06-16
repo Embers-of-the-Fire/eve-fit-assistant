@@ -1724,5 +1724,7 @@
   "reportErrorExternalHint": "你也可以通过以下外部渠道提交反馈：",
   "reportDialogClose": "关闭",
   "reportExternalChannelsTitle": "其他反馈渠道",
-  "reportExternalChannelsDescription": "以下方式也可以提交反馈或联系我们："
+  "reportExternalChannelsDescription": "以下方式也可以提交反馈或联系我们：",
+  "fitDamageProfileDialogTitle": "修改伤害分布",
+  "fitDamageProfileDialogGroupTitle": "伤害分布"
 }
