@@ -3,6 +3,7 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
+import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
@@ -163,6 +164,7 @@ class _FitListTile extends ConsumerWidget {
           ],
         ),
         onTap: () => context.router.push(FitRoute(fitId: metadata.fitId)),
+        onLongPress: () => showItemDetailPage(context, typeId: metadata.shipTypeId),
       ),
     );
   }
