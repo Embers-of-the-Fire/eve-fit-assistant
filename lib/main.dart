@@ -70,12 +70,15 @@ class MyApp extends ConsumerWidget {
               if (consumedReport == null) {
                 return;
               }
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(_formatStartupPersistenceReport(context.l10n, consumedReport)),
-                  duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
-                ),
-              );
+              Future.microtask(() {
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(_formatStartupPersistenceReport(context.l10n, consumedReport)),
+                    duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
+                  ),
+                );
+              });
             });
           }
           return MediaQuery(
