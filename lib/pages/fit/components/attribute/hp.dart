@@ -4,9 +4,11 @@ class Hp extends StatefulWidget {
   const Hp({
     required this.ship,
     super.key,
+    this.fitId,
     this.interactionOptions = const FitInteractionOptions(),
   });
   final native.Ship ship;
+  final String? fitId;
   final FitInteractionOptions interactionOptions;
 
   @override
@@ -41,6 +43,8 @@ class _HpState extends State<Hp> {
           hull: widget.ship.hull,
           displayEhp: displayEhp,
           damageProfile: widget.ship.damageProfile,
+          fitId: widget.fitId,
+          allowMutations: widget.interactionOptions.allowMutations,
         ),
       ),
       Container(
@@ -84,12 +88,15 @@ class _HpTable extends ConsumerWidget {
     required this.displayEhp,
     required this.damageProfile,
     this.onToggle,
+    this.fitId,
+    this.allowMutations = false,
   });
   final native.Item hull;
   final bool displayEhp;
   final native_storage.DamageProfile damageProfile;
-
   final void Function()? onToggle;
+  final String? fitId;
+  final bool allowMutations;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => DefaultTextStyle(
@@ -197,7 +204,20 @@ class _HpTable extends ConsumerWidget {
         TableRow(
           children: [
             const Image(image: ImageAssets.attrWeaponTurret, height: 28),
-            const Icon(Icons.settings),
+            InkWell(
+              onTap: (fitId != null && allowMutations)
+                  ? () async {
+                      final profile = await showDamageProfileDialog(context);
+                      if (profile == null) return;
+                      await ref.read(fitProvider(fitId!).notifier).update(
+                        (fit) => fit.copyWith(
+                          body: fit.body.copyWith(damageProfile: profile),
+                        ),
+                      );
+                    }
+                  : null,
+              child: const Icon(Icons.settings),
+            ),
             ResonanceBox(ratio: 1 - damageProfile.em, type: ResonanceType.em),
             ResonanceBox(ratio: 1 - damageProfile.thermal, type: ResonanceType.thermal),
             ResonanceBox(ratio: 1 - damageProfile.kinetic, type: ResonanceType.kinetic),
