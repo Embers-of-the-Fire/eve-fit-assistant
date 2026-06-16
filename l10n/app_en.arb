@@ -643,5 +643,7 @@
   "reportErrorExternalHint": "You can also submit feedback through one of these external channels:",
   "reportDialogClose": "Close",
   "reportExternalChannelsTitle": "Other Feedback Channels",
-  "reportExternalChannelsDescription": "You can also submit feedback or contact us through:"
+  "reportExternalChannelsDescription": "You can also submit feedback or contact us through:",
+  "fitDamageProfileDialogTitle": "Change Damage Profile",
+  "fitDamageProfileDialogGroupTitle": "Damage Profile"
 }
