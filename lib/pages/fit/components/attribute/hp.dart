@@ -209,6 +209,7 @@ class _HpTable extends ConsumerWidget {
                   ? () async {
                       final profile = await showDamageProfileDialog(context);
                       if (profile == null) return;
+                      if (!context.mounted) return;
                       await ref
                           .read(fitProvider(fitId!).notifier)
                           .update(
