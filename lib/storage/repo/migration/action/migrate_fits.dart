@@ -5,25 +5,26 @@ import "package:eve_fit_assistant/storage/repo/migration/action/migrate_runner.d
 class MigrateFits {
   const MigrateFits();
 
-  Future<MigrateFitsResult> migrate({required String fittingsPath}) async {
+  Future<MigrateFitsResult> migrate({
+    required String sourceFittingsPath,
+    required String destinationFittingsPath,
+  }) async {
     final (:migrated, :skipped, :errors) = await MigrateRunner.run(
-      directory: fittingsPath,
-      needsUpgrade: _needsV3Upgrade,
+      sourceDirectory: sourceFittingsPath,
+      destinationDirectory: destinationFittingsPath,
+      needsUpgrade: _needsMigration,
       upgrade: _migrateFitRecord,
       onError: (exception, filePath) => warning("Failed to migrate fit file $filePath: $exception"),
     );
     return MigrateFitsResult(migrated: migrated, skipped: skipped, errors: errors);
   }
 
-  bool _needsV3Upgrade(Map<String, dynamic> json) {
-    final version = json["version"];
-    if (version is! int || version != 2) return false;
+  bool _needsMigration(Map<String, dynamic> json) {
     final payload = json["fit"];
     if (payload is! Map<String, dynamic>) return false;
     final metadata = payload["metadata"];
     if (metadata is! Map<String, dynamic>) return false;
-    if (metadata["checkoutRef"] != null) return false;
-    return true;
+    return metadata["checkoutRef"] == null && metadata.containsKey("bundleSnapshot");
   }
 
   Map<String, dynamic> _migrateFitRecord(Map<String, dynamic> json) {
@@ -45,7 +46,7 @@ class MigrateFits {
     final updatedPayload = Map<String, dynamic>.from(payload)..["metadata"] = updatedMetadata;
 
     return Map<String, dynamic>.from(json)
-      ..["version"] = 3
+      ..["version"] = 2
       ..["fit"] = updatedPayload;
   }
 }

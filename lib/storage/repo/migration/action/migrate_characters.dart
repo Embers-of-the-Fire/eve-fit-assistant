@@ -5,9 +5,13 @@ import "package:eve_fit_assistant/storage/repo/migration/action/migrate_runner.d
 class MigrateCharacters {
   const MigrateCharacters();
 
-  Future<MigrateCharactersResult> migrate({required String charactersPath}) async {
+  Future<MigrateCharactersResult> migrate({
+    required String sourceCharactersPath,
+    required String destinationCharactersPath,
+  }) async {
     final (:migrated, :skipped, :errors) = await MigrateRunner.run(
-      directory: charactersPath,
+      sourceDirectory: sourceCharactersPath,
+      destinationDirectory: destinationCharactersPath,
       needsUpgrade: _needsMigration,
       upgrade: _migrateCharacterRecord,
       onError: (exception, filePath) =>

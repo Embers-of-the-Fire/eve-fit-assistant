@@ -31,26 +31,23 @@ class _MigrationGateState extends State<MigrationGate> {
   }
 
   void _detectLegacyData() {
-    // Scan fittings/ for pre-v3 fit files that haven't been migrated.
+    // Scan old fittings/ for legacy fit files.
     var hasLegacyFits = false;
-    final fittingsDir = Directory(PathProvider.fittingsPath);
-    if (fittingsDir.existsSync()) {
+    final oldFittingsDir = Directory(PathProvider.oldFittingsPath);
+    if (oldFittingsDir.existsSync()) {
       try {
-        for (final entity in fittingsDir.listSync()) {
+        for (final entity in oldFittingsDir.listSync()) {
           if (entity is! File || !entity.path.endsWith(".json")) continue;
           if (p.basename(entity.path) == "registry.json") continue;
           try {
             final content = jsonDecode(entity.readAsStringSync());
             if (content is! Map<String, dynamic>) continue;
-            final version = content["version"] as int?;
-            if (version == null || version < 3) {
-              hasLegacyFits = true;
-              break;
-            }
             final fit = content["fit"];
             if (fit is Map<String, dynamic>) {
               final metadata = fit["metadata"];
-              if (metadata is Map<String, dynamic> && metadata["checkoutRef"] == null) {
+              if (metadata is Map<String, dynamic> &&
+                  metadata["checkoutRef"] == null &&
+                  metadata.containsKey("bundleSnapshot")) {
                 hasLegacyFits = true;
                 break;
               }
@@ -61,16 +58,16 @@ class _MigrationGateState extends State<MigrationGate> {
           }
         }
       } on FileSystemException catch (e) {
-        warning("Cannot scan fittings directory for legacy data: $e");
+        warning("Cannot scan old fittings directory for legacy data: $e");
       }
     }
 
-    // Scan characters/ for pre-v3 character files that haven't been migrated.
+    // Scan old characters/ for legacy character files.
     var hasLegacyCharacters = false;
-    final charactersDir = Directory(PathProvider.charactersPath);
-    if (charactersDir.existsSync()) {
+    final oldCharactersDir = Directory(PathProvider.oldCharactersPath);
+    if (oldCharactersDir.existsSync()) {
       try {
-        for (final entity in charactersDir.listSync()) {
+        for (final entity in oldCharactersDir.listSync()) {
           if (entity is! File || !entity.path.endsWith(".json")) continue;
           if (p.basename(entity.path) == "registry.json") continue;
           try {
@@ -86,7 +83,7 @@ class _MigrationGateState extends State<MigrationGate> {
           }
         }
       } on FileSystemException catch (e) {
-        warning("Cannot scan characters directory for legacy data: $e");
+        warning("Cannot scan old characters directory for legacy data: $e");
       }
     }
 
@@ -195,8 +192,9 @@ class _MigrationGateState extends State<MigrationGate> {
                             builder: (dialogContext) => AlertDialog(
                               title: const Text("Skip Migration?"),
                               content: const Text(
-                                "Fits and characters will keep the old format and may not "
-                                "work correctly. New data will be downloaded separately.",
+                                "Your existing fits and characters will not be accessible "
+                                "after skipping migration. New data can be downloaded "
+                                "from the server.",
                               ),
                               actions: [
                                 TextButton(

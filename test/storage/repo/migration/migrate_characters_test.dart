@@ -6,14 +6,14 @@ import "package:eve_fit_assistant/storage/repo/migration/action/migrate_characte
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
-Map<String, dynamic> _v2CharacterJson(
+Map<String, dynamic> _legacyCharacterJson(
   String characterId, {
   String? bundleId,
   String? bundleSnapshot,
 }) {
   final json = <String, dynamic>{
     "characterId": characterId,
-    "name": "V2 Character",
+    "name": "Legacy Character",
     "description": "",
     "lastModified": 100,
     "skills": <String, dynamic>{"123": 5},
@@ -23,20 +23,12 @@ Map<String, dynamic> _v2CharacterJson(
   return json;
 }
 
-Map<String, dynamic> _v3CharacterJson(String characterId) => <String, dynamic>{
+Map<String, dynamic> _migratedCharacterJson(String characterId) => <String, dynamic>{
   "characterId": characterId,
-  "name": "V3 Character",
+  "name": "Migrated Character",
   "description": "",
   "lastModified": 200,
-  "checkoutRef": <String, dynamic>{
-    "checkoutId": "checkout-xyz",
-    "serverId": "Serenity",
-    "metadata": <String, dynamic>{
-      "gameServer": "Serenity",
-      "gameBuild": "21.06",
-      "gameVersion": "EQUINOX",
-    },
-  },
+  "checkoutRef": <String, dynamic>{"checkoutId": "checkout-xyz", "serverId": "Serenity"},
   "skills": <String, dynamic>{"456": 3},
 };
 
@@ -47,60 +39,82 @@ void main() {
   });
 
   group("MigrateCharacters", () {
-    late String tempDir;
+    late String sourceDir;
+    late String destDir;
 
     setUp(() {
-      tempDir = Directory.systemTemp.createTempSync("efa_mig_char_test_").path;
+      final tempDir = Directory.systemTemp.createTempSync("efa_mig_char_test_").path;
+      sourceDir = p.join(tempDir, "source");
+      destDir = p.join(tempDir, "dest");
     });
 
     tearDown(() {
-      final dir = Directory(tempDir);
-      if (dir.existsSync()) dir.deleteSync(recursive: true);
+      final parentDir = Directory(p.dirname(sourceDir));
+      if (parentDir.existsSync()) parentDir.deleteSync(recursive: true);
     });
 
-    test("migrates v2 character files to v3", () async {
-      final charFile = File(p.join(tempDir, "char-1.json"));
+    test("migrates legacy character files with checkoutRef", () async {
+      final charFile = File(p.join(sourceDir, "char-1.json"));
       charFile.createSync(recursive: true);
       charFile.writeAsStringSync(
         jsonEncode(
-          _v2CharacterJson("char-1", bundleId: "Serenity-21.06-EQUINOX", bundleSnapshot: "abc123"),
+          _legacyCharacterJson(
+            "char-1",
+            bundleId: "Serenity-21.06-EQUINOX",
+            bundleSnapshot: "abc123",
+          ),
         ),
       );
 
       const migrater = MigrateCharacters();
-      final result = await migrater.migrate(charactersPath: tempDir);
+      final result = await migrater.migrate(
+        sourceCharactersPath: sourceDir,
+        destinationCharactersPath: destDir,
+      );
 
       expect(result.migrated, 1);
       expect(result.skipped, 0);
       expect(result.errors, 0);
 
-      final content = jsonDecode(charFile.readAsStringSync()) as Map<String, dynamic>;
+      final destFile = File(p.join(destDir, "char-1.json"));
+      expect(destFile.existsSync(), isTrue);
+      final content = jsonDecode(destFile.readAsStringSync()) as Map<String, dynamic>;
       final cr = content["checkoutRef"] as Map<String, dynamic>;
       expect(cr["checkoutId"], "abc123");
       expect(content.containsKey("bundleId"), isFalse);
       expect(content.containsKey("bundleSnapshot"), isFalse);
     });
 
-    test("skips v3 character files", () async {
-      final charFile = File(p.join(tempDir, "char-v3.json"));
+    test("skips files already having checkoutRef", () async {
+      final charFile = File(p.join(sourceDir, "char-migrated.json"));
       charFile.createSync(recursive: true);
-      charFile.writeAsStringSync(jsonEncode(_v3CharacterJson("char-v3")));
+      charFile.writeAsStringSync(jsonEncode(_migratedCharacterJson("char-migrated")));
 
       const migrater = MigrateCharacters();
-      final result = await migrater.migrate(charactersPath: tempDir);
+      final result = await migrater.migrate(
+        sourceCharactersPath: sourceDir,
+        destinationCharactersPath: destDir,
+      );
 
       expect(result.migrated, 0);
       expect(result.skipped, 1);
       expect(result.errors, 0);
+
+      // Non-migrated file is not copied to destination
+      final destFile = File(p.join(destDir, "char-migrated.json"));
+      expect(destFile.existsSync(), isFalse);
     });
 
     test("skips non-json files", () async {
-      final textFile = File(p.join(tempDir, "notes.txt"));
+      final textFile = File(p.join(sourceDir, "notes.txt"));
       textFile.createSync(recursive: true);
       textFile.writeAsStringSync("not a character");
 
       const migrater = MigrateCharacters();
-      final result = await migrater.migrate(charactersPath: tempDir);
+      final result = await migrater.migrate(
+        sourceCharactersPath: sourceDir,
+        destinationCharactersPath: destDir,
+      );
 
       expect(result.migrated, 0);
       expect(result.skipped, 0);
@@ -108,58 +122,87 @@ void main() {
     });
 
     test("skips registry.json", () async {
-      final regFile = File(p.join(tempDir, "registry.json"));
+      final regFile = File(p.join(sourceDir, "registry.json"));
       regFile.createSync(recursive: true);
-      final originalJson = jsonEncode(_v2CharacterJson("reg-char", bundleSnapshot: "should-skip"));
+      final originalJson = jsonEncode(
+        _legacyCharacterJson("reg-char", bundleSnapshot: "should-skip"),
+      );
       regFile.writeAsStringSync(originalJson);
 
       const migrater = MigrateCharacters();
-      final result = await migrater.migrate(charactersPath: tempDir);
+      final result = await migrater.migrate(
+        sourceCharactersPath: sourceDir,
+        destinationCharactersPath: destDir,
+      );
 
       expect(result.migrated, 0);
       expect(result.skipped, 0);
       expect(result.errors, 0);
 
-      // registry.json must remain untouched on disk
+      // registry.json must remain untouched on disk in source
       expect(regFile.readAsStringSync(), originalJson);
+      // registry.json is not copied to destination
+      final destRegFile = File(p.join(destDir, "registry.json"));
+      expect(destRegFile.existsSync(), isFalse);
     });
 
-    test("returns zero for non-existent directory", () async {
+    test("returns zero for non-existent source directory", () async {
       const migrater = MigrateCharacters();
-      final result = await migrater.migrate(charactersPath: p.join(tempDir, "nonexistent"));
+      final result = await migrater.migrate(
+        sourceCharactersPath: p.join(sourceDir, "nonexistent"),
+        destinationCharactersPath: destDir,
+      );
 
       expect(result.migrated, 0);
       expect(result.skipped, 0);
       expect(result.errors, 0);
     });
 
-    test("migrates multiple v2 files", () async {
+    test("migrates multiple legacy files", () async {
       for (var i = 0; i < 3; i++) {
-        final f = File(p.join(tempDir, "char-$i.json"));
+        final f = File(p.join(sourceDir, "char-$i.json"));
         f.createSync(recursive: true);
-        f.writeAsStringSync(jsonEncode(_v2CharacterJson("char-$i", bundleSnapshot: "snap-$i")));
+        f.writeAsStringSync(jsonEncode(_legacyCharacterJson("char-$i", bundleSnapshot: "snap-$i")));
       }
 
       const migrater = MigrateCharacters();
-      final result = await migrater.migrate(charactersPath: tempDir);
+      final result = await migrater.migrate(
+        sourceCharactersPath: sourceDir,
+        destinationCharactersPath: destDir,
+      );
 
       expect(result.migrated, 3);
       expect(result.skipped, 0);
       expect(result.errors, 0);
+
+      // All 3 files should be in destination
+      for (var i = 0; i < 3; i++) {
+        expect(File(p.join(destDir, "char-$i.json")).existsSync(), isTrue);
+      }
     });
 
-    test("mixed v2 and v3 files", () async {
+    test("mixed legacy and migrated files", () async {
+      Directory(sourceDir).createSync(recursive: true);
       File(
-        p.join(tempDir, "char-old.json"),
-      ).writeAsStringSync(jsonEncode(_v2CharacterJson("old", bundleSnapshot: "old-snap")));
-      File(p.join(tempDir, "char-new.json")).writeAsStringSync(jsonEncode(_v3CharacterJson("new")));
+        p.join(sourceDir, "char-old.json"),
+      ).writeAsStringSync(jsonEncode(_legacyCharacterJson("old", bundleSnapshot: "old-snap")));
+      File(
+        p.join(sourceDir, "char-migrated.json"),
+      ).writeAsStringSync(jsonEncode(_migratedCharacterJson("migrated")));
 
       const migrater = MigrateCharacters();
-      final result = await migrater.migrate(charactersPath: tempDir);
+      final result = await migrater.migrate(
+        sourceCharactersPath: sourceDir,
+        destinationCharactersPath: destDir,
+      );
 
       expect(result.migrated, 1);
       expect(result.skipped, 1);
       expect(result.errors, 0);
+
+      // Only legacy file is in destination
+      expect(File(p.join(destDir, "char-old.json")).existsSync(), isTrue);
+      expect(File(p.join(destDir, "char-migrated.json")).existsSync(), isFalse);
     });
   });
 }

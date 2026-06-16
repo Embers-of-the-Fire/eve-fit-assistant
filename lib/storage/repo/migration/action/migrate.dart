@@ -3,12 +3,12 @@
 /// ## Migration Stages (dependencies → downstream)
 ///
 /// 1. **MigrateProgress** — checkpoint state machine. Loads/saves `.migration_progress.json`.
-/// 2. **MigrateFits** — v2→v3 upgrade: replaces `bundleId`/`bundleSnapshot` with `CheckoutRef`.
-///    Runs in-place on legacy `fittings/`; orchestrator copies results to `runtime/v2/data/fittings/`.
-/// 3. **MigrateCharacters** — v2→v3 upgrade for character records.
-///    Same in-place + copy pattern.
+/// 2. **MigrateFits** — v2 upgrade: replaces `bundleId`/`bundleSnapshot` with `CheckoutRef`.
+///    Reads from old `fittings/`, writes migrated files to `runtime/v2/fittings/`.
+/// 3. **MigrateCharacters** — v2 upgrade for character records. Same old→new pattern.
 /// 4. **MigrateService** — orchestration. Runs stages in dependency order
 ///    (fits → characters → finalize) with checkpoint-based resumption.
+///    Finalize writes `schema_version.json` and deletes old `fittings/` and `characters/`.
 ///
 library;
 

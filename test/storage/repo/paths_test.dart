@@ -83,17 +83,25 @@ void main() {
     });
   });
 
-  group("runtime paths", () {
-    test("fittings registry path", () {
-      expect(RepoPaths.fittingsRegistryPath, contains("fittings/registry.json"));
-    });
-
-    test("characters registry path", () {
-      expect(RepoPaths.charactersRegistryPath, contains("characters/registry.json"));
-    });
-
+  group("schema version", () {
     test("schema version path", () {
       expect(RepoPaths.schemaVersionPath, endsWith("schema_version.json"));
+    });
+  });
+
+  group("announcement paths", () {
+    test("snapshot meta path", () {
+      final hash = "a" * 64;
+      final path = RepoPaths.announcementSnapshotMetaPath(hash);
+      expect(path, contains("announcements/"));
+      expect(path, endsWith("metadata.json"));
+    });
+
+    test("announcement index path", () {
+      final hash = "a" * 64;
+      final path = RepoPaths.announcementIndexPath(hash);
+      expect(path, contains("announcements/"));
+      expect(path, endsWith("announcements.pb2"));
     });
   });
 }

@@ -41,13 +41,13 @@ Map<String, dynamic> _roundTripJson(Map<String, dynamic> json) =>
     jsonDecode(jsonEncode(json)) as Map<String, dynamic>;
 
 void main() {
-  group("FitStorage v3 encoding", () {
-    test("encodes with version 3 and checkoutRef", () {
+  group("FitStorage v2 encoding", () {
+    test("encodes with version 2 and checkoutRef", () {
       final fit = _makeFitStorage();
       final encoded = encodeFitStorage(fit);
       final json = _roundTripJson(encoded);
 
-      expect(json["version"], 3);
+      expect(json["version"], 2);
       final fitPayload = json["fit"] as Map<String, dynamic>;
       final metadata = fitPayload["metadata"] as Map<String, dynamic>;
       final cr = metadata["checkoutRef"] as Map<String, dynamic>;
@@ -57,7 +57,7 @@ void main() {
       expect(metadata.containsKey("bundleSnapshot"), isFalse);
     });
 
-    test("round-trips v3 fit storage through persistence", () {
+    test("round-trips v2 fit storage through persistence", () {
       final fit = _makeFitStorage();
       final encoded = encodeFitStorage(fit);
 
@@ -72,19 +72,21 @@ void main() {
     });
   });
 
-  group("FitStorage v2 is unsupported", () {
-    test("decodeFitStorage throws on v2 payloads", () {
-      final v2Json = <String, dynamic>{
-        "version": 2,
+  group("FitStorage legacy version compatibility", () {
+    test("decodeFitStorage handles v3 payloads with didMigrate flag", () {
+      final v3Json = <String, dynamic>{
+        "version": 3,
         "fit": <String, dynamic>{
           "metadata": <String, dynamic>{
-            "fitId": "test-fit-v2",
+            "fitId": "test-fit-v3",
             "shipTypeId": 1234,
-            "name": "V2 Fit",
+            "name": "V3 Fit",
             "lastModified": 100,
             "description": "",
-            "bundleId": "Serenity-21.06-EQUINOX",
-            "bundleSnapshot": "abc123",
+            "checkoutRef": <String, dynamic>{
+              "checkoutId": "checkout-abc",
+              "serverId": "Serenity",
+            },
           },
           "body": <String, dynamic>{
             "shipTypeId": 1234,
@@ -112,7 +114,56 @@ void main() {
         },
       };
 
-      expect(() => decodeFitStorage(v2Json), throwsA(isA<FitPersistenceException>()));
+      final decoded = decodeFitStorage(v3Json);
+      expect(decoded.didMigrate, isTrue);
+      expect(decoded.fit.metadata.fitId, "test-fit-v3");
+      expect(decoded.fit.metadata.checkoutRef.checkoutId, "checkout-abc");
+    });
+
+    test("decodeFitStorage handles v1 payloads with didMigrate flag", () {
+      final v1Json = <String, dynamic>{
+        "version": 1,
+        "fit": <String, dynamic>{
+          "metadata": <String, dynamic>{
+            "fitId": "test-fit-v1",
+            "shipTypeId": 1234,
+            "name": "V1 Fit",
+            "lastModified": 100,
+            "description": "",
+            "checkoutRef": <String, dynamic>{
+              "checkoutId": "checkout-abc",
+              "serverId": "Serenity",
+            },
+          },
+          "body": <String, dynamic>{
+            "shipTypeId": 1234,
+            "characterId": "predefined_all_5",
+            "damageProfile": <String, dynamic>{
+              "em": 0.25,
+              "explosive": 0.25,
+              "kinetic": 0.25,
+              "thermal": 0.25,
+            },
+            "slots": <String, dynamic>{
+              "high": <Map<String, dynamic>>[],
+              "medium": <Map<String, dynamic>>[],
+              "low": <Map<String, dynamic>>[],
+              "rig": <Map<String, dynamic>>[],
+              "subsystem": <Map<String, dynamic>>[],
+              "service": <Map<String, dynamic>>[],
+            },
+            "drones": <Map<String, dynamic>>[],
+            "fighters": <Map<String, dynamic>>[],
+            "implants": <Map<String, dynamic>>[],
+            "boosters": <Map<String, dynamic>>[],
+          },
+          "dynamicRegistry": <String, dynamic>{"dynamicItems": <String, dynamic>{}},
+        },
+      };
+
+      final decoded = decodeFitStorage(v1Json);
+      expect(decoded.didMigrate, isTrue);
+      expect(decoded.fit.metadata.fitId, "test-fit-v1");
     });
   });
 }

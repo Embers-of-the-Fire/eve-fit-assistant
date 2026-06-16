@@ -15,8 +15,8 @@ typedef MigrateRunnerResult = ({int migrated, int skipped, int errors});
 
 /// Shared async file-by-file migration runner.
 ///
-/// Lists JSON files asynchronously, processes them in batches with yield points
-/// to avoid blocking the main isolate, and returns aggregated counts.
+/// Reads from [sourceDirectory], writes migrated files to
+/// [destinationDirectory]. Files that do not need upgrading are not copied.
 ///
 /// Both `MigrateCharacters` and `MigrateFits` delegate I/O orchestration here
 /// so that file listing, reads, and writes all run on the event loop without
@@ -24,25 +24,28 @@ typedef MigrateRunnerResult = ({int migrated, int skipped, int errors});
 class MigrateRunner {
   const MigrateRunner._();
 
-  /// Processes every JSON file (except `registry.json`) in [directory].
+  /// Processes every JSON file (except `registry.json`) in [sourceDirectory].
   ///
   /// For each file:
   /// 1. Reads and parses JSON.
   /// 2. Calls [needsUpgrade] — returns `true` when the record should be
   ///    transformed.
   /// 3. When needed, calls [upgrade] to produce the new JSON and writes it
-  ///    back in place.
+  ///    to the corresponding path under [destinationDirectory].
+  ///
+  /// Files that do not need upgrading are not copied to the destination.
   ///
   /// Yields to the event loop after every [batchSize] files (default 10) so
   /// that the UI stays responsive even with hundreds of files.
   static Future<MigrateRunnerResult> run({
-    required String directory,
+    required String sourceDirectory,
+    required String destinationDirectory,
     required NeedsUpgrade needsUpgrade,
     required Upgrade upgrade,
     OnError? onError,
     int batchSize = _defaultBatchSize,
   }) async {
-    final dir = Directory(directory);
+    final dir = Directory(sourceDirectory);
     if (!await dir.exists()) {
       return (migrated: 0, skipped: 0, errors: 0);
     }
@@ -69,7 +72,11 @@ class MigrateRunner {
 
         if (needsUpgrade(json)) {
           final upgraded = upgrade(json);
-          await atomicWriteJson(file, upgraded);
+          final destFile = File(p.join(destinationDirectory, p.basename(file.path)));
+          if (!await destFile.parent.exists()) {
+            await destFile.parent.create(recursive: true);
+          }
+          await atomicWriteJson(destFile, upgraded);
           migrated++;
         } else {
           skipped++;

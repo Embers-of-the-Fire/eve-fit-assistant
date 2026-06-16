@@ -94,23 +94,4 @@ class RepoPaths {
   /// checkouts/{id}/reflog.pb2 — CheckoutReflog.
   static String checkoutReflogPath(String checkoutId) =>
       p.join(checkoutsPath, checkoutId, "reflog.pb2");
-
-  // ── Runtime data (unchanged) ────────────────────────────────────────────────
-
-  static String get runtimeDataPath => p.join(PathProvider.documentsPath, "runtime", "v2", "data");
-
-  // fittings/
-  static String get runtimeFittingsPath => p.join(runtimeDataPath, "fittings");
-
-  static String get fittingsRegistryPath => p.join(runtimeFittingsPath, "registry.json");
-
-  static String runtimeFittingPath(String fitId) => p.join(runtimeFittingsPath, "$fitId.json");
-
-  // characters/
-  static String get runtimeCharactersPath => p.join(runtimeDataPath, "characters");
-
-  static String get charactersRegistryPath => p.join(runtimeCharactersPath, "registry.json");
-
-  static String runtimeCharacterPath(String characterId) =>
-      p.join(runtimeCharactersPath, "$characterId.json");
 }

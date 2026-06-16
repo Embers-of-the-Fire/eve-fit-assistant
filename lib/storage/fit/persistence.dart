@@ -1,6 +1,6 @@
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 
-const currentFitStorageVersion = 3;
+const currentFitStorageVersion = 2;
 const currentFitRegistryVersion = 2;
 const currentNativeFitPayloadVersion = 1;
 
@@ -59,12 +59,19 @@ DecodedFitStorage decodeFitStorage(Map<String, dynamic> json) {
         ),
         didMigrate: true,
       );
-    case currentFitStorageVersion:
+    case 2:
       return DecodedFitStorage(
         fit: FitStorage.fromJson(
           _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
         ),
         didMigrate: false,
+      );
+    case 3:
+      return DecodedFitStorage(
+        fit: FitStorage.fromJson(
+          _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
+        ),
+        didMigrate: true,
       );
   }
 
