@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
@@ -5,7 +6,6 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/migrate_characters.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/migrate_fits.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/progress.dart";
-import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:path/path.dart" as p;
 
@@ -44,7 +44,7 @@ class MigrateService {
         lastError: hadErrors ? "Fit migration had ${result.errors} error(s)" : null,
       );
       if (!hadErrors) {
-        await _copyFitsToRuntime();
+        _cleanFitRegistry();
       }
       await store.save(next);
       info(
@@ -68,7 +68,7 @@ class MigrateService {
         lastError: hadErrors ? "Character migration had ${result.errors} error(s)" : null,
       );
       if (!hadErrors) {
-        await _copyCharactersToRuntime();
+        _cleanCharacterRegistry();
       }
       await store.save(next);
       info(
@@ -97,36 +97,70 @@ class MigrateService {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  Future<void> _copyFitsToRuntime() async {
-    final src = Directory(PathProvider.fittingsPath);
-    if (!await src.exists()) return;
-    final dst = Directory(RepoPaths.runtimeFittingsPath);
-    await _copyDirectoryContents(src, dst);
-  }
-
-  Future<void> _copyCharactersToRuntime() async {
-    final src = Directory(PathProvider.charactersPath);
-    if (!await src.exists()) return;
-    final dst = Directory(RepoPaths.runtimeCharactersPath);
-    await _copyDirectoryContents(src, dst);
-  }
-
-  Future<void> _copyDirectoryContents(Directory src, Directory dst) async {
-    if (!await dst.exists()) await dst.create(recursive: true);
-    await for (final entity in src.list()) {
-      if (entity is File) {
-        final targetPath = p.join(dst.path, p.basename(entity.path));
-        final target = File(targetPath);
-        if (!await target.exists()) {
-          await entity.copy(targetPath);
+  /// Strips legacy fields (`bundleId`, `bundleSnapshot`) from fit registry
+  /// entries so the detector won't flag them as leftover V2 data.
+  void _cleanFitRegistry() {
+    final file = File(p.join(PathProvider.fittingsPath, "registry.json"));
+    if (!file.existsSync()) return;
+    try {
+      final content = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final registry = content["registry"];
+      if (registry is Map<String, dynamic>) {
+        final fits = registry["fits"];
+        if (fits is Map<String, dynamic>) {
+          for (final entry in fits.entries) {
+            if (entry.value is Map<String, dynamic>) {
+              (entry.value as Map<String, dynamic>)
+                ..remove("bundleId")
+                ..remove("bundleSnapshot");
+            }
+          }
         }
       }
+      file.writeAsStringSync(jsonEncode(content));
+      info("Migration: cleaned fit registry");
+    } on Exception catch (e) {
+      warning("Migration: failed to clean fit registry: $e");
+    }
+  }
+
+  /// Strips legacy fields from character registry entries.
+  void _cleanCharacterRegistry() {
+    final file = File(p.join(PathProvider.charactersPath, "registry.json"));
+    if (!file.existsSync()) return;
+    try {
+      final content = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final characters = content["characters"];
+      if (characters is Map<String, dynamic>) {
+        for (final entry in characters.entries) {
+          if (entry.value is Map<String, dynamic>) {
+            (entry.value as Map<String, dynamic>)
+              ..remove("bundleId")
+              ..remove("bundleSnapshot");
+          }
+        }
+      }
+      file.writeAsStringSync(jsonEncode(content));
+      info("Migration: cleaned character registry");
+    } on Exception catch (e) {
+      warning("Migration: failed to clean character registry: $e");
     }
   }
 
   void _finalize() {
-    // Write new schema_version.json with schemaVersion 1
-    // (matches the new EFA V2 unified storage schema)
     schemaVersionService.ensure();
+    _removeRuntimeDirectory();
+  }
+
+  /// Removes the stale runtime/v2/data/ directory copied by older migrations.
+  void _removeRuntimeDirectory() {
+    final dir = Directory(p.join(PathProvider.documentsPath, "runtime"));
+    if (!dir.existsSync()) return;
+    try {
+      dir.deleteSync(recursive: true);
+      info("Migration: removed stale runtime directory");
+    } on FileSystemException catch (e) {
+      warning("Migration: failed to remove runtime directory: $e");
+    }
   }
 }

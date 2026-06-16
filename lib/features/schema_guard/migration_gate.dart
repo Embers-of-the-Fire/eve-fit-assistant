@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/service.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:flutter/material.dart";
+import "package:path/path.dart" as p;
 
 class MigrationGate extends StatefulWidget {
   const MigrationGate({required this.onMigrationComplete, required this.theme, super.key});
@@ -37,6 +38,7 @@ class _MigrationGateState extends State<MigrationGate> {
       try {
         for (final entity in fittingsDir.listSync()) {
           if (entity is! File || !entity.path.endsWith(".json")) continue;
+          if (p.basename(entity.path) == "registry.json") continue;
           try {
             final content = jsonDecode(entity.readAsStringSync());
             if (content is! Map<String, dynamic>) continue;
@@ -70,6 +72,7 @@ class _MigrationGateState extends State<MigrationGate> {
       try {
         for (final entity in charactersDir.listSync()) {
           if (entity is! File || !entity.path.endsWith(".json")) continue;
+          if (p.basename(entity.path) == "registry.json") continue;
           try {
             final content = jsonDecode(entity.readAsStringSync());
             if (content is! Map<String, dynamic>) continue;
@@ -88,7 +91,7 @@ class _MigrationGateState extends State<MigrationGate> {
     }
 
     if (!hasLegacyFits && !hasLegacyCharacters) {
-      _activateRepoAndReload();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
       return;
     }
 
