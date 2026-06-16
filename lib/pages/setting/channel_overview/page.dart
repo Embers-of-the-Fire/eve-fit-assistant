@@ -188,6 +188,9 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
     if (_releasePointer == null) {
       return _placeholder("No release pointer — generation data not synced.");
     }
+    if (_releasePointer!.snapshotHash.isEmpty) {
+      return _pointerSyncedEmpty("release");
+    }
 
     return ConfigListTile.custom(
       Padding(
@@ -264,6 +267,9 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
   ConfigListTile _buildAnnouncementInfo() {
     if (_announcementPointer == null) {
       return _placeholder("No announcement pointer — generation data not synced.");
+    }
+    if (_announcementPointer!.snapshotHash.isEmpty) {
+      return _pointerSyncedEmpty("announcement");
     }
 
     return ConfigListTile.custom(
@@ -356,7 +362,7 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
   }
 
   Future<void> _loadReleaseIndex() async {
-    if (_releasePointer == null) return;
+    if (_releasePointer == null || _releasePointer!.snapshotHash.isEmpty) return;
     setState(() => _loadingRelease = true);
 
     final remoteCatalog = ref.read(remoteCatalogServiceProvider);
@@ -381,7 +387,7 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
   }
 
   Future<void> _loadAnnouncementIndex() async {
-    if (_announcementPointer == null) return;
+    if (_announcementPointer == null || _announcementPointer!.snapshotHash.isEmpty) return;
     setState(() => _loadingAnnouncement = true);
 
     final remoteCatalog = ref.read(remoteCatalogServiceProvider);
@@ -411,6 +417,16 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
     Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(text, style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13)),
+    ),
+  );
+
+  ConfigListTile _pointerSyncedEmpty(String kind) => ConfigListTile.custom(
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(
+        "Synced — no $kind data available in this generation.",
+        style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13),
+      ),
     ),
   );
 

@@ -42,6 +42,11 @@ class AnnouncementSyncService {
     }
     final pointer = GenerationPointer.fromBuffer(pointerResult.getRight().toNullable()!);
     final snapshotHash = pointer.snapshotHash;
+    if (snapshotHash.isEmpty) {
+      return const Left(
+        AnnouncementSyncNetworkError(message: "Announcement pointer has no snapshot hash"),
+      );
+    }
 
     // Step 2: Fetch AnnouncementIndex
     final indexResult = await remoteCatalogService.fetchAnnouncementIndex(snapshotHash);

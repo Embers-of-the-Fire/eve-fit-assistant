@@ -56,6 +56,9 @@ class ReleaseSyncService {
     }
     final pointer = GenerationPointer.fromBuffer(pointerResult.getRight().toNullable()!);
     final snapshotHash = pointer.snapshotHash;
+    if (snapshotHash.isEmpty) {
+      return const Left(ReleaseSyncNetworkError(message: "Release pointer has no snapshot hash"));
+    }
 
     // Step 2: Fetch ReleaseIndex
     final indexResult = await remoteCatalogService.fetchReleaseIndex(snapshotHash);

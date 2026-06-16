@@ -171,6 +171,7 @@ class RepoService {
     if (pointerBytes.isLeft()) return const None();
     final pointer = GenerationPointer.fromBuffer(pointerBytes.getRight().toNullable()!);
     final snapshotHash = pointer.snapshotHash;
+    if (snapshotHash.isEmpty) return const None();
 
     final indexBytes = await remoteCatalogService.fetchAnnouncementIndex(snapshotHash);
     if (indexBytes.isLeft()) return const None();

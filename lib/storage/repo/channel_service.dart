@@ -280,6 +280,8 @@ class ChannelService {
       final err = result.getLeft().toNullable()!;
       if (err is CatalogNotFoundError) {
         debug("Generation file not found for $channelName: $path");
+      } else if (err is CatalogNotModified) {
+        return; // data already cached locally
       } else {
         warning(
           "Failed to fetch generation file for $channelName: ${err is CatalogNetworkError ? err.message : err.toString()}",

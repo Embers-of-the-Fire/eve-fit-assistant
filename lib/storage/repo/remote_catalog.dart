@@ -31,6 +31,10 @@ class CatalogParseError extends CatalogError {
   final String message;
 }
 
+class CatalogNotModified extends CatalogError {
+  const CatalogNotModified();
+}
+
 /// Fetches remote catalog data under `efa/v2/` with ETag caching.
 ///
 /// Implements the fetch protocol from agent/schemav2/workflow.md §2.2-§2.6.
@@ -166,7 +170,7 @@ class RemoteCatalogService {
         responseType: ResponseType.bytes,
       );
       if (result.notModified) {
-        return Left(CatalogNotFoundError(message: "Not modified, no cached data: $uri"));
+        return const Left(CatalogNotModified());
       }
       final data = result.response.data;
       if (data is! Uint8List) {
