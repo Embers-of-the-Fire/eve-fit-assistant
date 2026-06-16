@@ -4,7 +4,22 @@ All notable changes to EVE Fit Assistant are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
-## [v0.1.0-beta.5] - 2026-06-13
+## [v0.1.0-beta.6] - 2026-06-16
+
+
+### Added
+
+- **site:** Add variant param redirects and URL param defaults for reports (#143) ([#143])
+- **fit-list:** Add longpress to open ship info page
+- Add damage profile localization, catalog, and UI dialog (#152) ([#152])
+### Documentation
+
+- **opencode:** Scope changelog to exclude non-EFA-app commits
+### Fixed
+
+- **ci:** Wrap setup ci dev config in nix develop shell
+- **ci,codegen:** Correct -f flag position in generate command (#148) ([#148])
+- **native:** Add new ship type validator## [v0.1.0-beta.5] - 2026-06-13
 
 
 ### Added
