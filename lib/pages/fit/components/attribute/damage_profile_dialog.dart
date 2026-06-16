@@ -4,10 +4,11 @@ import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 
-Future<FitDamageProfile?> showDamageProfileDialog(BuildContext context) => showDialog<FitDamageProfile>(
-  context: context,
-  builder: (context) => const _DamageProfileDialog(),
-);
+Future<FitDamageProfile?> showDamageProfileDialog(BuildContext context) =>
+    showDialog<FitDamageProfile>(
+      context: context,
+      builder: (context) => const _DamageProfileDialog(),
+    );
 
 class _DamageProfileDialog extends StatefulWidget {
   const _DamageProfileDialog();

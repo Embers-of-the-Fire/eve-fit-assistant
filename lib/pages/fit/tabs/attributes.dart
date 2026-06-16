@@ -41,7 +41,11 @@ class _AttributeTabState extends ConsumerState<_AttributeTab> with AutomaticKeep
             Capacitor(ship: emulated),
             Weapon(ship: emulated),
             Resource(ship: emulated),
-            Hp(ship: emulated, fitId: widget.fitContext.fitId, interactionOptions: widget.interactionOptions),
+            Hp(
+              ship: emulated,
+              fitId: widget.fitContext.fitId,
+              interactionOptions: widget.interactionOptions,
+            ),
             Miscellaneous(ship: emulated),
             Cargo(ship: emulated),
           ],

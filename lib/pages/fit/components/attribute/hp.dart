@@ -209,11 +209,11 @@ class _HpTable extends ConsumerWidget {
                   ? () async {
                       final profile = await showDamageProfileDialog(context);
                       if (profile == null) return;
-                      await ref.read(fitProvider(fitId!).notifier).update(
-                        (fit) => fit.copyWith(
-                          body: fit.body.copyWith(damageProfile: profile),
-                        ),
-                      );
+                      await ref
+                          .read(fitProvider(fitId!).notifier)
+                          .update(
+                            (fit) => fit.copyWith(body: fit.body.copyWith(damageProfile: profile)),
+                          );
                     }
                   : null,
               child: const Icon(Icons.settings),
