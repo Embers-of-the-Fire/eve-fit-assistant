@@ -49,6 +49,7 @@ class MyApp extends ConsumerWidget {
     final fontScale = ref.watch(fontScaleProvider);
 
     return SchemaGuard(
+      theme: theme,
       builder: (active) => MaterialApp.router(
         onGenerateTitle: (context) => context.l10n.appTitle,
         theme: theme,

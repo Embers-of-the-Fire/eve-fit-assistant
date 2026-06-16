@@ -10,9 +10,10 @@ import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:flutter/material.dart";
 
 class MigrationGate extends StatefulWidget {
-  const MigrationGate({required this.onMigrationComplete, super.key});
+  const MigrationGate({required this.onMigrationComplete, required this.theme, super.key});
 
   final VoidCallback onMigrationComplete;
+  final ThemeData theme;
 
   @override
   State<MigrationGate> createState() => _MigrationGateState();
@@ -136,79 +137,85 @@ class _MigrationGateState extends State<MigrationGate> {
     if (_checking) {
       return MaterialApp(
         navigatorKey: _navigatorKey,
+        theme: widget.theme,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+        home: Builder(
+          builder: (context) => const Scaffold(body: Center(child: CircularProgressIndicator())),
+        ),
       );
     }
 
     return MaterialApp(
       navigatorKey: _navigatorKey,
+      theme: widget.theme,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.sync, size: 64),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Data Migration Required",
-                    style: Theme.of(context).textTheme.headlineSmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    "This version uses a new data storage format. "
-                    "Your existing fits and characters will be migrated. "
-                    "Legacy data will be cleaned up.",
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: () {
-                      unawaited(_startMigration());
-                    },
-                    child: const Text("Start Migration"),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () {
-                      final navigator = _navigatorKey.currentState!;
-                      unawaited(
-                        showDialog<void>(
-                          context: navigator.context,
-                          builder: (dialogContext) => AlertDialog(
-                            title: const Text("Skip Migration?"),
-                            content: const Text(
-                              "Fits and characters will keep the old format and may not "
-                              "work correctly. New data will be downloaded separately.",
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.sync, size: 64),
+                    const SizedBox(height: 16),
+                    Text(
+                      "Data Migration Required",
+                      style: Theme.of(context).textTheme.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "This version uses a new data storage format. "
+                      "Your existing fits and characters will be migrated. "
+                      "Legacy data will be cleaned up.",
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    FilledButton(
+                      onPressed: () {
+                        unawaited(_startMigration());
+                      },
+                      child: const Text("Start Migration"),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () {
+                        final navigator = _navigatorKey.currentState!;
+                        unawaited(
+                          showDialog<void>(
+                            context: navigator.context,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text("Skip Migration?"),
+                              content: const Text(
+                                "Fits and characters will keep the old format and may not "
+                                "work correctly. New data will be downloaded separately.",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(dialogContext).pop(),
+                                  child: const Text("Cancel"),
+                                ),
+                                FilledButton(
+                                  onPressed: () {
+                                    Navigator.of(dialogContext).pop();
+                                    _activateRepoAndReload();
+                                  },
+                                  child: const Text("Skip"),
+                                ),
+                              ],
                             ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(dialogContext).pop(),
-                                child: const Text("Cancel"),
-                              ),
-                              FilledButton(
-                                onPressed: () {
-                                  Navigator.of(dialogContext).pop();
-                                  _activateRepoAndReload();
-                                },
-                                child: const Text("Skip"),
-                              ),
-                            ],
                           ),
-                        ),
-                      );
-                    },
-                    child: const Text("Skip Migration"),
-                  ),
-                ],
+                        );
+                      },
+                      child: const Text("Skip Migration"),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -1,8 +1,6 @@
 import "dart:async";
 
-import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/schema_guard/migration_gate.dart";
-import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
@@ -10,8 +8,9 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 class SchemaGuard extends ConsumerStatefulWidget {
-  const SchemaGuard({required this.builder, super.key});
+  const SchemaGuard({required this.theme, required this.builder, super.key});
 
+  final ThemeData theme;
   final Widget Function(CheckoutRegistryEntry? entry) builder;
 
   @override
@@ -23,7 +22,9 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
   bool _migrationComplete = false;
 
   void _onMigrationComplete() {
-    _migrationComplete = true;
+    setState(() {
+      _migrationComplete = true;
+    });
     _tryInitialize();
   }
 
@@ -41,7 +42,7 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
   Widget build(BuildContext context) {
     if (!_migrationComplete) {
       _initialized = false;
-      return MigrationGate(onMigrationComplete: _onMigrationComplete);
+      return MigrationGate(onMigrationComplete: _onMigrationComplete, theme: widget.theme);
     }
 
     final RepoState state = ref.watch(repoStateProvider);
@@ -53,7 +54,7 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
 
     return switch (state) {
       RepoStateInitializing() => _buildLoading(),
-      RepoStateActive(:final entry) => _buildActive(context, entry),
+      RepoStateActive(:final entry) => _buildActive(entry),
       RepoStateError(:final error) => _buildError(context, ref, error.message),
       _ => _buildLoading(),
     };
@@ -61,13 +62,9 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
 
   Widget _buildLoading() => const Scaffold(body: Center(child: CircularProgressIndicator()));
 
-  Widget _buildActive(BuildContext context, CheckoutRegistryEntry? entry) {
+  Widget _buildActive(CheckoutRegistryEntry? entry) {
     if (entry == null) {
-      final router = context.router;
-      if (router.current.name != FrontRoute.name) {
-        unawaited(router.replace(const FrontRoute()));
-      }
-      return _buildLoading();
+      return widget.builder(null);
     }
     return widget.builder(entry);
   }
