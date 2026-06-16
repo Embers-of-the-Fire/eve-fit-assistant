@@ -74,7 +74,7 @@ class Publisher:
     def publish_generation(self, channel: str, gen_hash: str) -> None:
         """Upload a single generation and all its referenced snapshots and blobs."""
         gen = self.gen_store.load(gen_hash)
-        prefixes = self._gen_remote_prefix(channel)
+        prefixes = self._gen_remote_prefix()
 
         self._ensure_alias()
 
@@ -88,7 +88,7 @@ class Publisher:
 
     def publish_head(self, channel: str) -> None:
         """Upload channel head metadata and reflog to remote."""
-        prefixes = self._gen_remote_prefix(channel)
+        prefixes = self._gen_remote_prefix()
         head_dir = channel_head_dir(self.local_root, channel)
         self._upload_tree(head_dir, prefixes + f"channels/heads/{channel}")
 
@@ -103,7 +103,7 @@ class Publisher:
             return
 
         gen = self.gen_store.load(head.generation_hash)
-        prefixes = self._gen_remote_prefix(channel)
+        prefixes = self._gen_remote_prefix()
 
         self._ensure_alias()
 
@@ -119,7 +119,14 @@ class Publisher:
 
     # --- Internal ------------------------------------------------------------
 
-    def _gen_remote_prefix(self, channel: str) -> str:
+    def _gen_remote_prefix(self) -> str:
+        """Remote S3 prefix for efa/v2.
+
+        Returns the base prefix (``<remote_root>/``). The channel is NOT
+        embedded here — each caller appends the appropriate path segment
+        (e.g. ``channels/heads/{channel}/``), keeping the prefix
+        channel-independent.
+        """
         return f"{self.remote_root}/"
 
     def _ensure_alias(self) -> None:
@@ -256,8 +263,8 @@ class Publisher:
             bucket_target = f"{self.alias_name}/{self.bucket}"
             s3_path = f"{bucket_target}/{remote_path}"
             _run(
-                [self.mc_bin, "cp", "--recursive", str(src_dir), s3_path],
-                [self.mc_bin, "cp", "--recursive", str(src_dir), s3_path],
+                [self.mc_bin, "cp", "--recursive", f"{src_dir}/", s3_path],
+                [self.mc_bin, "cp", "--recursive", f"{src_dir}/", s3_path],
                 f"PUBLISH DIR {remote_path}",
             )
 
