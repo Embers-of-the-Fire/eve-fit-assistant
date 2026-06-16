@@ -37,6 +37,12 @@ class SettingPage extends ConsumerWidget {
           onTap: () => unawaited(context.router.push(const StorageManagement())),
         ),
         ConfigListTile.item(
+          icon: const Icon(Icons.info_outline),
+          title: "Channel Overview",
+          subtitle: "Remote channel metadata and sync status",
+          onTap: () => unawaited(context.router.push(const ChannelOverviewRoute())),
+        ),
+        ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),
           title: context.l10n.workspaceTabReportTitle,
           onTap: () => unawaited(context.router.push(const ReportFeedbackRoute())),

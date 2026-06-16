@@ -46,6 +46,11 @@ class EtagCache {
     }
   }
 
+  static void clearAll() {
+    _entries.clear();
+    _sync();
+  }
+
   static Map<String, _EtagEntry> _readFromDisk() {
     if (!_file.existsSync()) {
       return {};

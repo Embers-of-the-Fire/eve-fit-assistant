@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:dio/dio.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -154,6 +157,10 @@ class RepoStateNotifier extends _$RepoStateNotifier {
   /// Reads checkouts.json, loads the active checkout manifest, prepares the
   /// native directory for the Rust engine. Transitions through
   /// [RepoState.initializing] -> [RepoState.active] or [RepoState.error].
+  ///
+  /// After a successful transition to [RepoState.active], a non-blocking
+  /// background startup sync is launched to discover channels and sync
+  /// generation metadata for the active channel (spec §9).
   Future<void> initialize() async {
     state = const RepoState.initializing();
     try {
@@ -197,6 +204,47 @@ class RepoStateNotifier extends _$RepoStateNotifier {
       state = RepoState.error(error: e);
     } catch (e) {
       state = RepoState.error(error: RepoError.storage(message: e.toString()));
+    }
+
+    // Launch background startup sync after successful initialization
+    if (state is RepoStateActive) {
+      unawaited(_startBackgroundSync());
+    }
+  }
+
+  /// Non-blocking background sync: discovers channels and syncs generation
+  /// metadata for the active channel (spec §9).
+  ///
+  /// Runs only when remote content is enabled. Failures are logged and never
+  /// surfaced to the UI — this is purely additive cache warming.
+  Future<void> _startBackgroundSync() async {
+    try {
+      final settings = ref.read(appSettingServiceProvider);
+      if (!settings.remoteContent.enabled) return;
+
+      final repo = ref.read(repoServiceProvider);
+
+      // Discover channels
+      final discoverResult = await repo.discoverChannels();
+      if (discoverResult.isLeft()) {
+        debug("Startup sync: channel discovery failed: ${discoverResult.getLeft().toNullable()}");
+        return;
+      }
+
+      // Sync active channel generation metadata
+      final activeEntry = repo.checkoutRegistry.activeCheckoutEntry();
+      if (activeEntry.isNone()) return;
+      final activeChannel = activeEntry.toNullable()!.channel;
+
+      final syncResult = await repo.syncChannelGeneration(activeChannel);
+      if (syncResult.isLeft()) {
+        debug(
+          "Startup sync: generation sync failed for $activeChannel: "
+          "${syncResult.getLeft().toNullable()}",
+        );
+      }
+    } catch (e, stackTrace) {
+      debug("Startup sync failed", stackTrace: stackTrace);
     }
   }
 }

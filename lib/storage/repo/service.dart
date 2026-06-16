@@ -50,6 +50,12 @@ class RepoService {
   Future<Either<String, Unit>> fetchChannelInfo(String channelName) =>
       channelService.fetchChannelInfo(channelName);
 
+  /// Fetches and persists all generation-level files for [channelName].
+  ///
+  /// Best-effort: individual file failures are logged but do not abort the sync.
+  Future<Either<String, Unit>> syncChannelGeneration(String channelName) =>
+      channelService.syncChannelGeneration(channelName);
+
   // ── Checkout lifecycle ─────────────────────────────────────────────────────
 
   /// The active checkout ID, or [None].

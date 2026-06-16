@@ -98,7 +98,7 @@ class ChannelHeadStore:
 
         ts = utc_timestamp()
         self._append_reflog(channel, current_hash, gen_hash, "push", ts)
-        self._update_head_metadata(channel, gen_hash, current.label if current else {})
+        self._update_head_metadata(channel, gen_hash, current.label if current else {}, ts)
 
     def revert(self, channel: str, target_hash: str) -> None:
         """Revert the channel head to a previous generation.
@@ -112,7 +112,7 @@ class ChannelHeadStore:
 
         ts = utc_timestamp()
         self._append_reflog(channel, current_hash, target_hash, "revert", ts)
-        self._update_head_metadata(channel, target_hash, current.label)
+        self._update_head_metadata(channel, target_hash, current.label, ts)
 
     # --- Reflog --------------------------------------------------------------
 
@@ -155,6 +155,7 @@ class ChannelHeadStore:
         channel: str,
         gen_hash: str,
         label: dict[str, str],
+        updated_at: str,
     ) -> None:
-        meta = ChannelHeadMetadata(generationHash=gen_hash, label=label)
+        meta = ChannelHeadMetadata(generationHash=gen_hash, label=label, updatedAt=updated_at)
         write_json_atomic(head_metadata_path(self.root, channel), meta)

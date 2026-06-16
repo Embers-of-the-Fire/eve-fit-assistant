@@ -3,6 +3,7 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -66,6 +67,63 @@ class ChannelService {
     return const Right(unit);
   }
 
+  /// Fetches and persists all generation-level files for [channelName].
+  ///
+  /// Best-effort: individual file fetch failures are logged but do not abort
+  /// the overall sync. The only hard failure is an inability to fetch the
+  /// channel head metadata (which provides the generation hash).
+  ///
+  /// Persisted files:
+  /// - channels/{channel}/metadata.json   — channel head metadata
+  /// - channels/{channel}/server.pb2      — ServerIndex
+  /// - channels/{channel}/resources.pb2   — GenerationResources
+  /// - channels/{channel}/releases.pb2    — GenerationPointer (releases)
+  /// - channels/{channel}/announcements.pb2 — GenerationPointer (announcements)
+  Future<Either<String, Unit>> syncChannelGeneration(String channelName) async {
+    // Fetch head metadata to get the generation hash
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    if (headResult.isLeft()) {
+      final err = headResult.getLeft().toNullable()!;
+      if (err is CatalogNotFoundError) {
+        return const Right(unit); // Channel not yet initialized on remote
+      }
+      return Left(err is CatalogNetworkError ? err.message : "Failed to fetch channel head meta");
+    }
+    final head = headResult.getRight().toNullable()!;
+    final generationHash = head.generationHash;
+
+    // Write local channel head metadata
+    _writeLocalHeadMeta(channelName, head);
+
+    // Fetch and persist all generation-level files independently.
+    // Failure of one does not abort the others.
+    await _fetchAndPersistBytes(
+      fetcher: () => remoteCatalogService.fetchServerIndex(generationHash),
+      channelName: channelName,
+      path: RepoPaths.channelServerIndexPath(channelName),
+    );
+
+    await _fetchAndPersistBytes(
+      fetcher: () => remoteCatalogService.fetchGenerationResources(generationHash),
+      channelName: channelName,
+      path: RepoPaths.channelResourcesPath(channelName),
+    );
+
+    await _fetchAndPersistBytes(
+      fetcher: () => remoteCatalogService.fetchGenerationPointer(generationHash),
+      channelName: channelName,
+      path: RepoPaths.channelReleasesPath(channelName),
+    );
+
+    await _fetchAndPersistBytes(
+      fetcher: () => remoteCatalogService.fetchAnnouncementPointer(generationHash),
+      channelName: channelName,
+      path: RepoPaths.channelAnnouncementsPath(channelName),
+    );
+
+    return const Right(unit);
+  }
+
   /// Returns the local generation hash for [channelName], or null.
   String? localGenerationHash(String channelName) {
     final path = RepoPaths.channelHeadMetaPath(channelName);
@@ -100,6 +158,62 @@ class ChannelService {
     if (!file.existsSync()) return const None();
     try {
       return Some(ServerIndex.fromBuffer(file.readAsBytesSync()));
+    } on Exception {
+      return const None();
+    }
+  }
+
+  /// Reads the channel head metadata for [channelName].
+  ///
+  /// Returns [None] if not present locally.
+  Option<ChannelHeadMeta> readHeadMeta(String channelName) {
+    final file = File(RepoPaths.channelHeadMetaPath(channelName));
+    if (!file.existsSync()) return const None();
+    try {
+      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      return Some(ChannelHeadMeta.fromJson(json));
+    } on Exception {
+      return const None();
+    }
+  }
+
+  /// Reads the GenerationResources protobuf for [channelName].
+  ///
+  /// Returns [None] if not present locally.
+  Option<GenerationResources> readGenerationResources(String channelName) {
+    final path = RepoPaths.channelResourcesPath(channelName);
+    final file = File(path);
+    if (!file.existsSync()) return const None();
+    try {
+      return Some(GenerationResources.fromBuffer(file.readAsBytesSync()));
+    } on Exception {
+      return const None();
+    }
+  }
+
+  /// Reads the release GenerationPointer protobuf for [channelName].
+  ///
+  /// Returns [None] if not present locally.
+  Option<GenerationPointer> readReleasePointer(String channelName) {
+    final path = RepoPaths.channelReleasesPath(channelName);
+    final file = File(path);
+    if (!file.existsSync()) return const None();
+    try {
+      return Some(GenerationPointer.fromBuffer(file.readAsBytesSync()));
+    } on Exception {
+      return const None();
+    }
+  }
+
+  /// Reads the announcement GenerationPointer protobuf for [channelName].
+  ///
+  /// Returns [None] if not present locally.
+  Option<GenerationPointer> readAnnouncementPointer(String channelName) {
+    final path = RepoPaths.channelAnnouncementsPath(channelName);
+    final file = File(path);
+    if (!file.existsSync()) return const None();
+    try {
+      return Some(GenerationPointer.fromBuffer(file.readAsBytesSync()));
     } on Exception {
       return const None();
     }
@@ -151,6 +265,42 @@ class ChannelService {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  /// Fetches bytes using [fetcher] and atomically writes them to [path].
+  ///
+  /// Failures are logged at warning level and do not propagate — the caller
+  /// determines whether a particular file is critical.
+  Future<void> _fetchAndPersistBytes({
+    required Future<Either<CatalogError, Uint8List>> Function() fetcher,
+    required String channelName,
+    required String path,
+  }) async {
+    final result = await fetcher();
+    if (result.isLeft()) {
+      final err = result.getLeft().toNullable()!;
+      if (err is CatalogNotFoundError) {
+        debug("Generation file not found for $channelName: $path");
+      } else {
+        warning(
+          "Failed to fetch generation file for $channelName: ${err is CatalogNetworkError ? err.message : err.toString()}",
+        );
+      }
+      return;
+    }
+    final bytes = result.getRight().toNullable()!;
+    final file = File(path);
+    if (!file.parent.existsSync()) {
+      file.parent.createSync(recursive: true);
+    }
+    final tmp = File("$path.tmp");
+    try {
+      tmp
+        ..writeAsBytesSync(bytes, flush: true)
+        ..renameSync(path);
+    } on FileSystemException catch (e, stackTrace) {
+      warning("Failed to write generation file for $channelName: $path", stackTrace: stackTrace);
+    }
+  }
 
   void _writeChannelRegistry(ChannelRegistry registry) {
     final path = RepoPaths.channelRegistryPath;

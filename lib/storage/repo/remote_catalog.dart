@@ -153,8 +153,8 @@ class RemoteCatalogService {
       );
     } on FormatException catch (e) {
       return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
-    } on Exception catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
+    } catch (e) {
+      return Left(CatalogParseError(message: "Catalog parse error: $e"));
     }
   }
 
@@ -180,7 +180,7 @@ class RemoteCatalogService {
       return Left(
         CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
       );
-    } on Exception catch (e) {
+    } catch (e) {
       return Left(CatalogNetworkError(message: e.toString()));
     }
   }

@@ -80,6 +80,18 @@ class RepoPaths {
   static String channelServerIndexPath(String channelName) =>
       p.join(channelsPath, channelName, "server.pb2");
 
+  /// channels/{channel}/resources.pb2 — GenerationResources persisted from generation.
+  static String channelResourcesPath(String channelName) =>
+      p.join(channelsPath, channelName, "resources.pb2");
+
+  /// channels/{channel}/releases.pb2 — GenerationPointer (releases) persisted from generation.
+  static String channelReleasesPath(String channelName) =>
+      p.join(channelsPath, channelName, "releases.pb2");
+
+  /// channels/{channel}/announcements.pb2 — GenerationPointer (announcements) persisted from generation.
+  static String channelAnnouncementsPath(String channelName) =>
+      p.join(channelsPath, channelName, "announcements.pb2");
+
   // ── checkouts/ (client-side) ────────────────────────────────────────────────
 
   static String get checkoutsPath => p.join(schemaResourcesPath, "checkouts");

@@ -65,6 +65,21 @@ void main() {
       final path = RepoPaths.channelServerIndexPath("testing");
       expect(path, contains("channels/testing/server.pb2"));
     });
+
+    test("resources path by channel name", () {
+      final path = RepoPaths.channelResourcesPath("testing");
+      expect(path, contains("channels/testing/resources.pb2"));
+    });
+
+    test("releases path by channel name", () {
+      final path = RepoPaths.channelReleasesPath("testing");
+      expect(path, contains("channels/testing/releases.pb2"));
+    });
+
+    test("announcements path by channel name", () {
+      final path = RepoPaths.channelAnnouncementsPath("testing");
+      expect(path, contains("channels/testing/announcements.pb2"));
+    });
   });
 
   group("checkout paths", () {

@@ -740,6 +740,11 @@
     }
   },
   "collectLogsLoadError": "加载日志文件失败",
+  "appSettingsPageClearCacheTitle": "清除远程缓存",
+  "appSettingsPageClearCacheDescription": "清除远程内容缓存数据（例如 ETag），以便下次同步时强制获取最新数据。",
+  "appSettingsPageClearCacheConfirmTitle": "清除远程缓存？",
+  "appSettingsPageClearCacheConfirmDescription": "清除所有远程内容元数据缓存后，下次同步时将重新获取全部数据。",
+  "appSettingsPageClearCacheDone": "远程缓存已清除。",
   "appSettingsPageSectionDeveloper": "开发者选项",
   "appSettingsPageDebugLogTitle": "启用调试日志",
   "appSettingsPageDebugLogDescription": "启用调试日志后，应用将会输出所有日志到日志目录中。\n建议仅当开发者要求开启此功能时才开启。",

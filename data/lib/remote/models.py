@@ -69,6 +69,7 @@ class ChannelHeadMetadata(BaseModel):
 
     schema_version: int = Field(default=1, alias="schemaVersion")
     generation_hash: str = Field(alias="generationHash")
+    updated_at: str = Field(default="", alias="updatedAt")
     label: dict[str, str] = Field(default_factory=dict)
 
 
