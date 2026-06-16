@@ -22,6 +22,9 @@ class _DamageProfileDialogState extends State<_DamageProfileDialog> {
 
   void _selectProfile(FitDamageProfile profile) => Navigator.of(context).pop(profile);
 
+  String _displayName(DamageProfileName name) =>
+      context.locale.languageCode == "zh" ? name.zh : name.en;
+
   @override
   Widget build(BuildContext context) {
     if (_groupIndex == null) {
@@ -35,7 +38,7 @@ class _DamageProfileDialogState extends State<_DamageProfileDialog> {
             itemBuilder: (context, index) {
               final group = damageProfileCatalog[index];
               return ListTile(
-                title: Text(group.name),
+                title: Text(_displayName(group.name)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => setState(() => _groupIndex = index),
               );
@@ -47,7 +50,7 @@ class _DamageProfileDialogState extends State<_DamageProfileDialog> {
 
     final group = damageProfileCatalog[_groupIndex!];
     return AppDialog(
-      title: group.name,
+      title: _displayName(group.name),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
@@ -66,7 +69,7 @@ class _DamageProfileDialogState extends State<_DamageProfileDialog> {
                 itemBuilder: (context, index) {
                   final entry = group.entries[index];
                   return ListTile(
-                    title: Text(entry.name),
+                    title: Text(_displayName(entry.name)),
                     onTap: () => _selectProfile(entry.profile),
                   );
                 },

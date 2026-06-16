@@ -1,209 +1,364 @@
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 
+enum DamageProfileName {
+  // Groups
+  general("通用", "General"),
+  frequencyCrystal("频率晶体", "Frequency Crystal"),
+  exoticPlasma("异种等离子", "Exotic Plasma Charge"),
+  condenserPack("电容包", "Condenser Pack"),
+  hybridCharge("混合弹药", "Hybrid Charge"),
+  projectileAmmo("射弹弹药", "Projectile Ammo"),
+  missile("导弹", "Missile"),
+  bomb("炸弹", "Bomb"),
+
+  // General profiles
+  uniform("均匀", "Uniform"),
+  em("电磁", "EM"),
+  thermal("热能", "Thermal"),
+  kinetic("动能", "Kinetic"),
+  explosive("爆炸", "Explosive"),
+
+  // Frequency Crystals
+  aurora("[T2] 极光", "[T2] Aurora"),
+  conflagration("[T2] 灼烧", "[T2] Conflagration"),
+  radio("射频", "Radio"),
+  microwave("微波", "Microwave"),
+  infrared("红外", "Infrared"),
+  standard("标准", "Standard"),
+  ultraviolet("紫外", "Ultraviolet"),
+  xray("X射线", "Xray"),
+  gamma("伽马", "Gamma"),
+  multifrequency("多频", "Multifrequency"),
+  gleam("[T2] 微光", "[T2] Gleam"),
+  blaze("[T2] 爆燃", "[T2] Blaze"),
+
+  // Exotic Plasma
+  mystic("[T2] 奥秘", "[T2] Mystic"),
+  meson("介子", "Meson"),
+  baryon("重子", "Baryon Exotic Plasma"),
+  tetryon("四重子", "Tetryon Exotic Plasma"),
+  occult("[T2] 神秘", "[T2] Occult"),
+
+  // Condenser Pack
+  strikeSnipe("超级狙击", "StrikeSnipe Ultra"),
+  mesmerFlux("梅斯流", "MesmerFlux Condenser Pack"),
+  slamBolt("瞬闪", "SlamBolt Condenser Pack"),
+  blastShot("爆发", "BlastShot Condenser Pack"),
+  galvaSurge("加瓦波", "GalvaSurge Condenser Pack"),
+  electroPunch("超级电击", "ElectroPunch Ultra"),
+
+  // Hybrid Charges
+  spike("[T2] 钉刺", "[T2] Spike"),
+  null_("[T2] 虚空", "[T2] Null"),
+  iron("铁质", "Iron Charge"),
+  tungsten("钨质", "Tungsten Charge"),
+  iridium("铱质", "Iridium Charge"),
+  lead("铅质", "Lead Charge"),
+  thorium("钍质", "Thorium Charge"),
+  plutonium("钼质", "Plutonium Charge"),
+  uranium("锰质", "Uranium Charge"),
+  antimatter("反物质", "Antimatter Charge"),
+  javelin("[T2] 标枪", "[T2] Javelin"),
+  void_("[T2] 涅槃", "[T2] Void"),
+
+  // Projectile Ammo
+  tremor("[T2] 战栗", "[T2] Tremor"),
+  thunderbolt("[T2] 雷暴", "[T2] Barrage"),
+  carbonizedLead("碳铅弹", "Carbonized Lead"),
+  nuclear("核芯弹", "Nuclear"),
+  proton("质子弹", "Proton"),
+  depletedUranium("硬钼弹", "Depleted Uranium"),
+  titaniumSabot("钛合金萨博弹", "Titanium Sabot"),
+  emp("电磁脉冲弹", "EMP"),
+  phasedPlasma("定相等离子弹", "Phased Plasma"),
+  fusion("聚变弹", "Fusion"),
+  quake("[T2] 地震", "[T2] Quake"),
+  hail("[T2] 冰雹", "[T2] Hail"),
+
+  // Missiles
+  mjolnir("雷神", "Mjolnir Torpedo"),
+  inferno("炼狱", "Inferno Torpedo"),
+  scourge("鞭挞", "Scourge Rocket"),
+  nova("星爆", "Nova Torpedo"),
+
+  // Bombs
+  electron("电子", "Electron Bomb"),
+  scorch("灼烧", "Scorch Bomb"),
+  concussion("震荡", "Concussion Bomb"),
+  shrapnel("榴霰", "Shrapnel Bomb");
+
+  const DamageProfileName(this.zh, this.en);
+  final String zh;
+  final String en;
+}
+
 class DamageProfileEntry {
   const DamageProfileEntry(this.name, this.profile);
-  final String name;
+  final DamageProfileName name;
   final FitDamageProfile profile;
 }
 
 class DamageProfileGroup {
   const DamageProfileGroup(this.name, this.entries);
-  final String name;
+  final DamageProfileName name;
   final List<DamageProfileEntry> entries;
 }
 
 const damageProfileCatalog = <DamageProfileGroup>[
-  DamageProfileGroup("通用", [
+  DamageProfileGroup(DamageProfileName.general, [
     DamageProfileEntry(
-      "均匀",
+      DamageProfileName.uniform,
       FitDamageProfile(em: 0.25, explosive: 0.25, kinetic: 0.25, thermal: 0.25),
     ),
-    DamageProfileEntry("电磁", FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0)),
-    DamageProfileEntry("热能", FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 1)),
-    DamageProfileEntry("动能", FitDamageProfile(em: 0, explosive: 0, kinetic: 1, thermal: 0)),
-    DamageProfileEntry("爆炸", FitDamageProfile(em: 0, explosive: 1, kinetic: 0, thermal: 0)),
-  ]),
-  DamageProfileGroup("频率晶体", [
     DamageProfileEntry(
-      "[T2] 极光",
+      DamageProfileName.em,
+      FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.thermal,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 1),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.kinetic,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 1, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.explosive,
+      FitDamageProfile(em: 0, explosive: 1, kinetic: 0, thermal: 0),
+    ),
+  ]),
+  DamageProfileGroup(DamageProfileName.frequencyCrystal, [
+    DamageProfileEntry(
+      DamageProfileName.aurora,
       FitDamageProfile(em: 0.625, explosive: 0, kinetic: 0, thermal: 0.375),
     ),
     DamageProfileEntry(
-      "[T2] 灼烧",
+      DamageProfileName.conflagration,
       FitDamageProfile(em: 0.8181, explosive: 0, kinetic: 0, thermal: 0.1818),
     ),
-    DamageProfileEntry("射频", FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0)),
     DamageProfileEntry(
-      "微波",
+      DamageProfileName.radio,
+      FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.microwave,
       FitDamageProfile(em: 0.6667, explosive: 0, kinetic: 0, thermal: 0.3333),
     ),
     DamageProfileEntry(
-      "红外",
+      DamageProfileName.infrared,
       FitDamageProfile(em: 0.7143, explosive: 0, kinetic: 0, thermal: 0.2857),
     ),
-    DamageProfileEntry("标准", FitDamageProfile(em: 0.625, explosive: 0, kinetic: 0, thermal: 0.375)),
     DamageProfileEntry(
-      "紫外",
+      DamageProfileName.standard,
+      FitDamageProfile(em: 0.625, explosive: 0, kinetic: 0, thermal: 0.375),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.ultraviolet,
       FitDamageProfile(em: 0.6667, explosive: 0, kinetic: 0, thermal: 0.3333),
     ),
-    DamageProfileEntry("X射线", FitDamageProfile(em: 0.6, explosive: 0, kinetic: 0, thermal: 0.4)),
     DamageProfileEntry(
-      "伽马",
+      DamageProfileName.xray,
+      FitDamageProfile(em: 0.6, explosive: 0, kinetic: 0, thermal: 0.4),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.gamma,
       FitDamageProfile(em: 0.6364, explosive: 0, kinetic: 0, thermal: 0.3636),
     ),
     DamageProfileEntry(
-      "多频",
+      DamageProfileName.multifrequency,
       FitDamageProfile(em: 0.5833, explosive: 0, kinetic: 0, thermal: 0.4167),
     ),
     DamageProfileEntry(
-      "[T2] 微光",
+      DamageProfileName.gleam,
       FitDamageProfile(em: 0.5, explosive: 0, kinetic: 0, thermal: 0.5),
     ),
     DamageProfileEntry(
-      "[T2] 爆燃",
+      DamageProfileName.blaze,
       FitDamageProfile(em: 0.5, explosive: 0, kinetic: 0, thermal: 0.5),
     ),
   ]),
-  DamageProfileGroup("异种等离子", [
+  DamageProfileGroup(DamageProfileName.exoticPlasma, [
     DamageProfileEntry(
-      "[T2] 奥秘",
+      DamageProfileName.mystic,
       FitDamageProfile(em: 0, explosive: 0.3333, kinetic: 0, thermal: 0.6667),
     ),
     DamageProfileEntry(
-      "介子",
+      DamageProfileName.meson,
       FitDamageProfile(em: 0, explosive: 0.3864, kinetic: 0, thermal: 0.6136),
     ),
     DamageProfileEntry(
-      "重子",
+      DamageProfileName.baryon,
       FitDamageProfile(em: 0, explosive: 0.3966, kinetic: 0, thermal: 0.6034),
     ),
     DamageProfileEntry(
-      "四重子",
+      DamageProfileName.tetryon,
       FitDamageProfile(em: 0, explosive: 0.3065, kinetic: 0, thermal: 0.6935),
     ),
     DamageProfileEntry(
-      "[T2] 神秘",
+      DamageProfileName.occult,
       FitDamageProfile(em: 0, explosive: 0.4156, kinetic: 0, thermal: 0.5844),
     ),
   ]),
-  DamageProfileGroup("电容包", [
+  DamageProfileGroup(DamageProfileName.condenserPack, [
     DamageProfileEntry(
-      "超级狙击",
+      DamageProfileName.strikeSnipe,
       FitDamageProfile(em: 0.5031, explosive: 0, kinetic: 0.4969, thermal: 0),
     ),
     DamageProfileEntry(
-      "梅斯流",
+      DamageProfileName.mesmerFlux,
       FitDamageProfile(em: 0.7267, explosive: 0, kinetic: 0.2733, thermal: 0),
     ),
     DamageProfileEntry(
-      "瞬闪",
+      DamageProfileName.slamBolt,
       FitDamageProfile(em: 0.2688, explosive: 0, kinetic: 0.7312, thermal: 0),
     ),
     DamageProfileEntry(
-      "爆发",
+      DamageProfileName.blastShot,
       FitDamageProfile(em: 0.2348, explosive: 0, kinetic: 0.7652, thermal: 0),
     ),
     DamageProfileEntry(
-      "加瓦波",
+      DamageProfileName.galvaSurge,
       FitDamageProfile(em: 0.766, explosive: 0, kinetic: 0.234, thermal: 0),
     ),
     DamageProfileEntry(
-      "超级电击",
+      DamageProfileName.electroPunch,
       FitDamageProfile(em: 0.5147, explosive: 0, kinetic: 0.4853, thermal: 0),
     ),
   ]),
-  DamageProfileGroup("混合弹药", [
+  DamageProfileGroup(DamageProfileName.hybridCharge, [
     DamageProfileEntry(
-      "[T2] 钉刺",
+      DamageProfileName.spike,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.5, thermal: 0.5),
     ),
     DamageProfileEntry(
-      "[T2] 虚空",
+      DamageProfileName.null_,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.4545, thermal: 0.5455),
     ),
-    DamageProfileEntry("铁质", FitDamageProfile(em: 0, explosive: 0, kinetic: 0.6, thermal: 0.4)),
     DamageProfileEntry(
-      "钨质",
+      DamageProfileName.iron,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 0.6, thermal: 0.4),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.tungsten,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.6667, thermal: 0.3333),
     ),
     DamageProfileEntry(
-      "铱质",
+      DamageProfileName.iridium,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.5714, thermal: 0.4286),
     ),
-    DamageProfileEntry("铅质", FitDamageProfile(em: 0, explosive: 0, kinetic: 0.625, thermal: 0.375)),
     DamageProfileEntry(
-      "钍质",
+      DamageProfileName.lead,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 0.625, thermal: 0.375),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.thorium,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.5556, thermal: 0.4444),
     ),
-    DamageProfileEntry("钼质", FitDamageProfile(em: 0, explosive: 0, kinetic: 0.6, thermal: 0.4)),
     DamageProfileEntry(
-      "锰质",
+      DamageProfileName.plutonium,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 0.6, thermal: 0.4),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.uranium,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.5455, thermal: 0.4545),
     ),
     DamageProfileEntry(
-      "反物质",
+      DamageProfileName.antimatter,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.5833, thermal: 0.4167),
     ),
     DamageProfileEntry(
-      "[T2] 标枪",
+      DamageProfileName.javelin,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.4286, thermal: 0.5714),
     ),
     DamageProfileEntry(
-      "[T2] 涅槃",
+      DamageProfileName.void_,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.5, thermal: 0.5),
     ),
   ]),
-  DamageProfileGroup("射弹弹药", [
+  DamageProfileGroup(DamageProfileName.projectileAmmo, [
     DamageProfileEntry(
-      "[T2] 战栗",
+      DamageProfileName.tremor,
       FitDamageProfile(em: 0, explosive: 0.625, kinetic: 0.375, thermal: 0),
     ),
     DamageProfileEntry(
-      "[T2] 雷暴",
+      DamageProfileName.thunderbolt,
       FitDamageProfile(em: 0, explosive: 0.5455, kinetic: 0.4545, thermal: 0),
     ),
-    DamageProfileEntry("碳铅弹", FitDamageProfile(em: 0, explosive: 0.2, kinetic: 0.8, thermal: 0)),
-    DamageProfileEntry("核芯弹", FitDamageProfile(em: 0, explosive: 0.8, kinetic: 0.2, thermal: 0)),
-    DamageProfileEntry("质子弹", FitDamageProfile(em: 0.6, explosive: 0, kinetic: 0.4, thermal: 0)),
     DamageProfileEntry(
-      "硬钼弹",
+      DamageProfileName.carbonizedLead,
+      FitDamageProfile(em: 0, explosive: 0.2, kinetic: 0.8, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.nuclear,
+      FitDamageProfile(em: 0, explosive: 0.8, kinetic: 0.2, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.proton,
+      FitDamageProfile(em: 0.6, explosive: 0, kinetic: 0.4, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.depletedUranium,
       FitDamageProfile(em: 0, explosive: 0.375, kinetic: 0.25, thermal: 0.375),
     ),
     DamageProfileEntry(
-      "钛合金萨博弹",
+      DamageProfileName.titaniumSabot,
       FitDamageProfile(em: 0, explosive: 0.25, kinetic: 0.75, thermal: 0),
     ),
     DamageProfileEntry(
-      "电磁脉冲弹",
+      DamageProfileName.emp,
       FitDamageProfile(em: 0.75, explosive: 0.1667, kinetic: 0.0833, thermal: 0),
     ),
     DamageProfileEntry(
-      "定相等离子弹",
+      DamageProfileName.phasedPlasma,
       FitDamageProfile(em: 0, explosive: 0, kinetic: 0.1667, thermal: 0.8333),
     ),
     DamageProfileEntry(
-      "聚变弹",
+      DamageProfileName.fusion,
       FitDamageProfile(em: 0, explosive: 0.8333, kinetic: 0.1667, thermal: 0),
     ),
     DamageProfileEntry(
-      "[T2] 地震",
+      DamageProfileName.quake,
       FitDamageProfile(em: 0, explosive: 0.6429, kinetic: 0.3571, thermal: 0),
     ),
     DamageProfileEntry(
-      "[T2] 冰雹",
+      DamageProfileName.hail,
       FitDamageProfile(em: 0, explosive: 0.785, kinetic: 0.215, thermal: 0),
     ),
   ]),
-  DamageProfileGroup("导弹", [
-    DamageProfileEntry("雷神", FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0)),
-    DamageProfileEntry("炼狱", FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 1)),
-    DamageProfileEntry("鞭挞", FitDamageProfile(em: 0, explosive: 0, kinetic: 1, thermal: 0)),
-    DamageProfileEntry("星爆", FitDamageProfile(em: 0, explosive: 1, kinetic: 0, thermal: 0)),
+  DamageProfileGroup(DamageProfileName.missile, [
+    DamageProfileEntry(
+      DamageProfileName.mjolnir,
+      FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.inferno,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 1),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.scourge,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 1, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.nova,
+      FitDamageProfile(em: 0, explosive: 1, kinetic: 0, thermal: 0),
+    ),
   ]),
-  DamageProfileGroup("炸弹", [
-    DamageProfileEntry("电子", FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0)),
-    DamageProfileEntry("灼烧", FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 1)),
-    DamageProfileEntry("震荡", FitDamageProfile(em: 0, explosive: 0, kinetic: 1, thermal: 0)),
-    DamageProfileEntry("榴霰", FitDamageProfile(em: 0, explosive: 1, kinetic: 0, thermal: 0)),
+  DamageProfileGroup(DamageProfileName.bomb, [
+    DamageProfileEntry(
+      DamageProfileName.electron,
+      FitDamageProfile(em: 1, explosive: 0, kinetic: 0, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.scorch,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 0, thermal: 1),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.concussion,
+      FitDamageProfile(em: 0, explosive: 0, kinetic: 1, thermal: 0),
+    ),
+    DamageProfileEntry(
+      DamageProfileName.shrapnel,
+      FitDamageProfile(em: 0, explosive: 1, kinetic: 0, thermal: 0),
+    ),
   ]),
 ];
