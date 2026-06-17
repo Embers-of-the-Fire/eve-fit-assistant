@@ -1355,6 +1355,40 @@ def _check_snapshot_metadata(
     )
 
 
+def _resolve_snapshot_hash_from_prefix(
+    root: Path,
+    snap_type: str,
+    prefix: str,
+) -> str:
+    """Resolve a hash prefix to a full snapshot hash.
+
+    Lists all snapshots of the given type and matches against the prefix.
+    Raises ClickException if no match or multiple matches are found.
+    """
+    from data.lib.remote.snapshot import SnapshotStore
+
+    if not prefix:
+        raise click.ClickException("Snapshot hash prefix must not be empty")
+
+    snap_store = SnapshotStore(root)
+    list_for_type: dict[str, object] = {
+        "resource": snap_store.list_resource_snapshots,
+        "release": snap_store.list_release_snapshots,
+        "announcement": snap_store.list_announcement_snapshots,
+    }
+    candidates = [h for h in list_for_type[snap_type]() if h.startswith(prefix)]
+
+    if len(candidates) == 0:
+        raise click.ClickException(f"No {snap_type} snapshot found with prefix '{prefix}'")
+    if len(candidates) == 1:
+        return candidates[0]
+
+    raise click.ClickException(
+        f"Multiple {snap_type} snapshots found with prefix '{prefix}':\n"
+        + "\n".join(f"  {c}" for c in candidates)
+    )
+
+
 def _add_snapshot_by_hash(
     store: SessionStore,
     root: Path,
@@ -1559,10 +1593,11 @@ def remote_session_add(
         store.ensure_editable()
 
     if source_hash is not None:
-        _add_snapshot_by_hash(store, root, snap_type, source_hash)
+        full_hash = _resolve_snapshot_hash_from_prefix(root, snap_type, source_hash)
+        _add_snapshot_by_hash(store, root, snap_type, full_hash)
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], f"Staged {snap_type} snapshot ")
-            + f"{source_hash[:16]}..."
+            + f"{full_hash[:16]}..."
         )
     elif source_file is not None:
         _add_snapshot_by_file(store, root, snap_type, source_file)
