@@ -64,6 +64,18 @@ class CheckoutRegistryService {
     _changeController.add(registry);
   });
 
+  /// Seeds the [watch] stream with the current registry state from disk (if any).
+  ///
+  /// Unlike [writeRegistry], this does not write to disk. Call this during
+  /// initialization so that reactive UI providers that watch [watch] receive
+  /// the current state without requiring a [writeRegistry] call.
+  void seedStream() {
+    final registry = readRegistry();
+    if (registry.isSome()) {
+      _changeController.add(registry.toNullable()!);
+    }
+  }
+
   /// Creates an empty registry if none exists, writes it, and emits it.
   Future<CheckoutRegistry> ensureRegistry() async {
     final existing = readRegistry();

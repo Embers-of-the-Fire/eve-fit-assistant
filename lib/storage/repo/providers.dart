@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -169,6 +170,8 @@ class RepoStateNotifier extends _$RepoStateNotifier {
       final registryOpt = repo.checkoutRegistry.readRegistry();
       if (registryOpt.isSome()) {
         final registry = registryOpt.toNullable()!;
+        repo.checkoutRegistry.seedStream();
+
         final activeId = registry.activeCheckoutId;
 
         if (activeId != null) {
@@ -196,9 +199,22 @@ class RepoStateNotifier extends _$RepoStateNotifier {
           state = const RepoState.active();
         }
       } else {
-        // No registry — first launch
-        await repo.checkoutRegistry.ensureRegistry();
-        state = const RepoState.active();
+        // Check whether the file exists but couldn't be parsed (corruption),
+        // vs truly missing (first launch).  This prevents inadvertently
+        // overwriting a corrupted-but-present file with an empty registry.
+        final registryFile = File(RepoPaths.checkoutRegistryPath);
+        if (registryFile.existsSync()) {
+          state = RepoState.error(
+            error: RepoError.corrupt(
+              message: "Checkout registry exists but could not be read",
+              filePath: RepoPaths.checkoutRegistryPath,
+            ),
+          );
+        } else {
+          // No registry — first launch
+          await repo.checkoutRegistry.ensureRegistry();
+          state = const RepoState.active();
+        }
       }
     } on RepoError catch (e) {
       state = RepoState.error(error: e);

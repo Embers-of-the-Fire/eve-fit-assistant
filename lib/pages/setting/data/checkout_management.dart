@@ -18,6 +18,7 @@ import "package:eve_fit_assistant/utils/context.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fpdart/fpdart.dart";
 
 @RoutePage(name: "CheckoutManagementRoute")
 class CheckoutManagementPage extends ConsumerStatefulWidget {
@@ -30,20 +31,16 @@ class CheckoutManagementPage extends ConsumerStatefulWidget {
 class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage> {
   String get _activeChannel => ref.read(appSettingServiceProvider).remoteContent.channel;
 
-  IMap<String, CheckoutRegistryEntry> _resolveCheckouts(CheckoutRegistry? registry) {
-    if (registry == null) return const IMap.empty();
-    return registry.checkouts;
-  }
-
-  String? _resolveActiveId(CheckoutRegistry? registry) => registry?.activeCheckoutId;
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final registrySnapshot = ref.watch(activeCheckoutWatchProvider);
-    final registry = registrySnapshot.value;
-    final checkouts = _resolveCheckouts(registry);
-    final activeId = _resolveActiveId(registry);
+    ref.watch(activeCheckoutWatchProvider);
+    final registry = ref.read(checkoutRegistryServiceProvider).readRegistry();
+    final checkouts = registry.match(
+      () => const IMap<String, CheckoutRegistryEntry>.empty(),
+      (r) => r.checkouts,
+    );
+    final activeId = registry.flatMap((r) => Option.fromNullable(r.activeCheckoutId)).toNullable();
 
     return Layout(
       title: l10n.checkoutManagementPageTitle,
@@ -194,8 +191,11 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
   // ── Operations ───────────────────────────────────────────────────────────────
 
   IMap<String, CheckoutRegistryEntry> get checkouts {
-    final registry = ref.read(activeCheckoutWatchProvider).value;
-    return _resolveCheckouts(registry);
+    final registry = ref.read(checkoutRegistryServiceProvider).readRegistry();
+    return registry.match(
+      () => const IMap<String, CheckoutRegistryEntry>.empty(),
+      (r) => r.checkouts,
+    );
   }
 
   Future<void> _activateCheckout(String checkoutId, String displayName) async {
