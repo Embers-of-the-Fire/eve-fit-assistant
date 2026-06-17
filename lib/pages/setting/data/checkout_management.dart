@@ -739,7 +739,7 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
   @override
   void initState() {
     super.initState();
-    unawaited(_runDownload());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runDownload());
   }
 
   Future<void> _runDownload() async {
