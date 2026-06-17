@@ -2,25 +2,24 @@
 
 ## Overview
 
-> This branch, branch `dev`, is under rapid development.
-> If you want to build a stable version of EFA,
-> please go to the `main` branch.
+> This branch (`dev`) is under active development.
+> The `main` branch is deprecated; all releases ship from `dev`.
 
-EFA is designed to be a cross-platform EVE fitting tool
-for mobile devices. The current alpha focuses on local fit editing,
-bundle-backed static data, item detail inspection, and character skill profiles.
+EFA is a cross-platform EVE fitting tool for mobile devices (Android).
+The current beta focuses on local fit editing with validation,
+bundle-backed static data, item and ship hull inspection,
+character skill profiles, damage profile switching, and a remote
+content system for bundles, announcements, and version notes.
+
 Market statistics and broader EVE reference tools remain planned scope.
 
-> Currently the target GUI does not
-> including tablets but might have a better support
-> on extra large screens.
+> The target form factor is phones. Tablets are not officially
+> targeted but may work on larger screens.
 
-The app is source-insensitive, which means that the
-app itself does not care about where the data come
-from. However, unlike the sibling project
+The app is datasource-insensitive: it does not bake in server-specific
+logic. Unlike the sibling project
 [EVE Multitools](https://github.com/Embers-of-the-Fire/EVE-Multitools),
-EFA wont support integrated multi-datasource as
-backend data.
+EFA uses a single datasource per installed bundle.
 
 ### Platform Support
 
@@ -35,20 +34,16 @@ the app yourself following [this guide](#build).
 
 ## Architecture
 
-EFA is a multi language project containing
-the following techs:
+EFA is a multi-language project:
 
-- Flutter(and dart): The infrastructure to build the frontend.
-- Rust(via [`flutter_rust_bridge`](https://github.com/fzyzcjy/flutter_rust_bridge)):
-  The fitting backend is implemented in Rust.
-  See [`eve-fit-os`](https://github.com/Embers-of-the-Fire/eve-fit-os) for more information.
-- Python: Python is not used inside the app, but is used to process the data.
+- **Flutter/Dart**: Cross-platform UI frontend.
+- **Rust** (via [`flutter_rust_bridge`](https://github.com/fzyzcjy/flutter_rust_bridge)):
+  Fitting backend. Core logic lives in the [`eve-fit-os`](https://github.com/Embers-of-the-Fire/eve-fit-os) engine.
+- **Python**: Offline data processing (build, bundle generation, CLI tooling).
+- **TypeScript/SvelteKit**: Landing page and supporting web services (`site/`).
 
-The app is built with two layer, the frontend (flutter) and the backend (rust).
-The backend is used to calculate statistics of a fit and won't interfere
-with frontend render and display.
-The frontend is used to display everything,
-including interactions with the backend.
+The app has two layers: the Flutter frontend handles all rendering and interaction,
+while the Rust backend computes fit statistics without blocking the UI.
 
 ## Development
 
@@ -75,10 +70,8 @@ flutter pub get  # init flutter
 uv sync          # init python
 ```
 
-> Note: This project is mainly targeting Chinese users, so
-> all of the registries are configured to use a mirror.
-> You may want to ignore the lock files
-> (`pubspec.lock`, `uv.lock`, `Cargo.lock`, etc.).
+> Note: Lock files (`pubspec.lock`, `uv.lock`, `Cargo.lock`) are checked in.
+> If you use a mirror for package registries, you may need to regenerate them.
 
 ### Configure
 
