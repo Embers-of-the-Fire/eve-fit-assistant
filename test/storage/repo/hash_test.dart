@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:eve_fit_assistant/storage/repo/hash.dart";
+import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
@@ -37,104 +38,82 @@ void main() {
     });
   });
 
-  group("hashResourceSnapshot", () {
+  group("hashResourceSnapshot (v3)", () {
     test("produces deterministic hash", () {
       final metaHash = "a" * 64;
-      final pbHash = "b" * 64;
-      final a = RepoHash.hashResourceSnapshot(metaHash, pbHash);
-      final b = RepoHash.hashResourceSnapshot(metaHash, pbHash);
+      final a = RepoHash.hashResourceSnapshot(metaHash);
+      final b = RepoHash.hashResourceSnapshot(metaHash);
       expect(a, b);
       expect(a.length, 64);
     });
 
-    test("different file hashes produce different snapshot hashes", () {
-      final h1 = RepoHash.hashResourceSnapshot("a" * 64, "b" * 64);
-      final h2 = RepoHash.hashResourceSnapshot("a" * 64, "c" * 64);
+    test("different metadata hashes produce different snapshot hashes", () {
+      final h1 = RepoHash.hashResourceSnapshot("a" * 64);
+      final h2 = RepoHash.hashResourceSnapshot("b" * 64);
       expect(h1, isNot(h2));
     });
 
-    test("hash is affected by metadata.json hash", () {
-      final h1 = RepoHash.hashResourceSnapshot("a" * 64, "b" * 64);
-      final h2 = RepoHash.hashResourceSnapshot("z" * 64, "b" * 64);
-      expect(h1, isNot(h2));
+    test("produces expected hash for known input", () {
+      // Cross-platform: must match Python canonicaljson output for {"schemaVersion":1}
+      final metaBytes = canonicalJsonEncode({"schemaVersion": 1});
+      final metaHash = RepoHash.hashContent(metaBytes);
+      final snapshotHash = RepoHash.hashResourceSnapshot(metaHash);
+      expect(snapshotHash, "6eb189b14800ba95c7b26afad39c81d9efc639257a39c1afb9bf5fc62ee06a4c");
     });
   });
 
-  group("hashReleaseSnapshot", () {
+  group("hashReleaseSnapshot (v3)", () {
     test("produces deterministic hash", () {
-      final h1 = RepoHash.hashReleaseSnapshot("a" * 64, "b" * 64);
-      final h2 = RepoHash.hashReleaseSnapshot("a" * 64, "b" * 64);
+      final h1 = RepoHash.hashReleaseSnapshot("a" * 64);
+      final h2 = RepoHash.hashReleaseSnapshot("a" * 64);
       expect(h1, h2);
     });
 
     test("domain separation from resource snapshot", () {
-      final hResource = RepoHash.hashResourceSnapshot("a" * 64, "b" * 64);
-      final hRelease = RepoHash.hashReleaseSnapshot("a" * 64, "b" * 64);
+      final hResource = RepoHash.hashResourceSnapshot("a" * 64);
+      final hRelease = RepoHash.hashReleaseSnapshot("a" * 64);
       expect(hResource, isNot(hRelease));
     });
   });
 
-  group("hashAnnouncementSnapshot", () {
+  group("hashAnnouncementSnapshot (v3)", () {
     test("produces deterministic hash", () {
-      final h1 = RepoHash.hashAnnouncementSnapshot("a" * 64, "b" * 64);
-      final h2 = RepoHash.hashAnnouncementSnapshot("a" * 64, "b" * 64);
+      final h1 = RepoHash.hashAnnouncementSnapshot("a" * 64);
+      final h2 = RepoHash.hashAnnouncementSnapshot("a" * 64);
       expect(h1, h2);
     });
 
     test("domain separation from other snapshots", () {
-      final hResource = RepoHash.hashResourceSnapshot("a" * 64, "b" * 64);
-      final hAnnounce = RepoHash.hashAnnouncementSnapshot("a" * 64, "b" * 64);
+      final hResource = RepoHash.hashResourceSnapshot("a" * 64);
+      final hAnnounce = RepoHash.hashAnnouncementSnapshot("a" * 64);
       expect(hResource, isNot(hAnnounce));
     });
   });
 
-  group("hashGeneration", () {
+  group("hashGeneration (v3)", () {
     test("produces deterministic hash", () {
-      final h1 = RepoHash.hashGeneration(
-        metadataJsonHash: "a" * 64,
-        serverPb2Hash: "b" * 64,
-        resourcesPb2Hash: "c" * 64,
-        releasesPb2Hash: "d" * 64,
-        announcementsPb2Hash: "e" * 64,
-      );
-      final h2 = RepoHash.hashGeneration(
-        metadataJsonHash: "a" * 64,
-        serverPb2Hash: "b" * 64,
-        resourcesPb2Hash: "c" * 64,
-        releasesPb2Hash: "d" * 64,
-        announcementsPb2Hash: "e" * 64,
-      );
+      final h1 = RepoHash.hashGeneration(metadataJsonHash: "a" * 64);
+      final h2 = RepoHash.hashGeneration(metadataJsonHash: "a" * 64);
       expect(h1, h2);
     });
 
-    test("any file change produces different hash", () {
-      final base = RepoHash.hashGeneration(
-        metadataJsonHash: "a" * 64,
-        serverPb2Hash: "b" * 64,
-        resourcesPb2Hash: "c" * 64,
-        releasesPb2Hash: "d" * 64,
-        announcementsPb2Hash: "e" * 64,
-      );
-      final changed = RepoHash.hashGeneration(
-        metadataJsonHash: "z" * 64,
-        serverPb2Hash: "b" * 64,
-        resourcesPb2Hash: "c" * 64,
-        releasesPb2Hash: "d" * 64,
-        announcementsPb2Hash: "e" * 64,
-      );
+    test("metadata change produces different hash", () {
+      final base = RepoHash.hashGeneration(metadataJsonHash: "a" * 64);
+      final changed = RepoHash.hashGeneration(metadataJsonHash: "z" * 64);
       expect(base, isNot(changed));
     });
 
     test("domain separation from snapshots", () {
-      final hGen = RepoHash.hashGeneration(
-        metadataJsonHash: "a" * 64,
-        serverPb2Hash: "b" * 64,
-        resourcesPb2Hash: "c" * 64,
-        releasesPb2Hash: "d" * 64,
-        announcementsPb2Hash: "e" * 64,
-      );
-      final hResource = RepoHash.hashResourceSnapshot("a" * 64, "b" * 64);
+      final hGen = RepoHash.hashGeneration(metadataJsonHash: "a" * 64);
+      final hResource = RepoHash.hashResourceSnapshot("a" * 64);
       expect(hGen, isNot(hResource));
+    });
+
+    test("produces expected hash for known input", () {
+      final metaBytes = canonicalJsonEncode({"schemaVersion": 1});
+      final metaHash = RepoHash.hashContent(metaBytes);
+      final genHash = RepoHash.hashGeneration(metadataJsonHash: metaHash);
+      expect(genHash, "ef7c9ac6cc8c3c2ab2583af5027a4b1fd11c4aaca4e029a5293710b07e0e78dd");
     });
   });
 }

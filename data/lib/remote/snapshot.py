@@ -165,9 +165,8 @@ class SnapshotStore:
         write_pb2(temp_dir / proto_name, index_msg)
 
         metadata_bytes = (temp_dir / "metadata.json").read_bytes()
-        index_bytes = (temp_dir / proto_name).read_bytes()
 
-        files = {"metadata.json": metadata_bytes, proto_name: index_bytes}
+        files = {"metadata.json": metadata_bytes}
         snap_hash = _compute_snapshot_hash(snap_type, files)
 
         target_dir = dir_map[snap_type](self.root, snap_hash)

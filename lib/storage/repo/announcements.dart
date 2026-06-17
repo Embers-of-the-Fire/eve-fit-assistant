@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
+import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fpdart/fpdart.dart";
 
 /// Manages announcement index, content, and read state.
@@ -35,7 +36,7 @@ class AnnouncementService {
     final indexPath = "${tempDir.path}/announcements.pb2";
     writeProtobufSync(indexPath, index);
 
-    // Write metadata.json
+    // Write metadata.json as canonical JSON
     final metaPath = "${tempDir.path}/metadata.json";
     final meta = {
       "schemaVersion": 1,
@@ -44,7 +45,7 @@ class AnnouncementService {
       "announcementCount": index.entries.length,
       "createdAt": DateTime.now().toUtc().toIso8601String(),
     };
-    File(metaPath).writeAsStringSync(jsonEncode(meta), flush: true);
+    File(metaPath).writeAsBytesSync(canonicalJsonEncode(meta), flush: true);
 
     targetDir.parent.createSync(recursive: true);
     tempDir.renameSync(targetDir.path);

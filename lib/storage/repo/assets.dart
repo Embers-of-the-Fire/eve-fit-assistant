@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
@@ -9,6 +8,7 @@ import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
+import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
 
@@ -73,7 +73,7 @@ class AssetStore {
   ///
   /// Steps:
   /// 1. Write metadata.json and resources.pb2 to a temp directory
-  /// 2. Compute snapshot_hash from the two file hashes
+  /// 2. Compute snapshot_hash from the metadata.json file hash only
   /// 3. Rename temp → assets/resources/{snapshot_hash}/
   ///
   /// Returns the computed snapshot_hash. Idempotent: skips if the snapshot
@@ -94,15 +94,13 @@ class AssetStore {
     final indexFile = File("${tempDir.path}/$indexPath");
     writeProtobufSync(indexFile.path, resourceIndex);
 
-    // Serialize metadata.json
+    // Serialize metadata.json as canonical JSON
     _writeMetadataJson("${tempDir.path}/$metaPath", meta);
 
-    // Compute hashes
+    // Compute snapshot hash from metadata.json only
     final metaBytes = File("${tempDir.path}/$metaPath").readAsBytesSync();
-    final indexBytes = File("${tempDir.path}/$indexPath").readAsBytesSync();
     final metaHash = RepoHash.hashContent(metaBytes);
-    final indexHash = RepoHash.hashContent(indexBytes);
-    final snapshotHash = RepoHash.hashResourceSnapshot(metaHash, indexHash);
+    final snapshotHash = RepoHash.hashResourceSnapshot(metaHash);
 
     final targetDir = Directory(RepoPaths.resourceSnapshotPath(snapshotHash));
     if (targetDir.existsSync()) {
@@ -299,8 +297,7 @@ class AssetStore {
 
   void _writeMetadataJson(String path, ResourceSnapshotMeta meta) {
     final file = File(path);
-    final json = meta.toJson();
-    file.writeAsStringSync(jsonEncode(json), flush: true);
+    file.writeAsBytesSync(canonicalJsonEncode(meta.toJson()), flush: true);
   }
 
   String _resourceTempPath() => "${RepoPaths.assetsPath}/tmp_resource_snapshot";

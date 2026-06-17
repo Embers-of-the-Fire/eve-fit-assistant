@@ -156,18 +156,10 @@ class Verifier:
 
             expected = entry.name
             try:
-                files = {}
-                for fname in [
-                    "metadata.json",
-                    "server.pb2",
-                    "resources.pb2",
-                    "releases.pb2",
-                    "announcements.pb2",
-                ]:
-                    fp = entry / fname
-                    if not fp.is_file():
-                        raise FileNotFoundError(f"Missing file: {fp}")
-                    files[fname] = fp.read_bytes()
+                meta_path = entry / "metadata.json"
+                if not meta_path.is_file():
+                    raise FileNotFoundError(f"Missing file: {meta_path}")
+                files = {"metadata.json": meta_path.read_bytes()}
 
                 computed = _generation_hash(files)
                 if computed != expected:
@@ -212,13 +204,6 @@ class Verifier:
         if not base_dir.is_dir():
             return issues
 
-        proto_names = {
-            "resource": "resources.pb2",
-            "release": "releases.pb2",
-            "announcement": "announcements.pb2",
-        }
-        proto_name = proto_names[snap_type]
-
         for snap_dir in sorted(base_dir.iterdir()):
             if not snap_dir.is_dir():
                 continue
@@ -230,14 +215,10 @@ class Verifier:
             expected = snap_dir.name
             try:
                 meta_path = snap_dir / "metadata.json"
-                proto_path = snap_dir / proto_name
-                if not proto_path.is_file():
-                    raise FileNotFoundError(f"Missing file: {proto_path}")
+                if not meta_path.is_file():
+                    raise FileNotFoundError(f"Missing file: {meta_path}")
 
-                files = {
-                    "metadata.json": meta_path.read_bytes(),
-                    proto_name: proto_path.read_bytes(),
-                }
+                files = {"metadata.json": meta_path.read_bytes()}
                 computed = _snapshot_hash(snap_type, files)  # type: ignore[arg-type]
                 if computed != expected:
                     issues.append(

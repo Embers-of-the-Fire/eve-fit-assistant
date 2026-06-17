@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import importlib
-import json
 
 from dataclasses import dataclass
 from dataclasses import field
@@ -13,6 +12,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 from pydantic import Field
+
+from data.lib.remote.canonical_json import encode_canonical_json
 
 
 if TYPE_CHECKING:
@@ -133,16 +134,14 @@ class CheckoutMetadata(BaseModel):
 
 def read_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
+        import json
+
         return json.load(f)
 
 
 def write_json(path: Path, data: dict | BaseModel) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    if isinstance(data, BaseModel):
-        text = data.model_dump_json(indent=2, by_alias=True) + "\n"
-    else:
-        text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
-    path.write_text(text, encoding="utf-8")
+    path.write_bytes(encode_canonical_json(data))
 
 
 def write_json_atomic(path: Path, data: dict | BaseModel) -> None:

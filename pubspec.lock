@@ -161,6 +161,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "8.12.6"
+  canonical_json:
+    dependency: "direct main"
+    description:
+      name: canonical_json
+      sha256: "618db0b1ea4238a3ef2f325908beee6269550d73b69dc5220456b75ce3cec072"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.3"
   characters:
     dependency: transitive
     description:
@@ -1401,6 +1409,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.1"
+  unorm_dart:
+    dependency: transitive
+    description:
+      name: unorm_dart
+      sha256: "0c69186b03ca6addab0774bcc0f4f17b88d4ce78d9d4d8f0619e30a99ead58e7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.2"
   url_launcher:
     dependency: "direct main"
     description:

@@ -827,21 +827,23 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
       // Write snapshot metadata locally
       setState(() => _status = l10n.checkoutCreateProgressFinalizing);
       final metaResult = await remoteCatalog.fetchResourceSnapshotMeta(widget.snapshotHash);
-      if (metaResult.isRight()) {
-        final meta = metaResult.getRight().toNullable()!;
-        assetStore.writeResourceSnapshotSync(meta: meta, resourceIndex: resourceIndex);
-      } else {
-        // Write basic metadata anyway
-        final basicMeta = ResourceSnapshotMeta(
-          schemaVersion: 1,
-          serverId: widget.serverId,
-          gameBuild: "",
-          gameVersion: "",
-          resourceCount: totalEntries,
-          createdAt: DateTime.now().toUtc().toIso8601String(),
-        );
-        assetStore.writeResourceSnapshotSync(meta: basicMeta, resourceIndex: resourceIndex);
-      }
+      final localSnapshotHash = metaResult.isRight()
+          ? assetStore.writeResourceSnapshotSync(
+              meta: metaResult.getRight().toNullable()!,
+              resourceIndex: resourceIndex,
+            )
+          : assetStore.writeResourceSnapshotSync(
+              // Write basic metadata anyway
+              meta: ResourceSnapshotMeta(
+                schemaVersion: 1,
+                serverId: widget.serverId,
+                gameBuild: "",
+                gameVersion: "",
+                resourceCount: totalEntries,
+                createdAt: DateTime.now().toUtc().toIso8601String(),
+              ),
+              resourceIndex: resourceIndex,
+            );
 
       // Create checkout entry
       setState(() => _status = l10n.checkoutCreateProgressCreatingCheckout);
@@ -853,7 +855,7 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
         serverId: widget.serverId,
         name: nameMap,
         generationHash: widget.generationHash,
-        resourceSnapshotHash: widget.snapshotHash,
+        resourceSnapshotHash: localSnapshotHash,
       );
 
       if (result.isNone()) {

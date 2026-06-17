@@ -95,87 +95,71 @@ class TestHashEngine:
 
     def test_snapshot_hash_resource(self) -> None:
         files = {
-            "metadata.json": b'{"schemaVersion": 1}',
-            "resources.pb2": b"\x00\x01\x02",
+            "metadata.json": b'{"schemaVersion":1}',
         }
         h = snapshot_hash("resource", files)
         assert len(h) == 64
 
     def test_snapshot_hash_release(self) -> None:
         files = {
-            "metadata.json": b'{"schemaVersion": 1}',
-            "releases.pb2": b"\x00\x01\x02",
+            "metadata.json": b'{"schemaVersion":1}',
         }
         h = snapshot_hash("release", files)
         assert len(h) == 64
 
     def test_snapshot_hash_announcement(self) -> None:
         files = {
-            "metadata.json": b'{"schemaVersion": 1}',
-            "announcements.pb2": b"\x00\x01\x02",
+            "metadata.json": b'{"schemaVersion":1}',
         }
         h = snapshot_hash("announcement", files)
         assert len(h) == 64
 
     def test_snapshot_hash_deterministic(self) -> None:
         files = {
-            "metadata.json": b'{"schemaVersion": 1}',
-            "resources.pb2": b"\x00\x01\x02",
+            "metadata.json": b'{"schemaVersion":1}',
         }
         assert snapshot_hash("resource", files) == snapshot_hash("resource", files)
 
-    def test_snapshot_hash_order_independent(self) -> None:
-        files1 = {
-            "metadata.json": b"md",
-            "resources.pb2": b"pb",
-        }
-        files2 = {
-            "resources.pb2": b"pb",
-            "metadata.json": b"md",
-        }
-        assert snapshot_hash("resource", files1) == snapshot_hash("resource", files2)
+    def test_snapshot_hash_domain_separation(self) -> None:
+        """Different snapshot types with same metadata produce different hashes."""
+        files = {"metadata.json": b'{"schemaVersion":1}'}
+        h_res = snapshot_hash("resource", files)
+        h_rel = snapshot_hash("release", files)
+        h_ann = snapshot_hash("announcement", files)
+        assert h_res != h_rel != h_ann
+
+    def test_snapshot_hash_missing_metadata_raises(self) -> None:
+        with pytest.raises(ValueError, match="Missing required file"):
+            snapshot_hash("resource", {})
+
+    def test_snapshot_hash_known_value(self) -> None:
+        """Cross-platform: must match Dart canonical_json output."""
+        files = {"metadata.json": b'{"schemaVersion":1}'}
+        h = snapshot_hash("resource", files)
+        assert h == "6eb189b14800ba95c7b26afad39c81d9efc639257a39c1afb9bf5fc62ee06a4c"
 
     def test_generation_hash(self) -> None:
         files = {
-            "metadata.json": b'{"schemaVersion": 1}',
-            "server.pb2": b"\x00",
-            "resources.pb2": b"\x01",
-            "releases.pb2": b"\x02",
-            "announcements.pb2": b"\x03",
+            "metadata.json": b'{"schemaVersion":1}',
         }
         h = generation_hash(files)
         assert len(h) == 64
 
     def test_generation_hash_missing_file_raises(self) -> None:
-        files = {
-            "metadata.json": b"{}",
-            "server.pb2": b"",
-        }
-        with pytest.raises(ValueError, match="Missing"):
-            generation_hash(files)
+        with pytest.raises(ValueError, match="Missing required file"):
+            generation_hash({})
 
     def test_generation_hash_deterministic(self) -> None:
         files = {
             "metadata.json": b"m",
-            "server.pb2": b"s",
-            "resources.pb2": b"r",
-            "releases.pb2": b"rl",
-            "announcements.pb2": b"a",
         }
         assert generation_hash(files) == generation_hash(files)
 
-    def test_generation_hash_order_independent(self) -> None:
-        files1 = {
-            "metadata.json": b"m",
-            "server.pb2": b"s",
-            "resources.pb2": b"r",
-            "releases.pb2": b"rl",
-            "announcements.pb2": b"a",
-        }
-        # dict order reversed
-        keys = list(files1.keys())
-        files2 = {k: files1[k] for k in reversed(keys)}
-        assert generation_hash(files1) == generation_hash(files2)
+    def test_generation_hash_known_value(self) -> None:
+        """Cross-platform: must match Dart canonical_json output."""
+        files = {"metadata.json": b'{"schemaVersion":1}'}
+        h = generation_hash(files)
+        assert h == "ef7c9ac6cc8c3c2ab2583af5027a4b1fd11c4aaca4e029a5293710b07e0e78dd"
 
 
 # ---------------------------------------------------------------------------

@@ -590,7 +590,6 @@ def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
             try:
                 files = {
                     "metadata.json": meta_path.read_bytes(),
-                    proto_name: proto_path.read_bytes(),
                 }
                 computed = _snapshot_hash(snap_type, files)
                 if computed != h:
@@ -710,7 +709,7 @@ class TestSessionVerify:
         from data.lib.remote.paths import resource_snapshot_dir as _rdir
 
         snap_dir = _rdir(tmp_root, res_hash)
-        (snap_dir / "resources.pb2").write_bytes(b"corrupted data")
+        (snap_dir / "metadata.json").write_bytes(b'{"corrupted": true}')
 
         issues = _verify_staged_style(tmp_root, store)
         hash_issues = [i for i in issues if "Hash mismatch" in i.message]

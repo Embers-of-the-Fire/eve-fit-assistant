@@ -23,64 +23,31 @@ class RepoHash {
   /// ident_hash = SHA-256(uri_string) — used for blob storage addressing.
   static String hashIdent(String uri) => hashString(uri);
 
-  // ── Structured hashes (agent/schemav2/schema.md §6.2) ───────────────────────
+  // ── Structured hashes (agent/schemav2/schema.md §6.2, v3) ──────────────────
 
-  /// Computes the structured resource snapshot hash.
+  /// Computes the structured resource snapshot hash (v3).
   ///
-  /// snapshot_hash = SHA-256(
-  ///   "efa:resource:v2\n"
-  ///   "metadata.json <sha256_of_metadata_json_bytes>\n"
-  ///   "resources.pb2 <sha256_of_resources_pb2_bytes>\n"
-  /// )
-  static String hashResourceSnapshot(String metadataJsonHash, String resourcesPb2Hash) {
-    final buffer = StringBuffer("efa:resource:v2\n");
-    buffer.writeln("metadata.json $metadataJsonHash");
-    buffer.writeln("resources.pb2 $resourcesPb2Hash");
-    return hashString(buffer.toString());
-  }
+  ///   snapshot_hash = SHA-256(
+  ///     "efa:resource:v3\n"
+  ///     "metadata.json {sha256_of_canonical_metadata_json_bytes}\n"
+  ///   )
+  static String hashResourceSnapshot(String metadataJsonHash) =>
+      hashString("efa:resource:v3\nmetadata.json $metadataJsonHash\n");
 
-  /// Computes the structured release snapshot hash.
-  static String hashReleaseSnapshot(String metadataJsonHash, String releasesPb2Hash) {
-    final buffer = StringBuffer("efa:release:v2\n");
-    buffer.writeln("metadata.json $metadataJsonHash");
-    buffer.writeln("releases.pb2 $releasesPb2Hash");
-    return hashString(buffer.toString());
-  }
+  /// Computes the structured release snapshot hash (v3).
+  static String hashReleaseSnapshot(String metadataJsonHash) =>
+      hashString("efa:release:v3\nmetadata.json $metadataJsonHash\n");
 
-  /// Computes the structured announcement snapshot hash.
-  static String hashAnnouncementSnapshot(String metadataJsonHash, String announcementsPb2Hash) {
-    final buffer = StringBuffer("efa:announcement:v2\n");
-    buffer.writeln("metadata.json $metadataJsonHash");
-    buffer.writeln("announcements.pb2 $announcementsPb2Hash");
-    return hashString(buffer.toString());
-  }
+  /// Computes the structured announcement snapshot hash (v3).
+  static String hashAnnouncementSnapshot(String metadataJsonHash) =>
+      hashString("efa:announcement:v3\nmetadata.json $metadataJsonHash\n");
 
-  /// Computes the structured generation hash.
+  /// Computes the structured generation hash (v3).
   ///
-  /// generation_hash = SHA-256(
-  ///   "efa:generation:v2\n"
-  ///   "announcements.pb2 <hash>\n"
-  ///   "metadata.json <hash>\n"
-  ///   "releases.pb2 <hash>\n"
-  ///   "resources.pb2 <hash>\n"
-  ///   "server.pb2 <hash>\n"
-  /// )
-  ///
-  /// Lines are sorted lexicographically by filename.
-  static String hashGeneration({
-    required String metadataJsonHash,
-    required String serverPb2Hash,
-    required String resourcesPb2Hash,
-    required String releasesPb2Hash,
-    required String announcementsPb2Hash,
-  }) {
-    final buffer = StringBuffer("efa:generation:v2\n");
-    // Sorted lexicographically by filename
-    buffer.writeln("announcements.pb2 $announcementsPb2Hash");
-    buffer.writeln("metadata.json $metadataJsonHash");
-    buffer.writeln("releases.pb2 $releasesPb2Hash");
-    buffer.writeln("resources.pb2 $resourcesPb2Hash");
-    buffer.writeln("server.pb2 $serverPb2Hash");
-    return hashString(buffer.toString());
-  }
+  ///   generation_hash = SHA-256(
+  ///     "efa:generation:v3\n"
+  ///     "metadata.json {hash}\n"
+  ///   )
+  static String hashGeneration({required String metadataJsonHash}) =>
+      hashString("efa:generation:v3\nmetadata.json $metadataJsonHash\n");
 }

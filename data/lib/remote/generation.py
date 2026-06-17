@@ -73,10 +73,6 @@ class GenerationStore:
 
         files = {
             "metadata.json": (temp_dir / "metadata.json").read_bytes(),
-            "server.pb2": (temp_dir / "server.pb2").read_bytes(),
-            "resources.pb2": (temp_dir / "resources.pb2").read_bytes(),
-            "releases.pb2": (temp_dir / "releases.pb2").read_bytes(),
-            "announcements.pb2": (temp_dir / "announcements.pb2").read_bytes(),
         }
 
         gen_hash = _compute_generation_hash(files)

@@ -124,7 +124,6 @@ class TestSnapshotHash:
     def test_snapshot_hash_valid(self):
         files = {
             "metadata.json": b'{"schemaVersion":1,"serverId":"test"}',
-            "resources.pb2": b"proto data",
         }
         h = snapshot_hash("resource", files)
         assert len(h) == 64
@@ -133,7 +132,6 @@ class TestSnapshotHash:
     def test_snapshot_hash_deterministic(self):
         files = {
             "metadata.json": b'{"schemaVersion":1}',
-            "resources.pb2": b"data",
         }
         h1 = snapshot_hash("resource", files)
         h2 = snapshot_hash("resource", files)

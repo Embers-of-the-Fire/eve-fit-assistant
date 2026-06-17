@@ -294,7 +294,10 @@ class CheckoutService {
             resourceCount: newIndex.entries.length,
             createdAt: formatTimestamp(DateTime.now().toUtc()),
           );
-    assetStore.writeResourceSnapshotSync(meta: snapshotMeta, resourceIndex: newIndex);
+    final localSnapshotHash = assetStore.writeResourceSnapshotSync(
+      meta: snapshotMeta,
+      resourceIndex: newIndex,
+    );
 
     // Step 6: Fetch and write server index
     final serverIndexBytes = await remoteCatalogService.fetchServerIndex(newGenerationHash);
@@ -308,11 +311,11 @@ class CheckoutService {
       channelName,
       m,
       newGenerationHash,
-      newSnapshotHash,
+      localSnapshotHash,
       label: remoteLabel,
     );
 
-    return Some(newSnapshotHash);
+    return Some(localSnapshotHash);
   }
 
   // ── Revert (spec §2.8) ─────────────────────────────────────────────────────

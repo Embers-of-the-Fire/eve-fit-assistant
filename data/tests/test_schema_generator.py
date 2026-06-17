@@ -109,7 +109,6 @@ class TestSnapshotHash:
     def test_deterministic_resource(self):
         files = {
             "metadata.json": b'{"schemaVersion":1}',
-            "resources.pb2": b"fake proto bytes",
         }
         h1 = snapshot_hash("resource", files)
         h2 = snapshot_hash("resource", files)
@@ -119,7 +118,6 @@ class TestSnapshotHash:
     def test_different_type_different_hash(self):
         files = {
             "metadata.json": b'{"schemaVersion":1}',
-            "resources.pb2": b"data",
         }
         h1 = snapshot_hash("resource", files)
         h2 = snapshot_hash("release", files)
@@ -128,19 +126,15 @@ class TestSnapshotHash:
 
 class TestGenerationHash:
     def test_deterministic(self):
-        files = dict.fromkeys(
-            ["metadata.json", "server.pb2", "resources.pb2", "releases.pb2", "announcements.pb2"],
-            b"data",
-        )
+        files = {"metadata.json": b"data"}
         h1 = generation_hash(files)
         h2 = generation_hash(files)
         assert h1 == h2
         assert len(h1) == 64
 
     def test_missing_file_raises(self):
-        files = dict.fromkeys(["metadata.json", "server.pb2"], b"data")
         with pytest.raises(ValueError, match="Missing required"):
-            generation_hash(files)
+            generation_hash({})
 
 
 class TestGenerateSchemaCheckout:
