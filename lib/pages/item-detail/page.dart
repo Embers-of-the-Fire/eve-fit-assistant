@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
+import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
 import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
@@ -115,7 +116,8 @@ class ItemDetailPage extends ConsumerWidget {
       );
     }
 
-    final itemName = _resolveLocalization(ref, type.typeName) ?? "Type $typeId";
+    final itemName =
+        _resolveLocalization(ref, type.typeName) ?? context.l10n.fallbackTypeName(typeId: typeId);
     final fit = fitReference == null ? null : ref.watch(fitProvider(fitReference!.fitId));
     final emulated = fitReference == null
         ? null
@@ -134,7 +136,7 @@ class ItemDetailPage extends ConsumerWidget {
       _ => null,
     };
 
-    final attributes = _collectInspectableAttributes(ref, type, resolvedItem);
+    final attributes = _collectInspectableAttributes(context.l10n, ref, type, resolvedItem);
     final description = type.hasDescription() ? _resolveLocalization(ref, type.description) : null;
 
     return Layout(
@@ -403,7 +405,9 @@ class AttributeDetailPage extends ConsumerWidget {
     };
     final staticValue = _staticAttributeValue(type, attributeId);
     final current = resolvedItem?.attributes[attributeId];
-    final title = _attributeDisplayName(ref, attribute) ?? "Attribute $attributeId";
+    final title =
+        _attributeDisplayName(ref, attribute) ??
+        context.l10n.fallbackAttributeName(attributeId: attributeId);
 
     return Layout(
       title: title,
@@ -499,13 +503,13 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
                     label: context.l10n.itemDetailDynamicBaseItem,
                     value:
                         _resolveLocalization(ref, dynamicEditor.originType.typeName) ??
-                        "Type ${dynamicEditor.originType.typeId}",
+                        context.l10n.fallbackTypeName(typeId: dynamicEditor.originType.typeId),
                   ),
                   _ValueChip(
                     label: context.l10n.itemDetailDynamicMutator,
                     value:
                         _resolveLocalization(ref, dynamicEditor.modifierType.typeName) ??
-                        "Type ${dynamicEditor.modifierType.typeId}",
+                        context.l10n.fallbackTypeName(typeId: dynamicEditor.modifierType.typeId),
                   ),
                 ],
               ),
@@ -573,7 +577,9 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
                     dynamicItemId: dynamicEditor.dynamicItemId,
                     attributeId: entry.key,
                     attribute: attribute,
-                    displayName: _attributeDisplayName(ref, attribute) ?? "Attribute ${entry.key}",
+                    displayName:
+                        _attributeDisplayName(ref, attribute) ??
+                        context.l10n.fallbackAttributeName(attributeId: entry.key),
                     baseValue: _staticAttributeValue(dynamicEditor.originType, entry.key),
                     factor: dynamicItem.dynamicAttributes[entry.key] ?? 1.0,
                     minFactor: entry.value.min,
@@ -1285,7 +1291,9 @@ class _SkillTreeNodeState extends ConsumerState<_SkillTreeNode> {
                   ),
                   Expanded(
                     child: skillType == null
-                        ? Text("Type ${widget.requirement.skillTypeId}")
+                        ? Text(
+                            context.l10n.fallbackTypeName(typeId: widget.requirement.skillTypeId),
+                          )
                         : TypeNameText(typeId: widget.requirement.skillTypeId),
                   ),
                   const SizedBox(width: 12),
@@ -1481,7 +1489,8 @@ class _ModifierTileState extends ConsumerState<_ModifierTile> {
           repoCollectionProvider.select((c) => c?.getDogmaAttribute(effect.sourceAttributeId)),
         );
         final attributeName =
-            _attributeDisplayName(ref, attribute) ?? "Attribute ${effect.sourceAttributeId}";
+            _attributeDisplayName(ref, attribute) ??
+            context.l10n.fallbackAttributeName(attributeId: effect.sourceAttributeId);
         return "${_effectCategoryLabel(context, effect.sourceCategory)} - ${_effectOperatorLabel(context, effect.operator_)} - $attributeName";
       },
       buff: (buffId) => context.l10n.itemDetailBuffSource(buffId: buffId),
@@ -2086,6 +2095,7 @@ T? _firstWhereOrNull<T>(Iterable<T> values, bool Function(T value) predicate) {
 }
 
 List<_InspectableAttribute> _collectInspectableAttributes(
+  AppLocalizations l10n,
   WidgetRef ref,
   pb_types.Type type,
   native.Item? item,
@@ -2120,7 +2130,9 @@ List<_InspectableAttribute> _collectInspectableAttributes(
       _InspectableAttribute(
         attributeId: attributeId,
         attribute: metadata,
-        displayName: _attributeDisplayName(ref, metadata) ?? "Attribute $attributeId",
+        displayName:
+            _attributeDisplayName(ref, metadata) ??
+            l10n.fallbackAttributeName(attributeId: attributeId),
         staticValue: staticValue,
         currentValue: currentValue,
         unit: unit,

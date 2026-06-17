@@ -710,5 +710,20 @@
   "checkoutCreateProgressComplete": "Checkout created successfully!",
   "checkoutCreateProgressIndexFailed": "Resource index fetch failed",
   "checkoutCreateProgressCheckoutFailed": "Checkout creation failed",
-  "checkoutCreateSuccess": "Checkout created and activated"
+  "checkoutCreateSuccess": "Checkout created and activated",
+  "migrationFailedError": "Migration failed: {message}",
+  "migrationRequiredTitle": "Data Migration Required",
+  "migrationRequiredDescription": "This version uses a new data storage format. Your existing fits and characters will be migrated. Legacy data will be cleaned up.",
+  "migrationStartButton": "Start Migration",
+  "migrationSkipConfirmTitle": "Skip Migration?",
+  "migrationSkipConfirmDescription": "Your existing fits and characters will not be accessible after skipping migration. New data can be downloaded from the server.",
+  "migrationSkipButton": "Skip",
+  "migrationSkipMigrationButton": "Skip Migration",
+  "migrationInProgressTitle": "Migrating...",
+  "migrationInProgressDescription": "Upgrading fits and characters...",
+  "repoInitErrorTitle": "Failed to initialize data repository",
+  "skillLevelLabel": "Skill level {skillLevel}",
+  "fallbackTypeName": "Type {typeId}",
+  "fallbackAttributeName": "Attribute {attributeId}",
+  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/"
 }

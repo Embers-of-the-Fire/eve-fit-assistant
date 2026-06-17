@@ -287,7 +287,7 @@ class _SkillLevelIndicator extends StatelessWidget {
         return pip;
       }
       return Semantics(
-        label: "Skill level $skillLevel",
+        label: context.l10n.skillLevelLabel(skillLevel: skillLevel),
         button: true,
         selected: trained,
         child: InkWell(

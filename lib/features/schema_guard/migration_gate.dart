@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/service.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:path/path.dart" as p;
 
@@ -125,9 +126,11 @@ class _MigrationGateState extends State<MigrationGate> {
       warning("Migration failed: $e", stackTrace: stackTrace);
       if (mounted) {
         navigator.popUntil((route) => route.isFirst);
-        ScaffoldMessenger.of(
-          navigator.context,
-        ).showSnackBar(SnackBar(content: Text("Migration failed: $e")));
+        ScaffoldMessenger.of(navigator.context).showSnackBar(
+          SnackBar(
+            content: Text(navigator.context.l10n.migrationFailedError(message: e.toString())),
+          ),
+        );
       }
     }
   }
@@ -163,15 +166,13 @@ class _MigrationGateState extends State<MigrationGate> {
                     const Icon(Icons.sync, size: 64),
                     const SizedBox(height: 16),
                     Text(
-                      "Data Migration Required",
+                      context.l10n.migrationRequiredTitle,
                       style: Theme.of(context).textTheme.headlineSmall,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "This version uses a new data storage format. "
-                      "Your existing fits and characters will be migrated. "
-                      "Legacy data will be cleaned up.",
+                      context.l10n.migrationRequiredDescription,
                       style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -180,7 +181,7 @@ class _MigrationGateState extends State<MigrationGate> {
                       onPressed: () {
                         unawaited(_startMigration());
                       },
-                      child: const Text("Start Migration"),
+                      child: Text(context.l10n.migrationStartButton),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
@@ -190,30 +191,26 @@ class _MigrationGateState extends State<MigrationGate> {
                           showDialog<void>(
                             context: navigator.context,
                             builder: (dialogContext) => AlertDialog(
-                              title: const Text("Skip Migration?"),
-                              content: const Text(
-                                "Your existing fits and characters will not be accessible "
-                                "after skipping migration. New data can be downloaded "
-                                "from the server.",
-                              ),
+                              title: Text(context.l10n.migrationSkipConfirmTitle),
+                              content: Text(context.l10n.migrationSkipConfirmDescription),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.of(dialogContext).pop(),
-                                  child: const Text("Cancel"),
+                                  child: Text(context.l10n.cancel),
                                 ),
                                 FilledButton(
                                   onPressed: () {
                                     Navigator.of(dialogContext).pop();
                                     _activateRepoAndReload();
                                   },
-                                  child: const Text("Skip"),
+                                  child: Text(context.l10n.migrationSkipButton),
                                 ),
                               ],
                             ),
                           ),
                         );
                       },
-                      child: const Text("Skip Migration"),
+                      child: Text(context.l10n.migrationSkipMigrationButton),
                     ),
                   ],
                 ),
@@ -235,16 +232,16 @@ class _MigrationProgressDialog extends StatefulWidget {
 
 class _MigrationProgressDialogState extends State<_MigrationProgressDialog> {
   @override
-  Widget build(BuildContext context) => const PopScope(
+  Widget build(BuildContext context) => PopScope(
     canPop: false,
     child: AlertDialog(
-      title: Text("Migrating..."),
+      title: Text(context.l10n.migrationInProgressTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          LinearProgressIndicator(),
-          SizedBox(height: 16),
-          Text("Upgrading fits and characters..."),
+          const LinearProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(context.l10n.migrationInProgressDescription),
         ],
       ),
     ),

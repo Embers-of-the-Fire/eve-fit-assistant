@@ -150,7 +150,7 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
             controller: originController,
             decoration: InputDecoration(
               labelText: context.l10n.appSettingsPageRemoteContentOriginUrlLabel,
-              hintText: "https://updates.example.com/",
+              hintText: context.l10n.appSettingsPageRemoteContentUrlHint,
             ),
             keyboardType: TextInputType.url,
             textInputAction: TextInputAction.next,

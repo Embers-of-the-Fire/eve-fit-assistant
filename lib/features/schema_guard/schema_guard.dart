@@ -4,6 +4,7 @@ import "package:eve_fit_assistant/features/schema_guard/migration_gate.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
+import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -78,16 +79,13 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text(
-              "Failed to initialize data repository",
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(context.l10n.repoInitErrorTitle, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(message, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: () => ref.read(repoStateProvider.notifier).initialize(),
-              child: const Text("Retry"),
+              child: Text(context.l10n.fitPageRetryAction),
             ),
           ],
         ),

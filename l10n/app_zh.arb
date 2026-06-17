@@ -1446,5 +1446,44 @@
   "checkoutCreateProgressComplete": "数据版本创建成功！",
   "checkoutCreateProgressIndexFailed": "资源索引获取失败",
   "checkoutCreateProgressCheckoutFailed": "数据版本创建失败",
-  "checkoutCreateSuccess": "数据版本创建完成并已激活"
+  "checkoutCreateSuccess": "数据版本创建完成并已激活",
+  "@@_MIGRATION": {},
+  "migrationFailedError": "迁移失败：{message}",
+  "@migrationFailedError": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "migrationRequiredTitle": "需要数据迁移",
+  "migrationRequiredDescription": "此版本使用新的数据存储格式。您现有的配置和角色将被迁移。旧数据将被清理。",
+  "migrationStartButton": "开始迁移",
+  "migrationSkipConfirmTitle": "跳过迁移？",
+  "migrationSkipConfirmDescription": "跳过迁移后，您现有的配置和角色将无法访问。新数据可以从服务器下载。",
+  "migrationSkipButton": "跳过",
+  "migrationSkipMigrationButton": "跳过迁移",
+  "migrationInProgressTitle": "迁移中...",
+  "migrationInProgressDescription": "正在升级配置和角色...",
+  "@@_REPO_INIT": {},
+  "repoInitErrorTitle": "数据仓库初始化失败",
+  "@@_SKILL": {},
+  "skillLevelLabel": "技能等级 {skillLevel}",
+  "@skillLevelLabel": {
+    "placeholders": {
+      "skillLevel": { "type": "int" }
+    }
+  },
+  "@@_FALLBACK": {},
+  "fallbackTypeName": "类型 {typeId}",
+  "@fallbackTypeName": {
+    "placeholders": {
+      "typeId": { "type": "int" }
+    }
+  },
+  "fallbackAttributeName": "属性 {attributeId}",
+  "@fallbackAttributeName": {
+    "placeholders": {
+      "attributeId": { "type": "int" }
+    }
+  },
+  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/"
 }

@@ -218,7 +218,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
               const SizedBox(height: 12),
               Text(context.l10n.collectLogsLoadError),
               const SizedBox(height: 16),
-              OutlinedButton(onPressed: _loadFiles, child: const Text("Retry")),
+              OutlinedButton(onPressed: _loadFiles, child: Text(context.l10n.fitPageRetryAction)),
             ],
           ),
         ),
