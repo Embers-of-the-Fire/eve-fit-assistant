@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 class ResourceSnapshotMetadata(BaseModel):
     schema_version: int = Field(default=1, alias="schemaVersion")
     server_id: str = Field(alias="serverId")
+    name: dict[str, str] = Field(default_factory=dict)
     game_build: str = Field(alias="gameBuild")
     game_version: str = Field(alias="gameVersion")
     game_region: str = Field(default="", alias="gameRegion")

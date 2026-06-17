@@ -85,6 +85,7 @@ def generate_resource_snapshot(
         return None
 
     resolved_server_id = server_id or ""
+    resolved_name: dict[str, str] = {}
     game_build = ""
     game_version = ""
     game_region = ""
@@ -93,7 +94,8 @@ def generate_resource_snapshot(
 
     if config is not None:
         start_config = _read_start_config(config)
-        resolved_server_id = start_config.get("main", "server", fallback=resolved_server_id)
+        resolved_server_id = config.metadata.identifier
+        resolved_name = config.metadata.name
         game_build = start_config.get("main", "build", fallback="")
         game_version = start_config.get("main", "version", fallback="")
         game_region = start_config.get("main", "region", fallback="")
@@ -169,6 +171,7 @@ def generate_resource_snapshot(
 
     metadata = ResourceSnapshotMetadata(
         serverId=resolved_server_id,
+        name=resolved_name,
         gameBuild=game_build,
         gameVersion=game_version,
         gameRegion=game_region,

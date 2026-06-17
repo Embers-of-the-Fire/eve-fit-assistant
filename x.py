@@ -2192,7 +2192,11 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
         meta, _index = snap_store.load_resource_snapshot(hash_val)
         entry = server_index.servers.add()
         entry.server_id = meta.server_id
-        entry.name["en"] = meta.server_id
+        if meta.name:
+            for locale, display_name in meta.name.items():
+                entry.name[locale] = display_name
+        else:
+            entry.name["en"] = meta.server_id
         entry.game_build = meta.game_build
         entry.game_version = meta.game_version
 
