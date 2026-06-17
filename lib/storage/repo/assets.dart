@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
+import "package:path/path.dart" as p;
 
 /// Content-addressed blob I/O with atomic writes.
 ///
@@ -185,7 +186,7 @@ class AssetStore {
     final resourcesDir = Directory("${RepoPaths.assetsPath}/resources");
     if (resourcesDir.existsSync()) {
       for (final dir in resourcesDir.listSync().whereType<Directory>()) {
-        final name = dir.uri.pathSegments.last;
+        final name = p.basename(dir.path);
         if (!activeSnapshotHashes.contains(name)) {
           try {
             dir.deleteSync(recursive: true);
@@ -232,7 +233,7 @@ class AssetStore {
 
     // Prune temporary directories
     for (final dir in assetsDir.listSync().whereType<Directory>()) {
-      final name = dir.uri.pathSegments.last;
+      final name = p.basename(dir.path);
       if (name.startsWith("tmp_") || name.endsWith("_temp")) {
         try {
           dir.deleteSync(recursive: true);
@@ -248,7 +249,7 @@ class AssetStore {
       final announcementsDir = Directory(RepoPaths.announcementsRootPath);
       if (announcementsDir.existsSync()) {
         for (final dir in announcementsDir.listSync().whereType<Directory>()) {
-          final name = dir.uri.pathSegments.last;
+          final name = p.basename(dir.path);
           if (!activeAnnouncementHashes.contains(name)) {
             try {
               dir.deleteSync(recursive: true);

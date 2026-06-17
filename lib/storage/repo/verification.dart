@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:path/path.dart" as p;
 
 /// Represents a single integrity issue found during verification.
 sealed class VerificationIssue {
@@ -167,7 +168,7 @@ class VerificationService {
     if (!channelsDir.existsSync()) return hashes;
 
     for (final entity in channelsDir.listSync().whereType<Directory>()) {
-      final channelName = entity.uri.pathSegments.last;
+      final channelName = p.basename(entity.path);
       if (channelName.startsWith(".")) continue;
 
       // Read channel head metadata to get generationHash
