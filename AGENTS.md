@@ -21,8 +21,6 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 | Channel Discovery | `lib/storage/repo/channel_service.dart` | `ChannelService` — fetches channel registry, head metadata, server index; update detection |
 | Checkout Management | `lib/storage/repo/checkout_registry_service.dart` | `CheckoutRegistryService` — manages `checkouts/checkouts.json`, active checkout pointer, reactive stream |
 | Checkout Lifecycle | `lib/storage/repo/checkout_service.dart` | `CheckoutService` — checkout CRUD, reflog management, resource fetch orchestration |
-| Announcements | `lib/storage/repo/announcements.dart` | `AnnouncementService` — manages announcement snapshot caching and content retrieval via `AnnouncementIndex` protobuf |
-| Announcement Sync | `lib/storage/repo/announcement_sync.dart` | `AnnouncementSyncService` — fetches announcement snapshots from the generation chain |
 | Release Sync | `lib/storage/repo/release_sync.dart` | `ReleaseSyncService` — checks remote release index for newer APK versions via `ReleaseIndex` protobuf |
 | Generation Navigation | `lib/storage/repo/generation_nav.dart` | `GenerationNavigationService` — channel → server browser for setup page |
 | Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole type-data source; pre-loads type data (ships, skills, items, localization, icons) from active checkout's ResourceIndex. |
@@ -127,7 +125,7 @@ The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `develope
 
 - `data/lib/remote/session.py` — Session manager for the `efa/v2/` layout
   (`SessionManager`), inheriting from `_BaseSessionManager`. Manages
-  generation lifecycle, resource registration, announcement/release
+  generation lifecycle, resource registration, release
   management, and S3/R2 publishing.
 
 ## Local Instruction Sources

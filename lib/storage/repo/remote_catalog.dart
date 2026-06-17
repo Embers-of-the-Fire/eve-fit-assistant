@@ -92,13 +92,7 @@ class RemoteCatalogService {
     return _fetchBytes(uri);
   }
 
-  /// GET `channels/refs/{generationHash}/announcements.pb2`
-  Future<Either<CatalogError, Uint8List>> fetchAnnouncementPointer(String generationHash) async {
-    final uri = _buildUri("channels/refs/$generationHash/announcements.pb2");
-    return _fetchBytes(uri);
-  }
-
-  // ── Resource snapshot fetch (§13.2) ───────────────────────────────────────
+  // ── Release fetch (§13.4) ─────────────────────────────────────────────────
 
   /// GET `assets/resources/{snapshotHash}/metadata.json`
   Future<Either<CatalogError, ResourceSnapshotMeta>> fetchResourceSnapshotMeta(
@@ -114,15 +108,7 @@ class RemoteCatalogService {
     return _fetchBytes(uri);
   }
 
-  // ── Announcement fetch (§13.3) ────────────────────────────────────────────
-
-  /// GET `assets/announcements/{snapshotHash}/announcements.pb2`
-  Future<Either<CatalogError, Uint8List>> fetchAnnouncementIndex(String snapshotHash) async {
-    final uri = _buildUri("assets/announcements/$snapshotHash/announcements.pb2");
-    return _fetchBytes(uri);
-  }
-
-  // ── Release fetch (§13.4) ─────────────────────────────────────────────────
+  // ── Blob fetch ─────────────────────────────────────────────────────────────
 
   /// GET `assets/releases/{snapshotHash}/releases.pb2`
   Future<Either<CatalogError, Uint8List>> fetchReleaseIndex(String snapshotHash) async {

@@ -51,20 +51,6 @@ class RepoPaths {
   static String resourceIndexPath(String snapshotHash) =>
       p.join(resourceSnapshotPath(snapshotHash), "resources.pb2");
 
-  // ── announcements/ (client-side, per spec §2.3) ─────────────────────────────
-
-  /// Root announcements directory.
-  static String get announcementsRootPath => p.join(schemaResourcesPath, "announcements");
-
-  static String announcementSnapshotPath(String snapshotHash) =>
-      p.join(schemaResourcesPath, "announcements", snapshotHash);
-
-  static String announcementSnapshotMetaPath(String snapshotHash) =>
-      p.join(announcementSnapshotPath(snapshotHash), "metadata.json");
-
-  static String announcementIndexPath(String snapshotHash) =>
-      p.join(announcementSnapshotPath(snapshotHash), "announcements.pb2");
-
   // ── channels/ (client-side) ─────────────────────────────────────────────────
 
   static String get channelsPath => p.join(schemaResourcesPath, "channels");
@@ -87,10 +73,6 @@ class RepoPaths {
   /// channels/{channel}/releases.pb2 — GenerationPointer (releases) persisted from generation.
   static String channelReleasesPath(String channelName) =>
       p.join(channelsPath, channelName, "releases.pb2");
-
-  /// channels/{channel}/announcements.pb2 — GenerationPointer (announcements) persisted from generation.
-  static String channelAnnouncementsPath(String channelName) =>
-      p.join(channelsPath, channelName, "announcements.pb2");
 
   // ── checkouts/ (client-side) ────────────────────────────────────────────────
 

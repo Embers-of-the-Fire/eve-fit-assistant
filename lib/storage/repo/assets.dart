@@ -159,14 +159,12 @@ class AssetStore {
 
   /// Scans the assets directory and deletes resource snapshots not in
   /// [activeSnapshotHashes]. Deletes blobs not referenced by any
-  /// [resourceIndexes]. Deletes announcement snapshots not in
-  /// [activeAnnouncementHashes] (if non-null). Removes empty directories.
+  /// [resourceIndexes]. Removes empty directories.
   ///
   /// Returns the count of files deleted.
   int pruneSync({
     required Set<String> activeSnapshotHashes,
     required List<ResourceIndex> activeResourceIndexes,
-    Set<String>? activeAnnouncementHashes,
   }) {
     var deleted = 0;
 
@@ -240,24 +238,6 @@ class AssetStore {
           deleted++;
         } on FileSystemException {
           // best-effort
-        }
-      }
-    }
-
-    // Prune announcement snapshots (spec §12.2 client)
-    if (activeAnnouncementHashes != null) {
-      final announcementsDir = Directory(RepoPaths.announcementsRootPath);
-      if (announcementsDir.existsSync()) {
-        for (final dir in announcementsDir.listSync().whereType<Directory>()) {
-          final name = p.basename(dir.path);
-          if (!activeAnnouncementHashes.contains(name)) {
-            try {
-              dir.deleteSync(recursive: true);
-              deleted++;
-            } on FileSystemException {
-              // best-effort
-            }
-          }
         }
       }
     }

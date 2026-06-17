@@ -1,4 +1,4 @@
-"""Snapshot store — resource, release, and announcement snapshot CRUD.
+"""Snapshot store — resource and release snapshot CRUD.
 
 Snapshots are immutable, content-addressed collections stored at:
   assets/{type}/{snapshot_hash}/
@@ -14,17 +14,14 @@ from typing import TYPE_CHECKING
 from typing import Literal
 
 from data.lib.remote.hash import snapshot_hash as _compute_snapshot_hash
-from data.lib.remote.models import AnnouncementSnapshotMetadata
 from data.lib.remote.models import ReleaseSnapshotMetadata
 from data.lib.remote.models import ResourceSnapshotMetadata
 from data.lib.remote.models import read_json
 from data.lib.remote.models import read_pb2
 from data.lib.remote.models import write_json
 from data.lib.remote.models import write_pb2
-from data.lib.remote.paths import announcement_snapshot_dir
 from data.lib.remote.paths import release_snapshot_dir
 from data.lib.remote.paths import resource_snapshot_dir
-from data.lib.remote.paths import temp_announcement_snapshot_dir
 from data.lib.remote.paths import temp_release_snapshot_dir
 from data.lib.remote.paths import temp_resource_snapshot_dir
 
@@ -32,29 +29,25 @@ from data.lib.remote.paths import temp_resource_snapshot_dir
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from data.lib.remote.models import AnnouncementIndex
     from data.lib.remote.models import ReleaseIndex
     from data.lib.remote.models import ResourceIndex
 
 
-SnapshotType = Literal["resource", "release", "announcement"]
+SnapshotType = Literal["resource", "release"]
 
 _PROTO_NAME: dict[SnapshotType, str] = {
     "resource": "resources.pb2",
     "release": "releases.pb2",
-    "announcement": "announcements.pb2",
 }
 
 
 def _get_proto_class(snap_type: SnapshotType) -> type:
-    from data.lib.remote.models import AnnouncementIndex
     from data.lib.remote.models import ReleaseIndex
     from data.lib.remote.models import ResourceIndex
 
     return {
         "resource": ResourceIndex,
         "release": ReleaseIndex,
-        "announcement": AnnouncementIndex,
     }[snap_type]
 
 
@@ -110,30 +103,6 @@ class SnapshotStore:
     def list_release_snapshots(self) -> list[str]:
         return self._list_snapshots(self.root / "assets" / "releases")
 
-    # --- Announcement snapshots ---------------------------------------------
-
-    def create_announcement_snapshot(
-        self,
-        metadata: AnnouncementSnapshotMetadata,
-        index_msg: AnnouncementIndex,
-    ) -> str:
-        return self._create_snapshot("announcement", metadata, index_msg)
-
-    def load_announcement_snapshot(
-        self, snapshot_hash: str
-    ) -> tuple[AnnouncementSnapshotMetadata, AnnouncementIndex]:
-        from data.lib.remote.models import AnnouncementIndex
-
-        return self._load_snapshot(
-            "announcement", snapshot_hash, AnnouncementSnapshotMetadata, AnnouncementIndex
-        )
-
-    def delete_announcement_snapshot(self, snapshot_hash: str) -> None:
-        self._delete_snapshot("announcement", snapshot_hash)
-
-    def list_announcement_snapshots(self) -> list[str]:
-        return self._list_snapshots(self.root / "assets" / "announcements")
-
     # --- Internal ------------------------------------------------------------
 
     def _create_snapshot(
@@ -147,13 +116,11 @@ class SnapshotStore:
         temp_dir_map = {
             "resource": temp_resource_snapshot_dir(self.root),
             "release": temp_release_snapshot_dir(self.root),
-            "announcement": temp_announcement_snapshot_dir(self.root),
         }
         proto_name = _PROTO_NAME[snap_type]
         dir_map = {
             "resource": resource_snapshot_dir,
             "release": release_snapshot_dir,
-            "announcement": announcement_snapshot_dir,
         }
 
         temp_dir = temp_dir_map[snap_type]
@@ -181,7 +148,6 @@ class SnapshotStore:
         dir_map = {
             "resource": resource_snapshot_dir,
             "release": release_snapshot_dir,
-            "announcement": announcement_snapshot_dir,
         }
         proto_name = _PROTO_NAME[snap_type]
         snap_dir = dir_map[snap_type](self.root, snapshot_hash)
@@ -199,7 +165,6 @@ class SnapshotStore:
         dir_map = {
             "resource": resource_snapshot_dir,
             "release": release_snapshot_dir,
-            "announcement": announcement_snapshot_dir,
         }
         snap_dir = dir_map[snap_type](self.root, snapshot_hash)
         if snap_dir.exists():

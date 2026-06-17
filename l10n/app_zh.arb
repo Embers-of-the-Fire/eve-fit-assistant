@@ -1284,7 +1284,6 @@
   "channelMetadataTabServers": "服务器",
   "channelMetadataTabResources": "资源",
   "channelMetadataTabReleases": "版本",
-  "channelMetadataTabAnnouncements": "公告",
   "channelMetadataNoData": "无频道数据 — 尚未同步。",
   "channelMetadataFieldActiveChannel": "当前频道",
   "channelMetadataFieldGeneration": "代数哈希",
@@ -1312,10 +1311,7 @@
   },
   "channelMetadataNoReleaseData": "无版本数据 — 尚未同步。",
   "channelMetadataNoReleaseAvailable": "已同步 — 此代数无版本数据。",
-  "channelMetadataNoAnnouncementData": "无公告数据 — 尚未同步。",
-  "channelMetadataNoAnnouncementAvailable": "已同步 — 此代数无公告数据。",
   "channelMetadataLoadRelease": "加载版本索引",
-  "channelMetadataLoadAnnouncement": "加载公告索引",
   "channelMetadataLoadFailed": "加载失败",
   "channelMetadataFieldPointerHash": "指针哈希",
   "channelMetadataReleaseCount": "{count} 个版本",
@@ -1335,17 +1331,6 @@
     }
   },
   "channelMetadataReload": "重新加载",
-  "channelMetadataAnnouncementCount": "{total} 条公告，{versionUpdates} 条版本更新",
-  "@channelMetadataAnnouncementCount": {
-    "placeholders": {
-      "total": {
-        "type": "int"
-      },
-      "versionUpdates": {
-        "type": "int"
-      }
-    }
-  },
   "channelMetadataPublished": "发布于",
   "channelMetadataUpdated": "更新于",
   "channelMetadataLocales": "语言",

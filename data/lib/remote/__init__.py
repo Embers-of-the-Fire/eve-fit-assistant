@@ -103,9 +103,6 @@ class SessionManager:
     def create_release_snapshot(self, metadata, index_msg) -> str:
         return self.snap_store.create_release_snapshot(metadata, index_msg)
 
-    def create_announcement_snapshot(self, metadata, index_msg) -> str:
-        return self.snap_store.create_announcement_snapshot(metadata, index_msg)
-
     # --- Generation creation -------------------------------------------------
 
     def create_generation(
@@ -114,14 +111,12 @@ class SessionManager:
         server_index: ServerIndex,
         resources: GenerationResources,
         release_pointer: GenerationPointer,
-        announcement_pointer: GenerationPointer,
     ) -> str:
         return self.gen_store.create(
             metadata=metadata,
             server_index_msg=server_index,
             resources_msg=resources,
             release_pointer=release_pointer,
-            announcement_pointer=announcement_pointer,
         )
 
     def load_generation(self, gen_hash: str):

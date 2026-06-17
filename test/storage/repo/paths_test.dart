@@ -75,11 +75,6 @@ void main() {
       final path = RepoPaths.channelReleasesPath("testing");
       expect(path, contains("channels/testing/releases.pb2"));
     });
-
-    test("announcements path by channel name", () {
-      final path = RepoPaths.channelAnnouncementsPath("testing");
-      expect(path, contains("channels/testing/announcements.pb2"));
-    });
   });
 
   group("checkout paths", () {
@@ -101,22 +96,6 @@ void main() {
   group("schema version", () {
     test("schema version path", () {
       expect(RepoPaths.schemaVersionPath, endsWith("schema_version.json"));
-    });
-  });
-
-  group("announcement paths", () {
-    test("snapshot meta path", () {
-      final hash = "a" * 64;
-      final path = RepoPaths.announcementSnapshotMetaPath(hash);
-      expect(path, contains("announcements/"));
-      expect(path, endsWith("metadata.json"));
-    });
-
-    test("announcement index path", () {
-      final hash = "a" * 64;
-      final path = RepoPaths.announcementIndexPath(hash);
-      expect(path, contains("announcements/"));
-      expect(path, endsWith("announcements.pb2"));
     });
   });
 }

@@ -83,10 +83,7 @@ void main() {
             "name": "V3 Fit",
             "lastModified": 100,
             "description": "",
-            "checkoutRef": <String, dynamic>{
-              "checkoutId": "checkout-abc",
-              "serverId": "Serenity",
-            },
+            "checkoutRef": <String, dynamic>{"checkoutId": "checkout-abc", "serverId": "Serenity"},
           },
           "body": <String, dynamic>{
             "shipTypeId": 1234,
@@ -130,10 +127,7 @@ void main() {
             "name": "V1 Fit",
             "lastModified": 100,
             "description": "",
-            "checkoutRef": <String, dynamic>{
-              "checkoutId": "checkout-abc",
-              "serverId": "Serenity",
-            },
+            "checkoutRef": <String, dynamic>{"checkoutId": "checkout-abc", "serverId": "Serenity"},
           },
           "body": <String, dynamic>{
             "shipTypeId": 1234,

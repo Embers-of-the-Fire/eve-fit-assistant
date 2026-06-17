@@ -50,7 +50,6 @@ void main() {
     when(() => mockChannelService.readServerIndex(any())).thenReturn(const None());
     when(() => mockChannelService.readGenerationResources(any())).thenReturn(const None());
     when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
-    when(() => mockChannelService.readAnnouncementPointer(any())).thenReturn(const None());
   });
 
   testWidgets("shows no data placeholder when registry is null", (tester) async {
@@ -84,7 +83,6 @@ void main() {
     when(() => mockChannelService.readServerIndex(any())).thenReturn(const None());
     when(() => mockChannelService.readGenerationResources(any())).thenReturn(const None());
     when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
-    when(() => mockChannelService.readAnnouncementPointer(any())).thenReturn(const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -115,7 +113,6 @@ void main() {
     when(() => mockChannelService.readServerIndex(any())).thenReturn(Some(serverIndex));
     when(() => mockChannelService.readGenerationResources(any())).thenReturn(const None());
     when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
-    when(() => mockChannelService.readAnnouncementPointer(any())).thenReturn(const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -145,7 +142,6 @@ void main() {
     when(() => mockChannelService.readServerIndex(any())).thenReturn(const None());
     when(() => mockChannelService.readGenerationResources(any())).thenReturn(Some(genResources));
     when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
-    when(() => mockChannelService.readAnnouncementPointer(any())).thenReturn(const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -215,44 +211,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("已同步 — 此代数无版本数据。"), findsOneWidget);
-  });
-
-  testWidgets("shows announcements tab no data state when pointer is null", (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          channelServiceProvider.overrideWith((_) => mockChannelService),
-          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
-        ],
-        child: testApp(const ChannelMetadataPage()),
-      ),
-    );
-
-    await tester.tap(find.text("公告"));
-    await tester.pumpAndSettle();
-
-    expect(find.text("无公告数据 — 尚未同步。"), findsOneWidget);
-  });
-
-  testWidgets("shows announcements tab empty state when pointer hash is empty", (tester) async {
-    when(
-      () => mockChannelService.readAnnouncementPointer(any()),
-    ).thenReturn(Some(GenerationPointer(schemaVersion: 1, snapshotHash: "")));
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          channelServiceProvider.overrideWith((_) => mockChannelService),
-          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
-        ],
-        child: testApp(const ChannelMetadataPage()),
-      ),
-    );
-
-    await tester.tap(find.text("公告"));
-    await tester.pumpAndSettle();
-
-    expect(find.text("已同步 — 此代数无公告数据。"), findsOneWidget);
   });
 
   testWidgets("shows channel switcher when multiple channels available", (tester) async {

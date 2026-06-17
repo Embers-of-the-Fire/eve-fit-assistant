@@ -3,7 +3,6 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
-import "package:eve_fit_assistant/data/proto/announcement_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
@@ -34,18 +33,15 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
   ServerIndex? _serverIndex;
   GenerationResources? _genResources;
   GenerationPointer? _releasePointer;
-  GenerationPointer? _announcementPointer;
   ReleaseIndex? _releaseIndex;
-  AnnouncementIndex? _announcementIndex;
   bool _loadingRelease = false;
-  bool _loadingAnnouncement = false;
 
   String? _selectedChannel;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _readAll();
   }
 
@@ -66,7 +62,6 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
     _serverIndex = channelService.readServerIndex(_currentChannel).toNullable();
     _genResources = channelService.readGenerationResources(_currentChannel).toNullable();
     _releasePointer = channelService.readReleasePointer(_currentChannel).toNullable();
-    _announcementPointer = channelService.readAnnouncementPointer(_currentChannel).toNullable();
   }
 
   void _switchChannel(String channelName) {
@@ -76,9 +71,7 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
     _serverIndex = channelService.readServerIndex(channelName).toNullable();
     _genResources = channelService.readGenerationResources(channelName).toNullable();
     _releasePointer = channelService.readReleasePointer(channelName).toNullable();
-    _announcementPointer = channelService.readAnnouncementPointer(channelName).toNullable();
     _releaseIndex = null;
-    _announcementIndex = null;
     setState(() {});
   }
 
@@ -111,7 +104,6 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
           Tab(text: l10n.channelMetadataTabServers),
           Tab(text: l10n.channelMetadataTabResources),
           Tab(text: l10n.channelMetadataTabReleases),
-          Tab(text: l10n.channelMetadataTabAnnouncements),
         ],
       ),
       child: _channelRegistry == null
@@ -123,7 +115,6 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
                 _buildServersTab(l10n),
                 _buildResourcesTab(l10n),
                 _buildReleasesTab(l10n),
-                _buildAnnouncementsTab(l10n),
               ],
             ),
     );
@@ -287,69 +278,6 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
     );
   }
 
-  // ── Tab 5: Announcements ─────────────────────────────────────────────────────
-
-  Widget _buildAnnouncementsTab(AppLocalizations l10n) {
-    if (_announcementPointer == null) {
-      return Center(child: Text(l10n.channelMetadataNoAnnouncementData));
-    }
-    if (_announcementPointer!.snapshotHash.isEmpty) {
-      return Center(child: Text(l10n.channelMetadataNoAnnouncementAvailable));
-    }
-
-    return _announcementIndex != null
-        ? _buildAnnouncementIndexContent(l10n)
-        : _loadingAnnouncement
-        ? const Center(child: CircularProgressIndicator())
-        : _buildLazyLoadColumn(
-            l10n.channelMetadataLoadAnnouncement,
-            _loadingAnnouncement,
-            _loadAnnouncementIndex,
-            extra: Text(
-              "${l10n.channelMetadataFieldPointerHash}: ${_truncate(_announcementPointer!.snapshotHash)}",
-              style: const TextStyle(fontFamily: "monospace", fontSize: 12),
-            ),
-          );
-  }
-
-  Widget _buildAnnouncementIndexContent(AppLocalizations l10n) {
-    final entries = _announcementIndex!.entries;
-    final versionUpdateCount = entries.where((e) => e.isVersionUpdate).length;
-
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      children: [
-        Text(
-          l10n.channelMetadataAnnouncementCount(
-            total: entries.length,
-            versionUpdates: versionUpdateCount,
-          ),
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 8),
-        ...entries.map((e) {
-          final locales = e.contentHashes.keys.join(", ");
-          final constraints = <String>[];
-          if (e.hasVersionMin()) constraints.add("min=${e.versionMin}");
-          if (e.hasVersionMax()) constraints.add("max=${e.versionMax}");
-          final constraintStr = constraints.isNotEmpty ? " [${constraints.join(", ")}]" : "";
-          final vu = e.isVersionUpdate ? " VU" : "";
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Text(
-              "${e.id}$vu  ${l10n.channelMetadataPublished}: ${e.firstPublishedAt}  "
-              "${l10n.channelMetadataUpdated}: ${e.updatedAt}  "
-              "${l10n.channelMetadataLocales}: $locales$constraintStr",
-              style: const TextStyle(fontFamily: "monospace", fontSize: 11),
-            ),
-          );
-        }),
-        const SizedBox(height: 12),
-        _loadButton(l10n.channelMetadataReload, _loadingAnnouncement, _loadAnnouncementIndex),
-      ],
-    );
-  }
-
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   Widget _infoRow(String label, String value) => Padding(
@@ -417,31 +345,6 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
       setState(() => _loadingRelease = false);
       if (result.isRight()) {
         _releaseIndex = ReleaseIndex.fromBuffer(result.getRight().toNullable()!);
-      } else {
-        final err = result.getLeft().toNullable()!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "${context.l10n.channelMetadataLoadFailed}: ${err is CatalogNetworkError ? err.message : err.toString()}",
-            ),
-          ),
-        );
-      }
-      setState(() {});
-    }
-  }
-
-  Future<void> _loadAnnouncementIndex() async {
-    if (_announcementPointer == null || _announcementPointer!.snapshotHash.isEmpty) return;
-    setState(() => _loadingAnnouncement = true);
-
-    final remoteCatalog = ref.read(remoteCatalogServiceProvider);
-    final result = await remoteCatalog.fetchAnnouncementIndex(_announcementPointer!.snapshotHash);
-
-    if (mounted) {
-      setState(() => _loadingAnnouncement = false);
-      if (result.isRight()) {
-        _announcementIndex = AnnouncementIndex.fromBuffer(result.getRight().toNullable()!);
       } else {
         final err = result.getLeft().toNullable()!;
         ScaffoldMessenger.of(context).showSnackBar(

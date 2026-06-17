@@ -8,7 +8,6 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/data/proto/announcement_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
@@ -35,11 +34,8 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
   ServerIndex? _serverIndex;
   GenerationResources? _genResources;
   GenerationPointer? _releasePointer;
-  GenerationPointer? _announcementPointer;
   ReleaseIndex? _releaseIndex;
-  AnnouncementIndex? _announcementIndex;
   bool _loadingRelease = false;
-  bool _loadingAnnouncement = false;
   bool _refreshing = false;
 
   @override
@@ -57,7 +53,6 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
     _serverIndex = channelService.readServerIndex(_activeChannel).toNullable();
     _genResources = channelService.readGenerationResources(_activeChannel).toNullable();
     _releasePointer = channelService.readReleasePointer(_activeChannel).toNullable();
-    _announcementPointer = channelService.readAnnouncementPointer(_activeChannel).toNullable();
   }
 
   String get _activeChannel => ref.read(appSettingServiceProvider).remoteContent.channel;
@@ -80,8 +75,6 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
         _buildGenerationResources(),
         const ConfigListTile.title("Release Info"),
         _buildReleaseInfo(),
-        const ConfigListTile.title("Announcement Info"),
-        _buildAnnouncementInfo(),
         const ConfigListTile.title("Actions"),
         ConfigListTile.item(
           icon: const Icon(Icons.refresh),
@@ -262,80 +255,11 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
     );
   }
 
-  // ── Announcement Info ──────────────────────────────────────────────────────
-
-  ConfigListTile _buildAnnouncementInfo() {
-    if (_announcementPointer == null) {
-      return _placeholder("No announcement pointer — generation data not synced.");
-    }
-    if (_announcementPointer!.snapshotHash.isEmpty) {
-      return _pointerSyncedEmpty("announcement");
-    }
-
-    return ConfigListTile.custom(
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _field("Pointer hash", _truncate(_announcementPointer!.snapshotHash)),
-            const SizedBox(height: 8),
-            if (_announcementIndex != null)
-              _buildAnnouncementIndexContent()
-            else if (_loadingAnnouncement)
-              const Center(
-                child: Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
-              )
-            else ...[
-              Text(
-                "Tap 'Load Announcement Index' to fetch announcement catalog.",
-                style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              _loadButton("Load Announcement Index", _loadingAnnouncement, _loadAnnouncementIndex),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnnouncementIndexContent() {
-    final entries = _announcementIndex!.entries;
-    final versionUpdateCount = entries.where((e) => e.isVersionUpdate).length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "${entries.length} announcements, $versionUpdateCount version-update",
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        ),
-        const SizedBox(height: 8),
-        ...entries.map((e) {
-          final locales = e.contentHashes.keys.join(", ");
-          final constraints = <String>[];
-          if (e.hasVersionMin()) constraints.add("min=${e.versionMin}");
-          if (e.hasVersionMax()) constraints.add("max=${e.versionMax}");
-          final constraintStr = constraints.isNotEmpty ? " [${constraints.join(", ")}]" : "";
-          final vu = e.isVersionUpdate ? " VU" : "";
-          return Text(
-            "${e.id}$vu  published: ${e.firstPublishedAt}  updated: ${e.updatedAt}  locales: $locales$constraintStr",
-            style: const TextStyle(fontFamily: "monospace", fontSize: 11),
-          );
-        }),
-        const SizedBox(height: 8),
-        _loadButton("Load Announcement Index", _loadingAnnouncement, _loadAnnouncementIndex),
-      ],
-    );
-  }
-
   // ── Actions ────────────────────────────────────────────────────────────────
 
   Future<void> _runRefresh() async {
     setState(() => _refreshing = true);
     _releaseIndex = null;
-    _announcementIndex = null;
 
     final channelService = ref.read(channelServiceProvider);
 
@@ -383,31 +307,6 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
         );
       }
       setState(() {}); // rebuild to show/update content
-    }
-  }
-
-  Future<void> _loadAnnouncementIndex() async {
-    if (_announcementPointer == null || _announcementPointer!.snapshotHash.isEmpty) return;
-    setState(() => _loadingAnnouncement = true);
-
-    final remoteCatalog = ref.read(remoteCatalogServiceProvider);
-    final result = await remoteCatalog.fetchAnnouncementIndex(_announcementPointer!.snapshotHash);
-
-    if (mounted) {
-      setState(() => _loadingAnnouncement = false);
-      if (result.isRight()) {
-        _announcementIndex = AnnouncementIndex.fromBuffer(result.getRight().toNullable()!);
-      } else {
-        final err = result.getLeft().toNullable()!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Failed to load announcement index: ${err is CatalogNetworkError ? err.message : err.toString()}",
-            ),
-          ),
-        );
-      }
-      setState(() {});
     }
   }
 

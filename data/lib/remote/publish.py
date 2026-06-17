@@ -19,7 +19,6 @@ from data.lib.remote.generation import GenerationStore
 from data.lib.remote.hash import ident_hash
 from data.lib.remote.head import ChannelHeadStore
 from data.lib.remote.models import read_pb2
-from data.lib.remote.paths import announcement_snapshot_dir
 from data.lib.remote.paths import blob_path
 from data.lib.remote.paths import channel_head_dir
 from data.lib.remote.paths import channel_registry_path
@@ -84,7 +83,6 @@ class Publisher:
 
         self._publish_resource_snapshots(gen.resources, prefixes)
         self._publish_pointer_snapshot(gen.release_pointer, "releases", prefixes)
-        self._publish_pointer_snapshot(gen.announcement_pointer, "announcements", prefixes)
 
     def publish_head(self, channel: str) -> None:
         """Upload channel head metadata and reflog to remote."""
@@ -109,7 +107,6 @@ class Publisher:
 
         self._publish_resource_snapshots(gen.resources, prefixes)
         self._publish_pointer_snapshot(gen.release_pointer, "releases", prefixes)
-        self._publish_pointer_snapshot(gen.announcement_pointer, "announcements", prefixes)
         self._upload_dir(
             generation_dir(self.local_root, head.generation_hash),
             prefixes + f"channels/refs/{head.generation_hash}",
@@ -231,7 +228,6 @@ class Publisher:
 
         dir_map = {
             "releases": release_snapshot_dir,
-            "announcements": announcement_snapshot_dir,
         }
         snap_dir = dir_map[snap_type](self.local_root, snap_hash)
         if not snap_dir.is_dir():

@@ -28,18 +28,6 @@ void main() {
       expect(ident.identHash, expectedHash);
     });
 
-    test("announcement ident produces expected URI format", () {
-      final ident = BlobIdent.announcement("en", "ann-2026-001");
-      expect(ident.uri, "announcement://en/ann-2026-001");
-      expect(ident.identHash.length, 64);
-    });
-
-    test("announcement ident hash matches manual computation", () {
-      final ident = BlobIdent.announcement("en", "ann-2026-001");
-      final expectedHash = RepoHash.hashIdent("announcement://en/ann-2026-001");
-      expect(ident.identHash, expectedHash);
-    });
-
     test("equality by identHash", () {
       final a = BlobIdent.resource("proto/ships.bin");
       final b = BlobIdent.resource("proto/ships.bin");

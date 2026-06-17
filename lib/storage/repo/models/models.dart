@@ -8,7 +8,6 @@
 /// | CheckoutMeta | §3.11 | Individual checkout metadata |
 /// | ResourceSnapshotMeta | §3.2 | Resource snapshot metadata JSON |
 /// | ReleaseSnapshotMeta | §3.3 | Release snapshot metadata JSON |
-/// | AnnouncementSnapshotMeta | §3.4 | Announcement snapshot metadata JSON |
 /// | GenerationMeta | §3.5 | Generation metadata JSON |
 /// | ServerMeta | — | Server metadata (from ServerIndex protobuf) |
 /// | BlobIdent | §5 | URI-based blob identification with ident_hash |

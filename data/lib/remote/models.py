@@ -50,14 +50,6 @@ class ReleaseSnapshotMetadata(BaseModel):
     created_at: str = Field(alias="createdAt")
 
 
-class AnnouncementSnapshotMetadata(BaseModel):
-    schema_version: int = Field(default=1, alias="schemaVersion")
-    author: str = Field(default="")
-    description: str = Field(default="")
-    announcement_count: int = Field(alias="announcementCount")
-    created_at: str = Field(alias="createdAt")
-
-
 class GenerationMetadata(BaseModel):
     schema_version: int = Field(default=1, alias="schemaVersion")
     parent: str | None = None
@@ -182,7 +174,6 @@ def write_pb2_atomic(path: Path, message) -> None:
 _PB2_ALIAS_MAP: dict[str, tuple[str, str]] = {
     "ResourceIndex": ("resource_index_pb2", "ResourceIndex"),
     "ReleaseIndex": ("release_index_pb2", "ReleaseIndex"),
-    "AnnouncementIndex": ("announcement_index_pb2", "AnnouncementIndex"),
     "ServerIndex": ("server_index_pb2", "ServerIndex"),
     "GenerationResources": ("generation_resources_pb2", "GenerationResources"),
     "GenerationPointer": ("generation_pointer_pb2", "GenerationPointer"),
@@ -275,32 +266,6 @@ def make_release_index(
     return msg
 
 
-def make_announcement_index(
-    entries: list[dict],
-) -> AnnouncementIndex:
-    """Build an AnnouncementIndex from a list of entry dicts.
-
-    Each dict can have: id, first_published_at, updated_at, content_hashes,
-    version_min, version_max, is_version_update.
-    """
-    msg = _load_pb2_type("AnnouncementIndex")()
-    msg.schema_version = 1
-    for e in entries:
-        entry = msg.entries.add()
-        entry.id = e["id"]
-        entry.first_published_at = e["first_published_at"]
-        entry.updated_at = e["updated_at"]
-        for locale, chash in e.get("content_hashes", {}).items():
-            entry.content_hashes[locale] = chash
-        if "version_min" in e:
-            entry.version_min = e["version_min"]
-        if "version_max" in e:
-            entry.version_max = e["version_max"]
-        if e.get("is_version_update", False):
-            entry.is_version_update = True
-    return msg
-
-
 def make_head_reflog_entry(
     from_hash: str,
     to_hash: str,
@@ -362,5 +327,4 @@ class ReachabilitySet:
     generations: set[str] = field(default_factory=set)
     resource_snapshots: set[str] = field(default_factory=set)
     release_snapshots: set[str] = field(default_factory=set)
-    announcement_snapshots: set[str] = field(default_factory=set)
     blobs: set[tuple[str, str]] = field(default_factory=set)

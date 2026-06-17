@@ -1,5 +1,3 @@
-import "package:eve_fit_assistant/data/proto/announcement_index.pb.dart";
-import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
@@ -156,26 +154,6 @@ class RepoService {
     final checkoutId = checkoutRegistry.activeCheckoutId();
     if (checkoutId.isNone()) return const None();
     return checkoutService.revertCheckoutTo(checkoutId.toNullable()!, snapshotHash);
-  }
-
-  // ── Announcements ──────────────────────────────────────────────────────────
-
-  /// Fetches the announcement snapshot for [generationHash].
-  ///
-  /// Returns [None] if not available or fetch fails.
-  Future<Option<AnnouncementIndex>> fetchAnnouncements({
-    required Channel channel,
-    required String generationHash,
-  }) async {
-    final pointerBytes = await remoteCatalogService.fetchAnnouncementPointer(generationHash);
-    if (pointerBytes.isLeft()) return const None();
-    final pointer = GenerationPointer.fromBuffer(pointerBytes.getRight().toNullable()!);
-    final snapshotHash = pointer.snapshotHash;
-    if (snapshotHash.isEmpty) return const None();
-
-    final indexBytes = await remoteCatalogService.fetchAnnouncementIndex(snapshotHash);
-    if (indexBytes.isLeft()) return const None();
-    return Some(AnnouncementIndex.fromBuffer(indexBytes.getRight().toNullable()!));
   }
 
   // ── Verification & GC ──────────────────────────────────────────────────────

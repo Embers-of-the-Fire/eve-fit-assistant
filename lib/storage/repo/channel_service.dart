@@ -78,7 +78,6 @@ class ChannelService {
   /// - channels/{channel}/server.pb2      — ServerIndex
   /// - channels/{channel}/resources.pb2   — GenerationResources
   /// - channels/{channel}/releases.pb2    — GenerationPointer (releases)
-  /// - channels/{channel}/announcements.pb2 — GenerationPointer (announcements)
   Future<Either<String, Unit>> syncChannelGeneration(String channelName) async {
     // Fetch head metadata to get the generation hash
     final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
@@ -113,12 +112,6 @@ class ChannelService {
       fetcher: () => remoteCatalogService.fetchGenerationPointer(generationHash),
       channelName: channelName,
       path: RepoPaths.channelReleasesPath(channelName),
-    );
-
-    await _fetchAndPersistBytes(
-      fetcher: () => remoteCatalogService.fetchAnnouncementPointer(generationHash),
-      channelName: channelName,
-      path: RepoPaths.channelAnnouncementsPath(channelName),
     );
 
     return const Right(unit);
@@ -196,20 +189,6 @@ class ChannelService {
   /// Returns [None] if not present locally.
   Option<GenerationPointer> readReleasePointer(String channelName) {
     final path = RepoPaths.channelReleasesPath(channelName);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
-    try {
-      return Some(GenerationPointer.fromBuffer(file.readAsBytesSync()));
-    } on Exception {
-      return const None();
-    }
-  }
-
-  /// Reads the announcement GenerationPointer protobuf for [channelName].
-  ///
-  /// Returns [None] if not present locally.
-  Option<GenerationPointer> readAnnouncementPointer(String channelName) {
-    final path = RepoPaths.channelAnnouncementsPath(channelName);
     final file = File(path);
     if (!file.existsSync()) return const None();
     try {

@@ -205,27 +205,6 @@ Inspect effective remote mock configuration:
 ./x remote config display --pretty
 ```
 
-Prepare a localized remote announcement in the configured mock origin before publishing:
-
-```bash
-./x remote prepare announcement \
-  --zh docs/drafts/update.zh.md \
-  --en docs/drafts/update.en.md \
-  --id data-update \
-  --title-zh "数据更新公告" \
-  --title-en "Data update notice" \
-  --summary-zh "本次更新包含最新 EVE 数据。" \
-  --summary-en "This update includes the latest EVE data."
-```
-
-The `--id` option provides a topic prefix; a seconds-level timestamp suffix is always appended
-(e.g. `data-update-20260605T120030Z`). Omit `--id` to use an auto-generated `announcement-<ts>`
-ID. Announcement preparation copies the Markdown bodies into the canonical remote object layout,
-creates or updates the document catalog, and always ensures the channel index advertises the
-document catalog. The generated announcement is scoped to the current app version through
-`minAppVer` by default. Pass `--all-app-ver` to write `minAppVer: null`. Existing announcement
-ids or body files are rejected by default; pass `--replace` only for intentional corrections.
-
 Prepare bundle artifacts in the same origin after running the data build:
 ```bash
 ./x remote prepare add-resources --checkout schema/checkouts/<hash>.json --server <id>
@@ -349,8 +328,7 @@ The `./x remote prepare` sub-group manages publishing to `efa/v2/<channel>/`:
 # Register an APK release
 ./x remote prepare add-release \
   --version "0.2.0" \
-  --apk build/app/outputs/flutter-apk/app-release.apk \
-  --announcement <announcement-id>
+  --apk build/app/outputs/flutter-apk/app-release.apk
 
 # Publish to S3/R2 (activates generation via atomic index.json write)
 ./x remote prepare publish
@@ -377,15 +355,11 @@ efa/v2/<channel>/
         checkouts/<hash>.json          # Full file manifest.
       releases/
         catalog.json                   # Available releases with download hashes.
-      announcements/
-        catalog.json                   # Announcement hash index.
     checkouts/<2c>/<hash>.json         # Flat checkout registry.
   resources/
     releases/<2c>/<hash>               # Content-addressed APK binaries.
     assets/<2c>/<pathHash>/<contentHash>  # Content-addressed data files.
-  announcements/
-    files/<locale>/<id>                # Markdown bodies.
-    registry/<id>.json                 # Full announcement records.
+
 ```
 
 ### App-Side V2 Sync
@@ -393,11 +367,9 @@ efa/v2/<channel>/
 The Flutter client resolves data through the V2 repository system:
 
 - `RemoteCatalogService` fetches `manifest/index.json` and navigates the
-  generation tree (catalogs, servers, checkouts, announcements, releases).
+  generation tree (catalogs, servers, checkouts, releases).
 - `ReleaseSyncService` compares the installed app version against the
   release catalog and triggers APK download when a newer version is available.
-- `AnnouncementSyncService` compares announcement content hashes to detect
-  updates and resets the `isRead` flag on change.
 - The `RepoCollectionService` loads type data (ships, skills, items,
   localization, icons) from the active checkout's content-addressed asset store.
 - Fits and characters store a `CheckoutRef` binding (checkout hash + server

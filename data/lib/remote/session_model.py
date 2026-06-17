@@ -32,7 +32,6 @@ class SessionExistsError(Exception):
 class StagedSnapshots(BaseModel):
     resources: list[str] = Field(default_factory=list)
     releases: list[str] = Field(default_factory=list)
-    announcements: list[str] = Field(default_factory=list)
 
 
 class Session(BaseModel):
@@ -163,8 +162,6 @@ class SessionStore:
             staged.resources.append(hash_value)
         elif snap_type == "release":
             staged.releases.append(hash_value)
-        elif snap_type == "announcement":
-            staged.announcements.append(hash_value)
         self.save(session)
         return session
 
@@ -181,9 +178,5 @@ class SessionStore:
             if hash_value not in staged.releases:
                 raise ValueError(f"Hash {hash_value} is not staged as release.")
             staged.releases.remove(hash_value)
-        elif snap_type == "announcement":
-            if hash_value not in staged.announcements:
-                raise ValueError(f"Hash {hash_value} is not staged as announcement.")
-            staged.announcements.remove(hash_value)
         self.save(session)
         return session

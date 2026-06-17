@@ -20,13 +20,6 @@ class BlobIdent {
     return BlobIdent._(uri: uri, identHash: RepoHash.hashIdent(uri));
   }
 
-  /// Creates an announcement blob ident.
-  ///
-  /// URI format: `announcement://{locale}/{id}`
-  factory BlobIdent.announcement(String locale, String id) {
-    final uri = "announcement://$locale/$id";
-    return BlobIdent._(uri: uri, identHash: RepoHash.hashIdent(uri));
-  }
   const BlobIdent._({required this.uri, required this.identHash});
 
   /// The full URI string (e.g. `resource://tranquility/proto/ships.bin`).

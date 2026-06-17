@@ -1210,7 +1210,6 @@ def remote_session_status(as_json: bool, schema_root: Path | None):
                     "staged_counts": {
                         "resources": len(staged.resources),
                         "releases": len(staged.releases),
-                        "announcements": len(staged.announcements),
                     },
                     "file": str(store.session_path),
                 }
@@ -1223,12 +1222,7 @@ def remote_session_status(as_json: bool, schema_root: Path | None):
         else:
             committed_label = styled([Style.BRIGHT, Fore.YELLOW], " (uncommitted)")
         click.echo(f"Session on channel {session.channel}{committed_label}")
-        click.echo(
-            f"  Staged:      "
-            f"R:{len(staged.resources)} "
-            f"L:{len(staged.releases)} "
-            f"A:{len(staged.announcements)}"
-        )
+        click.echo(f"  Staged:      R:{len(staged.resources)} L:{len(staged.releases)}")
         click.echo(styled(Style.DIM, f"  File:        {store.session_path}"))
         if session.committed:
             mgr = SessionManager(root)
@@ -1286,9 +1280,7 @@ def _validate_add_args(
 ) -> str:
     """Validate mutually exclusive add flags. Returns the snap type."""
     if snap_type_flag is None:
-        raise click.ClickException(
-            "Must specify exactly one of --resource, --release, --announcement."
-        )
+        raise click.ClickException("Must specify exactly one of --resource, --release.")
     if source_hash is None and source_file is None:
         raise click.ClickException("Must specify exactly one of --hash or --file.")
     if source_hash is not None and source_file is not None:
@@ -1299,7 +1291,6 @@ def _validate_add_args(
 _SNAPSHOT_TYPE_DIR: dict[str, str] = {
     "resource": "resources",
     "release": "releases",
-    "announcement": "announcements",
 }
 
 
@@ -1313,7 +1304,6 @@ def _check_snapshot_metadata(
     (ValidationError) or on success with the wrong model having unexpected
     fields, raises ClickException.
     """
-    from data.lib.remote.models import AnnouncementSnapshotMetadata
     from data.lib.remote.models import ReleaseSnapshotMetadata
     from data.lib.remote.models import ResourceSnapshotMetadata
     from data.lib.remote.models import read_json
@@ -1328,7 +1318,6 @@ def _check_snapshot_metadata(
     model_for_type = {
         "resource": ResourceSnapshotMetadata,
         "release": ReleaseSnapshotMetadata,
-        "announcement": AnnouncementSnapshotMetadata,
     }
 
     # Try expected model — success means match
@@ -1374,7 +1363,6 @@ def _resolve_snapshot_hash_from_prefix(
     list_for_type: dict[str, object] = {
         "resource": snap_store.list_resource_snapshots,
         "release": snap_store.list_release_snapshots,
-        "announcement": snap_store.list_announcement_snapshots,
     }
     candidates = [h for h in list_for_type[snap_type]() if h.startswith(prefix)]
 
@@ -1396,14 +1384,12 @@ def _add_snapshot_by_hash(
     hash_value: str,
 ) -> None:
     """Verify snapshot existence + metadata type, then stage."""
-    from data.lib.remote.paths import announcement_snapshot_dir
     from data.lib.remote.paths import release_snapshot_dir
     from data.lib.remote.paths import resource_snapshot_dir
 
     dir_for_type = {
         "resource": resource_snapshot_dir,
         "release": release_snapshot_dir,
-        "announcement": announcement_snapshot_dir,
     }
     snap_dir = dir_for_type[snap_type](root, hash_value)
     if not snap_dir.is_dir():
@@ -1421,7 +1407,6 @@ def _add_snapshot_by_file(
     """Read a catalog/registry file, compute snapshot, and stage."""
     import json as _json
 
-    from data.lib.remote.models import AnnouncementSnapshotMetadata
     from data.lib.remote.models import ReleaseSnapshotMetadata
     from data.lib.remote.models import ResourceSnapshotMetadata
     from data.lib.remote.snapshot import SnapshotStore
@@ -1485,41 +1470,6 @@ def _add_snapshot_by_file(
         index = make_release_index(index_entries)
         hash_value = snap_store.create_release_snapshot(metadata, index)
 
-    elif snap_type == "announcement":
-        from data.lib.remote.models import make_announcement_index
-
-        try:
-            metadata = AnnouncementSnapshotMetadata.model_validate(data["metadata"])
-            entries = data["entries"]
-        except KeyError as e:
-            raise click.ClickException(
-                f"Invalid announcement registry in {source_file}: "
-                f"missing key {e} (expected 'metadata' and 'entries')"
-            ) from None
-        except Exception as e:
-            raise click.ClickException(
-                f"Cannot parse announcement metadata in {source_file}: {e}"
-            ) from None
-
-        index_entries: list[dict] = []
-        for entry in entries:
-            e_dict: dict = {
-                "id": entry["id"],
-                "first_published_at": entry["first_published_at"],
-                "updated_at": entry["updated_at"],
-            }
-            if "content_hashes" in entry:
-                e_dict["content_hashes"] = entry["content_hashes"]
-            if "version_min" in entry:
-                e_dict["version_min"] = entry["version_min"]
-            if "version_max" in entry:
-                e_dict["version_max"] = entry["version_max"]
-            if entry.get("is_version_update", False):
-                e_dict["is_version_update"] = True
-            index_entries.append(e_dict)
-        index = make_announcement_index(index_entries)
-        hash_value = snap_store.create_announcement_snapshot(metadata, index)
-
     else:
         raise click.ClickException(f"Unknown snapshot type: {snap_type}")
 
@@ -1538,12 +1488,6 @@ def _add_snapshot_by_file(
     "snap_type_flag",
     flag_value="release",
     help="Stage a release snapshot.",
-)
-@click.option(
-    "--announcement",
-    "snap_type_flag",
-    flag_value="announcement",
-    help="Stage an announcement snapshot.",
 )
 @click.option(
     "--hash",
@@ -1621,12 +1565,6 @@ def remote_session_add(
     help="Remove a release snapshot.",
 )
 @click.option(
-    "--announcement",
-    "snap_type_flag",
-    flag_value="announcement",
-    help="Remove an announcement snapshot.",
-)
-@click.option(
     "--hash",
     "source_hash",
     required=True,
@@ -1652,9 +1590,7 @@ def remote_session_remove(
 ):
     """Unstage a snapshot."""
     if snap_type_flag is None:
-        raise click.ClickException(
-            "Must specify exactly one of --resource, --release, --announcement."
-        )
+        raise click.ClickException("Must specify exactly one of --resource, --release.")
 
     root = _resolve_schema_root(schema_root)
     store = SessionStore(root)
@@ -1701,9 +1637,6 @@ def _get_snapshot_summary(
             vmin = meta.version_min or "?"
             vmax = meta.version_max or "?"
             return f"version_min={vmin}  version_max={vmax}"
-        elif snap_type == "announcement":
-            meta, _ = snap_store.load_announcement_snapshot(hash_value)
-            return f"announcement_count={meta.announcement_count}"
     except Exception:
         return "(metadata unavailable)"
     return ""
@@ -1713,7 +1646,7 @@ def _compute_diff(root: Path, session: Session) -> dict:
     """Compare session staged hashes against the current channel head.
 
     Returns a dict with keys:
-      channel, head, resources, releases, announcements.
+      channel, head, resources, releases.
     Each snapshot-type key maps to {"added": [...], "removed": [...], "unchanged": [...]}.
     """
     from data.lib.remote.generation import GenerationStore
@@ -1726,7 +1659,6 @@ def _compute_diff(root: Path, session: Session) -> dict:
     head_sets: dict[str, set[str]] = {
         "resources": set(),
         "releases": set(),
-        "announcements": set(),
     }
 
     try:
@@ -1738,19 +1670,16 @@ def _compute_diff(root: Path, session: Session) -> dict:
                 head_sets["resources"].add(entry.snapshot_hash)
             if generation.release_pointer.snapshot_hash:
                 head_sets["releases"].add(generation.release_pointer.snapshot_hash)
-            if generation.announcement_pointer.snapshot_hash:
-                head_sets["announcements"].add(generation.announcement_pointer.snapshot_hash)
     except Exception:
         pass
 
     session_sets = {
         "resources": set(session.staged.resources),
         "releases": set(session.staged.releases),
-        "announcements": set(session.staged.announcements),
     }
 
     diff: dict = {"channel": session.channel, "head": head_hash}
-    for snap_type in ("resources", "releases", "announcements"):
+    for snap_type in ("resources", "releases"):
         s_set = session_sets[snap_type]
         h_set = head_sets[snap_type]
         diff[snap_type] = {
@@ -1807,9 +1736,8 @@ def remote_session_diff(as_json: bool, schema_root: Path | None):
     type_labels = {
         "resources": "Resources",
         "releases": "Releases",
-        "announcements": "Announcements",
     }
-    for snap_type in ("resources", "releases", "announcements"):
+    for snap_type in ("resources", "releases"):
         data = diff[snap_type]
         if not data["added"] and not data["removed"] and not data["unchanged"]:
             continue
@@ -1908,7 +1836,6 @@ def _verify_staged(root: Path, session: Session) -> list:
     Returns a list of Issue objects.
     """
     from data.lib.remote.hash import snapshot_hash as _snapshot_hash
-    from data.lib.remote.paths import announcement_snapshot_dir
     from data.lib.remote.paths import release_snapshot_dir
     from data.lib.remote.paths import resource_snapshot_dir
     from data.lib.remote.verify import Issue
@@ -1918,22 +1845,19 @@ def _verify_staged(root: Path, session: Session) -> list:
     dir_for_type: dict[str, callable] = {
         "resource": resource_snapshot_dir,
         "release": release_snapshot_dir,
-        "announcement": announcement_snapshot_dir,
     }
     proto_names: dict[str, str] = {
         "resource": "resources.pb2",
         "release": "releases.pb2",
-        "announcement": "announcements.pb2",
     }
     staged_map: dict[str, list[str]] = {
         "resource": session.staged.resources,
         "release": session.staged.releases,
-        "announcement": session.staged.announcements,
     }
 
     # Phase 1: Per-snapshot integrity
     # Phase 2: Blob integrity (inline for resource snapshots)
-    for snap_type in ("resource", "release", "announcement"):
+    for snap_type in ("resource", "release"):
         proto_name = proto_names[snap_type]
         staged_hashes = staged_map[snap_type]
         for h in staged_hashes:
@@ -2081,7 +2005,6 @@ def remote_session_verify(repair: bool, schema_root: Path | None):
     staged_counts = {
         "Resources": len(session.staged.resources),
         "Releases": len(session.staged.releases),
-        "Announcements": len(session.staged.announcements),
     }
 
     if not issues:
@@ -2146,7 +2069,6 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
         [
             session.staged.resources,
             session.staged.releases,
-            session.staged.announcements,
         ]
     ):
         raise click.ClickException(
@@ -2215,15 +2137,6 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
         release_hash = session.staged.releases[-1]
         release_ptr.snapshot_hash = release_hash
 
-    # Build GenerationPointer for announcements (last staged hash wins)
-    announcement_ptr = GenerationPointer()
-    announcement_ptr.schema_version = 1
-    announcement_ptr.snapshot_hash = ""
-    announcement_hash: str | None = None
-    if session.staged.announcements:
-        announcement_hash = session.staged.announcements[-1]
-        announcement_ptr.snapshot_hash = announcement_hash
-
     # Determine parent hash from current head
     current_head = head_store._safe_get_head(resolved_channel)
     parent = current_head.generation_hash if current_head and current_head.generation_hash else None
@@ -2252,7 +2165,6 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
         server_index=server_index,
         resources=gen_resources,
         release_pointer=release_ptr,
-        announcement_pointer=announcement_ptr,
     )
 
     reused = gen_hash in existing_hashes
@@ -2291,8 +2203,6 @@ def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
     )
     release_label = f"{release_hash[:16]}..." if release_hash else "none"
     click.echo(styled(Style.DIM, f"  Releases:      {release_label}"))
-    announcement_label = f"{announcement_hash[:16]}..." if announcement_hash else "none"
-    click.echo(styled(Style.DIM, f"  Announcements: {announcement_label}"))
 
 
 # ---- revert -----------------------------------------------------------------
@@ -2615,7 +2525,6 @@ def _print_sync_result(result: SyncResult) -> None:
     parts.append(f"generations: {result.generations}")
     parts.append(f"resource snapshots: {result.resource_snapshots}")
     parts.append(f"release snapshots: {result.release_snapshots}")
-    parts.append(f"announcement snapshots: {result.announcement_snapshots}")
     click.echo("  " + "  ".join(parts))
 
 
@@ -3296,11 +3205,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
 @click.option("--apps", is_flag=True, default=False, help="Show APK builds.")
 @click.option("--resources", is_flag=True, default=False, help="Show resource snapshots.")
 @click.option("--releases", is_flag=True, default=False, help="Show release snapshots.")
-@click.option("--announcements", is_flag=True, default=False, help="Show announcement snapshots.")
 @click.option("--generations", is_flag=True, default=False, help="Show generations.")
-def build_list_cmd(
-    apps: bool, resources: bool, releases: bool, announcements: bool, generations: bool
-):
+def build_list_cmd(apps: bool, resources: bool, releases: bool, generations: bool):
     """List local build / cache items."""
     from data.lib.remote.generation import GenerationStore
     from data.lib.remote.head import ChannelHeadStore
@@ -3330,7 +3236,7 @@ def build_list_cmd(
                             files.append(f)
         return versions, files
 
-    any_opt = apps or resources or releases or announcements or generations
+    any_opt = apps or resources or releases or generations
     schema_root = _resolve_schema_root(None)
 
     if not any_opt:
@@ -3361,14 +3267,12 @@ def build_list_cmd(
 
             res_hashes = snap_store.list_resource_snapshots()
             rel_hashes = snap_store.list_release_snapshots()
-            ann_hashes = snap_store.list_announcement_snapshots()
             all_gens = gen_store.list_all()
             registry = head_store.get_registry()
 
             for label, hashes, asset_dir in [
                 ("Resource snapshots:", res_hashes, "resources"),
                 ("Release snapshots:", rel_hashes, "releases"),
-                ("Announcement snapshots:", ann_hashes, "announcements"),
             ]:
                 if hashes:
                     total = sum(_dir_size(schema_root / "assets" / asset_dir / h) for h in hashes)
@@ -3511,39 +3415,6 @@ def build_list_cmd(
                             click.echo(
                                 f"  {h[:9]:9s}  {v_range:21s}"
                                 f"  {meta.release_count!s:>10s}  {meta.created_at}"
-                            )
-                        except Exception:
-                            click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
-
-        if announcements:
-            if not first:
-                click.echo()
-            first = False
-            if not schema_root.is_dir():
-                click.echo(
-                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
-                    + str(schema_root)
-                )
-            else:
-                snap_store = SnapshotStore(schema_root)
-                ann_hashes = snap_store.list_announcement_snapshots()
-                click.echo(
-                    styled(
-                        [Style.BRIGHT, Fore.GREEN],
-                        f"\nAnnouncement Snapshots ({len(ann_hashes)})",
-                    )
-                )
-                click.echo(styled([Style.BRIGHT], "=" * 60))
-                if not ann_hashes:
-                    click.echo("  (none)")
-                else:
-                    click.echo(f"  {'Hash':9s}  {'Announcements':>16s}  Created")
-                    click.echo(f"  {'-' * 9}  {'-' * 16}  {'-' * 25}")
-                    for h in ann_hashes:
-                        try:
-                            meta, _ = snap_store.load_announcement_snapshot(h)
-                            click.echo(
-                                f"  {h[:9]:9s}  {meta.announcement_count!s:>16s}  {meta.created_at}"
                             )
                         except Exception:
                             click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")

@@ -53,9 +53,6 @@ class GarbageCollector:
                     if gen.release_pointer.snapshot_hash:
                         reachable.release_snapshots.add(gen.release_pointer.snapshot_hash)
 
-                    if gen.announcement_pointer.snapshot_hash:
-                        reachable.announcement_snapshots.add(gen.announcement_pointer.snapshot_hash)
-
                     for entry in gen.resources.entries:
                         snap_hash = entry.snapshot_hash
                         if not snap_hash:
@@ -93,11 +90,6 @@ class GarbageCollector:
         deleted.extend(
             self._prune_entities("release_snapshots", reachable.release_snapshots, dry_run)
         )
-        deleted.extend(
-            self._prune_entities(
-                "announcement_snapshots", reachable.announcement_snapshots, dry_run
-            )
-        )
         deleted.extend(self._prune_blobs(reachable.blobs, dry_run))
         deleted.extend(self._prune_tmp_dirs(dry_run))
 
@@ -109,7 +101,6 @@ class GarbageCollector:
             "generations": self.root / "channels" / "refs",
             "resource_snapshots": self.root / "assets" / "resources",
             "release_snapshots": self.root / "assets" / "releases",
-            "announcement_snapshots": self.root / "assets" / "announcements",
         }
         base_dir = base_dir_map[label]
         if not base_dir.is_dir():
@@ -179,7 +170,6 @@ class GarbageCollector:
             self.root / "assets" / "blobs",
             self.root / "assets" / "resources",
             self.root / "assets" / "releases",
-            self.root / "assets" / "announcements",
             self.root / "channels" / "refs",
         ]:
             if not root_dir.is_dir():

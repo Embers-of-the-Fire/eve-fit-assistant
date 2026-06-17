@@ -1,17 +1,11 @@
-import "dart:convert";
-import "dart:io";
-
-import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
-import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
-import "package:path/path.dart" as p;
 
 /// Represents a single integrity issue found during verification.
 sealed class VerificationIssue {
@@ -111,8 +105,7 @@ class VerificationService {
   /// Follows spec §12.2 client deletion rules:
   /// 1. Collect reachable snapshot hashes from all checkouts and reflogs
   /// 2. Collect referenced blobs from reachable ResourceIndexes
-  /// 3. Collect announcement snapshot hashes from channel metadata (spec §12.1)
-  /// 4. Delete unreferenced snapshots, blobs, empty dirs, tmp dirs
+  /// 3. Delete unreferenced snapshots, blobs, empty dirs, tmp dirs
   ///
   /// Returns the total number of items pruned.
   int prune() {
@@ -147,55 +140,10 @@ class VerificationService {
       }
     }
 
-    // Collect announcement snapshot hashes from channel metadata (spec §12.1)
-    final activeAnnouncementHashes = _collectAnnouncementHashes();
-
     return assetStore.pruneSync(
       activeSnapshotHashes: activeSnapshotHashes,
       activeResourceIndexes: activeResourceIndexes,
-      activeAnnouncementHashes: activeAnnouncementHashes,
     );
-  }
-
-  /// Collects announcement snapshot hashes reachable from channel metadata.
-  ///
-  /// Walks each channel's metadata.json → generationHash, then reads the
-  /// generation's announcements pointer (if cached locally) to collect
-  /// the referenced announcement snapshot hash.
-  Set<String> _collectAnnouncementHashes() {
-    final hashes = <String>{};
-    final channelsDir = Directory(RepoPaths.channelsPath);
-    if (!channelsDir.existsSync()) return hashes;
-
-    for (final entity in channelsDir.listSync().whereType<Directory>()) {
-      final channelName = p.basename(entity.path);
-      if (channelName.startsWith(".")) continue;
-
-      // Read channel head metadata to get generationHash
-      final headPath = RepoPaths.channelHeadMetaPath(channelName);
-      final headFile = File(headPath);
-      if (!headFile.existsSync()) continue;
-
-      try {
-        final json = jsonDecode(headFile.readAsStringSync()) as Map<String, dynamic>;
-        final genHash = json["generationHash"] as String?;
-        if (genHash == null) continue;
-
-        // Try to read the generation's announcement pointer (may not exist on client)
-        final pointerPath = "${RepoPaths.channelsPath}/refs/$genHash/announcements.pb2";
-        final pointerFile = File(pointerPath);
-        if (!pointerFile.existsSync()) continue;
-
-        final pointer = GenerationPointer.fromBuffer(pointerFile.readAsBytesSync());
-        if (pointer.snapshotHash.isNotEmpty) {
-          hashes.add(pointer.snapshotHash);
-        }
-      } on Exception {
-        // best-effort: skip unreadable files
-      }
-    }
-
-    return hashes;
   }
 
   /// Repairs missing files by re-downloading from remote.

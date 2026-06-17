@@ -1,7 +1,7 @@
 """Generation store — immutable generation CRUD and parent-chain walking.
 
-Generations are stored at channels/refs/{generation_hash}/ with five files:
-  metadata.json, server.pb2, resources.pb2, releases.pb2, announcements.pb2
+Generations are stored at channels/refs/{generation_hash}/ with four files:
+  metadata.json, server.pb2, resources.pb2, releases.pb2
 """
 
 from __future__ import annotations
@@ -38,7 +38,6 @@ class Generation:
     server_index: ServerIndex
     resources: GenerationResources
     release_pointer: GenerationPointer
-    announcement_pointer: GenerationPointer
 
 
 class GenerationStore:
@@ -53,11 +52,10 @@ class GenerationStore:
         server_index_msg: ServerIndex,
         resources_msg: GenerationResources,
         release_pointer: GenerationPointer,
-        announcement_pointer: GenerationPointer,
     ) -> str:
         """Create a generation atomically, returning its hash.
 
-        Writes all five files to a temp directory, computes the structured
+        Writes all four files to a temp directory, computes the structured
         generation hash, then renames to the final location.
         """
         temp_dir = temp_generation_dir(self.root)
@@ -69,7 +67,6 @@ class GenerationStore:
         write_pb2(temp_dir / "server.pb2", server_index_msg)
         write_pb2(temp_dir / "resources.pb2", resources_msg)
         write_pb2(temp_dir / "releases.pb2", release_pointer)
-        write_pb2(temp_dir / "announcements.pb2", announcement_pointer)
 
         files = {
             "metadata.json": (temp_dir / "metadata.json").read_bytes(),
@@ -101,7 +98,6 @@ class GenerationStore:
             server_index=read_pb2(gen_dir / "server.pb2", ServerIndex),
             resources=read_pb2(gen_dir / "resources.pb2", GenerationResources),
             release_pointer=read_pb2(gen_dir / "releases.pb2", GenerationPointer),
-            announcement_pointer=read_pb2(gen_dir / "announcements.pb2", GenerationPointer),
         )
 
     def walk_parent_chain(self, start_hash: str) -> Iterator[Generation]:

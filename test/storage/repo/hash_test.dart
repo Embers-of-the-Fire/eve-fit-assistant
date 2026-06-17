@@ -76,20 +76,6 @@ void main() {
     });
   });
 
-  group("hashAnnouncementSnapshot (v3)", () {
-    test("produces deterministic hash", () {
-      final h1 = RepoHash.hashAnnouncementSnapshot("a" * 64);
-      final h2 = RepoHash.hashAnnouncementSnapshot("a" * 64);
-      expect(h1, h2);
-    });
-
-    test("domain separation from other snapshots", () {
-      final hResource = RepoHash.hashResourceSnapshot("a" * 64);
-      final hAnnounce = RepoHash.hashAnnouncementSnapshot("a" * 64);
-      expect(hResource, isNot(hAnnounce));
-    });
-  });
-
   group("hashGeneration (v3)", () {
     test("produces deterministic hash", () {
       final h1 = RepoHash.hashGeneration(metadataJsonHash: "a" * 64);

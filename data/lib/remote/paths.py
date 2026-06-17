@@ -37,11 +37,6 @@ def release_snapshot_dir(root: Path, snapshot_hash: str) -> Path:
     return root / "assets" / "releases" / snapshot_hash
 
 
-def announcement_snapshot_dir(root: Path, snapshot_hash: str) -> Path:
-    """assets/announcements/{snapshot_hash}/"""
-    return root / "assets" / "announcements" / snapshot_hash
-
-
 def generation_dir(root: Path, generation_hash: str) -> Path:
     """channels/refs/{generation_hash}/"""
     return root / "channels" / "refs" / generation_hash
@@ -85,8 +80,3 @@ def temp_resource_snapshot_dir(root: Path) -> Path:
 def temp_release_snapshot_dir(root: Path) -> Path:
     """assets/releases/tmp_snapshot/"""
     return root / "assets" / "releases" / "tmp_snapshot"
-
-
-def temp_announcement_snapshot_dir(root: Path) -> Path:
-    """assets/announcements/tmp_snapshot/"""
-    return root / "assets" / "announcements" / "tmp_snapshot"

@@ -536,20 +536,12 @@
   "branchActiveSetSuccess": "Active data source set",
   "storageCacheInfoHint": "Pruning removes files not referenced by any installed checkout.",
   "loadingTextExtractingBundle": "Extracting {archiveName}...",
-  "@loadingTextExtractingBundle": {
-    "placeholders": {
-      "archiveName": {
-        "type": "String"
-      }
-    }
-  },
   "channelMetadataPageTitle": "Channel Metadata",
   "channelMetadataSwitchChannel": "Switch channel",
   "channelMetadataTabOverview": "Overview",
   "channelMetadataTabServers": "Servers",
   "channelMetadataTabResources": "Resources",
   "channelMetadataTabReleases": "Releases",
-  "channelMetadataTabAnnouncements": "Announcements",
   "channelMetadataNoData": "No channel data — sync has not run.",
   "channelMetadataFieldActiveChannel": "Active Channel",
   "channelMetadataFieldGeneration": "Generation",
@@ -559,58 +551,16 @@
   "channelMetadataNotSynced": "Not synced",
   "channelMetadataNoServers": "No server data — run sync or create a checkout.",
   "channelMetadataServerCount": "{count} servers",
-  "@channelMetadataServerCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "channelMetadataNoResources": "No resource data available.",
   "channelMetadataEntryCount": "{count} entries total",
-  "@channelMetadataEntryCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "channelMetadataNoReleaseData": "No release data — sync not run.",
   "channelMetadataNoReleaseAvailable": "Synced — no release data in this generation.",
-  "channelMetadataNoAnnouncementData": "No announcement data — sync not run.",
-  "channelMetadataNoAnnouncementAvailable": "Synced — no announcement data in this generation.",
   "channelMetadataLoadRelease": "Load Release Index",
-  "channelMetadataLoadAnnouncement": "Load Announcement Index",
   "channelMetadataLoadFailed": "Failed to load",
   "channelMetadataFieldPointerHash": "Pointer Hash",
   "channelMetadataReleaseCount": "{count} releases",
-  "@channelMetadataReleaseCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "channelMetadataLatestRelease": "Latest (Android): {version}",
-  "@channelMetadataLatestRelease": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
   "channelMetadataReload": "Reload",
-  "channelMetadataAnnouncementCount": "{total} announcements, {versionUpdates} version-update",
-  "@channelMetadataAnnouncementCount": {
-    "placeholders": {
-      "total": {
-        "type": "int"
-      },
-      "versionUpdates": {
-        "type": "int"
-      }
-    }
-  },
   "channelMetadataPublished": "Published",
   "channelMetadataUpdated": "Updated",
   "channelMetadataLocales": "Locales",
@@ -620,7 +570,6 @@
   "storageChannelMetadataDescription": "View local channel sync status and data",
   "storageCheckoutManagementTitle": "Checkout Management",
   "storageCheckoutManagementDescription": "Manage installed checkouts and create new ones",
-
   "checkoutManagementPageTitle": "Checkout Management",
   "checkoutCreateButton": "Create Checkout",
   "checkoutNoCheckoutsTitle": "No checkouts installed",
@@ -636,43 +585,19 @@
   "checkoutActivate": "Activate",
   "checkoutActivateTitle": "Activate Checkout",
   "checkoutActivateConfirm": "Activate checkout {name}? The app engine will reload data from this checkout.",
-  "@checkoutActivateConfirm": {
-    "placeholders": { "name": { "type": "String" } }
-  },
   "checkoutActivateSuccess": "Checkout {name} activated",
-  "@checkoutActivateSuccess": {
-    "placeholders": { "name": { "type": "String" } }
-  },
   "checkoutActivateFailed": "Activation failed: {message}",
-  "@checkoutActivateFailed": {
-    "placeholders": { "message": { "type": "String" } }
-  },
   "checkoutDelete": "Delete",
   "checkoutDeleteTitle": "Delete Checkout",
   "checkoutDeleteConfirm": "Delete checkout {name}? This removes all local data for this checkout. This action cannot be undone.",
-  "@checkoutDeleteConfirm": {
-    "placeholders": { "name": { "type": "String" } }
-  },
   "checkoutDeleteConfirmActive": "Delete the currently active checkout {name}? This removes all local data and cannot be undone. The app will need to select a new checkout afterward.",
-  "@checkoutDeleteConfirmActive": {
-    "placeholders": { "name": { "type": "String" } }
-  },
   "checkoutDeleteSuccess": "Checkout {name} deleted",
-  "@checkoutDeleteSuccess": {
-    "placeholders": { "name": { "type": "String" } }
-  },
   "checkoutDeleteFailed": "Delete failed: {message}",
-  "@checkoutDeleteFailed": {
-    "placeholders": { "message": { "type": "String" } }
-  },
   "checkoutCreateTitle": "Create Checkout",
   "checkoutCreateNeedSync": "Channel generation data has not been synced. Sync now to see available servers.",
   "checkoutCreateSyncNow": "Sync Now",
   "checkoutCreateSyncing": "Syncing...",
   "checkoutCreateSelectServer": "Select server data source ({count} available)",
-  "@checkoutCreateSelectServer": {
-    "placeholders": { "count": { "type": "int" } }
-  },
   "checkoutCreateMetaFailed": "Failed to load metadata",
   "checkoutCreateFieldId": "Server ID",
   "checkoutCreateFieldAuthor": "Author",
@@ -684,27 +609,12 @@
   "checkoutCreateFieldBranch": "Branch",
   "checkoutCreateConfirm": "Confirm Create",
   "checkoutCreateConfirmWithCount": "Confirm Create (~{count} resources)",
-  "@checkoutCreateConfirmWithCount": {
-    "placeholders": { "count": { "type": "int" } }
-  },
   "checkoutCreateProgressTitle": "Creating Checkout — {server}",
-  "@checkoutCreateProgressTitle": {
-    "placeholders": { "server": { "type": "String" } }
-  },
   "checkoutCreateProgressTitleComplete": "Creation Complete",
   "checkoutCreateProgressTitleFailed": "Creation Failed",
   "checkoutCreateProgressFetchingIndex": "Fetching resource index...",
   "checkoutCreateProgressDownloading": "Downloading assets ({count} total)...",
-  "@checkoutCreateProgressDownloading": {
-    "placeholders": { "count": { "type": "int" } }
-  },
   "checkoutCreateProgressDownloading2": "Downloading assets ({current}/{total})...",
-  "@checkoutCreateProgressDownloading2": {
-    "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
-    }
-  },
   "checkoutCreateProgressFinalizing": "Finalizing...",
   "checkoutCreateProgressCreatingCheckout": "Creating checkout entry...",
   "checkoutCreateProgressComplete": "Checkout created successfully!",

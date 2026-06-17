@@ -16,7 +16,7 @@ import hashlib
 from typing import Literal
 
 
-SnapshotType = Literal["resource", "release", "announcement"]
+SnapshotType = Literal["resource", "release"]
 HASH_ALGORITHM = hashlib.sha256
 
 
@@ -49,7 +49,7 @@ def snapshot_hash(snapshot_type: SnapshotType, files: dict[str, bytes]) -> str:
         "metadata.json <sha256>\\n"
 
     Args:
-        snapshot_type: One of "resource", "release", "announcement".
+        snapshot_type: One of "resource", "release".
         files: Dict containing at least "metadata.json" → bytes.
     """
     if "metadata.json" not in files:

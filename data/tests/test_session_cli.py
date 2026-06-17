@@ -24,14 +24,12 @@ from data.lib.remote.hash import content_hash as _content_hash
 from data.lib.remote.hash import ident_hash
 from data.lib.remote.hash import snapshot_hash as _snapshot_hash
 from data.lib.remote.head import ChannelHeadStore
-from data.lib.remote.models import AnnouncementSnapshotMetadata
 from data.lib.remote.models import GenerationMetadata
 from data.lib.remote.models import GenerationPointer
 from data.lib.remote.models import GenerationResources
 from data.lib.remote.models import ReleaseSnapshotMetadata
 from data.lib.remote.models import ResourceSnapshotMetadata
 from data.lib.remote.models import ServerIndex
-from data.lib.remote.models import make_announcement_index
 from data.lib.remote.models import make_release_index
 from data.lib.remote.models import make_resource_index
 from data.lib.remote.paths import blob_path
@@ -128,25 +126,6 @@ def _make_release_snapshot(
     return snap_store.create_release_snapshot(meta, index)
 
 
-def _make_announcement_snapshot(tmp_root: Path) -> str:
-    snap_store = SnapshotStore(tmp_root)
-    meta = AnnouncementSnapshotMetadata(
-        announcementCount=1,
-        createdAt="2026-06-15T00:00:00Z",
-    )
-    index = make_announcement_index(
-        [
-            {
-                "id": "ann-001",
-                "first_published_at": "2026-06-15T00:00:00Z",
-                "updated_at": "2026-06-15T00:00:00Z",
-                "content_hashes": {"en": "ab" * 32},
-            }
-        ]
-    )
-    return snap_store.create_announcement_snapshot(meta, index)
-
-
 def _init_session(
     store: SessionStore,
     channel: str = "testing",
@@ -185,7 +164,6 @@ def _make_full_generation(
         gentry.snapshot_hash = res_hash
 
     release_ptr = _gen_ptr()
-    announcement_ptr = _gen_ptr()
 
     meta = GenerationMetadata(
         channel=channel,
@@ -198,7 +176,6 @@ def _make_full_generation(
         server_index=server_index,
         resources=gen_resources,
         release_pointer=release_ptr,
-        announcement_pointer=announcement_ptr,
     )
     mgr.push(channel, gen_hash)
     return gen_hash, res_hash
@@ -219,7 +196,6 @@ class TestSessionInit:
         assert session.schema_version == 1
         assert session.staged.resources == []
         assert session.staged.releases == []
-        assert session.staged.announcements == []
 
     def test_init_overwrite_requires_force(self, store: SessionStore) -> None:
         _init_session(store)
@@ -330,13 +306,6 @@ class TestSessionAdd:
         session = store.load()
         assert session.staged.releases == [rel_hash]
 
-    def test_add_by_hash_announcement(self, store: SessionStore, tmp_root: Path) -> None:
-        _init_session(store)
-        ann_hash = _make_announcement_snapshot(tmp_root)
-        store.add_snapshot("announcement", ann_hash)
-        session = store.load()
-        assert session.staged.announcements == [ann_hash]
-
     def test_add_duplicate_allowed(self, store: SessionStore) -> None:
         _init_session(store)
         store.add_snapshot("resource", "aaa")
@@ -416,7 +385,6 @@ def _compute_diff_style(tmp_root: Path, store: SessionStore) -> dict:
     head_sets: dict[str, set[str]] = {
         "resources": set(),
         "releases": set(),
-        "announcements": set(),
     }
 
     try:
@@ -428,19 +396,16 @@ def _compute_diff_style(tmp_root: Path, store: SessionStore) -> dict:
                 head_sets["resources"].add(entry.snapshot_hash)
             if generation.release_pointer.snapshot_hash:
                 head_sets["releases"].add(generation.release_pointer.snapshot_hash)
-            if generation.announcement_pointer.snapshot_hash:
-                head_sets["announcements"].add(generation.announcement_pointer.snapshot_hash)
     except Exception:
         pass
 
     session_sets = {
         "resources": set(session.staged.resources),
         "releases": set(session.staged.releases),
-        "announcements": set(session.staged.announcements),
     }
 
     diff: dict = {"channel": session.channel, "head": head_hash}
-    for snap_type in ("resources", "releases", "announcements"):
+    for snap_type in ("resources", "releases"):
         s_set = session_sets[snap_type]
         h_set = head_sets[snap_type]
         diff[snap_type] = {
@@ -494,7 +459,6 @@ class TestSessionDiff:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=_gen_ptr(),
-            announcement_pointer=_gen_ptr(),
         )
         mgr.push("testing", gen_hash)
 
@@ -526,7 +490,6 @@ class TestSessionDiff:
 def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
     from data.lib.remote.models import ResourceIndex
     from data.lib.remote.models import read_pb2 as _read_pb2
-    from data.lib.remote.paths import announcement_snapshot_dir
     from data.lib.remote.paths import release_snapshot_dir
     from data.lib.remote.paths import resource_snapshot_dir
 
@@ -536,20 +499,17 @@ def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
     dir_for_type = {
         "resource": resource_snapshot_dir,
         "release": release_snapshot_dir,
-        "announcement": announcement_snapshot_dir,
     }
     proto_names = {
         "resource": "resources.pb2",
         "release": "releases.pb2",
-        "announcement": "announcements.pb2",
     }
     staged_map = {
         "resource": session.staged.resources,
         "release": session.staged.releases,
-        "announcement": session.staged.announcements,
     }
 
-    for snap_type in ("resource", "release", "announcement"):
+    for snap_type in ("resource", "release"):
         proto_name = proto_names[snap_type]
         for h in staged_map[snap_type]:
             snap_dir = dir_for_type[snap_type](tmp_root, h)
@@ -794,15 +754,6 @@ class TestSessionVerify:
         errors = [i for i in issues if i.severity == "error"]
         assert len(errors) == 0
 
-    def test_verify_announcement_snapshot(self, store: SessionStore, tmp_root: Path) -> None:
-        _init_session(store)
-        ann_hash = _make_announcement_snapshot(tmp_root)
-        store.add_snapshot("announcement", ann_hash)
-
-        issues = _verify_staged_style(tmp_root, store)
-        errors = [i for i in issues if i.severity == "error"]
-        assert len(errors) == 0
-
 
 # ===========================================================================
 # 8. session commit
@@ -847,7 +798,6 @@ class TestSessionCommit:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=_gen_ptr(),
-            announcement_pointer=_gen_ptr(),
         )
         mgr.push("testing", gen_hash)
         store.mark_committed()
@@ -891,7 +841,6 @@ class TestSessionCommit:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=_gen_ptr(),
-            announcement_pointer=_gen_ptr(),
         )
         # Do NOT push — head stays uninitialized
         store.mark_committed()
@@ -902,9 +851,7 @@ class TestSessionCommit:
     def test_commit_no_snapshots(self, store: SessionStore) -> None:
         _init_session(store)
         session = store.load()
-        has_snapshots = any(
-            [session.staged.resources, session.staged.releases, session.staged.announcements]
-        )
+        has_snapshots = any([session.staged.resources, session.staged.releases])
         assert has_snapshots is False
 
     def test_commit_marks_session_committed(
@@ -958,7 +905,6 @@ class TestSessionCommit:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=_gen_ptr(),
-            announcement_pointer=_gen_ptr(),
         )
 
         gen_hash2 = mgr.create_generation(
@@ -966,7 +912,6 @@ class TestSessionCommit:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=_gen_ptr(),
-            announcement_pointer=_gen_ptr(),
         )
 
         assert gen_hash1 == gen_hash2
@@ -1011,59 +956,11 @@ class TestSessionCommit:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=release_ptr,
-            announcement_pointer=_gen_ptr(),
         )
         mgr.push("testing", gen_hash)
 
         gen = mgr.load_generation(gen_hash)
         assert gen.release_pointer.snapshot_hash == rel_hash
-
-    def test_commit_with_announcement_snapshot(
-        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
-    ) -> None:
-        _init_session(store)
-        mgr.ensure_channel("testing")
-        res_hash = _make_resource_snapshot(tmp_root)
-        ann_hash = _make_announcement_snapshot(tmp_root)
-        store.add_snapshot("resource", res_hash)
-        store.add_snapshot("announcement", ann_hash)
-
-        snap_store = mgr.snap_store
-        meta_resource, _ = snap_store.load_resource_snapshot(res_hash)
-
-        server_index = ServerIndex()
-        server_index.schema_version = 1
-        gen_resources = GenerationResources()
-        gen_resources.schema_version = 1
-
-        entry = server_index.servers.add()
-        entry.server_id = meta_resource.server_id
-        entry.name["en"] = meta_resource.server_id
-        entry.game_build = meta_resource.game_build
-        entry.game_version = meta_resource.game_version
-        gentry = gen_resources.entries.add()
-        gentry.server_id = meta_resource.server_id
-        gentry.snapshot_hash = res_hash
-
-        announcement_ptr = _gen_ptr(ann_hash)
-
-        gen_meta = GenerationMetadata(
-            channel="testing",
-            timestamp=utc_timestamp(),
-            parent="",
-            subject="",
-        )
-        gen_hash = mgr.create_generation(
-            metadata=gen_meta,
-            server_index=server_index,
-            resources=gen_resources,
-            release_pointer=_gen_ptr(),
-            announcement_pointer=announcement_ptr,
-        )
-        mgr.push("testing", gen_hash)
-
-        gen = mgr.load_generation(gen_hash)
-        assert gen.announcement_pointer.snapshot_hash == ann_hash
 
     def test_commit_with_multiple_resources(
         self, store: SessionStore, mgr: SessionManager, tmp_root: Path
@@ -1110,7 +1007,6 @@ class TestSessionCommit:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=_gen_ptr(),
-            announcement_pointer=_gen_ptr(),
         )
         mgr.push("testing", gen_hash)
 
@@ -1174,7 +1070,6 @@ class TestFullWorkflow:
             server_index=server_index,
             resources=gen_resources,
             release_pointer=release_ptr,
-            announcement_pointer=_gen_ptr(),
         )
         mgr.push("stable", gen_hash)
         store.mark_committed()
@@ -1205,12 +1100,10 @@ class TestSessionEdgeCases:
         session = store.load()
         assert session.staged.resources == []
         assert session.staged.releases == []
-        assert session.staged.announcements == []
 
     def test_session_roundtrip_json_alias(self, store: SessionStore) -> None:
         _init_session(store, channel="stable")
         store.add_snapshot("resource", "res-hash")
-        store.add_snapshot("announcement", "ann-hash")
 
         raw = store.session_path.read_text(encoding="utf-8")
         data = json.loads(raw)
@@ -1222,7 +1115,6 @@ class TestSessionEdgeCases:
 
         revalidated = Session.model_validate_json(raw)
         assert revalidated.staged.resources == ["res-hash"]
-        assert revalidated.staged.announcements == ["ann-hash"]
 
     def test_corrupt_session_file_handling(self, store: SessionStore) -> None:
         _init_session(store)

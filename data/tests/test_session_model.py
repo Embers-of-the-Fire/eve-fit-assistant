@@ -36,7 +36,6 @@ class TestSessionModel:
         s = Session(channel="testing")
         assert s.staged.resources == []
         assert s.staged.releases == []
-        assert s.staged.announcements == []
 
     def test_committed_defaults_false(self) -> None:
         s = Session(channel="testing")
@@ -165,7 +164,6 @@ class TestSessionStore:
         session = store.init(channel="testing")
         assert session.staged.resources == []
         assert session.staged.releases == []
-        assert session.staged.announcements == []
 
     def test_exists_true_for_valid_session(self, tmp_path: pytest.fixture) -> None:
         store = SessionStore(tmp_path)
@@ -207,7 +205,6 @@ class TestSessionStore:
         session = store.load()
         assert session.staged.resources == ["aaa", "bbb"]
         assert session.staged.releases == []
-        assert session.staged.announcements == []
 
     def test_add_snapshot_release(self, tmp_path: pytest.fixture) -> None:
         store = SessionStore(tmp_path)
@@ -215,13 +212,6 @@ class TestSessionStore:
         store.add_snapshot("release", "rrr")
         session = store.load()
         assert session.staged.releases == ["rrr"]
-
-    def test_add_snapshot_announcement(self, tmp_path: pytest.fixture) -> None:
-        store = SessionStore(tmp_path)
-        store.init(channel="testing")
-        store.add_snapshot("announcement", "ann")
-        session = store.load()
-        assert session.staged.announcements == ["ann"]
 
     def test_add_snapshot_duplicate_allowed(self, tmp_path: pytest.fixture) -> None:
         store = SessionStore(tmp_path)
@@ -256,14 +246,6 @@ class TestSessionStore:
         store.remove_snapshot("release", "rrr")
         session = store.load()
         assert session.staged.releases == []
-
-    def test_remove_snapshot_announcement(self, tmp_path: pytest.fixture) -> None:
-        store = SessionStore(tmp_path)
-        store.init(channel="testing")
-        store.add_snapshot("announcement", "ann")
-        store.remove_snapshot("announcement", "ann")
-        session = store.load()
-        assert session.staged.announcements == []
 
     def test_remove_snapshot_not_staged_raises(self, tmp_path: pytest.fixture) -> None:
         store = SessionStore(tmp_path)

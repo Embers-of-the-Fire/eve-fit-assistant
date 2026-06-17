@@ -532,9 +532,6 @@ efa/v2/channels/<channel>/index.json
 efa/v2/channels/<channel>/.generations/<gen>/**/*.json
   Cache-Control: max-age=60..300
 
-efa/v2/announcements/**
-  Cache-Control: immutable, max-age=31536000 when ids are revisioned
-
 efa/v2/resources/**
   Cache-Control: immutable, max-age=31536000
 ```
@@ -602,7 +599,7 @@ The v2 storage contract covers:
 - Content-addressed asset storage and checkout (data snapshot) catalogs.
 - Generation-based atomic publishing under `manifest/`.
 - App release metadata with per-platform content-addressed APKs.
-- Announcement catalogs with XOR-hashed content verification.
+
 
 ### Resource Root
 
@@ -629,8 +626,6 @@ efa/v2/<channel>/
         checkouts/<checkout_hash>.json  # Checkout catalog (full file manifest).
       releases/
         catalog.json                    # Release catalog (version, offering, downloadHash).
-      announcements/
-        catalog.json                    # Announcement catalog (hash, versions, isVersionUpdate).
     checkouts/
       <2c>/<hash>.json                  # Flat content-addressed checkout registry.
   resources/
@@ -638,9 +633,6 @@ efa/v2/<channel>/
       <2c>/<hash>                       # Content-addressed APK binaries.
     assets/
       <2c pathHash>/<pathHash>/<contentHash>  # Content-addressed data files.
-  announcements/
-    files/<locale>/<id>                 # Markdown announcement bodies.
-    registry/<id>.json                  # Full announcement records (title, excerpt, tags).
 ```
 
 ### Manifest Index
@@ -797,7 +789,6 @@ Individual release records stored content-addressed at
   "id": "<release id>",
   "createdAt": "2026-06-13T00:00:00Z",
   "version": "0.2.0",
-  "versionUpdateAnnouncement": "<announcement id>",
   "files": {
     "apk": {
       "arm64": "<content hash>",
@@ -811,34 +802,6 @@ Individual release records stored content-addressed at
 The `files` field is a nested map: offering name → (platform/ABI key → content hash).
 Platform keys include `arm64`, `x86_64`, `arm32`, and `combined` (universal APK).
 
-### Announcement Catalog
-
-Located at `.generations/<gen_id>/announcements/catalog.json`:
-
-```json
-{
-  "announcementsVersion": 1,
-  "announcements": {
-    "<announcement id>": {
-      "id": "<announcement id>",
-      "firstPublishedAt": "2026-06-13T00:00:00Z",
-      "updatedAt": "2026-06-13T00:00:00Z",
-      "versionRange": { "min": "0.1.0", "max": "0.2.0" },
-      "contentHash": "<XOR composite hash of all locale bodies>",
-      "isVersionUpdate": false
-    }
-  }
-}
-```
-
-The catalog contains only the fields needed for update detection. Full localized
-title, excerpt, and tags are stored in individual announcement record files at
-`announcements/registry/<id>.json`. Markdown bodies live at
-`announcements/files/<locale>/<id>`.
-
-The `contentHash` is an XOR composite of all locale body hashes (see the
-[schema specification](../../../../agent/schemav2/spec.md) § Content Hash).
-
 ### Publishing Rules
 
 Each publish produces a **generation** — a self-contained snapshot written to
@@ -851,7 +814,6 @@ Recommended publishing order:
    ```text
    efa/v2/<channel>/resources/releases/**
    efa/v2/<channel>/resources/assets/**
-   efa/v2/<channel>/announcements/**
    efa/v2/<channel>/manifest/checkouts/**
    ```
 
@@ -895,7 +857,6 @@ From the index they resolve:
 1. The active generation → generation catalog → resources catalog.
 2. Server catalogs → checkout catalog → file manifest → asset paths.
 3. Release catalog → download hash → APK binary.
-4. Announcement catalog → content hash comparison → registry + body files.
 
 ### Local Mock Layout
 

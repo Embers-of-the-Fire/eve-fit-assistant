@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 
 from data.lib.remote.models import read_pb2
-from data.lib.remote.paths import announcement_snapshot_dir
 from data.lib.remote.paths import channel_registry_path
 from data.lib.remote.paths import generation_dir
 from data.lib.remote.paths import head_metadata_path
@@ -41,7 +40,6 @@ class SyncResult:
     generations: int = 0
     resource_snapshots: int = 0
     release_snapshots: int = 0
-    announcement_snapshots: int = 0
 
 
 class Syncer:
@@ -93,7 +91,6 @@ class Syncer:
         snapshot_hashes: dict[str, set[str]] = {
             "resources": set(),
             "releases": set(),
-            "announcements": set(),
         }
 
         depth = 0
@@ -112,9 +109,6 @@ class Syncer:
             "resources", snapshot_hashes["resources"]
         )
         result.release_snapshots = self._download_snapshots("releases", snapshot_hashes["releases"])
-        result.announcement_snapshots = self._download_snapshots(
-            "announcements", snapshot_hashes["announcements"]
-        )
 
         return result
 
@@ -232,12 +226,6 @@ class Syncer:
             release_snapshot_dir(self.local_root, snap_hash),
         )
 
-    def _download_announcement_snapshot(self, snap_hash: str) -> bool:
-        return self._download_dir(
-            f"assets/announcements/{snap_hash}",
-            announcement_snapshot_dir(self.local_root, snap_hash),
-        )
-
     # --- Internal: data reading ----------------------------------------------
 
     def _read_head_gen_hash(self, channel: str) -> str | None:
@@ -291,15 +279,6 @@ class Syncer:
             except Exception:
                 pass
 
-        announcement_path = gen_dir / "announcements.pb2"
-        if announcement_path.is_file():
-            try:
-                ptr = read_pb2(announcement_path, GenerationPointer)
-                if ptr.snapshot_hash:
-                    snapshot_hashes["announcements"].add(ptr.snapshot_hash)
-            except Exception:
-                pass
-
     def _download_snapshots(self, snap_type: str, hashes: set[str]) -> int:
         """Download all snapshots of a type in parallel. Returns count downloaded."""
         if not hashes:
@@ -308,7 +287,6 @@ class Syncer:
         download_fn = {
             "resources": self._download_resource_snapshot,
             "releases": self._download_release_snapshot,
-            "announcements": self._download_announcement_snapshot,
         }[snap_type]
 
         label = snap_type.capitalize()

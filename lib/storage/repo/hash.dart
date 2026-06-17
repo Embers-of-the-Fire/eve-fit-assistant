@@ -38,10 +38,6 @@ class RepoHash {
   static String hashReleaseSnapshot(String metadataJsonHash) =>
       hashString("efa:release:v3\nmetadata.json $metadataJsonHash\n");
 
-  /// Computes the structured announcement snapshot hash (v3).
-  static String hashAnnouncementSnapshot(String metadataJsonHash) =>
-      hashString("efa:announcement:v3\nmetadata.json $metadataJsonHash\n");
-
   /// Computes the structured generation hash (v3).
   ///
   ///   generation_hash = SHA-256(

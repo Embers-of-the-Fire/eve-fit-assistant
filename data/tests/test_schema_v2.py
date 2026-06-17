@@ -21,7 +21,6 @@ from data.lib.remote.hash import generation_hash
 from data.lib.remote.hash import ident_hash
 from data.lib.remote.hash import snapshot_hash
 from data.lib.remote.head import ChannelHeadStore
-from data.lib.remote.models import AnnouncementSnapshotMetadata
 from data.lib.remote.models import GenerationMetadata
 from data.lib.remote.models import GenerationPointer
 from data.lib.remote.models import GenerationResources
@@ -107,13 +106,6 @@ class TestHashEngine:
         h = snapshot_hash("release", files)
         assert len(h) == 64
 
-    def test_snapshot_hash_announcement(self) -> None:
-        files = {
-            "metadata.json": b'{"schemaVersion":1}',
-        }
-        h = snapshot_hash("announcement", files)
-        assert len(h) == 64
-
     def test_snapshot_hash_deterministic(self) -> None:
         files = {
             "metadata.json": b'{"schemaVersion":1}',
@@ -125,8 +117,7 @@ class TestHashEngine:
         files = {"metadata.json": b'{"schemaVersion":1}'}
         h_res = snapshot_hash("resource", files)
         h_rel = snapshot_hash("release", files)
-        h_ann = snapshot_hash("announcement", files)
-        assert h_res != h_rel != h_ann
+        assert h_res != h_rel
 
     def test_snapshot_hash_missing_metadata_raises(self) -> None:
         with pytest.raises(ValueError, match="Missing required file"):
@@ -296,36 +287,6 @@ class TestSnapshotStore:
         assert loaded_meta.release_count == 1
         assert loaded_index.entries[0].id == "rel-001"
 
-    def test_create_announcement_snapshot(self, snap_store: SnapshotStore) -> None:
-        meta = AnnouncementSnapshotMetadata(announcementCount=2, createdAt="2026-06-14T12:00:00Z")
-        from data.lib.remote.models import make_announcement_index
-
-        index = make_announcement_index(
-            [
-                {
-                    "id": "ann-001",
-                    "first_published_at": "2026-06-14T12:00:00Z",
-                    "updated_at": "2026-06-14T12:00:00Z",
-                    "content_hashes": {"en": "aa" * 32},
-                },
-                {
-                    "id": "ann-002",
-                    "first_published_at": "2026-06-14T12:00:00Z",
-                    "updated_at": "2026-06-14T12:00:00Z",
-                    "content_hashes": {"en": "bb" * 32},
-                    "version_min": "1.0.0",
-                    "version_max": "2.0.0",
-                    "is_version_update": True,
-                },
-            ]
-        )
-        snap_hash = snap_store.create_announcement_snapshot(meta, index)
-        assert len(snap_hash) == 64
-
-        loaded_meta, loaded_index = snap_store.load_announcement_snapshot(snap_hash)
-        assert loaded_meta.announcement_count == 2
-        assert len(loaded_index.entries) == 2
-
     def test_list_snapshots(self, snap_store: SnapshotStore) -> None:
         meta = ResourceSnapshotMetadata(
             serverId="tranquility",
@@ -407,16 +368,11 @@ class TestGenerationStore:
         release_ptr.schema_version = 1
         release_ptr.snapshot_hash = "bb" * 32
 
-        announcement_ptr = GenerationPointer()
-        announcement_ptr.schema_version = 1
-        announcement_ptr.snapshot_hash = "cc" * 32
-
         return gen_store.create(
             metadata=meta,
             server_index_msg=server_index,
             resources_msg=resources,
             release_pointer=release_ptr,
-            announcement_pointer=announcement_ptr,
         )
 
     def test_create_generation(self, gen_store: GenerationStore) -> None:
@@ -434,7 +390,6 @@ class TestGenerationStore:
         assert len(gen.resources.entries) == 1
         assert gen.resources.entries[0].server_id == "tranquility"
         assert gen.release_pointer.snapshot_hash == "bb" * 32
-        assert gen.announcement_pointer.snapshot_hash == "cc" * 32
 
     def test_load_nonexistent_raises(self, gen_store: GenerationStore) -> None:
         with pytest.raises(FileNotFoundError):
@@ -480,7 +435,6 @@ class TestGenerationStore:
         assert (gen_dir / "server.pb2").is_file()
         assert (gen_dir / "resources.pb2").is_file()
         assert (gen_dir / "releases.pb2").is_file()
-        assert (gen_dir / "announcements.pb2").is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -634,16 +588,11 @@ class TestGarbageCollector:
         release_ptr.schema_version = 1
         release_ptr.snapshot_hash = "00" * 32
 
-        announcement_ptr = GenerationPointer()
-        announcement_ptr.schema_version = 1
-        announcement_ptr.snapshot_hash = "00" * 32
-
         gen_hash = gen_store.create(
             metadata=gen_meta,
             server_index_msg=server_index,
             resources_msg=resources,
             release_pointer=release_ptr,
-            announcement_pointer=announcement_ptr,
         )
 
         # Set up channel head
@@ -733,16 +682,11 @@ class TestVerifier:
         release_ptr.schema_version = 1
         release_ptr.snapshot_hash = "00" * 32
 
-        announcement_ptr = GenerationPointer()
-        announcement_ptr.schema_version = 1
-        announcement_ptr.snapshot_hash = "00" * 32
-
         gen_hash = gen_store.create(
             metadata=gen_meta,
             server_index_msg=server_index,
             resources_msg=resources,
             release_pointer=release_ptr,
-            announcement_pointer=announcement_ptr,
         )
         head_store.ensure_channel("testing")
         head_store.push("testing", gen_hash)
@@ -817,7 +761,6 @@ class TestReachabilitySet:
         assert rs.generations == set()
         assert rs.resource_snapshots == set()
         assert rs.release_snapshots == set()
-        assert rs.announcement_snapshots == set()
         assert rs.blobs == set()
 
     def test_can_add(self) -> None:

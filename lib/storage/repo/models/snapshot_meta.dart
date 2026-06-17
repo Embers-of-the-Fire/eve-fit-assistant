@@ -44,20 +44,3 @@ abstract class ReleaseSnapshotMeta with _$ReleaseSnapshotMeta {
   factory ReleaseSnapshotMeta.fromJson(Map<String, dynamic> json) =>
       _$ReleaseSnapshotMetaFromJson(json);
 }
-
-/// Announcement snapshot metadata (assets/announcements/{hash}/metadata.json).
-///
-/// schema.md §3.4
-@freezed
-abstract class AnnouncementSnapshotMeta with _$AnnouncementSnapshotMeta {
-  const factory AnnouncementSnapshotMeta({
-    required int schemaVersion,
-    required int announcementCount,
-    required String createdAt,
-    @Default("") String author,
-    @Default("") String description,
-  }) = _AnnouncementSnapshotMeta;
-
-  factory AnnouncementSnapshotMeta.fromJson(Map<String, dynamic> json) =>
-      _$AnnouncementSnapshotMetaFromJson(json);
-}

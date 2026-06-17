@@ -2,7 +2,7 @@ syntax = "proto2";
 package efa.v2;
 
 /// Minimal wrapper that points to a single snapshot hash.
-/// Reused for both release and announcement pointers within a generation.
+/// Release pointer within a generation.
 message GenerationPointer {
   required int32 schema_version = 1;
   required string snapshot_hash = 2;

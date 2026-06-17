@@ -194,9 +194,6 @@ class Verifier:
             self._verify_snapshots_of_type("resource", self.root / "assets" / "resources")
         )
         issues.extend(self._verify_snapshots_of_type("release", self.root / "assets" / "releases"))
-        issues.extend(
-            self._verify_snapshots_of_type("announcement", self.root / "assets" / "announcements")
-        )
         return issues
 
     def _verify_snapshots_of_type(self, snap_type: str, base_dir: Path) -> list[Issue]:

@@ -26,7 +26,6 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
     this.serverIndexResult,
     this.generationResourcesResult,
     this.generationPointerResult,
-    this.announcementPointerResult,
   }) : super(dio: Dio(), originUrl: "https://test.local");
 
   Either<CatalogError, ChannelRegistry>? channelRegistryResult;
@@ -34,7 +33,6 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
   Either<CatalogError, Uint8List>? serverIndexResult;
   Either<CatalogError, Uint8List>? generationResourcesResult;
   Either<CatalogError, Uint8List>? generationPointerResult;
-  Either<CatalogError, Uint8List>? announcementPointerResult;
 
   @override
   Future<Either<CatalogError, ChannelRegistry>> fetchChannelRegistry() async =>
@@ -55,10 +53,6 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
   @override
   Future<Either<CatalogError, Uint8List>> fetchGenerationPointer(String generationHash) async =>
       generationPointerResult ?? Left(const CatalogNetworkError(message: "not configured"));
-
-  @override
-  Future<Either<CatalogError, Uint8List>> fetchAnnouncementPointer(String generationHash) async =>
-      announcementPointerResult ?? Left(const CatalogNetworkError(message: "not configured"));
 }
 
 void main() {
@@ -85,7 +79,7 @@ void main() {
       ChannelService(remoteCatalogService: fakeRemote, assetStore: assetStore);
 
   group("syncChannelGeneration", () {
-    test("persists all five files on success", () async {
+    test("persists all files on success", () async {
       final fakeRemote = _FakeRemoteCatalogService(
         headMetaResult: Right(
           ChannelHeadMeta(
@@ -98,7 +92,6 @@ void main() {
         serverIndexResult: Right(Uint8List.fromList([10, 20, 30])),
         generationResourcesResult: Right(Uint8List.fromList([40, 50, 60])),
         generationPointerResult: Right(Uint8List.fromList([70, 80, 90])),
-        announcementPointerResult: Right(Uint8List.fromList([100, 110, 120])),
       );
       final service = _makeService(fakeRemote);
 
@@ -106,7 +99,7 @@ void main() {
 
       expect(result.isRight(), isTrue);
 
-      // Verify all five files exist
+      // Verify all files exist
       expect(
         File(RepoPaths.channelHeadMetaPath("testing")).existsSync(),
         isTrue,
@@ -127,11 +120,6 @@ void main() {
         isTrue,
         reason: "releases.pb2 should exist",
       );
-      expect(
-        File(RepoPaths.channelAnnouncementsPath("testing")).existsSync(),
-        isTrue,
-        reason: "announcements.pb2 should exist",
-      );
 
       // Verify file contents
       final metaJson =
@@ -147,11 +135,6 @@ void main() {
 
       final releasesBytes = File(RepoPaths.channelReleasesPath("testing")).readAsBytesSync();
       expect(releasesBytes, [70, 80, 90]);
-
-      final announcementsBytes = File(
-        RepoPaths.channelAnnouncementsPath("testing"),
-      ).readAsBytesSync();
-      expect(announcementsBytes, [100, 110, 120]);
     });
 
     test("best-effort: continues when individual file fetches fail", () async {
@@ -167,7 +150,6 @@ void main() {
         serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
         generationResourcesResult: Left(const CatalogNetworkError(message: "timeout")),
         generationPointerResult: Left(const CatalogNotFoundError(message: "not found")),
-        announcementPointerResult: Right(Uint8List.fromList([100, 110, 120])),
       );
       final service = _makeService(fakeRemote);
 
@@ -176,9 +158,8 @@ void main() {
       // Overall sync should succeed (head meta was fetched)
       expect(result.isRight(), isTrue);
 
-      // server.pb2 and announcements.pb2 should be written
+      // server.pb2 should be written
       expect(File(RepoPaths.channelServerIndexPath("testing")).existsSync(), isTrue);
-      expect(File(RepoPaths.channelAnnouncementsPath("testing")).existsSync(), isTrue);
 
       // Failed fetches should NOT produce files (but sync continues)
       expect(File(RepoPaths.channelResourcesPath("testing")).existsSync(), isFalse);
@@ -225,7 +206,6 @@ void main() {
         serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
         generationResourcesResult: Right(Uint8List.fromList([4, 5, 6])),
         generationPointerResult: Right(Uint8List.fromList([7, 8, 9])),
-        announcementPointerResult: Right(Uint8List.fromList([10, 11, 12])),
       );
       final service = _makeService(fakeRemote);
 
@@ -236,7 +216,6 @@ void main() {
       expect(File("${RepoPaths.channelServerIndexPath("testing")}.tmp").existsSync(), isFalse);
       expect(File("${RepoPaths.channelResourcesPath("testing")}.tmp").existsSync(), isFalse);
       expect(File("${RepoPaths.channelReleasesPath("testing")}.tmp").existsSync(), isFalse);
-      expect(File("${RepoPaths.channelAnnouncementsPath("testing")}.tmp").existsSync(), isFalse);
     });
   });
 
