@@ -769,37 +769,50 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
         _progress = 0;
       });
 
-      // Download blobs
+      // Download blobs in parallel with concurrency limit
+      const concurrency = 4;
       var downloaded = 0;
       final failedBlobs = <String>[];
       final assetStore = ref.read(assetStoreProvider);
 
+      // Separate cached entries from those needing download
+      final toDownload = <ResourceIndex_Entry>[];
       for (final entry in resourceIndex.entries) {
         final identHash = RepoHash.hashIdent(entry.resourceId);
-
-        // Skip if already exists
         if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
           downloaded++;
-          if (mounted) {
-            setState(() {
-              _progress = totalEntries > 0 ? downloaded / totalEntries : null;
-              _status = l10n.checkoutCreateProgressDownloading2(
-                current: downloaded,
-                total: totalEntries,
-              );
-            });
-          }
-          continue;
-        }
-
-        final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
-        if (blobResult.isRight()) {
-          assetStore.writeBlobSync(identHash, blobResult.getRight().toNullable()!);
         } else {
-          failedBlobs.add(entry.resourceId);
+          toDownload.add(entry);
         }
+      }
 
-        downloaded++;
+      if (mounted) {
+        setState(() {
+          _progress = totalEntries > 0 ? downloaded / totalEntries : null;
+          _status = l10n.checkoutCreateProgressDownloading2(
+            current: downloaded,
+            total: totalEntries,
+          );
+        });
+      }
+
+      for (var i = 0; i < toDownload.length; i += concurrency) {
+        final chunk = toDownload.skip(i).take(concurrency).toList();
+
+        await Future.wait(
+          chunk.map((entry) async {
+            final identHash = RepoHash.hashIdent(entry.resourceId);
+            final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
+            if (blobResult.isRight()) {
+              assetStore.writeBlobSync(identHash, blobResult.getRight().toNullable()!);
+            } else {
+              failedBlobs.add(entry.resourceId);
+            }
+          }),
+        );
+
+        downloaded += chunk.length;
+
         if (mounted) {
           setState(() {
             _progress = totalEntries > 0 ? downloaded / totalEntries : null;
