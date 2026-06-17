@@ -3253,6 +3253,295 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
             click.echo(f"  {f.name} ({size})")
 
 
+@build.command("list", aliases=["ls"])
+@click.option("--apps", is_flag=True, default=False, help="Show APK builds.")
+@click.option("--resources", is_flag=True, default=False, help="Show resource snapshots.")
+@click.option("--releases", is_flag=True, default=False, help="Show release snapshots.")
+@click.option("--announcements", is_flag=True, default=False, help="Show announcement snapshots.")
+@click.option("--generations", is_flag=True, default=False, help="Show generations.")
+def build_list_cmd(
+    apps: bool, resources: bool, releases: bool, announcements: bool, generations: bool
+):
+    """List local build / cache items."""
+    from data.lib.remote.generation import GenerationStore
+    from data.lib.remote.head import ChannelHeadStore
+    from data.lib.remote.snapshot import SnapshotStore
+
+    def _dir_size(dir_path: Path) -> int:
+        if not dir_path.is_dir():
+            return 0
+        total = 0
+        try:
+            for f in dir_path.rglob("*"):
+                if f.is_file():
+                    total += f.stat().st_size
+        except PermissionError:
+            pass
+        return total
+
+    def _scan_apk_versions(apk_root: Path) -> tuple[list[Path], list[Path]]:
+        versions: list[Path] = []
+        files: list[Path] = []
+        if apk_root.is_dir():
+            for vd in sorted(apk_root.iterdir()):
+                if vd.is_dir() and vd.name.startswith("v"):
+                    versions.append(vd)
+                    for f in vd.iterdir():
+                        if f.is_file():
+                            files.append(f)
+        return versions, files
+
+    any_opt = apps or resources or releases or announcements or generations
+    schema_root = _resolve_schema_root(None)
+
+    if not any_opt:
+        # --- Summary --------------------------------------------------------------
+        click.echo()
+        click.echo(styled([Style.BRIGHT], "Local Build Cache Summary"))
+        click.echo(styled([Style.BRIGHT], "=" * 27))
+
+        # APK builds
+        ProjectConfiguration.ensure_loaded()
+        apk_root = data.lib.config.CONFIGURATION.paths.apk
+        apk_versions, apk_files = _scan_apk_versions(apk_root)
+        apk_total = sum(f.stat().st_size for f in apk_files)
+        if apk_versions:
+            click.echo(
+                f"  {styled(Fore.GREEN, 'APK builds:')}            "
+                f"{styled([Style.BRIGHT], str(len(apk_versions)))} version(s)"
+                f"  ({get_bin_size(apk_total)})"
+            )
+        else:
+            click.echo(f"  {styled(Fore.GREEN, 'APK builds:')}            (none)")
+
+        # Schema items
+        if schema_root.is_dir():
+            snap_store = SnapshotStore(schema_root)
+            gen_store = GenerationStore(schema_root)
+            head_store = ChannelHeadStore(schema_root)
+
+            res_hashes = snap_store.list_resource_snapshots()
+            rel_hashes = snap_store.list_release_snapshots()
+            ann_hashes = snap_store.list_announcement_snapshots()
+            all_gens = gen_store.list_all()
+            registry = head_store.get_registry()
+
+            for label, hashes, asset_dir in [
+                ("Resource snapshots:", res_hashes, "resources"),
+                ("Release snapshots:", rel_hashes, "releases"),
+                ("Announcement snapshots:", ann_hashes, "announcements"),
+            ]:
+                if hashes:
+                    total = sum(_dir_size(schema_root / "assets" / asset_dir / h) for h in hashes)
+                    click.echo(
+                        f"  {styled(Fore.GREEN, label):30s}"
+                        f"{styled([Style.BRIGHT], str(len(hashes)))} item(s)"
+                        f"  ({get_bin_size(total)})"
+                    )
+                else:
+                    click.echo(f"  {styled(Fore.GREEN, label):30s}(none)")
+
+            if all_gens:
+                gen_total = sum(_dir_size(schema_root / "channels" / "refs" / h) for h in all_gens)
+                click.echo(
+                    f"  {styled(Fore.GREEN, 'Generations:'):30s}"
+                    f"{styled([Style.BRIGHT], str(len(all_gens)))} item(s)"
+                    f"  ({get_bin_size(gen_total)})"
+                )
+            else:
+                click.echo(f"  {styled(Fore.GREEN, 'Generations:'):30s}(none)")
+
+            channels = list(registry.channels.keys())
+            if channels:
+                click.echo(
+                    f"  {styled(Fore.GREEN, 'Channels:'):30s}"
+                    f"{styled([Style.BRIGHT], str(len(channels)))} ({', '.join(channels)})"
+                )
+            else:
+                click.echo(f"  {styled(Fore.GREEN, 'Channels:'):30s}(none)")
+
+            # Blobs
+            blobs_dir = schema_root / "assets" / "blobs"
+            if blobs_dir.is_dir():
+                blobs_count = 0
+                blobs_total = 0
+                for f in blobs_dir.rglob("*"):
+                    if f.is_file():
+                        blobs_count += 1
+                        blobs_total += f.stat().st_size
+                click.echo(
+                    f"  {styled(Fore.GREEN, 'Content blobs:'):30s}"
+                    f"{styled([Style.BRIGHT], str(blobs_count))} file(s)"
+                    f"  ({get_bin_size(blobs_total)})"
+                )
+            else:
+                click.echo(f"  {styled(Fore.GREEN, 'Content blobs:'):30s}(none)")
+        else:
+            click.echo(
+                styled([Style.BRIGHT, Fore.YELLOW], "  Schema cache: ")
+                + styled(Fore.YELLOW, f"not found ({schema_root})")
+            )
+
+        click.echo()
+    else:
+        # --- Detailed listings ---------------------------------------------------
+        first = True
+
+        if apps:
+            if not first:
+                click.echo()
+            first = False
+            ProjectConfiguration.ensure_loaded()
+            apk_root = data.lib.config.CONFIGURATION.paths.apk
+            apk_versions, apk_files = _scan_apk_versions(apk_root)
+
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], f"\nAPK Builds ({len(apk_versions)})"))
+            click.echo(styled([Style.BRIGHT], "=" * 50))
+            if not apk_versions:
+                click.echo("  (none)")
+            else:
+                for vd in apk_versions:
+                    v_total = sum(f.stat().st_size for f in vd.iterdir() if f.is_file())
+                    click.echo(f"  {styled([Style.BRIGHT], vd.name)}  ({get_bin_size(v_total)})")
+                    for f in sorted(vd.iterdir()):
+                        if f.is_file():
+                            click.echo(f"    {f.name}  ({get_bin_size(f.stat().st_size)})")
+
+        if resources:
+            if not first:
+                click.echo()
+            first = False
+            if not schema_root.is_dir():
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
+                    + str(schema_root)
+                )
+            else:
+                snap_store = SnapshotStore(schema_root)
+                res_hashes = snap_store.list_resource_snapshots()
+                click.echo(
+                    styled([Style.BRIGHT, Fore.GREEN], f"\nResource Snapshots ({len(res_hashes)})")
+                )
+                click.echo(styled([Style.BRIGHT], "=" * 80))
+                if not res_hashes:
+                    click.echo("  (none)")
+                else:
+                    click.echo(
+                        f"  {'Hash':9s}  {'Server':13s}  {'Build':13s}"
+                        f"  {'Version':11s}  {'Resources':>10s}  Created"
+                    )
+                    click.echo(
+                        f"  {'-' * 9}  {'-' * 13}  {'-' * 13}  {'-' * 11}  {'-' * 10}  {'-' * 25}"
+                    )
+                    for h in res_hashes:
+                        try:
+                            meta, _ = snap_store.load_resource_snapshot(h)
+                            click.echo(
+                                f"  {h[:9]:9s}  {meta.server_id:13s}  {meta.game_build:13s}"
+                                f"  {meta.game_version:11s}  {meta.resource_count!s:>10s}"
+                                f"  {meta.created_at}"
+                            )
+                        except Exception:
+                            click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
+
+        if releases:
+            if not first:
+                click.echo()
+            first = False
+            if not schema_root.is_dir():
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
+                    + str(schema_root)
+                )
+            else:
+                snap_store = SnapshotStore(schema_root)
+                rel_hashes = snap_store.list_release_snapshots()
+                click.echo(
+                    styled([Style.BRIGHT, Fore.GREEN], f"\nRelease Snapshots ({len(rel_hashes)})")
+                )
+                click.echo(styled([Style.BRIGHT], "=" * 70))
+                if not rel_hashes:
+                    click.echo("  (none)")
+                else:
+                    click.echo(f"  {'Hash':9s}  {'Version Range':21s}  {'Releases':>10s}  Created")
+                    click.echo(f"  {'-' * 9}  {'-' * 21}  {'-' * 10}  {'-' * 25}")
+                    for h in rel_hashes:
+                        try:
+                            meta, _ = snap_store.load_release_snapshot(h)
+                            v_range = f"{meta.version_min or '—'} ~ {meta.version_max or '—'}"
+                            click.echo(
+                                f"  {h[:9]:9s}  {v_range:21s}"
+                                f"  {meta.release_count!s:>10s}  {meta.created_at}"
+                            )
+                        except Exception:
+                            click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
+
+        if announcements:
+            if not first:
+                click.echo()
+            first = False
+            if not schema_root.is_dir():
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
+                    + str(schema_root)
+                )
+            else:
+                snap_store = SnapshotStore(schema_root)
+                ann_hashes = snap_store.list_announcement_snapshots()
+                click.echo(
+                    styled(
+                        [Style.BRIGHT, Fore.GREEN],
+                        f"\nAnnouncement Snapshots ({len(ann_hashes)})",
+                    )
+                )
+                click.echo(styled([Style.BRIGHT], "=" * 60))
+                if not ann_hashes:
+                    click.echo("  (none)")
+                else:
+                    click.echo(f"  {'Hash':9s}  {'Announcements':>16s}  Created")
+                    click.echo(f"  {'-' * 9}  {'-' * 16}  {'-' * 25}")
+                    for h in ann_hashes:
+                        try:
+                            meta, _ = snap_store.load_announcement_snapshot(h)
+                            click.echo(
+                                f"  {h[:9]:9s}  {meta.announcement_count!s:>16s}  {meta.created_at}"
+                            )
+                        except Exception:
+                            click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
+
+        if generations:
+            if not first:
+                click.echo()
+            first = False
+            if not schema_root.is_dir():
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
+                    + str(schema_root)
+                )
+            else:
+                gen_store = GenerationStore(schema_root)
+                all_gens = gen_store.list_all()
+                click.echo(styled([Style.BRIGHT, Fore.GREEN], f"\nGenerations ({len(all_gens)})"))
+                click.echo(styled([Style.BRIGHT], "=" * 80))
+                if not all_gens:
+                    click.echo("  (none)")
+                else:
+                    click.echo(
+                        f"  {'Hash':9s}  {'Channel':10s}  {'Parent':9s}  {'Subject':20s}  Timestamp"
+                    )
+                    click.echo(f"  {'-' * 9}  {'-' * 10}  {'-' * 9}  {'-' * 20}  {'-' * 25}")
+                    for h, gen in all_gens.items():
+                        parent_short = (
+                            (gen.metadata.parent or "")[:9] if gen.metadata.parent else "—"
+                        )
+                        subject = gen.metadata.subject or ""
+                        click.echo(
+                            f"  {h[:9]:9s}  {gen.metadata.channel:10s}"
+                            f"  {parent_short:9s}  {subject[:19]:20s}"
+                            f"  {gen.metadata.timestamp}"
+                        )
+
+
 @cli.group(aliases=["rel"], cls=ClickAliasedGroup)
 def release():
     """Pre-release workflow commands."""
