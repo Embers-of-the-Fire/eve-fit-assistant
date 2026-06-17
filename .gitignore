@@ -18,18 +18,11 @@ temp/
 *.ipr
 *.iws
 .idea/*
-!.idea/eve-fit-assistant.iml
-!.idea/jsonSchemas.xml
-!.idea/vcs.xml
-!.idea/modules.xml
-!.idea/dictionaries/project.xml
-!.idea/protoeditor.xml
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
 .vscode/
-!.vscode/launch.json
 *.code-workspace
 
 # Flutter/Dart/Pub related

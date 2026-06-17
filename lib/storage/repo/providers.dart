@@ -271,6 +271,7 @@ String? assetStaticRoot(Ref ref) {
 /// new schema are considered installed once resource data is fetched).
 @riverpodSingleton
 IList<String> installedCheckoutIds(Ref ref) {
+  ref.watch(activeCheckoutWatchProvider);
   final registry = ref.watch(checkoutRegistryServiceProvider).readRegistry();
   return registry.match(() => const IList.empty(), (r) => r.checkouts.keys.toIList());
 }
