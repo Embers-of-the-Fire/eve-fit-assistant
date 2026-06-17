@@ -43,6 +43,7 @@ abstract class AppSetting with _$AppSetting {
       defaultValue: TypeListReturnBehavior.previousPage,
     )
     required TypeListReturnBehavior typeListReturnBehavior,
+    @JsonKey(defaultValue: false) required bool developerMode,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default(1.0) double fontScale,
   }) = _AppSetting;
@@ -55,6 +56,9 @@ Locale locale(Ref ref) => ref.watch(appSettingServiceProvider).locale;
 
 @riverpodSingleton
 double fontScale(Ref ref) => ref.watch(appSettingServiceProvider).fontScale;
+
+@riverpodSingleton
+bool developerMode(Ref ref) => ref.watch(appSettingServiceProvider).developerMode;
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {

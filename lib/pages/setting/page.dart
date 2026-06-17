@@ -17,6 +17,7 @@ class SettingPage extends ConsumerWidget {
     final showRemoteContent = ref.watch(
       appSettingServiceProvider.select((setting) => setting.remoteContent.exposed),
     );
+    final developerMode = ref.watch(developerModeProvider);
     return ConfigListView(
       children: [
         const ConfigListTile.space(20),
@@ -36,12 +37,13 @@ class SettingPage extends ConsumerWidget {
           title: context.l10n.settingTileDataStorageTitle,
           onTap: () => unawaited(context.router.push(const StorageManagement())),
         ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.info_outline),
-          title: "Channel Overview",
-          subtitle: "Remote channel metadata and sync status",
-          onTap: () => unawaited(context.router.push(const ChannelOverviewRoute())),
-        ),
+        if (developerMode)
+          ConfigListTile.item(
+            icon: const Icon(Icons.info_outline),
+            title: "Channel Overview",
+            subtitle: "Remote channel metadata and sync status",
+            onTap: () => unawaited(context.router.push(const ChannelOverviewRoute())),
+          ),
         ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),
           title: context.l10n.workspaceTabReportTitle,

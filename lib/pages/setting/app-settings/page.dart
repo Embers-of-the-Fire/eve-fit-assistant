@@ -18,6 +18,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 part "debug_log.dart";
+part "developer_mode.dart";
 part "developer_remote_content.dart";
 part "font_scale.dart";
 part "impact_warning.dart";
@@ -42,6 +43,7 @@ class AppSettingsPage extends ConsumerWidget {
         ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
+        const ConfigListTile.custom(DeveloperModeTile()),
         const ConfigListTile.custom(DebugLogTile()),
         const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
         ConfigListTile.item(

@@ -104,6 +104,17 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Localization changes require `./x generate l10n`; `l10n/app_zh.arb` is the template ARB with placeholder metadata, while `l10n/app_en.arb` should contain translations only.
 - JS/TS (site/ dir): run `pnpm run check` in `site/` for SvelteKit type checks; `npx biome check --fix` for formatting/linting.
 
+## Developer Mode
+
+The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `developerMode` boolean field (default `false`). A toggle in App Settings → Developer section enables it, with a confirmation dialog on enable.
+
+**Providers:**
+- `developerModeProvider` — reactive read via `ref.watch(developerModeProvider)` (always up-to-date).
+- `appSettingServiceProvider.select((s) => s.developerMode)` — fine-grained reactive read.
+- `ref.read(appSettingServiceProvider).developerMode` — imperative read within callbacks.
+
+**Localization rule for developer-only widgets:** UI widgets gated behind `developerMode` (i.e., only visible when dev mode is on) **must use hardcoded English**. No ARB entries or `context.l10n` calls for dev-only UI. Only the toggle itself and its confirmation dialog use localization (they are always visible in the settings page).
+
 ## Style And Generated-Code Gotchas
 
 - Dart analyzer is strict (`strict-casts`, `strict-inference`, `strict-raw-types`) and enforces package imports, double quotes, explicit public API types, and 100-column formatting.
