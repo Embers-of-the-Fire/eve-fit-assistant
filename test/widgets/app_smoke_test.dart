@@ -17,6 +17,7 @@ void main() {
               shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
               showCheckoutImpactWarnings: true,
               typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+              developerMode: false,
             ),
           ),
         ],

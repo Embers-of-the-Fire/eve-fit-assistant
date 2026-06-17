@@ -26,6 +26,7 @@ AppSetting _testAppSetting({RemoteContentSetting? remoteContent}) => AppSetting(
   shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
   showCheckoutImpactWarnings: true,
   typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+  developerMode: false,
   remoteContent: remoteContent ?? const RemoteContentSetting(exposed: true),
 );
 

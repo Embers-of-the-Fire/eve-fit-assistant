@@ -11,6 +11,7 @@ void main() {
     shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
     showCheckoutImpactWarnings: true,
     typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+    developerMode: false,
   );
 
   test("localeProvider returns locale from overridden AppSettingService", () {

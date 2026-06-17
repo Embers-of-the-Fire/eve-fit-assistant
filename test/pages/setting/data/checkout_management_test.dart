@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/locale.dart";
@@ -8,6 +9,7 @@ import "package:eve_fit_assistant/pages/setting/data/checkout_management.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
+import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -28,6 +30,7 @@ AppSetting _testAppSetting({RemoteContentSetting? remoteContent}) => AppSetting(
   shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
   showCheckoutImpactWarnings: true,
   typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+  developerMode: false,
   remoteContent: remoteContent ?? const RemoteContentSetting(exposed: true),
 );
 
@@ -43,6 +46,12 @@ CheckoutRegistry _testRegistry({String activeId = "checkout-1", int count = 1}) 
       ),
   });
   return CheckoutRegistry(schemaVersion: 1, activeCheckoutId: activeId, checkouts: checkouts);
+}
+
+void _seedRegistry(CheckoutRegistry registry) {
+  final file = File(RepoPaths.checkoutRegistryPath);
+  file.parent.createSync(recursive: true);
+  file.writeAsStringSync(jsonEncode(registry.toJson()));
 }
 
 void main() {
@@ -89,12 +98,14 @@ void main() {
   });
 
   testWidgets("shows checkout list with active badge", (tester) async {
+    final registry = _testRegistry();
+    _seedRegistry(registry);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(_testRegistry())),
+          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
@@ -107,14 +118,14 @@ void main() {
   });
 
   testWidgets("shows activate button for inactive checkout", (tester) async {
+    final registry = _testRegistry(activeId: "checkout-2", count: 2);
+    _seedRegistry(registry);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith(
-            (_) => Stream.value(_testRegistry(activeId: "checkout-2", count: 2)),
-          ),
+          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
@@ -125,12 +136,14 @@ void main() {
   });
 
   testWidgets("disables delete for single active checkout", (tester) async {
+    final registry = _testRegistry();
+    _seedRegistry(registry);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(_testRegistry())),
+          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
@@ -160,12 +173,14 @@ void main() {
   });
 
   testWidgets("shows N/A for file info when asset store returns None", (tester) async {
+    final registry = _testRegistry();
+    _seedRegistry(registry);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(_testRegistry())),
+          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
@@ -176,12 +191,14 @@ void main() {
   });
 
   testWidgets("shows multiple checkout cards with correct badges", (tester) async {
+    final registry = _testRegistry(count: 3);
+    _seedRegistry(registry);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(_testRegistry(count: 3))),
+          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
@@ -194,14 +211,14 @@ void main() {
   });
 
   testWidgets("shows activate confirmation dialog", (tester) async {
+    final registry = _testRegistry(activeId: "checkout-2", count: 2);
+    _seedRegistry(registry);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith(
-            (_) => Stream.value(_testRegistry(activeId: "checkout-2", count: 2)),
-          ),
+          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
@@ -222,14 +239,14 @@ void main() {
   });
 
   testWidgets("shows delete confirmation dialog", (tester) async {
+    final registry = _testRegistry(activeId: "checkout-2", count: 2);
+    _seedRegistry(registry);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith(
-            (_) => Stream.value(_testRegistry(activeId: "checkout-2", count: 2)),
-          ),
+          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),

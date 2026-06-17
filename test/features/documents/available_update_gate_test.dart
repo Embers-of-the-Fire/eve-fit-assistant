@@ -43,6 +43,7 @@ AppSetting _testAppSetting({bool remoteEnabled = true}) => AppSetting(
   shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
   showCheckoutImpactWarnings: true,
   typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+  developerMode: false,
   remoteContent: RemoteContentSetting(enabled: remoteEnabled),
 );
 

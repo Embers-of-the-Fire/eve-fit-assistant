@@ -67,6 +67,7 @@ ProviderContainer _container({
           shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
           showCheckoutImpactWarnings: true,
           typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+          developerMode: false,
           remoteContent: const RemoteContentSetting(originUrl: "https://example.com"),
         ),
       ),
