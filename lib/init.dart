@@ -6,8 +6,9 @@ import "dart:ui";
 import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/features/documents/repository.dart";
-import "package:eve_fit_assistant/features/documents/storage.dart";
+import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
+import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
+import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -25,7 +26,8 @@ Future<void> initSingletons() async {
   await RustLib.init();
   await PathProvider.init();
   AppSettingService.init();
-  DocumentStorage.init();
+  AnnouncementStateStore.init();
+  AnnouncementBodyCache.init();
   EtagCache.init();
   GlobalLogger.init(
     PathProvider.logsPath,
@@ -74,9 +76,8 @@ Future<void> _initVersionTracking(WidgetRef ref) async {
 
   try {
     final appVersion = await completer.future.timeout(const Duration(milliseconds: 500));
-    if (DocumentStorage.lastSeenAppVersion != null) return;
-    DocumentStorage.setLastSeenAppVersion(appVersion);
-    ref.invalidate(readGenerationProvider);
+    if (AnnouncementStateStore.lastSeenAppVersion != null) return;
+    AnnouncementStateStore.setLastSeenAppVersion(appVersion);
   } on TimeoutException {
     // Provider didn't resolve in time
   } catch (_) {

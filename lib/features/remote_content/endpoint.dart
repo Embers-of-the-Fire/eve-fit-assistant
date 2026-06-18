@@ -40,13 +40,13 @@ class RemoteContentEndpoint {
   Uri generationCatalogUri(String genId) =>
       resolvePayloadUri("manifest/.generations/$genId/catalog.json");
 
-  Uri announcementCatalogUri(String genId) =>
-      resolvePayloadUri("manifest/.generations/$genId/announcements/catalog.json");
+  Uri get announcementV2CatalogUri => resolvePayloadUri("announcements/catalog.json");
 
-  Uri announcementRecordUri(String id) => resolvePayloadUri("announcements/registry/$id.json");
+  Uri get announcementV2ActivePageUri => resolvePayloadUri("announcements/active.json");
 
-  Uri announcementContentUri(String locale, String id) =>
-      resolvePayloadUri("announcements/files/$locale/$id");
+  Uri announcementV2PageUri(String uuid) => resolvePayloadUri("announcements/pages/$uuid.json");
+
+  Uri announcementV2BodyUri(String hash) => resolvePayloadUri("announcements/documents/$hash.md");
 
   Uri releaseCatalogUri(String genId) =>
       resolvePayloadUri("manifest/.generations/$genId/releases/catalog.json");
@@ -56,8 +56,6 @@ class RemoteContentEndpoint {
 
   Uri assetUri(String pathHash, String contentHash) =>
       resolvePayloadUri("resources/assets/${pathHash.substring(0, 2)}/$pathHash/$contentHash");
-
-  Uri get announcementsRoot => resolvePayloadUri("announcements/");
 
   Uri get releasesRoot => resolvePayloadUri("resources/releases/");
 

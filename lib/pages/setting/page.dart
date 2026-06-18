@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
-import "package:eve_fit_assistant/features/documents/repository.dart";
+import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -55,7 +55,7 @@ class SettingPage extends ConsumerWidget {
   }
 
   Widget _buildVersionTile(BuildContext context, WidgetRef ref) {
-    final unreadCount = ref.watch(unreadVersionCountProvider);
+    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
     return ListTile(
       leading: const Icon(Icons.new_releases_outlined),
       title: Text(context.l10n.settingTileVersionTitle),
@@ -80,7 +80,7 @@ class SettingPage extends ConsumerWidget {
           const Icon(Icons.chevron_right),
         ],
       ),
-      onTap: () => unawaited(context.router.push(const VersionRoute())),
+      onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
     );
   }
 }

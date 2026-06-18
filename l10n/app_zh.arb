@@ -173,6 +173,12 @@
   "documentVersionBadge": "应用 {version}",
   "documentMarkAllRead": "全部标为已读",
   "documentMarkAllUnread": "全部标为未读",
+  "announcementFeedTitle": "公告",
+  "announcementNoEntries": "暂无公告",
+  "announcementBodyLoadError": "内容加载失败",
+  "announcementBodyLoadRetry": "重试",
+  "announcementSourceBundled": "内置",
+  "announcementSourceRemote": "远程",
   "@documentVersionBadge": {
     "placeholders": {
       "version": {

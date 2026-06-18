@@ -3,7 +3,8 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/badge/notification_dot.dart";
 import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
-import "package:eve_fit_assistant/features/documents/repository.dart";
+import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
+import "package:eve_fit_assistant/features/announcements/state/state.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -37,7 +38,7 @@ class WorkspacePage extends ConsumerWidget {
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabAnnouncementTitle,
         icon: Icons.campaign_outlined,
-        onTap: () => context.router.push(const AnnouncementRoute()),
+        onTap: () => context.router.push(const AnnouncementFeedRoute()),
       ),
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabReportTitle,
@@ -103,8 +104,8 @@ class WorkspacePage extends ConsumerWidget {
       color: Theme.of(context).colorScheme.primaryContainer,
       child: InkWell(
         onTap: () {
-          ref.read(documentReadServiceProvider).acknowledgeVersionBump(appVersion);
-          unawaited(context.router.push(const VersionRoute()));
+          ref.read(announcementStateServiceProvider.notifier).acknowledgeVersion(appVersion);
+          unawaited(context.router.push(const AnnouncementFeedRoute()));
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -138,7 +139,9 @@ class WorkspacePage extends ConsumerWidget {
                 icon: const Icon(Icons.close),
                 tooltip: context.l10n.versionBumpCardCloseTooltip,
                 onPressed: () {
-                  ref.read(documentReadServiceProvider).acknowledgeVersionBump(appVersion);
+                  ref
+                      .read(announcementStateServiceProvider.notifier)
+                      .acknowledgeVersion(appVersion);
                 },
               ),
             ],

@@ -1,5 +1,5 @@
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/pages/documents/page.dart";
+import "package:eve_fit_assistant/pages/announcements/feed_page.dart";
 import "package:eve_fit_assistant/pages/fit/page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
@@ -28,14 +28,13 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/app-settings", page: AppSettingsRoute.page),
     AutoRoute(path: "/setting/remote-content", page: RemoteContentSettingsRoute.page),
     AutoRoute(path: "/setting/collect-logs", page: CollectLogsRoute.page),
-    AutoRoute(path: "/setting/version", page: VersionRoute.page),
     AutoRoute(path: "/setting/data/storage", page: StorageManagement.page),
     AutoRoute(path: "/setting/data/channel-metadata", page: ChannelMetadataRoute.page),
     AutoRoute(path: "/setting/data/checkouts", page: CheckoutManagementRoute.page),
     AutoRoute(path: "/setting/channel-overview", page: ChannelOverviewRoute.page),
     AutoRoute(path: "/setting/report-feedback", page: ReportFeedbackRoute.page),
     AutoRoute(path: "/setting/report-feedback/external", page: ReportExternalLinksRoute.page),
-    AutoRoute(path: "/announcement", page: AnnouncementRoute.page),
+    AutoRoute(path: "/announcements", page: AnnouncementFeedRoute.page),
     AutoRoute(path: "/fitting/current", page: FitRoute.page),
   ];
 }

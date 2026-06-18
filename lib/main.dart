@@ -1,7 +1,6 @@
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
-import "package:eve_fit_assistant/features/documents/available_update_gate.dart";
-import "package:eve_fit_assistant/features/documents/startup_announcement.dart";
+import "package:eve_fit_assistant/features/announcements/announcements.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart";
 import "package:eve_fit_assistant/init.dart";
 import "package:eve_fit_assistant/pages/router.dart";
@@ -21,6 +20,9 @@ class MyApp extends ConsumerWidget {
 
   static final _appRouter = AppRouter();
   static final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  static AppRouter get appRouter => _appRouter;
+  static GlobalKey<NavigatorState> get navigatorKey => _appRouter.navigatorKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -84,11 +86,8 @@ class MyApp extends ConsumerWidget {
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
             child: AvailableUpdateGate(
-              appRouter: _appRouter,
-              navigatorKey: _appRouter.navigatorKey,
               child: StartupAnnouncementGate(
                 appRouter: _appRouter,
-                navigatorKey: _appRouter.navigatorKey,
                 child: initBuilder(context, child),
               ),
             ),

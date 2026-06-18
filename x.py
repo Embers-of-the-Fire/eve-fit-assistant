@@ -3111,6 +3111,17 @@ def build_docs_cmd():
         raise click.ClickException(str(exception)) from exception
 
 
+@build.command("announcements", aliases=["anno"])
+def build_announcements_cmd():
+    """Build bundled announcement catalog assets."""
+    from data.lib.docs import build_bundled_announcements
+
+    try:
+        build_bundled_announcements()
+    except ValueError as exception:
+        raise click.ClickException(str(exception)) from exception
+
+
 _ABI_FLUTTER_TO_APK = {
     "armeabi-v7a": "arm",
     "arm64-v8a": "arm64",
