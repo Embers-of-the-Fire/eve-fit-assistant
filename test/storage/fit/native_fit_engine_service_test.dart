@@ -10,8 +10,8 @@ import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
-import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:fixnum/fixnum.dart";
 import "package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
@@ -42,8 +42,34 @@ class _StubFitEngine implements native_server.FitEngine {
 class _StubRustLibApi extends RustLibApi {
   @override
   Future<native_server.FitEngineData> crateApiServerFitEngineDataInit({
-    required String staticRootPath,
+    required native_server.FitEnginePath path,
   }) async => _StubFitEngineData();
+
+  @override
+  Future<native_server.FitEnginePath> crateApiServerFitEnginePathFromFiles({
+    required String types,
+    required String dogmaAttributes,
+    required String dogmaEffects,
+    required String typeDogma,
+    required String buffCollections,
+  }) async => native_server.FitEnginePath(
+    types: types,
+    dogmaAttributes: dogmaAttributes,
+    dogmaEffects: dogmaEffects,
+    typeDogma: typeDogma,
+    buffCollections: buffCollections,
+  );
+
+  @override
+  Future<native_server.FitEnginePath> crateApiServerFitEnginePathFromRoot({
+    required String root,
+  }) async => native_server.FitEnginePath(
+    types: "$root/types.pb2",
+    dogmaAttributes: "$root/dogmaAttributes.pb2",
+    dogmaEffects: "$root/dogmaEffects.pb2",
+    typeDogma: "$root/typeDogma.pb2",
+    buffCollections: "$root/dbuffcollections.pb2",
+  );
 
   @override
   native_server.FitEngine crateApiServerFitEngineNew({required native_server.FitEngineData data}) =>
@@ -99,60 +125,39 @@ class _StubRustLibApi extends RustLibApi {
       throw UnimplementedError();
 }
 
-// ── Test stubs ──────────────────────────────────────────────────────────────────
-
-class _StubNativeDirResolver implements NativeDirResolver {
-  _StubNativeDirResolver({required this.resolveResult});
-
-  final Future<String> Function(String snapshotHash, ResourceIndex resourceIndex) resolveResult;
-
-  @override
-  final AssetStore assetStore = const AssetStore();
-
-  @override
-  String resolvePathFromSnapshot(String snapshotHash) => "/tmp/efa/native/stub";
-
-  @override
-  Future<String> prepareNativeDir(String snapshotHash, ResourceIndex resourceIndex) =>
-      resolveResult(snapshotHash, resourceIndex);
-
-  @override
-  void cleanup(Iterable<String> activeSnapshotHashes) {}
-}
-
-class _TrackingNativeDirResolver implements NativeDirResolver {
-  _TrackingNativeDirResolver({required this.resolveResult, required this.onCleanup});
-
-  final Future<String> Function(String snapshotHash, ResourceIndex resourceIndex) resolveResult;
-  final void Function() onCleanup;
-
-  @override
-  final AssetStore assetStore = const AssetStore();
-
-  @override
-  String resolvePathFromSnapshot(String snapshotHash) => "/tmp/efa/native/tracking";
-
-  @override
-  Future<String> prepareNativeDir(String snapshotHash, ResourceIndex resourceIndex) =>
-      resolveResult(snapshotHash, resourceIndex);
-
-  @override
-  void cleanup(Iterable<String> activeSnapshotHashes) => onCleanup();
-}
-
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
-/// Writes a minimal ResourceIndex to disk so that [NativeFitEngineService] can
-/// resolve it during build. Returns the snapshot hash.
+ResourceIndex _testResourceIndex() {
+  final ri = ResourceIndex()..schemaVersion = 1;
+  for (final id in const [
+    "resource://static/native/types.pb2",
+    "resource://static/native/dogmaAttributes.pb2",
+    "resource://static/native/dogmaEffects.pb2",
+    "resource://static/native/typeDogma.pb2",
+    "resource://static/native/dbuffcollections.pb2",
+  ]) {
+    ri.entries.add(
+      ResourceIndex_Entry()
+        ..resourceId = id
+        ..contentHash = "0" * 64
+        ..size = Int64(0),
+    );
+  }
+  return ri;
+}
+
+/// Writes a ResourceIndex with the five engine `.pb2` entries to disk so that
+/// [NativeFitEngineService] can resolve them from the content-addressed blob store.
+/// Returns the snapshot hash.
 String _writeTestResourceSnapshot() {
   final assetStore = const AssetStore();
-  final resourceIndex = ResourceIndex();
-  final meta = const ResourceSnapshotMeta(
+  final resourceIndex = _testResourceIndex();
+  final meta = ResourceSnapshotMeta(
     schemaVersion: 1,
     serverId: "test-server",
     gameBuild: "test-build",
     gameVersion: "test-version",
-    resourceCount: 0,
+    resourceCount: 5,
     createdAt: "2024-01-01T00:00:00Z",
   );
   return assetStore.writeResourceSnapshotSync(meta: meta, resourceIndex: resourceIndex);
@@ -161,14 +166,8 @@ String _writeTestResourceSnapshot() {
 late String _tempDir;
 late String _snapshotHash;
 
-ProviderContainer _container({
-  required Option<String> activeSnapshotHash,
-  required NativeDirResolver nativeDirResolver,
-}) => ProviderContainer(
-  overrides: [
-    activeSnapshotHashProvider.overrideWithValue(activeSnapshotHash),
-    nativeDirResolverProvider.overrideWithValue(nativeDirResolver),
-  ],
+ProviderContainer _container({required Option<String> activeSnapshotHash}) => ProviderContainer(
+  overrides: [activeSnapshotHashProvider.overrideWithValue(activeSnapshotHash)],
 );
 
 void main() {
@@ -191,10 +190,7 @@ void main() {
 
   group("NativeFitEngineService", () {
     test("starts in notInitialized state", () {
-      final container = _container(
-        activeSnapshotHash: const None(),
-        nativeDirResolver: _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir),
-      );
+      final container = _container(activeSnapshotHash: const None());
       addTearDown(container.dispose);
 
       final state = container.read(nativeFitEngineServiceProvider);
@@ -202,11 +198,7 @@ void main() {
     });
 
     test("initializes via retry when snapshot hash is available", () async {
-      final resolver = _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir);
-      final container = _container(
-        activeSnapshotHash: Some(_snapshotHash),
-        nativeDirResolver: resolver,
-      );
+      final container = _container(activeSnapshotHash: Some(_snapshotHash));
       addTearDown(container.dispose);
 
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
@@ -216,11 +208,7 @@ void main() {
     });
 
     test("retry re-initializes successfully on second call", () async {
-      final resolver = _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir);
-      final container = _container(
-        activeSnapshotHash: Some(_snapshotHash),
-        nativeDirResolver: resolver,
-      );
+      final container = _container(activeSnapshotHash: Some(_snapshotHash));
       addTearDown(container.dispose);
 
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
@@ -230,14 +218,22 @@ void main() {
       expect(state.debugOnlyDisplayState, "initialized");
     });
 
-    test("transitions to error when native dir resolution fails", () async {
-      final resolver = _StubNativeDirResolver(
-        resolveResult: (_, __) async => throw Exception("Simulated failure"),
+    test("transitions to error when resource index is missing engine entries", () async {
+      final ri = ResourceIndex()..schemaVersion = 1;
+      final meta = ResourceSnapshotMeta(
+        schemaVersion: 1,
+        serverId: "test-server",
+        gameBuild: "test-build",
+        gameVersion: "test-version",
+        resourceCount: 0,
+        createdAt: "2024-06-18T00:00:00Z",
       );
-      final container = _container(
-        activeSnapshotHash: Some(_snapshotHash),
-        nativeDirResolver: resolver,
+      final brokenHash = const AssetStore().writeResourceSnapshotSync(
+        meta: meta,
+        resourceIndex: ri,
       );
+
+      final container = _container(activeSnapshotHash: Some(brokenHash));
       addTearDown(container.dispose);
 
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
@@ -247,38 +243,13 @@ void main() {
     });
 
     test("retry is no-op when no snapshot hash is available", () async {
-      final container = _container(
-        activeSnapshotHash: const None(),
-        nativeDirResolver: _StubNativeDirResolver(resolveResult: (_, __) async => _tempDir),
-      );
+      final container = _container(activeSnapshotHash: const None());
       addTearDown(container.dispose);
 
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
 
       final state = container.read(nativeFitEngineServiceProvider);
       expect(state.debugOnlyDisplayState, "not initialized");
-    });
-
-    test("cleanup is called on dispose", () async {
-      var cleanupCalled = false;
-      final resolver = _TrackingNativeDirResolver(
-        resolveResult: (_, __) async => _tempDir,
-        onCleanup: () => cleanupCalled = true,
-      );
-      final container = _container(
-        activeSnapshotHash: Some(_snapshotHash),
-        nativeDirResolver: resolver,
-      );
-
-      // Trigger init
-      await container.read(nativeFitEngineServiceProvider.notifier).retry();
-
-      // Cleanup is not called on init/retry
-      expect(cleanupCalled, isFalse);
-
-      // Dispose should trigger cleanup
-      container.dispose();
-      expect(cleanupCalled, isTrue);
     });
   });
 }

@@ -10,11 +10,12 @@ import "package:path/path.dart" as p;
 
 /// Assembles a virtual native directory from a resource snapshot.
 ///
-/// The Rust fitting engine expects a flat directory of protobuf database files at a
-/// path passed via `FitEngineData::init(staticRootPath:)`. Under the repo system,
-/// these files are stored content-addressed under `assets/blobs/`. This class
-/// creates a temporary filesystem tree where each asset appears at its original path,
-/// using a symlink-first strategy with copy fallback to avoid data duplication.
+/// Under the repo system, resource files are stored content-addressed under
+/// `assets/blobs/`. This class creates a temporary filesystem tree where each
+/// asset appears at its original logical path, using a symlink-first strategy
+/// with copy fallback to avoid data duplication.  Consumers that only need
+/// individual files can use the static [`resolveBlobPath`] to get the
+/// content-addressed blob path directly.
 class NativeDirResolver {
   const NativeDirResolver({required this.assetStore});
 
@@ -29,10 +30,7 @@ class NativeDirResolver {
       p.join(PathProvider.tempPath, "efa", "native", snapshotHash);
 
   /// Creates a temporary native directory populated with all files referenced by
-  /// [resourceIndex].
-  ///
-  /// Returns the root path of the native directory suitable for passing to
-  /// `FitEngineData.init`.
+  /// [resourceIndex], and returns the root path of the native directory.
   Future<String> prepareNativeDir(String snapshotHash, ResourceIndex resourceIndex) async {
     final nativeRoot = resolvePathFromSnapshot(snapshotHash);
     final dir = Directory(nativeRoot);
@@ -44,10 +42,7 @@ class NativeDirResolver {
     try {
       for (final entry in resourceIndex.entries) {
         final logicalPath = _logicalPath(entry.resourceId);
-        final blobPath = RepoPaths.blobPath(
-          RepoHash.hashIdent(entry.resourceId),
-          entry.contentHash,
-        );
+        final blobPath = NativeDirResolver.resolveBlobPath(entry);
         final targetPath = _resolveSafeChild(nativeRoot, logicalPath);
         if (targetPath == null) {
           warning("Skipping path traversal attempt: $logicalPath");
@@ -80,6 +75,17 @@ class NativeDirResolver {
     if (resourceId.startsWith(prefix)) return resourceId.substring(prefix.length);
     return resourceId;
   }
+
+  /// Returns the content-addressed blob store path for a single
+  /// [ResourceIndex.Entry].
+  ///
+  /// This performs the same ident-hash → content-hash → blob-path computation
+  /// that [`prepareNativeDir`] uses internally for each entry, but without
+  /// creating any symlinks or directory trees.  Callers that only need a
+  /// handful of files can resolve their paths directly and pass them to
+  /// consumers without materializing the full native directory on disk.
+  static String resolveBlobPath(ResourceIndex_Entry entry) =>
+      RepoPaths.blobPath(RepoHash.hashIdent(entry.resourceId), entry.contentHash);
 
   /// Resolves [child] relative to [root], returning the normalized path only if
   /// it does not escape [root] (e.g. via `..` or absolute paths).

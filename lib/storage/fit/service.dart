@@ -14,6 +14,7 @@ import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fpdart/fpdart.dart";
@@ -474,25 +475,39 @@ class NativeFitEngineService extends _$NativeFitEngineService {
   ResourceIndex? _lastResourceIndex;
   Future<void>? _pendingInit;
 
-  void _scheduleInit(String snapshotHash, ResourceIndex resourceIndex) {
-    unawaited(Future(() => _initializeFromResourceIndex(snapshotHash, resourceIndex)));
+  void _scheduleInit(ResourceIndex resourceIndex) {
+    unawaited(Future(() => _initializeFromResourceIndex(resourceIndex)));
+  }
+
+  /// Resolves the five engine `.pb2` files directly from the content-addressed
+  /// blob store using the resource index, bypassing the native directory tree.
+  static native_server.FitEnginePath _enginePathFromIndex(ResourceIndex ri) {
+    String resolve(String resourceId) {
+      final entry = ri.entries.firstWhere((e) => e.resourceId == resourceId);
+      return NativeDirResolver.resolveBlobPath(entry);
+    }
+
+    return native_server.FitEnginePath(
+      types: resolve("resource://static/native/types.pb2"),
+      dogmaAttributes: resolve("resource://static/native/dogmaAttributes.pb2"),
+      dogmaEffects: resolve("resource://static/native/dogmaEffects.pb2"),
+      typeDogma: resolve("resource://static/native/typeDogma.pb2"),
+      buffCollections: resolve("resource://static/native/dbuffcollections.pb2"),
+    );
   }
 
   @override
   NativeFitEngineState build() {
-    final resolver = ref.read(nativeDirResolverProvider);
     final assetStore = ref.read(assetStoreProvider);
-    ref
-      ..onDispose(() => resolver.cleanup([]))
-      ..listen(activeSnapshotHashProvider, (prev, next) {
-        if (prev == next || next.isNone()) return;
-        final hash = next.toNullable()!;
-        final ri = assetStore.readResourceIndexSync(hash);
-        if (ri.isNone()) return;
-        _lastSnapshotHash = hash;
-        _lastResourceIndex = ri.toNullable();
-        _scheduleInit(hash, ri.toNullable()!);
-      }, weak: true);
+    ref..listen(activeSnapshotHashProvider, (prev, next) {
+      if (prev == next || next.isNone()) return;
+      final hash = next.toNullable()!;
+      final ri = assetStore.readResourceIndexSync(hash);
+      if (ri.isNone()) return;
+      _lastSnapshotHash = hash;
+      _lastResourceIndex = ri.toNullable();
+      _scheduleInit(ri.toNullable()!);
+    }, weak: true);
 
     final initialHash = ref.read(activeSnapshotHashProvider);
     if (initialHash case Some(:final value)) {
@@ -500,7 +515,7 @@ class NativeFitEngineService extends _$NativeFitEngineService {
       if (ri.isSome()) {
         _lastSnapshotHash = value;
         _lastResourceIndex = ri.toNullable();
-        _scheduleInit(value, ri.toNullable()!);
+        _scheduleInit(ri.toNullable()!);
       }
     }
 
@@ -517,18 +532,15 @@ class NativeFitEngineService extends _$NativeFitEngineService {
         if (freshRi.isSome()) {
           _lastSnapshotHash = value;
           _lastResourceIndex = freshRi.toNullable();
-          await _initializeFromResourceIndex(value, freshRi.toNullable()!);
+          await _initializeFromResourceIndex(freshRi.toNullable()!);
         }
       }
       return;
     }
-    await _initializeFromResourceIndex(hash, ri);
+    await _initializeFromResourceIndex(ri);
   }
 
-  Future<void> _initializeFromResourceIndex(
-    String snapshotHash,
-    ResourceIndex resourceIndex,
-  ) async {
+  Future<void> _initializeFromResourceIndex(ResourceIndex resourceIndex) async {
     if (!ref.mounted) return;
     if (_pendingInit != null) return _pendingInit!;
 
@@ -537,12 +549,10 @@ class NativeFitEngineService extends _$NativeFitEngineService {
 
     state = const NativeFitEngineState.initializing();
     try {
-      final nativePath = await ref
-          .read(nativeDirResolverProvider)
-          .prepareNativeDir(snapshotHash, resourceIndex);
+      final path = _enginePathFromIndex(resourceIndex);
       if (!ref.mounted) return;
       final engine = native_server.FitEngine(
-        data: await native_server.FitEngineData.init(staticRootPath: nativePath),
+        data: await native_server.FitEngineData.init(path: path),
       );
       if (!ref.mounted) return;
       state = NativeFitEngineState.initialized(engine: engine);
