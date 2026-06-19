@@ -41,6 +41,7 @@ class _StartupAnnouncementGateState extends ConsumerState<StartupAnnouncementGat
 
     await showAnnouncementDialog(
       context,
+      navigatorKey: widget.appRouter.navigatorKey,
       title: record.title,
       informationText: record.summary,
       onShowDetail: () async {
