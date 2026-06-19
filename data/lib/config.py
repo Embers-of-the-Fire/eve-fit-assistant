@@ -281,14 +281,14 @@ class DeveloperRemote(BaseModel):
     minio: DeveloperRemoteMinio | None = None
     s3: DeveloperRemoteS3 | None = None
 
-    def require_minio(self) -> DeveloperRemoteMinio:
+    def require_minio(self, command_group: str = "mock") -> DeveloperRemoteMinio:
         if self.minio is None:
-            _fail_remote_sub("remote.minio", "mock")
+            _fail_remote_sub("remote.minio", command_group)
         return self.minio  # type: ignore[return-value]
 
-    def require_s3(self) -> DeveloperRemoteS3:
+    def require_s3(self, command_group: str = "publish") -> DeveloperRemoteS3:
         if self.s3 is None:
-            _fail_remote_sub("remote.s3", "publish")
+            _fail_remote_sub("remote.s3", command_group)
         return self.s3  # type: ignore[return-value]
 
 
