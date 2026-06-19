@@ -3,49 +3,6 @@
 This document records the local processing paths that remote content delivery should reuse. It does
 not define a remote endpoint contract; that belongs to the follow-up remote contract work.
 
-## Documents
-
-Bundled document content is authored as localized Markdown and generated into app assets.
-
-- Authored Markdown lives in `assets/content/documents/zh/` and
-  `assets/content/documents/en/`.
-- `./x build docs` runs `data/lib/docs/build.py`.
-- The generator validates YAML front matter, extracts each title and summary from Markdown, writes
-  localized bodies to `assets/content/documents/generated/`, and writes
-  `assets/content/documents/generated/index.json`.
-- The zh document is the metadata source of truth. The en document only needs matching `id` front
-  matter and localized body text.
-- Generated document entries use `source: bundled`; remote entries already fit the same
-  `DocumentEntry` and `DocumentCatalog` model.
-
-`DocumentRepository` in `lib/features/documents/repository.dart` loads the generated bundled
-catalog, merges it with `DocumentStorage.remoteCatalog`, resolves locale fallback, loads the body,
-and returns `DocumentRecord` values to document pages.
-
-Remote document delivery should reuse the existing storage seam:
-
-```dart
-DocumentStorage.replaceRemoteCatalog(catalog, cachedBodies);
-```
-
-The repository merge rule lets a remote entry replace a bundled entry with the same `id`. Use that
-behavior only for intentional corrections; ordinary remote entries should use distinct ids.
-
-## Announcement And Version Entries
-
-The document center has two feed modes:
-
-- `DocumentFeedKind.announcement` is the mixed Updates feed for `announcement`, `information`, and
-  `version` entries.
-- `DocumentFeedKind.version` is filtered to `version` entries only for the settings version route.
-
-Startup announcements are normal document entries with `kind: announcement` and `startup: true`.
-`lib/features/documents/startup_announcement.dart` shows the newest startup announcement that has
-not been dismissed through `DocumentStorage.dismissStartupAnnouncement(...)`.
-
-Version notes are normal document entries with `kind: version` and `appVer`. The document generator
-requires `version` entries to define `appVer` and rejects `minAppVer` for that kind.
-
 ## Data Bundle Generation
 
 Data is generated from the selected workspace through `./x`.

@@ -3893,17 +3893,6 @@ def data_cmd(skip: list[str], author: str | None, description: str | None):
     )
 
 
-@build.command("docs", aliases=["doc"])
-def build_docs_cmd():
-    """Build bundled document assets."""
-    from data.lib.docs import build_documents
-
-    try:
-        build_documents()
-    except ValueError as exception:
-        raise click.ClickException(str(exception)) from exception
-
-
 @build.command("announcements", aliases=["anno"])
 def build_announcements_cmd():
     """Build bundled announcement catalog assets."""
@@ -4797,22 +4786,22 @@ def release_changelog_generate():
     help="Write template as-is without opening editor.",
 )
 def release_changelog_detail(no_edit: bool):
-    """Generate bi-lingual version documents for in-app release notes.
+    """Generate bi-lingual version announcements for in-app release notes.
 
     By default, opens $EDITOR with a template containing en-us/zh-cn summary sections.
     Use --no-edit to write the generated template as-is without manual editing.
-    On save (or if --no-edit), writes authored .md files to assets/content/documents/{en,zh}/.
+    On save (or if --no-edit), writes authored .md files to assets/content/announcements/{en,zh}/.
     """
     from data.lib.release.changelog_gen import generate_detail
     from data.lib.release.version import load_version
 
     v = load_version()
     click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Preparing version documents for ")
+        styled([Style.BRIGHT, Fore.GREEN], "Preparing version announcements for ")
         + styled([Style.BRIGHT], v.render_semver())
     )
     generate_detail(v, no_edit=no_edit)
-    click.echo(styled([Fore.GREEN], "  Written to assets/content/documents/"))
+    click.echo(styled([Fore.GREEN], "  Written to assets/content/announcements/"))
 
 
 @cli.group(cls=ClickAliasedGroup)

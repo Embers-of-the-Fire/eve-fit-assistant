@@ -223,10 +223,10 @@ Pass `--id` to override.
    ./x release changelog detail --no-edit
    ```
 
-2. Build the bundled document assets so the new version notes are included
+2. Build the bundled announcement assets so the new version notes are included
    in the APK:
    ```bash
-   ./x generate docs
+   ./x build announcements
    ```
 
 3. Stage to remote so older app installations can discover the new version:

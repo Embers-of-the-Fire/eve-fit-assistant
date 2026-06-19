@@ -5,7 +5,6 @@
 - [General](../../README.md)
 - [Data Collection](../../data/README.md)
 - [Data Storage and Management](./data-storage.md)
-- [Document Center](./document-center.md)
 - [Fit Storage and Versioning](./fit-storage.md)
 - [Remote Content Integration](./remote-content-integration.md)
 - [Router](./router.md)
