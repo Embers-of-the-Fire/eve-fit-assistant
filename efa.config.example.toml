@@ -50,10 +50,6 @@ resource_root = "efa/v2"
 # Python log dir
 log = "data/log"
 
-# Android APK output directory.
-# Versioned subdirectories (e.g. v0.1.0-beta.2/) are created inside.
-apk = "cache/apk"
-
 [resources.example]
 # The `resources` section offers support for multi-datasource generation.
 # the `example` is an identifier for the resource.

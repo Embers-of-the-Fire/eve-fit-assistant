@@ -44,6 +44,7 @@ class ReleaseSnapshotMetadata(BaseModel):
     schema_version: int = Field(default=1, alias="schemaVersion")
     version_min: str | None = Field(default=None, alias="versionMin")
     version_max: str | None = Field(default=None, alias="versionMax")
+    offerings: list[str] = Field(default_factory=list)
     author: str = Field(default="")
     description: str = Field(default="")
     release_count: int = Field(alias="releaseCount")
@@ -174,6 +175,8 @@ def write_pb2_atomic(path: Path, message) -> None:
 _PB2_ALIAS_MAP: dict[str, tuple[str, str]] = {
     "ResourceIndex": ("resource_index_pb2", "ResourceIndex"),
     "ReleaseIndex": ("release_index_pb2", "ReleaseIndex"),
+    "AndroidArtifactVariant": ("release_index_pb2", "AndroidArtifactVariant"),
+    "AndroidArtifacts": ("release_index_pb2", "AndroidArtifacts"),
     "ServerIndex": ("server_index_pb2", "ServerIndex"),
     "GenerationResources": ("generation_resources_pb2", "GenerationResources"),
     "GenerationPointer": ("generation_pointer_pb2", "GenerationPointer"),
@@ -251,18 +254,39 @@ def make_generation_pointer(snapshot_hash: str) -> GenerationPointer:
     return msg
 
 
+def _make_artifact_variant(data: dict[str, str]) -> AndroidArtifactVariant:
+    v = _load_pb2_type("AndroidArtifactVariant")()
+    v.identifier = data["identifier"]
+    v.content_hash = data["content_hash"]
+    return v
+
+
 def make_release_index(
-    entries: list[tuple[str, str, list[str], str]],
+    release_id: str,
+    version: str,
+    android: dict[str, dict[str, str]] | None = None,
 ) -> ReleaseIndex:
-    """Build a ReleaseIndex from (id, version, offerings, ident_hash) tuples."""
+    """Build a ReleaseIndex with optional AndroidArtifacts.
+
+    android keys: general (required), armv7, arm64, x64 (optional).
+    Each value is a dict with {"identifier": str, "content_hash": str}.
+    identifier is the literal release URI (e.g. "release://1.0.0/android/general").
+    content_hash is the SHA-256 of the artifact file bytes.
+    """
     msg = _load_pb2_type("ReleaseIndex")()
     msg.schema_version = 1
-    for rid, version, offerings, ihash in entries:
-        entry = msg.entries.add()
-        entry.id = rid
-        entry.version = version
-        entry.offerings.extend(offerings)
-        entry.ident_hash = ihash
+    msg.id = release_id
+    msg.version = version
+    if android:
+        aa = _load_pb2_type("AndroidArtifacts")()
+        aa.general.CopyFrom(_make_artifact_variant(android["general"]))
+        if "armv7" in android:
+            aa.armv7.CopyFrom(_make_artifact_variant(android["armv7"]))
+        if "arm64" in android:
+            aa.arm64.CopyFrom(_make_artifact_variant(android["arm64"]))
+        if "x64" in android:
+            aa.x64.CopyFrom(_make_artifact_variant(android["x64"]))
+        msg.android.CopyFrom(aa)
     return msg
 
 

@@ -276,16 +276,31 @@ class TestSnapshotStore:
         assert loaded_index.entries[0].content_hash == "ff" * 32
 
     def test_create_release_snapshot(self, snap_store: SnapshotStore) -> None:
-        meta = ReleaseSnapshotMetadata(releaseCount=1, createdAt="2026-06-14T12:00:00Z")
+        meta = ReleaseSnapshotMetadata(
+            releaseCount=1, offerings=["android"], createdAt="2026-06-14T12:00:00Z"
+        )
         from data.lib.remote.models import make_release_index
 
-        index = make_release_index([("rel-001", "1.0.0", ["android"], "aa" * 32)])
+        index = make_release_index(
+            release_id="rel-001",
+            version="1.0.0",
+            android={
+                "general": {
+                    "identifier": "release://1.0.0/android/general",
+                    "content_hash": "aa" * 32,
+                },
+            },
+        )
         snap_hash = snap_store.create_release_snapshot(meta, index)
         assert len(snap_hash) == 64
 
         loaded_meta, loaded_index = snap_store.load_release_snapshot(snap_hash)
         assert loaded_meta.release_count == 1
-        assert loaded_index.entries[0].id == "rel-001"
+        assert loaded_meta.offerings == ["android"]
+        assert loaded_index.id == "rel-001"
+        assert loaded_index.version == "1.0.0"
+        assert loaded_index.android.general.identifier == "release://1.0.0/android/general"
+        assert loaded_index.android.general.content_hash == "aa" * 32
 
     def test_list_snapshots(self, snap_store: SnapshotStore) -> None:
         meta = ResourceSnapshotMetadata(

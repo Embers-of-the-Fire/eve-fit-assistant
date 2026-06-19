@@ -80,36 +80,15 @@ class ReleaseSyncService {
       );
     }
 
-    ReleaseIndex_Entry? newest;
-    for (final entry in index.entries) {
-      if (entry.offerings.isEmpty) continue;
-      if (!entry.offerings.contains("android")) continue;
-      final cmp = _compareVersions(entry.version, installedVersion);
-      if (cmp == null || cmp <= 0) continue;
-      if (newest == null) {
-        newest = entry;
-        continue;
-      }
-      final newestCmp = _compareVersions(entry.version, newest.version);
-      if (newestCmp != null && newestCmp > 0) {
-        newest = entry;
-      }
-    }
+    if (!index.hasAndroid()) return const Right(None());
+    final cmp = _compareVersions(index.version, installedVersion);
+    if (cmp == null || cmp <= 0) return const Right(None());
 
-    if (newest == null) return const Right(None());
-
-    return Right(
-      Some(
-        AppRelease(
-          releaseId: newest.id,
-          version: newest.version,
-          createdAt: "", // ReleaseIndex doesn't have createdAt; we use identHash
-        ),
-      ),
-    );
+    return Right(Some(AppRelease(releaseId: index.id, version: index.version, createdAt: "")));
   }
 
-  /// Downloads a release APK blob.
+  /// Downloads a release APK blob by artifact name.
+  /// artifactName: one of "general", "armv7", "arm64", "x64".
   Future<Either<ReleaseSyncError, Uint8List>> downloadApk(
     Channel channel,
     String identHash,

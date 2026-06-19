@@ -28,6 +28,9 @@ from data.lib.remote.paths import resource_snapshot_dir
 from data.lib.remote.snapshot import SnapshotStore
 
 
+_RELEASE_VARIANT_NAMES = ("general", "armv7", "arm64", "x64")
+
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -234,6 +237,41 @@ class Publisher:
             return
 
         self._upload_dir(snap_dir, prefixes + f"assets/{snap_type}/{snap_hash}")
+
+        if snap_type == "releases":
+            self._publish_release_blobs(snap_dir, prefixes)
+
+    def _publish_release_blobs(self, snap_dir: Path, prefixes: str) -> None:
+        from data.lib.remote.models import ReleaseIndex
+
+        pb2_file = snap_dir / "releases.pb2"
+        if not pb2_file.is_file():
+            return
+
+        try:
+            index = read_pb2(pb2_file, ReleaseIndex)
+        except Exception:
+            return
+
+        if not index.HasField("android"):
+            return
+
+        android = index.android
+        blob_uploads: list[tuple[Path, str]] = []
+
+        for variant_name in _RELEASE_VARIANT_NAMES:
+            if not android.HasField(variant_name):
+                continue
+            v = getattr(android, variant_name)
+            ihash = ident_hash(v.identifier)
+            bpath = blob_path(self.local_root, ihash, v.content_hash)
+            if bpath.is_file():
+                blob_uploads.append(
+                    (bpath, prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}")
+                )
+
+        if blob_uploads:
+            self._upload_files_parallel(blob_uploads, desc="Uploading release blobs")
 
     def _upload_file(self, src: Path, remote_path: str) -> None:
         if self.origin_dir is not None:

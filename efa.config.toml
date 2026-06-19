@@ -20,7 +20,6 @@ resource_root = "efa/v2"
 
 [paths]
 log = "data/log"
-apk = "cache/apk"
 
 [resources.example]
 descriptor = "data/resources/example/descriptor.toml"

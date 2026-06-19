@@ -499,7 +499,7 @@ class NativeFitEngineService extends _$NativeFitEngineService {
   @override
   NativeFitEngineState build() {
     final assetStore = ref.read(assetStoreProvider);
-    ref..listen(activeSnapshotHashProvider, (prev, next) {
+    ref.listen(activeSnapshotHashProvider, (prev, next) {
       if (prev == next || next.isNone()) return;
       final hash = next.toNullable()!;
       final ri = assetStore.readResourceIndexSync(hash);

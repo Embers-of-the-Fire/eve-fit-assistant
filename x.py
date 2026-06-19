@@ -2214,32 +2214,53 @@ def _add_snapshot_by_file(
         hash_value = snap_store.create_resource_snapshot(metadata, index)
 
     elif snap_type == "release":
+        from data.lib.remote.blob import BlobStore
+        from data.lib.remote.hash import ident_hash
         from data.lib.remote.models import make_release_index
 
         try:
             metadata = ReleaseSnapshotMetadata.model_validate(data["metadata"])
-            entries = data["entries"]
+            release = data["release"]
         except KeyError as e:
             raise click.ClickException(
                 f"Invalid release registry in {source_file}: "
-                f"missing key {e} (expected 'metadata' and 'entries')"
+                f"missing key {e} (expected 'metadata' and 'release')"
             ) from None
         except Exception as e:
             raise click.ClickException(
                 f"Cannot parse release metadata in {source_file}: {e}"
             ) from None
 
-        index_entries: list[tuple[str, str, list[str], str]] = []
-        for entry in entries:
-            index_entries.append(
-                (
-                    entry["id"],
-                    entry["version"],
-                    entry.get("offerings", []),
-                    entry.get("ident_hash", ""),
-                )
-            )
-        index = make_release_index(index_entries)
+        version = release["version"]
+        blob_store = BlobStore(root)
+
+        for platform_key, platform_data in list(release.items()):
+            if platform_key in ("id", "version"):
+                continue
+            if not isinstance(platform_data, dict):
+                continue
+            for variant, value in list(platform_data.items()):
+                if isinstance(value, str) and value.startswith("/"):
+                    file_path = Path(value)
+                    uri = f"release://{version}/{platform_key}/{variant}"
+                    ihash = ident_hash(uri)
+                    chash = blob_store.store_from_path(file_path, ihash)
+                    platform_data[variant] = {"identifier": uri, "content_hash": chash}
+
+        android = release.get("android")
+        android_dict = None
+        if android is not None:
+            android_dict = {
+                "general": android.get("general"),
+                "armv7": android.get("armv7"),
+                "arm64": android.get("arm64"),
+                "x64": android.get("x64"),
+            }
+        index = make_release_index(
+            release_id=release["id"],
+            version=version,
+            android=android_dict,
+        )
         hash_value = snap_store.create_release_snapshot(metadata, index)
 
     else:
@@ -3895,7 +3916,7 @@ def build_announcements_cmd():
 
 
 _ABI_FLUTTER_TO_APK = {
-    "armeabi-v7a": "arm",
+    "armeabi-v7a": "armv7",
     "arm64-v8a": "arm64",
     "x86_64": "x64",
 }
@@ -3922,9 +3943,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
     """Build Android APKs with versioned filenames."""
     ProjectConfiguration.ensure_loaded()
     version = data.lib.config.CONFIGURATION.version
-    tag = version.render_tag()
-    output_root = data.lib.config.CONFIGURATION.paths.apk
-    output_dir = output_root / tag
+    ver = version.render_full()
+    output_dir = PROJECT_ROOT / "cache" / "releases" / "apk" / ver
     output_dir.mkdir(parents=True, exist_ok=True)
     apk_source = PROJECT_ROOT / "build" / "app" / "outputs" / "flutter-apk"
 
@@ -3941,8 +3961,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         src_sha1 = apk_source / f"{src_prefix}debug.apk.sha1"
         if not src_apk.exists():
             raise click.ClickException(f"Expected debug APK not found: {src_apk}")
-        dst_apk = output_dir / f"{tag}-debug.apk"
-        dst_sha1 = output_dir / f"{tag}-debug.apk.sha1"
+        dst_apk = output_dir / f"{ver}-android-debug.apk"
+        dst_sha1 = output_dir / f"{ver}-android-debug.apk.sha1"
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
     else:
         __execute_command([flutter, "build", "apk", *flavor_args], "BUILDING GENERAL APK")
@@ -3952,8 +3972,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         )
         if not src_apk.exists():
             raise click.ClickException(f"Expected general APK not found: {src_apk}")
-        dst_apk = output_dir / f"{tag}-general.apk"
-        dst_sha1 = output_dir / f"{tag}-general.apk.sha1"
+        dst_apk = output_dir / f"{ver}-android.apk"
+        dst_sha1 = output_dir / f"{ver}-android.apk.sha1"
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
         __execute_command(
@@ -3973,8 +3993,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
             )
             if not src_apk.exists():
                 raise click.ClickException(f"Expected ABI APK not found: {src_apk}")
-            dst_apk = output_dir / f"{tag}-{apk_suffix}.apk"
-            dst_sha1 = output_dir / f"{tag}-{apk_suffix}.apk.sha1"
+            dst_apk = output_dir / f"{ver}-android-{apk_suffix}.apk"
+            dst_sha1 = output_dir / f"{ver}-android-{apk_suffix}.apk.sha1"
             _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
@@ -3982,6 +4002,191 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         if f.is_file():
             size = get_bin_size(f.stat().st_size)
             click.echo(f"  {f.name} ({size})")
+
+
+_PLATFORM_DIR = {
+    "android": "apk",
+}
+
+_PLATFORM_SUFFIX = {
+    "android": ".apk",
+}
+
+
+@build.command("release")
+@click.option(
+    "--platform",
+    default=None,
+    type=click.Choice(["android"]),
+    help="Platform to produce a fragment for.",
+)
+@click.option(
+    "--merge",
+    "merge_files",
+    multiple=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Fragment JSON files to merge (repeatable).",
+)
+@click.option(
+    "--output",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output file path (default: auto-determined within cache, or stdout for '-').",
+)
+@click.option("--release-id", default=None, help="Override release.id (default: rel-{version}).")
+@click.option("--version-min", default=None, help="Override minimum version string.")
+@click.option("--version-max", default=None, help="Override maximum version string.")
+def build_release_cmd(
+    platform: str | None,
+    merge_files: list[Path],
+    output: Path | None,
+    release_id: str | None,
+    version_min: str | None,
+    version_max: str | None,
+):
+    """Build or merge release registry fragments."""
+    if platform and merge_files:
+        raise click.ClickException("Cannot use --platform and --merge together.")
+    if not platform and not merge_files:
+        raise click.ClickException("Must specify --platform or --merge.")
+
+    ProjectConfiguration.ensure_loaded()
+    version = data.lib.config.CONFIGURATION.version
+    ver = version.render_full()
+    ver_semver = version.render_semver()
+
+    if platform:
+        _build_release_platform(
+            platform, ver, ver_semver, output, release_id, version_min, version_max
+        )
+    else:
+        _build_release_merge(list(merge_files), ver, output)
+
+
+def _build_release_platform(
+    platform: str,
+    ver: str,
+    ver_semver: str,
+    output: Path | None,
+    release_id: str | None,
+    version_min: str | None,
+    version_max: str | None,
+) -> None:
+    dir_name = _PLATFORM_DIR[platform]
+    suffix = _PLATFORM_SUFFIX[platform]
+    src_dir = PROJECT_ROOT / "cache" / "releases" / dir_name / ver
+    if not src_dir.is_dir():
+        raise click.ClickException(f"Build directory not found: {src_dir}")
+
+    artifacts: dict[str, str] = {}
+    for f in sorted(src_dir.iterdir()):
+        if f.is_file() and f.suffix == suffix:
+            name = f.name
+            prefix = f"{ver}-{platform}-"
+            if name.startswith(prefix):
+                variant = name[len(prefix) : -len(suffix)]
+                artifacts[variant] = str(f.resolve())
+            elif name == f"{ver}-{platform}{suffix}":
+                artifacts["general"] = str(f.resolve())
+
+    if not artifacts:
+        raise click.ClickException(f"No {suffix} files found in {src_dir}")
+
+    rel_id = release_id or f"rel-{ver}"
+    vmin = version_min or ver_semver
+    vmax = version_max or ver_semver
+
+    data: dict[str, object] = {
+        "metadata": {
+            "versionMin": vmin,
+            "versionMax": vmax,
+            "offerings": [platform],
+            "releaseCount": 1,
+            "createdAt": _utcnow_iso(),
+        },
+        "release": {
+            "id": rel_id,
+            "version": ver,
+            platform: artifacts,
+        },
+    }
+
+    _emit_release_json(data, output, src_dir / f"{ver}-{platform}.json")
+
+
+def _build_release_merge(fragments: list[Path], ver: str, output: Path | None) -> None:
+    merged_metadata: dict = {}
+    merged_release: dict = {}
+    all_paths: list[Path] = []
+
+    for fp in fragments:
+        raw = fp.read_text(encoding="utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise click.ClickException(f"Cannot parse {fp}: {e}") from None
+
+        meta = data.get("metadata", {})
+        rel = data.get("release", {})
+
+        for offering in meta.get("offerings", []):
+            if offering not in merged_metadata.setdefault("offerings", []):
+                merged_metadata["offerings"].append(offering)
+
+        merged_metadata.setdefault("versionMin", meta.get("versionMin"))
+        merged_metadata.setdefault("versionMax", meta.get("versionMax"))
+        merged_metadata.setdefault("createdAt", meta.get("createdAt"))
+
+        for pkey, pdict in rel.items():
+            if pkey in ("id", "version"):
+                merged_release.setdefault(pkey, pdict)
+            elif isinstance(pdict, dict):
+                for _variant, path_str in pdict.items():
+                    if isinstance(path_str, str):
+                        pp = Path(path_str)
+                        all_paths.append(pp)
+
+        for pkey, pdict in rel.items():
+            if pkey not in ("id", "version") and isinstance(pdict, dict):
+                merged_release.setdefault(pkey, pdict)
+
+    missing = [str(p) for p in all_paths if not p.exists()]
+    if missing:
+        raise click.ClickException(
+            "Missing files referenced in fragments:\n  " + "\n  ".join(missing)
+        )
+
+    merged_metadata["releaseCount"] = 1
+    data: dict[str, object] = {
+        "metadata": merged_metadata,
+        "release": merged_release,
+    }
+
+    default_output = PROJECT_ROOT / "cache" / "releases" / "merge" / f"{ver}.json"
+    _emit_release_json(data, output, default_output)
+
+
+def _emit_release_json(data: dict[str, object], output: Path | None, default: Path) -> None:
+    import json as _json
+
+    text = _json.dumps(data, indent=2, ensure_ascii=False, sort_keys=False) + "\n"
+    if output is None:
+        default.parent.mkdir(parents=True, exist_ok=True)
+        default.write_text(text, encoding="utf-8")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Written: {default}"))
+    elif output == Path("-"):
+        click.echo(text, nl=False)
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text, encoding="utf-8")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Written: {output}"))
+
+
+def _utcnow_iso() -> str:
+    from datetime import UTC
+    from datetime import datetime
+
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @build.command("list", aliases=["ls"])
@@ -4012,7 +4217,7 @@ def build_list_cmd(apps: bool, resources: bool, releases: bool, generations: boo
         files: list[Path] = []
         if apk_root.is_dir():
             for vd in sorted(apk_root.iterdir()):
-                if vd.is_dir() and vd.name.startswith("v"):
+                if vd.is_dir():
                     versions.append(vd)
                     for f in vd.iterdir():
                         if f.is_file():
@@ -4029,8 +4234,7 @@ def build_list_cmd(apps: bool, resources: bool, releases: bool, generations: boo
         click.echo(styled([Style.BRIGHT], "=" * 27))
 
         # APK builds
-        ProjectConfiguration.ensure_loaded()
-        apk_root = data.lib.config.CONFIGURATION.paths.apk
+        apk_root = PROJECT_ROOT / "cache" / "releases" / "apk"
         apk_versions, apk_files = _scan_apk_versions(apk_root)
         apk_total = sum(f.stat().st_size for f in apk_files)
         if apk_versions:
@@ -4117,8 +4321,7 @@ def build_list_cmd(apps: bool, resources: bool, releases: bool, generations: boo
             if not first:
                 click.echo()
             first = False
-            ProjectConfiguration.ensure_loaded()
-            apk_root = data.lib.config.CONFIGURATION.paths.apk
+            apk_root = PROJECT_ROOT / "cache" / "releases" / "apk"
             apk_versions, apk_files = _scan_apk_versions(apk_root)
 
             click.echo(styled([Style.BRIGHT, Fore.GREEN], f"\nAPK Builds ({len(apk_versions)})"))

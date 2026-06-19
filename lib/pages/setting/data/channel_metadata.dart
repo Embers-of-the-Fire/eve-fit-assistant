@@ -238,40 +238,51 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
   }
 
   Widget _buildReleaseIndexContent(AppLocalizations l10n) {
-    final entries = _releaseIndex!.entries;
-    String? latestVersion;
-    for (final e in entries) {
-      if (e.offerings.contains("android")) {
-        if (latestVersion == null || _compareSemver(e.version, latestVersion) > 0) {
-          latestVersion = e.version;
-        }
-      }
-    }
+    final index = _releaseIndex!;
+    final hasAndroid = index.hasAndroid();
+    final android = hasAndroid ? index.android : null;
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       children: [
         Text(
-          l10n.channelMetadataReleaseCount(count: entries.length),
+          "Release: v${index.version}",
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         ),
-        if (latestVersion != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            l10n.channelMetadataLatestRelease(version: latestVersion),
-            style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.green, fontSize: 12),
-          ),
-        ],
-        const SizedBox(height: 8),
-        ...entries.map(
-          (e) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
+        if (hasAndroid && android != null) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
-              "${e.id}  v${e.version}  [${e.offerings.join(", ")}]  ${_truncate(e.identHash)}",
+              "General: ${android.general.identifier}",
               style: const TextStyle(fontFamily: "monospace", fontSize: 11),
             ),
           ),
-        ),
+          if (android.hasArmv7())
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                "Armv7:  ${android.armv7.identifier}",
+                style: const TextStyle(fontFamily: "monospace", fontSize: 11),
+              ),
+            ),
+          if (android.hasArm64())
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                "Arm64:  ${android.arm64.identifier}",
+                style: const TextStyle(fontFamily: "monospace", fontSize: 11),
+              ),
+            ),
+          if (android.hasX64())
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                "x64:    ${android.x64.identifier}",
+                style: const TextStyle(fontFamily: "monospace", fontSize: 11),
+              ),
+            ),
+        ],
         const SizedBox(height: 12),
         _loadButton(l10n.channelMetadataReload, _loadingRelease, _loadReleaseIndex),
       ],
@@ -320,17 +331,6 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
   );
 
   String _truncate(String hash) => hash.length > 12 ? "${hash.substring(0, 12)}..." : hash;
-
-  int _compareSemver(String a, String b) {
-    final partsA = a.split(".").map((s) => int.tryParse(s) ?? 0).toList();
-    final partsB = b.split(".").map((s) => int.tryParse(s) ?? 0).toList();
-    for (var i = 0; i < 3; i++) {
-      final va = i < partsA.length ? partsA[i] : 0;
-      final vb = i < partsB.length ? partsB[i] : 0;
-      if (va != vb) return va.compareTo(vb);
-    }
-    return 0;
-  }
 
   // ── Lazy fetch ───────────────────────────────────────────────────────────────
 

@@ -1,15 +1,22 @@
 syntax = "proto2";
 package efa.v2;
 
-/// Lists all known releases.
+/// Describes a single release with per-platform artifact metadata.
 message ReleaseIndex {
   required int32 schema_version = 1;
-  repeated Entry entries = 2;
+  required string id = 2;
+  required string version = 3;
+  optional AndroidArtifacts android = 4;
+}
 
-  message Entry {
-    required string id = 1;              // Unique release identifier
-    required string version = 2;         // Semver string
-    repeated string offerings = 3;       // Platform offerings (android, windows, etc.)
-    required string ident_hash = 4;      // SHA-256 hex of release:// URI
-  }
+message AndroidArtifactVariant {
+  required string identifier = 1;
+  required string content_hash = 2;
+}
+
+message AndroidArtifacts {
+  required AndroidArtifactVariant general = 1;
+  optional AndroidArtifactVariant armv7 = 2;
+  optional AndroidArtifactVariant arm64 = 3;
+  optional AndroidArtifactVariant x64 = 4;
 }

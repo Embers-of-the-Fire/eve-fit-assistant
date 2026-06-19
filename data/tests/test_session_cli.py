@@ -119,10 +119,20 @@ def _make_release_snapshot(
     meta = ReleaseSnapshotMetadata(
         versionMin="1.0.0",
         versionMax="2.0.0",
+        offerings=offerings,
         releaseCount=1,
         createdAt="2026-06-15T00:00:00Z",
     )
-    index = make_release_index([(release_id, version, offerings, "ab" * 32)])
+    index = make_release_index(
+        release_id=release_id,
+        version=version,
+        android={
+            "general": {
+                "identifier": f"release://{version}/android/general",
+                "content_hash": "ab" * 32,
+            }
+        },
+    )
     return snap_store.create_release_snapshot(meta, index)
 
 
