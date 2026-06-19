@@ -18,7 +18,6 @@ from pathlib import Path
 import pytest
 
 from data.lib.remote import SessionManager
-from data.lib.remote.__init__ import SessionManagerCommittedError
 from data.lib.remote.generation import utc_timestamp
 from data.lib.remote.hash import content_hash as _content_hash
 from data.lib.remote.hash import ident_hash
@@ -283,17 +282,27 @@ class TestSessionDiscard:
         store.discard()
         assert not store.session_path.is_file()
 
-    def test_discard_committed_needs_force(self, store: SessionStore) -> None:
+    def test_discard_committed_file_removed(self, store: SessionStore) -> None:
+        """After mark_committed, the session file is removed. discard raises
+        SessionManagerInvalidError because there is no active session."""
+        from data.lib.remote.__init__ import SessionManagerInvalidError
+
         _init_session(store)
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError, match="Session is committed"):
+        assert not store.session_path.is_file()
+        with pytest.raises(SessionManagerInvalidError, match="No active session"):
             store.discard()
 
-    def test_discard_committed_with_force(self, store: SessionStore) -> None:
+    def test_discard_committed_with_force_raises_no_session(self, store: SessionStore) -> None:
+        """After mark_committed, the session file is removed. discard(force=True)
+        raises SessionManagerInvalidError because no session exists."""
+        from data.lib.remote.__init__ import SessionManagerInvalidError
+
         _init_session(store)
         store.mark_committed()
-        store.discard(force=True)
         assert not store.session_path.is_file()
+        with pytest.raises(SessionManagerInvalidError, match="No active session"):
+            store.discard(force=True)
 
 
 # ===========================================================================
@@ -323,10 +332,12 @@ class TestSessionAdd:
         session = store.load()
         assert session.staged.resources == ["aaa", "aaa"]
 
-    def test_add_on_committed_raises(self, store: SessionStore) -> None:
+    def test_add_after_commit_raises(self, store: SessionStore) -> None:
+        """After mark_committed, the session file is removed so add_snapshot
+        raises FileNotFoundError (no session to add to)."""
         _init_session(store)
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError, match="Session is committed"):
+        with pytest.raises(FileNotFoundError):
             store.add_snapshot("resource", "abc")
 
     def test_add_multiple_resource_hashes(self, store: SessionStore) -> None:
@@ -363,11 +374,13 @@ class TestSessionRemove:
         with pytest.raises(ValueError, match="not staged as release"):
             store.remove_snapshot("release", "aaa")
 
-    def test_remove_on_committed_raises(self, store: SessionStore) -> None:
+    def test_remove_after_commit_raises(self, store: SessionStore) -> None:
+        """After mark_committed, the session file is removed so remove_snapshot
+        raises FileNotFoundError (no session to remove from)."""
         _init_session(store)
         store.add_snapshot("resource", "abc")
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError, match="Session is committed"):
+        with pytest.raises(FileNotFoundError):
             store.remove_snapshot("resource", "abc")
 
     def test_remove_only_first_duplicate(self, store: SessionStore) -> None:
@@ -814,7 +827,8 @@ class TestSessionCommit:
 
         head = mgr.get_head("testing")
         assert head.generation_hash == gen_hash
-        assert store.is_committed() is True
+        assert not store.session_path.is_file()
+        assert store.is_committed() is False
 
     def test_commit_no_push(self, store: SessionStore, mgr: SessionManager, tmp_root: Path) -> None:
         _init_session(store)
@@ -875,9 +889,8 @@ class TestSessionCommit:
         _make_full_generation(mgr, tmp_root)  # includes push
         store.mark_committed()
 
-        assert store.is_committed() is True
-        session = store.load()
-        assert session.committed is True
+        assert not store.session_path.is_file()
+        assert store.is_committed() is False
 
     def test_commit_idempotent_generation_reuse(
         self, store: SessionStore, mgr: SessionManager, tmp_root: Path
@@ -1084,15 +1097,11 @@ class TestFullWorkflow:
         mgr.push("stable", gen_hash)
         store.mark_committed()
 
-        assert store.is_committed() is True
-        session = store.load()
-        assert session.committed is True
+        assert not store.session_path.is_file()
+        assert store.is_committed() is False
 
         head = mgr.get_head("stable")
         assert head.generation_hash == gen_hash
-
-        store.discard(force=True)
-        assert not store.session_path.is_file()
 
 
 # ===========================================================================
@@ -1134,8 +1143,9 @@ class TestSessionEdgeCases:
     def test_ensure_editable_after_mark_committed(self, store: SessionStore) -> None:
         _init_session(store)
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError):
-            store.ensure_editable()
+        assert not store.session_path.is_file()
+        # ensure_editable does not raise — no session file exists
+        store.ensure_editable()
 
     def test_reflog_after_commit(
         self, store: SessionStore, mgr: SessionManager, tmp_root: Path

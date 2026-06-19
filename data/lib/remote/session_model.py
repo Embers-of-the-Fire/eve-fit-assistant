@@ -140,13 +140,20 @@ class SessionStore:
 
     def is_committed(self) -> bool:
         """Return True if the session is committed."""
+        if not self.session_path.is_file():
+            return False
         return self.load().committed
 
     def mark_committed(self) -> None:
-        """Load the session, set committed=True, and save."""
+        """Load the session, set committed=True, save, and release the lock.
+
+        After marking committed, the session file is removed — the generation
+        has been created and no further session operations are needed.
+        """
         session = self.load()
         session.committed = True
         self.save(session)
+        self.session_path.unlink(missing_ok=True)
 
     def ensure_editable(self) -> None:
         """Raise SessionManagerCommittedError if the session is committed."""

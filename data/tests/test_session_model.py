@@ -8,7 +8,6 @@ import pytest
 
 from pydantic import ValidationError
 
-from data.lib.remote.__init__ import SessionManagerCommittedError
 from data.lib.remote.__init__ import SessionManagerInvalidError
 from data.lib.remote.session_model import Session
 from data.lib.remote.session_model import SessionExistsError
@@ -121,38 +120,47 @@ class TestSessionStore:
         store.discard()
         assert not store.session_path.is_file()
 
-    def test_discard_committed_without_force_raises(self, tmp_path: pytest.fixture) -> None:
+    def test_discard_committed_file_removed(self, tmp_path: pytest.fixture) -> None:
+        """After mark_committed, the session file is removed. discard raises
+        SessionManagerInvalidError because there is no active session."""
         store = SessionStore(tmp_path)
         store.init(channel="testing")
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError):
+        assert not store.session_path.is_file()
+        with pytest.raises(SessionManagerInvalidError, match="No active session"):
             store.discard()
 
-    def test_discard_committed_with_force_succeeds(self, tmp_path: pytest.fixture) -> None:
+    def test_discard_committed_with_force_raises_no_session(self, tmp_path: pytest.fixture) -> None:
+        """After mark_committed, the session file is removed. discard(force=True)
+        raises SessionManagerInvalidError because no session exists."""
         store = SessionStore(tmp_path)
         store.init(channel="testing")
         store.mark_committed()
-        store.discard(force=True)
         assert not store.session_path.is_file()
+        with pytest.raises(SessionManagerInvalidError, match="No active session"):
+            store.discard(force=True)
 
     def test_discard_no_session_raises(self, tmp_path: pytest.fixture) -> None:
         store = SessionStore(tmp_path)
         with pytest.raises(SessionManagerInvalidError):
             store.discard()
 
-    def test_mark_committed(self, tmp_path: pytest.fixture) -> None:
+    def test_mark_committed_releases_lock(self, tmp_path: pytest.fixture) -> None:
+        """mark_committed sets committed=True, saves, and removes the session file."""
         store = SessionStore(tmp_path)
         store.init(channel="testing")
         assert store.is_committed() is False
         store.mark_committed()
-        assert store.is_committed() is True
+        assert not store.session_path.is_file()
+        assert store.is_committed() is False
 
-    def test_ensure_editable_on_committed_raises(self, tmp_path: pytest.fixture) -> None:
+    def test_ensure_editable_after_commit_passes(self, tmp_path: pytest.fixture) -> None:
+        """After mark_committed, the session file is removed so ensure_editable
+        passes (is_committed returns False)."""
         store = SessionStore(tmp_path)
         store.init(channel="testing")
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError):
-            store.ensure_editable()
+        store.ensure_editable()  # does not raise — no session file exists
 
     def test_ensure_editable_on_uncommitted_passes(self, tmp_path: pytest.fixture) -> None:
         store = SessionStore(tmp_path)
@@ -221,11 +229,13 @@ class TestSessionStore:
         session = store.load()
         assert session.staged.resources == ["dup", "dup"]
 
-    def test_add_snapshot_on_committed_raises(self, tmp_path: pytest.fixture) -> None:
+    def test_add_snapshot_after_commit_raises(self, tmp_path: pytest.fixture) -> None:
+        """After mark_committed, the session file is removed so add_snapshot
+        raises FileNotFoundError (no session to add to)."""
         store = SessionStore(tmp_path)
         store.init(channel="testing")
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError):
+        with pytest.raises(FileNotFoundError):
             store.add_snapshot("resource", "abc")
 
     # --- remove_snapshot tests -----------------------------------------------
@@ -260,12 +270,14 @@ class TestSessionStore:
         with pytest.raises(ValueError, match="not staged as release"):
             store.remove_snapshot("release", "aaa")
 
-    def test_remove_snapshot_on_committed_raises(self, tmp_path: pytest.fixture) -> None:
+    def test_remove_snapshot_after_commit_raises(self, tmp_path: pytest.fixture) -> None:
+        """After mark_committed, the session file is removed so remove_snapshot
+        raises FileNotFoundError (no session to remove from)."""
         store = SessionStore(tmp_path)
         store.init(channel="testing")
         store.add_snapshot("resource", "abc")
         store.mark_committed()
-        with pytest.raises(SessionManagerCommittedError):
+        with pytest.raises(FileNotFoundError):
             store.remove_snapshot("resource", "abc")
 
     def test_remove_first_of_duplicates(self, tmp_path: pytest.fixture) -> None:
