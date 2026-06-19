@@ -27,7 +27,7 @@ Future<void> initSingletons() async {
   await PathProvider.init();
   AppSettingService.init();
   AnnouncementStateStore.init();
-  AnnouncementBodyCache.init();
+  await AnnouncementBodyCache.init();
   EtagCache.init();
   GlobalLogger.init(
     PathProvider.logsPath,

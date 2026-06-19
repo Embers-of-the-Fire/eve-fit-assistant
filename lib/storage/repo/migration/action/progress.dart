@@ -50,7 +50,7 @@ class MigrateProgressStore {
   /// [MigrateProgress] if no checkpoint file exists or it is unreadable.
   Future<MigrateProgress> load() async {
     final file = File(_path);
-    if (!await file.exists()) return MigrateProgress(startedAt: _now());
+    if (!file.existsSync()) return MigrateProgress(startedAt: _now());
     try {
       final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       return MigrateProgress.fromJson(json);
@@ -63,7 +63,7 @@ class MigrateProgressStore {
   Future<void> save(MigrateProgress progress) async {
     final path = _path;
     final file = File(path);
-    if (!await file.parent.exists()) {
+    if (!file.parent.existsSync()) {
       await file.parent.create(recursive: true);
     }
     final tmp = File("$path.tmp");

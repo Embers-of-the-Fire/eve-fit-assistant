@@ -21,8 +21,8 @@ class NativeDirResolver {
 
   final AssetStore assetStore;
 
-  /// Computes the expected native directory path for [snapshotHash] and
-  /// [resourceIndex] without I/O.
+  /// Computes the expected native directory path for [snapshotHash]
+  /// without I/O.
   ///
   /// Shared by [prepareNativeDir] and the `assetStaticRootProvider`. The returned
   /// path is deterministic given the same snapshot hash.
@@ -77,7 +77,7 @@ class NativeDirResolver {
   }
 
   /// Returns the content-addressed blob store path for a single
-  /// [ResourceIndex.Entry].
+  /// ResourceIndex_Entry.
   ///
   /// This performs the same ident-hash → content-hash → blob-path computation
   /// that [`prepareNativeDir`] uses internally for each entry, but without

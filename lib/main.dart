@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/announcements/announcements.dart";
@@ -18,11 +20,8 @@ void main() async {
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
-  static final _appRouter = AppRouter();
+  static final appRouter = AppRouter();
   static final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-
-  static AppRouter get appRouter => _appRouter;
-  static GlobalKey<NavigatorState> get navigatorKey => _appRouter.navigatorKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -59,10 +58,11 @@ class MyApp extends ConsumerWidget {
         locale: Locale(ref.watch(localeProvider).name),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        routerConfig: _appRouter.config(),
+        routerConfig: appRouter.config(),
         builder: (context, child) {
           final report = StartupPersistenceRepairReporter.instance.peek();
           if (report != null) {
+            final l10n = context.l10n;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               final messenger = _scaffoldMessengerKey.currentState;
               if (messenger == null) {
@@ -72,22 +72,24 @@ class MyApp extends ConsumerWidget {
               if (consumedReport == null) {
                 return;
               }
-              Future.microtask(() {
-                if (!messenger.mounted) return;
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(_formatStartupPersistenceReport(context.l10n, consumedReport)),
-                    duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
-                  ),
-                );
-              });
+              unawaited(
+                Future.microtask(() {
+                  if (!messenger.mounted) return;
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(_formatStartupPersistenceReport(l10n, consumedReport)),
+                      duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
+                    ),
+                  );
+                }),
+              );
             });
           }
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
             child: AvailableUpdateGate(
               child: StartupAnnouncementGate(
-                appRouter: _appRouter,
+                appRouter: appRouter,
                 child: initBuilder(context, child),
               ),
             ),

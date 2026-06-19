@@ -25,8 +25,7 @@ Future<void> atomicWriteJson(File target, Map<String, dynamic> json) async {
 
 /// Synchronous variant of [atomicWriteJson].
 void atomicWriteJsonSync(File target, Map<String, dynamic> json) {
-  final tmp = File("${target.path}.tmp");
-  tmp
+  File("${target.path}.tmp")
     ..writeAsStringSync(jsonEncode(json), flush: true)
     ..renameSync(target.path);
 }
@@ -37,8 +36,7 @@ void writeProtobufSync(String path, GeneratedMessage message) {
   if (!file.parent.existsSync()) {
     file.parent.createSync(recursive: true);
   }
-  final tmp = File("$path.tmp");
-  tmp
+  File("$path.tmp")
     ..writeAsBytesSync(message.writeToBuffer(), flush: true)
     ..renameSync(path);
 }

@@ -26,7 +26,7 @@ class MigrateService {
   ///
   /// Stage 2 — Character migration: same pattern for characters.
   ///
-  /// Stage 3 — Finalize: writes `schema_version.json` via [ensure], then
+  /// Stage 3 — Finalize: writes `schema_version.json` via ensure, then
   /// recursively deletes old `fittings/` and `characters/` directories.
   ///
   /// Each stage writes a checkpoint after completion. If interrupted, calling
@@ -114,7 +114,7 @@ class MigrateService {
 
   // ── Registry cleaning ──────────────────────────────────────────────────────
 
-  /// Reads the fit registry from the old path, injects [checkoutRef], strips
+  /// Reads the fit registry from the old path, injects a CheckoutRef, strips
   /// legacy fields, and writes to the new path.
   void _cleanMigrateFitRegistry() {
     final oldFile = File(p.join(PathProvider.oldFittingsPath, "registry.json"));
@@ -155,7 +155,7 @@ class MigrateService {
     }
   }
 
-  /// Reads the character registry from the old path, injects [checkoutRef],
+  /// Reads the character registry from the old path, injects a CheckoutRef,
   /// strips legacy fields, and writes to the new path.
   void _cleanMigrateCharacterRegistry() {
     final oldFile = File(p.join(PathProvider.oldCharactersPath, "registry.json"));

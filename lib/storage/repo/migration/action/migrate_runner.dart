@@ -15,8 +15,8 @@ typedef MigrateRunnerResult = ({int migrated, int skipped, int errors});
 
 /// Shared async file-by-file migration runner.
 ///
-/// Reads from [sourceDirectory], writes migrated files to
-/// [destinationDirectory]. Files that do not need upgrading are not copied.
+/// Reads from sourceDirectory, writes migrated files to
+/// destinationDirectory. Files that do not need upgrading are not copied.
 ///
 /// Both `MigrateCharacters` and `MigrateFits` delegate I/O orchestration here
 /// so that file listing, reads, and writes all run on the event loop without
@@ -46,7 +46,7 @@ class MigrateRunner {
     int batchSize = _defaultBatchSize,
   }) async {
     final dir = Directory(sourceDirectory);
-    if (!await dir.exists()) {
+    if (!dir.existsSync()) {
       return (migrated: 0, skipped: 0, errors: 0);
     }
 
@@ -73,7 +73,7 @@ class MigrateRunner {
         if (needsUpgrade(json)) {
           final upgraded = upgrade(json);
           final destFile = File(p.join(destinationDirectory, p.basename(file.path)));
-          if (!await destFile.parent.exists()) {
+          if (!destFile.parent.existsSync()) {
             await destFile.parent.create(recursive: true);
           }
           await atomicWriteJson(destFile, upgraded);

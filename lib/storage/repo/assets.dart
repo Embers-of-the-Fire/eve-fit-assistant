@@ -159,7 +159,7 @@ class AssetStore {
 
   /// Scans the assets directory and deletes resource snapshots not in
   /// [activeSnapshotHashes]. Deletes blobs not referenced by any
-  /// [resourceIndexes]. Removes empty directories.
+  /// [activeResourceIndexes]. Removes empty directories.
   ///
   /// Returns the count of files deleted.
   int pruneSync({
@@ -277,8 +277,7 @@ class AssetStore {
   }
 
   void _writeMetadataJson(String path, ResourceSnapshotMeta meta) {
-    final file = File(path);
-    file.writeAsBytesSync(canonicalJsonEncode(meta.toJson()), flush: true);
+    File(path).writeAsBytesSync(canonicalJsonEncode(meta.toJson()), flush: true);
   }
 
   String _resourceTempPath() => "${RepoPaths.assetsPath}/tmp_resource_snapshot";

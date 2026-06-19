@@ -41,7 +41,7 @@ class _AvailableUpdateGateState extends ConsumerState<AvailableUpdateGate> {
 
     await showAnnouncementDialog(
       context,
-      navigatorKey: MyApp.navigatorKey,
+      navigatorKey: MyApp.appRouter.navigatorKey,
       title: context.l10n.availableUpdateDialogTitle(version: record.appVersion ?? ""),
       informationText: record.summary,
       barrierDismissible: false,
