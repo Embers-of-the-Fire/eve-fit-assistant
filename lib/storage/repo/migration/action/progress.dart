@@ -64,7 +64,7 @@ class MigrateProgressStore {
     final path = _path;
     final file = File(path);
     if (!file.parent.existsSync()) {
-      await file.parent.create(recursive: true);
+      file.parent.createSync(recursive: true);
     }
     final tmp = File("$path.tmp");
     await tmp.writeAsString(jsonEncode(progress.toJson()), flush: true);

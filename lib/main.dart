@@ -23,6 +23,9 @@ class MyApp extends ConsumerWidget {
   static final appRouter = AppRouter();
   static final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
+  // ignore: unreachable_from_main
+  static GlobalKey<NavigatorState> get navigatorKey => appRouter.navigatorKey;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     initWithRef(ref);
@@ -72,17 +75,15 @@ class MyApp extends ConsumerWidget {
               if (consumedReport == null) {
                 return;
               }
-              unawaited(
-                Future.microtask(() {
-                  if (!messenger.mounted) return;
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(_formatStartupPersistenceReport(l10n, consumedReport)),
-                      duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
-                    ),
-                  );
-                }),
-              );
+              unawaited(Future.microtask(() {
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(_formatStartupPersistenceReport(l10n, consumedReport)),
+                    duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
+                  ),
+                );
+              }));
             });
           }
           return MediaQuery(

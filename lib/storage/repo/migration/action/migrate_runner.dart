@@ -74,7 +74,7 @@ class MigrateRunner {
           final upgraded = upgrade(json);
           final destFile = File(p.join(destinationDirectory, p.basename(file.path)));
           if (!destFile.parent.existsSync()) {
-            await destFile.parent.create(recursive: true);
+            destFile.parent.createSync(recursive: true);
           }
           await atomicWriteJson(destFile, upgraded);
           migrated++;
