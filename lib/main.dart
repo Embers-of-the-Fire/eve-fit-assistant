@@ -4,6 +4,7 @@ import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/announcements/announcements.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart";
+import "package:eve_fit_assistant/features/welcome/welcome_gate.dart";
 import "package:eve_fit_assistant/init.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
@@ -52,52 +53,54 @@ class MyApp extends ConsumerWidget {
     );
     final fontScale = ref.watch(fontScaleProvider);
 
-    return SchemaGuard(
-      theme: theme,
-      builder: (active) => MaterialApp.router(
-        onGenerateTitle: (context) => context.l10n.appTitle,
+    return WelcomeGate(
+      child: SchemaGuard(
         theme: theme,
-        scaffoldMessengerKey: _scaffoldMessengerKey,
-        locale: Locale(ref.watch(localeProvider).name),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        routerConfig: appRouter.config(),
-        builder: (context, child) {
-          final report = StartupPersistenceRepairReporter.instance.peek();
-          if (report != null) {
-            final l10n = context.l10n;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final messenger = _scaffoldMessengerKey.currentState;
-              if (messenger == null) {
-                return;
-              }
-              final consumedReport = StartupPersistenceRepairReporter.instance.consume();
-              if (consumedReport == null) {
-                return;
-              }
-              unawaited(
-                Future.microtask(() {
-                  if (!messenger.mounted) return;
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(_formatStartupPersistenceReport(l10n, consumedReport)),
-                      duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
-                    ),
-                  );
-                }),
-              );
-            });
-          }
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
-            child: AvailableUpdateGate(
-              child: StartupAnnouncementGate(
-                appRouter: appRouter,
-                child: initBuilder(context, child),
+        builder: (active) => MaterialApp.router(
+          onGenerateTitle: (context) => context.l10n.appTitle,
+          theme: theme,
+          scaffoldMessengerKey: _scaffoldMessengerKey,
+          locale: Locale(ref.watch(localeProvider).name),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: appRouter.config(),
+          builder: (context, child) {
+            final report = StartupPersistenceRepairReporter.instance.peek();
+            if (report != null) {
+              final l10n = context.l10n;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final messenger = _scaffoldMessengerKey.currentState;
+                if (messenger == null) {
+                  return;
+                }
+                final consumedReport = StartupPersistenceRepairReporter.instance.consume();
+                if (consumedReport == null) {
+                  return;
+                }
+                unawaited(
+                  Future.microtask(() {
+                    if (!messenger.mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(_formatStartupPersistenceReport(l10n, consumedReport)),
+                        duration: Duration(seconds: consumedReport.hasWarnings ? 6 : 4),
+                      ),
+                    );
+                  }),
+                );
+              });
+            }
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
+              child: AvailableUpdateGate(
+                child: StartupAnnouncementGate(
+                  appRouter: appRouter,
+                  child: initBuilder(context, child),
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -23,6 +23,7 @@ part "developer_remote_content.dart";
 part "font_scale.dart";
 part "impact_warning.dart";
 part "locale.dart";
+part "restart_init.dart";
 part "select_list.dart";
 
 @RoutePage()
@@ -64,6 +65,7 @@ class AppSettingsPage extends ConsumerWidget {
           subtitle: context.l10n.appSettingsPageClearCacheDescription,
           onTap: () => unawaited(_clearCache(context)),
         ),
+        if (ref.watch(developerModeProvider)) const ConfigListTile.custom(RestartInitTile()),
       ],
     ),
   );

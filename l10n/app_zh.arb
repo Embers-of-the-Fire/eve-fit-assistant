@@ -1496,5 +1496,9 @@
       "attributeId": { "type": "int" }
     }
   },
-  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/"
+  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/",
+  "@@_WELCOME": {},
+  "welcomeTitle": "欢迎使用 EFA",
+  "welcomeInitializeButton": "初始化",
+  "welcomeSkipButton": "跳过"
 }

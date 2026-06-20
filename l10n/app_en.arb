@@ -661,5 +661,9 @@
   "skillLevelLabel": "Skill level {skillLevel}",
   "fallbackTypeName": "Type {typeId}",
   "fallbackAttributeName": "Attribute {attributeId}",
-  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/"
+  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/",
+  "@@_WELCOME": {},
+  "welcomeTitle": "Welcome to EFA",
+  "welcomeInitializeButton": "Initialize",
+  "welcomeSkipButton": "Skip"
 }
