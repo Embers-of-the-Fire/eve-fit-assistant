@@ -54,7 +54,13 @@ class _DescriptionTextState extends State<DescriptionText>
     );
     final fragment = html_parser.parseFragment("<div>$normalizedText</div>");
 
-    return SelectableText.rich(_buildFromNode(context, fragment), style: widget.style);
+    final span = _buildFromNode(context, fragment);
+    if (widget.style != null) {
+      return RichText(
+        text: TextSpan(style: widget.style, children: [span]),
+      );
+    }
+    return RichText(text: span);
   }
 
   TextSpan _buildFromNode(BuildContext context, html.Node node) => switch (node) {
@@ -119,11 +125,27 @@ class _DescriptionTextState extends State<DescriptionText>
       _recognizers.add(recognizer);
     }
 
+    // Flatten child text into this span so the recognizer can fire.
+    // Flutter's TextSpan.recognizer only responds to hits on its own [text],
+    // not on any [children] — see TextSpan docs on recognizer (line 121-122).
+    final linkText = _collectElementText(children);
     return TextSpan(
-      children: children.map<TextSpan>((node) => _buildFromNode(context, node)).toList(),
+      text: linkText.isNotEmpty ? linkText : null,
       style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
       recognizer: recognizer,
     );
+  }
+
+  String _collectElementText(html.NodeList nodes) {
+    final buffer = StringBuffer();
+    for (final node in nodes) {
+      if (node is html.Text) {
+        buffer.write(node.text);
+      } else if (node is html.Element) {
+        buffer.write(_collectElementText(node.nodes));
+      }
+    }
+    return buffer.toString();
   }
 }
 
