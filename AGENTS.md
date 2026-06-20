@@ -21,7 +21,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 | Channel Discovery | `lib/storage/repo/channel_service.dart` | `ChannelService` — fetches channel registry, head metadata, server index; update detection |
 | Checkout Management | `lib/storage/repo/checkout_registry_service.dart` | `CheckoutRegistryService` — manages `checkouts/checkouts.json`, active checkout pointer, reactive stream |
 | Checkout Lifecycle | `lib/storage/repo/checkout_service.dart` | `CheckoutService` — checkout CRUD, reflog management, resource fetch orchestration |
-| Release Sync | `lib/storage/repo/release_sync.dart` | `ReleaseSyncService` — checks remote release index for newer APK versions via `ReleaseIndex` protobuf |
+| Release Sync | `lib/storage/repo/release_sync.dart` | `ReleaseSyncService` — detects newer app versions against the remote release index via `ReleaseIndex` protobuf (detection only) |
 | Generation Navigation | `lib/storage/repo/generation_nav.dart` | `GenerationNavigationService` — channel → server browser for setup page |
 | Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole type-data source; pre-loads type data (ships, skills, items, localization, icons) from active checkout's ResourceIndex. |
 | Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |

@@ -1,8 +1,5 @@
-import "dart:typed_data";
-
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
-import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fpdart/fpdart.dart";
@@ -24,16 +21,14 @@ class ReleaseSyncVersionParseError extends ReleaseSyncError {
 }
 
 class AppRelease {
-  const AppRelease({required this.releaseId, required this.version, required this.createdAt});
+  const AppRelease({required this.releaseId, required this.version});
 
   final String releaseId;
   final String version;
-  final String createdAt;
 }
 
-/// Checks for newer APK releases against the remote release index.
-///
-/// Follows agent/schemav2/workflow.md §13.4.
+/// Detects whether a newer app release is available against the remote
+/// release index. Detection only — does not download or install artifacts.
 class ReleaseSyncService {
   const ReleaseSyncService({
     required this.remoteCatalogService,
@@ -44,7 +39,6 @@ class ReleaseSyncService {
   final Future<String> Function() currentVersionProvider;
 
   Future<Either<ReleaseSyncError, Option<AppRelease>>> check({
-    required Channel channel,
     required String generationHash,
   }) async {
     // Step 1: Get the release snapshot hash via GenerationPointer
@@ -72,7 +66,7 @@ class ReleaseSyncService {
     final installedVersionRaw = await currentVersionProvider();
     final installedVersion = _stripBuildMetadata(installedVersionRaw);
 
-    if (_compareVersions(installedVersion, installedVersion) == null) {
+    if (!_isValidVersion(installedVersion)) {
       return Left(
         ReleaseSyncVersionParseError(
           message: "Installed version is not valid semver: $installedVersion",
@@ -80,36 +74,29 @@ class ReleaseSyncService {
       );
     }
 
-    if (!index.hasAndroid()) return const Right(None());
-    final cmp = _compareVersions(index.version, installedVersion);
+    final remoteVersion = _stripBuildMetadata(index.version);
+    final cmp = _compareVersions(remoteVersion, installedVersion);
     if (cmp == null || cmp <= 0) return const Right(None());
 
-    return Right(Some(AppRelease(releaseId: index.id, version: index.version, createdAt: "")));
-  }
-
-  /// Downloads a release APK blob by artifact name.
-  /// artifactName: one of "general", "armv7", "arm64", "x64".
-  Future<Either<ReleaseSyncError, Uint8List>> downloadApk(
-    Channel channel,
-    String identHash,
-    String contentHash,
-  ) async {
-    final result = await remoteCatalogService.fetchBlob(identHash, contentHash);
-    if (result.isLeft()) {
-      final err = result.getLeft().toNullable()!;
-      final msg = err is CatalogNetworkError ? err.message : "Failed to download APK";
-      return Left(ReleaseSyncNetworkError(message: msg));
-    }
-    return Right(result.getRight().toNullable()!);
+    return Right(Some(AppRelease(releaseId: index.id, version: index.version)));
   }
 }
 
-// ── Version comparison helpers (unchanged) ───────────────────────────────────
+// ── Version comparison helpers ───────────────────────────────────────────────
 
 String _stripBuildMetadata(String version) {
   final plusIndex = version.indexOf("+");
   if (plusIndex == -1) return version;
   return version.substring(0, plusIndex);
+}
+
+bool _isValidVersion(String version) {
+  final core = _stripVPrefix(version).split("-")[0].split(".");
+  for (var i = 0; i < 3; i++) {
+    final segment = i < core.length ? core[i] : "0";
+    if (int.tryParse(segment) == null) return false;
+  }
+  return true;
 }
 
 int? _compareVersions(String a, String b) {

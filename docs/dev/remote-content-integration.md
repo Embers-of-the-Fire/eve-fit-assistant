@@ -326,7 +326,8 @@ The Flutter client resolves data through the V2 repository system:
 - `RemoteCatalogService` fetches `manifest/index.json` and navigates the
   generation tree (catalogs, servers, checkouts, releases).
 - `ReleaseSyncService` compares the installed app version against the
-  release catalog and triggers APK download when a newer version is available.
+  release catalog and reports whether a newer release is available
+  (detection only; it does not download or install artifacts).
 - The `RepoCollectionService` loads type data (ships, skills, items,
   localization, icons) from the active checkout's content-addressed asset store.
 - Fits and characters store a `CheckoutRef` binding (checkout hash + server

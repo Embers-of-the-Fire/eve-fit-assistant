@@ -12,14 +12,6 @@ class BlobIdent {
     return BlobIdent._(uri: uri, identHash: RepoHash.hashIdent(uri));
   }
 
-  /// Creates a release blob ident.
-  ///
-  /// URI format: `release://{platform}/{version}/{filename}`
-  factory BlobIdent.release(String platform, String version, String filename) {
-    final uri = "release://$platform/$version/$filename";
-    return BlobIdent._(uri: uri, identHash: RepoHash.hashIdent(uri));
-  }
-
   const BlobIdent._({required this.uri, required this.identHash});
 
   /// The full URI string (e.g. `resource://tranquility/proto/ships.bin`).

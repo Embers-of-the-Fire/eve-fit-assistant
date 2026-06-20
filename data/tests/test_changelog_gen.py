@@ -5,7 +5,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 import yaml
 
 from data.lib.config import ProjectVersion
@@ -49,9 +48,7 @@ class TestWriteVersionDocuments:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
             en_path = root / "en" / "version-0-2-0.md"
@@ -68,9 +65,7 @@ class TestWriteVersionDocuments:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
             content = (root / "en" / "version-0-2-0.md").read_text(encoding="utf-8")
@@ -86,14 +81,10 @@ class TestWriteVersionDocuments:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
-            content = (root / "zh" / "version-0-1-0-beta-3.md").read_text(
-                encoding="utf-8"
-            )
+            content = (root / "zh" / "version-0-1-0-beta-3.md").read_text(encoding="utf-8")
             lines = content.splitlines()
 
             assert lines[0] == "---"
@@ -117,14 +108,10 @@ class TestWriteVersionDocuments:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
-            content = (root / "zh" / "version-0-2-0.md").read_text(
-                encoding="utf-8"
-            )
+            content = (root / "zh" / "version-0-2-0.md").read_text(encoding="utf-8")
             assert "kind:" not in content
             assert "appVer:" not in content
 
@@ -136,9 +123,7 @@ class TestWriteVersionDocuments:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
             content = (root / "zh" / "version-1-0-0.md").read_text(encoding="utf-8")
@@ -161,9 +146,7 @@ class TestWriteVersionDocuments:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             nested = root / "nested" / "path"
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", nested
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", nested):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
             assert (nested / "en" / "version-0-2-0.md").exists()
@@ -177,9 +160,7 @@ class TestWriteVersionDocuments:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
             content = (root / "zh" / "version-0-2-0.md").read_text(encoding="utf-8")
@@ -198,17 +179,11 @@ class TestWriteVersionDocuments:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch(
-                "data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root
-            ):
+            with patch("data.lib.release.changelog_gen.ANNOUNCEMENTS_ROOT", root):
                 _write_version_documents(v, en_body, zh_body, cliff_body)
 
-            en_content = (root / "en" / "version-2-5-1.md").read_text(
-                encoding="utf-8"
-            )
-            zh_content = (root / "zh" / "version-2-5-1.md").read_text(
-                encoding="utf-8"
-            )
+            en_content = (root / "en" / "version-2-5-1.md").read_text(encoding="utf-8")
+            zh_content = (root / "zh" / "version-2-5-1.md").read_text(encoding="utf-8")
 
         assert "# v2.5.1 Release Notes" in en_content
         assert "# v2.5.1" in zh_content
