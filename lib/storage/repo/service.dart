@@ -14,6 +14,7 @@ import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
+import "package:path/path.dart" as p;
 
 /// Top-level orchestrator for all storage operations.
 ///
@@ -177,15 +178,21 @@ class RepoService {
   /// The `schema_version.json` marker is intentionally preserved so the active
   /// storage system is unchanged. After this completes the repo is in a
   /// no-setup state; callers must re-initialize the repo lifecycle.
-  Future<void> clearAllStorage() async {
+  Future<Either<String, Unit>> clearAllStorage() async {
+    final failures = <String>[];
     for (final path in [RepoPaths.assetsPath, RepoPaths.channelsPath, RepoPaths.checkoutsPath]) {
       final dir = Directory(path);
       try {
-        if (dir.existsSync()) dir.deleteSync(recursive: true);
+        // ignore: avoid_slow_async_io
+        if (await dir.exists()) await dir.delete(recursive: true);
       } on FileSystemException {
-        // best-effort: continue removing the remaining directories
+        failures.add(p.basename(path));
       }
     }
+    if (failures.isNotEmpty) {
+      return Left("Failed to delete: ${failures.join(", ")}");
+    }
+    return const Right(unit);
   }
 
   // ── Server catalog ─────────────────────────────────────────────────────────

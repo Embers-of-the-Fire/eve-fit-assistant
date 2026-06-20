@@ -1274,6 +1274,7 @@
   "storageClearAllConfirm": "这将删除所有已下载的资源、频道元数据和数据版本，且无法撤销。",
   "storageClearAllRunning": "清除中...",
   "storageClearAllDone": "存储已清除",
+  "storageClearAllFailed": "清除全部失败",
   "branchSettingsTitle": "数据源设置",
   "branchRenameTitle": "重命名",
   "branchRenameHint": "输入新名称",

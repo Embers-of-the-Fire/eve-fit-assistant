@@ -14,6 +14,40 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
 
+class StorageOverview {
+  const StorageOverview({required this.fileCount, required this.totalSize});
+
+  final int fileCount;
+  final int totalSize;
+}
+
+final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
+  final checkoutIds = ref.watch(installedCheckoutIdsProvider);
+  final registryService = ref.watch(checkoutRegistryServiceProvider);
+  final assetStore = ref.watch(assetStoreProvider);
+
+  final seen = <String>{};
+  var totalSize = 0;
+  var totalFiles = 0;
+
+  for (final id in checkoutIds) {
+    final entry = registryService.readRegistry().flatMap(
+      (r) => Option.fromNullable(r.checkouts[id]),
+    );
+    if (entry.isNone()) continue;
+    final ri = assetStore.readResourceIndexSync(entry.toNullable()!.resourceSnapshotHash);
+    if (ri.isNone()) continue;
+    for (final file in ri.toNullable()!.entries) {
+      if (seen.add(file.resourceId)) {
+        totalFiles++;
+        totalSize += file.size.toInt();
+      }
+    }
+  }
+
+  return StorageOverview(fileCount: totalFiles, totalSize: totalSize);
+});
+
 @RoutePage(name: "StorageManagement")
 class StorageManagementPage extends ConsumerStatefulWidget {
   const StorageManagementPage({super.key});
@@ -30,11 +64,11 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
   bool _forceSyncLoading = false;
   String? _forceSyncResult;
   bool _clearLoading = false;
+  bool _isOperationRunning = false;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final checkoutIds = ref.watch(installedCheckoutIdsProvider);
     final active = ref.watch(currentActiveProvider);
     final channelName =
         active?.channel ?? ref.read(appSettingServiceProvider).remoteContent.channel;
@@ -45,7 +79,15 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         children: [
           // ── Overview ──────────────────────────────────────────────────────
           ConfigListTile.title(l10n.storageOverviewTitle),
-          ConfigListTile.custom(_buildOverviewCard(checkoutIds, channelName)),
+          ConfigListTile.custom(
+            ref
+                .watch(storageOverviewProvider)
+                .when(
+                  data: (overview) => _buildOverviewCard(overview, channelName),
+                  loading: _buildOverviewLoading,
+                  error: (err, _) => _buildOverviewError(err.toString()),
+                ),
+          ),
 
           // ── Data Management ───────────────────────────────────────────────
           ConfigListTile.title(l10n.storageDataManagementTitle),
@@ -85,13 +127,13 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
             icon: Icon(Icons.cloud_sync_outlined, color: context.theme.colorScheme.primary),
             title: l10n.storageForceSyncButton,
             subtitle: _forceSyncLoading ? l10n.storageForceSyncRunning : _forceSyncResult,
-            onTap: _forceSyncLoading ? null : () => unawaited(_runForceSync(channelName)),
+            onTap: _isOperationRunning ? null : () => unawaited(_runForceSync(channelName)),
           ),
           ConfigListTile.item(
             icon: Icon(Icons.delete_forever_outlined, color: context.theme.colorScheme.error),
             title: l10n.storageClearAllButton,
             subtitle: _clearLoading ? l10n.storageClearAllRunning : null,
-            onTap: _clearLoading ? null : () => unawaited(_runClearAll()),
+            onTap: _isOperationRunning ? null : () => unawaited(_runClearAll()),
           ),
           const ConfigListTile.space(24),
         ],
@@ -99,30 +141,9 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     );
   }
 
-  Widget _buildOverviewCard(IList<String> checkoutIds, String channelName) {
+  Widget _buildOverviewCard(StorageOverview overview, String channelName) {
     final l10n = context.l10n;
     final theme = context.theme;
-
-    final seen = <String>{};
-    var totalSize = 0;
-    var totalFiles = 0;
-    for (final id in checkoutIds) {
-      final entry = ref
-          .read(checkoutRegistryServiceProvider)
-          .readRegistry()
-          .flatMap((r) => Option.fromNullable(r.checkouts[id]));
-      if (entry.isNone()) continue;
-      final ri = ref
-          .read(assetStoreProvider)
-          .readResourceIndexSync(entry.toNullable()!.resourceSnapshotHash);
-      if (ri.isNone()) continue;
-      for (final file in ri.toNullable()!.entries) {
-        if (seen.add(file.resourceId)) {
-          totalFiles++;
-          totalSize += file.size.toInt();
-        }
-      }
-    }
 
     final genHash = ref.watch(channelServiceProvider).localGenerationHash(channelName);
     final headMeta = ref.watch(channelServiceProvider).readHeadMeta(channelName);
@@ -136,8 +157,8 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _overviewRow(l10n.storageFileCount, "$totalFiles"),
-          _overviewRow(l10n.storageTotalSize, _formatSize(totalSize)),
+          _overviewRow(l10n.storageFileCount, "${overview.fileCount}"),
+          _overviewRow(l10n.storageTotalSize, _formatSize(overview.totalSize)),
           _overviewRow(l10n.storageMetadata, metadata),
           _overviewRow(l10n.storageLastUpdated, lastUpdated),
           const SizedBox(height: 8),
@@ -146,6 +167,31 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewLoading() {
+    final theme = context.theme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.primary),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverviewError(String error) {
+    final theme = context.theme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Text(
+        error,
+        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
       ),
     );
   }
@@ -259,7 +305,9 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
   }
 
   Future<void> _runForceSync(String channelName) async {
+    if (_isOperationRunning) return;
     setState(() {
+      _isOperationRunning = true;
       _forceSyncLoading = true;
       _forceSyncResult = null;
     });
@@ -276,11 +324,17 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
     } finally {
-      if (mounted) setState(() => _forceSyncLoading = false);
+      if (mounted) {
+        setState(() {
+          _forceSyncLoading = false;
+          _isOperationRunning = false;
+        });
+      }
     }
   }
 
   Future<void> _runClearAll() async {
+    if (_isOperationRunning) return;
     final l10n = context.l10n;
     final confirmed = await showConfirmDialog(
       context,
@@ -289,9 +343,21 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     );
     if (!confirmed || !mounted) return;
 
-    setState(() => _clearLoading = true);
+    setState(() {
+      _isOperationRunning = true;
+      _clearLoading = true;
+    });
     try {
-      await ref.read(repoServiceProvider).clearAllStorage();
+      final result = await ref.read(repoServiceProvider).clearAllStorage();
+      if (!mounted) return;
+      final msg = result.match(
+        (err) => "${l10n.storageClearAllFailed}: $err",
+        (_) => l10n.storageClearAllDone,
+      );
+      if (result.isLeft()) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        return;
+      }
       await ref.read(repoStateProvider.notifier).initialize();
       if (!mounted) return;
       setState(() {
@@ -299,11 +365,16 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         _pruneCount = null;
         _forceSyncResult = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.storageClearAllDone), duration: const Duration(seconds: 2)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
     } finally {
-      if (mounted) setState(() => _clearLoading = false);
+      if (mounted) {
+        setState(() {
+          _clearLoading = false;
+          _isOperationRunning = false;
+        });
+      }
     }
   }
 

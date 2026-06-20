@@ -547,6 +547,7 @@
   "storageClearAllConfirm": "This will delete all downloaded resources, channel metadata, and checkouts. This cannot be undone.",
   "storageClearAllRunning": "Clearing...",
   "storageClearAllDone": "Storage cleared",
+  "storageClearAllFailed": "Clear all failed",
   "branchSettingsTitle": "Data Source Settings",
   "branchRenameTitle": "Rename",
   "branchRenameHint": "Enter a new name",
