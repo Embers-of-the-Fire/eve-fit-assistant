@@ -24,6 +24,8 @@ def register_lint_commands(cli_group: click.Group) -> None:
     )
     def lint(no_check: bool, check_only: bool, lang: str):
         """Lint, fix and format code"""
+        if no_check and check_only:
+            raise click.ClickException("--no-check and --check cannot be used together.")
         run_lint(lang, no_check=no_check, check_only=check_only, dry_run=runtime.is_dry_run())
 
     @cli_group.command("format", aliases=["fmt"])

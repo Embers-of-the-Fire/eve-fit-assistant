@@ -55,4 +55,5 @@ def register_remote_config(remote: click.Group) -> None:
             "remote": redact_remote_config(remote_cfg.model_dump(mode="json")),
             "resolved": resolved,
         }
-        click.echo(json.dumps(payload, indent=4 if pretty else None))
+        indent = None if as_json else (4 if pretty else None)
+        click.echo(json.dumps(payload, indent=indent))

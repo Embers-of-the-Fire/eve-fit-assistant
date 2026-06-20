@@ -306,11 +306,11 @@ def register_dev_commands(cli_group: click.Group) -> None:
         This command accept the following syntax:
 
         \b
-        If `--python`, `-p` is specified, then all arguments after it are treated as python packages to install.
+        If `--python`, `--py` is specified, then all arguments after it are treated as python packages to install.
             The command will be directly passed to `uv add`.
-        If `--dart`, `-d`, `--flutter`, `-f` is specified, then all arguments after it are treated as dart packages to install.
+        If `--dart`, `--flutter`, `--fl` is specified, then all arguments after it are treated as dart packages to install.
             The command will be directly passed to `flutter pub add`.
-        If `--rust`, `-r` is specified, then all arguments after it are treated as rust packages to install.
+        If `--rust`, `--rs` is specified, then all arguments after it are treated as rust packages to install.
             The command will be directly passed to `cargo add`.
         If none of the above is specified, then:
             If the package starts with `py:` or `python:`, it is treated as a python package to install.

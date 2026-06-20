@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from bootstrap.data.workspace.generate.images import graphics
+from bootstrap.data.workspace.generate.images import icons
 from bootstrap.log import info
-
-from . import graphics
-from . import icons
 
 
 if TYPE_CHECKING:

@@ -156,7 +156,11 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None) -
 
         for pkey, pdict in rel.items():
             if pkey not in ("id", "version") and isinstance(pdict, dict):
-                merged_release.setdefault(pkey, pdict)
+                if pkey in merged_release:
+                    raise click.ClickException(
+                        f"Duplicate platform fragment for {pkey!r} while merging {fp}"
+                    )
+                merged_release[pkey] = pdict
 
     missing = [str(p) for p in all_paths if not p.exists()]
     if missing:

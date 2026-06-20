@@ -76,7 +76,7 @@ def resolve_schema_root(schema_root: Path | None) -> Path:
 
 def get_workspace(name) -> Path:
     if not isinstance(name, str):
-        click.echo(styled([Style.BRIGHT, Fore.RED], "Invalid name: ") + f"{name!r}")
+        raise click.ClickException(f"Invalid name: {name!r}")
     name = name.strip()
 
     if len(name) == 0:

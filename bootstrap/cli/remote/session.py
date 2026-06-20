@@ -33,18 +33,19 @@ def _require_session(store: SessionStore, operation: str) -> Session:
 
 
 def _validate_add_args(
-    snap_type_flag: str | None,
+    resource_flag: bool,
+    release_flag: bool,
     source_hash: str | None,
     source_file: Path | None,
 ) -> str:
     """Validate mutually exclusive add flags. Returns the snap type."""
-    if snap_type_flag is None:
+    if resource_flag == release_flag:
         raise click.ClickException("Must specify exactly one of --resource, --release.")
     if source_hash is None and source_file is None:
         raise click.ClickException("Must specify exactly one of --hash or --file.")
     if source_hash is not None and source_file is not None:
         raise click.ClickException("Cannot specify both --hash and --file.")
-    return snap_type_flag
+    return "resource" if resource_flag else "release"
 
 
 def _check_snapshot_metadata(snap_type: str, snap_dir: Path) -> None:
@@ -162,8 +163,19 @@ def _add_snapshot_by_file(
             ) from None
 
         index_entries: list[tuple[str, str, int]] = []
-        for entry in entries:
-            index_entries.append((entry["resource_id"], entry["content_hash"], int(entry["size"])))
+        try:
+            for entry in entries:
+                index_entries.append(
+                    (entry["resource_id"], entry["content_hash"], int(entry["size"]))
+                )
+        except KeyError as e:
+            raise click.ClickException(
+                f"Invalid resource catalog entry in {source_file}: missing key {e}"
+            ) from None
+        except (TypeError, ValueError) as e:
+            raise click.ClickException(
+                f"Invalid resource catalog entry in {source_file}: invalid value: {e}"
+            ) from None
         index = make_resource_index(index_entries)
         hash_value = snap_store.create_resource_snapshot(metadata, index)
 
@@ -185,36 +197,41 @@ def _add_snapshot_by_file(
                 f"Cannot parse release metadata in {source_file}: {e}"
             ) from None
 
-        version = release["version"]
-        blob_store = BlobStore(root)
+        try:
+            version = release["version"]
+            blob_store = BlobStore(root)
 
-        for platform_key, platform_data in list(release.items()):
-            if platform_key in ("id", "version"):
-                continue
-            if not isinstance(platform_data, dict):
-                continue
-            for variant, value in list(platform_data.items()):
-                if isinstance(value, str) and value.startswith("/"):
-                    file_path = Path(value)
-                    uri = f"release://{version}/{platform_key}/{variant}"
-                    ihash = ident_hash(uri)
-                    chash = blob_store.store_from_path(file_path, ihash)
-                    platform_data[variant] = {"identifier": uri, "content_hash": chash}
+            for platform_key, platform_data in list(release.items()):
+                if platform_key in ("id", "version"):
+                    continue
+                if not isinstance(platform_data, dict):
+                    continue
+                for variant, value in list(platform_data.items()):
+                    if isinstance(value, str) and value.startswith("/"):
+                        file_path = Path(value)
+                        uri = f"release://{version}/{platform_key}/{variant}"
+                        ihash = ident_hash(uri)
+                        chash = blob_store.store_from_path(file_path, ihash)
+                        platform_data[variant] = {"identifier": uri, "content_hash": chash}
 
-        android = release.get("android")
-        android_dict = None
-        if android is not None:
-            android_dict = {
-                "general": android.get("general"),
-                "armv7": android.get("armv7"),
-                "arm64": android.get("arm64"),
-                "x64": android.get("x64"),
-            }
-        index = make_release_index(
-            release_id=release["id"],
-            version=version,
-            android=android_dict,
-        )
+            android = release.get("android")
+            android_dict = None
+            if android is not None:
+                android_dict = {
+                    "general": android.get("general"),
+                    "armv7": android.get("armv7"),
+                    "arm64": android.get("arm64"),
+                    "x64": android.get("x64"),
+                }
+            index = make_release_index(
+                release_id=release["id"],
+                version=version,
+                android=android_dict,
+            )
+        except KeyError as e:
+            raise click.ClickException(
+                f"Invalid release registry entry in {source_file}: missing key {e}"
+            ) from None
         hash_value = snap_store.create_release_snapshot(metadata, index)
 
     else:
@@ -597,10 +614,14 @@ def register_remote_session(remote: click.Group) -> None:
 
     @remote_session.command("add")
     @click.option(
-        "--resource", "snap_type_flag", flag_value="resource", help="Stage a resource snapshot."
+        "--resource",
+        "resource_flag",
+        is_flag=True,
+        default=False,
+        help="Stage a resource snapshot.",
     )
     @click.option(
-        "--release", "snap_type_flag", flag_value="release", help="Stage a release snapshot."
+        "--release", "release_flag", is_flag=True, default=False, help="Stage a release snapshot."
     )
     @click.option("--hash", "source_hash", default=None, help="Snapshot hash to stage.")
     @click.option(
@@ -613,14 +634,15 @@ def register_remote_session(remote: click.Group) -> None:
     @click.option("--force", is_flag=True, default=False, help="Add to a committed session.")
     @_SCHEMA_ROOT_OPTION
     def remote_session_add(
-        snap_type_flag: str | None,
+        resource_flag: bool,
+        release_flag: bool,
         source_hash: str | None,
         source_file: Path | None,
         force: bool,
         schema_root: Path | None,
     ):
         """Stage a snapshot for the next generation commit."""
-        snap_type = _validate_add_args(snap_type_flag, source_hash, source_file)
+        snap_type = _validate_add_args(resource_flag, release_flag, source_hash, source_file)
         root = runtime.resolve_schema_root(schema_root)
         store = SessionStore(root)
 
@@ -645,23 +667,29 @@ def register_remote_session(remote: click.Group) -> None:
 
     @remote_session.command("remove")
     @click.option(
-        "--resource", "snap_type_flag", flag_value="resource", help="Remove a resource snapshot."
+        "--resource",
+        "resource_flag",
+        is_flag=True,
+        default=False,
+        help="Remove a resource snapshot.",
     )
     @click.option(
-        "--release", "snap_type_flag", flag_value="release", help="Remove a release snapshot."
+        "--release", "release_flag", is_flag=True, default=False, help="Remove a release snapshot."
     )
     @click.option("--hash", "source_hash", required=True, help="Snapshot hash to remove.")
     @click.option("--force", is_flag=True, default=False, help="Remove from a committed session.")
     @_SCHEMA_ROOT_OPTION
     def remote_session_remove(
-        snap_type_flag: str | None,
+        resource_flag: bool,
+        release_flag: bool,
         source_hash: str,
         force: bool,
         schema_root: Path | None,
     ):
         """Unstage a snapshot."""
-        if snap_type_flag is None:
+        if resource_flag == release_flag:
             raise click.ClickException("Must specify exactly one of --resource, --release.")
+        snap_type = "resource" if resource_flag else "release"
 
         root = runtime.resolve_schema_root(schema_root)
         store = SessionStore(root)
@@ -672,12 +700,12 @@ def register_remote_session(remote: click.Group) -> None:
             store.ensure_editable()
 
         try:
-            store.remove_snapshot(snap_type_flag, source_hash)  # type: ignore[arg-type]
+            store.remove_snapshot(snap_type, source_hash)
         except ValueError as e:
             raise click.ClickException(str(e)) from None
 
         click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], f"Removed {snap_type_flag} snapshot ")
+            styled([Style.BRIGHT, Fore.GREEN], f"Removed {snap_type} snapshot ")
             + f"{source_hash[:16]}..."
         )
 

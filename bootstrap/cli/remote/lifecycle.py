@@ -179,7 +179,7 @@ def register_remote_lifecycle(remote: click.Group) -> None:
     @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
     @click.option(
         "--workers",
-        type=int,
+        type=click.IntRange(min=1),
         default=8,
         show_default=True,
         help="Number of parallel upload workers.",
@@ -239,14 +239,14 @@ def register_remote_lifecycle(remote: click.Group) -> None:
     @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
     @click.option(
         "--depth",
-        type=int,
+        type=click.IntRange(min=-1),
         default=-1,
         show_default=True,
         help="Max generations to walk (-1 = all).",
     )
     @click.option(
         "--workers",
-        type=int,
+        type=click.IntRange(min=1),
         default=8,
         show_default=True,
         help="Number of parallel download workers.",

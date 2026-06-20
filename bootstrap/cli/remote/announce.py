@@ -146,7 +146,7 @@ def register_remote_announce(remote: click.Group) -> None:
     @click.option("--zh-body", default=None, help="Chinese body text.")
     @click.option(
         "--zh-body-file",
-        type=click.Path(exists=True, path_type=Path),
+        type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
         default=None,
         help="Chinese body file.",
     )
@@ -155,7 +155,7 @@ def register_remote_announce(remote: click.Group) -> None:
     @click.option("--en-body", default=None, help="English body text.")
     @click.option(
         "--en-body-file",
-        type=click.Path(exists=True, path_type=Path),
+        type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
         default=None,
         help="English body file.",
     )
@@ -295,7 +295,7 @@ def register_remote_announce(remote: click.Group) -> None:
     @click.option("--zh-body", default=None, help="Chinese body text.")
     @click.option(
         "--zh-body-file",
-        type=click.Path(exists=True, path_type=Path),
+        type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
         default=None,
         help="Chinese body file.",
     )
@@ -304,7 +304,7 @@ def register_remote_announce(remote: click.Group) -> None:
     @click.option("--en-body", default=None, help="English body text.")
     @click.option(
         "--en-body-file",
-        type=click.Path(exists=True, path_type=Path),
+        type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
         default=None,
         help="English body file.",
     )

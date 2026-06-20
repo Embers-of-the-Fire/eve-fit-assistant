@@ -32,11 +32,17 @@ def _run_protobuf() -> None:
     failed: set[str] = set()
 
     if not PROTOBUF_PYTHON_OUT_PATH.exists():
-        warning("Python protobuf output path not found, creating it.")
-        PROTOBUF_PYTHON_OUT_PATH.mkdir(parents=True, exist_ok=True)
+        if runtime.is_dry_run():
+            info(f"[Dry-Run] Would create Python protobuf output path: {PROTOBUF_PYTHON_OUT_PATH}")
+        else:
+            warning("Python protobuf output path not found, creating it.")
+            PROTOBUF_PYTHON_OUT_PATH.mkdir(parents=True, exist_ok=True)
     if not PROTOBUF_DART_OUT_PATH.exists():
-        warning("Dart protobuf output path not found, creating it.")
-        PROTOBUF_DART_OUT_PATH.mkdir(parents=True, exist_ok=True)
+        if runtime.is_dry_run():
+            info(f"[Dry-Run] Would create Dart protobuf output path: {PROTOBUF_DART_OUT_PATH}")
+        else:
+            warning("Dart protobuf output path not found, creating it.")
+            PROTOBUF_DART_OUT_PATH.mkdir(parents=True, exist_ok=True)
 
     for file in PROTOBUF_SCHEMA_PATH.glob("*.proto"):
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Generating protobuf code for: ") + f"{file}")
@@ -75,8 +81,11 @@ def _run_protobuf() -> None:
 def _run_rust() -> None:
     native_output_dir = PROJECT_ROOT / "lib" / "native"
     if native_output_dir.exists():
-        info(f"Removing existing native output directory: {native_output_dir}")
-        shutil.rmtree(native_output_dir)
+        if runtime.is_dry_run():
+            info(f"[Dry-Run] Would remove existing native output directory: {native_output_dir}")
+        else:
+            info(f"Removing existing native output directory: {native_output_dir}")
+            shutil.rmtree(native_output_dir)
     flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
