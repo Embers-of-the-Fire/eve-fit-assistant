@@ -1,0 +1,156 @@
+"""Shared runtime state and helpers for the EFA workspace manager CLI.
+
+This module holds the cross-cutting state (the ``--dry-run`` flag) and the
+helper functions reused by more than one command group. Command modules under
+``bootstrap.cli`` import from here instead of duplicating the wrappers that used
+to live at module scope in ``x.py``.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import click
+
+from colorama import Fore
+from colorama import Style
+
+import bootstrap.config
+
+from bootstrap.color import styled
+from bootstrap.data.workspace.config import WorkspaceConfig
+from bootstrap.log import info
+from bootstrap.utils import execute_command
+from bootstrap.utils import get_command
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+_DRY_RUN = False
+
+
+def set_dry_run(value: bool) -> None:
+    global _DRY_RUN
+    _DRY_RUN = value
+
+
+def is_dry_run() -> bool:
+    return _DRY_RUN
+
+
+def execute(cmd: list, title: str, capture_stdout: bool = False, live_stdout: bool = False) -> str:
+    return execute_command(cmd, title, _DRY_RUN, capture_stdout, live_stdout)
+
+
+def execute_redacted(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
+    import subprocess
+
+    if _DRY_RUN:
+        info(f"[Dry-Run] {title}: " + " ".join(redacted_cmd))
+        return
+
+    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if out.returncode != 0:
+        message = f"Failed to execute command [{out.returncode}]: " + " ".join(redacted_cmd)
+        stderr = (out.stderr or "").strip()
+        if stderr:
+            message += f"\n{stderr}"
+        raise click.ClickException(message)
+
+
+def resolve_dev_path(path: Path) -> Path:
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    if path.is_absolute():
+        return path
+    return bootstrap.config.DEV_CONFIGURATION.paths.root / path
+
+
+def resolve_schema_root(schema_root: Path | None) -> Path:
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    if schema_root is not None:
+        return resolve_dev_path(schema_root)
+    return resolve_dev_path(bootstrap.config.DEV_CONFIGURATION.paths.schema_dir)
+
+
+def get_workspace(name) -> Path:
+    if not isinstance(name, str):
+        click.echo(styled([Style.BRIGHT, Fore.RED], "Invalid name: ") + f"{name!r}")
+    name = name.strip()
+
+    if len(name) == 0:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "Invalid name: ") + "empty")
+        exit(1)
+
+    workspaces = bootstrap.config.CONFIGURATION.resources
+    ws = workspaces.get(name)
+
+    if ws is None:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "Unknown workspace identifier: ") + name)
+        click.echo("Please check if the workspace is registered in the configuration.")
+        exit(1)
+
+    if not ws.descriptor.exists():
+        click.echo(
+            styled([Style.BRIGHT, Fore.YELLOW], "Warning: ") + f"Descriptor for {name} not found."
+        )
+
+    return ws.descriptor
+
+
+def current_workspace_descriptor() -> WorkspaceConfig:
+    name = bootstrap.config.WORKSPACE_CACHE.current_workspace
+    if not name:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
+        click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
+        exit(1)
+
+    ws = get_workspace(name)
+    info(f"Resolving workspace: {name} ({ws})")
+    return WorkspaceConfig.load_from_descriptor(ws)
+
+
+def env_install() -> None:
+    protoc_gen_dart = get_command("protoc-gen-dart")
+    if protoc_gen_dart is None:
+        click.echo(
+            styled([Style.BRIGHT, Fore.RED], "Warning: ") + "protoc-gen-dart not found, installing"
+        )
+        dart = get_command("dart")
+        execute([dart, "pub", "global", "activate", "protoc_plugin"], "DART ACTIVATE OUTPUT")
+
+    uv = get_command("uv")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync")
+    execute([uv, "sync"], "UV SYNC OUTPUT")
+
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub get")
+    execute([flutter, "pub", "get"], "FLUTTER PUB GET OUTPUT")
+
+    from pathlib import Path
+
+    if Path("package.json").exists():
+        pnpm = get_command("pnpm")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm install")
+        execute([pnpm, "install"], "PNPM INSTALL OUTPUT")
+
+
+def env_upgrade() -> None:
+    uv = get_command("uv")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync --upgrade")
+    execute([uv, "sync", "--upgrade"], "UV UPGRADE OUTPUT")
+
+    flutter = get_command("flutter")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter pub upgrade")
+    execute([flutter, "pub", "upgrade"], "FLUTTER PUB UPGRADE OUTPUT")
+
+    cargo = get_command("cargo")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "cargo update")
+    execute([cargo, "update"], "CARGO UPDATE OUTPUT")
+
+
+def run_format() -> None:
+    from bootstrap.ci.lint import run_lint
+
+    run_lint("all", no_check=True, check_only=False, dry_run=_DRY_RUN)
