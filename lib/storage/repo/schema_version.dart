@@ -40,6 +40,10 @@ class SchemaVersionService {
     }
   }
 
+  /// Returns `true` when `schema_version.json` is present on disk regardless
+  /// of whether its contents are valid. One stat call, O(1).
+  bool exists() => File(RepoPaths.schemaVersionPath).existsSync();
+
   /// Parses `schema_version.json` and returns the schemaVersion, or [None] if the
   /// file is missing or unreadable.
   Option<int> read() {

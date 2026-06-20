@@ -89,4 +89,31 @@ void main() {
       expect(tmpFile.existsSync(), isFalse);
     });
   });
+
+  group("SchemaVersionService.exists", () {
+    test("returns false when file is absent", () {
+      expect(service.exists(), isFalse);
+    });
+
+    test("returns true after ensure", () {
+      service.ensure();
+      expect(service.exists(), isTrue);
+    });
+
+    test("returns true when file exists with valid content", () {
+      final file = File(RepoPaths.schemaVersionPath);
+      file.parent.createSync(recursive: true);
+      file.writeAsStringSync(jsonEncode({"schemaVersion": 2}));
+
+      expect(service.exists(), isTrue);
+    });
+
+    test("returns true when file exists even with malformed content", () {
+      final file = File(RepoPaths.schemaVersionPath);
+      file.parent.createSync(recursive: true);
+      file.writeAsStringSync("garbage");
+
+      expect(service.exists(), isTrue);
+    });
+  });
 }
