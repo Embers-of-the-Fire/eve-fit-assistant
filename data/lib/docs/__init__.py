@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from data.lib.docs.build import build_documents
+from data.lib.docs.announcements import build_bundled_announcements
 
 
-__all__ = ["build_documents"]
+__all__ = ["build_bundled_announcements"]

@@ -4,7 +4,7 @@ class FitDisplayColumns extends ConsumerWidget {
   const FitDisplayColumns({required this.fitContext, this.compatibilityNotice, super.key});
 
   final FitContext fitContext;
-  final FitBundleCompatibilityNotice? compatibilityNotice;
+  final FitCheckoutCompatibilityNotice? compatibilityNotice;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -78,7 +78,7 @@ class FitDisplayColumns extends ConsumerWidget {
   Widget? _buildCompatibilityAction(
     BuildContext context,
     WidgetRef ref,
-    FitBundleCompatibilityNotice notice,
+    FitCheckoutCompatibilityNotice notice,
   ) {
     final actionLabel = notice.actionLabel;
     if (actionLabel == null) {
@@ -86,38 +86,12 @@ class FitDisplayColumns extends ConsumerWidget {
     }
 
     return switch (notice.action) {
-      FitBundleCompatibilityAction.none => null,
-      FitBundleCompatibilityAction.openBundleManager => FilledButton.tonalIcon(
-        onPressed: () => context.router.pushPath("/setting/bundle-manager"),
+      FitCheckoutCompatibilityAction.none => null,
+      FitCheckoutCompatibilityAction.openBranchManager => FilledButton.tonalIcon(
+        onPressed: () => context.router.pushPath("/setting/data/branches"),
         icon: const Icon(Icons.archive_outlined),
         label: Text(actionLabel),
       ),
-      FitBundleCompatibilityAction.switchToSavedBundle => () {
-        final bundleId = notice.actionBundleId;
-        if (bundleId == null) {
-          throw StateError("Switch-to-saved-bundle action requires an action bundle id.");
-        }
-
-        return FilledButton.tonalIcon(
-          onPressed: () async {
-            final report = ref.read(bundleSwitchImpactProvider(bundleId));
-            final confirmed = await confirmBundleImpactWarning(context, ref, report);
-            if (!confirmed) {
-              return;
-            }
-            await ref.read(bundleManagerProvider.notifier).selectBundle(bundleId);
-            if (!context.mounted) return;
-
-            if (ref.read(bundleManagerProvider).hasError) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(context.l10n.fitBundleSwitchErrorMessage)));
-            }
-          },
-          icon: const Icon(Icons.swap_horiz),
-          label: Text(actionLabel),
-        );
-      }(),
     };
   }
 }

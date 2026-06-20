@@ -4,17 +4,20 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
-import "package:eve_fit_assistant/storage/bundle/manager.dart";
-import "package:eve_fit_assistant/storage/bundle/service.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/native_dir.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:fpdart/fpdart.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:riverpod/riverpod.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
@@ -194,18 +197,15 @@ class Fit extends _$Fit {
 
   Future<void> _mount(String fitId) => _loadFromDisk(fitId);
 
-  FitBundleCompatibility _compatibilityFor(FitStorage fit) => evaluateFitBundleCompatibility(
-    fit.metadata,
-    ref.read(currentBundleProvider),
-    savedBundleAvailability: resolveSavedBundleAvailability(
-      fit.metadata.bundleSnapshot,
-      ref.read(currentBundleProvider),
-      savedBundleInstalled: ref
-          .read(bundleRegistryManagerProvider)
-          .bundles
-          .containsKey(fit.metadata.bundleSnapshot.bundleId),
-    ),
-  );
+  FitCheckoutCompatibility _compatibilityFor(FitStorage fit) {
+    final checkoutId = ref.read(activeCheckoutIdProvider);
+    final active = ref.read(activeCheckoutProvider);
+    return checkFitCompatibility(
+      fit.metadata,
+      activeCheckoutId: checkoutId.match(() => "", (id) => id),
+      activeServerId: active.match(() => "", (a) => a.serverId),
+    );
+  }
 
   void _unmount() {
     debug("Unmounting fit service");
@@ -242,13 +242,15 @@ class Fit extends _$Fit {
       return;
     }
 
-    final activeBundle = ref.read(currentBundleProvider);
+    final active = ref.read(activeCheckoutProvider);
+    final checkoutId = ref.read(activeCheckoutIdProvider);
     final updatedMetadata = currentFit.metadata.copyWith(
       lastModified: DateTime.now().millisecondsSinceEpoch,
-      bundleId: activeBundle?.bundleId ?? currentFit.metadata.bundleId,
-      bundleSnapshot: activeBundle == null
-          ? currentFit.metadata.bundleSnapshot
-          : FitBundleSnapshot.fromBundleMetadata(activeBundle),
+      checkoutRef: active.match(
+        () => currentFit.metadata.checkoutRef,
+        (a) =>
+            CheckoutRef(checkoutId: checkoutId.match(() => "", (id) => id), serverId: a.serverId),
+      ),
     );
     final fit = pruneDynamicRegistry(updater(currentFit)).copyWith(metadata: updatedMetadata);
     _mountedFit = fit;
@@ -356,7 +358,7 @@ class FitEmulatorService extends _$FitEmulatorService {
         if (prev == next) return;
         _scheduleEmulationForCurrentFit();
       })
-      ..listen(bundleCollectionSkillTypeIdsProvider, (prev, next) {
+      ..listen(repoCollectionProvider, (prev, next) {
         if (prev == next) return;
         _scheduleEmulationForCurrentFit();
       })
@@ -400,13 +402,14 @@ class FitEmulatorService extends _$FitEmulatorService {
         return;
       }
 
-      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
-      if (availableSkillTypeIds.isEmpty && ref.read(bundleCollectionProvider) == null) {
+      final collection = ref.read(repoCollectionProvider);
+      if (collection == null) {
         debug(
-          "Deferring emulation for ${fitStorage.metadata.fitId}: bundle skill definitions are still loading",
+          "Deferring emulation for ${fitStorage.metadata.fitId}: skill definitions are still loading",
         );
         return;
       }
+      final availableSkillTypeIds = collection.getSkillTypeIds();
 
       final characterSkills = await ref
           .read(characterRegistryManagerProvider.notifier)
@@ -468,50 +471,107 @@ class NativeFitEngineState with _$NativeFitEngineState {
 
 @riverpodSingleton
 class NativeFitEngineService extends _$NativeFitEngineService {
-  BundleMetadata? _lastBundle;
+  String? _lastSnapshotHash;
+  ResourceIndex? _lastResourceIndex;
+  Future<void>? _pendingInit;
+
+  void _scheduleInit(ResourceIndex resourceIndex) {
+    unawaited(Future(() => _initializeFromResourceIndex(resourceIndex)));
+  }
+
+  /// Resolves the five engine `.pb2` files directly from the content-addressed
+  /// blob store using the resource index, bypassing the native directory tree.
+  static native_server.FitEnginePath _enginePathFromIndex(ResourceIndex ri) {
+    String resolve(String resourceId) {
+      final entry = ri.entries.firstWhere((e) => e.resourceId == resourceId);
+      return NativeDirResolver.resolveBlobPath(entry);
+    }
+
+    return native_server.FitEnginePath(
+      types: resolve("resource://static/native/types.pb2"),
+      dogmaAttributes: resolve("resource://static/native/dogmaAttributes.pb2"),
+      dogmaEffects: resolve("resource://static/native/dogmaEffects.pb2"),
+      typeDogma: resolve("resource://static/native/typeDogma.pb2"),
+      buffCollections: resolve("resource://static/native/dbuffcollections.pb2"),
+    );
+  }
 
   @override
   NativeFitEngineState build() {
-    ref.listen(
-      currentBundleProvider,
-      (prev, next) {
-        if (prev == next || next == null) return;
-        _lastBundle = next;
-        // Laten initialize routine to avoid influence the widget tree
-        // when we change bundle.
-        // DO NOT AWAIT THIS OR THE MUTATION WILL BE TRIGGERED IN THE WIDGET BUILD STAGE.
-        unawaited(Future(() => _initialize(next)));
-      },
-      // we don't want the engine to load the bundle provider
-      // because the provider will be initialized later
-      weak: true,
-    );
+    final assetStore = ref.read(assetStoreProvider);
+    ref.listen(activeSnapshotHashProvider, (prev, next) {
+      if (prev == next || next.isNone()) return;
+      final hash = next.toNullable()!;
+      final ri = assetStore.readResourceIndexSync(hash);
+      if (ri.isNone()) return;
+      _lastSnapshotHash = hash;
+      _lastResourceIndex = ri.toNullable();
+      _scheduleInit(ri.toNullable()!);
+    }, weak: true);
+
+    final initialHash = ref.read(activeSnapshotHashProvider);
+    if (initialHash case Some(:final value)) {
+      final ri = assetStore.readResourceIndexSync(value);
+      if (ri.isSome()) {
+        _lastSnapshotHash = value;
+        _lastResourceIndex = ri.toNullable();
+        _scheduleInit(ri.toNullable()!);
+      }
+    }
+
     return const NativeFitEngineState.notInitialized();
   }
 
   Future<void> retry() async {
-    final bundle = _lastBundle ?? ref.read(currentBundleProvider);
-    if (bundle == null) return;
-    await _initialize(bundle);
+    final hash = _lastSnapshotHash;
+    final ri = _lastResourceIndex;
+    if (hash == null || ri == null) {
+      final initialHash = ref.read(activeSnapshotHashProvider);
+      if (initialHash case Some(:final value)) {
+        final freshRi = ref.read(assetStoreProvider).readResourceIndexSync(value);
+        if (freshRi.isSome()) {
+          _lastSnapshotHash = value;
+          _lastResourceIndex = freshRi.toNullable();
+          await _initializeFromResourceIndex(freshRi.toNullable()!);
+        }
+      }
+      return;
+    }
+    await _initializeFromResourceIndex(ri);
   }
 
-  Future<void> _initialize(BundleMetadata bundle) async {
-    if (state.isInitializing) return;
+  Future<void> _initializeFromResourceIndex(ResourceIndex resourceIndex) async {
+    if (!ref.mounted) return;
+    if (_pendingInit != null) return _pendingInit!;
+
+    final completer = Completer<void>();
+    _pendingInit = completer.future;
 
     state = const NativeFitEngineState.initializing();
     try {
+      final path = _enginePathFromIndex(resourceIndex);
+      if (!ref.mounted) return;
       final engine = native_server.FitEngine(
-        data: await native_server.FitEngineData.init(staticRootPath: bundle.paths.getNativePath()),
+        data: await native_server.FitEngineData.init(path: path),
       );
+      if (!ref.mounted) return;
       state = NativeFitEngineState.initialized(engine: engine);
+      completer.complete();
     } on Object catch (errorValue, stackTrace) {
+      if (!ref.mounted) return;
       error(
-        "Failed to initialize native fit engine for bundle ${bundle.bundleId}: $errorValue",
+        "Failed to initialize native fit engine from resource index: $errorValue",
         stackTrace: stackTrace,
       );
       state = const NativeFitEngineState.error(
         messageKey: FitErrorMessageKey.fitCalculationsUnavailable,
       );
+      completer.complete();
+    } finally {
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+      _pendingInit = null;
     }
   }
 }

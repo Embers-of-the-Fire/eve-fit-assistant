@@ -125,62 +125,29 @@ channel (website, store, internal test track, etc.).
 
 ## Data Bundle Release Workflow
 
-Data bundles are built per-workspace (e.g. `tranquility`, `serenity`) and are
-**independent of the app version**. A bundle release does not require an app
+Data is built per-workspace (e.g. `tranquility`, `serenity`) and is
+**independent of the app version**. A data release does not require an app
 version bump.
 
-There are two types of bundle artifacts: **full bundles** (standalone) and
-**incremental patches** (require a matching installed base bundle).
+Data is distributed via the V2 remote content system using content-addressed
+checkout catalogs and asset stores.
 
-### Publishing a full bundle
+### Publishing a data update
 
 1. Select the target workspace:
    ```bash
    ./x workspace default <workspace>
    ```
 
-2. Build the full bundle:
+2. Build the data:
    ```bash
    ./x build data
    ```
-   This produces two files in `cache/workspaces/<workspace>/output/`:
-   - `<bundle_id>.zip` — the complete data archive
-   - `bundle_manifest.json` — snapshot manifest
+   This generates the V2 content-addressed checkout catalog at
+   `cache/workspaces/<workspace>/generated/schema/checkouts/<hash>.json`
+   and the asset store at `schema/assets/`.
 
-3. Keep the `bundle_manifest.json`. It becomes the **baseline manifest** for the
-   next patch build.
-
-### Publishing an incremental patch
-
-1. Start from a workspace where a full snapshot already exists.
-
-2. Keep the previous published `bundle_manifest.json` (from either the base
-   bundle or the last patch).
-
-3. Rebuild the current data state if needed:
-   ```bash
-   ./x build data
-   ```
-
-4. Build the patch using the baseline manifest:
-   ```bash
-   ./x build increment <path/to/baseline/bundle_manifest.json>
-   ```
-   This produces:
-   - `<bundle_id>_increment.zip` — diff-only archive
-   - `bundle_manifest.json` — updated snapshot manifest
-
-5. Publish both the increment zip **and** the new `bundle_manifest.json`, since
-   the manifest becomes the baseline for the next patch in the chain.
-
-### Important rules
-
-- Full bundles are standalone; incremental patches are **not**.
-- A patch can only be imported onto an installed bundle whose manifest matches
-  the patch's baseline.
-- `--no-hash` (or the `build.skip_hash` dev option) disables manifest generation.
-  Builds with that flag **cannot** be used to produce patches.
-- Always keep the manifest that was published with the last accepted bundle state.
+3. Prepare and publish the remote session (see Remote Announcement Publishing below).
 
 
 ## Remote Announcement Publishing
@@ -256,10 +223,10 @@ Pass `--id` to override.
    ./x release changelog detail --no-edit
    ```
 
-2. Build the bundled document assets so the new version notes are included
+2. Build the bundled announcement assets so the new version notes are included
    in the APK:
    ```bash
-   ./x generate docs
+   ./x build announcements
    ```
 
 3. Stage to remote so older app installations can discover the new version:
@@ -326,6 +293,126 @@ For incremental bundles the suffix `-inc` is appended.
 Follow the interactive promotion workflow to move content between channels.
 
 
+## Schema V2 Data & Release Workflow
+
+Schema V2 replaces the v1 data-bundle system with **content-addressed checkouts**.
+Checkout data is generated locally, published to remote storage at
+`efa/v2/<channel>/`, and consumed by the app through branch/checkout resolution.
+App releases (APKs) are published alongside with content-addressed storage.
+
+See the [schema specification](agent/schemav2/spec.md) for the full
+storage contract and hash algorithm.
+
+### V2 Checkout Data Generation
+
+`./x build data` produces a v2 schema checkout alongside the workspace build output:
+
+- `build/<workspace>/schema/checkouts/<hash>.json` — checkout catalog (file manifest + metadata)
+- `build/<workspace>/schema/assets/` — content-addressed asset files
+
+To generate a checkout standalone:
+
+```bash
+./x generate schema --dir <build_dir> --server <server_id>
+```
+
+The output lands at `<build_dir>/schema/`. The checkout hash is a SHA-256
+digest of the sorted file manifest — two builds with identical data produce
+the same checkout ID.
+
+### V2 Remote Publishing
+
+Remote publishing uses a session lifecycle under the `./x remote prepare`
+sub-group (targeting `efa/v2/<channel>/`):
+
+#### 1. Start a session
+
+```bash
+./x remote prepare prepare \
+  --backend s3 \
+  --channel stable \
+  --description "Serenity update 2026-06-13"
+```
+
+`--backend` accepts `minio` (local development) or `s3` (production R2/OSS/S3-compatible).
+
+#### 2. Add server data
+
+Register one or more server + checkout catalogs:
+
+```bash
+./x remote prepare add-resources \
+  --checkout build/serenity/schema/checkouts/<hash>.json \
+  --server serenity \
+  --name-en "Serenity" \
+  --name-zh "晨曦"
+```
+
+Repeat `--checkout` to register multiple checkouts for the same server.
+
+#### 3. Add an APK release
+
+```bash
+./x remote prepare add-release \
+  --version "0.2.0" \
+  --apk build/app/outputs/flutter-apk/app-release.apk \
+  --announcement <announcement-id>
+```
+
+The APK is hashed (SHA-256) and stored content-addressed at
+`resources/releases/<2c hash>/<hash>` under the remote storage root.
+
+`--announcement` is optional — provides a link to a version-update announcement.
+
+#### 4. Publish
+
+```bash
+./x remote prepare publish
+```
+
+Uploads the merged tree to S3/R2, activates the generation via
+`manifest/index.json`, and appends to `manifest/generations.json`.
+
+### V2 Release Catalog Format
+
+The `releases/catalog.json` in each generation describes available releases:
+
+```json
+{
+  "releasesVersion": 1,
+  "releases": {
+    "<release hash>": {
+      "id": "<release hash>",
+      "createdAt": "2026-06-13T00:00:00Z",
+      "version": "0.2.0",
+      "offering": ["apk"],
+      "downloadHash": "<apk content hash>"
+    }
+  }
+}
+```
+
+The full release item record (containing per-platform file hashes) is stored
+content-addressed at `resources/releases/<2c>/<downloadHash>` with a nested
+`files: {offering: {platform: hash}}` structure.
+
+The app client discovers releases via the release catalog, compares versions
+semantically, and downloads the APK through the same content-addressed
+resolution path as data assets.
+
+### Updated Release Checks
+
+The `./x release check` schema-diff gate now detects v2-specific model changes
+in addition to protobuf and persistence changes:
+
+| Change Detected | Severity | Blocks Release? | Remediation |
+|-----------------|----------|-----------------|-------------|
+| `lib/storage/repo/models/` modified, `[schema].schema_version` NOT bumped | BREAKING | **Yes** | Bump `[schema].schema_version` in `efa.config.toml` |
+| `lib/storage/repo/models/` modified, `[schema].schema_version` bumped | BREAKING | **Yes** (by `has_breaking`) | `--force` after confirming |
+| `lib/features/remote_content/endpoint.dart` modified | BREAKING | **Yes** | Verify client/server compatibility, then `--force` |
+| `lib/storage/repo/migration/` modified | INFO | No | Informational only |
+
+
 ## Pre-Release Checks
 
 `./x release check` runs 10 verification gates:
@@ -335,8 +422,8 @@ Follow the interactive promotion workflow to move content between channels.
 | 1 | `version-sync` | FATAL | All version targets match `efa.config.toml` |
 | 2 | `git-clean` | FATAL | Working tree clean, on `dev` branch, pushed to `origin/dev` |
 | 3 | `git-tag` | WARN | Tag for current version exists and points to HEAD |
-| 4 | `schema-diff` | INFO | Protobuf/schema changes since the last release tag |
-| 5 | `schema-bump` | FATAL | `bundle_schema.current` was bumped when proto files changed |
+| 4 | `schema-diff` | FATAL | Breaking schema/endpoint/model changes (DART_MODEL, REMOTE_API, protobuf) require version bumps or `--force` |
+| 5 | `schema-bump` | FATAL | `[schema].schema_version` was bumped when `lib/storage/repo/models/` files changed |
 | 6 | `persistence-check` | FATAL | Fit storage version changed (migration may be needed) |
 | 7 | `submodule` | FATAL | `rust/lib/eve-fit-os` submodule is clean and initialized |
 | 8 | `generate` | FATAL | `./x generate -f all` succeeds and produces no diff |
@@ -358,11 +445,12 @@ auto-detecting the last release tag.
 | Sync version targets | `./x release version sync` |
 | Pre-release checks | `./x release check [--force]` |
 | Commit and tag | `./x release commit [--no-edit]` |
-| Build full bundle | `./x build data` |
-| Build patch bundle | `./x build increment <baseline_manifest>` |
-| Stage announcement | `./x remote prepare add announcement --zh ... --en ...` |
-| Stage bundle | `./x remote prepare add bundle --full ... --manifest ...` |
-| Upload to remote | `./x remote publish upload [--verify]` |
+| Build data | `./x build data` |
+| Generate V2 schema checkout | `./x generate schema --dir <dir> --server <id>` |
+| Start V2 remote session | `./x remote prepare prepare --backend s3 --channel stable --description "..."` |
+| Add V2 server data | `./x remote prepare add-resources --checkout <path> --server <id> --name-en "..." --name-zh "..."` |
+| Add V2 APK release | `./x remote prepare add-release --version "0.2.0" --apk <path> --announcement <id>` |
+| Publish V2 generation | `./x remote prepare publish` |
 | Run remote GC | `./x remote publish gc [--dry-run] [--keep-generations N]` |
 
 

@@ -3,10 +3,12 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/storage/bundle/service.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -54,27 +56,11 @@ class FitRegistryManager extends _$FitRegistryManager {
   }
 
   void updateFit(FitMetadata metadata) {
-    debug("Update fit ${metadata.fitId} ${metadata.shipTypeId} in ${metadata.bundleId}");
+    debug(
+      "Update fit ${metadata.fitId} ${metadata.shipTypeId} checkout ${metadata.checkoutRef.checkoutId}",
+    );
     state = state.copyWith(fits: state.fits.add(metadata.fitId, metadata));
     _syncToDisk();
-  }
-
-  // ignore: unused_element
-  void _syncFromDisk() {
-    final registryFile = File(_fitRegistryPath);
-    if (!registryFile.existsSync()) {
-      registryFile
-        ..createSync(recursive: true)
-        ..writeAsStringSync(jsonEncode(encodeFitRegistry(FitRegistry(fits: IMap()))));
-    }
-    final registryContent = registryFile.readAsStringSync();
-    final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final decodedRegistry = decodeFitRegistry(registryJson);
-    final registry = decodedRegistry.registry;
-    if (decodedRegistry.didMigrate) {
-      _rewriteMigratedRegistry(registryFile, registry);
-    }
-    state = registry;
   }
 
   void _syncToDisk() {
@@ -104,31 +90,31 @@ class FitManager extends _$FitManager {
 
   static String generateFitId() => _idGenerator.v4();
 
+  CheckoutRef _checkoutRefForActive(Option<CheckoutRegistryEntry> entryOpt) =>
+      entryOpt.match(() => throw StateError("A valid checkout must be active."), (entry) {
+        final checkoutId = ref
+            .read(activeCheckoutIdProvider)
+            .match(() => throw StateError("A valid checkout must be active."), (id) => id);
+        return CheckoutRef(checkoutId: checkoutId, serverId: entry.serverId);
+      });
+
   Future<FitMetadata> newFit(int shipId, String name) async {
-    final ship = ref.watch(
-      bundleCollectionServiceProvider.select(
-        (collection) => collection.collection?.getShip(shipId),
-      ),
-    );
+    final ship = ref.watch(repoCollectionProvider.select((c) => c?.getShip(shipId)));
     if (ship == null) {
-      final text = "Ship with ID $shipId not found in bundle collection.";
+      final text = "Ship with ID $shipId not found in repo collection.";
       error(text);
       throw Exception(text);
     }
     info("Creating new fit of type $shipId named $name");
     final fitId = generateFitId();
-    final bundleInfo = ref.watch(currentBundleProvider);
-    if (bundleInfo == null) {
-      throw StateError("A valid bundle must be active before creating a fit.");
-    }
+    final active = ref.watch(activeCheckoutProvider);
     final metadata = FitMetadata(
       fitId: fitId,
       shipTypeId: shipId,
       name: name,
       lastModified: DateTime.now().millisecondsSinceEpoch,
       description: "",
-      bundleId: bundleInfo.bundleId,
-      bundleSnapshot: FitBundleSnapshot.fromBundleMetadata(bundleInfo),
+      checkoutRef: _checkoutRefForActive(active),
     );
     final fit = FitStorage.empty(metadata, ship);
     final fitPath = fit.fitStoragePath;
@@ -166,21 +152,15 @@ class FitManager extends _$FitManager {
 
   Future<FitMetadata> importFit(FitStorage importedFit) async {
     final ship = ref.watch(
-      bundleCollectionServiceProvider.select(
-        (collection) => collection.collection?.getShip(importedFit.body.shipTypeId),
-      ),
+      repoCollectionProvider.select((c) => c?.getShip(importedFit.body.shipTypeId)),
     );
     if (ship == null) {
-      final text = "Ship with ID ${importedFit.body.shipTypeId} not found in bundle collection.";
+      final text = "Ship with ID ${importedFit.body.shipTypeId} not found in repo collection.";
       error(text);
       throw Exception(text);
     }
 
-    final bundleInfo = ref.watch(currentBundleProvider);
-    if (bundleInfo == null) {
-      throw StateError("A valid bundle must be active before importing a fit.");
-    }
-
+    final active = ref.watch(activeCheckoutProvider);
     final fitId = generateFitId();
     final metadata = importedFit.metadata.copyWith(
       fitId: fitId,
@@ -189,8 +169,7 @@ class FitManager extends _$FitManager {
           ? "Imported Fit"
           : importedFit.metadata.name.trim(),
       lastModified: DateTime.now().millisecondsSinceEpoch,
-      bundleId: bundleInfo.bundleId,
-      bundleSnapshot: FitBundleSnapshot.fromBundleMetadata(bundleInfo),
+      checkoutRef: _checkoutRefForActive(active),
     );
     final fit = pruneDynamicRegistry(importedFit.copyWith(metadata: metadata));
 

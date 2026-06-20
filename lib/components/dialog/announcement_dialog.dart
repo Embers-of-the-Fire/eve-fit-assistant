@@ -16,8 +16,9 @@ Future<void> showAnnouncementDialog(
   AnnouncementDialogPersistenceCallback? onPersistPreference,
   bool barrierDismissible = true,
   bool initialDontShowAgain = false,
+  GlobalKey<NavigatorState>? navigatorKey,
 }) => showDialog<void>(
-  context: context,
+  context: navigatorKey?.currentContext ?? context,
   barrierDismissible: barrierDismissible,
   builder: (context) => AnnouncementDialog(
     title: title,

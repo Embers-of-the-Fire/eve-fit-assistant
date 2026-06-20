@@ -2,7 +2,8 @@ import "dart:math" as math;
 
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
-import "package:eve_fit_assistant/storage/bundle/service/localization.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/widgets.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -400,8 +401,15 @@ EveDogmaUnitId? _dogmaUnitId(DogmaUnit? unit) =>
     unit == null ? null : EveDogmaUnitId.fromId(unit.dogmaUnitId);
 
 String dogmaUnitLabel(WidgetRef ref, DogmaUnit unit) {
+  final locale = ref.watch(localeProvider).name;
   final localized = unit.hasDisplayName()
-      ? ref.watch(localizationProvider(unit.displayName.id))?.trim()
+      ? ref
+            .watch(
+              repoCollectionProvider.select(
+                (c) => c?.getLocalizedName(unit.displayName.id, locale),
+              ),
+            )
+            ?.trim()
       : null;
   if (localized?.isNotEmpty ?? false) return localized!;
   return unit.name.trim();

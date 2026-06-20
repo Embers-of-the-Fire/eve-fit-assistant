@@ -41,7 +41,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
     });
     try {
       final dir = Directory(PathProvider.logsPath);
-      if (!await dir.exists()) {
+      if (!dir.existsSync()) {
         if (!mounted) return;
         setState(() {
           _allFiles = [];
@@ -218,7 +218,7 @@ class _CollectLogsPageState extends ConsumerState<CollectLogsPage> {
               const SizedBox(height: 12),
               Text(context.l10n.collectLogsLoadError),
               const SizedBox(height: 16),
-              OutlinedButton(onPressed: _loadFiles, child: const Text("Retry")),
+              OutlinedButton(onPressed: _loadFiles, child: Text(context.l10n.fitPageRetryAction)),
             ],
           ),
         ),

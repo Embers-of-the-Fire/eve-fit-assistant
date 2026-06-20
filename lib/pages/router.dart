@@ -1,15 +1,17 @@
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/pages/documents/page.dart";
+import "package:eve_fit_assistant/pages/announcements/feed_page.dart";
 import "package:eve_fit_assistant/pages/fit/page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/collect_logs_page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/remote_content.dart";
-import "package:eve_fit_assistant/pages/setting/bundle-manager/page.dart";
+import "package:eve_fit_assistant/pages/setting/channel_overview/page.dart";
+import "package:eve_fit_assistant/pages/setting/data/channel_metadata.dart";
+import "package:eve_fit_assistant/pages/setting/data/checkout_management.dart";
+import "package:eve_fit_assistant/pages/setting/data/storage.dart";
 import "package:eve_fit_assistant/pages/view.dart";
 import "package:eve_fit_assistant/pages/workspace/create-fit/page.dart";
-import "package:eve_fit_assistant/storage/bundle/impact.dart";
 import "package:flutter/material.dart";
 
 part "router.gr.dart";
@@ -26,14 +28,13 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/app-settings", page: AppSettingsRoute.page),
     AutoRoute(path: "/setting/remote-content", page: RemoteContentSettingsRoute.page),
     AutoRoute(path: "/setting/collect-logs", page: CollectLogsRoute.page),
-    AutoRoute(path: "/setting/version", page: VersionRoute.page),
-    AutoRoute(path: "/setting/bundle-manager", page: BundleManagerRoute.page),
-    AutoRoute(path: "/setting/bundle-manager/remote", page: RemoteBundleSelectionRoute.page),
-    AutoRoute(path: "/setting/bundle-manager/:bundleId", page: BundleDetailRoute.page),
-    AutoRoute(path: "/setting/bundle-manager/:bundleId/impact", page: BundleImpactDetailRoute.page),
+    AutoRoute(path: "/setting/data/storage", page: StorageManagement.page),
+    AutoRoute(path: "/setting/data/channel-metadata", page: ChannelMetadataRoute.page),
+    AutoRoute(path: "/setting/data/checkouts", page: CheckoutManagementRoute.page),
+    AutoRoute(path: "/setting/channel-overview", page: ChannelOverviewRoute.page),
     AutoRoute(path: "/setting/report-feedback", page: ReportFeedbackRoute.page),
     AutoRoute(path: "/setting/report-feedback/external", page: ReportExternalLinksRoute.page),
-    AutoRoute(path: "/announcement", page: AnnouncementRoute.page),
+    AutoRoute(path: "/announcements", page: AnnouncementFeedRoute.page),
     AutoRoute(path: "/fitting/current", page: FitRoute.page),
   ];
 }

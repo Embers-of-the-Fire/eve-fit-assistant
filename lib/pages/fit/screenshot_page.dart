@@ -24,7 +24,7 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
       emulated: (output) => output,
     );
     final shipInfo = fitState.isInitialized
-        ? ref.watch(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId))
+        ? ref.watch(repoCollectionProvider.select((c) => c?.getShip(fitState.fit.body.shipTypeId)))
         : null;
 
     if (fitState.hasError) {
@@ -625,7 +625,7 @@ int _fighterCountForGroup(Set<int> groups, FitContext fitContext, WidgetRef ref)
   for (final fighter in fitContext.fit.body.fighters) {
     final typeId = fitContext.resolveOriginTypeId(fighter.itemId);
     if (typeId == null) continue;
-    final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+    final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
     if (type == null) continue;
     if (groups.contains(type.groupId)) {
       count += 1;

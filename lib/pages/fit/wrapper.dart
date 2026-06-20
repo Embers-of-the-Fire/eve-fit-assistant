@@ -124,7 +124,7 @@ class FitWrapper {
         final typeId = _resolveOriginTypeId(fit, fighter.itemId);
         if (typeId == null) return false;
 
-        final type = ref.read(bundleCollectionGetTypeProvider(typeId));
+        final type = ref.read(repoCollectionProvider.select((c) => c?.getType(typeId)));
         if (type == null) return false;
 
         return _fighterCategoryFromGroupId(type.groupId) == category;
@@ -146,7 +146,9 @@ class FitWrapper {
       );
       final characterId = tempFit.body.characterId;
       final engine = ref.read(nativeFitEngineServiceProvider).engineOrNull;
-      final availableSkillTypeIds = ref.read(bundleCollectionSkillTypeIdsProvider);
+      final availableSkillTypeIds = ref.read(
+        repoCollectionProvider.select((c) => c?.getSkillTypeIds() ?? const IList<int>.empty()),
+      );
       final characterSkills = await ref
           .read(characterRegistryManagerProvider.notifier)
           .resolveCharacterSkills(characterId, availableSkillTypeIds);
@@ -248,7 +250,7 @@ class FitWrapper {
       wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(boosters: IList())));
 
   int? findImplantStorageIndex(FitStorage fit, int slotId, WidgetRef ref) {
-    final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
+    final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
     if (slotsInfo == null) return null;
 
     for (final (index, implant) in fit.body.implants.mapWithIndex(
@@ -338,7 +340,7 @@ class FitWrapper {
 
   // Public unified interfaces
   Future<void> equipSlot(SlotIdentifier slotIdent, int typeId, WidgetRef ref) async {
-    final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
+    final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
     if (slotsInfo == null) return;
 
     switch (slotIdent) {
@@ -358,7 +360,9 @@ class FitWrapper {
         final proto = slotsInfo.subsystemSlots[typeId];
         if (proto != null) {
           final ship = ref.read(
-            bundleCollectionGetShipProvider(ref.read(fitProvider(fitId)).fit.body.shipTypeId),
+            repoCollectionProvider.select(
+              (c) => c?.getShip(ref.read(fitProvider(fitId)).fit.body.shipTypeId),
+            ),
           );
           if (ship == null) return;
           await wrapped.update((fit) {
@@ -378,7 +382,7 @@ class FitWrapper {
             return applySubsystemResize(
               afterEquip,
               ship,
-              (id) => ref.read(bundleCollectionGetSubsystemProvider(id)),
+              (id) => ref.read(repoCollectionProvider.select((c) => c?.getSubsystem(id))),
             );
           });
         }
@@ -403,7 +407,7 @@ class FitWrapper {
     }
 
     await wrapped.update((fit) {
-      final slotsInfo = ref.read(bundleCollectionGetSlotsProvider);
+      final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
       if (slotsInfo == null) return fit;
 
       final slotOpt = getSlot(fit, slotIdent);
@@ -528,7 +532,9 @@ class FitWrapper {
       case SlotIdentifierSubsystem(:final type):
         final fitState = ref.read(fitProvider(fitId));
         if (!fitState.isInitialized) return;
-        final ship = ref.read(bundleCollectionGetShipProvider(fitState.fit.body.shipTypeId));
+        final ship = ref.read(
+          repoCollectionProvider.select((c) => c?.getShip(fitState.fit.body.shipTypeId)),
+        );
         if (ship == null) return;
         await wrapped.update((fit) {
           final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
@@ -541,7 +547,7 @@ class FitWrapper {
           return applySubsystemResize(
             afterRemove,
             ship,
-            (id) => ref.read(bundleCollectionGetSubsystemProvider(id)),
+            (id) => ref.read(repoCollectionProvider.select((c) => c?.getSubsystem(id))),
           );
         });
       default:
@@ -665,7 +671,7 @@ class FitWrapper {
     }
 
     final dynamicMutator = ref
-        .read(bundleCollectionProvider)
+        .read(repoCollectionProvider)
         ?.getDynamicMutator(dynamicItem.modifierTypeId);
     if (dynamicMutator == null) {
       warning(
@@ -688,46 +694,46 @@ class FitWrapper {
     );
   });
 
-  Future<void> convertSlotToDynamic(
-    SlotIdentifier slotIdent,
-    int modifierTypeId,
-    WidgetRef ref,
-  ) => wrapped.update((fit) {
-    final slotOpt = getSlot(fit, slotIdent);
-    if (slotOpt.isNone()) return fit;
+  Future<void> convertSlotToDynamic(SlotIdentifier slotIdent, int modifierTypeId, WidgetRef ref) =>
+      wrapped.update((fit) {
+        final slotOpt = getSlot(fit, slotIdent);
+        if (slotOpt.isNone()) return fit;
 
-    final slot = slotOpt.toNullable()!;
-    if (slot.itemId is FitStorageItemIdDynamic) return fit;
+        final slot = slotOpt.toNullable()!;
+        if (slot.itemId is FitStorageItemIdDynamic) return fit;
 
-    final originTypeId = _resolveOriginTypeId(fit, slot.itemId);
-    if (originTypeId == null) return fit;
+        final originTypeId = _resolveOriginTypeId(fit, slot.itemId);
+        if (originTypeId == null) return fit;
 
-    final dynamicMutator = ref.read(bundleCollectionProvider)?.getDynamicMutator(modifierTypeId);
-    if (dynamicMutator == null) return fit;
-    if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+        final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+        if (dynamicMutator == null) return fit;
+        if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
 
-    final dynamicItemId = _allocateDynamicItemId(fit);
-    final dynamicItem = FitDynamicItem(
-      dynamicItemId: dynamicItemId,
-      originTypeId: originTypeId,
-      typeId: dynamicMutator.resultingTypeId,
-      modifierTypeId: modifierTypeId,
-      dynamicAttributes: IMap.fromEntries(
-        dynamicMutator.attributes.keys.map((attributeId) => MapEntry<int, double>(attributeId, 1)),
-      ),
-    );
-    final updatedFit = fit.copyWith(
-      dynamicRegistry: fit.dynamicRegistry.copyWith(
-        dynamicItems: fit.dynamicRegistry.dynamicItems.add(dynamicItemId, dynamicItem),
-      ),
-    );
+        final dynamicItemId = _allocateDynamicItemId(fit);
+        final dynamicItem = FitDynamicItem(
+          dynamicItemId: dynamicItemId,
+          originTypeId: originTypeId,
+          typeId: dynamicMutator.resultingTypeId,
+          modifierTypeId: modifierTypeId,
+          dynamicAttributes: IMap.fromEntries(
+            dynamicMutator.attributes.keys.map(
+              (attributeId) => MapEntry<int, double>(attributeId, 1),
+            ),
+          ),
+        );
+        final updatedFit = fit.copyWith(
+          dynamicRegistry: fit.dynamicRegistry.copyWith(
+            dynamicItems: fit.dynamicRegistry.dynamicItems.add(dynamicItemId, dynamicItem),
+          ),
+        );
 
-    return updateSlot(
-      updatedFit,
-      slotIdent,
-      (_) => Option.of(slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId))),
-    );
-  });
+        return updateSlot(
+          updatedFit,
+          slotIdent,
+          (_) =>
+              Option.of(slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId))),
+        );
+      });
 
   Future<void> revertSlotFromDynamic(SlotIdentifier slotIdent) => wrapped.update((fit) {
     final slotOpt = getSlot(fit, slotIdent);
@@ -1254,8 +1260,8 @@ class FitWrapper {
 
   Future<void> addFighter(int typeId) async {
     final fit = ref.read(fitProvider(fitId)).fit;
-    final ship = ref.read(bundleCollectionGetShipProvider(fit.body.shipTypeId));
-    final fighterType = ref.read(bundleCollectionGetTypeProvider(typeId));
+    final ship = ref.read(repoCollectionProvider.select((c) => c?.getShip(fit.body.shipTypeId)));
+    final fighterType = ref.read(repoCollectionProvider.select((c) => c?.getType(typeId)));
     if (ship == null || fighterType == null) return;
     if (fit.body.fighters.length >= ship.fighterTubes) return;
 
@@ -1275,7 +1281,9 @@ class FitWrapper {
     if (quantity == null) return;
 
     await wrapped.update((currentFit) {
-      final currentShip = ref.read(bundleCollectionGetShipProvider(currentFit.body.shipTypeId));
+      final currentShip = ref.read(
+        repoCollectionProvider.select((c) => c?.getShip(currentFit.body.shipTypeId)),
+      );
       if (currentFit.body.characterId != fit.body.characterId ||
           currentShip == null ||
           currentFit.body.fighters.length >= currentShip.fighterTubes) {
@@ -1414,10 +1422,9 @@ class FitWrapper {
       newLow = defs.fold<int>(0, (sum, s) => sum + s.lowSlots);
     }
 
-    // Subsystems can redefine the ship's slot topology. We intentionally keep
-    // legacy behavior here: when the new layout shrinks, tail slots are dropped
-    // outright so the resulting fit shape matches the deprecated fitter and the
-    // native engine never sees modules in now-invalid slots.
+    // Subsystems can redefine the ship's slot topology. When the new layout
+    // shrinks, tail slots are dropped so the native engine never sees modules
+    // in now-invalid slots.
     IList<Option<FitModuleItem>> resize(IList<Option<FitModuleItem>> current, int target) {
       if (target == current.length) return current;
       if (target < current.length) {

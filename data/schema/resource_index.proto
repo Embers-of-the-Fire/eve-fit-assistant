@@ -1,0 +1,17 @@
+syntax = "proto2";
+package efa.v2;
+
+/// Authoritative file-to-content mapping for one server's resource snapshot.
+///
+/// Each entry maps a resource_id (URI path) to its content hash and size.
+/// All blobs live in the shared assets/blobs/ store addressed by SHA-256(resource_id).
+message ResourceIndex {
+  required int32 schema_version = 1;
+  repeated Entry entries = 2;
+
+  message Entry {
+    required string resource_id = 1;  // e.g. "resource://static/native/types.pb2"
+    required string content_hash = 2; // SHA-256 hex of raw blob bytes
+    required int64 size = 3;          // File size in bytes
+  }
+}

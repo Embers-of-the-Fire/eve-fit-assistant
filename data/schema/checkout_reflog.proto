@@ -1,0 +1,14 @@
+syntax = "proto2";
+package efa.v2;
+
+/// Tracks every resource snapshot transition for a single checkout.
+message CheckoutReflog {
+  required int32 schema_version = 1;
+  repeated Entry entries = 2;
+
+  message Entry {
+    required string from = 1;        // Empty string for initial
+    required string to = 2;          // Resource snapshot hash
+    required string timestamp = 3;   // ISO 8601
+  }
+}

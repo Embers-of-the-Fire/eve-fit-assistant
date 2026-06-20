@@ -4,12 +4,16 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/storage/bundle/service.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
-import "package:eve_fit_assistant/storage/bundle/skill_profiles.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/compatibility.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
+import "package:eve_fit_assistant/storage/repo/models/compatibility.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:fpdart/fpdart.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as p;
 import "package:riverpod_annotation/riverpod_annotation.dart";
@@ -17,6 +21,10 @@ import "package:uuid/uuid.dart";
 
 part "manager.freezed.dart";
 part "manager.g.dart";
+
+const predefinedMaxSkillProfileId = "all_5";
+const predefinedAlphaMaxSkillProfileId = "alpha_max";
+const predefinedZeroSkillProfileId = "all_0";
 
 @freezed
 abstract class CharacterMetadata with _$CharacterMetadata {
@@ -28,9 +36,7 @@ abstract class CharacterMetadata with _$CharacterMetadata {
     /// DateTime.millisecondsSinceEpoch
     required int lastModified,
 
-    required String bundleId,
-    @JsonKey(readValue: readCharacterBundleSnapshot)
-    required CharacterBundleSnapshot bundleSnapshot,
+    required CheckoutRef checkoutRef,
   }) = _CharacterMetadata;
 
   factory CharacterMetadata.fromCharacter(CharacterStorage character) => CharacterMetadata(
@@ -38,8 +44,7 @@ abstract class CharacterMetadata with _$CharacterMetadata {
     name: character.name,
     description: character.description,
     lastModified: character.lastModified,
-    bundleId: character.bundleId,
-    bundleSnapshot: character.bundleSnapshot,
+    checkoutRef: character.checkoutRef,
   );
 
   factory CharacterMetadata.fromJson(Map<String, dynamic> json) =>
@@ -73,7 +78,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   Timer? _registrySyncTimer;
   Future<void> _pendingRegistrySync = Future<void>.value();
   CharacterRegistry? _registrySyncSnapshot;
-  final Set<String> _reportedBundleWarnings = <String>{};
+  final Set<String> _reportedRepoWarnings = <String>{};
 
   static bool isBuiltInCharacterId(String characterId) => builtInCharacterIds.contains(characterId);
 
@@ -106,20 +111,20 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     final registry = CharacterRegistry.fromJson(registryJson);
     final normalizedRegistry = _ensureBuiltInCharacters(
       registry,
-      activeBundle: ref.read(currentBundleProvider),
+      activeCheckout: ref.read(activeCheckoutProvider),
     );
     _registrySyncSnapshot = normalizedRegistry;
     return normalizedRegistry;
   }
 
   void updateCharacter(CharacterMetadata metadata) {
-    debug("Update character ${metadata.characterId} in ${metadata.bundleId}");
+    debug("Update character ${metadata.characterId} checkout ${metadata.checkoutRef.checkoutId}");
     _setRegistry(state.copyWith(characters: state.characters.add(metadata.characterId, metadata)));
     _scheduleRegistrySync();
   }
 
-  void refreshBuiltInCharacters(BundleMetadata? activeBundle) {
-    _setRegistry(_ensureBuiltInCharacters(state, activeBundle: activeBundle));
+  void refreshBuiltInCharacters(Option<CheckoutRegistryEntry> activeCheckout) {
+    _setRegistry(_ensureBuiltInCharacters(state, activeCheckout: activeCheckout));
     _scheduleRegistrySync();
   }
 
@@ -140,7 +145,7 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     }
     final json = jsonDecode(text) as Map<String, dynamic>;
     final character = CharacterStorage.fromJson(json);
-    _warnIfBundleNeedsAttention(character, context: "loading character");
+    _warnIfCheckoutNeedsAttention(character, context: "loading character");
     return character;
   }
 
@@ -164,15 +169,11 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       if (character == null) {
         skills = const <int, int>{};
       } else {
-        _warnIfBundleNeedsAttention(character, context: "resolving character skills");
+        _warnIfCheckoutNeedsAttention(character, context: "resolving character skills");
         skills = character.skills;
       }
     } else {
-      skills = _resolveBundleSkillProfile(
-        ref.read(bundleCollectionProvider),
-        profileId,
-        skillTypeIds,
-      );
+      skills = _resolveRepoSkillProfile(ref.read(repoCollectionProvider), profileId, skillTypeIds);
     }
 
     if (skillTypeIds.isEmpty) {
@@ -191,12 +192,12 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     _ => null,
   };
 
-  static Map<int, int> _resolveBundleSkillProfile(
-    BundleCollectionProxy? collection,
+  static Map<int, int> _resolveRepoSkillProfile(
+    RepoCollectionService? collection,
     String profileId,
     Iterable<int> skillTypeIds,
   ) {
-    final profileSkills = collection?.getSkillProfile(profileId) ?? const <int, int>{};
+    final profileSkills = collection?.getSkillProfile(profileId) ?? const IMap.empty();
     return <int, int>{for (final typeId in skillTypeIds) typeId: profileSkills[typeId] ?? 0};
   }
 
@@ -227,14 +228,15 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       throw StateError("Built-in characters cannot be modified: ${character.characterId}");
     }
 
-    _warnIfBundleNeedsAttention(character, context: "saving character");
-    final activeBundle = ref.read(currentBundleProvider);
+    _warnIfCheckoutNeedsAttention(character, context: "saving character");
+    final activeCheckout = ref.read(activeCheckoutProvider);
+    final checkoutId = ref.read(activeCheckoutIdProvider).match(() => "", (id) => id);
     final savedCharacter = character.copyWith(
       lastModified: touch ? DateTime.now().millisecondsSinceEpoch : character.lastModified,
-      bundleId: activeBundle?.bundleId ?? character.bundleId,
-      bundleSnapshot: activeBundle == null
-          ? character.bundleSnapshot
-          : CharacterBundleSnapshot.fromBundleMetadata(activeBundle),
+      checkoutRef: activeCheckout.match(
+        () => character.checkoutRef,
+        (entry) => _checkoutRefFor(entry, checkoutId),
+      ),
       skills: character.skills.map(
         (typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level)),
       ),
@@ -255,20 +257,6 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     }
     _setRegistry(state.copyWith(characters: state.characters.remove(characterId)));
     await _flushRegistrySync();
-  }
-
-  // ignore: unused_element
-  void _syncFromDisk() {
-    final registryFile = File(_characterRegistryPath);
-    if (!registryFile.existsSync()) {
-      registryFile
-        ..createSync(recursive: true)
-        ..writeAsStringSync("{}");
-    }
-    final registryContent = registryFile.readAsStringSync();
-    final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = CharacterRegistry.fromJson(registryJson);
-    _setRegistry(_ensureBuiltInCharacters(registry, activeBundle: ref.read(currentBundleProvider)));
   }
 
   void _scheduleRegistrySync() {
@@ -326,15 +314,15 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     required Map<int, int> skills,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final activeBundle = ref.read(currentBundleProvider);
-    final bundleSnapshot = _bundleSnapshotFor(activeBundle);
+    final activeCheckout = ref.read(activeCheckoutProvider);
+    final checkoutId = ref.read(activeCheckoutIdProvider).match(() => "", (id) => id);
+    final checkoutRef = _checkoutRefForOrSentinel(activeCheckout, checkoutId);
     final character = CharacterStorage(
       characterId: generateCharacterId(),
       name: name,
       description: description,
       lastModified: now,
-      bundleId: bundleSnapshot.bundleId,
-      bundleSnapshot: bundleSnapshot,
+      checkoutRef: checkoutRef,
       skills: skills.map((typeId, level) => MapEntry(typeId, _normalizeSkillLevel(level))),
     );
     await _writeCharacter(character);
@@ -345,11 +333,11 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   CharacterRegistry _ensureBuiltInCharacters(
     CharacterRegistry registry, {
-    required BundleMetadata? activeBundle,
+    required Option<CheckoutRegistryEntry> activeCheckout,
   }) {
     var nextRegistry = registry;
 
-    for (final metadata in _builtInMetadata(activeBundle)) {
+    for (final metadata in _builtInMetadata(activeCheckout)) {
       nextRegistry = nextRegistry.copyWith(
         characters: nextRegistry.characters.add(metadata.characterId, metadata),
       );
@@ -360,66 +348,66 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
 
   CharacterStorage? _loadBuiltInCharacter(String characterId) {
     final metadata = _builtInMetadata(
-      ref.read(currentBundleProvider),
+      ref.read(activeCheckoutProvider),
     ).where((metadata) => metadata.characterId == characterId).firstOrNull;
     if (metadata == null) {
       return null;
     }
 
     final profileId = _skillProfileIdForCharacter(characterId);
+    final collection = ref.read(repoCollectionProvider);
     final skills = profileId == null
         ? const <int, int>{}
-        : _resolveBundleSkillProfile(
-            ref.read(bundleCollectionProvider),
-            profileId,
-            ref.read(bundleCollectionSkillTypeIdsProvider),
-          );
+        : _resolveRepoSkillProfile(collection, profileId, collection?.getSkillTypeIds() ?? <int>[]);
 
     return CharacterStorage(
       characterId: metadata.characterId,
       name: metadata.name,
       description: metadata.description,
       lastModified: metadata.lastModified,
-      bundleId: metadata.bundleId,
-      bundleSnapshot: metadata.bundleSnapshot,
+      checkoutRef: metadata.checkoutRef,
       skills: skills,
     );
   }
 
-  static Iterable<CharacterMetadata> _builtInMetadata(BundleMetadata? activeBundle) {
-    final bundleSnapshot = _bundleSnapshotFor(activeBundle);
+  CheckoutRef _checkoutRefFor(CheckoutRegistryEntry entry, String checkoutId) =>
+      CheckoutRef(checkoutId: checkoutId, serverId: entry.serverId);
+
+  CheckoutRef _checkoutRefForOrSentinel(
+    Option<CheckoutRegistryEntry> entryOpt,
+    String checkoutId,
+  ) => entryOpt.match(
+    () => const CheckoutRef(checkoutId: "", serverId: ""),
+    (entry) => _checkoutRefFor(entry, checkoutId),
+  );
+
+  Iterable<CharacterMetadata> _builtInMetadata(Option<CheckoutRegistryEntry> entryOpt) {
+    final checkoutId = ref.read(activeCheckoutIdProvider).match(() => "", (id) => id);
+    final checkoutRef = _checkoutRefForOrSentinel(entryOpt, checkoutId);
     return [
       CharacterMetadata(
         characterId: predefinedMaxCharacterId,
         name: "All V",
         description: "Built-in max skill profile",
         lastModified: 0,
-        bundleId: bundleSnapshot.bundleId,
-        bundleSnapshot: bundleSnapshot,
+        checkoutRef: checkoutRef,
       ),
       CharacterMetadata(
         characterId: predefinedAlphaMaxCharacterId,
         name: "Alpha Max",
         description: "Built-in Alpha clone max skill profile",
         lastModified: 0,
-        bundleId: bundleSnapshot.bundleId,
-        bundleSnapshot: bundleSnapshot,
+        checkoutRef: checkoutRef,
       ),
       CharacterMetadata(
         characterId: predefinedZeroCharacterId,
         name: "All 0",
         description: "Built-in zero skill profile",
         lastModified: 0,
-        bundleId: bundleSnapshot.bundleId,
-        bundleSnapshot: bundleSnapshot,
+        checkoutRef: checkoutRef,
       ),
     ];
   }
-
-  static CharacterBundleSnapshot _bundleSnapshotFor(BundleMetadata? activeBundle) =>
-      activeBundle == null
-      ? const CharacterBundleSnapshot(bundleId: "")
-      : CharacterBundleSnapshot.fromBundleMetadata(activeBundle);
 
   static CharacterRegistry _registryForDisk(CharacterRegistry registry) => registry.copyWith(
     characters: registry.characters.removeWhere(
@@ -427,144 +415,50 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     ),
   );
 
-  void _warnIfBundleNeedsAttention(CharacterStorage character, {required String context}) {
-    final compatibility = _evaluateCharacterBundleCompatibility(
-      character.bundleSnapshot,
-      ref.read(currentBundleProvider),
-    );
-    if (compatibility.kind == _CharacterBundleCompatibilityKind.compatible) {
+  void _warnIfCheckoutNeedsAttention(CharacterStorage character, {required String context}) {
+    final checkoutRef = character.checkoutRef;
+    if (checkoutRef.checkoutId.isEmpty) {
       return;
     }
 
-    final activeBundleId = compatibility.activeSnapshot?.bundleId ?? "<none>";
+    final activeOpt = ref.read(activeCheckoutProvider);
+    if (activeOpt.isNone()) {
+      return;
+    }
+    final active = activeOpt.toNullable()!;
+    final checkoutId = ref.read(activeCheckoutIdProvider);
+    if (checkoutId.isNone() || checkoutId.toNullable()!.isEmpty) {
+      return;
+    }
+
+    const compatibilityService = CompatibilityService();
+    final result = compatibilityService.check(
+      CompatibilityRequest(
+        serverId: checkoutRef.serverId,
+        checkoutId: checkoutRef.checkoutId,
+        targetServerId: active.serverId,
+        targetCheckoutId: checkoutId.toNullable()!,
+      ),
+    );
+
+    if (result.result == CompatibilityResult.compatible) {
+      return;
+    }
+
     final warningKey = [
       character.characterId,
-      character.bundleSnapshot.bundleId,
-      activeBundleId,
-      compatibility.kind.name,
-      compatibility.reason.name,
+      checkoutRef.checkoutId,
+      checkoutId.toNullable()!,
+      result.result.name,
     ].join(":");
-    if (!_reportedBundleWarnings.add(warningKey)) {
+    if (!_reportedRepoWarnings.add(warningKey)) {
       return;
     }
 
     warning(
-      "Character ${character.characterId} was saved against bundle "
-      "${character.bundleSnapshot.bundleId}, but active bundle is $activeBundleId "
-      "(${compatibility.reason.name}) while $context.",
+      "Character ${character.characterId} was saved against checkout "
+      "${checkoutRef.checkoutId}, but active checkout is ${checkoutId.toNullable()!} "
+      "(${result.result.name}) while $context.",
     );
   }
-}
-
-enum _CharacterBundleCompatibilityKind { compatible, outdated, incompatible, unavailable }
-
-enum _CharacterBundleCompatibilityReason {
-  none,
-  activeBundleUnavailable,
-  bundleIdMismatch,
-  missingComparableRevision,
-  manifestMismatch,
-  generationMismatch,
-  buildMismatch,
-  appVersionMismatch,
-}
-
-({
-  _CharacterBundleCompatibilityKind kind,
-  _CharacterBundleCompatibilityReason reason,
-  CharacterBundleSnapshot? activeSnapshot,
-})
-_evaluateCharacterBundleCompatibility(
-  CharacterBundleSnapshot savedSnapshot,
-  BundleMetadata? activeBundle,
-) {
-  if (activeBundle == null) {
-    return (
-      kind: _CharacterBundleCompatibilityKind.unavailable,
-      reason: _CharacterBundleCompatibilityReason.activeBundleUnavailable,
-      activeSnapshot: null,
-    );
-  }
-
-  final activeSnapshot = CharacterBundleSnapshot.fromBundleMetadata(activeBundle);
-  final result = _evaluateCharacterSnapshotPair(savedSnapshot, activeSnapshot);
-  return (kind: result.kind, reason: result.reason, activeSnapshot: activeSnapshot);
-}
-
-({_CharacterBundleCompatibilityKind kind, _CharacterBundleCompatibilityReason reason})
-_evaluateCharacterSnapshotPair(
-  CharacterBundleSnapshot savedSnapshot,
-  CharacterBundleSnapshot activeSnapshot,
-) {
-  if (savedSnapshot.bundleId != activeSnapshot.bundleId) {
-    return (
-      kind: _CharacterBundleCompatibilityKind.incompatible,
-      reason: _CharacterBundleCompatibilityReason.bundleIdMismatch,
-    );
-  }
-
-  if (!savedSnapshot.hasComparableRevision || !activeSnapshot.hasComparableRevision) {
-    return (
-      kind: _CharacterBundleCompatibilityKind.outdated,
-      reason: _CharacterBundleCompatibilityReason.missingComparableRevision,
-    );
-  }
-
-  if (savedSnapshot.manifestHash case final savedManifestHash?) {
-    final activeManifestHash = activeSnapshot.manifestHash;
-    if (activeManifestHash != null && savedManifestHash != activeManifestHash) {
-      return (
-        kind: _CharacterBundleCompatibilityKind.outdated,
-        reason: _CharacterBundleCompatibilityReason.manifestMismatch,
-      );
-    }
-  }
-
-  if (savedSnapshot.generateTimestamp case final savedGenerateTimestamp?) {
-    final activeGenerateTimestamp = activeSnapshot.generateTimestamp;
-    if (activeGenerateTimestamp != null && savedGenerateTimestamp != activeGenerateTimestamp) {
-      return (
-        kind: _CharacterBundleCompatibilityKind.outdated,
-        reason: _CharacterBundleCompatibilityReason.generationMismatch,
-      );
-    }
-  }
-
-  if (savedSnapshot.gameBuild case final savedGameBuild?) {
-    final activeGameBuild = activeSnapshot.gameBuild;
-    if (activeGameBuild != null && savedGameBuild != activeGameBuild) {
-      return (
-        kind: _CharacterBundleCompatibilityKind.outdated,
-        reason: _CharacterBundleCompatibilityReason.buildMismatch,
-      );
-    }
-  }
-
-  if (savedSnapshot.appVersion case final savedAppVersion?) {
-    final activeAppVersion = activeSnapshot.appVersion;
-    if (activeAppVersion != null && savedAppVersion != activeAppVersion) {
-      return (
-        kind: _CharacterBundleCompatibilityKind.outdated,
-        reason: _CharacterBundleCompatibilityReason.appVersionMismatch,
-      );
-    }
-  }
-
-  return (
-    kind: _CharacterBundleCompatibilityKind.compatible,
-    reason: _CharacterBundleCompatibilityReason.none,
-  );
-}
-
-@riverpodSingleton
-class FitManager extends _$FitManager {
-  static const _idGenerator = Uuid();
-
-  @override
-  Future<DateTime> build() async {
-    ref.read(characterRegistryManagerProvider);
-    return DateTime.now();
-  }
-
-  static String generateFitId() => _idGenerator.v4();
 }

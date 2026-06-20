@@ -1,0 +1,6 @@
+*
+!.gitignore
+!catalog.json
+!documents/
+documents/*
+!documents/.gitkeep

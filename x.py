@@ -21,8 +21,6 @@ Please use the configuration files to configure the tool, or pass parameters dir
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import datetime
 import hashlib
 import json
 import os
@@ -32,8 +30,8 @@ import sys
 import time
 import zipfile
 
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import unquote
 from urllib.request import urlopen
 
@@ -47,12 +45,10 @@ from dotenv import load_dotenv
 from watchfiles import awatch
 
 from data.lib.codegen import CODEGEN_DART
-from data.lib.constant import DEFAULT_WORKSPACE_MANIFEST_ENV_VAR
 from data.lib.constant import DEV_CONFIG_PATH
 from data.lib.constant import I18N_ROOT
 from data.lib.constant import NATIVE_LIB_ROOT
 from data.lib.constant import PROJECT_ROOT
-from data.lib.constant import SKIP_FULL_MANIFEST_UPDATE_ENV_VAR
 from data.lib.etc.codeart import generate_codeart
 from data.lib.remote.channel import Channel
 
@@ -76,11 +72,19 @@ from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
 from data.lib.constant import PROTOBUF_SCHEMA_PATH
 from data.lib.log import info
 from data.lib.log import warning
-from data.lib.remote.promote import PromotionSessionCommittedError
-from data.lib.remote.promote import PromotionSessionNotActiveError
-from data.lib.remote.session import SessionCommittedError
-from data.lib.remote.session import SessionManager
-from data.lib.remote.session import SessionNotActiveError
+from data.lib.remote import SessionManager
+from data.lib.remote import SessionManagerCommittedError
+from data.lib.remote import SessionManagerInvalidError
+from data.lib.remote.session_model import Session
+from data.lib.remote.session_model import SessionExistsError
+from data.lib.remote.session_model import SessionStore
+from data.lib.remote.verify import Verifier
+
+
+if TYPE_CHECKING:
+    from data.lib.remote.sync import SyncResult
+from datetime import UTC
+
 from data.lib.utils import execute_command
 from data.lib.utils import get_bin_size
 from data.lib.utils import get_command
@@ -117,18 +121,6 @@ def __resolve_dev_path(path: Path) -> Path:
     if path.is_absolute():
         return path
     return data.lib.config.DEV_CONFIGURATION.paths.root / path
-
-
-def __resource_root(value: str) -> str:
-    return value.strip("/")
-
-
-def __remote_channel_index_url(*, origin_url: str, resource_root: str, channel: Channel) -> str:
-    return f"{origin_url.rstrip('/')}/{__resource_root(resource_root)}/channels/{channel.value}/index.json"
-
-
-def __remote_origin_url(*, endpoint: str, bucket: str) -> str:
-    return f"{endpoint.rstrip('/')}/{bucket}"
 
 
 def __wait_for_http(url: str, timeout_seconds: float = 20.0) -> None:
@@ -211,15 +203,6 @@ def __validate_remote_artifact_id(artifact_id: str) -> str:
     ):
         raise click.ClickException(f"Invalid remote bundle artifact id: {artifact_id!r}")
     return normalized
-
-
-def __utc_timestamp() -> str:
-    return (
-        datetime.datetime.now(datetime.UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
 
 
 def __read_current_app_version() -> str:
@@ -381,7 +364,20 @@ def __publish_remote_origin_to_s3(
     index_path = gen_dir / "index.json"
 
     if not index_path.exists() or not index_path.is_file():
-        raise click.ClickException(f"Remote publish generation index does not exist: {index_path}")
+        if not channel_dir.is_dir():
+            raise click.ClickException(
+                f"Remote publish channel directory does not exist: {channel_dir}"
+            )
+        gen_dir.mkdir(parents=True, exist_ok=True)
+        for item in channel_dir.iterdir():
+            if item.name == ".generations":
+                continue
+            dst = gen_dir / item.name
+            if item.is_dir():
+                if not dst.exists():
+                    shutil.copytree(item, dst)
+            elif not dst.exists():
+                shutil.copy2(item, dst)
 
     mc = get_command("mc")
     bucket_target = f"{resolved_alias}/{resolved_bucket}"
@@ -451,10 +447,10 @@ def __publish_remote_origin_to_s3(
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Generation: ") + generation)
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
-        + __remote_channel_index_url(
-            origin_url=__remote_origin_url(endpoint=endpoint, bucket=resolved_bucket),
-            resource_root=resolved_resource_root,
-            channel=channel,
+        + (
+            f"{endpoint.rstrip('/')}/{resolved_bucket}"
+            f"/{resolved_resource_root.strip('/')}"
+            f"/channels/{channel.value}/index.json"
         )
     )
 
@@ -907,6 +903,56 @@ def dogma_units_cmd(ctx: click.Context):
         ctx.invoke(format_cmd)
 
 
+@generate.command("schema")
+@click.option(
+    "--dir",
+    "build_dir",
+    type=click.Path(path_type=Path),
+    required=True,
+    help="Build directory containing workspace output.",
+)
+@click.option(
+    "--server",
+    "server_id",
+    required=True,
+    help="Server ID for the checkout catalog (e.g., 'serenity').",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Unified schema root directory (default from dev config).",
+)
+@click.option("--author", default=None, help="Author identifier for the snapshot.")
+@click.option("--description", default=None, help="Description for the snapshot.")
+def generate_schema_cmd(
+    build_dir: Path,
+    server_id: str,
+    schema_root: Path | None,
+    author: str | None,
+    description: str | None,
+):
+    """Generate a V2 schema checkout from workspace build output."""
+    from data.lib.workspace.generate.schema import generate_schema_checkout
+
+    if schema_root is None:
+        data.lib.config.DeveloperConfiguration.ensure_loaded()
+        schema_root = data.lib.config.DEV_CONFIGURATION.paths.schema_dir
+
+    hash_ = generate_schema_checkout(
+        config=None,
+        build_dir=build_dir,
+        schema_root=schema_root,
+        server_id=server_id,
+        author=author,
+        description=description,
+    )
+    if hash_:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Checkout hash: {hash_}"))
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.RED], "No files found — checkout not generated."))
+
+
 def __env_install():
     protoc_gen_dart = get_command("protoc-gen-dart")
     if protoc_gen_dart is None:
@@ -1044,6 +1090,7 @@ def __redact_remote_config(config: dict[str, object]) -> dict[str, object]:
 def remote_config_display(pretty: bool, as_json: bool):
     """Print effective remote developer configuration and current session status."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
     paths = data.lib.config.DEV_CONFIGURATION.paths
     origin_path = __resolve_dev_path(remote_cfg.mock_origin_dir)
@@ -1059,10 +1106,10 @@ def remote_config_display(pretty: bool, as_json: bool):
             f"http://{remote_cfg.host}:{remote_cfg.minio.port}/{remote_cfg.minio.bucket}"
         )
         resolved["minioDataPath"] = str(minio_data_path)
-        resolved["minioIndexUrl"] = __remote_channel_index_url(
-            origin_url=minio_origin_url,
-            resource_root=remote_cfg.resource_root,
-            channel=remote_cfg.channel,
+        resolved["minioIndexUrl"] = (
+            f"{minio_origin_url.rstrip('/')}"
+            f"/{data.lib.config.CONFIGURATION.data_schema.resource_root.strip('/')}"
+            f"/channels/{remote_cfg.channel.value}/index.json"
         )
 
     payload: dict[str, object] = {
@@ -1071,2044 +1118,2207 @@ def remote_config_display(pretty: bool, as_json: bool):
     }
     click.echo(json.dumps(payload, indent=4 if pretty else None))
 
-    if as_json:
-        return
 
-    sessions_root = __resolve_dev_path(paths.session_dir)
-    current_id = None
-    current_path = sessions_root / "current"
-    if current_path.is_file():
-        current_id = current_path.read_text(encoding="utf-8").strip()
-    promote_current_id = None
-    promote_current_path = sessions_root / "current-promote"
-    if promote_current_path.is_file():
-        promote_current_id = promote_current_path.read_text(encoding="utf-8").strip()
-
-    click.echo()
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session status"))
-
-    if sessions_root.is_dir():
-        session_dirs = sorted(
-            [
-                d
-                for d in sessions_root.iterdir()
-                if d.is_dir() and d.name not in ("current", "current-promote")
-            ],
-            reverse=True,
-        )
-    else:
-        session_dirs = []
-
-    if not session_dirs and not current_id and not promote_current_id:
-        click.echo("  No sessions found.")
-        return
-
-    if current_id:
-        is_active = (sessions_root / current_id / "lockfile.json").is_file()
-        state = "active" if is_active else "committed"
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"  Current:  {current_id}  [{state}]"))
-
-        s_path = sessions_root / current_id
-        todo_path = s_path / "todo.json"
-        if todo_path.is_file():
-            try:
-                from data.lib.remote.models import TodoList
-                from data.lib.remote.models import _load_json_model
-
-                todo = _load_json_model(todo_path, TodoList)
-                click.echo(f"  Operations: {len(todo.operations)}")
-                click.echo(styled(Style.DIM, f"  Committed:  {todo.committed}"))
-                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
-            except Exception:
-                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
-    else:
-        recent_committed = None
-        for d in session_dirs:
-            todo_p = d / "todo.json"
-            if todo_p.is_file():
-                try:
-                    from data.lib.remote.models import TodoList
-                    from data.lib.remote.models import _load_json_model
-
-                    todo = _load_json_model(todo_p, TodoList)
-                    if todo.committed:
-                        recent_committed = (d.name, todo)
-                        break
-                except Exception:
-                    continue
-        if recent_committed:
-            name, todo = recent_committed
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], f"  Latest committed:  {name}"))
-            click.echo(f"  Operations: {len(todo.operations)}")
-            click.echo(styled(Style.DIM, f"  Path:       {sessions_root / name}"))
-        else:
-            click.echo("  No current or committed sessions.")
-            if session_dirs:
-                click.echo(f"  {len(session_dirs)} uncommitted session(s) found.")
-
-    if promote_current_id:
-        is_active = (sessions_root / promote_current_id / "lockfile.json").is_file()
-        state = "active" if is_active else "committed"
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], f"  Promote:  {promote_current_id}  [{state}]")
-        )
-
-        s_path = sessions_root / promote_current_id
-        todo_path = s_path / "todo.json"
-        if todo_path.is_file():
-            try:
-                from data.lib.remote.models import TodoList
-                from data.lib.remote.models import _load_json_model
-
-                todo = _load_json_model(todo_path, TodoList)
-                click.echo(f"  Operations: {len(todo.operations)}")
-                click.echo(styled(Style.DIM, f"  Committed:  {todo.committed}"))
-                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
-            except Exception:
-                click.echo(styled(Style.DIM, f"  Path:       {s_path}"))
-
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Sessions root: {sessions_root}"))
+@remote.group("session", cls=ClickAliasedGroup)
+def remote_session():
+    """Staged generation assembly — build, stage, review, commit."""
 
 
-@remote.group(cls=ClickAliasedGroup)
-def prepare():
-    """Session-based remote content preparation."""
+@remote.group("announce", cls=ClickAliasedGroup)
+def remote_announce():
+    """Remote announcement management — sync, author, publish."""
 
 
-def __get_session_root() -> Path:
+def __get_announce_workspace() -> Path:
+    """Get the announcement workspace root path."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
-    return __resolve_dev_path(data.lib.config.DEV_CONFIGURATION.paths.session_dir)
+    root = data.lib.config.DEV_CONFIGURATION.paths.root / "announce"
+    return __resolve_dev_path(root)
 
 
-def __get_session(session_id: str | None = None) -> SessionManager:
-    root = __get_session_root()
-    if session_id:
-        return SessionManager.from_session_id(root, session_id)
-    return SessionManager.from_current(root)
+def __resolve_announce_remote_target(
+    target: str | None,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias: str | None,
+) -> tuple[str, str, str, str, str]:
+    """Resolve remote target credentials from CLI args or config."""
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+
+    if target is None:
+        target = "minio"
+
+    if target == "minio":
+        minio_cfg = remote_cfg.minio
+        if minio_cfg is None:
+            raise click.ClickException(
+                "[remote.minio] is not configured in efa.dev.toml. "
+                "See efa.dev.example.toml for the expected format."
+            )
+        return (
+            endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}",
+            bucket or minio_cfg.bucket,
+            access_key or minio_cfg.access_key,
+            secret_key or minio_cfg.secret_key,
+            alias or minio_cfg.alias,
+        )
+    elif target == "s3":
+        s3_cfg = remote_cfg.s3
+        if s3_cfg is None:
+            raise click.ClickException(
+                "[remote.s3] is not configured in efa.dev.toml. "
+                "See efa.dev.example.toml for the expected format."
+            )
+        return (
+            endpoint or s3_cfg.endpoint,
+            bucket or s3_cfg.bucket,
+            access_key or s3_cfg.access_key,
+            secret_key or s3_cfg.secret_key,
+            alias or s3_cfg.alias,
+        )
+    else:
+        raise click.ClickException(f"Invalid target: {target!r} (expected minio or s3)")
 
 
-@prepare.command("start")
+@remote_announce.command("sync")
 @click.option(
-    "--backend",
+    "--target",
     type=click.Choice(["minio", "s3"]),
     default=None,
-    help="Which backend to fetch remote state from. Required unless --origin-dir is used.",
+    help="Remote target (default: minio).",
 )
-@click.option(
-    "--origin-dir",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Local origin directory to copy state from instead of fetching.",
-)
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
-def remote_prepare_start(
-    backend: str | None,
-    origin_dir: Path | None,
-    resource_root: str | None,
-    channel: str | None,
+@click.option("--endpoint", default=None, help="Override endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", default=None, help="Override MinIO/S3 alias name.")
+@click.option("--full", is_flag=True, default=False, help="Download all document bodies.")
+def remote_announce_sync(
+    target: str | None,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias: str | None,
+    full: bool,
 ):
-    """Start a new session (fetch remote state, write lockfile, emit session id)."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    sessions_root = __get_session_root()
+    """Download current server state to remote/ workspace."""
+    from data.lib.docs.announcements_remote import AnnouncementRemoteSync
+    from data.lib.docs.announcements_remote import AnnouncementWorkspace
 
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+    endpoint, bucket, access_key, secret_key, alias = __resolve_announce_remote_target(
+        target, endpoint, bucket, access_key, secret_key, alias
     )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
-    if origin_dir is not None:
-        resolved_backend = "local"
-    elif backend is None:
-        raise click.UsageError("--backend (minio|s3) is required when --origin-dir is not used.")
-    else:
-        resolved_backend = backend
+    workspace_root = __get_announce_workspace()
+    workspace = AnnouncementWorkspace(workspace_root)
+    sync = AnnouncementRemoteSync(
+        workspace=workspace,
+        target=target or "minio",
+        endpoint=endpoint,
+        bucket=bucket,
+        access_key=access_key,
+        secret_key=secret_key,
+        alias_name=alias,
+        resource_root=data.lib.config.CONFIGURATION.data_schema.resource_root,
+    )
 
-    kwargs: dict[str, object] = {
-        "backend": resolved_backend,
-        "origin_dir": origin_dir,
-        "resource_root": resolved_resource_root,
-        "channel": resolved_channel,
-    }
-
-    if origin_dir is None:
-        if resolved_backend == "minio":
-            sub = remote_cfg.require_minio()
-            kwargs["mc_bin"] = get_command("mc")
-            kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
-            kwargs["bucket"] = sub.bucket
-            kwargs["access_key"] = sub.access_key
-            kwargs["secret_key"] = sub.secret_key
-            kwargs["alias_name"] = sub.alias
-        else:
-            sub = remote_cfg.require_s3()
-            kwargs["mc_bin"] = get_command("mc")
-            kwargs["endpoint"] = sub.endpoint
-            kwargs["bucket"] = sub.bucket
-            kwargs["access_key"] = sub.access_key
-            kwargs["secret_key"] = sub.secret_key
-            kwargs["alias_name"] = sub.alias
-
-    mgr = SessionManager.start(sessions_root, **kwargs)  # type: ignore[arg-type]
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
-    click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
-    click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
-    click.echo(styled(Style.DIM, f"  session dir: {mgr.session_dir}"))
-
-
-@prepare.command("status")
-@click.option("--session", "session_id", default=None, help="Session ID. Defaults to current.")
-def remote_prepare_status(session_id: str | None):
-    """Show session summary."""
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Syncing announcements from remote..."))
     try:
-        mgr = __get_session(session_id)
-    except SessionNotActiveError as exc:
-        raise click.ClickException(str(exc)) from exc
-    except FileNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    st = mgr.status()
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session: ") + st.session_id)
-    click.echo(f"  backend:    {st.backend}")
-    click.echo(f"  timestamp:  {st.timestamp}")
-    click.echo(f"  host:       {st.host}")
-    click.echo(f"  pid:        {st.pid}")
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo(f"  committed:  {st.committed}")
+        sync.sync(full=full)
+    except RuntimeError as e:
+        click.echo(styled([Fore.RED], f"Error: {e}"))
+        exit(2)
+    click.echo(styled([Fore.GREEN], "  Downloaded catalog and pages"))
+    if full:
+        click.echo(styled([Fore.GREEN], "  Downloaded all document bodies"))
+    click.echo(styled([Fore.GREEN], f"  Remote state saved to: {workspace.remote_dir}"))
 
 
-# ---- add sub-group ---------------------------------------------------------
-
-
-@prepare.group(cls=ClickAliasedGroup)
-def add():
-    """Add content to the pending session."""
-
-
-@add.command("announcement")
-@click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
-@click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
+@remote_announce.command("init")
 @click.option(
-    "--id",
-    "document_id",
+    "--target",
+    type=click.Choice(["minio", "s3"]),
     default=None,
-    help="Remote document id prefix (timestamp suffix appended). Defaults to auto-generated.",
+    help="Remote target (default: minio).",
 )
-@click.option("--title-zh", required=True, help="Chinese announcement title.")
-@click.option("--title-en", required=True, help="English announcement title.")
-@click.option("--summary-zh", required=True, help="Chinese announcement summary.")
-@click.option("--summary-en", required=True, help="English announcement summary.")
-@click.option("--published-at", default=None, help="UTC ISO timestamp. Defaults to now.")
-@click.option("--min-app-ver", default=None, help="Minimum app version. Defaults to current app.")
+@click.option("--endpoint", default=None, help="Override endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", default=None, help="Override MinIO/S3 alias name.")
 @click.option(
-    "--all-app-ver",
-    is_flag=True,
-    default=False,
-    help="Publish for all app versions by writing minAppVer as null.",
+    "--force", is_flag=True, default=False, help="Overwrite if remote already has a catalog."
 )
-@click.option("--startup/--no-startup", default=True, show_default=True)
+def remote_announce_init(
+    target: str | None,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias: str | None,
+    force: bool,
+):
+    """Initialize a new empty announcement workspace on the remote.
+
+    Creates catalog.json and active.json with one empty active page,
+    then uploads them.  Fails if the remote already has content unless
+    --force is given.
+    """
+    from data.lib.docs.announcements_remote import AnnouncementRemoteSync
+    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+
+    endpoint, bucket, access_key, secret_key, alias = __resolve_announce_remote_target(
+        target, endpoint, bucket, access_key, secret_key, alias
+    )
+
+    workspace_root = __get_announce_workspace()
+    workspace = AnnouncementWorkspace(workspace_root)
+    sync = AnnouncementRemoteSync(
+        workspace=workspace,
+        target=target or "minio",
+        endpoint=endpoint,
+        bucket=bucket,
+        access_key=access_key,
+        secret_key=secret_key,
+        alias_name=alias,
+        resource_root=data.lib.config.CONFIGURATION.data_schema.resource_root,
+    )
+
+    action = "Initializing" if not force else "Force-initializing"
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"{action} remote announcements..."))
+    try:
+        sync.init_remote(force=force)
+    except RuntimeError as e:
+        click.echo(styled([Fore.RED], f"Error: {e}"))
+        exit(2)
+    click.echo(styled([Fore.GREEN], "  Created catalog.json and active.json"))
+    click.echo(styled([Fore.GREEN], "  Uploaded to remote"))
+    click.echo(styled([Fore.GREEN], f"  Local mirror at: {workspace.remote_dir}"))
+
+
+@remote_announce.command("add")
+@click.option("--id", "entry_id", required=True, help="Entry ID (matches [a-z0-9][a-z0-9._-]*).")
+@click.option("--zh-title", required=True, help="Chinese title.")
+@click.option("--zh-summary", required=True, help="Chinese summary.")
+@click.option("--zh-body", default=None, help="Chinese body text.")
 @click.option(
-    "--tag", "tags", multiple=True, help="Announcement tag. Can be passed multiple times."
+    "--zh-body-file",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Chinese body file.",
 )
+@click.option("--en-title", required=True, help="English title.")
+@click.option("--en-summary", required=True, help="English summary.")
+@click.option("--en-body", default=None, help="English body text.")
 @click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+    "--en-body-file",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="English body file.",
 )
-def remote_prepare_add_announcement(
-    zh_path: Path,
-    en_path: Path,
-    document_id: str | None,
-    title_zh: str,
-    title_en: str,
-    summary_zh: str,
-    summary_en: str,
+@click.option("--published-at", default=None, help="ISO-8601 timestamp (default: now).")
+@click.option("--tags", default="", help="Comma-separated tags.")
+@click.option("--startup", is_flag=True, default=False, help="Show on startup.")
+@click.option("--channels", default="", help="Comma-separated channels.")
+@click.option("--platforms", default="", help="Comma-separated platforms.")
+@click.option("--min-app-version", default=None, help="Minimum app version (semver).")
+@click.option("--max-app-version", default=None, help="Maximum app version (semver).")
+@click.option("--app-version", default=None, help="App version for version announcement.")
+def remote_announce_add(
+    entry_id: str,
+    zh_title: str,
+    zh_summary: str,
+    zh_body: str | None,
+    zh_body_file: Path | None,
+    en_title: str,
+    en_summary: str,
+    en_body: str | None,
+    en_body_file: Path | None,
     published_at: str | None,
-    min_app_ver: str | None,
-    all_app_ver: bool,
+    tags: str,
     startup: bool,
-    tags: tuple[str, ...],
-    session_id: str | None,
+    channels: str,
+    platforms: str,
+    min_app_version: str | None,
+    max_app_version: str | None,
+    app_version: str | None,
 ):
-    """Stage an announcement in the pending session."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if all_app_ver and min_app_ver is not None:
-        raise click.ClickException("--all-app-ver cannot be used together with --min-app-ver.")
-    if not zh_path.is_file():
-        raise click.ClickException(f"Chinese Markdown file does not exist: {zh_path}")
-    if not en_path.is_file():
-        raise click.ClickException(f"English Markdown file does not exist: {en_path}")
+    """Add a new announcement entry to the staging overlay (active page)."""
+    import re as _re
 
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id_base = document_id or "announcement"
-    resolved_document_id = __validate_remote_document_id(resolved_document_id_base)
-    resolved_published_at = published_at or __utc_timestamp()
-    resolved_min_app_ver = None if all_app_ver else (min_app_ver or __read_current_app_version())
-    resolved_tags = list(tags or ("announcement",))
-    resolved_resource_root = remote_cfg.resource_root
-    resolved_channel = remote_cfg.channel
+    from data.lib.docs.announcements_remote import ACTIVE_KEY
+    from data.lib.docs.announcements_remote import DOCUMENT_ID_PATTERN
+    from data.lib.docs.announcements_remote import AnnouncementEntry
+    from data.lib.docs.announcements_remote import AnnouncementLocalization
+    from data.lib.docs.announcements_remote import AnnouncementWorkspace
 
-    try:
-        mgr = __get_session(session_id)
-        resolved_document_id = mgr.add_announcement(
-            zh_path=zh_path,
-            en_path=en_path,
-            document_id=resolved_document_id,
-            title_zh=title_zh,
-            title_en=title_en,
-            summary_zh=summary_zh,
-            summary_en=summary_en,
-            published_at=resolved_published_at,
-            min_app_ver=resolved_min_app_ver,
-            startup=startup,
-            tags=resolved_tags,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
+    if not _re.match(DOCUMENT_ID_PATTERN, entry_id):
+        raise click.ClickException(
+            f"Invalid entry ID: {entry_id!r} (must match {DOCUMENT_ID_PATTERN})"
         )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
 
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged announcement: ") + resolved_document_id)
+    if zh_body and zh_body_file:
+        raise click.ClickException("Cannot specify both --zh-body and --zh-body-file")
+    if en_body and en_body_file:
+        raise click.ClickException("Cannot specify both --en-body and --en-body-file")
+
+    workspace_root = __get_announce_workspace()
+    workspace = AnnouncementWorkspace(workspace_root)
+    workspace.ensure_remote_directories()
+
+    # Check for duplicate entry ID across remote active page + overlay
+    effective_ids = workspace.get_effective_entry_ids(ACTIVE_KEY)
+    if entry_id in effective_ids:
+        raise click.ClickException(f"Entry {entry_id!r} already exists. Use 'edit' instead.")
+
+    zh_body_text = (
+        zh_body if zh_body else (zh_body_file.read_text(encoding="utf-8") if zh_body_file else "")
+    )
+    en_body_text = (
+        en_body if en_body else (en_body_file.read_text(encoding="utf-8") if en_body_file else "")
+    )
+
+    if not zh_body_text:
+        raise click.ClickException("Chinese body is required (provide --zh-body or --zh-body-file)")
+    if not en_body_text:
+        raise click.ClickException("English body is required (provide --en-body or --en-body-file)")
+
+    zh_hash = workspace.store_document(zh_body_text)
+    en_hash = workspace.store_document(en_body_text)
+
+    if published_at is None:
+        from datetime import datetime as _datetime
+
+        published_at = _datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+    tags_list = [t.strip() for t in tags.split(",") if t.strip()]
+    channels_list = [c.strip() for c in channels.split(",") if c.strip()]
+    platforms_list = [p.strip() for p in platforms.split(",") if p.strip()]
+
+    if not channels_list:
+        data.lib.config.DeveloperConfiguration.ensure_loaded()
+        channels_list = [data.lib.config.DEV_CONFIGURATION.remote.channel.value]
+
+    if not platforms_list:
+        platforms_list = ["android", "ios"]
+
+    new_entry = AnnouncementEntry(
+        id=entry_id,
+        published_at=published_at,
+        tags=tags_list,
+        startup=startup,
+        min_app_version=min_app_version,
+        max_app_version=max_app_version,
+        channels=channels_list,
+        platforms=platforms_list,
+        app_version=app_version,
+        localizations={
+            "zh": AnnouncementLocalization(title=zh_title, summary=zh_summary, body_hash=zh_hash),
+            "en": AnnouncementLocalization(title=en_title, summary=en_summary, body_hash=en_hash),
+        },
+    )
+
+    overlay = workspace.overlay_upsert_entry(ACTIVE_KEY, new_entry)
+    workspace.write_overlay(overlay)
+
+    remote_active_uuid = workspace.get_remote_active_uuid() or "(no remote)"
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Added announcement entry: {entry_id}"))
+    click.echo(styled([Fore.GREEN], f"  page:  {remote_active_uuid}"))
+    click.echo(styled([Fore.GREEN], f"  zh title: {zh_title}"))
+    click.echo(styled([Fore.GREEN], f"  en title: {en_title}"))
 
 
-@add.command("version")
-@click.option("--zh", "zh_path", type=click.Path(path_type=Path), required=True)
-@click.option("--en", "en_path", type=click.Path(path_type=Path), required=True)
+@remote_announce.command("edit")
+@click.option("--id", "entry_id", required=True, help="Entry ID to edit.")
 @click.option(
-    "--id",
-    "document_id",
+    "--page",
+    "page_uuid",
     default=None,
-    help="Remote document id (auto-generated from app-ver if omitted).",
+    help="Target page UUID (default: active page). Use to edit archived entries.",
 )
-@click.option("--title-zh", required=True, help="Chinese version title.")
-@click.option("--title-en", required=True, help="English version title.")
-@click.option("--summary-zh", required=True, help="Chinese version summary.")
-@click.option("--summary-en", required=True, help="English version summary.")
-@click.option("--app-ver", required=True, help="App version this release note describes.")
-@click.option("--published-at", default=None, help="UTC ISO timestamp. Defaults to now.")
+@click.option("--zh-title", default=None, help="Chinese title.")
+@click.option("--zh-summary", default=None, help="Chinese summary.")
+@click.option("--zh-body", default=None, help="Chinese body text.")
 @click.option(
-    "--tag",
-    "tags",
-    multiple=True,
-    default=("release-note", "version"),
-    show_default=True,
-    help="Tags (repeatable).",
+    "--zh-body-file",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Chinese body file.",
 )
+@click.option("--en-title", default=None, help="English title.")
+@click.option("--en-summary", default=None, help="English summary.")
+@click.option("--en-body", default=None, help="English body text.")
 @click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+    "--en-body-file",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="English body file.",
 )
-def remote_prepare_add_version(
-    zh_path: Path,
-    en_path: Path,
-    document_id: str | None,
-    title_zh: str,
-    title_en: str,
-    summary_zh: str,
-    summary_en: str,
-    app_ver: str,
+@click.option("--published-at", default=None, help="ISO-8601 timestamp.")
+@click.option("--tags", default=None, help="Comma-separated tags.")
+@click.option("--startup/--no-startup", default=None, help="Show on startup.")
+@click.option("--channels", default=None, help="Comma-separated channels.")
+@click.option("--platforms", default=None, help="Comma-separated platforms.")
+@click.option("--min-app-version", default=None, help="Minimum app version (semver).")
+@click.option("--max-app-version", default=None, help="Maximum app version (semver).")
+@click.option("--app-version", default=None, help="App version for version announcement.")
+def remote_announce_edit(
+    entry_id: str,
+    page_uuid: str | None,
+    zh_title: str | None,
+    zh_summary: str | None,
+    zh_body: str | None,
+    zh_body_file: Path | None,
+    en_title: str | None,
+    en_summary: str | None,
+    en_body: str | None,
+    en_body_file: Path | None,
     published_at: str | None,
-    tags: tuple[str, ...],
-    session_id: str | None,
+    tags: str | None,
+    startup: bool | None,
+    channels: str | None,
+    platforms: str | None,
+    min_app_version: str | None,
+    max_app_version: str | None,
+    app_version: str | None,
 ):
-    """Stage a version release note in the pending session."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if not zh_path.is_file():
-        raise click.ClickException(f"Chinese Markdown file does not exist: {zh_path}")
-    if not en_path.is_file():
-        raise click.ClickException(f"English Markdown file does not exist: {en_path}")
+    """Edit an existing announcement entry in the staging overlay.
 
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_document_id = __validate_remote_document_id(document_id) if document_id else None
-    resolved_published_at = published_at or __utc_timestamp()
-    resolved_tags = list(tags)
-    resolved_resource_root = remote_cfg.resource_root
-    resolved_channel = remote_cfg.channel
+    Targets the active page by default.  Use --page UUID to edit an
+    archived entry.
+    """
+    from data.lib.docs.announcements_remote import ACTIVE_KEY
+    from data.lib.docs.announcements_remote import AnnouncementWorkspace
 
-    try:
-        mgr = __get_session(session_id)
-        mgr.add_version(
-            zh_path=zh_path,
-            en_path=en_path,
-            document_id=resolved_document_id,
-            title_zh=title_zh,
-            title_en=title_en,
-            summary_zh=summary_zh,
-            summary_en=summary_en,
-            app_ver=app_ver,
-            published_at=resolved_published_at,
-            tags=resolved_tags,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-        )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
+    if all(
+        v is None
+        for v in [
+            zh_title,
+            zh_summary,
+            zh_body,
+            zh_body_file,
+            en_title,
+            en_summary,
+            en_body,
+            en_body_file,
+            published_at,
+            tags,
+            startup,
+            channels,
+            platforms,
+            min_app_version,
+            max_app_version,
+            app_version,
+        ]
+    ):
+        raise click.ClickException("No changes specified (provide at least one flag)")
 
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Staged version: ")
-        + (resolved_document_id or f"version-{app_ver}")
-    )
+    workspace_root = __get_announce_workspace()
+    workspace = AnnouncementWorkspace(workspace_root)
+    workspace.ensure_remote_directories()
 
+    if zh_body and zh_body_file:
+        raise click.ClickException("Cannot specify both --zh-body and --zh-body-file")
+    if en_body and en_body_file:
+        raise click.ClickException("Cannot specify both --en-body and --en-body-file")
 
-@add.command("bundle")
-@click.option("--full", "full_path", type=click.Path(path_type=Path), required=True)
-@click.option("--manifest", "manifest_path", type=click.Path(path_type=Path), required=True)
-@click.option(
-    "--artifact-id",
-    default=None,
-    help="Artifact id for the full bundle (auto-generated from descriptor if omitted).",
-)
-@click.option("--increment", "increment_path", type=click.Path(path_type=Path), default=None)
-@click.option(
-    "--increment-artifact-id",
-    default=None,
-    help="Artifact id for the incremental bundle (auto-generated from descriptor if omitted).",
-)
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_add_bundle(
-    full_path: Path,
-    manifest_path: Path,
-    artifact_id: str | None,
-    increment_path: Path | None,
-    increment_artifact_id: str | None,
-    session_id: str | None,
-):
-    """Stage a bundle in the pending session."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    if increment_path is None and increment_artifact_id is not None:
-        raise click.ClickException("--increment-artifact-id requires --increment.")
-    if not manifest_path.is_file():
-        raise click.ClickException(f"Bundle manifest file does not exist: {manifest_path}")
+    page_key = page_uuid if page_uuid else ACTIVE_KEY
 
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_artifact_id = __validate_remote_artifact_id(artifact_id) if artifact_id else None
-    resolved_increment_artifact_id = (
-        __validate_remote_artifact_id(increment_artifact_id) if increment_artifact_id else None
-    )
-    resolved_resource_root = remote_cfg.resource_root
-    resolved_channel = remote_cfg.channel
-
-    try:
-        mgr = __get_session(session_id)
-        resolved_artifact_id, resolved_increment_artifact_id = mgr.add_bundle(
-            full_path=full_path,
-            manifest_path=manifest_path,
-            artifact_id=resolved_artifact_id,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-            increment_path=increment_path,
-            increment_artifact_id=resolved_increment_artifact_id,
-        )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    parts = [styled([Style.BRIGHT, Fore.GREEN], "Staged bundle: ") + resolved_artifact_id]
-    if resolved_increment_artifact_id is not None:
-        parts.append(
-            styled([Style.BRIGHT, Fore.GREEN], "  increment: ") + resolved_increment_artifact_id
-        )
-    click.echo("\n".join(parts))
-
-
-# ---- remove ----------------------------------------------------------------
-
-
-@prepare.command("remove")
-@click.option("--artifact-id", default=None, help="Bundle artifact id to remove.")
-@click.option("--document-id", default=None, help="Document id to remove.")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_remove(
-    artifact_id: str | None,
-    document_id: str | None,
-    session_id: str | None,
-):
-    """Stage a removal in the pending session."""
-    if artifact_id is not None and document_id is not None:
-        raise click.ClickException("Pass either --artifact-id or --document-id, not both.")
-    if artifact_id is None and document_id is None:
-        raise click.ClickException("Pass either --artifact-id or --document-id.")
-
-    try:
-        mgr = __get_session(session_id)
-        if artifact_id is not None:
-            resolved = __validate_remote_artifact_id(artifact_id)
-            mgr.remove(target_type="artifact", target_id=resolved)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged removal of artifact: ") + resolved
-            )
-        else:
-            assert document_id is not None
-            resolved = __validate_remote_document_id(document_id)
-            mgr.remove(target_type="document", target_id=resolved)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged removal of document: ") + resolved
-            )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-
-# ---- diff ------------------------------------------------------------------
-
-
-def _print_diff(diff: dict[str, object]) -> None:
-    """Recursively print a human-readable diff tree produced by diff_catalogs."""
-
-    def _walk(d: dict[str, object], depth: int) -> int:
-        """Recurse into nested diff dicts. Returns count of leaf entries printed."""
-        count = 0
-        for key, val in sorted(d.items()):
-            if not isinstance(val, dict):
-                continue
-            if "type" in val:
-                ctype = val.get("type", "?")
-                indent = "  " * depth
-                if ctype == "added":
-                    click.echo(styled(Fore.GREEN, f"{indent}+ {key}"))
-                elif ctype == "removed":
-                    click.echo(styled(Fore.RED, f"{indent}- {key}"))
-                elif ctype == "changed":
-                    click.echo(styled(Fore.YELLOW, f"{indent}~ {key}"))
-                else:
-                    click.echo(f"{indent}? {key}")
-                count += 1
-            else:
-                sub = _walk(val, depth + 1)
-                if sub > 0:
-                    count += sub
-        return count
-
-    top_total = 0
-    for section, section_val in sorted(diff.items()):
-        if not isinstance(section_val, dict) or not section_val:
-            continue
-        if "type" in section_val:
-            ctype = section_val.get("type", "?")
-            if ctype == "added":
-                click.echo(styled(Fore.GREEN, f"  + {section}"))
-            elif ctype == "removed":
-                click.echo(styled(Fore.RED, f"  - {section}"))
-            elif ctype == "changed":
-                click.echo(styled(Fore.YELLOW, f"  ~ {section}"))
-            else:
-                click.echo(f"  ? {section}")
-            top_total += 1
-        else:
-            n = _walk(section_val, 2)
-            if n > 0:
-                top_total += n
-
-    if top_total > 0:
-        click.echo(
-            styled([Style.BRIGHT, Fore.CYAN], "Catalog diffs:") + f"  ({top_total} change(s))"
-        )
+    # Resolve the current entry content: look in overlay first, then remote
+    overlay = workspace.read_overlay()
+    page_overlay = overlay.pages.get(page_key, {})
+    if entry_id in page_overlay and page_overlay[entry_id] is not None:
+        entry_to_edit = page_overlay[entry_id]
+    elif page_key == ACTIVE_KEY:
+        try:
+            remote_page = workspace.get_remote_page()
+        except FileNotFoundError:
+            raise click.ClickException(
+                "No remote state. Run 'sync' first or use 'add' to create entries."
+            ) from None
+        entry_to_edit = next((e for e in remote_page.entries if e.id == entry_id), None)
     else:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "No differences detected."))
+        try:
+            remote_page = workspace._read_page(workspace.remote_dir, page_key)
+        except FileNotFoundError:
+            raise click.ClickException(f"Page {page_key!r} not found on remote.") from None
+        entry_to_edit = next((e for e in remote_page.entries if e.id == entry_id), None)
+
+    if entry_to_edit is None:
+        raise click.ClickException(f"Entry {entry_id!r} not found. Use 'add' first.")
+
+    if zh_body:
+        zh_hash = workspace.store_document(zh_body)
+        entry_to_edit.localizations["zh"].body_hash = zh_hash
+    elif zh_body_file:
+        zh_body_text = zh_body_file.read_text(encoding="utf-8")
+        zh_hash = workspace.store_document(zh_body_text)
+        entry_to_edit.localizations["zh"].body_hash = zh_hash
+
+    if en_body:
+        en_hash = workspace.store_document(en_body)
+        entry_to_edit.localizations["en"].body_hash = en_hash
+    elif en_body_file:
+        en_body_text = en_body_file.read_text(encoding="utf-8")
+        en_hash = workspace.store_document(en_body_text)
+        entry_to_edit.localizations["en"].body_hash = en_hash
+
+    if zh_title:
+        entry_to_edit.localizations["zh"].title = zh_title
+    if zh_summary:
+        entry_to_edit.localizations["zh"].summary = zh_summary
+    if en_title:
+        entry_to_edit.localizations["en"].title = en_title
+    if en_summary:
+        entry_to_edit.localizations["en"].summary = en_summary
+    if published_at:
+        entry_to_edit.published_at = published_at
+    if tags is not None:
+        entry_to_edit.tags = [t.strip() for t in tags.split(",") if t.strip()]
+    if startup is not None:
+        entry_to_edit.startup = startup
+    if channels is not None:
+        entry_to_edit.channels = [c.strip() for c in channels.split(",") if c.strip()]
+    if platforms is not None:
+        entry_to_edit.platforms = [p.strip() for p in platforms.split(",") if p.strip()]
+    if min_app_version is not None:
+        entry_to_edit.min_app_version = min_app_version
+    if max_app_version is not None:
+        entry_to_edit.max_app_version = max_app_version
+    if app_version is not None:
+        entry_to_edit.app_version = app_version
+
+    overlay = workspace.overlay_upsert_entry(page_key, entry_to_edit)
+    workspace.write_overlay(overlay)
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Edited announcement entry: {entry_id}"))
 
 
-@prepare.command("diff")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
+@remote_announce.command("remove")
+@click.option("--id", "entry_id", required=True, help="Entry ID to remove.")
+def remote_announce_remove(entry_id: str):
+    """Remove an announcement entry from the staging overlay (active page only)."""
+    from data.lib.docs.announcements_remote import ACTIVE_KEY
+    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+
+    workspace_root = __get_announce_workspace()
+    workspace = AnnouncementWorkspace(workspace_root)
+
+    effective_ids = workspace.get_effective_entry_ids(ACTIVE_KEY)
+    if entry_id not in effective_ids:
+        raise click.ClickException(f"Entry {entry_id!r} not found in active page.")
+
+    overlay = workspace.overlay_remove_entry(entry_id)
+    workspace.write_overlay(overlay)
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Removed announcement entry: {entry_id}"))
+
+
+@remote_announce.command("status")
 @click.option(
     "--json", "as_json", is_flag=True, default=False, help="Output as machine-readable JSON."
 )
-def remote_prepare_diff(
-    session_id: str | None,
-    resource_root: str | None,
-    channel: str | None,
-    as_json: bool,
-):
-    """Show catalog/index diffs between remote-state and merged output."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
+def remote_announce_status(as_json: bool):
+    """Show effective diff between remote and pending overlay changes.
 
+    Constructs the effective workspace in a temp directory by applying the
+    staging overlay to remote, then diffs against remote.
+    """
+    import tempfile
+
+    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+    from data.lib.docs.announcements_remote import compute_status_diff
+
+    workspace_root = __get_announce_workspace()
+    workspace = AnnouncementWorkspace(workspace_root)
+
+    if not (workspace.remote_dir / "catalog.json").exists():
+        click.echo(styled([Fore.YELLOW], "No remote state — run 'sync' first."))
+        exit(1)
+
+    overlay = workspace.read_overlay()
+    has_changes = any(v for v in overlay.pages.values())
+    if not has_changes:
+        click.echo(styled([Fore.GREEN], "No pending changes — overlay is empty."))
+        exit(0)
+
+    temp_dir = Path(tempfile.mkdtemp(prefix="efa-anno-status-"))
     try:
-        mgr = __get_session(session_id)
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
+        workspace.build_publish_workspace(temp_dir)
+        diff = compute_status_diff(workspace.remote_dir, temp_dir)
 
-    diff = mgr.diff(channel=resolved_channel, resource_root=resolved_resource_root)
-    if as_json:
-        click.echo(json.dumps(diff, indent=4, sort_keys=True))
-    else:
-        _print_diff(diff)
+        if as_json:
+            click.echo(json.dumps(diff, indent=2))
+            return
+
+        summary = diff["summary"]
+        if summary["added"] == 0 and summary["removed"] == 0 and summary["modified"] == 0:
+            click.echo(styled([Fore.GREEN], "No differences — staging is clean."))
+            exit(0)
+
+        pages = diff.get("pages", {})
+        for page_uuid, page_diff in pages.items():
+            if (
+                page_diff["summary"]["added"] == 0
+                and page_diff["summary"]["removed"] == 0
+                and page_diff["summary"]["modified"] == 0
+            ):
+                continue
+
+            click.echo(styled([Style.BRIGHT], f"Page {page_uuid[:8]}… REMOTE → EFFECTIVE"))
+            click.echo()
+
+            for item in page_diff["added"]:
+                click.echo(
+                    styled([Fore.GREEN], "  +  added     ")
+                    + styled([Style.BRIGHT], f"{item['id']:20}")
+                    + styled(Fore.CYAN, f'zh:"{item["zhTitle"]}"  ')
+                    + styled(Fore.CYAN, f'en:"{item["enTitle"]}"')
+                )
+
+            for item in page_diff["modified"]:
+                change_desc = ", ".join(
+                    f"{k}: {v['from']} → {v['to']}" for k, v in item["changes"].items()
+                )
+                click.echo(
+                    styled([Fore.YELLOW], "  ~  modified  ")
+                    + styled([Style.BRIGHT], f"{item['id']:20}")
+                    + styled(Fore.CYAN, f'zh:"{item["zhTitle"]}"  ')
+                    + styled(Fore.CYAN, f'en:"{item["enTitle"]}"')
+                    + styled(Style.DIM, f"  ({change_desc})")
+                )
+
+            for item in page_diff["removed"]:
+                click.echo(
+                    styled([Fore.RED], "  -  removed   ")
+                    + styled([Style.BRIGHT], f"{item['id']:20}")
+                    + styled(Fore.CYAN, f'zh:"{item["zhTitle"]}"  ')
+                    + styled(Fore.CYAN, f'en:"{item["enTitle"]}"')
+                )
+
+            click.echo()
+
+        click.echo(
+            styled([Style.BRIGHT], "Summary: ")
+            + styled([Fore.GREEN], f"{summary['added']} added, ")
+            + styled([Fore.RED], f"{summary['removed']} removed, ")
+            + styled([Fore.YELLOW], f"{summary['modified']} modified")
+        )
+        click.echo(
+            styled(
+                Style.DIM,
+                f"  Remote: {summary['totalRemote']} entries, "
+                f"Effective: {summary['totalStaging']} entries",
+            )
+        )
+        exit(1)
+    finally:
+        import shutil as _shutil
+
+        _shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-# ---- verify ----------------------------------------------------------------
-
-
-@prepare.command("verify")
+@remote_announce.command("publish")
 @click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
+    "--target",
+    type=click.Choice(["minio", "s3"]),
+    default=None,
+    help="Remote target (default: minio).",
 )
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
-def remote_prepare_verify(
-    session_id: str | None,
-    resource_root: str | None,
-    channel: str | None,
+@click.option("--endpoint", default=None, help="Override endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", default=None, help="Override MinIO/S3 alias name.")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Print files to upload without uploading.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Skip sync and preflight, publish overlay directly.",
+)
+@click.option(
+    "--no-check-remote",
+    is_flag=True,
+    default=False,
+    help="Skip remote compatibility check during preflight.",
+)
+def remote_announce_publish(
+    target: str | None,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias: str | None,
+    dry_run: bool,
+    force: bool,
+    no_check_remote: bool,
 ):
-    """Validate merged output is internally consistent."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+    """Publish staging overlay to remote storage.
+
+    Syncs latest remote, constructs the full workspace in a temp directory
+    (applying the overlay + handling rotation), validates, then uploads.
+    On success, the overlay is cleared and the local remote mirror is updated.
+
+    Use --force to skip sync and preflight (publish overlay directly).
+    """
+    import tempfile
+
+    from data.lib.docs.announcements_remote import AnnouncementRemoteSync
+    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+    from data.lib.docs.announcements_remote import run_preflight_validation
+
+    endpoint, bucket, access_key, secret_key, alias = __resolve_announce_remote_target(
+        target, endpoint, bucket, access_key, secret_key, alias
     )
+
+    workspace_root = __get_announce_workspace()
+    workspace = AnnouncementWorkspace(workspace_root)
+
+    overlay = workspace.read_overlay()
+    has_changes = any(v for v in overlay.pages.values())
+    if not has_changes:
+        raise click.ClickException("No pending changes — overlay is empty. Run 'add' first.")
+
+    sync = AnnouncementRemoteSync(
+        workspace=workspace,
+        target=target or "minio",
+        endpoint=endpoint,
+        bucket=bucket,
+        access_key=access_key,
+        secret_key=secret_key,
+        alias_name=alias,
+        resource_root=data.lib.config.CONFIGURATION.data_schema.resource_root,
+    )
+
+    if not force:
+        # Sync the latest remote state
+        try:
+            click.echo(styled([Style.BRIGHT, Fore.CYAN], "Syncing latest remote state..."))
+            sync.sync(full=False)
+            click.echo(styled([Fore.GREEN], "  Remote state synced"))
+        except Exception as e:
+            click.echo(styled([Fore.RED], f"  Sync failed: {e}"))
+            exit(1)
+
+        # Warn if remote active UUID changed (someone else rotated)
+        old_active = None
+        for page_key in overlay.pages:
+            if (
+                page_key != "active"
+                and not (workspace.remote_dir / "pages" / f"{page_key}.json").exists()
+            ):
+                old_active = page_key
+                break
+        if old_active:
+            click.echo(
+                styled(
+                    [Fore.YELLOW],
+                    "  Remote active page changed (rotation by others). "
+                    "Re-applying overlay on new base.",
+                )
+            )
+
+    # Build publish workspace in temp dir
+    temp_dir = Path(tempfile.mkdtemp(prefix="efa-anno-publish-"))
+    try:
+        click.echo(styled([Style.BRIGHT, Fore.CYAN], "Building publish workspace..."))
+        workspace.build_publish_workspace(temp_dir)
+
+        # Count entries for reporting
+        temp_catalog = workspace._read_catalog(temp_dir)
+        total_entries = sum(p.count for p in temp_catalog.pages)
+        body_hashes: set[str] = set()
+        for page_meta in temp_catalog.pages:
+            p = workspace._read_any_page(temp_dir, page_meta.uuid)
+            for entry in p.entries:
+                for loc in entry.localizations.values():
+                    body_hashes.add(loc.body_hash)
+
+        # Preflight validation (skipped when --force)
+        if not force:
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Running preflight validation..."))
+            errors = run_preflight_validation(
+                workspace_dir=temp_dir,
+                documents_dir=workspace.documents_dir,
+                remote_dir=workspace.remote_dir if not no_check_remote else None,
+                check_remote=not no_check_remote,
+            )
+            if errors:
+                click.echo(styled([Fore.RED], "Preflight validation failed:"))
+                for error in errors:
+                    click.echo(styled([Fore.RED], f"  - {error}"))
+                exit(1)
+            click.echo(styled([Fore.GREEN], "  Preflight validation passed"))
+
+        if dry_run:
+            click.echo(styled([Style.BRIGHT, Fore.CYAN], "[DRY-RUN] Would publish:"))
+            click.echo(f"  Pages: {len(temp_catalog.pages)}")
+            click.echo(f"  Entries: {total_entries}")
+            click.echo(f"  Documents: {len(body_hashes)}")
+            click.echo(f"  Target: {target or 'minio'}")
+            sync.publish_dir(temp_dir, dry_run=True)
+            return
+
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Publishing announcements..."))
+        sync.publish_dir(temp_dir, dry_run=False)
+
+        # On success: clear overlay, update local remote mirror
+        workspace.clear_overlay()
+        import shutil as _shutil2
+
+        if workspace.remote_dir.exists():
+            _shutil2.rmtree(workspace.remote_dir)
+        _shutil2.copytree(temp_dir, workspace.remote_dir)
+
+        click.echo(
+            styled(
+                [Fore.GREEN],
+                f"  Published {total_entries} entries in {len(temp_catalog.pages)} "
+                f"page(s) with {len(body_hashes)} document bodies.",
+            )
+        )
+        click.echo(styled([Fore.GREEN], "  Overlay cleared."))
+    finally:
+        import shutil as _shutil3
+
+        _shutil3.rmtree(temp_dir, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+
+
+def _require_session(store: SessionStore, operation: str) -> Session:
+    """Load the session, raise ClickException if not present."""
+    try:
+        return store.load()
+    except FileNotFoundError:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+
+@remote_session.command("init")
+@click.argument("channel")
+@click.option(
+    "--force-overwrite",
+    is_flag=True,
+    default=False,
+    help="Overwrite an existing session.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_init(
+    channel: str,
+    force_overwrite: bool,
+    schema_root: Path | None,
+):
+    """Create a new staging session for generation assembly."""
+    root = _resolve_schema_root(schema_root)
+    resolved_channel = __validate_remote_channel(channel)
+    mgr = SessionManager(root)
+    mgr.ensure_channel(resolved_channel.value)
+    store = SessionStore(root)
+    try:
+        store.init(
+            resolved_channel.value,
+            force_overwrite=force_overwrite,
+        )
+    except SessionExistsError as e:
+        raise click.ClickException(str(e)) from None
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Session initialized on channel ")
+        + resolved_channel.value
+    )
+    click.echo(styled(Style.DIM, f"  Session file: {store.session_path}"))
+
+
+@remote_session.command("status")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Machine-readable output.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_status(as_json: bool, schema_root: Path | None):
+    """Show current session summary."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+    if not store.exists():
+        if as_json:
+            click.echo(json.dumps({"active": False}))
+        else:
+            click.echo(styled(Style.DIM, "No active session."))
+        return
+    session = store.load()
+    staged = session.staged
+    if as_json:
+        click.echo(
+            json.dumps(
+                {
+                    "active": True,
+                    "channel": session.channel,
+                    "committed": session.committed,
+                    "staged_counts": {
+                        "resources": len(staged.resources),
+                        "releases": len(staged.releases),
+                    },
+                    "file": str(store.session_path),
+                }
+            )
+        )
+    else:
+        committed_label = ""
+        if session.committed:
+            committed_label = styled([Style.BRIGHT, Fore.GREEN], " (committed)")
+        else:
+            committed_label = styled([Style.BRIGHT, Fore.YELLOW], " (uncommitted)")
+        click.echo(f"Session on channel {session.channel}{committed_label}")
+        click.echo(f"  Staged:      R:{len(staged.resources)} L:{len(staged.releases)}")
+        click.echo(styled(Style.DIM, f"  File:        {store.session_path}"))
+        if session.committed:
+            mgr = SessionManager(root)
+            try:
+                head = mgr.get_head(session.channel)
+                gen_hash = head.generation_hash if head.generation_hash else None
+            except Exception:
+                gen_hash = None
+            if gen_hash:
+                click.echo(styled(Style.DIM, f"  Head:        {gen_hash[:16]}..."))
+
+
+@remote_session.command("discard")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Discard even if session is committed.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_discard(force: bool, schema_root: Path | None):
+    """Delete the current session."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+    try:
+        store.discard(force=force)
+    except SessionManagerInvalidError:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+    except SessionManagerCommittedError:
+        raise click.ClickException("Session is committed. Use --force to discard.") from None
+    click.echo(f"Session discarded: {store.session_path}")
+
+
+# ---- session add / remove ---------------------------------------------------
+
+
+def _resolve_schema_root(schema_root: Path | None) -> Path:
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    if schema_root is not None:
+        return __resolve_dev_path(schema_root)
+    return __resolve_dev_path(data.lib.config.DEV_CONFIGURATION.paths.schema_dir)
+
+
+def _validate_add_args(
+    snap_type_flag: str | None,
+    source_hash: str | None,
+    source_file: Path | None,
+) -> str:
+    """Validate mutually exclusive add flags. Returns the snap type."""
+    if snap_type_flag is None:
+        raise click.ClickException("Must specify exactly one of --resource, --release.")
+    if source_hash is None and source_file is None:
+        raise click.ClickException("Must specify exactly one of --hash or --file.")
+    if source_hash is not None and source_file is not None:
+        raise click.ClickException("Cannot specify both --hash and --file.")
+    return snap_type_flag
+
+
+_SNAPSHOT_TYPE_DIR: dict[str, str] = {
+    "resource": "resources",
+    "release": "releases",
+}
+
+
+def _check_snapshot_metadata(
+    snap_type: str,
+    snap_dir: Path,
+) -> None:
+    """Verify that metadata.json matches the expected snapshot type.
+
+    Tries parsing with the expected metadata model. On parse failure
+    (ValidationError) or on success with the wrong model having unexpected
+    fields, raises ClickException.
+    """
+    from data.lib.remote.models import ReleaseSnapshotMetadata
+    from data.lib.remote.models import ResourceSnapshotMetadata
+    from data.lib.remote.models import read_json
+
+    metadata_path = snap_dir / "metadata.json"
+    if not metadata_path.is_file():
+        raise click.ClickException(f"Snapshot directory missing metadata.json: {snap_dir}")
+
+    meta_raw = read_json(metadata_path)
+
+    # Try the expected model first; if it parses OK we are done
+    model_for_type = {
+        "resource": ResourceSnapshotMetadata,
+        "release": ReleaseSnapshotMetadata,
+    }
+
+    # Try expected model — success means match
+    try:
+        model_for_type[snap_type].model_validate(meta_raw)
+        return
+    except Exception:
+        pass
+
+    # If expected model fails, check whether any OTHER model succeeds
+    for other_type, other_model in model_for_type.items():
+        if other_type == snap_type:
+            continue
+        try:
+            other_model.model_validate(meta_raw)
+            raise click.ClickException(
+                f"Snapshot metadata at {snap_dir} declares type '{other_type}', not '{snap_type}'."
+            ) from None
+        except Exception:
+            continue
+
+    raise click.ClickException(
+        f"Snapshot metadata at {snap_dir} is not a valid '{snap_type}' metadata JSON."
+    )
+
+
+def _resolve_snapshot_hash_from_prefix(
+    root: Path,
+    snap_type: str,
+    prefix: str,
+) -> str:
+    """Resolve a hash prefix to a full snapshot hash.
+
+    Lists all snapshots of the given type and matches against the prefix.
+    Raises ClickException if no match or multiple matches are found.
+    """
+    from data.lib.remote.snapshot import SnapshotStore
+
+    if not prefix:
+        raise click.ClickException("Snapshot hash prefix must not be empty")
+
+    snap_store = SnapshotStore(root)
+    list_for_type: dict[str, object] = {
+        "resource": snap_store.list_resource_snapshots,
+        "release": snap_store.list_release_snapshots,
+    }
+    candidates = [h for h in list_for_type[snap_type]() if h.startswith(prefix)]
+
+    if len(candidates) == 0:
+        raise click.ClickException(f"No {snap_type} snapshot found with prefix '{prefix}'")
+    if len(candidates) == 1:
+        return candidates[0]
+
+    raise click.ClickException(
+        f"Multiple {snap_type} snapshots found with prefix '{prefix}':\n"
+        + "\n".join(f"  {c}" for c in candidates)
+    )
+
+
+def _add_snapshot_by_hash(
+    store: SessionStore,
+    root: Path,
+    snap_type: str,
+    hash_value: str,
+) -> None:
+    """Verify snapshot existence + metadata type, then stage."""
+    from data.lib.remote.paths import release_snapshot_dir
+    from data.lib.remote.paths import resource_snapshot_dir
+
+    dir_for_type = {
+        "resource": resource_snapshot_dir,
+        "release": release_snapshot_dir,
+    }
+    snap_dir = dir_for_type[snap_type](root, hash_value)
+    if not snap_dir.is_dir():
+        raise click.ClickException(f"Snapshot {hash_value[:16]}... not found at {snap_dir}")
+    _check_snapshot_metadata(snap_type, snap_dir)
+    store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
+
+
+def _add_snapshot_by_file(
+    store: SessionStore,
+    root: Path,
+    snap_type: str,
+    source_file: Path,
+) -> None:
+    """Read a catalog/registry file, compute snapshot, and stage."""
+    import json as _json
+
+    from data.lib.remote.models import ReleaseSnapshotMetadata
+    from data.lib.remote.models import ResourceSnapshotMetadata
+    from data.lib.remote.snapshot import SnapshotStore
+
+    raw = source_file.read_text(encoding="utf-8")
+    try:
+        data = _json.loads(raw)
+    except _json.JSONDecodeError as e:
+        raise click.ClickException(f"Cannot parse {source_file}: {e}") from None
+
+    snap_store = SnapshotStore(root)
+
+    if snap_type == "resource":
+        from data.lib.remote.models import make_resource_index
+
+        try:
+            metadata = ResourceSnapshotMetadata.model_validate(data["metadata"])
+            entries = data["entries"]
+        except KeyError as e:
+            raise click.ClickException(
+                f"Invalid resource catalog in {source_file}: "
+                f"missing key {e} (expected 'metadata' and 'entries')"
+            ) from None
+        except Exception as e:
+            raise click.ClickException(
+                f"Cannot parse resource metadata in {source_file}: {e}"
+            ) from None
+
+        index_entries: list[tuple[str, str, int]] = []
+        for entry in entries:
+            index_entries.append((entry["resource_id"], entry["content_hash"], int(entry["size"])))
+        index = make_resource_index(index_entries)
+        hash_value = snap_store.create_resource_snapshot(metadata, index)
+
+    elif snap_type == "release":
+        from data.lib.remote.blob import BlobStore
+        from data.lib.remote.hash import ident_hash
+        from data.lib.remote.models import make_release_index
+
+        try:
+            metadata = ReleaseSnapshotMetadata.model_validate(data["metadata"])
+            release = data["release"]
+        except KeyError as e:
+            raise click.ClickException(
+                f"Invalid release registry in {source_file}: "
+                f"missing key {e} (expected 'metadata' and 'release')"
+            ) from None
+        except Exception as e:
+            raise click.ClickException(
+                f"Cannot parse release metadata in {source_file}: {e}"
+            ) from None
+
+        version = release["version"]
+        blob_store = BlobStore(root)
+
+        for platform_key, platform_data in list(release.items()):
+            if platform_key in ("id", "version"):
+                continue
+            if not isinstance(platform_data, dict):
+                continue
+            for variant, value in list(platform_data.items()):
+                if isinstance(value, str) and value.startswith("/"):
+                    file_path = Path(value)
+                    uri = f"release://{version}/{platform_key}/{variant}"
+                    ihash = ident_hash(uri)
+                    chash = blob_store.store_from_path(file_path, ihash)
+                    platform_data[variant] = {"identifier": uri, "content_hash": chash}
+
+        android = release.get("android")
+        android_dict = None
+        if android is not None:
+            android_dict = {
+                "general": android.get("general"),
+                "armv7": android.get("armv7"),
+                "arm64": android.get("arm64"),
+                "x64": android.get("x64"),
+            }
+        index = make_release_index(
+            release_id=release["id"],
+            version=version,
+            android=android_dict,
+        )
+        hash_value = snap_store.create_release_snapshot(metadata, index)
+
+    else:
+        raise click.ClickException(f"Unknown snapshot type: {snap_type}")
+
+    store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
+
+
+@remote_session.command("add")
+@click.option(
+    "--resource",
+    "snap_type_flag",
+    flag_value="resource",
+    help="Stage a resource snapshot.",
+)
+@click.option(
+    "--release",
+    "snap_type_flag",
+    flag_value="release",
+    help="Stage a release snapshot.",
+)
+@click.option(
+    "--hash",
+    "source_hash",
+    default=None,
+    help="Snapshot hash to stage.",
+)
+@click.option(
+    "--file",
+    "source_file",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="File to compute snapshot hash from (checkout catalog, registry).",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Add to a committed session.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_add(
+    snap_type_flag: str | None,
+    source_hash: str | None,
+    source_file: Path | None,
+    force: bool,
+    schema_root: Path | None,
+):
+    """Stage a snapshot for the next generation commit."""
+    snap_type = _validate_add_args(snap_type_flag, source_hash, source_file)
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
 
     try:
-        mgr = __get_session(session_id)
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
+        _require_session(store, "add")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
 
-    lock = mgr._load_lockfile()
-    backend = lock.backend if lock.backend != "local" else None
+    if not force:
+        store.ensure_editable()
 
-    kwargs: dict[str, object] = {"resource_root": resolved_resource_root}
-    if backend == "minio":
-        sub = remote_cfg.require_minio()
-        kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
-    elif backend == "s3":
-        sub = remote_cfg.require_s3()
-        kwargs["endpoint"] = sub.endpoint
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
+    if source_hash is not None:
+        full_hash = _resolve_snapshot_hash_from_prefix(root, snap_type, source_hash)
+        _add_snapshot_by_hash(store, root, snap_type, full_hash)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Staged {snap_type} snapshot ")
+            + f"{full_hash[:16]}..."
+        )
+    elif source_file is not None:
+        _add_snapshot_by_file(store, root, snap_type, source_file)
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Staged {snap_type} snapshot ")
+            + f"from {source_file}"
+        )
 
-    errors = mgr.verify(
-        channel=resolved_channel,
-        backend=backend,
-        **kwargs,  # type: ignore[arg-type]
+
+@remote_session.command("remove")
+@click.option(
+    "--resource",
+    "snap_type_flag",
+    flag_value="resource",
+    help="Remove a resource snapshot.",
+)
+@click.option(
+    "--release",
+    "snap_type_flag",
+    flag_value="release",
+    help="Remove a release snapshot.",
+)
+@click.option(
+    "--hash",
+    "source_hash",
+    required=True,
+    help="Snapshot hash to remove.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Remove from a committed session.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_remove(
+    snap_type_flag: str | None,
+    source_hash: str,
+    force: bool,
+    schema_root: Path | None,
+):
+    """Unstage a snapshot."""
+    if snap_type_flag is None:
+        raise click.ClickException("Must specify exactly one of --resource, --release.")
+
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+
+    try:
+        _require_session(store, "remove")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+    if not force:
+        store.ensure_editable()
+
+    try:
+        store.remove_snapshot(snap_type_flag, source_hash)  # type: ignore[arg-type]
+    except ValueError as e:
+        raise click.ClickException(str(e)) from None
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], f"Removed {snap_type_flag} snapshot ")
+        + f"{source_hash[:16]}..."
     )
-    if errors:
-        for err in errors:
-            click.echo(styled([Style.BRIGHT, Fore.RED], "ERROR: ") + err)
-        raise click.ClickException(f"Verification failed with {len(errors)} error(s).")
-    else:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Verification passed."))
+
+
+# ---- session diff ------------------------------------------------------------
+
+
+def _get_snapshot_summary(
+    root: Path,
+    snap_type: str,
+    hash_value: str,
+) -> str:
+    """Return a human-readable metadata summary for a staged snapshot."""
+    from data.lib.remote.snapshot import SnapshotStore
+
+    snap_store = SnapshotStore(root)
+    try:
+        if snap_type == "resource":
+            meta, _ = snap_store.load_resource_snapshot(hash_value)
+            return f"server_id={meta.server_id}  game_build={meta.game_build}"
+        elif snap_type == "release":
+            meta, _ = snap_store.load_release_snapshot(hash_value)
+            vmin = meta.version_min or "?"
+            vmax = meta.version_max or "?"
+            return f"version_min={vmin}  version_max={vmax}"
+    except Exception:
+        return "(metadata unavailable)"
+    return ""
+
+
+def _compute_diff(root: Path, session: Session) -> dict:
+    """Compare session staged hashes against the current channel head.
+
+    Returns a dict with keys:
+      channel, head, resources, releases.
+    Each snapshot-type key maps to {"added": [...], "removed": [...], "unchanged": [...]}.
+    """
+    from data.lib.remote.generation import GenerationStore
+    from data.lib.remote.head import ChannelHeadStore
+
+    head_store = ChannelHeadStore(root)
+    gen_store = GenerationStore(root)
+
+    head_hash: str | None = None
+    head_sets: dict[str, set[str]] = {
+        "resources": set(),
+        "releases": set(),
+    }
+
+    try:
+        head = head_store._safe_get_head(session.channel)
+        if head and head.generation_hash:
+            head_hash = head.generation_hash
+            generation = gen_store.load(head.generation_hash)
+            for entry in generation.resources.entries:
+                head_sets["resources"].add(entry.snapshot_hash)
+            if generation.release_pointer.snapshot_hash:
+                head_sets["releases"].add(generation.release_pointer.snapshot_hash)
+    except Exception:
+        pass
+
+    session_sets = {
+        "resources": set(session.staged.resources),
+        "releases": set(session.staged.releases),
+    }
+
+    diff: dict = {"channel": session.channel, "head": head_hash}
+    for snap_type in ("resources", "releases"):
+        s_set = session_sets[snap_type]
+        h_set = head_sets[snap_type]
+        diff[snap_type] = {
+            "added": sorted(s_set - h_set),
+            "removed": sorted(h_set - s_set),
+            "unchanged": sorted(s_set & h_set),
+        }
+    return diff
+
+
+@remote_session.command("diff")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Machine-readable diff output.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_diff(as_json: bool, schema_root: Path | None):
+    """Show changes between staged snapshots and the current channel head."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+
+    try:
+        session = _require_session(store, "diff")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+    diff = _compute_diff(root, session)
+
+    if as_json:
+        click.echo(json.dumps(diff, indent=2))
+        return
+
+    head_str = diff["head"][:16] + "..." if diff["head"] else "none"
+    click.echo(
+        styled([Style.BRIGHT], f'Diff: staging → channel "{diff["channel"]}"')
+        + styled(Style.DIM, f" (head: {head_str})")
+    )
+
+    if diff["head"] is None:
+        click.echo(styled(Style.DIM, "  No channel head (uninitialized channel)."))
+        click.echo(styled(Style.DIM, "  All staged snapshots are new."))
+        click.echo()
+
+    type_labels = {
+        "resources": "Resources",
+        "releases": "Releases",
+    }
+    for snap_type in ("resources", "releases"):
+        data = diff[snap_type]
+        if not data["added"] and not data["removed"] and not data["unchanged"]:
+            continue
+        click.echo(f"\n{type_labels[snap_type]}:")
+        for h in data["added"]:
+            summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], f"  + {h[:16]}...")
+                + styled(Style.DIM, f"  {summary}")
+            )
+        for h in data["removed"]:
+            summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], f"  - {h[:16]}...")
+                + styled(Style.DIM, f"  {summary}")
+            )
+        for h in data["unchanged"]:
+            summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+            click.echo(styled(Style.DIM, f"  = {h[:16]}...  {summary}"))
+
+
+# ---- session verify ----------------------------------------------------------
+
+
+def _check_staged_resource_blobs(
+    root: Path,
+    hash_value: str,
+    issues: list,
+) -> None:
+    """Verify all blobs referenced by a staged resource snapshot exist."""
+    from data.lib.remote.hash import content_hash as _content_hash
+    from data.lib.remote.hash import ident_hash as _ident_hash
+    from data.lib.remote.models import ResourceIndex
+    from data.lib.remote.models import read_pb2
+    from data.lib.remote.paths import blob_path
+    from data.lib.remote.paths import resource_snapshot_dir
+    from data.lib.remote.verify import Issue
+
+    proto_path = resource_snapshot_dir(root, hash_value) / "resources.pb2"
+    try:
+        index = read_pb2(proto_path, ResourceIndex)
+    except Exception:
+        issues.append(
+            Issue(
+                entity=hash_value[:12] + "...",
+                entity_type="resource_snapshot",
+                severity="error",
+                message=f"Cannot read ResourceIndex from {proto_path}",
+            )
+        )
+        return
+
+    for entry in index.entries:
+        ihash = _ident_hash(entry.resource_id)
+        bpath = blob_path(root, ihash, entry.content_hash)
+        if not bpath.is_file():
+            issues.append(
+                Issue(
+                    entity=entry.resource_id,
+                    entity_type="blob",
+                    severity="error",
+                    message=f"Missing blob: {bpath}",
+                )
+            )
+            continue
+
+        try:
+            actual_hash = _content_hash(bpath.read_bytes())
+            if actual_hash != entry.content_hash:
+                issues.append(
+                    Issue(
+                        entity=entry.resource_id,
+                        entity_type="blob",
+                        severity="error",
+                        message=(
+                            f"Content hash mismatch: expected"
+                            f" {entry.content_hash[:12]}..."
+                            f", got {actual_hash[:12]}..."
+                        ),
+                    )
+                )
+        except Exception as exc:
+            issues.append(
+                Issue(
+                    entity=entry.resource_id,
+                    entity_type="blob",
+                    severity="error",
+                    message=str(exc),
+                )
+            )
+
+
+def _verify_staged(root: Path, session: Session) -> list:
+    """Validate staged snapshots across all four verification phases.
+
+    Returns a list of Issue objects.
+    """
+    from data.lib.remote.hash import snapshot_hash as _snapshot_hash
+    from data.lib.remote.paths import release_snapshot_dir
+    from data.lib.remote.paths import resource_snapshot_dir
+    from data.lib.remote.verify import Issue
+
+    issues: list = []
+
+    dir_for_type: dict[str, callable] = {
+        "resource": resource_snapshot_dir,
+        "release": release_snapshot_dir,
+    }
+    proto_names: dict[str, str] = {
+        "resource": "resources.pb2",
+        "release": "releases.pb2",
+    }
+    staged_map: dict[str, list[str]] = {
+        "resource": session.staged.resources,
+        "release": session.staged.releases,
+    }
+
+    # Phase 1: Per-snapshot integrity
+    # Phase 2: Blob integrity (inline for resource snapshots)
+    for snap_type in ("resource", "release"):
+        proto_name = proto_names[snap_type]
+        staged_hashes = staged_map[snap_type]
+        for h in staged_hashes:
+            snap_dir = dir_for_type[snap_type](root, h)
+            if not snap_dir.is_dir():
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message=f"Directory not found: {snap_dir}",
+                    )
+                )
+                continue
+
+            meta_path = snap_dir / "metadata.json"
+            proto_path = snap_dir / proto_name
+
+            if not meta_path.is_file():
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message="Missing metadata.json",
+                    )
+                )
+                continue
+
+            if not proto_path.is_file():
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message=f"Missing {proto_name}",
+                    )
+                )
+                continue
+
+            # Hash integrity
+            try:
+                files = {
+                    "metadata.json": meta_path.read_bytes(),
+                    proto_name: proto_path.read_bytes(),
+                }
+                computed = _snapshot_hash(snap_type, files)
+                if computed != h:
+                    issues.append(
+                        Issue(
+                            entity=h[:12] + "...",
+                            entity_type=f"{snap_type}_snapshot",
+                            severity="error",
+                            message=(
+                                f"Hash mismatch: expected {h[:12]}..., computed {computed[:12]}..."
+                            ),
+                        )
+                    )
+            except Exception as exc:
+                issues.append(
+                    Issue(
+                        entity=h[:12] + "...",
+                        entity_type=f"{snap_type}_snapshot",
+                        severity="error",
+                        message=f"Hash computation failed: {exc}",
+                    )
+                )
+
+        # Phase 2: Blob check for resources only
+        if snap_type == "resource":
+            for h in staged_hashes:
+                # Skip if snapshot already had directory/meta errors
+                snap_dir = dir_for_type[snap_type](root, h)
+                if snap_dir.is_dir() and (snap_dir / proto_name).is_file():
+                    _check_staged_resource_blobs(root, h, issues)
+
+    # Phase 3: Channel check
+    try:
+        from data.lib.remote.head import ChannelHeadStore
+
+        head_store = ChannelHeadStore(root)
+        registry = head_store.get_registry()
+        if session.channel not in registry.channels:
+            issues.append(
+                Issue(
+                    entity=session.channel,
+                    entity_type="channel",
+                    severity="warning",
+                    message=(
+                        f"Channel {session.channel!r} not in registry "
+                        "(will be auto-created on commit)"
+                    ),
+                )
+            )
+    except Exception as exc:
+        issues.append(
+            Issue(
+                entity=session.channel,
+                entity_type="channel",
+                severity="warning",
+                message=f"Channel check failed: {exc}",
+            )
+        )
+
+    return issues
+
+
+@remote_session.command("verify")
+@click.option(
+    "--repair",
+    is_flag=True,
+    default=False,
+    help="Attempt automatic repairs.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_session_verify(repair: bool, schema_root: Path | None):
+    """Validate the staged generation integrity."""
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+
+    try:
+        session = _require_session(store, "verify")
+    except click.ClickException:
+        raise click.ClickException(
+            "No active session. Run './x remote session init' first."
+        ) from None
+
+    if repair:
+        verifier = Verifier(root)
+        fixed = verifier.repair()
+        if fixed > 0:
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Repaired {fixed} entity(ies)."))
+        else:
+            click.echo("No entities needed repair.")
+        return
+
+    issues = _verify_staged(root, session)
+    error_count = sum(1 for i in issues if i.severity == "error")
+
+    staged_counts = {
+        "Resources": len(session.staged.resources),
+        "Releases": len(session.staged.releases),
+    }
+
+    if not issues:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session verification passed."))
+        for label, count in staged_counts.items():
+            click.echo(styled(Style.DIM, f"  {label}: {count} staged, {count} ok"))
+        return
+
+    click.echo()
+    click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification failed ({error_count} error(s)):"))
+    for issue in issues:
+        color = Fore.RED if issue.severity == "error" else Fore.YELLOW
+        click.echo(
+            f"  {issue.entity[:16] if len(issue.entity) > 16 else issue.entity}"
+            + styled(Style.DIM, f"  [{issue.entity_type}]")
+            + styled([Style.BRIGHT, color], f"  {issue.severity}")
+            + styled(Style.DIM, f"  {issue.message}")
+        )
+
+    if error_count:
+        raise SystemExit(1)
 
 
 # ---- commit ----------------------------------------------------------------
 
 
-@prepare.command("commit")
+@remote_session.command("commit")
 @click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-def remote_prepare_commit(session_id: str | None):
-    """Finalize session (immutable todo, remove lockfile). Emits summary."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    try:
-        mgr = __get_session(session_id)
-        st = mgr.commit(
-            channel=remote_cfg.channel,
-            resource_root=remote_cfg.resource_root,
-        )
-    except (SessionNotActiveError, SessionCommittedError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo("  committed:  true")
-
-
-# ---- abort -----------------------------------------------------------------
-
-
-@prepare.command("abort")
-@click.option(
-    "--session", "session_id", default=None, help="Session ID. Defaults to current session."
-)
-@click.option("--force", is_flag=True, default=False, help="Skip confirmation prompt.")
-def remote_prepare_abort(session_id: str | None, force: bool):
-    """Discard session, remove session dir."""
-    try:
-        mgr = __get_session(session_id)
-    except (SessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    if not force:
-        click.confirm(
-            f"Discard session {mgr.session_id} and all staged content?",
-            abort=True,
-        )
-
-    session_dir = mgr.session_dir
-    mgr.abort()
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
-
-
-# ---------------------------------------------------------------------------
-# remote promote
-# ---------------------------------------------------------------------------
-
-
-@remote.group(cls=ClickAliasedGroup)
-def promote_cmd():
-    """Promotion commands for testing -> stable content flow."""
-
-
-def __get_promote_session(
-    session_id: str | None = None,
-) -> data.lib.remote.promote.PromotionSessionManager:
-    from data.lib.remote import promote as _promote
-
-    root = __get_session_root()
-    if session_id:
-        return _promote.PromotionSessionManager.from_session_id(root, session_id)
-    return _promote.PromotionSessionManager.from_current(root)
-
-
-@promote_cmd.command("start")
-@click.option(
-    "--backend",
-    type=click.Choice(["minio", "s3"]),
-    default=None,
-    help="Which backend to fetch remote state from. Required unless --origin-dir is used.",
+    "--no-push",
+    is_flag=True,
+    default=False,
+    help="Create generation but do not advance channel head.",
 )
 @click.option(
-    "--origin-dir",
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Skip verification and override committed session.",
+)
+@click.option(
+    "--schema-root",
     type=click.Path(path_type=Path),
     default=None,
-    help="Local origin directory to copy state from instead of fetching.",
+    help="Schema V2 storage root (default from dev config).",
 )
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-def remote_promote_start(
-    backend: str | None,
-    origin_dir: Path | None,
-    resource_root: str | None,
-):
-    """Start a promotion session (testing -> stable). Fetches both channels."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    from data.lib.remote import promote as _promote
+def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
+    """Assemble a generation from staged snapshots and advance the channel head."""
+    from data.lib.remote.generation import utc_timestamp
+    from data.lib.remote.models import GenerationMetadata
+    from data.lib.remote.models import GenerationPointer
+    from data.lib.remote.models import GenerationResources
+    from data.lib.remote.models import ServerIndex
 
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    sessions_root = __get_session_root()
+    root = _resolve_schema_root(schema_root)
+    store = SessionStore(root)
+    session = _require_session(store, "commit")
 
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+    if session.committed and not force:
+        raise click.ClickException("Session is committed. Use --force to override.")
+
+    if not any(
+        [
+            session.staged.resources,
+            session.staged.releases,
+        ]
+    ):
+        raise click.ClickException(
+            "No snapshots staged. Use './x remote session add' to stage snapshots."
+        )
+
+    if not force:
+        issues = _verify_staged(root, session)
+        error_count = sum(1 for i in issues if i.severity == "error")
+        if error_count:
+            click.echo()
+            click.echo(
+                styled([Style.BRIGHT, Fore.RED], f"Verification failed ({error_count} error(s)):")
+            )
+            for issue in issues:
+                color = Fore.RED if issue.severity == "error" else Fore.YELLOW
+                click.echo(
+                    f"  {issue.entity[:16] if len(issue.entity) > 16 else issue.entity}"
+                    + styled(Style.DIM, f"  [{issue.entity_type}]")
+                    + styled([Style.BRIGHT, color], f"  {issue.severity}")
+                    + styled(Style.DIM, f"  {issue.message}")
+                )
+            raise click.ClickException(
+                "Verification failed. Use --force to skip or fix issues first."
+            )
+
+    # Assemble generation
+    mgr = SessionManager(root)
+    snap_store = mgr.snap_store
+    head_store = mgr.head_store
+
+    resolved_channel = __validate_remote_channel(session.channel)
+
+    # Build ServerIndex from staged resource snapshot metadata
+    server_index = ServerIndex()
+    server_index.schema_version = 1
+
+    gen_resources = GenerationResources()
+    gen_resources.schema_version = 1
+
+    server_ids: list[str] = []
+    for hash_val in session.staged.resources:
+        meta, _index = snap_store.load_resource_snapshot(hash_val)
+        entry = server_index.servers.add()
+        entry.server_id = meta.server_id
+        if meta.name:
+            for locale, display_name in meta.name.items():
+                entry.name[locale] = display_name
+        else:
+            entry.name["en"] = meta.server_id
+        entry.game_build = meta.game_build
+        entry.game_version = meta.game_version
+
+        gentry = gen_resources.entries.add()
+        gentry.server_id = meta.server_id
+        gentry.snapshot_hash = hash_val
+
+        server_ids.append(meta.server_id)
+
+    # Build GenerationPointer for releases (last staged hash wins)
+    release_ptr = GenerationPointer()
+    release_ptr.schema_version = 1
+    release_ptr.snapshot_hash = ""
+    release_hash: str | None = None
+    if session.staged.releases:
+        release_hash = session.staged.releases[-1]
+        release_ptr.snapshot_hash = release_hash
+
+    # Determine parent hash from current head
+    current_head = head_store._safe_get_head(resolved_channel)
+    parent = current_head.generation_hash if current_head and current_head.generation_hash else None
+
+    # Create generation metadata
+    ts = utc_timestamp()
+    meta = GenerationMetadata(
+        channel=resolved_channel,
+        timestamp=ts,
+        subject="",
+        parent=parent,
     )
 
-    resolved_backend = "local" if origin_dir is not None or backend is None else backend
+    mgr.ensure_channel(resolved_channel)
 
-    kwargs: dict[str, object] = {
-        "backend": resolved_backend,
-        "origin_dir": origin_dir or __resolve_dev_path(remote_cfg.mock_origin_dir),
-        "resource_root": resolved_resource_root,
-    }
+    # Check for idempotent reuse: scan existing generation hashes before creation
+    refs_dir = root / "channels" / "refs"
+    existing_hashes: set[str] = set()
+    if refs_dir.is_dir():
+        for entry in refs_dir.iterdir():
+            if entry.is_dir() and not entry.name.startswith("tmp"):
+                existing_hashes.add(entry.name)
 
-    if resolved_backend == "minio":
-        sub = remote_cfg.require_minio()
-        kwargs["mc_bin"] = get_command("mc")
-        kwargs["endpoint"] = f"http://{remote_cfg.host}:{sub.port}"
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
-    elif resolved_backend == "s3":
-        sub = remote_cfg.require_s3()
-        kwargs["mc_bin"] = get_command("mc")
-        kwargs["endpoint"] = sub.endpoint
-        kwargs["bucket"] = sub.bucket
-        kwargs["access_key"] = sub.access_key
-        kwargs["secret_key"] = sub.secret_key
-        kwargs["alias_name"] = sub.alias
-
-    mgr = _promote.PromotionSessionManager.start(sessions_root, **kwargs)  # type: ignore[arg-type]
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
-    click.echo(styled(Style.DIM, f"  source: {_promote._SOURCE_CHANNEL.value}"))
-    click.echo(styled(Style.DIM, f"  target: {_promote._TARGET_CHANNEL.value}"))
-
-    available = mgr.available_items()
-    bundles = available.get("bundles", [])
-    documents = available.get("documents", [])
-
-    if not bundles and not documents:
-        click.echo(styled(Style.DIM, "\n  No items to promote. Testing and stable are in sync."))
-        return
-
-    click.echo()
-    if bundles:
-        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Bundles ({len(bundles)}):"))
-        for b in bundles:
-            aid = b.get("artifactId", "?")
-            variant = b.get("variant", "?")
-            click.echo(styled(Style.DIM, f"    {aid}  [{variant}]"))
-
-    if documents:
-        click.echo(styled([Style.BRIGHT, Fore.CYAN], f"  Documents ({len(documents)}):"))
-        for d in documents:
-            did = d.get("id", "?")
-            kind = d.get("kind", "?")
-            localizations = d.get("localizations", {})
-            title = ""
-            if isinstance(localizations, dict):
-                en_loc = localizations.get("en", {})
-                if isinstance(en_loc, dict):
-                    title = str(en_loc.get("title", ""))
-            click.echo(styled(Style.DIM, f"    {did}  [{kind}]  {title}"))
-
-
-@promote_cmd.command("status")
-@click.option("--session", "session_id", default=None, help="Session ID. Defaults to current.")
-def remote_promote_status(session_id: str | None):
-    """Show promotion session summary."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    st = mgr.status()
-    from data.lib.remote import promote as _promote
-
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Session: ") + st.session_id)
-    click.echo(f"  source:     {_promote._SOURCE_CHANNEL.value}")
-    click.echo(f"  target:     {_promote._TARGET_CHANNEL.value}")
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo(f"  committed:  {st.committed}")
-
-
-# ---- promote add ---------------------------------------------------------
-
-
-@promote_cmd.command("add")
-@click.option("--bundle", "bundle_id", default=None, help="Artifact id to promote.")
-@click.option("--document", "document_id", default=None, help="Document id to promote.")
-@click.option("--all", "add_all", is_flag=True, default=False, help="Stage all eligible items.")
-@click.option("--no-increment", is_flag=True, default=False, help="Skip associated increments.")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-def remote_promote_add(
-    bundle_id: str | None,
-    document_id: str | None,
-    add_all: bool,
-    no_increment: bool,
-    session_id: str | None,
-):
-    """Stage items for promotion from testing to stable."""
-    try:
-        mgr = __get_promote_session(session_id)
-
-        if add_all:
-            if bundle_id or document_id:
-                raise click.ClickException("--all cannot be combined with --bundle or --document.")
-            mgr.add_all()
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged all eligible items for promotion.")
-            )
-            return
-
-        if bundle_id:
-            mgr.add_bundle(bundle_id, no_increment=no_increment)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged bundle for promotion: ") + bundle_id
-            )
-            if no_increment:
-                click.echo(styled(Style.DIM, "  (increments skipped)"))
-
-        elif document_id:
-            mgr.add_document(document_id)
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], "Staged document for promotion: ") + document_id
-            )
-        else:
-            raise click.ClickException("Specify --bundle <id>, --document <id>, or --all.")
-    except (
-        PromotionSessionNotActiveError,
-        PromotionSessionCommittedError,
-        FileNotFoundError,
-    ) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-
-# ---- promote remove -----------------------------------------------------
-
-
-@promote_cmd.command("remove")
-@click.option("--bundle", "bundle_id", default=None, help="Artifact id to un-stage.")
-@click.option("--document", "document_id", default=None, help="Document id to un-stage.")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-def remote_promote_remove(
-    bundle_id: str | None,
-    document_id: str | None,
-    session_id: str | None,
-):
-    """Remove a staged promotion."""
-    try:
-        mgr = __get_promote_session(session_id)
-
-        if bundle_id:
-            mgr.remove(target_type="artifact", target_id=bundle_id)
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged bundle: ") + bundle_id)
-        elif document_id:
-            mgr.remove(target_type="document", target_id=document_id)
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Un-staged document: ") + document_id)
-        else:
-            raise click.ClickException("Specify --bundle <id> or --document <id>.")
-    except (
-        PromotionSessionNotActiveError,
-        PromotionSessionCommittedError,
-        FileNotFoundError,
-    ) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-
-# ---- promote diff -------------------------------------------------------
-
-
-@promote_cmd.command("diff")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-def remote_promote_diff(
-    session_id: str | None,
-    resource_root: str | None,
-):
-    """Diff current stable against the promoted result."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
+    gen_hash = mgr.create_generation(
+        metadata=meta,
+        server_index=server_index,
+        resources=gen_resources,
+        release_pointer=release_ptr,
     )
 
-    diff = mgr.diff(resource_root=resolved_resource_root)
-    click.echo(json.dumps(diff, indent=4, ensure_ascii=False))
+    reused = gen_hash in existing_hashes
 
+    # Advance head (unless --no-push)
+    if not no_push:
+        mgr.push(resolved_channel, gen_hash)
 
-# ---- promote verify -----------------------------------------------------
+    # Mark session committed
+    store.mark_committed()
 
-
-@promote_cmd.command("verify")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-def remote_promote_verify(session_id: str | None, resource_root: str | None):
-    """Verify the integrity of the promoted state."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    errors = mgr.verify(resource_root=resource_root)
-    if errors:
-        click.echo(styled([Style.BRIGHT, Fore.RED], f"Verification found {len(errors)} issue(s):"))
-        for err in errors:
-            click.echo(f"  - {err}")
-        raise click.ClickException(f"Verification failed with {len(errors)} error(s).")
+    # Output
+    if reused:
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.GREEN],
+                f"Generation {gen_hash[:16]}... already exists (reused).",
+            )
+        )
     else:
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Verification passed."))
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Generation created: {gen_hash[:16]}..."))
 
-
-# ---- promote commit -----------------------------------------------------
-
-
-@promote_cmd.command("commit")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-def remote_promote_commit(session_id: str | None):
-    """Commit the promotion session, writing the stable channel merged output."""
-    try:
-        mgr = __get_promote_session(session_id)
-        st = mgr.commit()
-    except (
-        PromotionSessionNotActiveError,
-        PromotionSessionCommittedError,
-        FileNotFoundError,
-    ) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session committed: ") + st.session_id)
-    click.echo(f"  operations: {st.operation_count}")
-    click.echo("  committed:  true")
+    if not no_push:
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Head advanced on channel {resolved_channel}")
+        )
+    click.echo(
+        styled(Style.DIM, f"  Parent:        {parent[:16] + '...' if parent else 'none (root)'}")
+    )
     click.echo(
         styled(
             Style.DIM,
-            f"  merged:     {mgr.merged_dir}",
+            f"  Resources:     {len(session.staged.resources)} snapshots"
+            f" ({', '.join(server_ids) if server_ids else 'none'})",
         )
     )
+    release_label = f"{release_hash[:16]}..." if release_hash else "none"
+    click.echo(styled(Style.DIM, f"  Releases:      {release_label}"))
 
 
-# ---- promote abort ------------------------------------------------------
+# ---- revert -----------------------------------------------------------------
 
 
-@promote_cmd.command("abort")
-@click.option("--session", "session_id", default=None, help="Session ID.")
-@click.option("--force", is_flag=True, default=False, help="Skip confirmation.")
-def remote_promote_abort(session_id: str | None, force: bool):
-    """Abort a promotion session and discard all staged changes."""
-    try:
-        mgr = __get_promote_session(session_id)
-    except (PromotionSessionNotActiveError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    if not force:
-        click.confirm(
-            styled(
-                [Fore.YELLOW, Style.BRIGHT],
-                f"Discard promotion session {mgr.session_id} and all staged content?",
-            ),
-            abort=True,
-        )
-
-    session_dir = mgr.session_dir
-    mgr.abort()
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session aborted: ") + str(session_dir))
-
-
-@remote.group(cls=ClickAliasedGroup)
-def publish():
-    """Remote content publishing commands."""
-
-
-def __resolve_publish_source(
-    *,
-    source_dir: Path | None,
-    session_id: str | None,
-) -> tuple[Path, str | None]:
-    if source_dir is not None and session_id is not None:
-        raise click.ClickException("Pass either --source-dir or --session, not both.")
-    if source_dir is not None:
-        resolved = __resolve_dev_path(source_dir)
-        if not resolved.is_dir():
-            raise click.ClickException(f"Source directory does not exist: {resolved}")
-        return resolved, None
-    if session_id:
-        mgr = __get_session(session_id)
-        if not mgr.status().committed:
-            raise click.ClickException(
-                f"Session has not been committed."
-                f" Run `./x remote prepare commit --session {mgr.session_id}` first."
-            )
-    else:
-        try:
-            mgr = SessionManager.find_latest_committed(__get_session_root())
-        except FileNotFoundError as exc:
-            raise click.ClickException(str(exc)) from exc
-    merged = mgr.session_dir / "merged"
-    if not merged.is_dir():
-        raise click.ClickException(
-            f"Session has no merged output. Run `./x remote prepare diff` first: {mgr.session_id}"
-        )
-    return merged, mgr.session_id
-
-
-def __resolve_publish_generation(
-    *,
-    source_dir: Path,
-    session_id: str | None,
-    channel: Channel,
-    resource_root: str,
-) -> str:
-    from data.lib.remote.session import _generate_publish_id
-
-    resolved_resource_root = __validate_remote_resource_root(resource_root)
-    if session_id is not None:
-        mgr = __get_session(session_id)
-        todo = mgr._load_todo()
-        if todo.generation:
-            return todo.generation
-        return _generate_publish_id()
-    # --source-dir mode: extract generation from the source's index.json
-    ch_dir = source_dir / resolved_resource_root / "channels" / channel.value
-    gen = _read_generation_from_channel_dir(ch_dir)
-    if gen is not None:
-        return gen
-    return _generate_publish_id()
-
-
-def _read_generation_from_channel_dir(ch_dir: Path) -> str | None:
-    legacy = ch_dir / "index.json"
-    if legacy.is_file():
-        index_data: dict[str, object] = json.loads(legacy.read_text(encoding="utf-8"))
-        gen = index_data.get("generation")
-        if isinstance(gen, str) and gen:
-            return gen
-    for gen_dir in sorted(ch_dir.glob(".generations/*"), reverse=True):
-        idx = gen_dir / "index.json"
-        if idx.is_file():
-            index_data = json.loads(idx.read_text(encoding="utf-8"))
-            gen = index_data.get("generation")
-            if isinstance(gen, str) and gen:
-                return gen
-    return None
-
-
-# ---- shared S3 upload helpers -----------------------------------------------
-
-
-def __get_publish_s3_params(
-    target: str,
-    endpoint: str | None,
-    bucket: str | None,
-    access_key: str | None,
-    secret_key: str | None,
-    alias_name: str | None,
-    public_download: bool | None,
-) -> dict[str, object]:
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-
-    if target.lower() == "minio":
-        sub = remote_cfg.require_minio()
-        return {
-            "endpoint": endpoint or f"http://{remote_cfg.host}:{sub.port}",
-            "bucket": bucket or sub.bucket,
-            "access_key": access_key or sub.access_key,
-            "secret_key": secret_key or sub.secret_key,
-            "alias_name": alias_name or sub.alias,
-            "public_download": (
-                public_download if public_download is not None else sub.public_download
-            ),
-        }
-    else:
-        sub = remote_cfg.require_s3()
-        return {
-            "endpoint": endpoint or sub.endpoint,
-            "bucket": bucket or sub.bucket,
-            "access_key": access_key or sub.access_key,
-            "secret_key": secret_key or sub.secret_key,
-            "alias_name": alias_name or sub.alias,
-            "public_download": (
-                public_download if public_download is not None else sub.public_download
-            ),
-        }
-
-
-def _collect_referenced_paths_from_catalogs(
-    mc: str,
-    alias_name: str,
-    bucket: str,
-    resource_root: str,
-    channel: Channel,
-) -> set[str]:
-    """Download current catalogs and collect all referenced content paths.
-
-    Returns the set of full relative paths (e.g. ``bundles/{bundleId}/{artifactId}.zip``)
-    from ``artifactPath``, ``manifestPath``, and ``bodyPath`` fields.
-    """
-    import tempfile
-
-    bucket_target = f"{alias_name}/{bucket}/{resource_root}"
-    ch_target = f"{bucket_target}/channels/{channel}"
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        (tmp_path / channel).mkdir(parents=True, exist_ok=True)
-
-        # Download index.json first to locate catalog files
-        _run_mc(
-            [mc, "cp", f"{ch_target}/index.json", str(tmp_path / channel / "index.json")],
-            [mc, "cp", f"{ch_target}/index.json", f"<tmp>/{channel}/index.json"],
-            "GC FETCH index.json",
-        )
-
-        index_path = tmp_path / channel / "index.json"
-        docs_cat_remote = f"{ch_target}/documents/catalog.json"
-        bundles_cat_remote = f"{ch_target}/bundles/catalog.json"
-        if index_path.is_file():
-            index_data: dict[str, object] = json.loads(index_path.read_text(encoding="utf-8"))
-            docs = index_data.get("documents", {})
-            if isinstance(docs, dict):
-                cp = docs.get("catalogPath")
-                if isinstance(cp, str):
-                    docs_cat_remote = f"{alias_name}/{bucket}/{cp}"
-            bundles = index_data.get("bundles", {})
-            if isinstance(bundles, dict):
-                cp = bundles.get("catalogPath")
-                if isinstance(cp, str):
-                    bundles_cat_remote = f"{alias_name}/{bucket}/{cp}"
-
-        docs_local = tmp_path / channel / "documents" / "catalog.json"
-        docs_local.parent.mkdir(parents=True, exist_ok=True)
-        with contextlib.suppress(OSError):
-            _run_mc(
-                [mc, "cp", docs_cat_remote, str(docs_local)],
-                [mc, "cp", docs_cat_remote, f"<tmp>/{channel}/documents/catalog.json"],
-                "GC FETCH documents/catalog.json",
-            )
-
-        bundles_local = tmp_path / channel / "bundles" / "catalog.json"
-        bundles_local.parent.mkdir(parents=True, exist_ok=True)
-        with contextlib.suppress(OSError):
-            _run_mc(
-                [mc, "cp", bundles_cat_remote, str(bundles_local)],
-                [mc, "cp", bundles_cat_remote, f"<tmp>/{channel}/bundles/catalog.json"],
-                "GC FETCH bundles/catalog.json",
-            )
-
-        referenced: set[str] = set()
-
-        if docs_local.is_file():
-            docs: dict[str, object] = json.loads(docs_local.read_text(encoding="utf-8"))
-            entries: object = docs.get("entries", [])
-            if isinstance(entries, list):
-                for entry in entries:
-                    if not isinstance(entry, dict):
-                        continue
-                    localizations = entry.get("localizations")
-                    if isinstance(localizations, dict):
-                        for _lang, loc in localizations.items():
-                            if isinstance(loc, dict):
-                                body = loc.get("bodyPath")
-                                if isinstance(body, str):
-                                    referenced.add(body)
-
-        if bundles_local.is_file():
-            bundles: dict[str, object] = json.loads(bundles_local.read_text(encoding="utf-8"))
-            artifacts: object = bundles.get("artifacts", [])
-            if isinstance(artifacts, list):
-                for artifact in artifacts:
-                    if not isinstance(artifact, dict):
-                        continue
-                    ap = artifact.get("artifactPath")
-                    if isinstance(ap, str):
-                        referenced.add(ap)
-                    mp = artifact.get("manifestPath")
-                    if isinstance(mp, str):
-                        referenced.add(mp)
-
-    return referenced
-
-
-def __gc_unreferenced_objects(
-    mc: str,
-    alias_name: str,
-    bucket: str,
-    resource_root: str,
-    channel: Channel,
-    *,
-    dry_run: bool,
-    keep_generations: int = 2,
-) -> str:
-    """Prune unreferenced objects from the remote bucket.
-
-    Collects all referenced paths from current catalogs via exact path
-    matching, then deletes anything in ``documents/body/`` and ``bundles/``
-    that isn't referenced.  Also prunes old generations beyond *keep_generations*
-    and cleans up stale deployment snapshots.
-    Returns a human-readable summary.
-    """
-    bucket_target = f"{alias_name}/{bucket}/{resource_root}"
-    gen_prefix = f"channels/{channel}/.generations"
-
-    # Collect active generation and prune old generations
-    generations_stale: list[tuple[str, str]] = []
-    try:
-        out = subprocess.run(
-            [mc, "ls", "--json", f"{bucket_target}/{gen_prefix}/"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        if out.returncode == 0:
-            gen_names: list[str] = []
-            for line in out.stdout.strip().splitlines():
-                try:
-                    obj: dict[str, object] = json.loads(line)
-                except ValueError:
-                    continue
-                key = obj.get("key", "")
-                if not isinstance(key, str):
-                    continue
-                rel = (
-                    key.removeprefix(f"{resource_root}/")
-                    if key.startswith(f"{resource_root}/")
-                    else key
-                )
-                name = rel.removeprefix(f"{gen_prefix}/").rstrip("/")
-                if name and "/" not in name:
-                    gen_names.append(name)
-            gen_names.sort(reverse=True)
-            for stale_gen in gen_names[keep_generations:]:
-                stale_key = f"{gen_prefix}/{stale_gen}"
-                generations_stale.append((stale_key, "0"))
-    except Exception:
-        pass
-
-    referenced = _collect_referenced_paths_from_catalogs(
-        mc=mc,
-        alias_name=alias_name,
-        bucket=bucket,
-        resource_root=resource_root,
-        channel=channel,
-    )
-
-    # List all objects in mutable prefixes
-    results: list[str] = []
-    for prefix in (f"{bucket_target}/documents/body", f"{bucket_target}/bundles"):
-        try:
-            out = subprocess.run(
-                [mc, "ls", "--recursive", "--json", prefix],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if out.returncode == 0:
-                results.extend(out.stdout.strip().splitlines())
-        except Exception:
-            continue
-
-    unreferenced: list[tuple[str, str]] = []
-    for line in results:
-        if not line.strip():
-            continue
-        try:
-            obj: dict[str, object] = json.loads(line)
-        except ValueError:
-            continue
-        key = obj.get("key", "")
-        if not isinstance(key, str):
-            continue
-        rel = key.removeprefix(f"{resource_root}/") if key.startswith(f"{resource_root}/") else key
-        if rel not in referenced:
-            size = obj.get("size")
-            size_str = f"{size}" if isinstance(size, (int, float)) else "?"
-            unreferenced.append((key, size_str))
-
-    # Collect stale deployment snapshots
-    stale_deps: list[tuple[str, str]] = []
-    dep_prefix = f"{bucket_target}/deployments"
-    try:
-        out = subprocess.run(
-            [mc, "ls", "--recursive", "--json", dep_prefix],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        if out.returncode == 0:
-            dep_objects: list[dict[str, object]] = []
-            for line in out.stdout.strip().splitlines():
-                try:
-                    dep_objects.append(json.loads(line))
-                except ValueError:
-                    continue
-            # Keep only the 10 most recent deployments
-            timestamps: set[str] = set()
-            for obj in dep_objects:
-                key: object = obj.get("key", "")
-                if not isinstance(key, str):
-                    continue
-                rel = (
-                    key.removeprefix(f"{resource_root}/")
-                    if key.startswith(f"{resource_root}/")
-                    else key
-                )
-                parts = rel.split("/")
-                if len(parts) > 1 and parts[0] == "deployments":
-                    for part in parts[1:]:
-                        if len(part) >= 14 and part[0].isdigit():
-                            timestamps.add(part)
-            keep = set(sorted(timestamps, reverse=True)[:10])
-            for obj in dep_objects:
-                key: object = obj.get("key", "")
-                if not isinstance(key, str):
-                    continue
-                rel = (
-                    key.removeprefix(f"{resource_root}/")
-                    if key.startswith(f"{resource_root}/")
-                    else key
-                )
-                parts = rel.split("/")
-                ts = None
-                if len(parts) > 1 and parts[0] == "deployments":
-                    for part in parts[1:]:
-                        if len(part) >= 14 and part[0].isdigit():
-                            ts = part
-                            break
-                if ts and ts not in keep:
-                    size = obj.get("size")
-                    size_str = f"{size}" if isinstance(size, (int, float)) else "?"
-                    stale_deps.append((key, size_str))
-    except Exception:
-        pass
-
-    if dry_run:
-        lines = []
-        if generations_stale:
-            lines.append(
-                f"Would delete {len(generations_stale)} stale generation(s)"
-                f" (keeping {keep_generations}):"
-            )
-            for key, _size in sorted(generations_stale):
-                lines.append(f"  {resource_root}/{key}/")
-        if unreferenced:
-            lines.append(f"Would delete {len(unreferenced)} unreferenced object(s):")
-            for key, size in sorted(unreferenced):
-                lines.append(f"  {key}  ({size} bytes)")
-        if stale_deps:
-            lines.append(f"Would delete {len(stale_deps)} stale deployment artifact(s):")
-            for key, size in sorted(stale_deps):
-                lines.append(f"  {key}  ({size} bytes)")
-        if not generations_stale and not unreferenced and not stale_deps:
-            return "Nothing to prune."
-        return "\n".join(lines)
-
-    deleted_gens = 0
-    for gen_rel, _size in generations_stale:
-        full_key = f"{resource_root}/{gen_rel}"
-        with contextlib.suppress(OSError):
-            _run_mc(
-                [mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}/{full_key}"],
-                [mc, "rm", "--recursive", "--force", f"{alias_name}/{bucket}/{full_key}"],
-                "GC DELETE GENERATION",
-            )
-            deleted_gens += 1
-
-    deleted_content = 0
-    for key, _size in unreferenced:
-        with contextlib.suppress(OSError):
-            _run_mc(
-                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
-                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
-                "GC DELETE",
-            )
-            deleted_content += 1
-
-    deleted_deps = 0
-    for key, _size in stale_deps:
-        with contextlib.suppress(OSError):
-            _run_mc(
-                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
-                [mc, "rm", f"{alias_name}/{bucket}/{key}"],
-                "GC DELETE DEPLOYMENT",
-            )
-            deleted_deps += 1
-
-    parts = []
-    if deleted_gens:
-        parts.append(f"{deleted_gens} stale generation(s)")
-    if deleted_content:
-        parts.append(f"{deleted_content} unreferenced object(s)")
-    if deleted_deps:
-        parts.append(f"{deleted_deps} stale deployment artifact(s)")
-    if not parts:
-        return "Nothing to prune."
-    return f"Deleted {', '.join(parts)}."
-
-
-def __write_temp_json(payload: dict[str, object]) -> Path:
-    import tempfile
-
-    fd, path_str = tempfile.mkstemp(suffix=".json", text=True)
-    os.close(fd)
-    p = Path(path_str)
-    p.write_text(json.dumps(payload, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
-    return p
-
-
-def _run_mc(cmd: list[str], redacted_cmd: list[str], title: str) -> None:
-    if DRY_RUN:
-        info(f"[Dry-Run] {title}: {' '.join(redacted_cmd)}")
-        return
-    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    if out.returncode != 0:
-        msg = f"Failed to execute [{out.returncode}]: {' '.join(redacted_cmd)}"
-        stderr = (out.stderr or "").strip()
-        if stderr:
-            msg += f"\n{stderr}"
-        raise OSError(msg)
-
-
-def _resolve_verify_flag(
-    *,
-    cli_value: bool | None,
-    target: str,
-) -> bool:
-    """Resolve the verify flag from CLI > target config > global override > target default."""
-    if cli_value is not None:
-        return cli_value
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    if remote_cfg.verify_upload is not None:
-        return remote_cfg.verify_upload
-    if target.lower() == "minio":
-        return remote_cfg.require_minio().verify_upload
-    return remote_cfg.require_s3().verify_upload
-
-
-def _resolve_verify_workers(
-    *,
-    cli_value: int | None,
-    target: str,
-) -> int:
-    """Resolve verify_workers from CLI > target config > global override > target default (4)."""
-    if cli_value is not None and cli_value > 0:
-        return cli_value
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    if remote_cfg.verify_workers is not None and remote_cfg.verify_workers > 0:
-        return remote_cfg.verify_workers
-    if target.lower() == "minio":
-        return remote_cfg.require_minio().verify_workers
-    return remote_cfg.require_s3().verify_workers
-
-
-def _resolve_local_index(channel_dir: Path, generation: str) -> Path:
-    gen_path = channel_dir / ".generations" / generation / "index.json"
-    if gen_path.is_file():
-        return gen_path
-    legacy = channel_dir / "index.json"
-    if legacy.is_file():
-        return legacy
-    for gen_dir in sorted(channel_dir.glob(".generations/*"), reverse=True):
-        idx = gen_dir / "index.json"
-        if idx.is_file():
-            return idx
-    return legacy
-
-
-def _resolve_local_catalog_file(
-    channel_dir: Path, index_data: dict[str, object], section: str
-) -> Path:
-    sec = index_data.get(section, {})
-    if isinstance(sec, dict):
-        cp = sec.get("catalogPath")
-        if isinstance(cp, str):
-            parts = cp.split("/")
-            try:
-                gen_idx = parts.index(".generations")
-                rel = "/".join(parts[gen_idx:])
-                return channel_dir / rel
-            except ValueError:
-                pass
-    return channel_dir / section / "catalog.json"
-
-
-def _resolve_local_app_releases(
-    channel_dir: Path, index_data: dict[str, object], generation: str | None
-) -> Path:
-    app = index_data.get("app", {})
-    if isinstance(app, dict):
-        rp = app.get("releasesPath")
-        if isinstance(rp, str):
-            parts = rp.split("/")
-            try:
-                gen_idx = parts.index(".generations")
-                rel = "/".join(parts[gen_idx:])
-                return channel_dir / rel
-            except ValueError:
-                pass
-    if generation:
-        return channel_dir / ".generations" / generation / "app" / "releases.json"
-    return channel_dir / "app" / "releases.json"
-
-
-def __verify_upload_integrity(
-    *,
-    source_dir: Path,
-    mc_bin: str,
-    bucket_target: str,
-    resource_root: str,
-    channel: Channel,
-    generation: str,
-    session_id: str | None = None,
-    verify_workers: int = 4,
-) -> list[str]:
-    """Verify uploaded files match local source by re-downloading and comparing SHA256.
-
-    For session uploads, only files from staged operations are verified.
-    For --source-dir uploads, all catalog entries are verified.
-
-    Returns a list of error strings (empty = all good).
-    """
-
-    local_root = source_dir / resource_root
-    channel_dir = local_root / "channels" / channel
-    remote_root = f"{bucket_target}/{resource_root}"
-    remote_channel = f"{remote_root}/channels/{channel}"
-
-    items: list[dict[str, str]] = []
-
-    tracked_artifact_ids: set[str] | None = None
-    tracked_document_ids: set[str] | None = None
-
-    if session_id is not None:
-        from data.lib.remote.session import SessionManager as SessionMgr
-
-        sessions_root = __get_session_root()
-        mgr = SessionMgr.from_session_id(sessions_root, session_id)
-        todo = mgr._load_todo()
-        tracked_artifact_ids = set()
-        tracked_document_ids = set()
-        for op in todo.operations:
-            if isinstance(op, data.lib.remote.models.AddBundleOp):
-                tracked_artifact_ids.add(op.artifact_id)
-            elif isinstance(
-                op, (data.lib.remote.models.AddAnnouncementOp, data.lib.remote.models.AddVersionOp)
-            ):
-                tracked_document_ids.add(op.document_id)
-
-    # Resolve index.json — prefer the generation-specific path matching the upload
-    index_local_path = _resolve_local_index(channel_dir, generation)
-    if not index_local_path.is_file():
-        return ["Local index.json not found for verification."]
-
-    index_data: dict[str, object] = json.loads(index_local_path.read_text(encoding="utf-8"))
-
-    remote_channel_url = f"{remote_channel}/.generations/{generation}"
-
-    items.append(
-        {
-            "remote": f"{remote_channel}/index.json",
-            "sha256": __file_sha256(index_local_path),
-            "label": "index.json",
-            "mc": mc_bin,
-        }
-    )
-
-    docs_catalog_local = _resolve_local_catalog_file(channel_dir, index_data, "documents")
-    bundles_catalog_local = _resolve_local_catalog_file(channel_dir, index_data, "bundles")
-    app_releases_local = _resolve_local_app_releases(channel_dir, index_data, generation)
-
-    for label, local_path, remote_suffix in [
-        ("documents/catalog.json", docs_catalog_local, "/documents/catalog.json"),
-        ("bundles/catalog.json", bundles_catalog_local, "/bundles/catalog.json"),
-    ]:
-        if local_path and local_path.is_file():
-            items.append(
-                {
-                    "remote": f"{remote_channel_url}{remote_suffix}",
-                    "sha256": __file_sha256(local_path),
-                    "label": label,
-                    "mc": mc_bin,
-                }
-            )
-
-    if app_releases_local and app_releases_local.is_file():
-        items.append(
-            {
-                "remote": f"{remote_channel_url}/app/releases.json",
-                "sha256": __file_sha256(app_releases_local),
-                "label": "app/releases.json",
-                "mc": mc_bin,
-            }
-        )
-
-    bundles_catalog_path = bundles_catalog_local
-    if bundles_catalog_path and bundles_catalog_path.is_file():
-        bundles_catalog = json.loads(bundles_catalog_path.read_text(encoding="utf-8"))
-        if isinstance(bundles_catalog, dict):
-            artifacts = bundles_catalog.get("artifacts")
-            if isinstance(artifacts, list):
-                for entry in artifacts:
-                    if not isinstance(entry, dict):
-                        continue
-                    a_id = entry.get("artifactId")
-                    if not isinstance(a_id, str):
-                        continue
-                    if tracked_artifact_ids is not None and a_id not in tracked_artifact_ids:
-                        continue
-                    artifact_path = entry.get("artifactPath")
-                    expected_sha256 = entry.get("artifactSha256")
-                    if not isinstance(artifact_path, str) or not isinstance(expected_sha256, str):
-                        continue
-                    items.append(
-                        {
-                            "remote": f"{remote_root}/{artifact_path}",
-                            "sha256": expected_sha256,
-                            "label": f"bundle {a_id}",
-                            "mc": mc_bin,
-                        }
-                    )
-
-    docs_catalog_path = docs_catalog_local
-    if docs_catalog_path and docs_catalog_path.is_file():
-        docs_catalog = json.loads(docs_catalog_path.read_text(encoding="utf-8"))
-        if isinstance(docs_catalog, dict):
-            entries = docs_catalog.get("entries")
-            if isinstance(entries, list):
-                for entry in entries:
-                    if not isinstance(entry, dict):
-                        continue
-                    doc_id = entry.get("id")
-                    if not isinstance(doc_id, str):
-                        continue
-                    if tracked_document_ids is not None and doc_id not in tracked_document_ids:
-                        continue
-                    localizations = entry.get("localizations")
-                    if not isinstance(localizations, dict):
-                        continue
-                    for lang, loc in localizations.items():
-                        if not isinstance(loc, dict):
-                            continue
-                        body_path = loc.get("bodyPath")
-                        expected_sha256 = loc.get("bodySha256")
-                        if not isinstance(body_path, str) or not isinstance(expected_sha256, str):
-                            continue
-                        items.append(
-                            {
-                                "remote": f"{remote_root}/{body_path}",
-                                "sha256": expected_sha256,
-                                "label": f"document body {doc_id} ({lang})",
-                                "mc": mc_bin,
-                            }
-                        )
-
-    if not items:
-        return []
-
-    worker_count = min(verify_workers, len(items))
-    click.echo(
-        styled([Style.BRIGHT, Fore.CYAN], f"Verifying {len(items)} file(s) ")
-        + f"with {worker_count} worker(s)..."
-    )
-
-    errors: list[str] = []
-    with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        results = list(executor.map(_verify_one_item, items))
-
-    for i, (item, err) in enumerate(zip(items, results, strict=True), 1):
-        if err:
-            click.echo(
-                styled([Style.BRIGHT, Fore.RED], f"  [{i}/{len(items)}] FAIL ") + item["label"]
-            )
-            errors.append(err)
-        else:
-            click.echo(
-                styled([Style.BRIGHT, Fore.GREEN], f"  [{i}/{len(items)}] OK   ") + item["label"]
-            )
-
-    if errors:
-        click.echo()
-        click.echo(
-            styled([Style.BRIGHT, Fore.RED], "Verification summary: ")
-            + f"{len(items) - len(errors)}/{len(items)} passed, {len(errors)} failed."
-        )
-    else:
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Verification summary: ")
-            + f"all {len(items)} file(s) passed."
-        )
-
-    return errors
-
-
-def _verify_remote_file(
-    *,
-    mc_bin: str,
-    remote_path: str,
-    expected_sha256: str,
-    label: str,
-) -> str | None:
-    """Download a single remote file to a temp location and compare its SHA256.
-
-    Returns an error string on mismatch, or None on success.
-    """
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(suffix=".verify", delete=False) as tmp:
-        tmp_path = Path(tmp.name)
-    try:
-        cmd = [mc_bin, "cp", remote_path, str(tmp_path)]
-        out = subprocess.run(
-            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
-        )
-        if out.returncode != 0:
-            stderr = (out.stderr or "").strip()
-            return f"Failed to download {label} from {remote_path}: [{out.returncode}] {stderr}"
-        actual_sha256 = __file_sha256(tmp_path)
-        if actual_sha256 != expected_sha256:
-            return (
-                f"SHA256 mismatch for {label}:\n"
-                f"  expected: {expected_sha256}\n"
-                f"  actual:   {actual_sha256}"
-            )
-        return None
-    finally:
-        tmp_path.unlink(missing_ok=True)
-
-
-def _verify_one_item(item: dict[str, str]) -> str | None:
-    """Adapter for ThreadPoolExecutor.map — unpacks item dict into _verify_remote_file."""
-    return _verify_remote_file(
-        mc_bin=item["mc"],
-        remote_path=item["remote"],
-        expected_sha256=item["sha256"],
-        label=item["label"],
-    )
-
-
-# ---- upload ----------------------------------------------------------------
-
-
-@publish.command("upload")
+@remote.command("revert")
+@click.argument("channel")
+@click.argument("gen_hash")
 @click.option(
-    "--target",
-    type=click.Choice(["minio", "s3"], case_sensitive=False),
-    default="minio",
-    show_default=True,
-    help="S3-compatible upload target preset.",
-)
-@click.option("--source-dir", type=click.Path(path_type=Path), default=None)
-@click.option(
-    "--session",
-    "session_id",
+    "--schema-root",
+    type=click.Path(path_type=Path),
     default=None,
-    help="Session ID. Defaults to latest committed session.",
+    help="Schema V2 storage root (default from dev config).",
 )
-@click.option(
-    "--keep-session",
-    is_flag=True,
-    default=False,
-    help="Keep the session directory after successful publish.",
-)
-@click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
-@click.option("--bucket", default=None, help="Override bucket name.")
-@click.option("--access-key", default=None, help="Override access key.")
-@click.option("--secret-key", default=None, help="Override secret key.")
-@click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
-@click.option(
-    "--clean",
-    is_flag=True,
-    default=False,
-    help="Run garbage collection after successful publish to prune old generations and unreferenced content.",
-)
-@click.option(
-    "--public-download/--private",
-    default=None,
-    help="Configure anonymous bucket downloads after upload.",
-)
-@click.option(
-    "--verify/--no-verify",
-    default=None,
-    help="Verify uploaded file integrity after publish (overrides config).",
-)
-@click.option(
-    "--verify-workers",
-    type=int,
-    default=None,
-    help="Number of concurrent download workers for verification (default: 4).",
-)
-def remote_publish_upload(
-    target: str,
-    source_dir: Path | None,
-    session_id: str | None,
-    keep_session: bool,
-    endpoint: str | None,
-    bucket: str | None,
-    access_key: str | None,
-    secret_key: str | None,
-    alias_name: str | None,
-    resource_root: str | None,
-    channel: str | None,
-    clean: bool,
-    public_download: bool | None,
-    verify: bool | None,
-    verify_workers: int | None,
+def remote_revert(
+    channel: str,
+    gen_hash: str,
+    schema_root: Path | None,
 ):
-    """Upload a local remote origin or committed session to S3-compatible object storage."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_source_dir, resolved_session_id = __resolve_publish_source(
-        source_dir=source_dir, session_id=session_id
-    )
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
+    """Revert the channel head to a previous generation (pointer move only)."""
+    root = _resolve_schema_root(schema_root)
+    mgr = SessionManager(root)
 
-    generation = __resolve_publish_generation(
-        source_dir=resolved_source_dir,
-        session_id=resolved_session_id,
-        channel=resolved_channel,
-        resource_root=resolved_resource_root,
+    resolved_channel = __validate_remote_channel(channel)
+    mgr.revert(resolved_channel, gen_hash)
+
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], f"Channel {resolved_channel} reverted to")
+        + f" {gen_hash[:16]}..."
     )
 
-    s3 = __get_publish_s3_params(
-        target, endpoint, bucket, access_key, secret_key, alias_name, public_download
-    )
-    resolved_endpoint = str(s3["endpoint"])
-    resolved_bucket = str(s3["bucket"])
-    resolved_access_key = str(s3["access_key"])
-    resolved_secret_key = str(s3["secret_key"])
-    resolved_alias = str(s3["alias_name"])
-    resolved_public_download = bool(s3["public_download"])
 
-    __publish_remote_origin_to_s3(
-        source_dir=resolved_source_dir,
-        endpoint=resolved_endpoint,
-        bucket=resolved_bucket,
-        access_key=resolved_access_key,
-        secret_key=resolved_secret_key,
-        alias_name=resolved_alias,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-        generation=generation,
-        public_download=resolved_public_download,
-        target=target,
-    )
-
-    resolved_verify = _resolve_verify_flag(
-        cli_value=verify,
-        target=target,
-    )
-    if resolved_verify:
-        mc_bin = get_command("mc")
-        bucket_target = f"{resolved_alias}/{resolved_bucket}"
-        resolved_workers = _resolve_verify_workers(
-            cli_value=verify_workers,
-            target=target,
-        )
-        verify_errors = __verify_upload_integrity(
-            source_dir=resolved_source_dir,
-            mc_bin=mc_bin,
-            bucket_target=bucket_target,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-            generation=generation,
-            session_id=resolved_session_id if source_dir is None else None,
-            verify_workers=resolved_workers,
-        )
-        if verify_errors:
-            for err in verify_errors:
-                click.echo(styled([Style.BRIGHT, Fore.RED], "ERROR: ") + err)
-            raise click.ClickException(
-                f"Upload verification failed with {len(verify_errors)} error(s)."
-            )
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Verification passed: ")
-            + "all uploaded files match local source."
-        )
-
-    if clean:
-        click.echo(styled([Style.BRIGHT, Fore.CYAN], "Running post-publish garbage collection..."))
-        mc_bin = get_command("mc")
-        bucket_target = f"{resolved_alias}/{resolved_bucket}"
-        summary = __gc_unreferenced_objects(
-            mc=mc_bin,
-            alias_name=resolved_alias,
-            bucket=resolved_bucket,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-            dry_run=False,
-        )
-        click.echo(summary)
-
-    if source_dir is None and not keep_session and resolved_session_id:
-        mgr = __get_session(resolved_session_id)
-        mgr.abort()
-        click.echo(
-            styled([Style.BRIGHT, Fore.GREEN], "Session cleaned up: ") + str(mgr.session_dir)
-        )
+# ---- gc ---------------------------------------------------------------------
 
 
-# ---- gc --------------------------------------------------------------------
-
-
-@publish.command("gc")
-@click.option(
-    "--target",
-    type=click.Choice(["minio", "s3"], case_sensitive=False),
-    default="minio",
-    show_default=True,
-)
+@remote.command("gc")
 @click.option(
     "--dry-run",
     is_flag=True,
     default=False,
     help="List what would be deleted without actually deleting.",
 )
-@click.option("--endpoint", default=None)
-@click.option("--bucket", default=None)
-@click.option("--access-key", default=None)
-@click.option("--secret-key", default=None)
-@click.option("--alias", "alias_name", default=None)
-@click.option("--resource-root", default=None)
-@click.option("--channel", default=None)
 @click.option(
-    "--keep-generations",
-    type=int,
-    default=2,
-    show_default=True,
-    help="Number of generations to keep (current + N-1 previous).",
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
 )
-def remote_publish_gc(
+def remote_gc(dry_run: bool, schema_root: Path | None):
+    """Garbage collect unreferenced entities from local V2 storage."""
+    root = _resolve_schema_root(schema_root)
+    mgr = SessionManager(root)
+
+    deleted = mgr.gc(dry_run=dry_run)
+
+    if dry_run:
+        if not deleted:
+            click.echo("Nothing to prune.")
+            return
+        click.echo(f"Would delete {len(deleted)} unreferenced entity(ies):")
+        for path in sorted(deleted):
+            click.echo(f"  {path}")
+    else:
+        if not deleted:
+            click.echo("Nothing to prune.")
+            return
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Pruned {len(deleted)} unreferenced entity(ies):")
+        )
+        for path in sorted(deleted):
+            click.echo(styled(Style.DIM, f"  {path}"))
+
+
+# ---- verify -----------------------------------------------------------------
+
+
+@remote.command("verify")
+@click.option(
+    "--repair",
+    is_flag=True,
+    default=False,
+    help="Attempt to repair issues from workspace origin.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_verify(repair: bool, schema_root: Path | None):
+    """Verify integrity of heads, generations, snapshots, and blobs."""
+    root = _resolve_schema_root(schema_root)
+    mgr = SessionManager(root)
+
+    if repair:
+        fixed = mgr.repair()
+        if fixed > 0:
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Repaired {fixed} entity(ies)."))
+        else:
+            click.echo("No entities needed repair.")
+        return
+
+    all_issues = mgr.verify()
+    total = sum(len(v) for v in all_issues.values())
+    if total == 0:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "All entities passed verification."))
+        return
+
+    for category, issues in all_issues.items():
+        if not issues:
+            continue
+        click.echo(f"\n  {styled([Style.BRIGHT, Fore.CYAN], category.capitalize())}:")
+        for issue in issues:
+            color = Fore.RED if issue.severity == "error" else Fore.YELLOW
+            click.echo(
+                f"    {styled([Style.BRIGHT, color], issue.severity.upper())} "
+                f"[{issue.entity_type}] {issue.entity}: {issue.message}"
+            )
+
+    error_count = sum(sum(1 for i in v if i.severity == "error") for v in all_issues.values())
+    warn_count = total - error_count
+    summary = f"{total} issue(s): {error_count} error(s), {warn_count} warning(s)"
+    if error_count:
+        click.echo(styled([Style.BRIGHT, Fore.RED], f"\nVerification failed — {summary}"))
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.YELLOW], f"\nVerification complete — {summary}"))
+
+
+# ---- publish ----------------------------------------------------------------
+
+
+@remote.command("publish")
+@click.argument("channel")
+@click.option(
+    "--target",
+    type=click.Choice(["minio", "s3"], case_sensitive=False),
+    required=True,
+    help="S3-compatible upload target (reads defaults from efa.dev.toml).",
+)
+@click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
+@click.option(
+    "--workers",
+    type=int,
+    default=8,
+    show_default=True,
+    help="Number of parallel upload workers.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+def remote_publish(
+    channel: str,
     target: str,
-    dry_run: bool,
     endpoint: str | None,
     bucket: str | None,
     access_key: str | None,
     secret_key: str | None,
     alias_name: str | None,
-    resource_root: str | None,
-    channel: str | None,
-    keep_generations: int,
+    workers: int,
+    schema_root: Path | None,
 ):
-    """Prune unreferenced objects from the remote bucket."""
-    if keep_generations < 1:
-        raise click.ClickException(
-            "--keep-generations must be >= 1 to preserve at least the current live generation."
-        )
+    """Publish the channel's current head to a remote S3/MinIO bucket."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
 
-    s3 = __get_publish_s3_params(target, endpoint, bucket, access_key, secret_key, alias_name, None)
-    mc = get_command("mc")
+    if target == "minio":
+        minio_cfg = remote_cfg.require_minio("publish")
+        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}"
+        resolved_bucket = bucket or minio_cfg.bucket
+        resolved_access_key = access_key or minio_cfg.access_key
+        resolved_secret_key = secret_key or minio_cfg.secret_key
+        resolved_alias = alias_name or minio_cfg.alias
+    else:
+        s3_cfg = remote_cfg.require_s3("publish")
+        resolved_endpoint = endpoint or s3_cfg.endpoint
+        resolved_bucket = bucket or s3_cfg.bucket
+        resolved_access_key = access_key or s3_cfg.access_key
+        resolved_secret_key = secret_key or s3_cfg.secret_key
+        resolved_alias = alias_name or s3_cfg.alias
 
-    resolved_alias = str(s3["alias_name"])
-    resolved_bucket = str(s3["bucket"])
+    root = _resolve_schema_root(schema_root)
+    mgr = SessionManager(root)
 
-    redacted = "<redacted>"
-    _run_mc(
-        [
-            mc,
-            "alias",
-            "set",
-            resolved_alias,
-            str(s3["endpoint"]),
-            str(s3["access_key"]),
-            str(s3["secret_key"]),
-            "--api",
-            "s3v4",
-        ],
-        [
-            mc,
-            "alias",
-            "set",
-            resolved_alias,
-            str(s3["endpoint"]),
-            redacted,
-            redacted,
-            "--api",
-            "s3v4",
-        ],
-        "GC ALIAS",
-    )
+    resolved_channel = __validate_remote_channel(channel)
 
-    summary = __gc_unreferenced_objects(
-        mc=mc,
-        alias_name=resolved_alias,
+    pub = mgr.make_publisher(
+        endpoint=resolved_endpoint,
         bucket=resolved_bucket,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-        dry_run=dry_run,
-        keep_generations=keep_generations,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+        alias_name=resolved_alias,
+        workers=workers,
     )
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "GC: ") + summary)
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Publishing channel {resolved_channel}..."))
+    pub.publish_all_for_head(resolved_channel)
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Publish complete."))
+
+
+# ---- sync -------------------------------------------------------------------
+
+
+@remote.command("sync")
+@click.option(
+    "--target",
+    type=click.Choice(["minio", "s3"], case_sensitive=False),
+    required=True,
+    help="S3-compatible sync target (reads defaults from efa.dev.toml).",
+)
+@click.option("--endpoint", default=None, help="Override S3-compatible endpoint URL.")
+@click.option("--bucket", default=None, help="Override bucket name.")
+@click.option("--access-key", default=None, help="Override access key.")
+@click.option("--secret-key", default=None, help="Override secret key.")
+@click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
+@click.option(
+    "--depth",
+    type=int,
+    default=-1,
+    show_default=True,
+    help="Max generations to walk (-1 = all).",
+)
+@click.option(
+    "--workers",
+    type=int,
+    default=8,
+    show_default=True,
+    help="Number of parallel download workers.",
+)
+@click.option(
+    "--schema-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Schema V2 storage root (default from dev config).",
+)
+@click.option(
+    "--channel",
+    default=None,
+    help="Sync a specific channel (default: all channels).",
+)
+def remote_sync(
+    target: str,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    depth: int,
+    workers: int,
+    schema_root: Path | None,
+    channel: str | None,
+):
+    """Sync remote metadata/catalog to local schema root (no blobs).
+
+    By default syncs all channels found in the remote registry.
+    Use --channel to limit to a specific channel.
+    """
+    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+
+    if target == "minio":
+        minio_cfg = remote_cfg.require_minio("sync")
+        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}"
+        resolved_bucket = bucket or minio_cfg.bucket
+        resolved_access_key = access_key or minio_cfg.access_key
+        resolved_secret_key = secret_key or minio_cfg.secret_key
+        resolved_alias = alias_name or minio_cfg.alias
+    else:
+        s3_cfg = remote_cfg.require_s3("sync")
+        resolved_endpoint = endpoint or s3_cfg.endpoint
+        resolved_bucket = bucket or s3_cfg.bucket
+        resolved_access_key = access_key or s3_cfg.access_key
+        resolved_secret_key = secret_key or s3_cfg.secret_key
+        resolved_alias = alias_name or s3_cfg.alias
+
+    root = _resolve_schema_root(schema_root)
+    mgr = SessionManager(root)
+
+    syncer = mgr.make_syncer(
+        endpoint=resolved_endpoint,
+        bucket=resolved_bucket,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+        alias_name=resolved_alias,
+        workers=workers,
+    )
+
+    if channel is not None:
+        resolved_channel = __validate_remote_channel(channel)
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Syncing channel {resolved_channel}..."))
+        result = syncer.sync_channel(resolved_channel, max_depth=depth)
+        _print_sync_result(result)
+    else:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Syncing all channels..."))
+        results = syncer.sync_all_channels(max_depth=depth)
+        if not results:
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "No channels found in remote registry."))
+            return
+        for _ch, r in results.items():
+            _print_sync_result(r)
+
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Sync complete."))
+
+
+def _print_sync_result(result: SyncResult) -> None:
+    """Print a human-readable sync result summary."""
+    parts: list[str] = [f"  Channel: {result.channel}"]
+    if result.registry:
+        parts.append("registry ✓")
+    if result.head_meta:
+        parts.append("head ✓")
+    if result.reflog:
+        parts.append("reflog ✓")
+    parts.append(f"generations: {result.generations}")
+    parts.append(f"resource snapshots: {result.resource_snapshots}")
+    parts.append(f"release snapshots: {result.release_snapshots}")
+    click.echo("  " + "  ".join(parts))
 
 
 @remote.group(cls=ClickAliasedGroup)
@@ -3201,7 +3411,9 @@ def __start_minio_remote_mock(
                 [mc, "rm", "--recursive", "--force", bucket_target],
                 "REMOTE CLEAN BUCKET",
             )
-        mock_generation = __utc_timestamp().replace("-", "").replace(":", "") + "Z"
+        from data.lib.remote.generation import utc_timestamp
+
+        mock_generation = utc_timestamp().replace("-", "").replace(":", "") + "Z"
         __publish_remote_origin_to_s3(
             source_dir=origin_dir,
             endpoint=endpoint,
@@ -3214,6 +3426,24 @@ def __start_minio_remote_mock(
             generation=mock_generation,
             public_download=public_download,
         )
+
+        # Attempt V2 publish if mock origin has V2-structured data
+        v2_heads_dir = origin_dir / resource_root / "channels" / "heads"
+        if v2_heads_dir.is_dir():
+            from data.lib.remote import Publisher as V2Publisher
+
+            pub = V2Publisher(
+                local_root=origin_dir / resource_root,
+                endpoint=endpoint,
+                bucket=bucket,
+                access_key=access_key,
+                secret_key=secret_key,
+                alias_name=alias_name,
+            )
+            pub.publish_all_for_head(channel.value)
+            click.echo(styled(Style.DIM, "  V2 head published."))
+        else:
+            click.echo(styled(Style.DIM, "  No V2 data in mock origin; skipping V2 publish."))
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO console: ") + console_endpoint)
         __run_foreground(process, "\nMinIO remote mock interrupted by user.")
@@ -3273,11 +3503,14 @@ def remote_mock_launch(
 ):
     """Launch a local MinIO remote mock."""
     data.lib.config.DeveloperConfiguration.ensure_loaded()
+    data.lib.config.ProjectConfiguration.ensure_loaded()
     remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    minio = remote_cfg.require_minio()
+    minio = remote_cfg.require_minio("mock")
 
     resolved_host = host or remote_cfg.host
-    resolved_resource_root = resource_root or remote_cfg.resource_root
+    resolved_resource_root = (
+        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
+    )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
 
@@ -3300,11 +3533,7 @@ def remote_mock_launch(
     origin_url = f"http://{resolved_host}:{resolved_port}/{resolved_bucket}"
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Remote index URL: ")
-        + __remote_channel_index_url(
-            origin_url=origin_url,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-        )
+        + f"{origin_url.rstrip('/')}/{resolved_resource_root.strip('/')}/channels/{resolved_channel.value}/index.json"
     )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO data path: ") + str(resolved_data_dir))
     __start_minio_remote_mock(
@@ -3322,147 +3551,6 @@ def remote_mock_launch(
         clean_bucket=clean_bucket,
         public_download=resolved_public_download,
     )
-
-
-# ---- validate --------------------------------------------------------------
-
-
-@remote.command("validate")
-@click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
-@click.option("--resource-root", default=None, help="Override remote resource root.")
-@click.option("--channel", default=None, help="Override remote channel.")
-def remote_validate(
-    origin_dir: Path | None,
-    resource_root: str | None,
-    channel: str | None,
-):
-    """Validate a local origin tree for internal consistency."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
-
-    from data.lib.remote import fetch as remote_fetch
-
-    channel_dir = resolved_origin_dir / resolved_resource_root / "channels" / resolved_channel
-    index_path = channel_dir / "index.json"
-    docs_path = channel_dir / "documents" / "catalog.json"
-    bundles_path = channel_dir / "bundles" / "catalog.json"
-
-    missing = []
-    for p in (index_path, docs_path, bundles_path):
-        if not p.is_file():
-            missing.append(str(p))
-    if missing:
-        raise click.ClickException("Missing required files:\n  " + "\n  ".join(missing))
-
-    index, docs, bundles = remote_fetch.read_local_remote_state(
-        resolved_origin_dir / resolved_resource_root, resolved_channel
-    )
-
-    from data.lib.remote.catalog import verify_merged_state
-
-    staged_sha256s: dict[str, str] = {}
-    body_dir = resolved_origin_dir / resolved_resource_root / "documents" / "body"
-    if body_dir.is_dir():
-        for f in body_dir.rglob("*.md"):
-            if f.is_file():
-                staged_sha256s[str(f.relative_to(body_dir))] = __file_sha256(f)
-
-    merged_state: dict[str, object] = {
-        "index": index,
-        "documents_catalog": docs,
-        "bundles_catalog": bundles,
-    }
-    errors = verify_merged_state(merged_state, staged_sha256s)
-    if errors:
-        for err in errors:
-            click.echo(styled([Style.BRIGHT, Fore.RED], "ERROR: ") + err)
-        raise click.ClickException(f"Validation failed with {len(errors)} error(s).")
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Origin tree passed validation."))
-
-
-# ---- fetch -----------------------------------------------------------------
-
-
-@remote.command("fetch")
-@click.option(
-    "--backend",
-    type=click.Choice(["minio", "s3"]),
-    required=True,
-    help="Which backend to fetch remote state from.",
-)
-@click.option(
-    "--output-dir",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Output directory. Defaults to a timestamped dir under the session root.",
-)
-@click.option("--endpoint", default=None)
-@click.option("--bucket", default=None)
-@click.option("--access-key", default=None)
-@click.option("--secret-key", default=None)
-@click.option("--alias", "alias_name", default=None)
-@click.option("--resource-root", default=None)
-@click.option("--channel", default=None)
-def remote_fetch(
-    backend: str,
-    output_dir: Path | None,
-    endpoint: str | None,
-    bucket: str | None,
-    access_key: str | None,
-    secret_key: str | None,
-    alias_name: str | None,
-    resource_root: str | None,
-    channel: str | None,
-):
-    """Download remote state into a local directory (for debugging/backup)."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-
-    if output_dir is None:
-        stamp = __utc_timestamp().replace("-", "").replace(":", "")
-        output_dir = __get_session_root() / f"fetch-{stamp}"
-
-    resolved_resource_root = __validate_remote_resource_root(
-        resource_root or remote_cfg.resource_root
-    )
-    resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
-
-    from data.lib.remote import fetch as remote_fetch
-
-    mc = get_command("mc")
-
-    if backend == "minio":
-        sub = remote_cfg.require_minio()
-        resolved_endpoint = endpoint or f"http://{remote_cfg.host}:{sub.port}"
-        resolved_bucket = bucket or sub.bucket
-        resolved_access_key = access_key or sub.access_key
-        resolved_secret_key = secret_key or sub.secret_key
-        resolved_alias = alias_name or sub.alias
-    else:
-        sub = remote_cfg.require_s3()
-        resolved_endpoint = endpoint or sub.endpoint
-        resolved_bucket = bucket or sub.bucket
-        resolved_access_key = access_key or sub.access_key
-        resolved_secret_key = secret_key or sub.secret_key
-        resolved_alias = alias_name or sub.alias
-
-    remote_fetch.fetch_remote_state_s3(
-        mc_bin=mc,
-        endpoint=resolved_endpoint,
-        bucket=resolved_bucket,
-        access_key=resolved_access_key,
-        secret_key=resolved_secret_key,
-        alias_name=resolved_alias,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-        output_dir=output_dir,
-    )
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Fetched remote state to: ") + str(output_dir))
 
 
 @cli.group(aliases=["env"], cls=ClickAliasedGroup)
@@ -3780,19 +3868,11 @@ _GENERATOR_TYPES = {"static", "native", "localization", "images"}
     multiple=True,
     help=f"Skip specified data generators. Values: {', '.join(_GENERATOR_TYPES)}",
 )
-@click.option(
-    "--no-hash",
-    envvar=SKIP_FULL_MANIFEST_UPDATE_ENV_VAR,
-    is_flag=True,
-    default=False,
-    help="Do not generate the snapshot manifest for the data bundle.",
-)
-def data_cmd(skip: list[str], no_hash: bool):
+@click.option("--author", default=None, help="Author identifier for the snapshot.")
+@click.option("--description", default=None, help="Description for the snapshot.")
+def data_cmd(skip: list[str], author: str | None, description: str | None):
     """Build data files."""
     from data.lib.workspace.generate import run_generator
-
-    if not no_hash:
-        no_hash = data.lib.config.DEV_CONFIGURATION.build.skip_hash
 
     to_skip = set()
     for it in skip:
@@ -3806,40 +3886,26 @@ def data_cmd(skip: list[str], no_hash: bool):
         click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
         exit(1)
 
-    asyncio.run(run_generator(__get_current_workspace_descriptor(), to_skip, not no_hash))
+    asyncio.run(
+        run_generator(
+            __get_current_workspace_descriptor(), to_skip, author=author, description=description
+        )
+    )
 
 
-@build.command("docs", aliases=["doc"])
-def build_docs_cmd():
-    """Build bundled document assets."""
-    from data.lib.docs import build_documents
+@build.command("announcements", aliases=["anno"])
+def build_announcements_cmd():
+    """Build bundled announcement catalog assets."""
+    from data.lib.docs import build_bundled_announcements
 
     try:
-        build_documents()
+        build_bundled_announcements()
     except ValueError as exception:
         raise click.ClickException(str(exception)) from exception
 
 
-@build.command("increment", aliases=["inc", "incremental"])
-@click.argument("baseline_manifest_path", required=False, envvar=DEFAULT_WORKSPACE_MANIFEST_ENV_VAR)
-def build_increment_cmd(baseline_manifest_path: str | None):
-    """Build incremental patch bundle."""
-    from data.lib.workspace.build_increment import build_increment_bundle
-
-    if baseline_manifest_path is None:
-        baseline_manifest = data.lib.config.DEV_CONFIGURATION.build.baseline
-        if baseline_manifest is None:
-            raise click.ClickException(
-                "Missing baseline manifest. Pass one as an argument or set build.baseline in efa.dev.toml."
-            )
-    else:
-        baseline_manifest = Path(baseline_manifest_path)
-
-    build_increment_bundle(__get_current_workspace_descriptor(), baseline_manifest)
-
-
 _ABI_FLUTTER_TO_APK = {
-    "armeabi-v7a": "arm",
+    "armeabi-v7a": "armv7",
     "arm64-v8a": "arm64",
     "x86_64": "x64",
 }
@@ -3866,9 +3932,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
     """Build Android APKs with versioned filenames."""
     ProjectConfiguration.ensure_loaded()
     version = data.lib.config.CONFIGURATION.version
-    tag = version.render_tag()
-    output_root = data.lib.config.CONFIGURATION.paths.apk
-    output_dir = output_root / tag
+    ver = version.render_full()
+    output_dir = PROJECT_ROOT / "cache" / "releases" / "apk" / ver
     output_dir.mkdir(parents=True, exist_ok=True)
     apk_source = PROJECT_ROOT / "build" / "app" / "outputs" / "flutter-apk"
 
@@ -3885,8 +3950,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         src_sha1 = apk_source / f"{src_prefix}debug.apk.sha1"
         if not src_apk.exists():
             raise click.ClickException(f"Expected debug APK not found: {src_apk}")
-        dst_apk = output_dir / f"{tag}-debug.apk"
-        dst_sha1 = output_dir / f"{tag}-debug.apk.sha1"
+        dst_apk = output_dir / f"{ver}-android-debug.apk"
+        dst_sha1 = output_dir / f"{ver}-android-debug.apk.sha1"
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
     else:
         __execute_command([flutter, "build", "apk", *flavor_args], "BUILDING GENERAL APK")
@@ -3896,8 +3961,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         )
         if not src_apk.exists():
             raise click.ClickException(f"Expected general APK not found: {src_apk}")
-        dst_apk = output_dir / f"{tag}-general.apk"
-        dst_sha1 = output_dir / f"{tag}-general.apk.sha1"
+        dst_apk = output_dir / f"{ver}-android.apk"
+        dst_sha1 = output_dir / f"{ver}-android.apk.sha1"
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
         __execute_command(
@@ -3917,8 +3982,8 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
             )
             if not src_apk.exists():
                 raise click.ClickException(f"Expected ABI APK not found: {src_apk}")
-            dst_apk = output_dir / f"{tag}-{apk_suffix}.apk"
-            dst_sha1 = output_dir / f"{tag}-{apk_suffix}.apk.sha1"
+            dst_apk = output_dir / f"{ver}-android-{apk_suffix}.apk"
+            dst_sha1 = output_dir / f"{ver}-android-{apk_suffix}.apk.sha1"
             _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
@@ -3926,6 +3991,440 @@ def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
         if f.is_file():
             size = get_bin_size(f.stat().st_size)
             click.echo(f"  {f.name} ({size})")
+
+
+_PLATFORM_DIR = {
+    "android": "apk",
+}
+
+_PLATFORM_SUFFIX = {
+    "android": ".apk",
+}
+
+
+@build.command("release")
+@click.option(
+    "--platform",
+    default=None,
+    type=click.Choice(["android"]),
+    help="Platform to produce a fragment for.",
+)
+@click.option(
+    "--merge",
+    "merge_files",
+    multiple=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Fragment JSON files to merge (repeatable).",
+)
+@click.option(
+    "--output",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output file path (default: auto-determined within cache, or stdout for '-').",
+)
+@click.option("--release-id", default=None, help="Override release.id (default: rel-{version}).")
+@click.option("--version-min", default=None, help="Override minimum version string.")
+@click.option("--version-max", default=None, help="Override maximum version string.")
+def build_release_cmd(
+    platform: str | None,
+    merge_files: list[Path],
+    output: Path | None,
+    release_id: str | None,
+    version_min: str | None,
+    version_max: str | None,
+):
+    """Build or merge release registry fragments."""
+    if platform and merge_files:
+        raise click.ClickException("Cannot use --platform and --merge together.")
+    if not platform and not merge_files:
+        raise click.ClickException("Must specify --platform or --merge.")
+
+    ProjectConfiguration.ensure_loaded()
+    version = data.lib.config.CONFIGURATION.version
+    ver = version.render_full()
+    ver_semver = version.render_semver()
+
+    if platform:
+        _build_release_platform(
+            platform, ver, ver_semver, output, release_id, version_min, version_max
+        )
+    else:
+        _build_release_merge(list(merge_files), ver, output)
+
+
+def _build_release_platform(
+    platform: str,
+    ver: str,
+    ver_semver: str,
+    output: Path | None,
+    release_id: str | None,
+    version_min: str | None,
+    version_max: str | None,
+) -> None:
+    dir_name = _PLATFORM_DIR[platform]
+    suffix = _PLATFORM_SUFFIX[platform]
+    src_dir = PROJECT_ROOT / "cache" / "releases" / dir_name / ver
+    if not src_dir.is_dir():
+        raise click.ClickException(f"Build directory not found: {src_dir}")
+
+    artifacts: dict[str, str] = {}
+    for f in sorted(src_dir.iterdir()):
+        if f.is_file() and f.suffix == suffix:
+            name = f.name
+            prefix = f"{ver}-{platform}-"
+            if name.startswith(prefix):
+                variant = name[len(prefix) : -len(suffix)]
+                artifacts[variant] = str(f.resolve())
+            elif name == f"{ver}-{platform}{suffix}":
+                artifacts["general"] = str(f.resolve())
+
+    if not artifacts:
+        raise click.ClickException(f"No {suffix} files found in {src_dir}")
+
+    rel_id = release_id or f"rel-{ver}"
+    vmin = version_min or ver_semver
+    vmax = version_max or ver_semver
+
+    data: dict[str, object] = {
+        "metadata": {
+            "versionMin": vmin,
+            "versionMax": vmax,
+            "offerings": [platform],
+            "releaseCount": 1,
+            "createdAt": _utcnow_iso(),
+        },
+        "release": {
+            "id": rel_id,
+            "version": ver,
+            platform: artifacts,
+        },
+    }
+
+    _emit_release_json(data, output, src_dir / f"{ver}-{platform}.json")
+
+
+def _build_release_merge(fragments: list[Path], ver: str, output: Path | None) -> None:
+    merged_metadata: dict = {}
+    merged_release: dict = {}
+    all_paths: list[Path] = []
+
+    for fp in fragments:
+        raw = fp.read_text(encoding="utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise click.ClickException(f"Cannot parse {fp}: {e}") from None
+
+        meta = data.get("metadata", {})
+        rel = data.get("release", {})
+
+        for offering in meta.get("offerings", []):
+            if offering not in merged_metadata.setdefault("offerings", []):
+                merged_metadata["offerings"].append(offering)
+
+        merged_metadata.setdefault("versionMin", meta.get("versionMin"))
+        merged_metadata.setdefault("versionMax", meta.get("versionMax"))
+        merged_metadata.setdefault("createdAt", meta.get("createdAt"))
+
+        for pkey, pdict in rel.items():
+            if pkey in ("id", "version"):
+                merged_release.setdefault(pkey, pdict)
+            elif isinstance(pdict, dict):
+                for _variant, path_str in pdict.items():
+                    if isinstance(path_str, str):
+                        pp = Path(path_str)
+                        all_paths.append(pp)
+
+        for pkey, pdict in rel.items():
+            if pkey not in ("id", "version") and isinstance(pdict, dict):
+                merged_release.setdefault(pkey, pdict)
+
+    missing = [str(p) for p in all_paths if not p.exists()]
+    if missing:
+        raise click.ClickException(
+            "Missing files referenced in fragments:\n  " + "\n  ".join(missing)
+        )
+
+    merged_metadata["releaseCount"] = 1
+    data: dict[str, object] = {
+        "metadata": merged_metadata,
+        "release": merged_release,
+    }
+
+    default_output = PROJECT_ROOT / "cache" / "releases" / "merge" / f"{ver}.json"
+    _emit_release_json(data, output, default_output)
+
+
+def _emit_release_json(data: dict[str, object], output: Path | None, default: Path) -> None:
+    import json as _json
+
+    text = _json.dumps(data, indent=2, ensure_ascii=False, sort_keys=False) + "\n"
+    if output is None:
+        default.parent.mkdir(parents=True, exist_ok=True)
+        default.write_text(text, encoding="utf-8")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Written: {default}"))
+    elif output == Path("-"):
+        click.echo(text, nl=False)
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text, encoding="utf-8")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Written: {output}"))
+
+
+def _utcnow_iso() -> str:
+    from datetime import UTC
+    from datetime import datetime
+
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+@build.command("list", aliases=["ls"])
+@click.option("--apps", is_flag=True, default=False, help="Show APK builds.")
+@click.option("--resources", is_flag=True, default=False, help="Show resource snapshots.")
+@click.option("--releases", is_flag=True, default=False, help="Show release snapshots.")
+@click.option("--generations", is_flag=True, default=False, help="Show generations.")
+def build_list_cmd(apps: bool, resources: bool, releases: bool, generations: bool):
+    """List local build / cache items."""
+    from data.lib.remote.generation import GenerationStore
+    from data.lib.remote.head import ChannelHeadStore
+    from data.lib.remote.snapshot import SnapshotStore
+
+    def _dir_size(dir_path: Path) -> int:
+        if not dir_path.is_dir():
+            return 0
+        total = 0
+        try:
+            for f in dir_path.rglob("*"):
+                if f.is_file():
+                    total += f.stat().st_size
+        except PermissionError:
+            pass
+        return total
+
+    def _scan_apk_versions(apk_root: Path) -> tuple[list[Path], list[Path]]:
+        versions: list[Path] = []
+        files: list[Path] = []
+        if apk_root.is_dir():
+            for vd in sorted(apk_root.iterdir()):
+                if vd.is_dir():
+                    versions.append(vd)
+                    for f in vd.iterdir():
+                        if f.is_file():
+                            files.append(f)
+        return versions, files
+
+    any_opt = apps or resources or releases or generations
+    schema_root = _resolve_schema_root(None)
+
+    if not any_opt:
+        # --- Summary --------------------------------------------------------------
+        click.echo()
+        click.echo(styled([Style.BRIGHT], "Local Build Cache Summary"))
+        click.echo(styled([Style.BRIGHT], "=" * 27))
+
+        # APK builds
+        apk_root = PROJECT_ROOT / "cache" / "releases" / "apk"
+        apk_versions, apk_files = _scan_apk_versions(apk_root)
+        apk_total = sum(f.stat().st_size for f in apk_files)
+        if apk_versions:
+            click.echo(
+                f"  {styled(Fore.GREEN, 'APK builds:')}            "
+                f"{styled([Style.BRIGHT], str(len(apk_versions)))} version(s)"
+                f"  ({get_bin_size(apk_total)})"
+            )
+        else:
+            click.echo(f"  {styled(Fore.GREEN, 'APK builds:')}            (none)")
+
+        # Schema items
+        if schema_root.is_dir():
+            snap_store = SnapshotStore(schema_root)
+            gen_store = GenerationStore(schema_root)
+            head_store = ChannelHeadStore(schema_root)
+
+            res_hashes = snap_store.list_resource_snapshots()
+            rel_hashes = snap_store.list_release_snapshots()
+            all_gens = gen_store.list_all()
+            registry = head_store.get_registry()
+
+            for label, hashes, asset_dir in [
+                ("Resource snapshots:", res_hashes, "resources"),
+                ("Release snapshots:", rel_hashes, "releases"),
+            ]:
+                if hashes:
+                    total = sum(_dir_size(schema_root / "assets" / asset_dir / h) for h in hashes)
+                    click.echo(
+                        f"  {styled(Fore.GREEN, label):30s}"
+                        f"{styled([Style.BRIGHT], str(len(hashes)))} item(s)"
+                        f"  ({get_bin_size(total)})"
+                    )
+                else:
+                    click.echo(f"  {styled(Fore.GREEN, label):30s}(none)")
+
+            if all_gens:
+                gen_total = sum(_dir_size(schema_root / "channels" / "refs" / h) for h in all_gens)
+                click.echo(
+                    f"  {styled(Fore.GREEN, 'Generations:'):30s}"
+                    f"{styled([Style.BRIGHT], str(len(all_gens)))} item(s)"
+                    f"  ({get_bin_size(gen_total)})"
+                )
+            else:
+                click.echo(f"  {styled(Fore.GREEN, 'Generations:'):30s}(none)")
+
+            channels = list(registry.channels.keys())
+            if channels:
+                click.echo(
+                    f"  {styled(Fore.GREEN, 'Channels:'):30s}"
+                    f"{styled([Style.BRIGHT], str(len(channels)))} ({', '.join(channels)})"
+                )
+            else:
+                click.echo(f"  {styled(Fore.GREEN, 'Channels:'):30s}(none)")
+
+            # Blobs
+            blobs_dir = schema_root / "assets" / "blobs"
+            if blobs_dir.is_dir():
+                blobs_count = 0
+                blobs_total = 0
+                for f in blobs_dir.rglob("*"):
+                    if f.is_file():
+                        blobs_count += 1
+                        blobs_total += f.stat().st_size
+                click.echo(
+                    f"  {styled(Fore.GREEN, 'Content blobs:'):30s}"
+                    f"{styled([Style.BRIGHT], str(blobs_count))} file(s)"
+                    f"  ({get_bin_size(blobs_total)})"
+                )
+            else:
+                click.echo(f"  {styled(Fore.GREEN, 'Content blobs:'):30s}(none)")
+        else:
+            click.echo(
+                styled([Style.BRIGHT, Fore.YELLOW], "  Schema cache: ")
+                + styled(Fore.YELLOW, f"not found ({schema_root})")
+            )
+
+        click.echo()
+    else:
+        # --- Detailed listings ---------------------------------------------------
+        first = True
+
+        if apps:
+            if not first:
+                click.echo()
+            first = False
+            apk_root = PROJECT_ROOT / "cache" / "releases" / "apk"
+            apk_versions, apk_files = _scan_apk_versions(apk_root)
+
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], f"\nAPK Builds ({len(apk_versions)})"))
+            click.echo(styled([Style.BRIGHT], "=" * 50))
+            if not apk_versions:
+                click.echo("  (none)")
+            else:
+                for vd in apk_versions:
+                    v_total = sum(f.stat().st_size for f in vd.iterdir() if f.is_file())
+                    click.echo(f"  {styled([Style.BRIGHT], vd.name)}  ({get_bin_size(v_total)})")
+                    for f in sorted(vd.iterdir()):
+                        if f.is_file():
+                            click.echo(f"    {f.name}  ({get_bin_size(f.stat().st_size)})")
+
+        if resources:
+            if not first:
+                click.echo()
+            first = False
+            if not schema_root.is_dir():
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
+                    + str(schema_root)
+                )
+            else:
+                snap_store = SnapshotStore(schema_root)
+                res_hashes = snap_store.list_resource_snapshots()
+                click.echo(
+                    styled([Style.BRIGHT, Fore.GREEN], f"\nResource Snapshots ({len(res_hashes)})")
+                )
+                click.echo(styled([Style.BRIGHT], "=" * 80))
+                if not res_hashes:
+                    click.echo("  (none)")
+                else:
+                    click.echo(
+                        f"  {'Hash':9s}  {'Server':13s}  {'Build':13s}"
+                        f"  {'Version':11s}  {'Resources':>10s}  Created"
+                    )
+                    click.echo(
+                        f"  {'-' * 9}  {'-' * 13}  {'-' * 13}  {'-' * 11}  {'-' * 10}  {'-' * 25}"
+                    )
+                    for h in res_hashes:
+                        try:
+                            meta, _ = snap_store.load_resource_snapshot(h)
+                            click.echo(
+                                f"  {h[:9]:9s}  {meta.server_id:13s}  {meta.game_build:13s}"
+                                f"  {meta.game_version:11s}  {meta.resource_count!s:>10s}"
+                                f"  {meta.created_at}"
+                            )
+                        except Exception:
+                            click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
+
+        if releases:
+            if not first:
+                click.echo()
+            first = False
+            if not schema_root.is_dir():
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
+                    + str(schema_root)
+                )
+            else:
+                snap_store = SnapshotStore(schema_root)
+                rel_hashes = snap_store.list_release_snapshots()
+                click.echo(
+                    styled([Style.BRIGHT, Fore.GREEN], f"\nRelease Snapshots ({len(rel_hashes)})")
+                )
+                click.echo(styled([Style.BRIGHT], "=" * 70))
+                if not rel_hashes:
+                    click.echo("  (none)")
+                else:
+                    click.echo(f"  {'Hash':9s}  {'Version Range':21s}  {'Releases':>10s}  Created")
+                    click.echo(f"  {'-' * 9}  {'-' * 21}  {'-' * 10}  {'-' * 25}")
+                    for h in rel_hashes:
+                        try:
+                            meta, _ = snap_store.load_release_snapshot(h)
+                            v_range = f"{meta.version_min or '—'} ~ {meta.version_max or '—'}"
+                            click.echo(
+                                f"  {h[:9]:9s}  {v_range:21s}"
+                                f"  {meta.release_count!s:>10s}  {meta.created_at}"
+                            )
+                        except Exception:
+                            click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
+
+        if generations:
+            if not first:
+                click.echo()
+            first = False
+            if not schema_root.is_dir():
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Schema cache not found: ")
+                    + str(schema_root)
+                )
+            else:
+                gen_store = GenerationStore(schema_root)
+                all_gens = gen_store.list_all()
+                click.echo(styled([Style.BRIGHT, Fore.GREEN], f"\nGenerations ({len(all_gens)})"))
+                click.echo(styled([Style.BRIGHT], "=" * 80))
+                if not all_gens:
+                    click.echo("  (none)")
+                else:
+                    click.echo(
+                        f"  {'Hash':9s}  {'Channel':10s}  {'Parent':9s}  {'Subject':20s}  Timestamp"
+                    )
+                    click.echo(f"  {'-' * 9}  {'-' * 10}  {'-' * 9}  {'-' * 20}  {'-' * 25}")
+                    for h, gen in all_gens.items():
+                        parent_short = (
+                            (gen.metadata.parent or "")[:9] if gen.metadata.parent else "—"
+                        )
+                        subject = gen.metadata.subject or ""
+                        click.echo(
+                            f"  {h[:9]:9s}  {gen.metadata.channel:10s}"
+                            f"  {parent_short:9s}  {subject[:19]:20s}"
+                            f"  {gen.metadata.timestamp}"
+                        )
 
 
 @cli.group(aliases=["rel"], cls=ClickAliasedGroup)
@@ -4097,9 +4596,9 @@ def release_check(since_tag: str | None, force: bool):
     """Run all pre-release checks.
 
     \b
-    Runs 10 verification gates: version-sync, git-clean, git-tag,
-    schema-diff, schema-bump, persistence-check, submodule, generate,
-    lint, and changelog.  Fatal failures block the
+    Runs 11 verification gates: version-sync, git-clean, git-tag,
+    schema-diff, schema-bump, schema-version, persistence-check, submodule,
+    generate, lint, and changelog.  Fatal failures block the
     release unless --force is used.
     """
     from data.lib.release.check import CheckSeverity
@@ -4287,264 +4786,22 @@ def release_changelog_generate():
     help="Write template as-is without opening editor.",
 )
 def release_changelog_detail(no_edit: bool):
-    """Generate bi-lingual version documents for in-app release notes.
+    """Generate bi-lingual version announcements for in-app release notes.
 
     By default, opens $EDITOR with a template containing en-us/zh-cn summary sections.
     Use --no-edit to write the generated template as-is without manual editing.
-    On save (or if --no-edit), writes authored .md files to assets/content/documents/{en,zh}/.
+    On save (or if --no-edit), writes authored .md files to assets/content/announcements/{en,zh}/.
     """
     from data.lib.release.changelog_gen import generate_detail
     from data.lib.release.version import load_version
 
     v = load_version()
     click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Preparing version documents for ")
+        styled([Style.BRIGHT, Fore.GREEN], "Preparing version announcements for ")
         + styled([Style.BRIGHT], v.render_semver())
     )
     generate_detail(v, no_edit=no_edit)
-    click.echo(styled([Fore.GREEN], "  Written to assets/content/documents/"))
-
-
-@release_changelog.command("stage")
-@click.option(
-    "--commit",
-    "do_commit",
-    is_flag=True,
-    default=False,
-    help="Commit the session after staging (otherwise diff only).",
-)
-def release_changelog_stage(do_commit: bool):
-    """Stage version release notes in a remote prepare session.
-
-    Reads the generated version documents from assets/content/documents/,
-    creates a remote prepare session, and stages the version entry.
-    Use the --commit flag to finalize; without it, the command shows a diff
-    without committing. Run ``./x remote publish upload`` afterwards to
-    actually upload to the remote server.
-    """
-
-    from data.lib.constant import PROJECT_ROOT
-    from data.lib.release.changelog_gen import _version_to_doc_id
-    from data.lib.release.version import load_version
-    from data.lib.remote.channel import Channel
-    from data.lib.remote.session import SessionManager
-
-    v = load_version()
-    doc_id = _version_to_doc_id(v)
-    semver = v.render_semver()
-
-    zh_path = PROJECT_ROOT / "assets" / "content" / "documents" / "zh" / f"{doc_id}.md"
-    en_path = PROJECT_ROOT / "assets" / "content" / "documents" / "en" / f"{doc_id}.md"
-
-    if not zh_path.is_file():
-        raise click.ClickException(
-            f"Chinese version document not found: {zh_path}\n"
-            f"  Run './x release changelog detail' first."
-        )
-    if not en_path.is_file():
-        raise click.ClickException(
-            f"English version document not found: {en_path}\n"
-            f"  Run './x release changelog detail' first."
-        )
-
-    zh_meta, zh_title, zh_summary = _parse_version_document(zh_path)
-    _en_meta, en_title, en_summary = _parse_version_document(en_path)
-    app_ver = zh_meta.get("appVer", semver)
-    tags = zh_meta.get("tags", ["release-note", "version"])
-    published_at = zh_meta.get("publishedAt", None)
-
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Staging version document: ")
-        + styled([Style.BRIGHT], doc_id)
-    )
-    click.echo(styled(Style.DIM, f"  zh: {zh_path}"))
-    click.echo(styled(Style.DIM, f"  en: {en_path}"))
-    click.echo(styled(Style.DIM, f"  appVer: {app_ver}"))
-    click.echo(styled(Style.DIM, f"  tags: {tags}"))
-    click.echo("")
-
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    resolved_resource_root = __validate_remote_resource_root(remote_cfg.resource_root)
-    resolved_channel = Channel(remote_cfg.channel.value)
-    resolved_backend, origin_dir, start_kwargs = _resolve_stage_backend(
-        remote_cfg=remote_cfg,
-        resource_root=resolved_resource_root,
-        channel=resolved_channel,
-    )
-
-    sessions_root = __get_session_root()
-    try:
-        mgr = SessionManager.start(
-            sessions_root=sessions_root,
-            backend=resolved_backend,
-            origin_dir=origin_dir,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-            **start_kwargs,
-        )
-    except (OSError, FileNotFoundError) as exc:
-        click.echo(styled([Style.BRIGHT, Fore.YELLOW], f"Remote state unavailable: {exc}"))
-        click.echo(styled(Style.DIM, "Falling back to local-only session (no diff available)."))
-        mgr = SessionManager.start(
-            sessions_root=sessions_root,
-            backend="local",
-            origin_dir=None,
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-        )
-        resolved_backend = "local"
-        start_kwargs = {}
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Session started: ") + mgr.session_id)
-    click.echo(styled(Style.DIM, f"  backend: {resolved_backend}"))
-    click.echo(styled(Style.DIM, f"  channel: {resolved_channel}"))
-
-    try:
-        mgr.add_version(
-            zh_path=zh_path,
-            en_path=en_path,
-            document_id=doc_id,
-            title_zh=zh_title,
-            title_en=en_title,
-            summary_zh=zh_summary,
-            summary_en=en_summary,
-            app_ver=str(app_ver),
-            published_at=published_at or __utc_timestamp(),
-            tags=[str(t) for t in tags],
-            resource_root=resolved_resource_root,
-            channel=resolved_channel,
-        )
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Staged version: ") + doc_id)
-    except Exception as exc:
-        mgr.abort()
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo("")
-    click.echo(styled([Style.BRIGHT, Fore.CYAN], "Diff:"))
-    try:
-        diff = mgr.diff(resolved_channel, resolved_resource_root)
-        if isinstance(diff, dict) and diff:
-            for path, change in sorted(diff.items()):
-                if isinstance(change, dict) and change.get("type") == "added":
-                    click.echo(styled([Fore.GREEN], f"  + {path}"))
-                elif isinstance(change, dict) and change.get("type") == "removed":
-                    click.echo(styled([Fore.RED], f"  - {path}"))
-                elif isinstance(change, dict):
-                    click.echo(styled([Fore.YELLOW], f"  ~ {path}"))
-        else:
-            click.echo(styled(Style.DIM, "  (no changes)"))
-    except FileNotFoundError:
-        click.echo(styled(Style.DIM, "  (no remote state available — session is local-only)"))
-
-    if not do_commit:
-        click.echo("")
-        click.echo(
-            styled([Style.BRIGHT, Fore.YELLOW], "Session not committed (use --commit to finalize).")
-        )
-        click.echo(f"  Review and commit:  ./x remote prepare commit --session {mgr.session_id}")
-        click.echo(f"  Upload:             ./x remote publish upload --session {mgr.session_id}")
-        return
-
-    status = mgr.commit(channel=resolved_channel, resource_root=resolved_resource_root)
-    click.echo("")
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Session committed: ")
-        + f"{mgr.session_id}  ({status.operation_count} operation(s))"
-    )
-    click.echo(f"  Upload:  ./x remote publish upload --session {mgr.session_id}")
-
-
-def _parse_version_document(path: Path) -> tuple[dict[str, object], str, str]:
-    """Parse a version markdown document into (metadata, title, summary).
-
-    Returns metadata from YAML front matter (may be empty for en files),
-    the h1 heading text as title, and the first non-heading paragraph as summary.
-    """
-    import re as _re
-
-    import yaml as _yaml
-
-    content = path.read_text(encoding="utf-8")
-    metadata: dict[str, object] = {}
-    body = content
-
-    if content.startswith("---\n"):
-        parts = content.split("\n---\n", 1)
-        if len(parts) == 2:
-            raw_front_matter = parts[0][len("---\n") :]
-            body = parts[1]
-            data = _yaml.safe_load(raw_front_matter)
-            if isinstance(data, dict):
-                metadata = data
-
-    body = body.lstrip()
-    lines = body.splitlines()
-
-    title = ""
-    summary = ""
-    title_found = False
-
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("# "):
-            if not title_found:
-                title = stripped[2:].strip()
-                title_found = True
-            continue
-        if (
-            title_found
-            and not summary
-            and not stripped.startswith(("#", "```", "- ", "* ", "+ "))
-            and not _re.match(r"\d+\.\s", stripped)
-        ):
-            summary = stripped
-            break
-
-    if not title:
-        title = path.stem
-    if not summary:
-        summary = title
-
-    return metadata, title, summary
-
-
-def _resolve_stage_backend(
-    *,
-    remote_cfg,
-    resource_root: str,
-    channel,
-) -> tuple[str, Path | None, dict[str, object]]:
-    if remote_cfg.s3 is not None:
-        sub = remote_cfg.require_s3()
-        return (
-            "s3",
-            None,
-            {
-                "mc_bin": get_command("mc"),
-                "endpoint": sub.endpoint,
-                "bucket": sub.bucket,
-                "access_key": sub.access_key,
-                "secret_key": sub.secret_key,
-                "alias_name": sub.alias,
-            },
-        )
-    if remote_cfg.minio is not None:
-        sub = remote_cfg.require_minio()
-        return (
-            "minio",
-            None,
-            {
-                "mc_bin": get_command("mc"),
-                "endpoint": f"http://{remote_cfg.host}:{sub.port}",
-                "bucket": sub.bucket,
-                "access_key": sub.access_key,
-                "secret_key": sub.secret_key,
-                "alias_name": sub.alias,
-            },
-        )
-    return "local", None, {}
+    click.echo(styled([Fore.GREEN], "  Written to assets/content/announcements/"))
 
 
 @cli.group(cls=ClickAliasedGroup)

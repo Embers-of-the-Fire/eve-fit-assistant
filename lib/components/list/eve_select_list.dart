@@ -2,7 +2,7 @@ import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/select_list.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -48,31 +48,27 @@ class EveSelectList extends ConsumerWidget {
     List<EveSelectListRoot> fetchChildren(EveSelectListRoot root, WidgetRef ref) {
       final List<EveSelectListRoot> children = root.when(
         category: (categoryId) {
-          final groups =
-              ref
-                  .read(bundleCollectionGetAllGroupsProvider)
-                  .where((r) => r.categoryId == categoryId)
-                  .toList()
-                ..sort((a, b) => a.groupId.compareTo(b.groupId));
+          final c = ref.read(repoCollectionProvider);
+          if (c == null) return [];
+          final groups = c.getAllGroups().where((r) => r.categoryId == categoryId).toList()
+            ..sort((a, b) => a.groupId.compareTo(b.groupId));
           return groups
               .map((r) => EveSelectListRoot.group(groupId: r.groupId))
               .where(validator)
               .toList();
         },
         group: (groupId) {
-          final types =
-              ref
-                  .read(bundleCollectionGetAllTypesProvider)
-                  .where((r) => r.groupId == groupId)
-                  .toList()
-                ..sort((a, b) => a.typeId.compareTo(b.typeId));
+          final c = ref.read(repoCollectionProvider);
+          if (c == null) return [];
+          final types = c.getAllTypes().where((r) => r.groupId == groupId).toList()
+            ..sort((a, b) => a.typeId.compareTo(b.typeId));
           return types
               .map((r) => EveSelectListRoot.type(typeId: r.typeId))
               .where(validator)
               .toList();
         },
         marketGroup: (marketGroupId) {
-          final marketGroupInfo = ref.read(bundleCollectionGetMarketGroupProvider(marketGroupId));
+          final marketGroupInfo = ref.read(repoCollectionProvider)?.getMarketGroup(marketGroupId);
           if (marketGroupInfo == null) return [];
           final groups = marketGroupInfo.groups
               .map((g) => EveSelectListRoot.marketGroup(marketGroupId: g))

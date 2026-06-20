@@ -1,0 +1,14 @@
+syntax = "proto2";
+package efa.v2;
+
+/// Maps every server to its current resource snapshot hash at the time of
+/// the generation.
+message GenerationResources {
+  required int32 schema_version = 1;
+  repeated Entry entries = 2;
+
+  message Entry {
+    required string server_id = 1;
+    required string snapshot_hash = 2;  // Resource snapshot hash
+  }
+}

@@ -86,7 +86,7 @@ class RemoteContentEndpointTile extends ConsumerWidget {
       subtitle: Text(
         context.l10n.appSettingsPageRemoteContentEndpointDescription(
           origin: endpointValue(config.originUrl),
-          resourceRoot: endpointValue(config.resourceRoot),
+          resourceRoot: "",
           channel: endpointValue(config.channel),
         ),
       ),
@@ -124,21 +124,18 @@ class _RemoteContentEndpointDialog extends StatefulWidget {
 
 class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDialog> {
   late final TextEditingController originController;
-  late final TextEditingController resourceRootController;
   late Channel _channel;
 
   @override
   void initState() {
     super.initState();
     originController = TextEditingController(text: widget.config.originUrl);
-    resourceRootController = TextEditingController(text: widget.config.resourceRoot);
     _channel = Channel.tryParse(widget.config.channel) ?? Channel.defaultChannel;
   }
 
   @override
   void dispose() {
     originController.dispose();
-    resourceRootController.dispose();
     super.dispose();
   }
 
@@ -153,17 +150,9 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
             controller: originController,
             decoration: InputDecoration(
               labelText: context.l10n.appSettingsPageRemoteContentOriginUrlLabel,
-              hintText: "https://updates.example.com/",
+              hintText: context.l10n.appSettingsPageRemoteContentUrlHint,
             ),
             keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.next,
-          ),
-          TextField(
-            controller: resourceRootController,
-            decoration: InputDecoration(
-              labelText: context.l10n.appSettingsPageRemoteContentResourceRootLabel,
-              hintText: "efa/v1/",
-            ),
             textInputAction: TextInputAction.next,
           ),
           DropdownButtonFormField<Channel>(
@@ -198,11 +187,7 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
       ),
       TextButton(
         onPressed: () => Navigator.of(context).pop(
-          widget.config.copyWith(
-            originUrl: originController.text.trim(),
-            resourceRoot: resourceRootController.text.trim(),
-            channel: _channel.value,
-          ),
+          widget.config.copyWith(originUrl: originController.text.trim(), channel: _channel.value),
         ),
         child: Text(MaterialLocalizations.of(context).saveButtonLabel),
       ),

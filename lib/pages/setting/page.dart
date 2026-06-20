@@ -2,13 +2,12 @@ import "dart:async";
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
-import "package:eve_fit_assistant/features/documents/repository.dart";
+import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 class SettingPage extends ConsumerWidget {
   const SettingPage({super.key});
@@ -18,6 +17,7 @@ class SettingPage extends ConsumerWidget {
     final showRemoteContent = ref.watch(
       appSettingServiceProvider.select((setting) => setting.remoteContent.exposed),
     );
+    final developerMode = ref.watch(developerModeProvider);
     return ConfigListView(
       children: [
         const ConfigListTile.space(20),
@@ -33,10 +33,17 @@ class SettingPage extends ConsumerWidget {
             onTap: () => unawaited(context.router.push(const RemoteContentSettingsRoute())),
           ),
         ConfigListTile.item(
-          icon: const FaIcon(FontAwesomeIcons.box),
-          title: context.l10n.settingTileBundleManagerTitle,
-          onTap: () => unawaited(context.router.push(const BundleManagerRoute())),
+          icon: const Icon(Icons.storage_outlined),
+          title: context.l10n.settingTileDataStorageTitle,
+          onTap: () => unawaited(context.router.push(const StorageManagement())),
         ),
+        if (developerMode)
+          ConfigListTile.item(
+            icon: const Icon(Icons.info_outline),
+            title: "Channel Overview",
+            subtitle: "Remote channel metadata and sync status",
+            onTap: () => unawaited(context.router.push(const ChannelOverviewRoute())),
+          ),
         ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),
           title: context.l10n.workspaceTabReportTitle,
@@ -48,7 +55,7 @@ class SettingPage extends ConsumerWidget {
   }
 
   Widget _buildVersionTile(BuildContext context, WidgetRef ref) {
-    final unreadCount = ref.watch(unreadVersionCountProvider);
+    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
     return ListTile(
       leading: const Icon(Icons.new_releases_outlined),
       title: Text(context.l10n.settingTileVersionTitle),
@@ -73,7 +80,7 @@ class SettingPage extends ConsumerWidget {
           const Icon(Icons.chevron_right),
         ],
       ),
-      onTap: () => unawaited(context.router.push(const VersionRoute())),
+      onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
     );
   }
 }

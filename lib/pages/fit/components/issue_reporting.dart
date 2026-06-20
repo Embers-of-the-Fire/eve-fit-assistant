@@ -49,7 +49,7 @@ List<_FitIssue> _collectFitIssuesForSection(
 
     final typeId = fitContext.resolveDisplayTypeId(itemId);
     if (typeId == null) return;
-    if (ref.watch(bundleCollectionGetTypeProvider(typeId)) != null) return;
+    if (ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId))) != null) return;
 
     issues.add(
       _FitIssue(
@@ -63,7 +63,7 @@ List<_FitIssue> _collectFitIssuesForSection(
   void addChargeIssue(Option<FitChargeItem> charge, String slotName, int position) {
     final chargeTypeId = charge.toNullable()?.typeId;
     if (chargeTypeId == null) return;
-    if (ref.watch(bundleCollectionGetTypeProvider(chargeTypeId)) != null) return;
+    if (ref.watch(repoCollectionProvider.select((c) => c?.getType(chargeTypeId))) != null) return;
 
     issues.add(
       _FitIssue(
@@ -77,7 +77,7 @@ List<_FitIssue> _collectFitIssuesForSection(
   switch (section) {
     case _FitIssueSection.tacticalMode:
       fit.body.slots.tacticalMode.match(() {}, (typeId) {
-        if (ref.watch(bundleCollectionGetTypeProvider(typeId)) != null) return;
+        if (ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId))) != null) return;
         issues.add(
           _FitIssue(
             severity: _FitIssueSeverity.error,
@@ -342,17 +342,25 @@ native_validation.ValidationSlotType? _validationSlotTypeForIdentifier(SlotIdent
     };
 
 String _localizedGroupName(WidgetRef ref, int groupId) {
-  final group = ref.watch(bundleCollectionGetGroupProvider(groupId));
+  final group = ref.watch(repoCollectionProvider.select((c) => c?.getGroup(groupId)));
   if (group == null) return "$groupId";
 
-  return ref.watch(localizationProvider(group.groupName.id).select((name) => name ?? "$groupId"));
+  final locale = ref.watch(localeProvider).name;
+  return ref.watch(
+        repoCollectionProvider.select((c) => c?.getLocalizedName(group.groupName.id, locale)),
+      ) ??
+      "$groupId";
 }
 
 String _localizedTypeName(WidgetRef ref, int typeId) {
-  final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+  final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
   if (type == null) return "$typeId";
 
-  return ref.watch(localizationProvider(type.typeName.id).select((name) => name ?? "$typeId"));
+  final locale = ref.watch(localeProvider).name;
+  return ref.watch(
+        repoCollectionProvider.select((c) => c?.getLocalizedName(type.typeName.id, locale)),
+      ) ??
+      "$typeId";
 }
 
 String _sizeName(BuildContext context, int size) => switch (size) {

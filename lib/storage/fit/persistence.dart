@@ -59,12 +59,19 @@ DecodedFitStorage decodeFitStorage(Map<String, dynamic> json) {
         ),
         didMigrate: true,
       );
-    case currentFitStorageVersion:
+    case 2:
       return DecodedFitStorage(
         fit: FitStorage.fromJson(
           _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
         ),
         didMigrate: false,
+      );
+    case 3:
+      return DecodedFitStorage(
+        fit: FitStorage.fromJson(
+          _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
+        ),
+        didMigrate: true,
       );
   }
 

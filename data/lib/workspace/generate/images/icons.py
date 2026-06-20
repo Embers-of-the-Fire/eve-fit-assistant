@@ -16,6 +16,8 @@ from data.lib.log import warning
 if TYPE_CHECKING:
     from data.lib.workspace.generate import GeneratorDatasource
 
+_icon_semaphore = asyncio.Semaphore(32)
+
 
 class IconDef(BaseModel):
     iconFile: str
@@ -45,11 +47,15 @@ async def __download_icon(icon_id: int, icon: IconDef, data: GeneratorDatasource
         return
 
     out_path = data.paths.get_icon_path(icon_id)
-    if out_path.exists():
+    if out_path.exists() and out_path.stat().st_size > 0:
         debug(f"Icon {out_path} already exists, skipping.")
         return
 
-    async with icon_file.open("rb") as f_input, aiofiles.open(out_path, "wb") as f_output:
+    async with (
+        _icon_semaphore,
+        icon_file.open("rb") as f_input,
+        aiofiles.open(out_path, "wb") as f_output,
+    ):
         await f_output.write(await f_input.read())
 
     debug(f"Generated icon at {out_path}.")

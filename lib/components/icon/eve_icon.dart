@@ -2,7 +2,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/data/proto/utils.pb.dart" as pb;
-import "package:eve_fit_assistant/storage/bundle/service/paths.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart" show assetStaticRootProvider;
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -29,15 +29,22 @@ class EveIcon extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final nativeRoot = ref.watch(assetStaticRootProvider);
     File? imagePath;
-    if (acceptGraphic) {
+    if (acceptGraphic && nativeRoot != null) {
       imagePath = icon.graphicId.pbOptional
-          .andThen((t) => ref.watch(getGraphicPathProvider(t)))
+          .andThen((t) {
+            final f = File("$nativeRoot/static/images/graphics/$t.png");
+            return f.existsSync() ? f : null;
+          })
           .tryOrElse(() => null);
     }
-    if (imagePath == null && acceptIcon) {
+    if (imagePath == null && acceptIcon && nativeRoot != null) {
       imagePath = icon.iconId.pbOptional
-          .andThen((ic) => ref.watch(getIconPathProvider(ic)))
+          .andThen((ic) {
+            final f = File("$nativeRoot/static/images/icons/$ic.png");
+            return f.existsSync() ? f : null;
+          })
           .tryOrElse(() => null);
     }
     if (imagePath == null) {

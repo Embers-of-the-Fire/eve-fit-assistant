@@ -14,9 +14,8 @@ class GeneratorDatasource:
     __resource_manager: ResourceManager
     __path_manager: PathManager
     __workspace_config: WorkspaceConfig
-    __is_incremental: bool
 
-    def __init__(self, config: WorkspaceConfig, is_incremental: bool):
+    def __init__(self, config: WorkspaceConfig):
         self.__workspace_config = config
         self.__resource_manager = ResourceManager(
             app_index=self.__workspace_config.resources.application_index,
@@ -30,7 +29,6 @@ class GeneratorDatasource:
             full_generate_out_path=self.__workspace_config.paths.generated,
             base_output_path=self.__workspace_config.paths.output,
         )
-        self.__is_incremental = is_incremental
 
     @property
     def resources(self) -> ResourceManager:
@@ -43,10 +41,6 @@ class GeneratorDatasource:
     @property
     def config(self) -> WorkspaceConfig:
         return self.__workspace_config
-
-    @property
-    def is_incremental(self) -> bool:
-        return self.__is_incremental
 
     async def aclose(self) -> None:
         await self.__resource_manager.aclose()

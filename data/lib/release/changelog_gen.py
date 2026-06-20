@@ -1,6 +1,6 @@
 """
 Changelog generator — wraps git-cliff for CHANGELOG.md and bi-lingual
-in-app version documents.
+in-app version announcements.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
-DOCUMENTS_ROOT = PROJECT_ROOT / "assets" / "content" / "documents"
+ANNOUNCEMENTS_ROOT = PROJECT_ROOT / "assets" / "content" / "announcements"
 
 
 def _cliff_cmd() -> list[str]:
@@ -167,22 +167,21 @@ def _write_version_documents(
     semver = version.render_semver()
     published_at = dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    en_path = DOCUMENTS_ROOT / "en" / f"{doc_id}.md"
+    en_path = ANNOUNCEMENTS_ROOT / "en" / f"{doc_id}.md"
     en_path.parent.mkdir(parents=True, exist_ok=True)
     en_content = f"---\nid: {doc_id}\n---\n\n# v{semver} Release Notes\n{en_body}\n\n{cliff_body}"
     en_path.write_text(en_content, encoding="utf-8")
 
-    zh_path = DOCUMENTS_ROOT / "zh" / f"{doc_id}.md"
+    zh_path = ANNOUNCEMENTS_ROOT / "zh" / f"{doc_id}.md"
     zh_path.parent.mkdir(parents=True, exist_ok=True)
     zh_lines = [
         "---",
         f"id: {doc_id}",
-        "kind: version",
         f"publishedAt: {published_at}",
-        f"appVer: {semver}",
-        "tags:",
-        "  - release-note",
-        "  - version",
+        "tags: [release-note]",
+        "channels: [testing]",
+        "platforms: [android, ios]",
+        f'appVersion: "{semver}"',
         "---",
         "",
         f"# v{semver} 发布说明",

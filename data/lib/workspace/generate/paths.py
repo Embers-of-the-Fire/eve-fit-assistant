@@ -25,7 +25,6 @@ class PathManager:
         self.__base_output_path = base_output_path
 
         self.full_generate_out_path.mkdir(parents=True, exist_ok=True)
-        self.increment_generate_out_path.mkdir(parents=True, exist_ok=True)
         self.native_root_path.mkdir(parents=True, exist_ok=True)
         self.static_root_path.mkdir(parents=True, exist_ok=True)
         self.localization_root_path.mkdir(parents=True, exist_ok=True)
@@ -38,37 +37,8 @@ class PathManager:
         return self.__base_generate_out_path / "full"
 
     @property
-    def increment_generate_out_path(self) -> Path:
-        return self.__base_generate_out_path / "increment"
-
-    @property
     def base_output_path(self) -> Path:
         return self.__base_output_path
-
-    @property
-    def descriptor_path(self) -> Path:
-        path = self.full_generate_out_path / "descriptor.json"
-        return path
-
-    @property
-    def manifest_path(self) -> Path:
-        path = self.full_generate_out_path / "manifest.json"
-        return path
-
-    @property
-    def increment_descriptor_path(self) -> Path:
-        path = self.increment_generate_out_path / "descriptor.json"
-        return path
-
-    @property
-    def increment_manifest_path(self) -> Path:
-        path = self.increment_generate_out_path / "manifest.json"
-        return path
-
-    @property
-    def increment_deleted_files_path(self) -> Path:
-        path = self.increment_generate_out_path / "deleted_files.json"
-        return path
 
     @property
     def static_root_path(self) -> Path:

@@ -27,7 +27,7 @@ class _FighterTab extends ConsumerWidget {
       final typeId = fitContext.resolveOriginTypeId(fighter.itemId);
       if (typeId == null) continue;
 
-      final type = ref.watch(bundleCollectionGetTypeProvider(typeId));
+      final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
       if (type == null) continue;
 
       switch (_fighterCategoryFromGroupId(type.groupId)) {

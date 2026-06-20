@@ -16,6 +16,8 @@ dependencies = [
     "tenacity>=9.1.4",
     "watchfiles>=1.1.1",
     "case-converter>=1.2.0",
+    "tqdm>=4.67.0",
+    "canonicaljson>=2.0.0",
 ]
 
 [dependency-groups]
@@ -29,7 +31,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["data/tests"]
-pythonpath = ["."]
+pythonpath = [".", "data/lib/schema"]
 asyncio_mode = "auto"
 
 [tool.uv.sources]

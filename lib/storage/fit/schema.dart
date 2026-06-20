@@ -3,8 +3,8 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/native/api/storage.dart" as native;
-import "package:eve_fit_assistant/storage/bundle/service.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
+import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -13,33 +13,6 @@ import "package:path/path.dart" as p;
 
 part "schema.freezed.dart";
 part "schema.g.dart";
-
-@freezed
-abstract class FitBundleSnapshot with _$FitBundleSnapshot {
-  const factory FitBundleSnapshot({
-    required String bundleId,
-    String? manifestHash,
-    String? gameBuild,
-    String? appVersion,
-    int? generateTimestamp,
-  }) = _FitBundleSnapshot;
-
-  const FitBundleSnapshot._();
-
-  factory FitBundleSnapshot.fromJson(Map<String, dynamic> json) =>
-      _$FitBundleSnapshotFromJson(json);
-
-  factory FitBundleSnapshot.fromBundleMetadata(BundleMetadata bundle) => FitBundleSnapshot(
-    bundleId: bundle.bundleId,
-    manifestHash: bundle.metadata.latest.manifestHash,
-    gameBuild: bundle.metadata.latest.gameBuild,
-    appVersion: bundle.metadata.latest.appVersion,
-    generateTimestamp: bundle.metadata.latest.generateTimestamp,
-  );
-
-  bool get hasComparableRevision =>
-      manifestHash != null || generateTimestamp != null || gameBuild != null || appVersion != null;
-}
 
 @freezed
 abstract class FitMetadata with _$FitMetadata {
@@ -52,8 +25,7 @@ abstract class FitMetadata with _$FitMetadata {
     required int lastModified,
 
     required String description,
-    required String bundleId,
-    @JsonKey(readValue: _readBundleSnapshot) required FitBundleSnapshot bundleSnapshot,
+    required CheckoutRef checkoutRef,
   }) = _FitMetadata;
 
   factory FitMetadata.fromJson(Map<String, dynamic> json) => _$FitMetadataFromJson(json);
@@ -127,20 +99,6 @@ Object? _readCharacterId(Map<dynamic, dynamic> json, String key) =>
       "all0" => predefinedZeroCharacterId,
       _ => predefinedMaxCharacterId,
     };
-
-Object? _readBundleSnapshot(Map<dynamic, dynamic> json, String key) {
-  final snapshot = json[key];
-  if (snapshot != null) {
-    return snapshot;
-  }
-
-  final bundleId = json["bundleId"];
-  if (bundleId is! String) {
-    return null;
-  }
-
-  return <String, dynamic>{"bundleId": bundleId};
-}
 
 /// The length of any slot is fixed (or partially fixed, since we have subsystems) for a given ship.
 /// So we can use a list to represent the slots, and use `None` to represent empty slots.

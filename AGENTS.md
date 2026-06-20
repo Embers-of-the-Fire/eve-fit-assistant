@@ -5,11 +5,47 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 ## Workspace Shape
 
 - Flutter/Dart app code is under `lib/`; generated Dart outputs include `lib/native/`, `lib/data/l10n/`, protobuf outputs, `*.g.dart`, and `*.freezed.dart`.
+  - `lib/storage/repo/` implements a content-addressed repository system for data versioning with checkout-based data management and diff chains.
 - Rust has two layers: FRB bridge crate in `rust/` (`rust/src/api/*`) and the fitting engine git-submodule crate in `rust/lib/eve-fit-os`.
-- Python in `data/` plus `x.py` owns workspace management, codegen orchestration, and static data bundle generation.
+- Python in `data/` plus `x.py` owns workspace management, codegen orchestration, and static data packaging.
 - `rust_builder/` is the Flutter plugin/cargokit wrapper used by `pubspec.yaml`; avoid treating it as the main Rust source.
 - `site/` is a SvelteKit app deployed to Cloudflare Workers (pnpm workspace). `biome.json` governs JS/TS formatting/linting for this area.
 - `rust/lib/eve-fit-os` is a Git submodule; run `git submodule update --init` after clone if not already initialized.
+
+## Storage Layer
+
+| System | Path | Description |
+|--------|------|-------------|
+| Repo System | `lib/storage/repo/` | Content-addressed repository implementing the EFA V2 unified storage schema (generation-based, protobuf-driven) with blob store, resource snapshots, channel discovery, checkout lifecycle, and Riverpod providers. |
+| Schema Version | `lib/storage/repo/schema_version.dart` | `SchemaVersionService` — reads/writes `schema_version.json`, determines active storage system |
+| Channel Discovery | `lib/storage/repo/channel_service.dart` | `ChannelService` — fetches channel registry, head metadata, server index; update detection |
+| Checkout Management | `lib/storage/repo/checkout_registry_service.dart` | `CheckoutRegistryService` — manages `checkouts/checkouts.json`, active checkout pointer, reactive stream |
+| Checkout Lifecycle | `lib/storage/repo/checkout_service.dart` | `CheckoutService` — checkout CRUD, reflog management, resource fetch orchestration |
+| Release Sync | `lib/storage/repo/release_sync.dart` | `ReleaseSyncService` — detects newer app versions against the remote release index via `ReleaseIndex` protobuf (detection only) |
+| Generation Navigation | `lib/storage/repo/generation_nav.dart` | `GenerationNavigationService` — channel → server browser for setup page |
+| Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole type-data source; pre-loads type data (ships, skills, items, localization, icons) from active checkout's ResourceIndex. |
+| Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |
+| Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit/character storage schemas; fit supports storageVersion 3 with CheckoutRef |
+| Settings | `lib/storage/setting/` | User settings including remote content configuration |
+
+All writes to `checkouts.json` are mutex-guarded; reads are lock-free. The checkout registry provides a reactive stream for live UI updates.
+
+The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` watches the state and renders appropriate screens. `MigrationGate` checks for v1 data remnants and offers a one-time migration prompt before the repo system activates.
+
+### Data-Flow Orchestration
+
+| Workflow | Entry Point | Service |
+|----------|------------|---------|
+| Channel discovery | `discoverChannels()` | `RepoService` → `ChannelService.discoverChannels()` |
+| Resource fetch | `fetchResourcesForActiveCheckout()` | `RepoService` → `CheckoutService.fetchResourcesForCheckout()` |
+| Create checkout | `createCheckout()` | `RepoService` → `CheckoutService.createCheckout()` |
+| Revert | `revertActiveCheckoutTo()` | `RepoService` → `CheckoutService.revertCheckoutTo()` |
+| Checkout resolution | `resolveCheckoutRefAsync()` | `RepoService` → `CheckoutResolver.resolveAsync()` |
+| Update discovery | `checkForUpdates()` | `RepoService` → `ChannelService.hasUpdates()` |
+| Verification repair | `verifyAndRepair()` | `RepoService` → `VerificationService.repairAll()` |
+| Checkout lifecycle | `switchActiveCheckout()` / `deleteCheckout()` | `RepoService`
+| Prune | `prune()` | `RepoService` → `VerificationService.prune()` |
+| Startup recovery | `recoverPartialDownloads()` | `RepoService` (called from `ensureInitialized()`) |
 
 ## Environment And Setup
 
@@ -31,14 +67,19 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - Single Rust integration test file/function: `cargo test -p eve-fit-os --test test_basic_fit -- --nocapture`; `cargo test -p eve-fit-os test_basic_fit -- --exact --nocapture`.
 - Python tests: `./x test python` or `uv run pytest`.
 - Flutter/Dart tests: `./x test dart` or `flutter test`.
+- Repo module tests: `dart test test/storage/repo/`.
+- Data-flow integration tests (e.g., `test/storage/repo/`) use `package:mocktail`
+  for network and filesystem mocks; run with `dart test test/storage/repo/`.
+  Async tests require `flutter test` or `dart test` with the Flutter SDK on PATH.
+- Regenerate freezed code for models: `dart run build_runner build --delete-conflicting-outputs`.
+- Migration tests: `dart test test/storage/repo/migration/action/from_v1/`.
 - All tests: `./x test all`.
 
 ## Data Workspaces And Bundles
 
 - Workspaces are declared in `efa.config.toml`; changing that file is a project-level datasource/config change, not a local preference.
 - Select data with `./x workspace list` and `./x workspace default <workspace>`; override per command with `./x --ws <workspace> ...`.
-- Build selected workspace data with `./x build data`; use `./x build data --no-hash` only for faster local iteration because it does not create a usable baseline manifest.
-- Incremental patch bundles are strict: build a fresh full snapshot first, then run `./x build increment <baseline_manifest>` using the last published `bundle_manifest.json`.
+- Build selected workspace data with `./x build data`.
 - Generated data depends on external EVE FSD/resource files described by `data/resources/*/descriptor.toml`; missing local resources can block data builds.
 
 ## Version And Release
@@ -48,7 +89,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - `./x release version bump <major|minor|patch> [--pre-label ...] [--clear-pre]` — bump and auto-sync.
 - `./x release check` — runs 10 pre-release gates (version-sync, git-clean, schema-bump, persistence-check, submodule, generate, lint, changelog, etc.). Fatal gates block release unless `--force`.
 - `./x release commit` — creates a signed `chore: release v<version>` commit and annotated tag.
-- All releases happen from the `dev` branch; `main` is deprecated.
+- All releases happen from the `dev` branch.
 
 ## Validation Expectations
 
@@ -61,6 +102,17 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - Localization changes require `./x generate l10n`; `l10n/app_zh.arb` is the template ARB with placeholder metadata, while `l10n/app_en.arb` should contain translations only.
 - JS/TS (site/ dir): run `pnpm run check` in `site/` for SvelteKit type checks; `npx biome check --fix` for formatting/linting.
 
+## Developer Mode
+
+The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `developerMode` boolean field (default `false`). A toggle in App Settings → Developer section enables it, with a confirmation dialog on enable.
+
+**Providers:**
+- `developerModeProvider` — reactive read via `ref.watch(developerModeProvider)` (always up-to-date).
+- `appSettingServiceProvider.select((s) => s.developerMode)` — fine-grained reactive read.
+- `ref.read(appSettingServiceProvider).developerMode` — imperative read within callbacks.
+
+**Localization rule for developer-only widgets:** UI widgets gated behind `developerMode` (i.e., only visible when dev mode is on) **must use hardcoded English**. No ARB entries or `context.l10n` calls for dev-only UI. Only the toggle itself and its confirmation dialog use localization (they are always visible in the settings page).
+
 ## Style And Generated-Code Gotchas
 
 - Dart analyzer is strict (`strict-casts`, `strict-inference`, `strict-raw-types`) and enforces package imports, double quotes, explicit public API types, and 100-column formatting.
@@ -68,6 +120,13 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - Root `rustfmt.toml` uses 100 columns plus field-init and `?` shorthands; the bridge crate stays Rust 2021 because of `flutter_rust_bridge`.
 - Keep FRB-facing APIs small and explicit in `rust/src/api/`; put core fitting behavior in `rust/lib/eve-fit-os` when possible.
 - Do not manually edit generated bridge/localization/protobuf/build outputs unless the task is explicitly about generated artifacts; change sources and run the matching generator.
+
+## Python Pipeline
+
+- `data/lib/remote/session.py` — Session manager for the `efa/v2/` layout
+  (`SessionManager`), inheriting from `_BaseSessionManager`. Manages
+  generation lifecycle, resource registration, release
+  management, and S3/R2 publishing.
 
 ## Local Instruction Sources
 

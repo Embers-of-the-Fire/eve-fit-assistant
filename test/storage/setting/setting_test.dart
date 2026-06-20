@@ -9,8 +9,9 @@ void main() {
     locale: locale,
     enableDebugLog: false,
     shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
-    showBundleImpactWarnings: true,
+    showCheckoutImpactWarnings: true,
     typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+    developerMode: false,
   );
 
   test("localeProvider returns locale from overridden AppSettingService", () {

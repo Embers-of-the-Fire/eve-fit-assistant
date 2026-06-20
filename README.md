@@ -189,10 +189,7 @@ Common manager commands:
 - `./x generate rust`: regenerate Flutter Rust Bridge glue.
 - `./x generate dart`: run Dart `build_runner` codegen.
 - `./x generate l10n`: regenerate localization files.
-- `./x build data`: build the selected workspace data bundle.
-- `./x build data --no-hash`: build data without updating snapshot manifests for
-  faster local iteration.
-- `./x build increment <baseline_manifest>`: build a strict incremental patch bundle.
+- `./x build data`: build the selected workspace data.
 
 If you want to or have to use a new cmdline operation,
 you can add a new subcommand to the manager instead.
@@ -204,43 +201,15 @@ It's strongly not recommended to use these values in production builds.
 
 See [`efa.dev.example.toml`](./efa.dev.example.toml) for more information.
 
-- `build.skip_hash`: A shortcut default for `x build data --no-hash`.
-  This disables snapshot manifest generation, so incremental patch bundles cannot be produced from that build output.
-- `build.baseline`: A shortcut default for `x build inc <BASELINE_MANIFEST>`.
-  This sets the default baseline manifest path used for incremental patch builds.
+### Data Build Routine
 
-Full data builds now emit `bundle_manifest.json` beside the bundle archive.
-Incremental builds are strict patch bundles: they require a compatible installed base bundle,
-carry only changed files plus deletions, and update `bundle_manifest.json` to the new snapshot.
-
-### Data Bundle Routine
-
-When you need to publish a new full data bundle:
+When you need to build data:
 
 1. Select the target workspace with `./x workspace default <workspace>` if needed.
-2. Build the full bundle with `./x build data`.
-3. Collect the two output artifacts from the workspace output directory:
-   - `<bundle_id>.zip`
-   - `bundle_manifest.json`
-4. Treat `bundle_manifest.json` as the baseline manifest for the next patch build.
-
-When you need to publish a new incremental data patch:
-
-1. Start from a workspace that already has a fresh full generated snapshot.
-2. Keep the previous published `bundle_manifest.json` from the base bundle or base patch.
-3. Rebuild the current data state if needed with `./x build data`.
-4. Build the patch with `./x build increment <BASELINE_MANIFEST>`.
-5. Collect the new output artifacts from the workspace output directory:
-   - `<bundle_id>_increment.zip`
-   - `bundle_manifest.json`
-6. Publish the new `bundle_manifest.json` together with the patch, because it becomes the baseline for the next patch.
-
-Important rules:
-
-- Full bundles are standalone; incremental patches are not.
-- An incremental patch can only be imported onto an installed bundle with the matching baseline manifest.
-- If you run `./x build data --no-hash`, set `build.skip_hash = true` in `efa.dev.toml`, or set the legacy `EFA_SKIP_FULL_MANIFEST_UPDATE=true` environment variable, the build will not produce a usable baseline manifest for patch generation.
-- Always keep the manifest that was published with the last accepted bundle state; that is the input for the next patch build.
+2. Build with `./x build data`.
+3. The output is placed in the workspace's generated directory,
+   including the V2 content-addressed checkout catalog at `schema/checkouts/<hash>.json`
+   and asset store at `schema/assets/`.
 
 #### Hack through workspace management
 

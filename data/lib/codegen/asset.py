@@ -24,6 +24,9 @@ def _build_variable_name(any_file: Path, used_names: set[str], root: Path) -> st
         candidate_parts.insert(0, part)
         variable_name = camelcase("-".join(candidate_parts))
 
+    if variable_name[0].isdigit():
+        variable_name = f"a{variable_name}"
+
     if variable_name in used_names:
         message = f"Duplicate asset variable name for '{any_file}'"
         raise ValueError(message)

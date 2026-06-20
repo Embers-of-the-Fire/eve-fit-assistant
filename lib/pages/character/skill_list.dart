@@ -6,9 +6,10 @@ import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/groups.pb.dart" as pb_groups;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
-import "package:eve_fit_assistant/storage/bundle/service/collection.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/skill.dart";
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -41,14 +42,23 @@ class _CharacterSkillListState extends ConsumerState<CharacterSkillList>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final groups = ref.watch(bundleCollectionGetAllGroupsProvider).where(_isSkillGroup).toList()
-      ..sort((left, right) => left.groupId.compareTo(right.groupId));
+    final groups =
+        ref
+            .watch(repoCollectionProvider.select((c) => c?.getAllGroups() ?? const IList.empty()))
+            .where(_isSkillGroup)
+            .toList()
+          ..sort((left, right) => left.groupId.compareTo(right.groupId));
     final skillGroupIds = groups.map((group) => group.groupId).toSet();
-    final skills = ref.watch(bundleCollectionGetAllTypesProvider).where((type) {
-      if (!type.published) return false;
-      if (!skillGroupIds.contains(type.groupId)) return false;
-      return _selectedGroupId == null || type.groupId == _selectedGroupId;
-    }).toList()..sort((left, right) => left.typeId.compareTo(right.typeId));
+    final skills =
+        ref
+            .watch(repoCollectionProvider.select((c) => c?.getAllTypes() ?? const IList.empty()))
+            .where((type) {
+              if (!type.published) return false;
+              if (!skillGroupIds.contains(type.groupId)) return false;
+              return _selectedGroupId == null || type.groupId == _selectedGroupId;
+            })
+            .toList()
+          ..sort((left, right) => left.typeId.compareTo(right.typeId));
 
     return Column(
       children: [
@@ -277,7 +287,7 @@ class _SkillLevelIndicator extends StatelessWidget {
         return pip;
       }
       return Semantics(
-        label: "Skill level $skillLevel",
+        label: context.l10n.skillLevelLabel(skillLevel: skillLevel),
         button: true,
         selected: trained,
         child: InkWell(
