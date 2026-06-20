@@ -18,10 +18,11 @@ void main() {
     PathProvider.cachesPath = tempDir.path;
   });
 
-  setUp(() {
+  setUp(() async {
     final file = File(p.join(tempDir.path, "settings", "announcement_state.json"));
     if (file.existsSync()) file.deleteSync();
     AnnouncementStateStore.init();
+    await AnnouncementStateStore.ensureSynced;
   });
 
   tearDownAll(() {

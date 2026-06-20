@@ -32,6 +32,11 @@ class _MigrationGateState extends State<MigrationGate> {
   }
 
   void _detectLegacyData() {
+    if (const SchemaVersionService().exists()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
+      return;
+    }
+
     // Scan old fittings/ for legacy fit files.
     var hasLegacyFits = false;
     final oldFittingsDir = Directory(PathProvider.oldFittingsPath);
