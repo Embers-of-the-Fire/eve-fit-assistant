@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
+import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
@@ -56,6 +57,21 @@ RemoteCatalogService remoteCatalogService(Ref ref) => RemoteCatalogService(
   dio: ref.watch(remoteDioProvider),
   originUrl: ref.watch(remoteContentOriginUrlProvider),
 );
+
+@riverpodSingleton
+GenerationNavigationService generationNavigationService(Ref ref) =>
+    GenerationNavigationService(remoteCatalogService: ref.watch(remoteCatalogServiceProvider));
+
+/// Fetches the available channels for the setup/welcome channel browser.
+///
+/// Surfaces a [GenerationNavError] as an [AsyncError] so the UI can render a
+/// retry affordance; invalidate this provider to retry.
+@riverpod
+Future<ChannelOverview> channelOverview(Ref ref) async =>
+    (await ref.watch(generationNavigationServiceProvider).fetchChannels()).match(
+      (e) => throw e,
+      (o) => o,
+    );
 
 @riverpodSingleton
 CheckoutRegistryService checkoutRegistryService(Ref ref) => CheckoutRegistryService();

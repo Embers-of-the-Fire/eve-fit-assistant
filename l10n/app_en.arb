@@ -669,5 +669,10 @@
   "welcomeLanguageTitle": "Language",
   "welcomeLanguageSubtitle": "Select default language",
   "welcomeContinueButton": "Continue",
-  "welcomeBackButton": "Back"
+  "welcomeBackButton": "Back",
+  "welcomeChannelTitle": "Data Channel",
+  "welcomeChannelSubtitle": "Select a channel",
+  "welcomeChannelDefaultBadge": "default",
+  "welcomeChannelEmpty": "No channels found.",
+  "welcomeChannelError": "Failed to load channels."
 }

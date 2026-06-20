@@ -1504,5 +1504,10 @@
   "welcomeLanguageTitle": "语言",
   "welcomeLanguageSubtitle": "选择默认语言",
   "welcomeContinueButton": "继续",
-  "welcomeBackButton": "返回"
+  "welcomeBackButton": "返回",
+  "welcomeChannelTitle": "数据频道",
+  "welcomeChannelSubtitle": "选择一个频道",
+  "welcomeChannelDefaultBadge": "默认",
+  "welcomeChannelEmpty": "未找到频道。",
+  "welcomeChannelError": "加载频道失败。"
 }

@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/features/welcome/channel_step.dart";
 import "package:eve_fit_assistant/features/welcome/language_step.dart";
 import "package:eve_fit_assistant/features/welcome/page.dart";
 import "package:eve_fit_assistant/features/welcome/sub_step.dart";
@@ -46,9 +47,9 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
   int _stepIndex = 0;
   bool _initializing = false;
 
-  static const int _placeholderSteps = 2;
+  static const int _placeholderSteps = 1;
 
-  int get _totalSteps => 2 + _placeholderSteps;
+  int get _totalSteps => 3 + _placeholderSteps;
 
   void _startInitialize() {
     setState(() {
@@ -100,7 +101,15 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
           return LanguageStepPage(onContinue: _nextStep, onSkip: _skip, onBack: _backToIntro);
         }
 
-        final subStepNumber = _stepIndex - 1;
+        if (_stepIndex == 2) {
+          return ChannelStepPage(
+            onContinue: _nextStep,
+            onSkip: _skip,
+            onBack: () => setState(() => _stepIndex = 1),
+          );
+        }
+
+        final subStepNumber = _stepIndex - 2;
         final isLast = subStepNumber >= _placeholderSteps;
         return SubStepPage(
           stepNumber: subStepNumber,
