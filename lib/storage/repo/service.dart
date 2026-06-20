@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
@@ -7,6 +9,7 @@ import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/server_meta.dart";
+import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -167,6 +170,23 @@ class RepoService {
   /// Verifies and repairs by re-downloading missing files.
   Future<IList<VerificationIssue>> verifyAndRepair({required Channel channel}) =>
       verificationService.repairAll(channel: channel);
+
+  /// Wipes all downloaded storage: the content-addressed asset store (blobs and
+  /// resource snapshots), channel metadata, and the checkout registry.
+  ///
+  /// The `schema_version.json` marker is intentionally preserved so the active
+  /// storage system is unchanged. After this completes the repo is in a
+  /// no-setup state; callers must re-initialize the repo lifecycle.
+  Future<void> clearAllStorage() async {
+    for (final path in [RepoPaths.assetsPath, RepoPaths.channelsPath, RepoPaths.checkoutsPath]) {
+      final dir = Directory(path);
+      try {
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      } on FileSystemException {
+        // best-effort: continue removing the remaining directories
+      }
+    }
+  }
 
   // ── Server catalog ─────────────────────────────────────────────────────────
 

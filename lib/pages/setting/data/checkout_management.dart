@@ -19,6 +19,7 @@ import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
+import "package:intl/intl.dart";
 
 @RoutePage(name: "CheckoutManagementRoute")
 class CheckoutManagementPage extends ConsumerStatefulWidget {
@@ -46,8 +47,8 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
       title: l10n.checkoutManagementPageTitle,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateCheckoutSheet,
-        icon: const Icon(Icons.add),
-        label: Text(l10n.checkoutCreateButton),
+        icon: const Icon(Icons.inventory_2_outlined),
+        label: Text(l10n.checkoutManageDataButton),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       child: checkouts.isEmpty
@@ -87,87 +88,154 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
     final l10n = context.l10n;
     final isActive = checkoutId == activeId;
     final displayName = _displayName(entry);
-    final ri = ref.read(assetStoreProvider).readResourceIndexSync(entry.resourceSnapshotHash);
-    final fileCount = ri.match(() => -1, (r) => r.entries.length);
-    final totalSize = ri.match(
-      () => -1,
-      (r) => r.entries.fold<int>(0, (sum, e) => sum + e.size.toInt()),
-    );
     final isOnlyActive = checkouts.length <= 1 && isActive;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
+            _activeIndicator(isActive, checkoutId, displayName),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
                     displayName,
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                   ),
-                ),
-                if (isActive)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      l10n.checkoutStatusActive,
-                      style: TextStyle(color: Colors.green.shade800, fontSize: 11),
-                    ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).hintColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      l10n.checkoutStatusInactive,
-                      style: TextStyle(color: Theme.of(context).hintColor, fontSize: 11),
-                    ),
-                  ),
-              ],
+                  _chip(entry.channel),
+                  _chip("${l10n.checkoutFieldUpdatedAt}: ${_formatTime(entry.createdAt)}"),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            _checkoutField(l10n.checkoutFieldChannel, entry.channel),
-            _checkoutField(l10n.checkoutFieldServerId, entry.serverId),
-            _checkoutField(l10n.checkoutFieldSnapshotHash, _truncate(entry.resourceSnapshotHash)),
-            if (fileCount >= 0) _checkoutField(l10n.checkoutFieldFileCount, fileCount.toString()),
-            if (totalSize >= 0) _checkoutField(l10n.checkoutFieldTotalSize, _formatSize(totalSize)),
-            if (fileCount < 0) _checkoutField(l10n.checkoutFieldFileCount, l10n.checkoutNA),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (!isActive)
-                  TextButton.icon(
-                    onPressed: () => _activateCheckout(checkoutId, displayName),
-                    icon: const Icon(Icons.play_arrow, size: 18),
-                    label: Text(l10n.checkoutActivate),
-                  ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: isOnlyActive
-                      ? null
-                      : () => _deleteCheckout(checkoutId, displayName, isActive),
-                  icon: Icon(Icons.delete_outline, size: 18, color: isActive ? Colors.red : null),
-                  label: Text(
-                    l10n.checkoutDelete,
-                    style: TextStyle(color: isActive ? Colors.red : null),
-                  ),
-                ),
-              ],
+            IconButton(
+              tooltip: l10n.checkoutInfoButton,
+              icon: const Icon(Icons.info_outline),
+              onPressed: () => _showInfoSheet(entry, isActive),
+            ),
+            IconButton(
+              tooltip: l10n.checkoutDelete,
+              icon: Icon(
+                Icons.delete_outline,
+                color: isActive && !isOnlyActive ? Colors.red : null,
+              ),
+              onPressed: isOnlyActive
+                  ? null
+                  : () => _deleteCheckout(checkoutId, displayName, isActive),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _activeIndicator(bool isActive, String checkoutId, String displayName) {
+    final theme = Theme.of(context);
+    final circle = Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isActive ? theme.colorScheme.primary : Colors.transparent,
+        border: Border.all(color: isActive ? theme.colorScheme.primary : theme.hintColor, width: 2),
+      ),
+      child: isActive ? Icon(Icons.check, size: 18, color: theme.colorScheme.onPrimary) : null,
+    );
+    if (isActive) return circle;
+    return InkWell(
+      borderRadius: BorderRadius.circular(15),
+      onTap: () => _activateCheckout(checkoutId, displayName),
+      child: circle,
+    );
+  }
+
+  Widget _chip(String label) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.hintColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: theme.hintColor)),
+    );
+  }
+
+  String _formatTime(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return iso;
+    return DateFormat("yyyy-MM-dd HH:mm").format(dt.toLocal());
+  }
+
+  void _showInfoSheet(CheckoutRegistryEntry entry, bool isActive) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final displayName = _displayName(entry);
+    final ri = ref.read(assetStoreProvider).readResourceIndexSync(entry.resourceSnapshotHash);
+    final fileCount = ri.match(() => -1, (r) => r.entries.length);
+    final totalSize = ri.match(
+      () => -1,
+      (r) => r.entries.fold<int>(0, (sum, e) => sum + e.size.toInt()),
+    );
+
+    unawaited(
+      showModalBottomSheet<void>(
+        context: context,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (_) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(displayName, style: theme.textTheme.titleLarge)),
+                  _statusBadge(isActive),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _checkoutField(l10n.checkoutFieldChannel, entry.channel),
+              _checkoutField(l10n.checkoutFieldServerId, entry.serverId),
+              _checkoutField(l10n.checkoutFieldSnapshotHash, _truncate(entry.resourceSnapshotHash)),
+              _checkoutField(l10n.checkoutFieldUpdatedAt, _formatTime(entry.createdAt)),
+              _checkoutField(
+                l10n.checkoutFieldFileCount,
+                fileCount >= 0 ? fileCount.toString() : l10n.checkoutNA,
+              ),
+              _checkoutField(
+                l10n.checkoutFieldTotalSize,
+                totalSize >= 0 ? _formatSize(totalSize) : l10n.checkoutNA,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusBadge(bool isActive) {
+    final l10n = context.l10n;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: isActive
+            ? Colors.green.shade100
+            : Theme.of(context).hintColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        isActive ? l10n.checkoutStatusActive : l10n.checkoutStatusInactive,
+        style: TextStyle(
+          color: isActive ? Colors.green.shade800 : Theme.of(context).hintColor,
+          fontSize: 11,
         ),
       ),
     );
