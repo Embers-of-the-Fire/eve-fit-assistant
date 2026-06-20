@@ -69,8 +69,8 @@ void _writeLegacyCharacters(String basePath) {
   File(p.join(dir.path, "char1.json")).writeAsStringSync(jsonEncode(_legacyCharacterJson()));
 }
 
-void _ensureSchemaVersion(String basePath) {
-  final file = File(p.join(basePath, "resources", "v2", "schema_version.json"));
+void _ensureSchemaVersion() {
+  final file = File(RepoPaths.schemaVersionPath);
   file.parent.createSync(recursive: true);
   file.writeAsStringSync(jsonEncode({"schemaVersion": 2}));
 }
@@ -97,7 +97,7 @@ void main() {
     testWidgets("skips scan and calls onMigrationComplete when schema_version.json exists", (
       tester,
     ) async {
-      _ensureSchemaVersion(tempDir);
+      _ensureSchemaVersion();
       var completed = false;
 
       await tester.pumpWidget(
@@ -156,7 +156,7 @@ void main() {
     });
 
     testWidgets("fast-path overrides legacy data detection — schema_version wins", (tester) async {
-      _ensureSchemaVersion(tempDir);
+      _ensureSchemaVersion();
       _writeLegacyFits(tempDir);
       var completed = false;
 
