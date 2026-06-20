@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/features/welcome/language_step.dart";
 import "package:eve_fit_assistant/features/welcome/page.dart";
 import "package:eve_fit_assistant/features/welcome/sub_step.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -32,27 +33,34 @@ class _WelcomeGateState extends ConsumerState<WelcomeGate> {
   }
 }
 
-class _WelcomeFlowHost extends StatefulWidget {
+class _WelcomeFlowHost extends ConsumerStatefulWidget {
   const _WelcomeFlowHost({required this.onComplete});
 
   final VoidCallback onComplete;
 
   @override
-  State<_WelcomeFlowHost> createState() => _WelcomeFlowHostState();
+  ConsumerState<_WelcomeFlowHost> createState() => _WelcomeFlowHostState();
 }
 
-class _WelcomeFlowHostState extends State<_WelcomeFlowHost> {
+class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
   int _stepIndex = 0;
   bool _initializing = false;
 
-  static const int _placeholderSteps = 3;
+  static const int _placeholderSteps = 2;
 
-  int get _totalSteps => 1 + _placeholderSteps;
+  int get _totalSteps => 2 + _placeholderSteps;
 
   void _startInitialize() {
     setState(() {
       _initializing = true;
       _stepIndex = 1;
+    });
+  }
+
+  void _backToIntro() {
+    setState(() {
+      _initializing = false;
+      _stepIndex = 0;
     });
   }
 
@@ -79,6 +87,7 @@ class _WelcomeFlowHostState extends State<_WelcomeFlowHost> {
   @override
   Widget build(BuildContext context) => MaterialApp(
     theme: _lightTheme,
+    locale: Locale(ref.watch(localeProvider).name),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Builder(
@@ -87,9 +96,14 @@ class _WelcomeFlowHostState extends State<_WelcomeFlowHost> {
           return WelcomePage(onInitialize: _startInitialize, onSkip: _skip);
         }
 
-        final isLast = _stepIndex >= _totalSteps - 1;
+        if (_stepIndex == 1) {
+          return LanguageStepPage(onContinue: _nextStep, onSkip: _skip, onBack: _backToIntro);
+        }
+
+        final subStepNumber = _stepIndex - 1;
+        final isLast = subStepNumber >= _placeholderSteps;
         return SubStepPage(
-          stepNumber: _stepIndex,
+          stepNumber: subStepNumber,
           totalSteps: _placeholderSteps,
           onNext: _nextStep,
           isLast: isLast,

@@ -665,5 +665,9 @@
   "@@_WELCOME": {},
   "welcomeTitle": "Welcome to EFA",
   "welcomeInitializeButton": "Initialize",
-  "welcomeSkipButton": "Skip"
+  "welcomeSkipButton": "Skip",
+  "welcomeLanguageTitle": "Language",
+  "welcomeLanguageSubtitle": "Select default language",
+  "welcomeContinueButton": "Continue",
+  "welcomeBackButton": "Back"
 }

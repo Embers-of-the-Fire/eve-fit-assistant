@@ -1500,5 +1500,9 @@
   "@@_WELCOME": {},
   "welcomeTitle": "欢迎使用 EFA",
   "welcomeInitializeButton": "初始化",
-  "welcomeSkipButton": "跳过"
+  "welcomeSkipButton": "跳过",
+  "welcomeLanguageTitle": "语言",
+  "welcomeLanguageSubtitle": "选择默认语言",
+  "welcomeContinueButton": "继续",
+  "welcomeBackButton": "返回"
 }
