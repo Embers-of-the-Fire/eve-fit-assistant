@@ -44,52 +44,52 @@ from colorama import init
 from dotenv import load_dotenv
 from watchfiles import awatch
 
-from data.lib.codegen import CODEGEN_DART
-from data.lib.constant import DEV_CONFIG_PATH
-from data.lib.constant import I18N_ROOT
-from data.lib.constant import NATIVE_LIB_ROOT
-from data.lib.constant import PROJECT_ROOT
-from data.lib.etc.codeart import generate_codeart
-from data.lib.remote.channel import Channel
+from bootstrap.constant import DEV_CONFIG_PATH
+from bootstrap.constant import I18N_ROOT
+from bootstrap.constant import NATIVE_LIB_ROOT
+from bootstrap.constant import PROJECT_ROOT
+from bootstrap.data.codegen import CODEGEN_DART
+from bootstrap.etc.codeart import generate_codeart
+from bootstrap.remote.channel import Channel
 
 
 def __fix_env():
-    sys.path.insert(0, str((PROJECT_ROOT / "data" / "lib" / "schema").resolve()))
+    sys.path.insert(0, str((PROJECT_ROOT / "bootstrap" / "data" / "schema").resolve()))
     load_dotenv()
 
 
 __fix_env()
 
-import data.lib.config
+import bootstrap.config
 
-from ci.commands import register_ci_commands
-from ci.lint import run_lint as _ci_lint
-from data.lib.color import styled
-from data.lib.config import ProjectConfiguration
-from data.lib.config import WorkspaceCache
-from data.lib.constant import PROTOBUF_DART_OUT_PATH
-from data.lib.constant import PROTOBUF_PYTHON_OUT_PATH
-from data.lib.constant import PROTOBUF_SCHEMA_PATH
-from data.lib.log import info
-from data.lib.log import warning
-from data.lib.remote import SessionManager
-from data.lib.remote import SessionManagerCommittedError
-from data.lib.remote import SessionManagerInvalidError
-from data.lib.remote.session_model import Session
-from data.lib.remote.session_model import SessionExistsError
-from data.lib.remote.session_model import SessionStore
-from data.lib.remote.verify import Verifier
+from bootstrap.ci.commands import register_ci_commands
+from bootstrap.ci.lint import run_lint as _ci_lint
+from bootstrap.color import styled
+from bootstrap.config import ProjectConfiguration
+from bootstrap.config import WorkspaceCache
+from bootstrap.constant import PROTOBUF_DART_OUT_PATH
+from bootstrap.constant import PROTOBUF_PYTHON_OUT_PATH
+from bootstrap.constant import PROTOBUF_SCHEMA_PATH
+from bootstrap.log import info
+from bootstrap.log import warning
+from bootstrap.remote import SessionManager
+from bootstrap.remote import SessionManagerCommittedError
+from bootstrap.remote import SessionManagerInvalidError
+from bootstrap.remote.session_model import Session
+from bootstrap.remote.session_model import SessionExistsError
+from bootstrap.remote.session_model import SessionStore
+from bootstrap.remote.verify import Verifier
 
 
 if TYPE_CHECKING:
-    from data.lib.remote.sync import SyncResult
+    from bootstrap.remote.sync import SyncResult
 from datetime import UTC
 
-from data.lib.utils import execute_command
-from data.lib.utils import get_bin_size
-from data.lib.utils import get_command
-from data.lib.utils import get_file_sha1
-from data.lib.workspace.config import WorkspaceConfig
+from bootstrap.data.workspace.config import WorkspaceConfig
+from bootstrap.utils import execute_command
+from bootstrap.utils import get_bin_size
+from bootstrap.utils import get_command
+from bootstrap.utils import get_file_sha1
 
 
 init(autoreset=True)
@@ -117,10 +117,10 @@ def __execute_command(
 
 
 def __resolve_dev_path(path: Path) -> Path:
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
     if path.is_absolute():
         return path
-    return data.lib.config.DEV_CONFIGURATION.paths.root / path
+    return bootstrap.config.DEV_CONFIGURATION.paths.root / path
 
 
 def __wait_for_http(url: str, timeout_seconds: float = 20.0) -> None:
@@ -507,7 +507,7 @@ def workspace():
 @workspace.command("list", aliases=["ls"])
 def list_cmd():
     """List configured workspaces."""
-    workspaces = data.lib.config.CONFIGURATION.resources
+    workspaces = bootstrap.config.CONFIGURATION.resources
     if len(workspaces) == 0:
         click.echo(
             styled([Style.BRIGHT + Fore.RED], "Error: ")
@@ -627,7 +627,7 @@ def __get_workspace(name) -> Path:
         click.echo(styled([Style.BRIGHT, Fore.RED], "Invalid name: ") + "empty")
         exit(1)
 
-    workspaces = data.lib.config.CONFIGURATION.resources
+    workspaces = bootstrap.config.CONFIGURATION.resources
     ws = workspaces.get(name)
 
     if ws is None:
@@ -644,7 +644,7 @@ def __get_workspace(name) -> Path:
 
 
 def __get_current_workspace_descriptor() -> WorkspaceConfig:
-    name = data.lib.config.WORKSPACE_CACHE.current_workspace
+    name = bootstrap.config.WORKSPACE_CACHE.current_workspace
     if not name:
         click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
         click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
@@ -661,7 +661,7 @@ def default(name: str):
     """Set default build target resource."""
     _ = __get_workspace(name)  # check
 
-    ws_cache = data.lib.config.WORKSPACE_CACHE
+    ws_cache = bootstrap.config.WORKSPACE_CACHE
     if ws_cache.default_workspace is not None:
         click.echo(f"Switch default workspace from {ws_cache.default_workspace} to {name}.")
     else:
@@ -682,7 +682,7 @@ def inspect_json(pretty: bool):
 @click.option("--pretty", is_flag=True, default=False, help="Pretty print the JSON output.")
 def cache(pretty: bool):
     """Print current workspace cache in JSON format."""
-    click.echo(data.lib.config.WORKSPACE_CACHE.model_dump_json(indent=4 if pretty else None))
+    click.echo(bootstrap.config.WORKSPACE_CACHE.model_dump_json(indent=4 if pretty else None))
 
 
 @cli.group()
@@ -693,7 +693,7 @@ def config():
 @config.command()
 def display():
     """Print loaded configuration in JSON format."""
-    click.echo(data.lib.config.CONFIGURATION.model_dump_json(indent=4))
+    click.echo(bootstrap.config.CONFIGURATION.model_dump_json(indent=4))
 
 
 @cli.group(aliases=["gen"], cls=ClickAliasedGroup)
@@ -891,7 +891,7 @@ def generate_values():
 @click.pass_context
 def dogma_units_cmd(ctx: click.Context):
     """Generate dogma unit ID constants."""
-    from data.lib.codegen.dogma_unit_id import codegen_dart
+    from bootstrap.data.codegen.dogma_unit_id import codegen_dart
 
     files = asyncio.run(codegen_dart(__get_current_workspace_descriptor()))
     for file in files:
@@ -933,11 +933,11 @@ def generate_schema_cmd(
     description: str | None,
 ):
     """Generate a V2 schema checkout from workspace build output."""
-    from data.lib.workspace.generate.schema import generate_schema_checkout
+    from bootstrap.data.workspace.generate.schema import generate_schema_checkout
 
     if schema_root is None:
-        data.lib.config.DeveloperConfiguration.ensure_loaded()
-        schema_root = data.lib.config.DEV_CONFIGURATION.paths.schema_dir
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        schema_root = bootstrap.config.DEV_CONFIGURATION.paths.schema_dir
 
     hash_ = generate_schema_checkout(
         config=None,
@@ -1035,8 +1035,8 @@ def dev_env_upgrade():
 @env.command("write-backend")
 def dev_env_write_backend():
     """Write rust/lib/eve-fit-os/.env from efa.dev.toml."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    native = data.lib.config.DEV_CONFIGURATION.native
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    native = bootstrap.config.DEV_CONFIGURATION.native
 
     values = {
         "FSD_FORMAT": native.fsd_format,
@@ -1089,10 +1089,10 @@ def __redact_remote_config(config: dict[str, object]) -> dict[str, object]:
 )
 def remote_config_display(pretty: bool, as_json: bool):
     """Print effective remote developer configuration and current session status."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    data.lib.config.ProjectConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
-    paths = data.lib.config.DEV_CONFIGURATION.paths
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    bootstrap.config.ProjectConfiguration.ensure_loaded()
+    remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
+    paths = bootstrap.config.DEV_CONFIGURATION.paths
     origin_path = __resolve_dev_path(remote_cfg.mock_origin_dir)
 
     resolved: dict[str, str] = {
@@ -1108,7 +1108,7 @@ def remote_config_display(pretty: bool, as_json: bool):
         resolved["minioDataPath"] = str(minio_data_path)
         resolved["minioIndexUrl"] = (
             f"{minio_origin_url.rstrip('/')}"
-            f"/{data.lib.config.CONFIGURATION.data_schema.resource_root.strip('/')}"
+            f"/{bootstrap.config.CONFIGURATION.data_schema.resource_root.strip('/')}"
             f"/channels/{remote_cfg.channel.value}/index.json"
         )
 
@@ -1131,8 +1131,8 @@ def remote_announce():
 
 def __get_announce_workspace() -> Path:
     """Get the announcement workspace root path."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    root = data.lib.config.DEV_CONFIGURATION.paths.root / "announce"
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    root = bootstrap.config.DEV_CONFIGURATION.paths.root / "announce"
     return __resolve_dev_path(root)
 
 
@@ -1145,8 +1145,8 @@ def __resolve_announce_remote_target(
     alias: str | None,
 ) -> tuple[str, str, str, str, str]:
     """Resolve remote target credentials from CLI args or config."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
 
     if target is None:
         target = "minio"
@@ -1206,8 +1206,8 @@ def remote_announce_sync(
     full: bool,
 ):
     """Download current server state to remote/ workspace."""
-    from data.lib.docs.announcements_remote import AnnouncementRemoteSync
-    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+    from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
+    from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
     endpoint, bucket, access_key, secret_key, alias = __resolve_announce_remote_target(
         target, endpoint, bucket, access_key, secret_key, alias
@@ -1223,7 +1223,7 @@ def remote_announce_sync(
         access_key=access_key,
         secret_key=secret_key,
         alias_name=alias,
-        resource_root=data.lib.config.CONFIGURATION.data_schema.resource_root,
+        resource_root=bootstrap.config.CONFIGURATION.data_schema.resource_root,
     )
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Syncing announcements from remote..."))
@@ -1268,8 +1268,8 @@ def remote_announce_init(
     then uploads them.  Fails if the remote already has content unless
     --force is given.
     """
-    from data.lib.docs.announcements_remote import AnnouncementRemoteSync
-    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+    from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
+    from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
     endpoint, bucket, access_key, secret_key, alias = __resolve_announce_remote_target(
         target, endpoint, bucket, access_key, secret_key, alias
@@ -1285,7 +1285,7 @@ def remote_announce_init(
         access_key=access_key,
         secret_key=secret_key,
         alias_name=alias,
-        resource_root=data.lib.config.CONFIGURATION.data_schema.resource_root,
+        resource_root=bootstrap.config.CONFIGURATION.data_schema.resource_root,
     )
 
     action = "Initializing" if not force else "Force-initializing"
@@ -1350,11 +1350,11 @@ def remote_announce_add(
     """Add a new announcement entry to the staging overlay (active page)."""
     import re as _re
 
-    from data.lib.docs.announcements_remote import ACTIVE_KEY
-    from data.lib.docs.announcements_remote import DOCUMENT_ID_PATTERN
-    from data.lib.docs.announcements_remote import AnnouncementEntry
-    from data.lib.docs.announcements_remote import AnnouncementLocalization
-    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+    from bootstrap.docs.announcements_remote import ACTIVE_KEY
+    from bootstrap.docs.announcements_remote import DOCUMENT_ID_PATTERN
+    from bootstrap.docs.announcements_remote import AnnouncementEntry
+    from bootstrap.docs.announcements_remote import AnnouncementLocalization
+    from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
     if not _re.match(DOCUMENT_ID_PATTERN, entry_id):
         raise click.ClickException(
@@ -1400,8 +1400,8 @@ def remote_announce_add(
     platforms_list = [p.strip() for p in platforms.split(",") if p.strip()]
 
     if not channels_list:
-        data.lib.config.DeveloperConfiguration.ensure_loaded()
-        channels_list = [data.lib.config.DEV_CONFIGURATION.remote.channel.value]
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        channels_list = [bootstrap.config.DEV_CONFIGURATION.remote.channel.value]
 
     if not platforms_list:
         platforms_list = ["android", "ios"]
@@ -1491,8 +1491,8 @@ def remote_announce_edit(
     Targets the active page by default.  Use --page UUID to edit an
     archived entry.
     """
-    from data.lib.docs.announcements_remote import ACTIVE_KEY
-    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+    from bootstrap.docs.announcements_remote import ACTIVE_KEY
+    from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
     if all(
         v is None
@@ -1602,8 +1602,8 @@ def remote_announce_edit(
 @click.option("--id", "entry_id", required=True, help="Entry ID to remove.")
 def remote_announce_remove(entry_id: str):
     """Remove an announcement entry from the staging overlay (active page only)."""
-    from data.lib.docs.announcements_remote import ACTIVE_KEY
-    from data.lib.docs.announcements_remote import AnnouncementWorkspace
+    from bootstrap.docs.announcements_remote import ACTIVE_KEY
+    from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
     workspace_root = __get_announce_workspace()
     workspace = AnnouncementWorkspace(workspace_root)
@@ -1630,8 +1630,8 @@ def remote_announce_status(as_json: bool):
     """
     import tempfile
 
-    from data.lib.docs.announcements_remote import AnnouncementWorkspace
-    from data.lib.docs.announcements_remote import compute_status_diff
+    from bootstrap.docs.announcements_remote import AnnouncementWorkspace
+    from bootstrap.docs.announcements_remote import compute_status_diff
 
     workspace_root = __get_announce_workspace()
     workspace = AnnouncementWorkspace(workspace_root)
@@ -1773,9 +1773,9 @@ def remote_announce_publish(
     """
     import tempfile
 
-    from data.lib.docs.announcements_remote import AnnouncementRemoteSync
-    from data.lib.docs.announcements_remote import AnnouncementWorkspace
-    from data.lib.docs.announcements_remote import run_preflight_validation
+    from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
+    from bootstrap.docs.announcements_remote import AnnouncementWorkspace
+    from bootstrap.docs.announcements_remote import run_preflight_validation
 
     endpoint, bucket, access_key, secret_key, alias = __resolve_announce_remote_target(
         target, endpoint, bucket, access_key, secret_key, alias
@@ -1797,7 +1797,7 @@ def remote_announce_publish(
         access_key=access_key,
         secret_key=secret_key,
         alias_name=alias,
-        resource_root=data.lib.config.CONFIGURATION.data_schema.resource_root,
+        resource_root=bootstrap.config.CONFIGURATION.data_schema.resource_root,
     )
 
     if not force:
@@ -2039,10 +2039,10 @@ def remote_session_discard(force: bool, schema_root: Path | None):
 
 
 def _resolve_schema_root(schema_root: Path | None) -> Path:
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
     if schema_root is not None:
         return __resolve_dev_path(schema_root)
-    return __resolve_dev_path(data.lib.config.DEV_CONFIGURATION.paths.schema_dir)
+    return __resolve_dev_path(bootstrap.config.DEV_CONFIGURATION.paths.schema_dir)
 
 
 def _validate_add_args(
@@ -2076,9 +2076,9 @@ def _check_snapshot_metadata(
     (ValidationError) or on success with the wrong model having unexpected
     fields, raises ClickException.
     """
-    from data.lib.remote.models import ReleaseSnapshotMetadata
-    from data.lib.remote.models import ResourceSnapshotMetadata
-    from data.lib.remote.models import read_json
+    from bootstrap.remote.models import ReleaseSnapshotMetadata
+    from bootstrap.remote.models import ResourceSnapshotMetadata
+    from bootstrap.remote.models import read_json
 
     metadata_path = snap_dir / "metadata.json"
     if not metadata_path.is_file():
@@ -2126,7 +2126,7 @@ def _resolve_snapshot_hash_from_prefix(
     Lists all snapshots of the given type and matches against the prefix.
     Raises ClickException if no match or multiple matches are found.
     """
-    from data.lib.remote.snapshot import SnapshotStore
+    from bootstrap.remote.snapshot import SnapshotStore
 
     if not prefix:
         raise click.ClickException("Snapshot hash prefix must not be empty")
@@ -2156,8 +2156,8 @@ def _add_snapshot_by_hash(
     hash_value: str,
 ) -> None:
     """Verify snapshot existence + metadata type, then stage."""
-    from data.lib.remote.paths import release_snapshot_dir
-    from data.lib.remote.paths import resource_snapshot_dir
+    from bootstrap.remote.paths import release_snapshot_dir
+    from bootstrap.remote.paths import resource_snapshot_dir
 
     dir_for_type = {
         "resource": resource_snapshot_dir,
@@ -2179,9 +2179,9 @@ def _add_snapshot_by_file(
     """Read a catalog/registry file, compute snapshot, and stage."""
     import json as _json
 
-    from data.lib.remote.models import ReleaseSnapshotMetadata
-    from data.lib.remote.models import ResourceSnapshotMetadata
-    from data.lib.remote.snapshot import SnapshotStore
+    from bootstrap.remote.models import ReleaseSnapshotMetadata
+    from bootstrap.remote.models import ResourceSnapshotMetadata
+    from bootstrap.remote.snapshot import SnapshotStore
 
     raw = source_file.read_text(encoding="utf-8")
     try:
@@ -2192,7 +2192,7 @@ def _add_snapshot_by_file(
     snap_store = SnapshotStore(root)
 
     if snap_type == "resource":
-        from data.lib.remote.models import make_resource_index
+        from bootstrap.remote.models import make_resource_index
 
         try:
             metadata = ResourceSnapshotMetadata.model_validate(data["metadata"])
@@ -2214,9 +2214,9 @@ def _add_snapshot_by_file(
         hash_value = snap_store.create_resource_snapshot(metadata, index)
 
     elif snap_type == "release":
-        from data.lib.remote.blob import BlobStore
-        from data.lib.remote.hash import ident_hash
-        from data.lib.remote.models import make_release_index
+        from bootstrap.remote.blob import BlobStore
+        from bootstrap.remote.hash import ident_hash
+        from bootstrap.remote.models import make_release_index
 
         try:
             metadata = ReleaseSnapshotMetadata.model_validate(data["metadata"])
@@ -2418,7 +2418,7 @@ def _get_snapshot_summary(
     hash_value: str,
 ) -> str:
     """Return a human-readable metadata summary for a staged snapshot."""
-    from data.lib.remote.snapshot import SnapshotStore
+    from bootstrap.remote.snapshot import SnapshotStore
 
     snap_store = SnapshotStore(root)
     try:
@@ -2442,8 +2442,8 @@ def _compute_diff(root: Path, session: Session) -> dict:
       channel, head, resources, releases.
     Each snapshot-type key maps to {"added": [...], "removed": [...], "unchanged": [...]}.
     """
-    from data.lib.remote.generation import GenerationStore
-    from data.lib.remote.head import ChannelHeadStore
+    from bootstrap.remote.generation import GenerationStore
+    from bootstrap.remote.head import ChannelHeadStore
 
     head_store = ChannelHeadStore(root)
     gen_store = GenerationStore(root)
@@ -2561,13 +2561,13 @@ def _check_staged_resource_blobs(
     issues: list,
 ) -> None:
     """Verify all blobs referenced by a staged resource snapshot exist."""
-    from data.lib.remote.hash import content_hash as _content_hash
-    from data.lib.remote.hash import ident_hash as _ident_hash
-    from data.lib.remote.models import ResourceIndex
-    from data.lib.remote.models import read_pb2
-    from data.lib.remote.paths import blob_path
-    from data.lib.remote.paths import resource_snapshot_dir
-    from data.lib.remote.verify import Issue
+    from bootstrap.remote.hash import content_hash as _content_hash
+    from bootstrap.remote.hash import ident_hash as _ident_hash
+    from bootstrap.remote.models import ResourceIndex
+    from bootstrap.remote.models import read_pb2
+    from bootstrap.remote.paths import blob_path
+    from bootstrap.remote.paths import resource_snapshot_dir
+    from bootstrap.remote.verify import Issue
 
     proto_path = resource_snapshot_dir(root, hash_value) / "resources.pb2"
     try:
@@ -2628,10 +2628,10 @@ def _verify_staged(root: Path, session: Session) -> list:
 
     Returns a list of Issue objects.
     """
-    from data.lib.remote.hash import snapshot_hash as _snapshot_hash
-    from data.lib.remote.paths import release_snapshot_dir
-    from data.lib.remote.paths import resource_snapshot_dir
-    from data.lib.remote.verify import Issue
+    from bootstrap.remote.hash import snapshot_hash as _snapshot_hash
+    from bootstrap.remote.paths import release_snapshot_dir
+    from bootstrap.remote.paths import resource_snapshot_dir
+    from bootstrap.remote.verify import Issue
 
     issues: list = []
 
@@ -2729,7 +2729,7 @@ def _verify_staged(root: Path, session: Session) -> list:
 
     # Phase 3: Channel check
     try:
-        from data.lib.remote.head import ChannelHeadStore
+        from bootstrap.remote.head import ChannelHeadStore
 
         head_store = ChannelHeadStore(root)
         registry = head_store.get_registry()
@@ -2845,11 +2845,11 @@ def remote_session_verify(repair: bool, schema_root: Path | None):
 )
 def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
     """Assemble a generation from staged snapshots and advance the channel head."""
-    from data.lib.remote.generation import utc_timestamp
-    from data.lib.remote.models import GenerationMetadata
-    from data.lib.remote.models import GenerationPointer
-    from data.lib.remote.models import GenerationResources
-    from data.lib.remote.models import ServerIndex
+    from bootstrap.remote.generation import utc_timestamp
+    from bootstrap.remote.models import GenerationMetadata
+    from bootstrap.remote.models import GenerationPointer
+    from bootstrap.remote.models import GenerationResources
+    from bootstrap.remote.models import ServerIndex
 
     root = _resolve_schema_root(schema_root)
     store = SessionStore(root)
@@ -3165,8 +3165,8 @@ def remote_publish(
     schema_root: Path | None,
 ):
     """Publish the channel's current head to a remote S3/MinIO bucket."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
 
     if target == "minio":
         minio_cfg = remote_cfg.require_minio("publish")
@@ -3259,8 +3259,8 @@ def remote_sync(
     By default syncs all channels found in the remote registry.
     Use --channel to limit to a specific channel.
     """
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
 
     if target == "minio":
         minio_cfg = remote_cfg.require_minio("sync")
@@ -3346,8 +3346,8 @@ def __materialize_remote_mock(origin_dir: Path, clean: bool) -> None:
 @click.option("--clean", is_flag=True, default=False, help="Remove the origin directory first.")
 def remote_mock_materialize(origin_dir: Path | None, clean: bool):
     """Copy committed remote mock fixtures into the configured origin directory."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
     __materialize_remote_mock(resolved_origin_dir, clean)
 
@@ -3411,7 +3411,7 @@ def __start_minio_remote_mock(
                 [mc, "rm", "--recursive", "--force", bucket_target],
                 "REMOTE CLEAN BUCKET",
             )
-        from data.lib.remote.generation import utc_timestamp
+        from bootstrap.remote.generation import utc_timestamp
 
         mock_generation = utc_timestamp().replace("-", "").replace(":", "") + "Z"
         __publish_remote_origin_to_s3(
@@ -3430,7 +3430,7 @@ def __start_minio_remote_mock(
         # Attempt V2 publish if mock origin has V2-structured data
         v2_heads_dir = origin_dir / resource_root / "channels" / "heads"
         if v2_heads_dir.is_dir():
-            from data.lib.remote import Publisher as V2Publisher
+            from bootstrap.remote import Publisher as V2Publisher
 
             pub = V2Publisher(
                 local_root=origin_dir / resource_root,
@@ -3502,14 +3502,14 @@ def remote_mock_launch(
     public_download: bool | None,
 ):
     """Launch a local MinIO remote mock."""
-    data.lib.config.DeveloperConfiguration.ensure_loaded()
-    data.lib.config.ProjectConfiguration.ensure_loaded()
-    remote_cfg = data.lib.config.DEV_CONFIGURATION.remote
+    bootstrap.config.DeveloperConfiguration.ensure_loaded()
+    bootstrap.config.ProjectConfiguration.ensure_loaded()
+    remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
     minio = remote_cfg.require_minio("mock")
 
     resolved_host = host or remote_cfg.host
     resolved_resource_root = (
-        resource_root or data.lib.config.CONFIGURATION.data_schema.resource_root
+        resource_root or bootstrap.config.CONFIGURATION.data_schema.resource_root
     )
     resolved_channel = __validate_remote_channel(channel or remote_cfg.channel.value)
     resolved_origin_dir = __resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
@@ -3872,7 +3872,7 @@ _GENERATOR_TYPES = {"static", "native", "localization", "images"}
 @click.option("--description", default=None, help="Description for the snapshot.")
 def data_cmd(skip: list[str], author: str | None, description: str | None):
     """Build data files."""
-    from data.lib.workspace.generate import run_generator
+    from bootstrap.data.workspace.generate import run_generator
 
     to_skip = set()
     for it in skip:
@@ -3896,7 +3896,7 @@ def data_cmd(skip: list[str], author: str | None, description: str | None):
 @build.command("announcements", aliases=["anno"])
 def build_announcements_cmd():
     """Build bundled announcement catalog assets."""
-    from data.lib.docs import build_bundled_announcements
+    from bootstrap.docs import build_bundled_announcements
 
     try:
         build_bundled_announcements()
@@ -3931,7 +3931,7 @@ def _build_apk_copy_and_verify(src_apk: Path, src_sha1: Path, dst_apk: Path, dst
 def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
     """Build Android APKs with versioned filenames."""
     ProjectConfiguration.ensure_loaded()
-    version = data.lib.config.CONFIGURATION.version
+    version = bootstrap.config.CONFIGURATION.version
     ver = version.render_full()
     output_dir = PROJECT_ROOT / "cache" / "releases" / "apk" / ver
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -4040,7 +4040,7 @@ def build_release_cmd(
         raise click.ClickException("Must specify --platform or --merge.")
 
     ProjectConfiguration.ensure_loaded()
-    version = data.lib.config.CONFIGURATION.version
+    version = bootstrap.config.CONFIGURATION.version
     ver = version.render_full()
     ver_semver = version.render_semver()
 
@@ -4185,9 +4185,9 @@ def _utcnow_iso() -> str:
 @click.option("--generations", is_flag=True, default=False, help="Show generations.")
 def build_list_cmd(apps: bool, resources: bool, releases: bool, generations: bool):
     """List local build / cache items."""
-    from data.lib.remote.generation import GenerationStore
-    from data.lib.remote.head import ChannelHeadStore
-    from data.lib.remote.snapshot import SnapshotStore
+    from bootstrap.remote.generation import GenerationStore
+    from bootstrap.remote.head import ChannelHeadStore
+    from bootstrap.remote.snapshot import SnapshotStore
 
     def _dir_size(dir_path: Path) -> int:
         if not dir_path.is_dir():
@@ -4443,7 +4443,7 @@ def release_version():
 @release_version.command("show")
 def release_version_show():
     """Display the current version from efa.config.toml."""
-    from data.lib.release.version import load_version
+    from bootstrap.release.version import load_version
 
     v = load_version()
     is_pre = v.is_prerelease()
@@ -4476,8 +4476,8 @@ def release_version_show():
 @click.option("--dry-run", is_flag=True, default=False, help="Show what would be written.")
 def release_version_sync(dry_run: bool):
     """Sync version from efa.config.toml to all target files."""
-    from data.lib.release.version import load_version
-    from data.lib.release.version import sync_all
+    from bootstrap.release.version import load_version
+    from bootstrap.release.version import sync_all
 
     v = load_version()
     click.echo(
@@ -4532,9 +4532,9 @@ def release_version_bump(
     Only update build number:
         ./x release version bump --build 42
     """
-    from data.lib.release.version import load_version
-    from data.lib.release.version import sync_all
-    from data.lib.release.version import write_config_version
+    from bootstrap.release.version import load_version
+    from bootstrap.release.version import sync_all
+    from bootstrap.release.version import write_config_version
 
     v = load_version()
     old_ver = v.render_full()
@@ -4601,8 +4601,8 @@ def release_check(since_tag: str | None, force: bool):
     generate, lint, and changelog.  Fatal failures block the
     release unless --force is used.
     """
-    from data.lib.release.check import CheckSeverity
-    from data.lib.release.check import run_all_checks
+    from bootstrap.release.check import CheckSeverity
+    from bootstrap.release.check import run_all_checks
 
     report = run_all_checks(force=force, since_tag=since_tag)
 
@@ -4704,8 +4704,8 @@ def release_commit(no_edit: bool, dry_run: bool):
 
     Does NOT push — you must push manually.
     """
-    from data.lib.release.git_util import check_tag_exists
-    from data.lib.release.version import load_version
+    from bootstrap.release.git_util import check_tag_exists
+    from bootstrap.release.version import load_version
 
     v = load_version()
     tag = v.render_tag()
@@ -4765,8 +4765,8 @@ def release_changelog_generate():
 
     Prepends a new version entry for the current version from efa.config.toml.
     """
-    from data.lib.release.changelog_gen import generate_full
-    from data.lib.release.version import load_version
+    from bootstrap.release.changelog_gen import generate_full
+    from bootstrap.release.version import load_version
 
     v = load_version()
     tag = v.render_tag()
@@ -4792,8 +4792,8 @@ def release_changelog_detail(no_edit: bool):
     Use --no-edit to write the generated template as-is without manual editing.
     On save (or if --no-edit), writes authored .md files to assets/content/announcements/{en,zh}/.
     """
-    from data.lib.release.changelog_gen import generate_detail
-    from data.lib.release.version import load_version
+    from bootstrap.release.changelog_gen import generate_detail
+    from bootstrap.release.version import load_version
 
     v = load_version()
     click.echo(
@@ -4854,9 +4854,9 @@ def test_python():
     """Run Python tests via pytest."""
     uv = get_command("uv")
     click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run pytest data/tests/"
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv run pytest bootstrap/tests/"
     )
-    __execute_command([uv, "run", "pytest", "data/tests/"], "PYTEST OUTPUT")
+    __execute_command([uv, "run", "pytest", "bootstrap/tests/"], "PYTEST OUTPUT")
 
 
 @test.command("dart")

@@ -7,7 +7,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 - Flutter/Dart app code is under `lib/`; generated Dart outputs include `lib/native/`, `lib/data/l10n/`, protobuf outputs, `*.g.dart`, and `*.freezed.dart`.
   - `lib/storage/repo/` implements a content-addressed repository system for data versioning with checkout-based data management and diff chains.
 - Rust has two layers: FRB bridge crate in `rust/` (`rust/src/api/*`) and the fitting engine git-submodule crate in `rust/lib/eve-fit-os`.
-- Python in `data/` plus `x.py` owns workspace management, codegen orchestration, and static data packaging.
+- Python in `bootstrap/` plus `x.py` owns workspace management, codegen orchestration, and static data packaging. The top-level `data/` directory holds only raw EVE resources (`data/resources/`) and protobuf `.proto` schema sources (`data/schema/`).
 - `rust_builder/` is the Flutter plugin/cargokit wrapper used by `pubspec.yaml`; avoid treating it as the main Rust source.
 - `site/` is a SvelteKit app deployed to Cloudflare Workers (pnpm workspace). `biome.json` governs JS/TS formatting/linting for this area.
 - `rust/lib/eve-fit-os` is a Git submodule; run `git submodule update --init` after clone if not already initialized.
@@ -123,7 +123,7 @@ The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `develope
 
 ## Python Pipeline
 
-- `data/lib/remote/session.py` — Session manager for the `efa/v2/` layout
+- `bootstrap/remote/session_model.py` — Session manager for the `efa/v2/` layout
   (`SessionManager`), inheriting from `_BaseSessionManager`. Manages
   generation lifecycle, resource registration, release
   management, and S3/R2 publishing.
