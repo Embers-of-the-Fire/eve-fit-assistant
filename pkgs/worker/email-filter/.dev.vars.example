@@ -1,0 +1,8 @@
+# Cloudflare Email Workers send_email binding stub (see wrangler.toml) outputs
+# forwarded/replied emails as .eml files when running `wrangler dev`.
+# No secrets are required for local email worker development.
+#
+# For production, the FORWARD_TO secret must be set:
+#   wrangler secret put FORWARD_TO
+# When omitted, the worker will reject all valid-prefix emails at runtime.
+FORWARD_TO=foo@bar.com

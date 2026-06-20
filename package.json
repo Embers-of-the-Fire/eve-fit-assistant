@@ -6,7 +6,9 @@
     "build:site": "pnpm --filter efa-tech build",
     "check:site": "pnpm --filter efa-tech check",
     "dev:redirect": "pnpm --filter issue-redirect dev",
-    "check:redirect": "pnpm --filter issue-redirect check"
+    "check:redirect": "pnpm --filter issue-redirect check",
+    "dev:email-filter": "pnpm --filter email-filter dev",
+    "check:email-filter": "pnpm --filter email-filter check"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4"

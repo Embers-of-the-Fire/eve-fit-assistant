@@ -1,0 +1,16 @@
+{
+    "name": "email-filter",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "wrangler dev --port 8788",
+        "deploy": "wrangler deploy",
+        "check": "tsc --noEmit",
+        "lint": "biome check --write src/"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20250610.0",
+        "typescript": "^5.9.3",
+        "wrangler": "^4.33.0"
+    }
+}

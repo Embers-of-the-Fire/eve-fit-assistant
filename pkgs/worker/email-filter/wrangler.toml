@@ -1,0 +1,10 @@
+name = "efa-email-filter"
+main = "src/index.ts"
+compatibility_date = "2026-06-10"
+
+workers_dev = false
+preview_urls = false
+
+[[send_email]]
+name = "EMAIL"
+
