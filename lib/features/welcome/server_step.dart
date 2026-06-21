@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:eve_fit_assistant/components/wizard/wizard.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -50,6 +52,48 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     });
   }
 
+  void _onContinuePressed(int count) {
+    final l10n = context.l10n;
+    unawaited(showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.welcomeDownloadConfirmTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.welcomeDownloadConfirmMessage(count: count)),
+            const SizedBox(height: 8),
+            Text(
+              l10n.welcomeDownloadConfirmWarning,
+              style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.onSkip();
+            },
+            child: Text(l10n.welcomeDownloadSkipButton),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.onContinue();
+            },
+            child: Text(l10n.welcomeDownloadConfirmButton),
+          ),
+        ],
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider).name;
@@ -57,6 +101,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
 
     final focusedServer = _findServer(selectionData.value?.servers, _activeId);
     final totalSize = _computeTotal(selectionData.value);
+    final downloadCount = _computeCount(selectionData.value);
 
     return WizardScaffold(
       title: context.l10n.welcomeServerTitle,
@@ -70,7 +115,10 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
               textAlign: alignment,
             ),
       primaryLabel: context.l10n.welcomeContinueButton,
-      onPrimary: widget.onContinue,
+      primaryEnabled: _activeId != null,
+      onPrimary: () {
+        _onContinuePressed(downloadCount!);
+      },
       secondaryActions: [
         WizardAction(label: context.l10n.welcomeBackButton, onPressed: widget.onBack),
         WizardAction(label: context.l10n.welcomeSkipButton, onPressed: widget.onSkip),
@@ -105,6 +153,17 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     }
     if (union.isEmpty) return null;
     return _formatSize(union.values.fold<int>(0, (a, b) => a + b));
+  }
+
+  int? _computeCount(ServerSelectionData? data) {
+    if (data == null || _selected.isEmpty) return null;
+    final union = <String>{};
+    for (final serverId in _selected) {
+      final blobs = data.blobsForServer[serverId];
+      if (blobs == null) continue;
+      union.addAll(blobs.keys);
+    }
+    return union.isEmpty ? null : union.length;
   }
 
   String _formatSize(int bytes) {

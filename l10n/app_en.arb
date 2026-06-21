@@ -685,5 +685,10 @@
   "welcomeServerMetaRegion": "Region",
   "welcomeServerMetaSync": "Sync",
   "welcomeServerMetaBranch": "Branch",
-  "welcomeServerDownloadSize": "Needs to download: {size}"
+  "welcomeServerDownloadSize": "Needs to download: {size}",
+  "welcomeDownloadConfirmTitle": "Initializing Data",
+  "welcomeDownloadConfirmMessage": "About to download {count,plural, =1{1 file} other{{count} files}}.",
+  "welcomeDownloadConfirmWarning": "Do not close app when downloading",
+  "welcomeDownloadConfirmButton": "Download",
+  "welcomeDownloadSkipButton": "Skip for now"
 }

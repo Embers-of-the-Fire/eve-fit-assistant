@@ -1523,5 +1523,13 @@
   "welcomeServerDownloadSize": "需要下载: {size}",
   "@welcomeServerDownloadSize": {
     "placeholders": { "size": { "type": "String" } }
-  }
+  },
+  "welcomeDownloadConfirmTitle": "初始化数据",
+  "welcomeDownloadConfirmMessage": "即将下载 {count,plural, =1{1 个文件} other{{count} 个文件}}。",
+  "@welcomeDownloadConfirmMessage": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "welcomeDownloadConfirmWarning": "下载过程中请勿关闭应用",
+  "welcomeDownloadConfirmButton": "下载",
+  "welcomeDownloadSkipButton": "稍后设置"
 }
