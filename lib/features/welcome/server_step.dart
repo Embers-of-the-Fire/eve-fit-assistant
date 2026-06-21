@@ -1,5 +1,4 @@
-import "package:eve_fit_assistant/features/welcome/welcome_components.dart";
-import "package:eve_fit_assistant/features/welcome/welcome_step_template.dart";
+import "package:eve_fit_assistant/components/wizard/wizard.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart" show localeProvider;
@@ -34,16 +33,20 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     final locale = ref.watch(localeProvider).name;
     final servers = ref.watch(serverListProvider(widget.channelName));
 
-    return WelcomeStepTemplate(
+    return WizardScaffold(
       title: context.l10n.welcomeServerTitle,
       subtitle: context.l10n.welcomeServerSubtitle,
-      onContinue: widget.onContinue,
-      onSkip: widget.onSkip,
-      onBack: widget.onBack,
-      content: WelcomeAsyncContent(
+      primaryLabel: context.l10n.welcomeContinueButton,
+      onPrimary: widget.onContinue,
+      secondaryActions: [
+        WizardAction(label: context.l10n.welcomeBackButton, onPressed: widget.onBack),
+        WizardAction(label: context.l10n.welcomeSkipButton, onPressed: widget.onSkip),
+      ],
+      content: WizardAsyncContent(
         value: servers,
         onRetry: () => ref.invalidate(serverListProvider(widget.channelName)),
         errorMessage: context.l10n.welcomeServerError,
+        retryLabel: context.l10n.fitPageRetryAction,
         builder: (data) => _buildList(context, data, locale),
       ),
     );
@@ -51,8 +54,9 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
 
   Widget _buildList(BuildContext context, IList<ServerSummary> servers, String locale) {
     if (servers.isEmpty) {
-      return WelcomeContentMessage(
+      return WizardContentMessage(
         message: context.l10n.welcomeServerEmpty,
+        retryLabel: context.l10n.fitPageRetryAction,
         onRetry: () => ref.invalidate(serverListProvider(widget.channelName)),
       );
     }
@@ -60,12 +64,12 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     final ids = servers.map((s) => s.serverId).toList();
     final selected = ids.contains(_selectedServerId) ? _selectedServerId! : ids.first;
 
-    return WelcomeSelectionList(
+    return WizardOptionList(
       children: [
         for (final server in servers)
-          WelcomeSelectionCard(
+          WizardOptionTile(
             title: server.displayName(locale),
-            isSelected: server.serverId == selected,
+            selected: server.serverId == selected,
             onTap: () => setState(() => _selectedServerId = server.serverId),
           ),
       ],

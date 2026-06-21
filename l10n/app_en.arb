@@ -668,6 +668,7 @@
   "welcomeSkipButton": "Skip",
   "welcomeLanguageTitle": "Language",
   "welcomeLanguageSubtitle": "Select default language",
+  "welcomeLanguageDetectedBadge": "Detected",
   "welcomeContinueButton": "Continue",
   "welcomeBackButton": "Back",
   "welcomeChannelTitle": "Data Channel",

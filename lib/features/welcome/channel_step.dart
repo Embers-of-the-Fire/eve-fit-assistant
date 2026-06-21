@@ -1,6 +1,5 @@
+import "package:eve_fit_assistant/components/wizard/wizard.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/features/welcome/welcome_components.dart";
-import "package:eve_fit_assistant/features/welcome/welcome_step_template.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -43,16 +42,20 @@ class _ChannelStepPageState extends ConsumerState<ChannelStepPage> {
 
     _effectiveSelected = _selected ?? Channel.testing.value;
 
-    return WelcomeStepTemplate(
+    return WizardScaffold(
       title: context.l10n.welcomeChannelTitle,
       subtitle: context.l10n.welcomeChannelSubtitle,
-      onContinue: () => widget.onContinue(_effectiveSelected),
-      onSkip: widget.onSkip,
-      onBack: widget.onBack,
-      content: WelcomeAsyncContent(
+      primaryLabel: context.l10n.welcomeContinueButton,
+      onPrimary: () => widget.onContinue(_effectiveSelected),
+      secondaryActions: [
+        WizardAction(label: context.l10n.welcomeBackButton, onPressed: widget.onBack),
+        WizardAction(label: context.l10n.welcomeSkipButton, onPressed: widget.onSkip),
+      ],
+      content: WizardAsyncContent(
         value: overview,
         onRetry: () => ref.invalidate(channelOverviewProvider),
         errorMessage: context.l10n.welcomeChannelError,
+        retryLabel: context.l10n.fitPageRetryAction,
         builder: (data) => _buildList(context, data, locale),
       ),
     );
@@ -61,8 +64,9 @@ class _ChannelStepPageState extends ConsumerState<ChannelStepPage> {
   Widget _buildList(BuildContext context, ChannelOverview data, String locale) {
     final channels = data.channels;
     if (channels.isEmpty) {
-      return WelcomeContentMessage(
+      return WizardContentMessage(
         message: context.l10n.welcomeChannelEmpty,
+        retryLabel: context.l10n.fitPageRetryAction,
         onRetry: () => ref.invalidate(channelOverviewProvider),
       );
     }
@@ -73,13 +77,13 @@ class _ChannelStepPageState extends ConsumerState<ChannelStepPage> {
         : (names.contains(data.defaultChannel) ? data.defaultChannel : names.first);
     _effectiveSelected = selected;
 
-    return WelcomeSelectionList(
+    return WizardOptionList(
       children: [
         for (final name in names)
-          WelcomeSelectionCard(
+          WizardOptionTile(
             title: _resolveLabel(channels[name]!, name, locale),
             badge: name == data.defaultChannel ? context.l10n.welcomeChannelDefaultBadge : null,
-            isSelected: name == selected,
+            selected: name == selected,
             onTap: () => setState(() => _selected = name),
           ),
       ],

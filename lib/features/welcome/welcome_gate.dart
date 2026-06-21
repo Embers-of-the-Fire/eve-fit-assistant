@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/components/wizard/wizard.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
@@ -83,6 +84,7 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(seedColor: primaryBlue),
     scaffoldBackgroundColor: const Color(0xFFE8F1F0),
+    extensions: const [WizardTokens.standard],
   );
 
   @override

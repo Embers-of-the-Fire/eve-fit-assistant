@@ -1503,6 +1503,7 @@
   "welcomeSkipButton": "跳过",
   "welcomeLanguageTitle": "语言",
   "welcomeLanguageSubtitle": "选择默认语言",
+  "welcomeLanguageDetectedBadge": "已检测",
   "welcomeContinueButton": "继续",
   "welcomeBackButton": "返回",
   "welcomeChannelTitle": "数据频道",

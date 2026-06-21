@@ -1,8 +1,7 @@
 import "dart:ui" as ui;
 
+import "package:eve_fit_assistant/components/wizard/wizard.dart";
 import "package:eve_fit_assistant/config/locale.dart";
-import "package:eve_fit_assistant/features/welcome/welcome_components.dart";
-import "package:eve_fit_assistant/features/welcome/welcome_step_template.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart" hide Locale;
@@ -28,19 +27,24 @@ class LanguageStepPage extends ConsumerWidget {
     void onSelected(Locale value) =>
         ref.read(appSettingServiceProvider.notifier).update((old) => old.copyWith(locale: value));
 
-    return WelcomeStepTemplate(
+    return WizardScaffold(
       title: context.l10n.welcomeLanguageTitle,
       subtitle: context.l10n.welcomeLanguageSubtitle,
-      onContinue: onContinue,
-      onSkip: onSkip,
-      onBack: onBack,
-      content: WelcomeSelectionList(
+      primaryLabel: context.l10n.welcomeContinueButton,
+      onPrimary: onContinue,
+      secondaryActions: [
+        WizardAction(label: context.l10n.welcomeBackButton, onPressed: onBack),
+        WizardAction(label: context.l10n.welcomeSkipButton, onPressed: onSkip),
+      ],
+      content: WizardOptionList(
         children: [
           for (final locale in Locale.values)
-            WelcomeSelectionCard(
+            WizardOptionTile(
               title: locale.display,
-              subtitle: locale.name == detectedCode ? "Detected" : null,
-              isSelected: locale == selected,
+              subtitle: locale.name == detectedCode
+                  ? context.l10n.welcomeLanguageDetectedBadge
+                  : null,
+              selected: locale == selected,
               onTap: () => onSelected(locale),
             ),
         ],
