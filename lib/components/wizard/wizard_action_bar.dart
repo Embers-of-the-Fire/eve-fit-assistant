@@ -38,12 +38,14 @@ class WizardActionBar extends StatelessWidget {
     required this.primaryLabel,
     required this.onPrimary,
     required this.layout,
+    this.primaryEnabled = true,
     this.secondary = const [],
     super.key,
   });
 
   final String primaryLabel;
   final VoidCallback onPrimary;
+  final bool primaryEnabled;
   final WizardActionBarLayout layout;
   final List<WizardAction> secondary;
 
@@ -54,7 +56,7 @@ class WizardActionBar extends StatelessWidget {
   };
 
   Widget _buildPrimary(BuildContext context) =>
-      FilledButton(onPressed: onPrimary, child: Text(primaryLabel));
+      FilledButton(onPressed: primaryEnabled ? onPrimary : null, child: Text(primaryLabel));
 
   Widget _buildSecondary(BuildContext context, WizardAction action) => switch (action.style) {
     WizardActionStyle.text => TextButton(onPressed: action.onPressed, child: Text(action.label)),

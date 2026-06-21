@@ -17,6 +17,7 @@ class WizardScaffold extends StatelessWidget {
     required this.content,
     required this.primaryLabel,
     required this.onPrimary,
+    this.primaryEnabled = true,
     this.headerBuilder,
     this.secondaryActions = const [],
     super.key,
@@ -27,6 +28,7 @@ class WizardScaffold extends StatelessWidget {
   final Widget content;
   final String primaryLabel;
   final VoidCallback onPrimary;
+  final bool primaryEnabled;
 
   /// Optional override for the default animated [title]/[subtitle] header.
   ///
@@ -66,12 +68,13 @@ class WizardScaffold extends StatelessWidget {
           animationKey: ValueKey(title),
           textAlign: TextAlign.left,
         ),
-      SizedBox(height: tokens.spacingXxl),
-      content,
       SizedBox(height: tokens.spacingXl),
+      Expanded(child: SingleChildScrollView(child: content)),
+      SizedBox(height: tokens.spacingLg),
       WizardActionBar(
         primaryLabel: primaryLabel,
         onPrimary: onPrimary,
+        primaryEnabled: primaryEnabled,
         layout: WizardActionBarLayout.stacked,
         secondary: secondaryActions,
       ),
@@ -80,12 +83,19 @@ class WizardScaffold extends StatelessWidget {
 
   Widget _buildTabletLayout(BuildContext context, WizardTokens tokens) => Padding(
     padding: EdgeInsets.symmetric(horizontal: tokens.spacingXxl * 2.5, vertical: tokens.spacingXxl),
-    child: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        WizardActionBar(
+          primaryLabel: primaryLabel,
+          onPrimary: onPrimary,
+          primaryEnabled: primaryEnabled,
+          layout: WizardActionBarLayout.inline,
+          secondary: secondaryActions,
+        ),
+        SizedBox(height: tokens.spacingXxl + tokens.spacingSm),
+        Expanded(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
@@ -102,20 +112,13 @@ class WizardScaffold extends StatelessWidget {
                 flex: 2,
                 child: Padding(
                   padding: EdgeInsets.only(left: tokens.spacingXxl + tokens.spacingLg),
-                  child: content,
+                  child: SingleChildScrollView(child: content),
                 ),
               ),
             ],
           ),
-          SizedBox(height: tokens.spacingXxl + tokens.spacingSm),
-          WizardActionBar(
-            primaryLabel: primaryLabel,
-            onPrimary: onPrimary,
-            layout: WizardActionBarLayout.inline,
-            secondary: secondaryActions,
-          ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }

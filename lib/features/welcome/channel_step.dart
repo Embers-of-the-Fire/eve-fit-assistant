@@ -46,6 +46,7 @@ class _ChannelStepPageState extends ConsumerState<ChannelStepPage> {
       title: context.l10n.welcomeChannelTitle,
       subtitle: context.l10n.welcomeChannelSubtitle,
       primaryLabel: context.l10n.welcomeContinueButton,
+      primaryEnabled: overview.hasValue,
       onPrimary: () => widget.onContinue(_effectiveSelected),
       secondaryActions: [
         WizardAction(label: context.l10n.welcomeBackButton, onPressed: widget.onBack),

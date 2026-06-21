@@ -29,6 +29,15 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
   final Set<String> _selected = {};
   String? _activeId;
 
+  @override
+  void didUpdateWidget(ServerStepPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.channelName != widget.channelName) {
+      _selected.clear();
+      _activeId = null;
+    }
+  }
+
   void _toggle(String serverId) {
     setState(() {
       if (_selected.contains(serverId)) {
