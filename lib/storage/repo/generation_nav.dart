@@ -1,6 +1,7 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
@@ -191,7 +192,9 @@ class GenerationNavigationService {
     for (final hash in uniqueHashes) {
       futures.add(() async {
         final result = await remoteCatalogService.fetchResourceIndex(hash);
-        result.match((_) => null, (bytes) {
+        result.match((err) => warning("Failed to fetch resource index for snapshot $hash: $err"), (
+          bytes,
+        ) {
           final index = ResourceIndex.fromBuffer(bytes);
           final blobs = <String, int>{};
           for (final entry in index.entries) {

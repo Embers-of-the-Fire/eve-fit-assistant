@@ -194,12 +194,7 @@ class CheckoutProvisioner {
     final failedBlobs = <String>[];
 
     if (toDownload.isEmpty) {
-      _emit(
-        ProvisionerDownloading(
-          downloaded: downloaded,
-          total: totalEntries,
-        ),
-      );
+      _emit(ProvisionerDownloading(downloaded: downloaded, total: totalEntries));
     }
 
     for (var i = 0; i < toDownload.length; i += concurrency) {
@@ -207,24 +202,27 @@ class CheckoutProvisioner {
 
       final chunk = toDownload.skip(i).take(concurrency).toList();
 
-      await Future.wait(
+      final results = await Future.wait(
         chunk.map((entry) async {
           final identHash = RepoHash.hashIdent(entry.resourceId);
           final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
           if (blobResult.isRight()) {
             try {
               assetStore.writeBlobSync(identHash, blobResult.getRight().toNullable()!);
+              return true;
             } on FileSystemException {
               failedBlobs.add(entry.resourceId);
+              return false;
             }
           } else {
             failedBlobs.add(entry.resourceId);
             warning("Failed to fetch blob: ${entry.resourceId}");
+            return false;
           }
         }),
       );
 
-      downloaded += chunk.length;
+      downloaded += results.where((ok) => ok).length;
 
       _emit(
         ProvisionerDownloading(

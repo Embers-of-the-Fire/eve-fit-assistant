@@ -44,7 +44,9 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     setState(() {
       if (_selected.contains(serverId)) {
         _selected.remove(serverId);
-        _activeId = null;
+        if (_activeId == serverId) {
+          _activeId = _selected.isEmpty ? null : _selected.first;
+        }
       } else {
         _selected.add(serverId);
         _activeId = serverId;
@@ -54,44 +56,43 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
 
   void _onContinuePressed(int count) {
     final l10n = context.l10n;
-    unawaited(showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.welcomeDownloadConfirmTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.welcomeDownloadConfirmMessage(count: count)),
-            const SizedBox(height: 8),
-            Text(
-              l10n.welcomeDownloadConfirmWarning,
-              style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.welcomeDownloadConfirmTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.welcomeDownloadConfirmMessage(count: count)),
+              const SizedBox(height: 8),
+              Text(
+                l10n.welcomeDownloadConfirmWarning,
+                style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                widget.onSkip();
+              },
+              child: Text(l10n.welcomeDownloadSkipButton),
+            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                widget.onContinue();
+              },
+              child: Text(l10n.welcomeDownloadConfirmButton),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              widget.onSkip();
-            },
-            child: Text(l10n.welcomeDownloadSkipButton),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              widget.onContinue();
-            },
-            child: Text(l10n.welcomeDownloadConfirmButton),
-          ),
-        ],
       ),
-    ));
+    );
   }
 
   @override
@@ -115,7 +116,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
               textAlign: alignment,
             ),
       primaryLabel: context.l10n.welcomeContinueButton,
-      primaryEnabled: _activeId != null,
+      primaryEnabled: _activeId != null && downloadCount != null,
       onPrimary: () {
         _onContinuePressed(downloadCount!);
       },
