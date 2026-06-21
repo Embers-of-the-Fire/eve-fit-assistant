@@ -2,15 +2,14 @@ import "package:animated_text_kit/animated_text_kit.dart";
 import "package:eve_fit_assistant/components/wizard/wizard_tokens.dart";
 import "package:flutter/material.dart";
 
-/// A wizard header animated in whenever [animationKey] changes.
+/// A wizard header that animates its [title] and [details] whenever
+/// [animationKey] changes.
 ///
-/// This is the reusable animation mechanism behind the server step's metadata
-/// display: a step supplies a [title] plus a list of metadata [details] and a
-/// key that changes on every selection switch. The readout runs as a cohesive
-/// sequence via `animated_text_kit`: the [title] rotates in first
-/// ([RotateAnimatedText]), then the [details] block types beneath it
-/// ([TypewriterAnimatedText]). Steps remain free of animation details; they
-/// only map their domain data to strings.
+/// The header plays a readout sequence via `animated_text_kit`: the [title]
+/// rotates in first ([RotateAnimatedText]), then the [details] block types
+/// beneath it ([TypewriterAnimatedText]). Used both as the default animated
+/// title/subtitle in WizardScaffold and as the per-server metadata display
+/// in the server selection step.
 class WizardRotatingHeader extends StatefulWidget {
   const WizardRotatingHeader({
     required this.title,

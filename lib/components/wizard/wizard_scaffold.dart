@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/components/wizard/wizard_action_bar.dart";
+import "package:eve_fit_assistant/components/wizard/wizard_rotating_header.dart";
 import "package:eve_fit_assistant/components/wizard/wizard_tokens.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
@@ -27,12 +28,12 @@ class WizardScaffold extends StatelessWidget {
   final String primaryLabel;
   final VoidCallback onPrimary;
 
-  /// Optional override for the default [title]/[subtitle] header.
+  /// Optional override for the default animated [title]/[subtitle] header.
   ///
-  /// When provided, the returned widget replaces the plain title/subtitle text
-  /// block. The scaffold passes the layout's text alignment (left on phones,
-  /// right on tablets) so the header matches the surrounding text. The
-  /// [title]/[subtitle] strings remain the fallback when this is `null`.
+  /// When provided, the returned widget replaces the rotating-title + typing-
+  /// subtitle animation. The scaffold passes the layout's text alignment (left
+  /// on phones, right on tablets) so the header matches the surrounding text.
+  /// The [title]/[subtitle] strings remain the fallback when this is `null`.
   final Widget Function(TextAlign alignment)? headerBuilder;
 
   final List<WizardAction> secondaryActions;
@@ -52,95 +53,69 @@ class WizardScaffold extends StatelessWidget {
     );
   }
 
-  Widget _buildPhoneLayout(BuildContext context, WizardTokens tokens) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  Widget _buildPhoneLayout(BuildContext context, WizardTokens tokens) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(height: tokens.spacingXxl),
+      if (headerBuilder != null)
+        headerBuilder!(TextAlign.left)
+      else
+        WizardRotatingHeader(
+          title: title,
+          details: [subtitle],
+          animationKey: ValueKey(title),
+          textAlign: TextAlign.left,
+        ),
+      SizedBox(height: tokens.spacingXxl),
+      content,
+      SizedBox(height: tokens.spacingXl),
+      WizardActionBar(
+        primaryLabel: primaryLabel,
+        onPrimary: onPrimary,
+        layout: WizardActionBarLayout.stacked,
+        secondary: secondaryActions,
+      ),
+    ],
+  );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: tokens.spacingXxl),
-        if (headerBuilder != null)
-          headerBuilder!(TextAlign.left)
-        else ...[
-          Text(title, style: theme.textTheme.headlineMedium),
-          SizedBox(height: tokens.spacingXs),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
+  Widget _buildTabletLayout(BuildContext context, WizardTokens tokens) => Padding(
+    padding: EdgeInsets.symmetric(horizontal: tokens.spacingXxl * 2.5, vertical: tokens.spacingXxl),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: headerBuilder != null
+                    ? headerBuilder!(TextAlign.right)
+                    : WizardRotatingHeader(
+                        title: title,
+                        details: [subtitle],
+                        animationKey: ValueKey(title),
+                        textAlign: TextAlign.right,
+                      ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: EdgeInsets.only(left: tokens.spacingXxl + tokens.spacingLg),
+                  child: content,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: tokens.spacingXxl + tokens.spacingSm),
+          WizardActionBar(
+            primaryLabel: primaryLabel,
+            onPrimary: onPrimary,
+            layout: WizardActionBarLayout.inline,
+            secondary: secondaryActions,
           ),
         ],
-        SizedBox(height: tokens.spacingXxl),
-        content,
-        SizedBox(height: tokens.spacingXl),
-        WizardActionBar(
-          primaryLabel: primaryLabel,
-          onPrimary: onPrimary,
-          layout: WizardActionBarLayout.stacked,
-          secondary: secondaryActions,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabletLayout(BuildContext context, WizardTokens tokens) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: tokens.spacingXxl * 2.5,
-        vertical: tokens.spacingXxl,
       ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: headerBuilder != null
-                      ? headerBuilder!(TextAlign.right)
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              title,
-                              style: theme.textTheme.headlineMedium,
-                              textAlign: TextAlign.right,
-                            ),
-                            SizedBox(height: tokens.spacingSm),
-                            Text(
-                              subtitle,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              textAlign: TextAlign.right,
-                            ),
-                          ],
-                        ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: tokens.spacingXxl + tokens.spacingLg),
-                    child: content,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: tokens.spacingXxl + tokens.spacingSm),
-            WizardActionBar(
-              primaryLabel: primaryLabel,
-              onPrimary: onPrimary,
-              layout: WizardActionBarLayout.inline,
-              secondary: secondaryActions,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }
