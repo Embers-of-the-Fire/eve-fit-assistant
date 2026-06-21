@@ -97,9 +97,9 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     return [
       "${l10n.welcomeServerMetaBuild}: ${server.gameBuild}",
       "${l10n.welcomeServerMetaVersion}: ${server.gameVersion}",
-      if (server.region != null) "${l10n.welcomeServerMetaRegion}: ${server.region}",
-      if (server.sync != null) "${l10n.welcomeServerMetaSync}: ${server.sync}",
-      if (server.branch != null) "${l10n.welcomeServerMetaBranch}: ${server.branch}",
+      "${l10n.welcomeServerMetaRegion}: ${server.region ?? "—"}",
+      "${l10n.welcomeServerMetaSync}: ${server.sync ?? "—"}",
+      "${l10n.welcomeServerMetaBranch}: ${server.branch ?? "—"}",
     ];
   }
 
