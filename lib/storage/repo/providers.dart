@@ -87,6 +87,21 @@ Future<IList<ServerSummary>> serverList(Ref ref, String channelName) async =>
             ))
         .match((e) => throw e, (o) => o);
 
+/// Fetches the server list with per-server blob maps for [channelName].
+///
+/// Uses [GenerationNavigationService.fetchServerSelectionData] to include
+/// per-server `{contentHash → size}` maps so the server step can compute the
+/// deduplicated download footprint across selected servers.
+@riverpod
+Future<ServerSelectionData> serverSelectionData(Ref ref, String channelName) async =>
+    (await ref
+            .watch(generationNavigationServiceProvider)
+            .fetchServerSelectionData(
+              channel: Channel.tryParse(channelName) ?? Channel.defaultChannel,
+              channelName: channelName,
+            ))
+        .match((e) => throw e, (o) => o);
+
 @riverpodSingleton
 CheckoutRegistryService checkoutRegistryService(Ref ref) => CheckoutRegistryService();
 

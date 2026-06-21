@@ -107,6 +107,14 @@ class RemoteCatalogService {
     return _fetchBytes(uri);
   }
 
+  /// GET `channels/refs/{generationHash}/resources.pb2`, bypassing the ETag cache.
+  Future<Either<CatalogError, Uint8List>> fetchGenerationResourcesFresh(
+    String generationHash,
+  ) async {
+    final uri = _buildUri("channels/refs/$generationHash/resources.pb2");
+    return _fetchBytes(uri, bypassEtag: true);
+  }
+
   /// GET `channels/refs/{generationHash}/releases.pb2`
   Future<Either<CatalogError, Uint8List>> fetchGenerationPointer(String generationHash) async {
     final uri = _buildUri("channels/refs/$generationHash/releases.pb2");

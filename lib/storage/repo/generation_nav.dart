@@ -1,6 +1,8 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
+import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
@@ -60,6 +62,16 @@ class ServerSummary {
 
   /// Returns the display name for [locale], falling back to serverId.
   String displayName(String locale) => name?[locale] ?? serverId;
+}
+
+/// Aggregated data for the server selection step: server list plus per-server
+/// blob content-hash→size maps so the UI can compute the deduplicated download
+/// footprint across selected servers.
+class ServerSelectionData {
+  ServerSelectionData({required this.servers, required this.blobsForServer});
+
+  final IList<ServerSummary> servers;
+  final Map<String, Map<String, int>> blobsForServer;
 }
 
 /// Data source for the setup page's channel/server browser.
@@ -129,5 +141,81 @@ class GenerationNavigationService {
     } on Exception {
       return null;
     }
+  }
+
+  /// Fetches the server list and per-server blob maps for [channelName].
+  ///
+  /// Fetches head metadata, server index, generation resources, and resource
+  /// index protobufs for every unique snapshot hash in parallel.  Each resource
+  /// index is parsed into a `{contentHash → size}` map so the UI can union
+  /// selected servers' blob sets and display the deduplicated download total.
+  Future<Either<GenerationNavError, ServerSelectionData>> fetchServerSelectionData({
+    required Channel channel,
+    required String channelName,
+  }) async {
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    if (headResult.isLeft()) {
+      return const Left(GenerationNavNetworkError(message: "Failed to fetch head metadata"));
+    }
+    final generationHash = headResult.getRight().toNullable()!.generationHash;
+
+    var serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
+    if (serverResult.getLeft().toNullable() is CatalogNotModified) {
+      serverResult = await remoteCatalogService.fetchServerIndexFresh(generationHash);
+    }
+    if (serverResult.isLeft()) {
+      return const Left(GenerationNavNetworkError(message: "Failed to fetch server index"));
+    }
+    final serverIndex = ServerIndex.fromBuffer(serverResult.getRight().toNullable()!);
+
+    var genResourcesResult = await remoteCatalogService.fetchGenerationResources(generationHash);
+    if (genResourcesResult.getLeft().toNullable() is CatalogNotModified) {
+      genResourcesResult = await remoteCatalogService.fetchGenerationResourcesFresh(generationHash);
+    }
+    if (genResourcesResult.isLeft()) {
+      return const Left(GenerationNavNetworkError(message: "Failed to fetch generation resources"));
+    }
+    final genResources = GenerationResources.fromBuffer(
+      genResourcesResult.getRight().toNullable()!,
+    );
+
+    final serverToSnapshot = <String, String>{};
+    for (final entry in genResources.entries) {
+      serverToSnapshot[entry.serverId] = entry.snapshotHash;
+    }
+
+    final uniqueHashes = serverToSnapshot.values.toSet();
+    final snapshotBlobs = <String, Map<String, int>>{};
+
+    final futures = <Future<void>>[];
+    for (final hash in uniqueHashes) {
+      futures.add(() async {
+        final result = await remoteCatalogService.fetchResourceIndex(hash);
+        result.match((_) => null, (bytes) {
+          final index = ResourceIndex.fromBuffer(bytes);
+          final blobs = <String, int>{};
+          for (final entry in index.entries) {
+            blobs[entry.contentHash] = entry.size.toInt();
+          }
+          snapshotBlobs[hash] = blobs;
+        });
+      }());
+    }
+    await Future.wait(futures);
+
+    final blobsForServer = <String, Map<String, int>>{};
+    for (final entry in genResources.entries) {
+      final blobs = snapshotBlobs[entry.snapshotHash];
+      if (blobs != null) {
+        blobsForServer[entry.serverId] = blobs;
+      }
+    }
+
+    return Right(
+      ServerSelectionData(
+        servers: serverIndex.servers.map(ServerSummary.fromEntry).toIList(),
+        blobsForServer: blobsForServer,
+      ),
+    );
   }
 }

@@ -53,9 +53,10 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider).name;
-    final servers = ref.watch(serverListProvider(widget.channelName));
+    final selectionData = ref.watch(serverSelectionDataProvider(widget.channelName));
 
-    final focusedServer = _findServer(servers.value, _activeId);
+    final focusedServer = _findServer(selectionData.value?.servers, _activeId);
+    final totalSize = _computeTotal(selectionData.value);
 
     return WizardScaffold(
       title: context.l10n.welcomeServerTitle,
@@ -75,11 +76,11 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
         WizardAction(label: context.l10n.welcomeSkipButton, onPressed: widget.onSkip),
       ],
       content: WizardAsyncContent(
-        value: servers,
-        onRetry: () => ref.invalidate(serverListProvider(widget.channelName)),
+        value: selectionData,
+        onRetry: () => ref.invalidate(serverSelectionDataProvider(widget.channelName)),
         errorMessage: context.l10n.welcomeServerError,
         retryLabel: context.l10n.fitPageRetryAction,
-        builder: (data) => _buildList(context, data, locale),
+        builder: (data) => _buildList(context, data, locale, totalSize),
       ),
     );
   }
@@ -90,6 +91,26 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
       if (server.serverId == serverId) return server;
     }
     return null;
+  }
+
+  String? _computeTotal(ServerSelectionData? data) {
+    if (data == null || _selected.isEmpty) return null;
+    final union = <String, int>{};
+    for (final serverId in _selected) {
+      final blobs = data.blobsForServer[serverId];
+      if (blobs == null) continue;
+      for (final entry in blobs.entries) {
+        union[entry.key] = entry.value;
+      }
+    }
+    if (union.isEmpty) return null;
+    return _formatSize(union.values.fold<int>(0, (a, b) => a + b));
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return "$bytes B";
+    if (bytes < 1024 * 1024) return "${(bytes / 1024).toStringAsFixed(1)} KB";
+    return "${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB";
   }
 
   List<String> _detailsFor(BuildContext context, ServerSummary server) {
@@ -103,12 +124,18 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     ];
   }
 
-  Widget _buildList(BuildContext context, IList<ServerSummary> servers, String locale) {
+  Widget _buildList(
+    BuildContext context,
+    ServerSelectionData data,
+    String locale,
+    String? totalSize,
+  ) {
+    final servers = data.servers;
     if (servers.isEmpty) {
       return WizardContentMessage(
         message: context.l10n.welcomeServerEmpty,
         retryLabel: context.l10n.fitPageRetryAction,
-        onRetry: () => ref.invalidate(serverListProvider(widget.channelName)),
+        onRetry: () => ref.invalidate(serverSelectionDataProvider(widget.channelName)),
       );
     }
 
@@ -120,6 +147,16 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
             selected: _selected.contains(server.serverId),
             onTap: () => _toggle(server.serverId),
           ),
+        Padding(
+          padding: EdgeInsets.only(left: WizardTokens.of(context).cardRadius),
+          child: SizedBox(
+            width: double.infinity,
+            child: Text(
+              totalSize != null ? context.l10n.welcomeServerDownloadSize(size: totalSize) : "—",
+              style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+            ),
+          ),
+        ),
       ],
     );
   }

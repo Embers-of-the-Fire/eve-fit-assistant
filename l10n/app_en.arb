@@ -684,5 +684,6 @@
   "welcomeServerMetaVersion": "Version",
   "welcomeServerMetaRegion": "Region",
   "welcomeServerMetaSync": "Sync",
-  "welcomeServerMetaBranch": "Branch"
+  "welcomeServerMetaBranch": "Branch",
+  "welcomeServerDownloadSize": "Needs to download: {size}"
 }

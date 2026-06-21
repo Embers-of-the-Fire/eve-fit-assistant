@@ -1519,5 +1519,9 @@
   "welcomeServerMetaVersion": "游戏版本",
   "welcomeServerMetaRegion": "区域",
   "welcomeServerMetaSync": "同步",
-  "welcomeServerMetaBranch": "分支"
+  "welcomeServerMetaBranch": "分支",
+  "welcomeServerDownloadSize": "需要下载: {size}",
+  "@welcomeServerDownloadSize": {
+    "placeholders": { "size": { "type": "String" } }
+  }
 }
