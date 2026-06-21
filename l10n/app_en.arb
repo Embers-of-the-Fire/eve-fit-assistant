@@ -679,5 +679,10 @@
   "welcomeServerTitle": "Server",
   "welcomeServerSubtitle": "Select a server",
   "welcomeServerEmpty": "No servers found.",
-  "welcomeServerError": "Failed to load servers."
+  "welcomeServerError": "Failed to load servers.",
+  "welcomeServerMetaBuild": "Build",
+  "welcomeServerMetaVersion": "Version",
+  "welcomeServerMetaRegion": "Region",
+  "welcomeServerMetaSync": "Sync",
+  "welcomeServerMetaBranch": "Branch"
 }

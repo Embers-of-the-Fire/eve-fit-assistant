@@ -16,6 +16,7 @@ class WizardScaffold extends StatelessWidget {
     required this.content,
     required this.primaryLabel,
     required this.onPrimary,
+    this.headerBuilder,
     this.secondaryActions = const [],
     super.key,
   });
@@ -25,6 +26,15 @@ class WizardScaffold extends StatelessWidget {
   final Widget content;
   final String primaryLabel;
   final VoidCallback onPrimary;
+
+  /// Optional override for the default [title]/[subtitle] header.
+  ///
+  /// When provided, the returned widget replaces the plain title/subtitle text
+  /// block. The scaffold passes the layout's text alignment (left on phones,
+  /// right on tablets) so the header matches the surrounding text. The
+  /// [title]/[subtitle] strings remain the fallback when this is `null`.
+  final Widget Function(TextAlign alignment)? headerBuilder;
+
   final List<WizardAction> secondaryActions;
 
   @override
@@ -50,12 +60,16 @@ class WizardScaffold extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: tokens.spacingXxl),
-        Text(title, style: theme.textTheme.headlineMedium),
-        SizedBox(height: tokens.spacingXs),
-        Text(
-          subtitle,
-          style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
-        ),
+        if (headerBuilder != null)
+          headerBuilder!(TextAlign.left)
+        else ...[
+          Text(title, style: theme.textTheme.headlineMedium),
+          SizedBox(height: tokens.spacingXs),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
+          ),
+        ],
         SizedBox(height: tokens.spacingXxl),
         content,
         SizedBox(height: tokens.spacingXl),
@@ -87,24 +101,26 @@ class WizardScaffold extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.headlineMedium,
-                        textAlign: TextAlign.right,
-                      ),
-                      SizedBox(height: tokens.spacingSm),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                  child: headerBuilder != null
+                      ? headerBuilder!(TextAlign.right)
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              title,
+                              style: theme.textTheme.headlineMedium,
+                              textAlign: TextAlign.right,
+                            ),
+                            SizedBox(height: tokens.spacingSm),
+                            Text(
+                              subtitle,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.right,
-                      ),
-                    ],
-                  ),
                 ),
                 Expanded(
                   flex: 2,

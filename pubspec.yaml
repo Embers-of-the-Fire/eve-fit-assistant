@@ -35,6 +35,7 @@ dependencies:
   rust_lib_eve_fit_assistant:
     path: rust_builder
 
+  animated_text_kit: ^4.3.0
   animated_tree_view: ^2.3.0
   archive: ^4.0.7
   auto_route: ^11.1.0

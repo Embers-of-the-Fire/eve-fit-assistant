@@ -26,16 +26,39 @@ class ServerStepPage extends ConsumerStatefulWidget {
 }
 
 class _ServerStepPageState extends ConsumerState<ServerStepPage> {
-  String? _selectedServerId;
+  final Set<String> _selected = {};
+  String? _activeId;
+
+  void _toggle(String serverId) {
+    setState(() {
+      if (_selected.contains(serverId)) {
+        _selected.remove(serverId);
+        _activeId = null;
+      } else {
+        _selected.add(serverId);
+        _activeId = serverId;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider).name;
     final servers = ref.watch(serverListProvider(widget.channelName));
 
+    final focusedServer = _findServer(servers.value, _activeId);
+
     return WizardScaffold(
       title: context.l10n.welcomeServerTitle,
       subtitle: context.l10n.welcomeServerSubtitle,
+      headerBuilder: focusedServer == null
+          ? null
+          : (alignment) => WizardRotatingHeader(
+              title: focusedServer.displayName(locale),
+              details: _detailsFor(context, focusedServer),
+              animationKey: ValueKey(focusedServer.serverId),
+              textAlign: alignment,
+            ),
       primaryLabel: context.l10n.welcomeContinueButton,
       onPrimary: widget.onContinue,
       secondaryActions: [
@@ -52,6 +75,25 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     );
   }
 
+  ServerSummary? _findServer(IList<ServerSummary>? data, String? serverId) {
+    if (data == null || serverId == null) return null;
+    for (final server in data) {
+      if (server.serverId == serverId) return server;
+    }
+    return null;
+  }
+
+  List<String> _detailsFor(BuildContext context, ServerSummary server) {
+    final l10n = context.l10n;
+    return [
+      "${l10n.welcomeServerMetaBuild}: ${server.gameBuild}",
+      "${l10n.welcomeServerMetaVersion}: ${server.gameVersion}",
+      if (server.region != null) "${l10n.welcomeServerMetaRegion}: ${server.region}",
+      if (server.sync != null) "${l10n.welcomeServerMetaSync}: ${server.sync}",
+      if (server.branch != null) "${l10n.welcomeServerMetaBranch}: ${server.branch}",
+    ];
+  }
+
   Widget _buildList(BuildContext context, IList<ServerSummary> servers, String locale) {
     if (servers.isEmpty) {
       return WizardContentMessage(
@@ -61,16 +103,13 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
       );
     }
 
-    final ids = servers.map((s) => s.serverId).toList();
-    final selected = ids.contains(_selectedServerId) ? _selectedServerId! : ids.first;
-
     return WizardOptionList(
       children: [
         for (final server in servers)
           WizardOptionTile(
             title: server.displayName(locale),
-            selected: server.serverId == selected,
-            onTap: () => setState(() => _selectedServerId = server.serverId),
+            selected: _selected.contains(server.serverId),
+            onTap: () => _toggle(server.serverId),
           ),
       ],
     );

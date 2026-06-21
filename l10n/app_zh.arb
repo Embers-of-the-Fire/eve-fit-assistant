@@ -1514,5 +1514,10 @@
   "welcomeServerTitle": "服务器",
   "welcomeServerSubtitle": "选择一个服务器",
   "welcomeServerEmpty": "未找到服务器。",
-  "welcomeServerError": "加载服务器失败。"
+  "welcomeServerError": "加载服务器失败。",
+  "welcomeServerMetaBuild": "构建版本",
+  "welcomeServerMetaVersion": "游戏版本",
+  "welcomeServerMetaRegion": "区域",
+  "welcomeServerMetaSync": "同步",
+  "welcomeServerMetaBranch": "分支"
 }
