@@ -674,5 +674,9 @@
   "welcomeChannelSubtitle": "Select a channel",
   "welcomeChannelDefaultBadge": "default",
   "welcomeChannelEmpty": "No channels found.",
-  "welcomeChannelError": "Failed to load channels."
+  "welcomeChannelError": "Failed to load channels.",
+  "welcomeServerTitle": "Server",
+  "welcomeServerSubtitle": "Select a server",
+  "welcomeServerEmpty": "No servers found.",
+  "welcomeServerError": "Failed to load servers."
 }

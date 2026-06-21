@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -72,6 +73,19 @@ Future<ChannelOverview> channelOverview(Ref ref) async =>
       (e) => throw e,
       (o) => o,
     );
+
+/// Fetches the server list for [channelName] for the setup/welcome server
+/// browser. Surfaces a [GenerationNavError] as an [AsyncError] so the UI can
+/// render a retry affordance; invalidate this provider to retry.
+@riverpod
+Future<IList<ServerSummary>> serverList(Ref ref, String channelName) async =>
+    (await ref
+            .watch(generationNavigationServiceProvider)
+            .fetchServers(
+              channel: Channel.tryParse(channelName) ?? Channel.defaultChannel,
+              channelName: channelName,
+            ))
+        .match((e) => throw e, (o) => o);
 
 @riverpodSingleton
 CheckoutRegistryService checkoutRegistryService(Ref ref) => CheckoutRegistryService();

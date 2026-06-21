@@ -1,6 +1,7 @@
 import "dart:ui" as ui;
 
 import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/features/welcome/welcome_components.dart";
 import "package:eve_fit_assistant/features/welcome/welcome_step_template.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -33,82 +34,16 @@ class LanguageStepPage extends ConsumerWidget {
       onContinue: onContinue,
       onSkip: onSkip,
       onBack: onBack,
-      content: Column(
+      content: WelcomeSelectionList(
         children: [
           for (final locale in Locale.values)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _LanguageCard(
-                locale: locale,
-                isSelected: locale == selected,
-                isDetected: locale.name == detectedCode,
-                onTap: () => onSelected(locale),
-              ),
+            WelcomeSelectionCard(
+              title: locale.display,
+              subtitle: locale.name == detectedCode ? "Detected" : null,
+              isSelected: locale == selected,
+              onTap: () => onSelected(locale),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _LanguageCard extends StatelessWidget {
-  const _LanguageCard({
-    required this.locale,
-    required this.isSelected,
-    required this.onTap,
-    this.isDetected = false,
-  });
-
-  final Locale locale;
-  final bool isSelected;
-  final bool isDetected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? colorScheme.primary : colorScheme.outline.withValues(alpha: 0.3),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      color: isSelected ? colorScheme.primaryContainer.withValues(alpha: 0.2) : null,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      locale.display,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: isSelected ? FontWeight.w600 : null,
-                      ),
-                    ),
-                    if (isDetected)
-                      Text(
-                        "Detected",
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (isSelected) Icon(Icons.check, color: colorScheme.primary, size: 22),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -1,9 +1,10 @@
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/welcome/channel_step.dart";
 import "package:eve_fit_assistant/features/welcome/language_step.dart";
 import "package:eve_fit_assistant/features/welcome/page.dart";
-import "package:eve_fit_assistant/features/welcome/sub_step.dart";
+import "package:eve_fit_assistant/features/welcome/server_step.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -46,10 +47,9 @@ class _WelcomeFlowHost extends ConsumerStatefulWidget {
 class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
   int _stepIndex = 0;
   bool _initializing = false;
+  String _selectedChannel = Channel.defaultChannel.value;
 
-  static const int _placeholderSteps = 1;
-
-  int get _totalSteps => 3 + _placeholderSteps;
+  int get _totalSteps => 4;
 
   void _startInitialize() {
     setState(() {
@@ -103,19 +103,20 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
 
         if (_stepIndex == 2) {
           return ChannelStepPage(
-            onContinue: _nextStep,
+            onContinue: (channelName) {
+              setState(() => _selectedChannel = channelName);
+              _nextStep();
+            },
             onSkip: _skip,
             onBack: () => setState(() => _stepIndex = 1),
           );
         }
 
-        final subStepNumber = _stepIndex - 2;
-        final isLast = subStepNumber >= _placeholderSteps;
-        return SubStepPage(
-          stepNumber: subStepNumber,
-          totalSteps: _placeholderSteps,
-          onNext: _nextStep,
-          isLast: isLast,
+        return ServerStepPage(
+          channelName: _selectedChannel,
+          onContinue: _nextStep,
+          onSkip: _skip,
+          onBack: () => setState(() => _stepIndex = 2),
         );
       },
     ),

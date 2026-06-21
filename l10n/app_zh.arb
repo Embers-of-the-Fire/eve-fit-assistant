@@ -1509,5 +1509,9 @@
   "welcomeChannelSubtitle": "选择一个频道",
   "welcomeChannelDefaultBadge": "默认",
   "welcomeChannelEmpty": "未找到频道。",
-  "welcomeChannelError": "加载频道失败。"
+  "welcomeChannelError": "加载频道失败。",
+  "welcomeServerTitle": "服务器",
+  "welcomeServerSubtitle": "选择一个服务器",
+  "welcomeServerEmpty": "未找到服务器。",
+  "welcomeServerError": "加载服务器失败。"
 }
