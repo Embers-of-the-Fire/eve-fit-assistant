@@ -101,8 +101,14 @@ class GenerationNavigationService {
     }
     final generationHash = headResult.getRight().toNullable()!.generationHash;
 
-    // Fetch server index from generation
-    final serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
+    // Fetch server index from generation. A persisted but stale ETag can yield
+    // a "not modified" result with no locally available payload (e.g. on a cold
+    // start during welcome, before any checkout has persisted the index); in
+    // that case retry with a fresh fetch that bypasses the ETag cache.
+    var serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
+    if (serverResult.getLeft().toNullable() is CatalogNotModified) {
+      serverResult = await remoteCatalogService.fetchServerIndexFresh(generationHash);
+    }
     if (serverResult.isLeft()) {
       return const Left(GenerationNavNetworkError(message: "Failed to fetch server index"));
     }

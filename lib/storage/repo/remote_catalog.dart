@@ -1,6 +1,7 @@
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart" as remote_http;
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
@@ -39,10 +40,16 @@ class CatalogNotModified extends CatalogError {
 ///
 /// Implements the fetch protocol from agent/schemav2/workflow.md §2.2-§2.6.
 class RemoteCatalogService {
-  const RemoteCatalogService({required this.dio, required this.originUrl});
+  RemoteCatalogService({required this.dio, required this.originUrl});
 
   final Dio dio;
   final String originUrl;
+
+  /// In-memory payload caches so HTTP 304 responses can be satisfied without a
+  /// redundant re-download. The persistent [EtagCache] outlives a process, so
+  /// these warm during a session; cold starts fall back to a fresh fetch.
+  final Map<Uri, Map<String, dynamic>> _jsonCache = <Uri, Map<String, dynamic>>{};
+  final Map<Uri, Uint8List> _bytesCache = <Uri, Uint8List>{};
 
   Uri _buildUri(String relativePath) {
     final normalizedOrigin = originUrl.endsWith("/") ? originUrl : "$originUrl/";
@@ -83,6 +90,15 @@ class RemoteCatalogService {
   Future<Either<CatalogError, Uint8List>> fetchServerIndex(String generationHash) async {
     final uri = _buildUri("channels/refs/$generationHash/server.pb2");
     return _fetchBytes(uri);
+  }
+
+  /// GET `channels/refs/{generationHash}/server.pb2`, bypassing the ETag cache.
+  ///
+  /// Used by the setup/welcome browser to recover from a stale persisted ETag
+  /// that yields HTTP 304 with no locally available payload.
+  Future<Either<CatalogError, Uint8List>> fetchServerIndexFresh(String generationHash) async {
+    final uri = _buildUri("channels/refs/$generationHash/server.pb2");
+    return _fetchBytes(uri, bypassEtag: true);
   }
 
   /// GET `channels/refs/{generationHash}/resources.pb2`
@@ -160,7 +176,10 @@ class RemoteCatalogService {
     }
   }
 
-  Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri) async {
+  Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri, {bool bypassEtag = false}) async {
+    if (bypassEtag) {
+      EtagCache.remove(uri);
+    }
     try {
       // All byte resources under `efa/v2/` are content-addressed (keyed by
       // generation/snapshot/content hash), so conditional requests can never
@@ -173,12 +192,17 @@ class RemoteCatalogService {
         sendConditionalHeaders: false,
       );
       if (result.notModified) {
+        final cached = _bytesCache[uri];
+        if (cached != null) {
+          return Right(cached);
+        }
         return const Left(CatalogNotModified());
       }
       final data = result.response.data;
       if (data is! Uint8List) {
         return Left(CatalogParseError(message: "Response not bytes: $uri"));
       }
+      _bytesCache[uri] = data;
       return Right(data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
