@@ -1496,5 +1496,41 @@
       "attributeId": { "type": "int" }
     }
   },
-  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/"
+  "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/",
+  "@@_WELCOME": {},
+  "welcomeTitle": "欢迎使用 EFA",
+  "welcomeInitializeButton": "初始化",
+  "welcomeSkipButton": "跳过",
+  "welcomeLanguageTitle": "语言",
+  "welcomeLanguageSubtitle": "选择默认语言",
+  "welcomeLanguageDetectedBadge": "已检测",
+  "welcomeContinueButton": "继续",
+  "welcomeBackButton": "返回",
+  "welcomeChannelTitle": "数据频道",
+  "welcomeChannelSubtitle": "选择一个频道",
+  "welcomeChannelDefaultBadge": "默认",
+  "welcomeChannelEmpty": "未找到频道。",
+  "welcomeChannelError": "加载频道失败。",
+  "welcomeServerTitle": "服务器",
+  "welcomeServerSubtitle": "选择一个服务器",
+  "welcomeServerEmpty": "未找到服务器。",
+  "welcomeServerError": "加载服务器失败。",
+  "welcomeServerMetaBuild": "构建版本",
+  "welcomeServerMetaVersion": "游戏版本",
+  "welcomeServerMetaRegion": "区域",
+  "welcomeServerMetaSync": "同步",
+  "welcomeServerMetaBranch": "分支",
+  "welcomeServerDownloadSize": "需要下载: {size}",
+  "@welcomeServerDownloadSize": {
+    "placeholders": { "size": { "type": "String" } }
+  },
+  "welcomeDownloadConfirmTitle": "初始化数据",
+  "welcomeDownloadConfirmMessage": "即将下载 {count,plural, =1{1 个文件} other{{count} 个文件}}。",
+  "@welcomeDownloadConfirmMessage": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "welcomeDownloadConfirmWarning": "下载过程中请勿关闭应用",
+  "welcomeDownloadConfirmButton": "下载",
+  "welcomeDownloadSkipButton": "稍后设置",
+  "welcomeTapToEnter": "轻触进入"
 }

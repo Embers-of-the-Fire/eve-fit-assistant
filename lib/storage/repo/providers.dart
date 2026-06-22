@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -10,6 +11,7 @@ import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
+import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
@@ -56,6 +58,49 @@ RemoteCatalogService remoteCatalogService(Ref ref) => RemoteCatalogService(
   dio: ref.watch(remoteDioProvider),
   originUrl: ref.watch(remoteContentOriginUrlProvider),
 );
+
+@riverpodSingleton
+GenerationNavigationService generationNavigationService(Ref ref) =>
+    GenerationNavigationService(remoteCatalogService: ref.watch(remoteCatalogServiceProvider));
+
+/// Fetches the available channels for the setup/welcome channel browser.
+///
+/// Surfaces a [GenerationNavError] as an [AsyncError] so the UI can render a
+/// retry affordance; invalidate this provider to retry.
+@riverpod
+Future<ChannelOverview> channelOverview(Ref ref) async =>
+    (await ref.watch(generationNavigationServiceProvider).fetchChannels()).match(
+      (e) => throw e,
+      (o) => o,
+    );
+
+/// Fetches the server list for [channelName] for the setup/welcome server
+/// browser. Surfaces a [GenerationNavError] as an [AsyncError] so the UI can
+/// render a retry affordance; invalidate this provider to retry.
+@riverpod
+Future<IList<ServerSummary>> serverList(Ref ref, String channelName) async =>
+    (await ref
+            .watch(generationNavigationServiceProvider)
+            .fetchServers(
+              channel: Channel.tryParse(channelName) ?? Channel.defaultChannel,
+              channelName: channelName,
+            ))
+        .match((e) => throw e, (o) => o);
+
+/// Fetches the server list with per-server blob maps for [channelName].
+///
+/// Uses [GenerationNavigationService.fetchServerSelectionData] to include
+/// per-server `{contentHash → size}` maps so the server step can compute the
+/// deduplicated download footprint across selected servers.
+@riverpod
+Future<ServerSelectionData> serverSelectionData(Ref ref, String channelName) async =>
+    (await ref
+            .watch(generationNavigationServiceProvider)
+            .fetchServerSelectionData(
+              channel: Channel.tryParse(channelName) ?? Channel.defaultChannel,
+              channelName: channelName,
+            ))
+        .match((e) => throw e, (o) => o);
 
 @riverpodSingleton
 CheckoutRegistryService checkoutRegistryService(Ref ref) => CheckoutRegistryService();

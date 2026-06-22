@@ -878,6 +878,12 @@ def register_remote_session(remote: click.Group) -> None:
                 entry.name["en"] = meta.server_id
             entry.game_build = meta.game_build
             entry.game_version = meta.game_version
+            if meta.game_region:
+                entry.region = meta.game_region
+            if meta.game_sync:
+                entry.sync = meta.game_sync
+            if meta.game_branch:
+                entry.branch = meta.game_branch
 
             gentry = gen_resources.entries.add()
             gentry.server_id = meta.server_id
