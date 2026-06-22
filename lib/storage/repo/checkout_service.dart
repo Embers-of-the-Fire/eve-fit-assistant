@@ -289,6 +289,7 @@ class CheckoutService {
           assetStore.writeBlobSync(ihash, retry.getRight().toNullable()!);
         } else {
           warning("Failed to fetch blob $ihash/${dl.contentHash} after retry");
+          return const None();
         }
       } else {
         warning("Failed to fetch blob $ihash/${dl.contentHash}");

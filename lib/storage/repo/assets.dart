@@ -10,6 +10,8 @@ import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:file/file.dart" hide Directory, File, FileSystemEntity;
+import "package:file/local.dart";
 import "package:fpdart/fpdart.dart";
 import "package:path/path.dart" as p;
 
@@ -18,7 +20,13 @@ import "package:path/path.dart" as p;
 /// Blobs are stored at `assets/blobs/{2c}/{ident_hash}/{content_hash}`
 /// and resource snapshots at `assets/resources/{snapshot_hash}/`.
 class AssetStore {
-  const AssetStore();
+  const AssetStore() : _fs = null;
+
+  AssetStore.forTest(this._fs);
+
+  final FileSystem? _fs;
+
+  FileSystem get _fileSystem => _fs ?? const LocalFileSystem();
 
   /// Writes a blob identified by [identHash] and [content] to the asset store.
   ///
@@ -256,30 +264,38 @@ class AssetStore {
   ///
   /// Best-effort and idempotent; intended to run once at startup.
   void recoverSync() {
-    final assetsDir = Directory(RepoPaths.assetsPath);
+    final assetsDir = _fileSystem.directory(RepoPaths.assetsPath);
     if (!assetsDir.existsSync()) return;
 
     // Clean orphaned `.tmp` files created by atomic write patterns.
-    for (final entity in assetsDir.listSync(recursive: true)) {
-      if (entity is File && entity.path.endsWith(".tmp")) {
-        try {
-          entity.deleteSync();
-        } on FileSystemException {
-          // best-effort
+    try {
+      for (final entity in assetsDir.listSync(recursive: true, followLinks: false)) {
+        if (entity is File && entity.path.endsWith(".tmp")) {
+          try {
+            entity.deleteSync();
+          } on FileSystemException {
+            // best-effort
+          }
         }
       }
+    } on FileSystemException {
+      // best-effort
     }
 
     // Clean orphaned temporary working directories.
-    for (final dir in assetsDir.listSync().whereType<Directory>()) {
-      final name = p.basename(dir.path);
-      if (name.startsWith("tmp_") || name.endsWith("_temp")) {
-        try {
-          dir.deleteSync(recursive: true);
-        } on FileSystemException {
-          // best-effort
+    try {
+      for (final dir in assetsDir.listSync(followLinks: false).whereType<Directory>()) {
+        final name = p.basename(dir.path);
+        if (name.startsWith("tmp_") || name.endsWith("_temp")) {
+          try {
+            dir.deleteSync(recursive: true);
+          } on FileSystemException {
+            // best-effort
+          }
         }
       }
+    } on FileSystemException {
+      // best-effort
     }
   }
 

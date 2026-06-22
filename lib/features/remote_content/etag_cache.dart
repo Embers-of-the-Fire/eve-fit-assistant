@@ -126,27 +126,50 @@ class EtagCache {
     });
   }
 
+  static Future<void>? _pendingFlush;
+
+  /// Serializes flush execution so overlapping calls (timer + explicit
+  /// [flush]) never perform concurrent I/O. The write loop re-checks
+  /// [_dirty] after every pass so mutations that arrive during I/O are
+  /// captured before returning.
   static Future<void> _flushNow() async {
-    if (!_dirty) return;
-    _dirty = false;
-
-    final text = _serializeEntries();
-    final filePath = _file.path;
-    final file = File(filePath);
-    final tmp = File("$filePath.tmp");
-
-    try {
-      if (!file.parent.existsSync()) {
-        file.parent.createSync(recursive: true);
+    if (_pendingFlush != null) {
+      await _pendingFlush;
+      if (_dirty) {
+        await _flushNow();
       }
-      // Atomic write: write fully to a sibling temp, then rename over the
-      // target. A crash before the rename leaves the previous (valid) file
-      // intact; the orphaned temp is harmless.
-      await tmp.writeAsString(text, flush: true);
-      await tmp.rename(filePath);
-    } on FileSystemException {
-      // Best-effort persistence: mark dirty again so a later mutation retries.
-      _dirty = true;
+      return;
+    }
+    _pendingFlush = _writeLoop();
+    await _pendingFlush;
+    _pendingFlush = null;
+    if (_dirty) {
+      await _flushNow();
+    }
+  }
+
+  /// Repeatedly persists to disk while dirty.  Because only one instance
+  /// runs at a time (guarded by [_pendingFlush]), the final rename always
+  /// carries the newest available state.
+  static Future<void> _writeLoop() async {
+    while (_dirty) {
+      _dirty = false;
+
+      final text = _serializeEntries();
+      final filePath = _file.path;
+      final file = File(filePath);
+      final tmp = File("$filePath.tmp");
+
+      try {
+        if (!file.parent.existsSync()) {
+          file.parent.createSync(recursive: true);
+        }
+        await tmp.writeAsString(text, flush: true);
+        await tmp.rename(filePath);
+      } on FileSystemException {
+        _dirty = true;
+        return;
+      }
     }
   }
 
