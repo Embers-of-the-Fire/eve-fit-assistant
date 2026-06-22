@@ -198,17 +198,6 @@ class RemoteCatalogService {
         responseType: ResponseType.bytes,
         sendConditionalHeaders: false,
       );
-      if (result.notModified) {
-        final cached = _bytesCache[uri];
-        if (cached != null) {
-          return Right(cached);
-        }
-        // Cold start with a stale persisted ETag: no cached payload exists,
-        // so we clear the ETag and retry unconditionally (mirrors the JSON
-        // self-healing pattern in fetchRemoteJson).
-        EtagCache.remove(uri);
-        return _fetchBytes(uri);
-      }
       final data = result.response.data;
       if (data is! Uint8List) {
         return Left(CatalogParseError(message: "Response not bytes: $uri"));

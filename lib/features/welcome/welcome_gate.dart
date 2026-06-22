@@ -99,6 +99,7 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
     final data = ref.read(serverSelectionDataProvider(_selectedChannel)).requireValue;
 
     final targets = selectedServers
+        .where((server) => data.snapshotHashForServer.containsKey(server.serverId))
         .map(
           (server) => ProvisioningTarget(
             serverId: server.serverId,

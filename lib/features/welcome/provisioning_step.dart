@@ -287,7 +287,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
         ..writeAsBytesSync(result.getRight().toNullable()!, flush: true)
         ..renameSync(path);
     } on FileSystemException catch (e, stackTrace) {
-      warning("Failed to write server index for ${widget.channelName}", stackTrace: stackTrace);
+      warning("Failed to write server index for ${widget.channelName}: $e", stackTrace: stackTrace);
     }
   }
 
@@ -308,6 +308,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     };
 
     final showError = state is MultiProvisionerFatal;
+    final canRetry = showError && state.retryable;
     final showComplete = state is MultiProvisionerComplete;
 
     final t = _enterAnimCtrl.value;
@@ -399,15 +400,17 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         TextButton(onPressed: widget.onBack, child: Text(l10n.welcomeBackButton)),
-                        SizedBox(width: tokens.spacingLg),
-                        FilledButton(
-                          onPressed: () {
-                            _cancelled = false;
-                            _currentState = const MultiProvisionerFetching();
-                            unawaited(_provision());
-                          },
-                          child: Text(l10n.fitPageRetryAction),
-                        ),
+                        if (canRetry) ...[
+                          SizedBox(width: tokens.spacingLg),
+                          FilledButton(
+                            onPressed: () {
+                              _cancelled = false;
+                              _currentState = const MultiProvisionerFetching();
+                              unawaited(_provision());
+                            },
+                            child: Text(l10n.fitPageRetryAction),
+                          ),
+                        ],
                       ],
                     ),
                 ],
