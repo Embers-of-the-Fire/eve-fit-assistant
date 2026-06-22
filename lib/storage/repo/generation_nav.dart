@@ -218,16 +218,29 @@ class GenerationNavigationService {
     await Future.wait(futures);
 
     final blobsForServer = <String, Map<String, int>>{};
+    final skippedServers = <String>{};
     for (final entry in genResources.entries) {
       final blobs = snapshotBlobs[entry.snapshotHash];
       if (blobs != null) {
         blobsForServer[entry.serverId] = blobs;
+      } else {
+        skippedServers.add(entry.serverId);
       }
+    }
+
+    if (skippedServers.isNotEmpty) {
+      warning(
+        "Servers with failed resource index fetch, excluded from selection: "
+        "${skippedServers.join(", ")}",
+      );
     }
 
     return Right(
       ServerSelectionData(
-        servers: serverIndex.servers.map(ServerSummary.fromEntry).toIList(),
+        servers: serverIndex.servers
+            .map(ServerSummary.fromEntry)
+            .where((s) => !skippedServers.contains(s.serverId))
+            .toIList(),
         blobsForServer: blobsForServer,
         snapshotHashForServer: serverToSnapshot,
         generationHash: generationHash,
