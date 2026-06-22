@@ -63,13 +63,20 @@ Future<Map<String, dynamic>> fetchRemoteJson(
 /// `If-None-Match` and `If-Modified-Since` respectively.  When the server
 /// responds with HTTP 304, [ConditionalFetchResult.notModified] is true.
 /// Otherwise the response headers are used to update the [EtagCache].
+///
+/// Set [sendConditionalHeaders] to `false` for content-addressed URLs (e.g.
+/// blobs keyed by content hash), where the response can only ever be the exact
+/// requested bytes or a 404. Conditional headers add overhead with no benefit
+/// for such URLs, and caching their ETags only wastes memory; when disabled,
+/// no ETag lookup is performed and the response is not recorded in the cache.
 Future<ConditionalFetchResult<T>> getRemoteUri<T>(
   Dio dio,
   Uri uri, {
   ResponseType responseType = ResponseType.plain,
+  bool sendConditionalHeaders = true,
 }) async {
-  final cachedEtag = EtagCache.getEtag(uri);
-  final cachedLastModified = EtagCache.getLastModified(uri);
+  final cachedEtag = sendConditionalHeaders ? EtagCache.getEtag(uri) : null;
+  final cachedLastModified = sendConditionalHeaders ? EtagCache.getLastModified(uri) : null;
 
   try {
     final response = await dio.getUri<T>(
@@ -79,7 +86,9 @@ Future<ConditionalFetchResult<T>> getRemoteUri<T>(
         headers: _conditionalHeaders(cachedEtag, cachedLastModified),
       ),
     );
-    _updateCacheFromResponse(uri, response);
+    if (sendConditionalHeaders) {
+      _updateCacheFromResponse(uri, response);
+    }
     return ConditionalFetchResult<T>.modified(response);
   } on DioException catch (exception) {
     if (exception.response?.statusCode == 304) {

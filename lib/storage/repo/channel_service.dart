@@ -29,7 +29,10 @@ class ChannelService {
   ///
   /// On first launch, uses defaultChannel from the remote.
   Future<Either<String, ChannelRegistry>> discoverChannels() async {
-    final result = await remoteCatalogService.fetchChannelRegistry();
+    final localReg = readLocalChannelRegistry();
+    final result = await remoteCatalogService.fetchChannelRegistry(
+      cachedPayload: localReg.isSome() ? localReg.toNullable()!.toJson() : null,
+    );
     if (result.isLeft()) {
       final err = result.getLeft().toNullable()!;
       return Left(err is CatalogNetworkError ? err.message : "Failed to fetch channels");
@@ -45,7 +48,11 @@ class ChannelService {
   /// Fetches and persists channel head metadata and server index for [channelName].
   Future<Either<String, Unit>> fetchChannelInfo(String channelName) async {
     // Fetch head metadata
-    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    final localHead = readHeadMeta(channelName);
+    final headResult = await remoteCatalogService.fetchHeadMeta(
+      channelName,
+      cachedPayload: localHead.isSome() ? localHead.toNullable()!.toJson() : null,
+    );
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
       if (err is CatalogNotFoundError) {
@@ -80,7 +87,11 @@ class ChannelService {
   /// - channels/{channel}/releases.pb2    — GenerationPointer (releases)
   Future<Either<String, Unit>> syncChannelGeneration(String channelName) async {
     // Fetch head metadata to get the generation hash
-    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    final localHead = readHeadMeta(channelName);
+    final headResult = await remoteCatalogService.fetchHeadMeta(
+      channelName,
+      cachedPayload: localHead.isSome() ? localHead.toNullable()!.toJson() : null,
+    );
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
       if (err is CatalogNotFoundError) {
@@ -224,7 +235,11 @@ class ChannelService {
     final localHash = localGenerationHash(channelName);
     if (localHash == null) return true; // No local state → needs fetch
 
-    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    final localHead = readHeadMeta(channelName);
+    final headResult = await remoteCatalogService.fetchHeadMeta(
+      channelName,
+      cachedPayload: localHead.isSome() ? localHead.toNullable()!.toJson() : null,
+    );
     if (headResult.isLeft()) return false;
 
     return headResult.getRight().toNullable()!.generationHash != localHash;

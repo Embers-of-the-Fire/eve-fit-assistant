@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
@@ -168,6 +169,13 @@ class RepoService {
   /// Prunes unreferenced data.
   int prune() => verificationService.prune();
 
+  /// Recovers from interrupted writes by deleting orphaned temp files and
+  /// directories left behind by atomic-write patterns that crashed mid-rename.
+  ///
+  /// Best-effort and idempotent; intended to run once at startup before the
+  /// registry is read.
+  void recoverPartialDownloads() => assetStore.recoverSync();
+
   /// Verifies and repairs by re-downloading missing files.
   Future<IList<VerificationIssue>> verifyAndRepair({required Channel channel}) =>
       verificationService.repairAll(channel: channel);
@@ -192,6 +200,10 @@ class RepoService {
     if (failures.isNotEmpty) {
       return Left("Failed to delete: ${failures.join(", ")}");
     }
+    // Clear cached ETags: the assets they referenced are now gone, so any
+    // surviving ETag would cause conditional re-fetches to receive 304 with no
+    // local data to fall back on, breaking all subsequent downloads.
+    EtagCache.clearAll();
     return const Right(unit);
   }
 

@@ -35,12 +35,15 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
   Either<CatalogError, Uint8List>? generationPointerResult;
 
   @override
-  Future<Either<CatalogError, ChannelRegistry>> fetchChannelRegistry() async =>
-      channelRegistryResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  Future<Either<CatalogError, ChannelRegistry>> fetchChannelRegistry({
+    Map<String, dynamic>? cachedPayload,
+  }) async => channelRegistryResult ?? Left(const CatalogNetworkError(message: "not configured"));
 
   @override
-  Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(String channelName) async =>
-      headMetaResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(
+    String channelName, {
+    Map<String, dynamic>? cachedPayload,
+  }) async => headMetaResult ?? Left(const CatalogNetworkError(message: "not configured"));
 
   @override
   Future<Either<CatalogError, Uint8List>> fetchServerIndex(String generationHash) async =>

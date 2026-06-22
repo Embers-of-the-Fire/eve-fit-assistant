@@ -245,6 +245,44 @@ class AssetStore {
     return deleted;
   }
 
+  // ── Recovery ─────────────────────────────────────────────────────────────
+
+  /// Cleans up orphaned temporary artifacts left behind by interrupted atomic
+  /// writes.
+  ///
+  /// Atomic writes use a `tmp → rename` pattern; a crash between the temp write
+  /// and the rename leaves a `.tmp` file (e.g. `blob.tmp`) on disk. This also
+  /// removes orphaned `tmp_*` / `*_temp` working directories.
+  ///
+  /// Best-effort and idempotent; intended to run once at startup.
+  void recoverSync() {
+    final assetsDir = Directory(RepoPaths.assetsPath);
+    if (!assetsDir.existsSync()) return;
+
+    // Clean orphaned `.tmp` files created by atomic write patterns.
+    for (final entity in assetsDir.listSync(recursive: true)) {
+      if (entity is File && entity.path.endsWith(".tmp")) {
+        try {
+          entity.deleteSync();
+        } on FileSystemException {
+          // best-effort
+        }
+      }
+    }
+
+    // Clean orphaned temporary working directories.
+    for (final dir in assetsDir.listSync().whereType<Directory>()) {
+      final name = p.basename(dir.path);
+      if (name.startsWith("tmp_") || name.endsWith("_temp")) {
+        try {
+          dir.deleteSync(recursive: true);
+        } on FileSystemException {
+          // best-effort
+        }
+      }
+    }
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   ({String identHash, String contentHash}) _writeBlobAtPath(

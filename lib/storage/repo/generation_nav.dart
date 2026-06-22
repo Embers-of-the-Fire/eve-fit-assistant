@@ -1,6 +1,10 @@
+import "dart:convert";
+import "dart:io";
+
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
+import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -86,8 +90,12 @@ class GenerationNavigationService {
     required Channel channel,
     required String channelName,
   }) async {
-    // Get current generation hash
-    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    // Get current generation hash. Pass the locally cached head metadata so a
+    // 304 short-circuits to it instead of forcing a full re-fetch.
+    final headResult = await remoteCatalogService.fetchHeadMeta(
+      channelName,
+      cachedPayload: _readLocalHeadMetaJson(channelName),
+    );
     if (headResult.isLeft()) {
       return const Left(GenerationNavNetworkError(message: "Failed to fetch head metadata"));
     }
@@ -101,5 +109,19 @@ class GenerationNavigationService {
     final serverIndex = ServerIndex.fromBuffer(serverResult.getRight().toNullable()!);
 
     return Right(serverIndex.servers.map(ServerSummary.fromEntry).toIList());
+  }
+
+  /// Reads the raw local channel head metadata JSON for [channelName], or null.
+  ///
+  /// Used as the conditional-request fallback payload for `fetchHeadMeta`.
+  Map<String, dynamic>? _readLocalHeadMetaJson(String channelName) {
+    final file = File(RepoPaths.channelHeadMetaPath(channelName));
+    if (!file.existsSync()) return null;
+    try {
+      final json = jsonDecode(file.readAsStringSync());
+      return json is Map<String, dynamic> ? json : null;
+    } on Exception {
+      return null;
+    }
   }
 }

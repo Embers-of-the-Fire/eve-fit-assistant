@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -8,24 +9,43 @@ import "package:path/path.dart" as p;
 ///
 /// Enables conditional requests (If-None-Match / If-Modified-Since)
 /// to avoid re-downloading unchanged remote content.
+///
+/// Persistence is debounced and crash-safe: in-memory mutations schedule a
+/// single coalesced write, which lands on disk via an atomic `tmp → rename`
+/// so the cache file is never observed truncated or partially written.
 class EtagCache {
   EtagCache._();
 
   static const String _fileName = "etag_cache.json";
+  static const Duration _debounce = Duration(milliseconds: 200);
+
   static late Map<String, _EtagEntry> _entries;
-  static Future<void> _pendingSync = Future<void>.value();
+  static bool _initialized = false;
+  static Timer? _debounceTimer;
+  static bool _dirty = false;
 
   static File get _file => File(p.join(PathProvider.settingsPath, _fileName));
 
+  /// Loads the cache from disk. Idempotent: repeated calls do not overwrite
+  /// the in-memory state.
   static void init() {
+    if (_initialized) return;
     _entries = _readFromDisk();
+    _initialized = true;
   }
 
-  static String? getEtag(Uri uri) => _entries[uri.toString()]?.etag;
+  static String? getEtag(Uri uri) {
+    _ensureInit();
+    return _entries[uri.toString()]?.etag;
+  }
 
-  static String? getLastModified(Uri uri) => _entries[uri.toString()]?.lastModified;
+  static String? getLastModified(Uri uri) {
+    _ensureInit();
+    return _entries[uri.toString()]?.lastModified;
+  }
 
   static void update(Uri uri, {String? etag, String? lastModified}) {
+    _ensureInit();
     final key = uri.toString();
     final existing = _entries[key];
     if (existing != null &&
@@ -37,18 +57,36 @@ class EtagCache {
       etag: etag ?? existing?.etag,
       lastModified: lastModified ?? existing?.lastModified,
     );
-    _sync();
+    _scheduleSync();
   }
 
   static void remove(Uri uri) {
+    _ensureInit();
     if (_entries.remove(uri.toString()) != null) {
-      _sync();
+      _scheduleSync();
     }
   }
 
   static void clearAll() {
+    _ensureInit();
     _entries.clear();
-    _sync();
+    _scheduleSync();
+  }
+
+  /// Forces any pending write to disk immediately and waits for it to complete.
+  ///
+  /// Callers that need to guarantee persistence (e.g. on app lifecycle pause)
+  /// should await this.
+  static Future<void> flush() async {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    await _flushNow();
+  }
+
+  static void _ensureInit() {
+    if (!_initialized) {
+      throw StateError("EtagCache not initialized. Call EtagCache.init() first.");
+    }
   }
 
   static Map<String, _EtagEntry> _readFromDisk() {
@@ -77,19 +115,46 @@ class EtagCache {
     }
   }
 
-  static void _sync() {
+  /// Marks the cache dirty and (re)arms the debounce timer. Rapid successive
+  /// mutations coalesce into a single write.
+  static void _scheduleSync() {
+    _dirty = true;
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_debounce, () {
+      _debounceTimer = null;
+      unawaited(_flushNow());
+    });
+  }
+
+  static Future<void> _flushNow() async {
+    if (!_dirty) return;
+    _dirty = false;
+
+    final text = _serializeEntries();
     final filePath = _file.path;
+    final file = File(filePath);
+    final tmp = File("$filePath.tmp");
+
+    try {
+      if (!file.parent.existsSync()) {
+        file.parent.createSync(recursive: true);
+      }
+      // Atomic write: write fully to a sibling temp, then rename over the
+      // target. A crash before the rename leaves the previous (valid) file
+      // intact; the orphaned temp is harmless.
+      await tmp.writeAsString(text, flush: true);
+      await tmp.rename(filePath);
+    } on FileSystemException {
+      // Best-effort persistence: mark dirty again so a later mutation retries.
+      _dirty = true;
+    }
+  }
+
+  static String _serializeEntries() {
     final entries = Map<String, Map<String, dynamic>>.fromEntries(
       _entries.entries.map((e) => MapEntry<String, Map<String, dynamic>>(e.key, e.value.toJson())),
     );
-    final text = jsonEncode(entries);
-    _pendingSync = _pendingSync.catchError((Object _, StackTrace _) {}).then((_) async {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        file.createSync(recursive: true);
-      }
-      await file.writeAsString(text);
-    });
+    return jsonEncode(entries);
   }
 }
 
