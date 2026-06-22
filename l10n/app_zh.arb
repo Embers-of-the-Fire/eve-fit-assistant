@@ -1531,5 +1531,6 @@
   },
   "welcomeDownloadConfirmWarning": "下载过程中请勿关闭应用",
   "welcomeDownloadConfirmButton": "下载",
-  "welcomeDownloadSkipButton": "稍后设置"
+  "welcomeDownloadSkipButton": "稍后设置",
+  "welcomeTapToEnter": "轻触进入"
 }

@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:io";
 
-import "package:animated_text_kit/animated_text_kit.dart";
 import "package:eve_fit_assistant/components/wizard/wizard_tokens.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
@@ -53,17 +52,32 @@ class ProvisioningTarget {
   final String snapshotHash;
 }
 
-class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage> {
+class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
+    with TickerProviderStateMixin {
   final _stateController = StreamController<MultiProvisionerState>.broadcast(sync: true);
   MultiProvisionerState _currentState = const MultiProvisionerFetching();
   bool _cancelled = false;
   bool _started = false;
+  late final AnimationController _enterAnimCtrl;
+  late final AnimationController _titleAnimCtrl;
 
   @override
   void initState() {
     super.initState();
+    _enterAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _enterAnimCtrl.addListener(() => setState(() {}));
+    _titleAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
+    _titleAnimCtrl.addListener(() => setState(() {}));
+    unawaited(_titleAnimCtrl.repeat(reverse: true));
     _stateController.stream.listen((s) {
-      if (mounted) setState(() => _currentState = s);
+      if (mounted) {
+        setState(() {
+          _currentState = s;
+          if (s is MultiProvisionerComplete && !_enterAnimCtrl.isAnimating) {
+            unawaited(_enterAnimCtrl.forward());
+          }
+        });
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_started) {
@@ -75,6 +89,8 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage> {
 
   @override
   void dispose() {
+    _enterAnimCtrl.dispose();
+    _titleAnimCtrl.dispose();
     _cancelled = true;
     unawaited(_stateController.close());
     super.dispose();
@@ -252,12 +268,6 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage> {
     await ref.read(repoStateProvider.notifier).initialize();
 
     _emit(MultiProvisionerComplete(checkoutIds: checkoutIds.toIList()));
-
-    // Auto-complete after brief delay
-    await Future<void>.delayed(const Duration(seconds: 1));
-    if (mounted && !_cancelled) {
-      widget.onComplete();
-    }
   }
 
   Future<void> _persistServerIndex(RemoteCatalogService remoteCatalog) async {
@@ -300,77 +310,110 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage> {
     final showError = state is MultiProvisionerFatal;
     final showComplete = state is MultiProvisionerComplete;
 
+    final t = _enterAnimCtrl.value;
+    final fadeOutProgress = 1.0 - (t / 0.4).clamp(0.0, 1.0);
+    final fadeInEnter = ((t - 0.6) / 0.4).clamp(0.0, 1.0);
+
+    final progressValue = switch (state) {
+      MultiProvisionerDownloading(:final progress) => progress,
+      MultiProvisionerCreating(:final progress) => progress,
+      MultiProvisionerComplete() => t < 0.4 ? 1.0 : null,
+      _ => null as double?,
+    };
+
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: tokens.spacingXl, vertical: tokens.spacingLg),
-          child: Column(
-            children: [
-              const Spacer(),
-              // Logo
-              SizedBox(
-                height: 200,
-                child: Center(
-                  child: AnimatedTextKit(
-                    repeatForever: true,
-                    animatedTexts: [
-                      ColorizeAnimatedText(
-                        l10n.appTitle,
-                        textStyle: const TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 4,
+      body: GestureDetector(
+        onTap: showComplete && fadeInEnter >= 0.5 ? widget.onComplete : null,
+        child: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: tokens.spacingXl, vertical: tokens.spacingLg),
+            child: Column(
+              children: [
+                const Spacer(),
+                // Logo
+                SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: Text(
+                      l10n.appTitle,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 4,
+                        color: Color.lerp(
+                          const Color(0xFF30B2E6),
+                          const Color(0xFF1A7C9C),
+                          _titleAnimCtrl.value,
                         ),
-                        colors: const [Color(0xFF30B2E6), Color(0xFF1A7C9C)],
-                        speed: const Duration(milliseconds: 400),
                       ),
+                    ),
+                  ),
+                ),
+                // Status + progress — fades out on complete
+                Opacity(
+                  opacity: showComplete ? fadeOutProgress : 1.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(height: tokens.spacingLg),
+                      Text(
+                        statusText,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      SizedBox(height: tokens.spacingMd),
+                      if (progressValue case final p)
+                        SizedBox(width: 256, child: LinearProgressIndicator(value: p)),
                     ],
                   ),
                 ),
-              ),
-              SizedBox(height: tokens.spacingLg),
-              // Status text
-              Text(
-                statusText,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface),
-              ),
-              SizedBox(height: tokens.spacingMd),
-              // Progress bar
-              if (state case MultiProvisionerDownloading(:final progress))
-                SizedBox(width: 256, child: LinearProgressIndicator(value: progress)),
-              // Error state
-              if (showError) ...[
-                SizedBox(height: tokens.spacingMd),
-                const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              ],
-              // Complete state
-              if (showComplete) ...[
-                SizedBox(height: tokens.spacingMd),
-                const Icon(Icons.check_circle, color: Colors.green, size: 48),
-              ],
-              // Action buttons
-              if (showError || showComplete) ...[
-                SizedBox(height: tokens.spacingXl),
-                if (showError)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(onPressed: widget.onBack, child: Text(l10n.welcomeBackButton)),
-                      SizedBox(width: tokens.spacingLg),
-                      FilledButton(
-                        onPressed: () {
-                          _cancelled = false;
-                          _currentState = const MultiProvisionerFetching();
-                          unawaited(_provision());
-                        },
-                        child: Text(l10n.fitPageRetryAction),
+                // Error state
+                if (showError) ...[
+                  SizedBox(height: tokens.spacingMd),
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                ],
+                // Complete state — fades in, user taps anywhere to enter
+                if (showComplete) ...[
+                  SizedBox(height: tokens.spacingMd),
+                  Opacity(
+                    opacity: fadeInEnter,
+                    child: Text(
+                      l10n.welcomeTapToEnter,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 20,
+                        fontStyle: FontStyle.italic,
                       ),
-                    ],
+                    ),
                   ),
+                ],
+                // Action buttons
+                if (showError || showComplete) ...[
+                  SizedBox(height: tokens.spacingXl),
+                  if (showError)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(onPressed: widget.onBack, child: Text(l10n.welcomeBackButton)),
+                        SizedBox(width: tokens.spacingLg),
+                        FilledButton(
+                          onPressed: () {
+                            _cancelled = false;
+                            _currentState = const MultiProvisionerFetching();
+                            unawaited(_provision());
+                          },
+                          child: Text(l10n.fitPageRetryAction),
+                        ),
+                      ],
+                    ),
+                ],
+                const Spacer(),
               ],
-              const Spacer(),
-            ],
+            ),
           ),
         ),
       ),

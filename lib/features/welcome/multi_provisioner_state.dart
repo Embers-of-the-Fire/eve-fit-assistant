@@ -27,6 +27,8 @@ class MultiProvisionerCreating extends MultiProvisionerState {
 
   final int done;
   final int total;
+
+  double get progress => total > 0 ? done / total : 0;
 }
 
 class MultiProvisionerComplete extends MultiProvisionerState {

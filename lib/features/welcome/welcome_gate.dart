@@ -26,16 +26,24 @@ class WelcomeGate extends ConsumerStatefulWidget {
 class _WelcomeGateState extends ConsumerState<WelcomeGate> {
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(appSettingServiceProvider.select((s) => s.welcomeCompleted))) {
-      return widget.child;
-    }
+    final welcomeCompleted = ref.watch(appSettingServiceProvider.select((s) => s.welcomeCompleted));
 
-    return _WelcomeFlowHost(
-      onComplete: () {
-        ref
-            .read(appSettingServiceProvider.notifier)
-            .update((s) => s.copyWith(welcomeCompleted: true));
-      },
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 700),
+      layoutBuilder: (currentChild, previousChildren) =>
+          Stack(alignment: Alignment.topLeft, children: [...previousChildren, ?currentChild]),
+      child: welcomeCompleted
+          ? KeyedSubtree(key: const ValueKey("app"), child: widget.child)
+          : KeyedSubtree(
+              key: const ValueKey("wizard"),
+              child: _WelcomeFlowHost(
+                onComplete: () {
+                  ref
+                      .read(appSettingServiceProvider.notifier)
+                      .update((s) => s.copyWith(welcomeCompleted: true));
+                },
+              ),
+            ),
     );
   }
 }

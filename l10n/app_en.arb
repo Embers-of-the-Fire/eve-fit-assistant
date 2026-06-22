@@ -690,5 +690,6 @@
   "welcomeDownloadConfirmMessage": "About to download {count,plural, =1{1 file} other{{count} files}}.",
   "welcomeDownloadConfirmWarning": "Do not close app when downloading",
   "welcomeDownloadConfirmButton": "Download",
-  "welcomeDownloadSkipButton": "Skip for now"
+  "welcomeDownloadSkipButton": "Skip for now",
+  "welcomeTapToEnter": "Tap to enter"
 }

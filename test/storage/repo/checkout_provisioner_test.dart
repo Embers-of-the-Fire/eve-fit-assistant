@@ -95,6 +95,9 @@ class _FakeAssetStore implements AssetStore {
     required Set<String> activeSnapshotHashes,
     required List<ResourceIndex> activeResourceIndexes,
   }) => 0;
+
+  @override
+  void recoverSync() {}
 }
 
 /// Builds a [ResourceIndex] protobuf from a list of (resourceId, contentHash,
