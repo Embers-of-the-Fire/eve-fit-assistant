@@ -19,7 +19,7 @@ class ServerStepPage extends ConsumerStatefulWidget {
   });
 
   final String channelName;
-  final VoidCallback onContinue;
+  final void Function(IList<ServerSummary> selectedServers) onContinue;
   final VoidCallback onSkip;
   final VoidCallback onBack;
 
@@ -54,7 +54,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     });
   }
 
-  void _onContinuePressed(int count) {
+  void _onContinuePressed(int count, IList<ServerSummary> selectedServers) {
     final l10n = context.l10n;
     unawaited(
       showDialog<void>(
@@ -69,7 +69,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
               const SizedBox(height: 8),
               Text(
                 l10n.welcomeDownloadConfirmWarning,
-                style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor),
+                style: TextStyle(fontSize: 13, color: Theme.of(ctx).hintColor),
               ),
             ],
           ),
@@ -85,7 +85,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
             FilledButton(
               onPressed: () {
                 Navigator.pop(ctx);
-                widget.onContinue();
+                widget.onContinue(selectedServers);
               },
               child: Text(l10n.welcomeDownloadConfirmButton),
             ),
@@ -118,7 +118,10 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
       primaryLabel: context.l10n.welcomeContinueButton,
       primaryEnabled: _activeId != null && downloadCount != null,
       onPrimary: () {
-        _onContinuePressed(downloadCount!);
+        final data = selectionData.value;
+        if (data == null) return;
+        final selected = data.servers.where((s) => _selected.contains(s.serverId)).toIList();
+        _onContinuePressed(downloadCount!, selected);
       },
       secondaryActions: [
         WizardAction(label: context.l10n.welcomeBackButton, onPressed: widget.onBack),

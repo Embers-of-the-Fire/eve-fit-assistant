@@ -69,10 +69,21 @@ class ServerSummary {
 /// blob content-hash→size maps so the UI can compute the deduplicated download
 /// footprint across selected servers.
 class ServerSelectionData {
-  ServerSelectionData({required this.servers, required this.blobsForServer});
+  ServerSelectionData({
+    required this.servers,
+    required this.blobsForServer,
+    required this.snapshotHashForServer,
+    required this.generationHash,
+  });
 
   final IList<ServerSummary> servers;
   final Map<String, Map<String, int>> blobsForServer;
+
+  /// Maps serverId → resource snapshot hash for the active generation.
+  final Map<String, String> snapshotHashForServer;
+
+  /// The channel-level generation hash for the active head.
+  final String generationHash;
 }
 
 /// Data source for the setup page's channel/server browser.
@@ -218,6 +229,8 @@ class GenerationNavigationService {
       ServerSelectionData(
         servers: serverIndex.servers.map(ServerSummary.fromEntry).toIList(),
         blobsForServer: blobsForServer,
+        snapshotHashForServer: serverToSnapshot,
+        generationHash: generationHash,
       ),
     );
   }
