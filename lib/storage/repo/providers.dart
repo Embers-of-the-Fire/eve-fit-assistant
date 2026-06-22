@@ -165,7 +165,9 @@ class RepoStateNotifier extends _$RepoStateNotifier {
   Future<void> initialize() async {
     state = const RepoState.initializing();
     try {
-      final repo = ref.read(repoServiceProvider);
+      // Clean up orphaned temp files/dirs from interrupted writes before
+      // trusting the on-disk state.
+      final repo = ref.read(repoServiceProvider)..recoverPartialDownloads();
 
       final registryOpt = repo.checkoutRegistry.readRegistry();
       if (registryOpt.isSome()) {

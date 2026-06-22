@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
@@ -194,8 +195,12 @@ class CheckoutService {
 
     final m = meta.toNullable()!;
 
-    // Step 1: Check remote head for update
-    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
+    // Step 1: Check remote head for update. Supply the locally cached head
+    // metadata so a 304 short-circuits to it instead of forcing a re-fetch.
+    final headResult = await remoteCatalogService.fetchHeadMeta(
+      channelName,
+      cachedPayload: _readLocalHeadMetaJson(channelName),
+    );
     if (headResult.isLeft()) return const None();
     final remoteHead = headResult.getRight().toNullable()!;
 
@@ -274,6 +279,18 @@ class CheckoutService {
       final blobResult = await remoteCatalogService.fetchBlob(ihash, dl.contentHash);
       if (blobResult.isRight()) {
         assetStore.writeBlobSync(ihash, blobResult.getRight().toNullable()!);
+      } else if (blobResult.getLeft().toNullable()! is CatalogNotModified) {
+        // A 304 for a blob we don't have locally means the cached ETag is
+        // stale. Clear it and retry once unconditionally so the checkout is
+        // not left with missing data.
+        EtagCache.remove(remoteCatalogService.blobUri(ihash, dl.contentHash));
+        final retry = await remoteCatalogService.fetchBlob(ihash, dl.contentHash);
+        if (retry.isRight()) {
+          assetStore.writeBlobSync(ihash, retry.getRight().toNullable()!);
+        } else {
+          warning("Failed to fetch blob $ihash/${dl.contentHash} after retry");
+          return const None();
+        }
       } else {
         warning("Failed to fetch blob $ihash/${dl.contentHash}");
       }
@@ -403,6 +420,20 @@ class CheckoutService {
     try {
       final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
       return json["generationHash"] as String?;
+    } on Exception {
+      return null;
+    }
+  }
+
+  /// Reads the raw local channel head metadata JSON for [channelName], or null.
+  ///
+  /// Used as the conditional-request fallback payload for `fetchHeadMeta`.
+  Map<String, dynamic>? _readLocalHeadMetaJson(String channelName) {
+    final file = File(RepoPaths.channelHeadMetaPath(channelName));
+    if (!file.existsSync()) return null;
+    try {
+      final json = jsonDecode(file.readAsStringSync());
+      return json is Map<String, dynamic> ? json : null;
     } on Exception {
       return null;
     }

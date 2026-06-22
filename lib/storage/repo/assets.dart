@@ -10,6 +10,8 @@ import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:file/file.dart" hide Directory, File, FileSystemEntity;
+import "package:file/local.dart";
 import "package:fpdart/fpdart.dart";
 import "package:path/path.dart" as p;
 
@@ -18,7 +20,13 @@ import "package:path/path.dart" as p;
 /// Blobs are stored at `assets/blobs/{2c}/{ident_hash}/{content_hash}`
 /// and resource snapshots at `assets/resources/{snapshot_hash}/`.
 class AssetStore {
-  const AssetStore();
+  const AssetStore() : _fs = null;
+
+  AssetStore.forTest(this._fs);
+
+  final FileSystem? _fs;
+
+  FileSystem get _fileSystem => _fs ?? const LocalFileSystem();
 
   /// Writes a blob identified by [identHash] and [content] to the asset store.
   ///
@@ -243,6 +251,52 @@ class AssetStore {
     }
 
     return deleted;
+  }
+
+  // ── Recovery ─────────────────────────────────────────────────────────────
+
+  /// Cleans up orphaned temporary artifacts left behind by interrupted atomic
+  /// writes.
+  ///
+  /// Atomic writes use a `tmp → rename` pattern; a crash between the temp write
+  /// and the rename leaves a `.tmp` file (e.g. `blob.tmp`) on disk. This also
+  /// removes orphaned `tmp_*` / `*_temp` working directories.
+  ///
+  /// Best-effort and idempotent; intended to run once at startup.
+  void recoverSync() {
+    final assetsDir = _fileSystem.directory(RepoPaths.assetsPath);
+    if (!assetsDir.existsSync()) return;
+
+    // Clean orphaned `.tmp` files created by atomic write patterns.
+    try {
+      for (final entity in assetsDir.listSync(recursive: true, followLinks: false)) {
+        if (entity is File && entity.path.endsWith(".tmp")) {
+          try {
+            entity.deleteSync();
+          } on FileSystemException {
+            // best-effort
+          }
+        }
+      }
+    } on FileSystemException {
+      // best-effort
+    }
+
+    // Clean orphaned temporary working directories.
+    try {
+      for (final dir in assetsDir.listSync(followLinks: false).whereType<Directory>()) {
+        final name = p.basename(dir.path);
+        if (name.startsWith("tmp_") || name.endsWith("_temp")) {
+          try {
+            dir.deleteSync(recursive: true);
+          } on FileSystemException {
+            // best-effort
+          }
+        }
+      }
+    } on FileSystemException {
+      // best-effort
+    }
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
