@@ -204,7 +204,11 @@ class RemoteCatalogService {
         if (cached != null) {
           return Right(cached);
         }
-        return const Left(CatalogNotModified());
+        // Cold start with a stale persisted ETag: no cached payload exists,
+        // so we clear the ETag and retry unconditionally (mirrors the JSON
+        // self-healing pattern in fetchRemoteJson).
+        EtagCache.remove(uri);
+        return _fetchBytes(uri);
       }
       final data = result.response.data;
       if (data is! Uint8List) {
