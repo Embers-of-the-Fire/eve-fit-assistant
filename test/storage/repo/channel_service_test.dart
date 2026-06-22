@@ -34,16 +34,28 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
   Either<CatalogError, Uint8List>? generationResourcesResult;
   Either<CatalogError, Uint8List>? generationPointerResult;
 
+  // Captured invocations for test assertions
+  String? lastHeadMetaChannel;
+  Map<String, dynamic>? lastChannelRegistryPayload;
+  Map<String, dynamic>? lastHeadMetaPayload;
+
   @override
   Future<Either<CatalogError, ChannelRegistry>> fetchChannelRegistry({
     Map<String, dynamic>? cachedPayload,
-  }) async => channelRegistryResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  }) async {
+    lastChannelRegistryPayload = cachedPayload;
+    return channelRegistryResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  }
 
   @override
   Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(
     String channelName, {
     Map<String, dynamic>? cachedPayload,
-  }) async => headMetaResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  }) async {
+    lastHeadMetaChannel = channelName;
+    lastHeadMetaPayload = cachedPayload;
+    return headMetaResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  }
 
   @override
   Future<Either<CatalogError, Uint8List>> fetchServerIndex(String generationHash) async =>
@@ -244,5 +256,490 @@ void main() {
               as Map<String, dynamic>;
       expect(saved["active"], "testing");
     });
+
+    test("forwards cachedPayload as null when no local registry exists", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        channelRegistryResult: Right(
+          ChannelRegistry(schemaVersion: 1, active: "testing", channels: const IMap.empty()),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      await service.discoverChannels();
+
+      expect(fakeRemote.lastChannelRegistryPayload, isNull);
+    });
+
+    test("forwards cachedPayload as local registry when one exists", () async {
+      final channels = IMap<String, ChannelEntry>({
+        "testing": ChannelEntry(label: IMap<String, String>({"en": "Testing"})),
+      });
+      final fakeRemote = _FakeRemoteCatalogService(
+        channelRegistryResult: Right(
+          ChannelRegistry(schemaVersion: 1, active: "testing", channels: channels),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      // First call writes a local registry
+      await service.discoverChannels();
+
+      // Second call should forward the local registry as cachedPayload
+      await service.discoverChannels();
+
+      expect(fakeRemote.lastChannelRegistryPayload, isNotNull);
+      expect(fakeRemote.lastChannelRegistryPayload!["active"], "testing");
+    });
+
+    test("returns Left on CatalogNetworkError", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        channelRegistryResult: Left(const CatalogNetworkError(message: "timeout")),
+      );
+      final service = _makeService(fakeRemote);
+
+      final result = await service.discoverChannels();
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), "timeout");
+    });
+
+    test("returns Left on other catalog error", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        channelRegistryResult: Left(const CatalogParseError(message: "bad json")),
+      );
+      final service = _makeService(fakeRemote);
+
+      final result = await service.discoverChannels();
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), "Failed to fetch channels");
+    });
+  });
+
+  group("fetchChannelInfo", () {
+    test("fetches head meta and server index on success", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
+      );
+      final service = _makeService(fakeRemote);
+
+      final result = await service.fetchChannelInfo("testing");
+
+      expect(result.isRight(), isTrue);
+      expect(File(RepoPaths.channelHeadMetaPath("testing")).existsSync(), isTrue);
+      expect(File(RepoPaths.channelServerIndexPath("testing")).existsSync(), isTrue);
+    });
+
+    test("returns Right(unit) on 404 (channel not initialized)", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Left(const CatalogNotFoundError(message: "not found")),
+      );
+      final service = _makeService(fakeRemote);
+
+      final result = await service.fetchChannelInfo("testing");
+
+      expect(result.isRight(), isTrue);
+      expect(File(RepoPaths.channelHeadMetaPath("testing")).existsSync(), isFalse);
+    });
+
+    test("returns Left on network error", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Left(const CatalogNetworkError(message: "connection refused")),
+      );
+      final service = _makeService(fakeRemote);
+
+      final result = await service.fetchChannelInfo("testing");
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), "connection refused");
+    });
+
+    test("succeeds when server index fetch fails but head meta succeeds", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Left(const CatalogNetworkError(message: "timeout")),
+      );
+      final service = _makeService(fakeRemote);
+
+      final result = await service.fetchChannelInfo("testing");
+
+      expect(result.isRight(), isTrue);
+      // Head meta should be written despite server index failure
+      expect(File(RepoPaths.channelHeadMetaPath("testing")).existsSync(), isTrue);
+    });
+
+    test("forwards cachedPayload as null when no local head exists", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
+      );
+      final service = _makeService(fakeRemote);
+
+      await service.fetchChannelInfo("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNull);
+    });
+
+    test("forwards cachedPayload as local head when one exists", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
+      );
+      final service = _makeService(fakeRemote);
+
+      // First call writes a local head
+      await service.fetchChannelInfo("testing");
+      // Second call should forward the local head as cachedPayload
+      await service.fetchChannelInfo("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNotNull);
+      expect(fakeRemote.lastHeadMetaPayload!["generationHash"], _testGenerationHash);
+    });
+  });
+
+  group("hasUpdates", () {
+    test("returns true when no local state", () async {
+      final fakeRemote = _FakeRemoteCatalogService();
+      final service = _makeService(fakeRemote);
+
+      final hasUpdates = await service.hasUpdates("testing");
+
+      expect(hasUpdates, isTrue);
+    });
+
+    test("returns true when remote generation differs from local", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash:
+                "sha256:ffff0000111122223333444455556666777788889999aaaabbbbccccddddeeeeffff",
+            updatedAt: "2026-06-16T12:00:00Z",
+            label: IMap(const {"en": "Newer Release"}),
+          ),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      // Write a local head with a different generation hash
+      final headPath = RepoPaths.channelHeadMetaPath("testing");
+      File(headPath).parent.createSync(recursive: true);
+      File(headPath).writeAsStringSync(
+        jsonEncode({
+          "schemaVersion": 1,
+          "generationHash": _testGenerationHash,
+          "updatedAt": "2026-06-15T12:00:00Z",
+          "label": {"en": "Current Release"},
+        }),
+      );
+
+      final hasUpdates = await service.hasUpdates("testing");
+
+      expect(hasUpdates, isTrue);
+    });
+
+    test("returns false when local and remote generation match", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-16T12:00:00Z",
+            label: IMap(const {"en": "Same Release"}),
+          ),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      // Write a local head with the same generation hash
+      final headPath = RepoPaths.channelHeadMetaPath("testing");
+      File(headPath).parent.createSync(recursive: true);
+      File(headPath).writeAsStringSync(
+        jsonEncode({
+          "schemaVersion": 1,
+          "generationHash": _testGenerationHash,
+          "updatedAt": "2026-06-15T12:00:00Z",
+          "label": {"en": "Same Release"},
+        }),
+      );
+
+      final hasUpdates = await service.hasUpdates("testing");
+
+      expect(hasUpdates, isFalse);
+    });
+
+    test("returns false on network error", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Left(const CatalogNetworkError(message: "timeout")),
+      );
+      final service = _makeService(fakeRemote);
+
+      // Ensure there is local state (otherwise it would return true)
+      final headPath = RepoPaths.channelHeadMetaPath("testing");
+      File(headPath).parent.createSync(recursive: true);
+      File(headPath).writeAsStringSync(
+        jsonEncode({
+          "schemaVersion": 1,
+          "generationHash": _testGenerationHash,
+          "updatedAt": "2026-06-15T12:00:00Z",
+          "label": {"en": "Current Release"},
+        }),
+      );
+
+      final hasUpdates = await service.hasUpdates("testing");
+
+      expect(hasUpdates, isFalse);
+    });
+
+    test("forwards cachedPayload as local head when local state exists", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-16T12:00:00Z",
+            label: IMap(const {"en": "Same Release"}),
+          ),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      // Write a local head
+      final headPath = RepoPaths.channelHeadMetaPath("testing");
+      File(headPath).parent.createSync(recursive: true);
+      File(headPath).writeAsStringSync(
+        jsonEncode({
+          "schemaVersion": 1,
+          "generationHash": _testGenerationHash,
+          "updatedAt": "2026-06-15T12:00:00Z",
+          "label": {"en": "Current Release"},
+        }),
+      );
+
+      await service.hasUpdates("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNotNull);
+      expect(fakeRemote.lastHeadMetaPayload!["generationHash"], _testGenerationHash);
+    });
+
+    test("does not call fetchHeadMeta when no local state (early return)", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-16T12:00:00Z",
+            label: IMap(const {"en": "New Release"}),
+          ),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      final result = await service.hasUpdates("testing");
+
+      expect(result, isTrue);
+      // When localGenerationHash is null, hasUpdates returns true immediately
+      // without calling fetchHeadMeta at all.
+      expect(fakeRemote.lastHeadMetaChannel, isNull);
+    });
+  });
+
+  group("cachedPayload propagation", () {
+    test("discoverChannels passes cachedPayload when local registry exists", () async {
+      final channels = IMap<String, ChannelEntry>({
+        "testing": ChannelEntry(label: IMap<String, String>({"en": "Testing"})),
+      });
+      final fakeRemote = _FakeRemoteCatalogService(
+        channelRegistryResult: Right(
+          ChannelRegistry(schemaVersion: 1, active: "testing", channels: channels),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      // First call writes local registry
+      await service.discoverChannels();
+      // Second call should forward it
+      await service.discoverChannels();
+
+      expect(fakeRemote.lastChannelRegistryPayload, isNotNull);
+    });
+
+    test("discoverChannels passes null when no local registry", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        channelRegistryResult: Right(
+          ChannelRegistry(schemaVersion: 1, active: "testing", channels: const IMap.empty()),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      await service.discoverChannels();
+
+      expect(fakeRemote.lastChannelRegistryPayload, isNull);
+    });
+
+    test("syncChannelGeneration passes cachedPayload when local head exists", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
+        generationResourcesResult: Right(Uint8List.fromList([4, 5, 6])),
+        generationPointerResult: Right(Uint8List.fromList([7, 8, 9])),
+      );
+      final service = _makeService(fakeRemote);
+
+      // First call writes local head
+      await service.syncChannelGeneration("testing");
+      // Second call should forward local head as cachedPayload
+      await service.syncChannelGeneration("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNotNull);
+    });
+
+    test("syncChannelGeneration passes null when no local head", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
+      );
+      final service = _makeService(fakeRemote);
+
+      await service.syncChannelGeneration("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNull);
+    });
+
+    test("fetchChannelInfo passes cachedPayload when local head exists", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
+      );
+      final service = _makeService(fakeRemote);
+
+      await service.fetchChannelInfo("testing");
+      await service.fetchChannelInfo("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNotNull);
+    });
+
+    test("fetchChannelInfo passes null when no local head", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-15T12:00:00Z",
+            label: IMap(const {"en": "Test Release"}),
+          ),
+        ),
+        serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
+      );
+      final service = _makeService(fakeRemote);
+
+      await service.fetchChannelInfo("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNull);
+    });
+
+    test("hasUpdates passes cachedPayload when local head exists", () async {
+      final fakeRemote = _FakeRemoteCatalogService(
+        headMetaResult: Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: _testGenerationHash,
+            updatedAt: "2026-06-16T12:00:00Z",
+            label: IMap(const {"en": "Same Release"}),
+          ),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      final headPath = RepoPaths.channelHeadMetaPath("testing");
+      File(headPath).parent.createSync(recursive: true);
+      File(headPath).writeAsStringSync(
+        jsonEncode({
+          "schemaVersion": 1,
+          "generationHash": _testGenerationHash,
+          "updatedAt": "2026-06-15T12:00:00Z",
+          "label": {"en": "Current Release"},
+        }),
+      );
+
+      await service.hasUpdates("testing");
+
+      expect(fakeRemote.lastHeadMetaPayload, isNotNull);
+      expect(fakeRemote.lastHeadMetaPayload!["generationHash"], _testGenerationHash);
+    });
+
+    test(
+      "hasUpdates does not forward cachedPayload when local state absent (early return)",
+      () async {
+        // When localGenerationHash is null, hasUpdates returns true immediately
+        // without calling fetchHeadMeta at all.
+        final fakeRemote = _FakeRemoteCatalogService(
+          headMetaResult: Right(
+            ChannelHeadMeta(
+              schemaVersion: 1,
+              generationHash: _testGenerationHash,
+              updatedAt: "2026-06-16T12:00:00Z",
+              label: IMap(const {"en": "New Release"}),
+            ),
+          ),
+        );
+        final service = _makeService(fakeRemote);
+
+        final result = await service.hasUpdates("testing");
+
+        expect(result, isTrue);
+        expect(fakeRemote.lastHeadMetaChannel, isNull);
+      },
+    );
   });
 }
