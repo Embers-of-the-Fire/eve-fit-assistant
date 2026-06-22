@@ -321,10 +321,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage> {
                           fontWeight: FontWeight.w900,
                           letterSpacing: 4,
                         ),
-                        colors: const [
-                          Color(0xFF30B2E6),
-                          Color(0xFF1A7C9C),
-                        ],
+                        colors: const [Color(0xFF30B2E6), Color(0xFF1A7C9C)],
                         speed: const Duration(milliseconds: 400),
                       ),
                     ],

@@ -45,10 +45,9 @@ class RemoteCatalogService {
   final Dio dio;
   final String originUrl;
 
-  /// In-memory payload caches so HTTP 304 responses can be satisfied without a
+  /// In-memory payload cache so HTTP 304 responses can be satisfied without a
   /// redundant re-download. The persistent [EtagCache] outlives a process, so
-  /// these warm during a session; cold starts fall back to a fresh fetch.
-  final Map<Uri, Map<String, dynamic>> _jsonCache = <Uri, Map<String, dynamic>>{};
+  /// this warms during a session; cold starts fall back to a fresh fetch.
   final Map<Uri, Uint8List> _bytesCache = <Uri, Uint8List>{};
 
   Uri _buildUri(String relativePath) {
