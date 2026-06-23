@@ -190,6 +190,46 @@ def _make_full_generation(
     return gen_hash, res_hash
 
 
+def _commit_from_session(
+    store: SessionStore,
+    mgr: SessionManager,
+    tmp_root: Path,
+    parent: str = "",
+) -> str:
+    """Build and create a generation from the current session's staged data.
+
+    Returns the generation hash. Does NOT push the head or mark committed.
+    Delegates accumulation to the production _build_generation_data helper.
+    """
+    from bootstrap.cli.remote.session import _build_generation_data
+
+    session = store.load()
+    snap_store = mgr.snap_store
+
+    parent_gen = mgr.gen_store.load(parent) if parent else None
+
+    server_index, gen_resources, release_ptr = _build_generation_data(
+        snap_store=snap_store,
+        staged_resources=session.staged.resources,
+        staged_releases=session.staged.releases,
+        parent_gen=parent_gen,
+    )
+
+    gen_meta = GenerationMetadata(
+        channel=session.channel,
+        timestamp=utc_timestamp(),
+        parent=parent or "",
+        subject="",
+    )
+
+    return mgr.create_generation(
+        metadata=gen_meta,
+        server_index=server_index,
+        resources=gen_resources,
+        release_pointer=release_ptr,
+    )
+
+
 # ===========================================================================
 # 1. session init
 # ===========================================================================
@@ -398,45 +438,10 @@ class TestSessionRemove:
 
 
 def _compute_diff_style(tmp_root: Path, store: SessionStore) -> dict:
-    from bootstrap.remote.generation import GenerationStore
+    """Accumulation-aware diff — delegates to production _compute_diff."""
+    from bootstrap.cli.remote.session import _compute_diff
 
-    head_store = ChannelHeadStore(tmp_root)
-    gen_store = GenerationStore(tmp_root)
-    session = store.load()
-
-    head_hash: str | None = None
-    head_sets: dict[str, set[str]] = {
-        "resources": set(),
-        "releases": set(),
-    }
-
-    try:
-        head = head_store._safe_get_head(session.channel)
-        if head and head.generation_hash:
-            head_hash = head.generation_hash
-            generation = gen_store.load(head.generation_hash)
-            for entry in generation.resources.entries:
-                head_sets["resources"].add(entry.snapshot_hash)
-            if generation.release_pointer.snapshot_hash:
-                head_sets["releases"].add(generation.release_pointer.snapshot_hash)
-    except Exception:
-        pass
-
-    session_sets = {
-        "resources": set(session.staged.resources),
-        "releases": set(session.staged.releases),
-    }
-
-    diff: dict = {"channel": session.channel, "head": head_hash}
-    for snap_type in ("resources", "releases"):
-        s_set = session_sets[snap_type]
-        h_set = head_sets[snap_type]
-        diff[snap_type] = {
-            "added": sorted(s_set - h_set),
-            "removed": sorted(h_set - s_set),
-            "unchanged": sorted(s_set & h_set),
-        }
-    return diff
+    return _compute_diff(tmp_root, store.load())
 
 
 class TestSessionDiff:
@@ -495,6 +500,10 @@ class TestSessionDiff:
         assert res_hash2 in diff["resources"]["added"]
         assert res_hash1 not in diff["resources"]["added"]
 
+        assert res_hash1 in diff["resources"]["inherited"]
+        assert diff["resources"]["updated"] == []
+        assert diff["resources"]["unchanged"] == []
+
     def test_diff_json_output(self, store: SessionStore, tmp_root: Path) -> None:
         _init_session(store)
         res_hash = _make_resource_snapshot(tmp_root)
@@ -503,6 +512,10 @@ class TestSessionDiff:
         output = json.dumps(diff)
         assert diff["channel"] == "testing"
         assert "added" in output
+        assert "inherited" in output
+        assert "updated" in output
+        assert "unchanged" in output
+        assert "removed" not in output
 
 
 # ===========================================================================
@@ -1160,3 +1173,245 @@ class TestSessionEdgeCases:
         assert len(reflog.entries) >= 1
         last_entry = reflog.entries[-1]
         assert last_entry.op == "push"
+
+
+# ===========================================================================
+# 11. Generation accumulation
+# ===========================================================================
+
+
+class TestSessionCommitAccumulation:
+    """Accumulation: commit seeds from parent, overlays staged."""
+
+    def test_root_commit_no_seeding(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """First commit with no parent — same as current behavior."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+        res_a = _make_resource_snapshot(
+            tmp_root,
+            server_id="tranquility",
+            resources=[("aa" * 4, "bb" * 4, 100)],
+        )
+        store.add_snapshot("resource", res_a)
+
+        gen_a = _commit_from_session(store, mgr, tmp_root, parent="")
+        mgr.push("testing", gen_a)
+        store.mark_committed()
+
+        gen = mgr.load_generation(gen_a)
+        assert len(gen.resources.entries) == 1
+        assert gen.resources.entries[0].server_id == "tranquility"
+        assert gen.resources.entries[0].snapshot_hash == res_a
+        assert len(gen.server_index.servers) == 1
+        assert gen.server_index.servers[0].server_id == "tranquility"
+
+    def test_accumulate_new_server(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """Commit A1, then commit B1 → B1 gen has both A and B."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+
+        res_a = _make_resource_snapshot(
+            tmp_root,
+            server_id="tranquility",
+            resources=[("aa" * 4, "bb" * 4, 100)],
+        )
+        store.add_snapshot("resource", res_a)
+        gen_a = _commit_from_session(store, mgr, tmp_root)
+        mgr.push("testing", gen_a)
+        store.mark_committed()
+
+        store.init("testing", force_overwrite=True)
+        res_b = _make_resource_snapshot(
+            tmp_root,
+            server_id="serenity",
+            resources=[("cc" * 4, "dd" * 4, 200)],
+        )
+        store.add_snapshot("resource", res_b)
+        gen_b = _commit_from_session(store, mgr, tmp_root, parent=gen_a)
+        mgr.push("testing", gen_b)
+        store.mark_committed()
+
+        gen = mgr.load_generation(gen_b)
+        assert len(gen.resources.entries) == 2
+        server_hashes = {e.server_id: e.snapshot_hash for e in gen.resources.entries}
+        assert server_hashes["tranquility"] == res_a
+        assert server_hashes["serenity"] == res_b
+        assert len(gen.server_index.servers) == 2
+        server_ids = {e.server_id for e in gen.server_index.servers}
+        assert server_ids == {"tranquility", "serenity"}
+
+    def test_update_existing_server(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """Commit A1, then commit A2 → A2 replaces A1 for same server_id."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+
+        res_a1 = _make_resource_snapshot(
+            tmp_root,
+            server_id="tranquility",
+            resources=[("aa" * 4, "bb" * 4, 100)],
+        )
+        store.add_snapshot("resource", res_a1)
+        gen_a = _commit_from_session(store, mgr, tmp_root)
+        mgr.push("testing", gen_a)
+        store.mark_committed()
+
+        store.init("testing", force_overwrite=True)
+        res_a2 = _make_resource_snapshot(
+            tmp_root,
+            server_id="tranquility",
+            resources=[("ee" * 4, "ff" * 4, 300)],
+        )
+        store.add_snapshot("resource", res_a2)
+        gen_b = _commit_from_session(store, mgr, tmp_root, parent=gen_a)
+        mgr.push("testing", gen_b)
+        store.mark_committed()
+
+        gen = mgr.load_generation(gen_b)
+        assert len(gen.resources.entries) == 1
+        assert gen.resources.entries[0].server_id == "tranquility"
+        assert gen.resources.entries[0].snapshot_hash == res_a2
+
+    def test_mixed_add_and_update(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """Commit {A, B}, then stage {C, B2} → new gen has A(keep), B(B2), C(C)."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+
+        res_a = _make_resource_snapshot(
+            tmp_root,
+            server_id="tranquility",
+            resources=[("a1" * 4, "a2" * 4, 100)],
+        )
+        res_b = _make_resource_snapshot(
+            tmp_root,
+            server_id="serenity",
+            resources=[("b1" * 4, "b2" * 4, 200)],
+        )
+        store.add_snapshot("resource", res_a)
+        store.add_snapshot("resource", res_b)
+        gen_ab = _commit_from_session(store, mgr, tmp_root)
+        mgr.push("testing", gen_ab)
+        store.mark_committed()
+
+        store.init("testing", force_overwrite=True)
+        res_c = _make_resource_snapshot(
+            tmp_root,
+            server_id="singularity",
+            resources=[("c1" * 4, "c2" * 4, 300)],
+        )
+        res_b2 = _make_resource_snapshot(
+            tmp_root,
+            server_id="serenity",
+            resources=[("b3" * 4, "b4" * 4, 400)],
+        )
+        store.add_snapshot("resource", res_c)
+        store.add_snapshot("resource", res_b2)
+        gen_cb2 = _commit_from_session(store, mgr, tmp_root, parent=gen_ab)
+        mgr.push("testing", gen_cb2)
+        store.mark_committed()
+
+        gen = mgr.load_generation(gen_cb2)
+        assert len(gen.resources.entries) == 3
+        server_hashes = {e.server_id: e.snapshot_hash for e in gen.resources.entries}
+        assert server_hashes["tranquility"] == res_a
+        assert server_hashes["serenity"] == res_b2
+        assert server_hashes["singularity"] == res_c
+
+    def test_preserves_release_ptr_from_parent(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """Commit with release, then commit without → new gen carries release."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        rel = _make_release_snapshot(tmp_root, version="1.0.0")
+        store.add_snapshot("resource", res_a)
+        store.add_snapshot("release", rel)
+        gen_a = _commit_from_session(store, mgr, tmp_root)
+        mgr.push("testing", gen_a)
+        store.mark_committed()
+
+        store.init("testing", force_overwrite=True)
+        res_b = _make_resource_snapshot(
+            tmp_root,
+            server_id="serenity",
+            resources=[("cc" * 4, "dd" * 4, 200)],
+        )
+        store.add_snapshot("resource", res_b)
+        gen_b = _commit_from_session(store, mgr, tmp_root, parent=gen_a)
+        mgr.push("testing", gen_b)
+        store.mark_committed()
+
+        gen = mgr.load_generation(gen_b)
+        assert gen.release_pointer.snapshot_hash == rel
+
+    def test_release_override(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """Commit R1, then commit R2 → new gen uses R2."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        rel1 = _make_release_snapshot(tmp_root, version="1.0.0")
+        store.add_snapshot("resource", res_a)
+        store.add_snapshot("release", rel1)
+        gen_a = _commit_from_session(store, mgr, tmp_root)
+        mgr.push("testing", gen_a)
+        store.mark_committed()
+
+        store.init("testing", force_overwrite=True)
+        rel2 = _make_release_snapshot(tmp_root, version="1.1.0")
+        store.add_snapshot("release", rel2)
+        gen_b = _commit_from_session(store, mgr, tmp_root, parent=gen_a)
+        mgr.push("testing", gen_b)
+        store.mark_committed()
+
+        gen = mgr.load_generation(gen_b)
+        assert gen.release_pointer.snapshot_hash == rel2
+
+    def test_diff_shows_inherited(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """After committing A+B, staging only C → diff shows A, B inherited."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+
+        res_a = _make_resource_snapshot(
+            tmp_root,
+            server_id="tranquility",
+            resources=[("a1" * 4, "a2" * 4, 100)],
+        )
+        res_b = _make_resource_snapshot(
+            tmp_root,
+            server_id="serenity",
+            resources=[("b1" * 4, "b2" * 4, 200)],
+        )
+        store.add_snapshot("resource", res_a)
+        store.add_snapshot("resource", res_b)
+        gen_hash = _commit_from_session(store, mgr, tmp_root)
+        mgr.push("testing", gen_hash)
+        store.mark_committed()
+
+        store.init("testing", force_overwrite=True)
+        res_c = _make_resource_snapshot(
+            tmp_root,
+            server_id="singularity",
+            resources=[("c1" * 4, "c2" * 4, 300)],
+        )
+        store.add_snapshot("resource", res_c)
+
+        diff = _compute_diff_style(tmp_root, store)
+        assert res_c in diff["resources"]["added"]
+        assert res_a in diff["resources"]["inherited"]
+        assert res_b in diff["resources"]["inherited"]
+        assert len(diff["resources"]["updated"]) == 0
+        assert len(diff["resources"]["unchanged"]) == 0
