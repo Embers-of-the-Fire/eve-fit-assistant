@@ -260,18 +260,25 @@ def _get_snapshot_summary(root: Path, snap_type: str, hash_value: str) -> str:
 
 
 def _compute_diff(root: Path, session: Session) -> dict:
-    """Compare session staged hashes against the current channel head."""
+    """Compare session staged hashes against the current channel head.
+
+    Categories (with accumulation in mind):
+      - added:     staged snapshot, server not in head
+      - updated:   staged snapshot, server in head with DIFFERENT snapshot hash
+      - unchanged: staged snapshot, server in head with SAME snapshot hash
+      - inherited: server in head, NOT staged (carried forward by accumulation)
+    """
     from bootstrap.remote.generation import GenerationStore
     from bootstrap.remote.head import ChannelHeadStore
+    from bootstrap.remote.snapshot import SnapshotStore
 
     head_store = ChannelHeadStore(root)
     gen_store = GenerationStore(root)
+    snap_store = SnapshotStore(root)
 
     head_hash: str | None = None
-    head_sets: dict[str, set[str]] = {
-        "resources": set(),
-        "releases": set(),
-    }
+    head_resources: dict[str, str] = {}
+    head_release: str | None = None
 
     try:
         head = head_store._safe_get_head(session.channel)
@@ -279,27 +286,57 @@ def _compute_diff(root: Path, session: Session) -> dict:
             head_hash = head.generation_hash
             generation = gen_store.load(head.generation_hash)
             for entry in generation.resources.entries:
-                head_sets["resources"].add(entry.snapshot_hash)
+                head_resources[entry.server_id] = entry.snapshot_hash
             if generation.release_pointer.snapshot_hash:
-                head_sets["releases"].add(generation.release_pointer.snapshot_hash)
+                head_release = generation.release_pointer.snapshot_hash
     except Exception:
         pass
 
-    session_sets = {
-        "resources": set(session.staged.resources),
-        "releases": set(session.staged.releases),
-    }
+    staged_resources: dict[str, str] = {}
+    for h in session.staged.resources:
+        try:
+            meta, _ = snap_store.load_resource_snapshot(h)
+            staged_resources[meta.server_id] = h
+        except Exception:
+            pass
 
-    diff: dict = {"channel": session.channel, "head": head_hash}
-    for snap_type in ("resources", "releases"):
-        s_set = session_sets[snap_type]
-        h_set = head_sets[snap_type]
-        diff[snap_type] = {
-            "added": sorted(s_set - h_set),
-            "removed": sorted(h_set - s_set),
-            "unchanged": sorted(s_set & h_set),
-        }
-    return diff
+    added: list[str] = []
+    updated: list[str] = []
+    unchanged: list[str] = []
+    inherited: list[str] = []
+
+    staged_ids = set(staged_resources.keys())
+    head_ids = set(head_resources.keys())
+
+    for sid in staged_ids - head_ids:
+        added.append(staged_resources[sid])
+    for sid in staged_ids & head_ids:
+        if staged_resources[sid] != head_resources[sid]:
+            updated.append(staged_resources[sid])
+        else:
+            unchanged.append(staged_resources[sid])
+    for sid in head_ids - staged_ids:
+        inherited.append(head_resources[sid])
+
+    head_releases = {head_release} if head_release else set()
+    staged_releases = set(session.staged.releases)
+
+    return {
+        "channel": session.channel,
+        "head": head_hash,
+        "resources": {
+            "added": sorted(added),
+            "updated": sorted(updated),
+            "unchanged": sorted(unchanged),
+            "inherited": sorted(inherited),
+        },
+        "releases": {
+            "added": sorted(staged_releases - head_releases),
+            "updated": [],
+            "unchanged": sorted(staged_releases & head_releases),
+            "inherited": sorted(head_releases - staged_releases),
+        },
+    }
 
 
 def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> None:
@@ -744,23 +781,33 @@ def register_remote_session(remote: click.Group) -> None:
         }
         for snap_type in ("resources", "releases"):
             data = diff[snap_type]
-            if not data["added"] and not data["removed"] and not data["unchanged"]:
+            display_type = snap_type.rstrip("s")
+
+            if not any(data.values()):
                 continue
+
             click.echo(f"\n{type_labels[snap_type]}:")
+
             for h in data["added"]:
-                summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+                summary = _get_snapshot_summary(root, display_type, h)
                 click.echo(
                     styled([Style.BRIGHT, Fore.GREEN], f"  + {h[:16]}...")
                     + styled(Style.DIM, f"  {summary}")
                 )
-            for h in data["removed"]:
-                summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+            for h in data["updated"]:
+                summary = _get_snapshot_summary(root, display_type, h)
                 click.echo(
-                    styled([Style.BRIGHT, Fore.RED], f"  - {h[:16]}...")
+                    styled([Style.BRIGHT, Fore.YELLOW], f"  * {h[:16]}...")
+                    + styled(Style.DIM, f"  {summary}")
+                )
+            for h in data["inherited"]:
+                summary = _get_snapshot_summary(root, display_type, h)
+                click.echo(
+                    styled([Style.BRIGHT, Fore.CYAN], f"  ~ {h[:16]}...")
                     + styled(Style.DIM, f"  {summary}")
                 )
             for h in data["unchanged"]:
-                summary = _get_snapshot_summary(root, snap_type.rstrip("s"), h)
+                summary = _get_snapshot_summary(root, display_type, h)
                 click.echo(styled(Style.DIM, f"  = {h[:16]}...  {summary}"))
 
     @remote_session.command("verify")
@@ -860,49 +907,99 @@ def register_remote_session(remote: click.Group) -> None:
 
         resolved_channel = validate_remote_channel(session.channel)
 
+        current_head = head_store._safe_get_head(resolved_channel)
+        parent = (
+            current_head.generation_hash if current_head and current_head.generation_hash else None
+        )
+
+        parent_gen = mgr.gen_store.load(parent) if parent else None
+
         server_index = ServerIndex()
         server_index.schema_version = 1
 
         gen_resources = GenerationResources()
         gen_resources.schema_version = 1
 
+        # ── Seed from parent generation ──────────────────────────────────────
+        if parent_gen is not None:
+            for srv in parent_gen.server_index.servers:
+                srv_entry = server_index.servers.add()
+                srv_entry.CopyFrom(srv)
+            for res in parent_gen.resources.entries:
+                res_entry = gen_resources.entries.add()
+                res_entry.CopyFrom(res)
+
+        # ── Overlay staged snapshots ─────────────────────────────────────────
         server_ids: list[str] = []
         for hash_val in session.staged.resources:
             meta, _index = snap_store.load_resource_snapshot(hash_val)
-            entry = server_index.servers.add()
-            entry.server_id = meta.server_id
-            if meta.name:
-                for locale, display_name in meta.name.items():
-                    entry.name[locale] = display_name
-            else:
-                entry.name["en"] = meta.server_id
-            entry.game_build = meta.game_build
-            entry.game_version = meta.game_version
-            if meta.game_region:
-                entry.region = meta.game_region
-            if meta.game_sync:
-                entry.sync = meta.game_sync
-            if meta.game_branch:
-                entry.branch = meta.game_branch
 
-            gentry = gen_resources.entries.add()
-            gentry.server_id = meta.server_id
-            gentry.snapshot_hash = hash_val
+            srv_existing = None
+            for srv in server_index.servers:
+                if srv.server_id == meta.server_id:
+                    srv_existing = srv
+                    break
+
+            if srv_existing is not None:
+                srv_existing.game_build = meta.game_build
+                srv_existing.game_version = meta.game_version
+                srv_existing.ClearField("region")
+                srv_existing.ClearField("sync")
+                srv_existing.ClearField("branch")
+                if meta.game_region:
+                    srv_existing.region = meta.game_region
+                if meta.game_sync:
+                    srv_existing.sync = meta.game_sync
+                if meta.game_branch:
+                    srv_existing.branch = meta.game_branch
+                srv_existing.name.clear()
+                if meta.name:
+                    for locale, display_name in meta.name.items():
+                        srv_existing.name[locale] = display_name
+                else:
+                    srv_existing.name["en"] = meta.server_id
+            else:
+                srv_entry = server_index.servers.add()
+                srv_entry.server_id = meta.server_id
+                if meta.name:
+                    for locale, display_name in meta.name.items():
+                        srv_entry.name[locale] = display_name
+                else:
+                    srv_entry.name["en"] = meta.server_id
+                srv_entry.game_build = meta.game_build
+                srv_entry.game_version = meta.game_version
+                if meta.game_region:
+                    srv_entry.region = meta.game_region
+                if meta.game_sync:
+                    srv_entry.sync = meta.game_sync
+                if meta.game_branch:
+                    srv_entry.branch = meta.game_branch
+
+            res_existing = None
+            for res in gen_resources.entries:
+                if res.server_id == meta.server_id:
+                    res_existing = res
+                    break
+
+            if res_existing is not None:
+                res_existing.snapshot_hash = hash_val
+            else:
+                gentry = gen_resources.entries.add()
+                gentry.server_id = meta.server_id
+                gentry.snapshot_hash = hash_val
 
             server_ids.append(meta.server_id)
 
         release_ptr = GenerationPointer()
         release_ptr.schema_version = 1
-        release_ptr.snapshot_hash = ""
+        if parent_gen is not None:
+            release_ptr.snapshot_hash = parent_gen.release_pointer.snapshot_hash
+        else:
+            release_ptr.snapshot_hash = ""
         release_hash: str | None = None
         if session.staged.releases:
             release_hash = session.staged.releases[-1]
             release_ptr.snapshot_hash = release_hash
-
-        current_head = head_store._safe_get_head(resolved_channel)
-        parent = (
-            current_head.generation_hash if current_head and current_head.generation_hash else None
-        )
 
         ts = utc_timestamp()
         meta = GenerationMetadata(
