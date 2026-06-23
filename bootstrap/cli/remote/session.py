@@ -541,6 +541,102 @@ def _print_issues(issues: list) -> None:
         )
 
 
+def _build_generation_data(snap_store, staged_resources, staged_releases, parent_gen=None):
+    """Build generation data structures from staged resources & releases.
+
+    Seeds from *parent_gen* if provided (accumulation model), then overlays
+    staged resource snapshots (updating existing server entries or adding new
+    ones) and sets the release pointer from staged releases (falling back to
+    the parent's pointer if none staged).
+
+    Returns (server_index, gen_resources, release_ptr).
+    """
+    from bootstrap.remote.models import GenerationPointer
+    from bootstrap.remote.models import GenerationResources
+    from bootstrap.remote.models import ServerIndex
+
+    server_index = ServerIndex()
+    server_index.schema_version = 1
+    gen_resources = GenerationResources()
+    gen_resources.schema_version = 1
+
+    if parent_gen is not None:
+        for srv in parent_gen.server_index.servers:
+            srv_entry = server_index.servers.add()
+            srv_entry.CopyFrom(srv)
+        for res in parent_gen.resources.entries:
+            res_entry = gen_resources.entries.add()
+            res_entry.CopyFrom(res)
+
+    for hash_val in staged_resources:
+        meta, _ = snap_store.load_resource_snapshot(hash_val)
+
+        srv_existing = None
+        for srv in server_index.servers:
+            if srv.server_id == meta.server_id:
+                srv_existing = srv
+                break
+
+        if srv_existing is not None:
+            srv_existing.game_build = meta.game_build
+            srv_existing.game_version = meta.game_version
+            srv_existing.ClearField("region")
+            srv_existing.ClearField("sync")
+            srv_existing.ClearField("branch")
+            if meta.game_region:
+                srv_existing.region = meta.game_region
+            if meta.game_sync:
+                srv_existing.sync = meta.game_sync
+            if meta.game_branch:
+                srv_existing.branch = meta.game_branch
+            srv_existing.name.clear()
+            if meta.name:
+                for locale, display_name in meta.name.items():
+                    srv_existing.name[locale] = display_name
+            else:
+                srv_existing.name["en"] = meta.server_id
+        else:
+            srv_entry = server_index.servers.add()
+            srv_entry.server_id = meta.server_id
+            if meta.name:
+                for locale, display_name in meta.name.items():
+                    srv_entry.name[locale] = display_name
+            else:
+                srv_entry.name["en"] = meta.server_id
+            srv_entry.game_build = meta.game_build
+            srv_entry.game_version = meta.game_version
+            if meta.game_region:
+                srv_entry.region = meta.game_region
+            if meta.game_sync:
+                srv_entry.sync = meta.game_sync
+            if meta.game_branch:
+                srv_entry.branch = meta.game_branch
+
+        res_existing = None
+        for res in gen_resources.entries:
+            if res.server_id == meta.server_id:
+                res_existing = res
+                break
+
+        if res_existing is not None:
+            res_existing.snapshot_hash = hash_val
+        else:
+            gentry = gen_resources.entries.add()
+            gentry.server_id = meta.server_id
+            gentry.snapshot_hash = hash_val
+
+    release_ptr = GenerationPointer()
+    release_ptr.schema_version = 1
+    if parent_gen is not None:
+        release_ptr.snapshot_hash = parent_gen.release_pointer.snapshot_hash
+    else:
+        release_ptr.snapshot_hash = ""
+    if staged_releases:
+        release_ptr.snapshot_hash = staged_releases[-1]
+
+    return server_index, gen_resources, release_ptr
+
+
 _SCHEMA_ROOT_OPTION = click.option(
     "--schema-root",
     type=click.Path(path_type=Path),
@@ -871,9 +967,6 @@ def register_remote_session(remote: click.Group) -> None:
         """Assemble a generation from staged snapshots and advance the channel head."""
         from bootstrap.remote.generation import utc_timestamp
         from bootstrap.remote.models import GenerationMetadata
-        from bootstrap.remote.models import GenerationPointer
-        from bootstrap.remote.models import GenerationResources
-        from bootstrap.remote.models import ServerIndex
 
         root = runtime.resolve_schema_root(schema_root)
         store = SessionStore(root)
@@ -915,92 +1008,21 @@ def register_remote_session(remote: click.Group) -> None:
 
         parent_gen = mgr.gen_store.load(parent) if parent else None
 
-        server_index = ServerIndex()
-        server_index.schema_version = 1
+        server_index, gen_resources, release_ptr = _build_generation_data(
+            snap_store=snap_store,
+            staged_resources=session.staged.resources,
+            staged_releases=session.staged.releases,
+            parent_gen=parent_gen,
+        )
 
-        gen_resources = GenerationResources()
-        gen_resources.schema_version = 1
-
-        # ── Seed from parent generation ──────────────────────────────────────
-        if parent_gen is not None:
-            for srv in parent_gen.server_index.servers:
-                srv_entry = server_index.servers.add()
-                srv_entry.CopyFrom(srv)
-            for res in parent_gen.resources.entries:
-                res_entry = gen_resources.entries.add()
-                res_entry.CopyFrom(res)
-
-        # ── Overlay staged snapshots ─────────────────────────────────────────
         server_ids: list[str] = []
         for hash_val in session.staged.resources:
-            meta, _index = snap_store.load_resource_snapshot(hash_val)
-
-            srv_existing = None
-            for srv in server_index.servers:
-                if srv.server_id == meta.server_id:
-                    srv_existing = srv
-                    break
-
-            if srv_existing is not None:
-                srv_existing.game_build = meta.game_build
-                srv_existing.game_version = meta.game_version
-                srv_existing.ClearField("region")
-                srv_existing.ClearField("sync")
-                srv_existing.ClearField("branch")
-                if meta.game_region:
-                    srv_existing.region = meta.game_region
-                if meta.game_sync:
-                    srv_existing.sync = meta.game_sync
-                if meta.game_branch:
-                    srv_existing.branch = meta.game_branch
-                srv_existing.name.clear()
-                if meta.name:
-                    for locale, display_name in meta.name.items():
-                        srv_existing.name[locale] = display_name
-                else:
-                    srv_existing.name["en"] = meta.server_id
-            else:
-                srv_entry = server_index.servers.add()
-                srv_entry.server_id = meta.server_id
-                if meta.name:
-                    for locale, display_name in meta.name.items():
-                        srv_entry.name[locale] = display_name
-                else:
-                    srv_entry.name["en"] = meta.server_id
-                srv_entry.game_build = meta.game_build
-                srv_entry.game_version = meta.game_version
-                if meta.game_region:
-                    srv_entry.region = meta.game_region
-                if meta.game_sync:
-                    srv_entry.sync = meta.game_sync
-                if meta.game_branch:
-                    srv_entry.branch = meta.game_branch
-
-            res_existing = None
-            for res in gen_resources.entries:
-                if res.server_id == meta.server_id:
-                    res_existing = res
-                    break
-
-            if res_existing is not None:
-                res_existing.snapshot_hash = hash_val
-            else:
-                gentry = gen_resources.entries.add()
-                gentry.server_id = meta.server_id
-                gentry.snapshot_hash = hash_val
-
+            meta, _ = snap_store.load_resource_snapshot(hash_val)
             server_ids.append(meta.server_id)
 
-        release_ptr = GenerationPointer()
-        release_ptr.schema_version = 1
-        if parent_gen is not None:
-            release_ptr.snapshot_hash = parent_gen.release_pointer.snapshot_hash
-        else:
-            release_ptr.snapshot_hash = ""
         release_hash: str | None = None
         if session.staged.releases:
             release_hash = session.staged.releases[-1]
-            release_ptr.snapshot_hash = release_hash
 
         ts = utc_timestamp()
         meta = GenerationMetadata(

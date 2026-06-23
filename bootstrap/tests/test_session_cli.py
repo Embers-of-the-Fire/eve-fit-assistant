@@ -199,84 +199,21 @@ def _commit_from_session(
     """Build and create a generation from the current session's staged data.
 
     Returns the generation hash. Does NOT push the head or mark committed.
+    Delegates accumulation to the production _build_generation_data helper.
     """
+    from bootstrap.cli.remote.session import _build_generation_data
+
     session = store.load()
     snap_store = mgr.snap_store
 
-    server_index = ServerIndex()
-    server_index.schema_version = 1
-    gen_resources = GenerationResources()
-    gen_resources.schema_version = 1
+    parent_gen = mgr.gen_store.load(parent) if parent else None
 
-    parent_gen = None
-    if parent:
-        parent_gen = mgr.gen_store.load(parent)
-        for srv in parent_gen.server_index.servers:
-            entry = server_index.servers.add()
-            entry.CopyFrom(srv)
-        for res in parent_gen.resources.entries:
-            gentry = gen_resources.entries.add()
-            gentry.CopyFrom(res)
-
-    for hash_val in session.staged.resources:
-        meta, _ = snap_store.load_resource_snapshot(hash_val)
-
-        srv_existing = next(
-            (s for s in server_index.servers if s.server_id == meta.server_id), None
-        )
-        if srv_existing is not None:
-            srv_existing.game_build = meta.game_build
-            srv_existing.game_version = meta.game_version
-            srv_existing.ClearField("region")
-            srv_existing.ClearField("sync")
-            srv_existing.ClearField("branch")
-            if meta.game_region:
-                srv_existing.region = meta.game_region
-            if meta.game_sync:
-                srv_existing.sync = meta.game_sync
-            if meta.game_branch:
-                srv_existing.branch = meta.game_branch
-            srv_existing.name.clear()
-            if meta.name:
-                for locale, display_name in meta.name.items():
-                    srv_existing.name[locale] = display_name
-            else:
-                srv_existing.name["en"] = meta.server_id
-        else:
-            srv_entry = server_index.servers.add()
-            srv_entry.server_id = meta.server_id
-            if meta.name:
-                for locale, display_name in meta.name.items():
-                    srv_entry.name[locale] = display_name
-            else:
-                srv_entry.name["en"] = meta.server_id
-            srv_entry.game_build = meta.game_build
-            srv_entry.game_version = meta.game_version
-            if meta.game_region:
-                srv_entry.region = meta.game_region
-            if meta.game_sync:
-                srv_entry.sync = meta.game_sync
-            if meta.game_branch:
-                srv_entry.branch = meta.game_branch
-
-        res_existing = next(
-            (r for r in gen_resources.entries if r.server_id == meta.server_id), None
-        )
-        if res_existing is not None:
-            res_existing.snapshot_hash = hash_val
-        else:
-            gentry = gen_resources.entries.add()
-            gentry.server_id = meta.server_id
-            gentry.snapshot_hash = hash_val
-
-    release_ptr = GenerationPointer()
-    release_ptr.schema_version = 1
-    if parent_gen is not None:
-        release_ptr.snapshot_hash = parent_gen.release_pointer.snapshot_hash
-    else:
-        release_ptr.snapshot_hash = ""
-    if session.staged.releases:
-        release_ptr.snapshot_hash = session.staged.releases[-1]
+    server_index, gen_resources, release_ptr = _build_generation_data(
+        snap_store=snap_store,
+        staged_resources=session.staged.resources,
+        staged_releases=session.staged.releases,
+        parent_gen=parent_gen,
+    )
 
     gen_meta = GenerationMetadata(
         channel=session.channel,
@@ -501,75 +438,10 @@ class TestSessionRemove:
 
 
 def _compute_diff_style(tmp_root: Path, store: SessionStore) -> dict:
-    """Accumulation-aware diff — mirrors production _compute_diff."""
-    from bootstrap.remote.generation import GenerationStore
+    """Accumulation-aware diff — delegates to production _compute_diff."""
+    from bootstrap.cli.remote.session import _compute_diff
 
-    head_store = ChannelHeadStore(tmp_root)
-    gen_store = GenerationStore(tmp_root)
-    snap_store = SnapshotStore(tmp_root)
-    session = store.load()
-
-    head_hash: str | None = None
-    head_resources: dict[str, str] = {}
-    head_release: str | None = None
-
-    try:
-        head = head_store._safe_get_head(session.channel)
-        if head and head.generation_hash:
-            head_hash = head.generation_hash
-            generation = gen_store.load(head.generation_hash)
-            for entry in generation.resources.entries:
-                head_resources[entry.server_id] = entry.snapshot_hash
-            if generation.release_pointer.snapshot_hash:
-                head_release = generation.release_pointer.snapshot_hash
-    except Exception:
-        pass
-
-    staged_resources: dict[str, str] = {}
-    for h in session.staged.resources:
-        try:
-            meta, _ = snap_store.load_resource_snapshot(h)
-            staged_resources[meta.server_id] = h
-        except Exception:
-            pass
-
-    added: list[str] = []
-    updated: list[str] = []
-    unchanged: list[str] = []
-    inherited: list[str] = []
-
-    staged_ids = set(staged_resources.keys())
-    head_ids = set(head_resources.keys())
-
-    for sid in staged_ids - head_ids:
-        added.append(staged_resources[sid])
-    for sid in staged_ids & head_ids:
-        if staged_resources[sid] != head_resources[sid]:
-            updated.append(staged_resources[sid])
-        else:
-            unchanged.append(staged_resources[sid])
-    for sid in head_ids - staged_ids:
-        inherited.append(head_resources[sid])
-
-    head_releases = {head_release} if head_release else set()
-    staged_releases = set(session.staged.releases)
-
-    return {
-        "channel": session.channel,
-        "head": head_hash,
-        "resources": {
-            "added": sorted(added),
-            "updated": sorted(updated),
-            "unchanged": sorted(unchanged),
-            "inherited": sorted(inherited),
-        },
-        "releases": {
-            "added": sorted(staged_releases - head_releases),
-            "updated": [],
-            "unchanged": sorted(staged_releases & head_releases),
-            "inherited": sorted(head_releases - staged_releases),
-        },
-    }
+    return _compute_diff(tmp_root, store.load())
 
 
 class TestSessionDiff:
