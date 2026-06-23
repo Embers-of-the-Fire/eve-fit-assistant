@@ -13,6 +13,7 @@ from colorama import Style
 from bootstrap.cli import runtime
 from bootstrap.cli.remote.helpers import validate_remote_channel
 from bootstrap.color import styled
+from bootstrap.log import warning
 from bootstrap.remote import SessionManager
 from bootstrap.remote import SessionManagerCommittedError
 from bootstrap.remote import SessionManagerInvalidError
@@ -298,7 +299,7 @@ def _compute_diff(root: Path, session: Session) -> dict:
             meta, _ = snap_store.load_resource_snapshot(h)
             staged_resources[meta.server_id] = h
         except Exception:
-            pass
+            warning("Failed to load staged resource snapshot %s; omitted from diff", h)
 
     added: list[str] = []
     updated: list[str] = []
@@ -781,7 +782,7 @@ def register_remote_session(remote: click.Group) -> None:
         }
         for snap_type in ("resources", "releases"):
             data = diff[snap_type]
-            display_type = snap_type.rstrip("s")
+            display_type = snap_type.removesuffix("s")
 
             if not any(data.values()):
                 continue
