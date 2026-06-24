@@ -91,6 +91,9 @@ class GenerationStore:
         if not target_dir.exists():
             temp_dir.rename(target_dir)
         else:
+            history_path = temp_dir / "history.pb2"
+            if history_path.is_file():
+                shutil.copy2(history_path, target_dir / "history.pb2")
             shutil.rmtree(temp_dir, ignore_errors=True)
 
         return gen_hash
