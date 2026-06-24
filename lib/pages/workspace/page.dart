@@ -43,7 +43,7 @@ class WorkspacePage extends ConsumerWidget {
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabReportTitle,
         icon: Icons.feedback_outlined,
-        onTap: () => context.router.push(const ReportFeedbackRoute()),
+        onTap: () => context.router.push(ReportFeedbackRoute()),
       ),
       _WorkspaceShortcutItem(
         title: context.l10n.settingTileAppSettingsTitle,

@@ -47,7 +47,7 @@ class SettingPage extends ConsumerWidget {
         ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),
           title: context.l10n.workspaceTabReportTitle,
-          onTap: () => unawaited(context.router.push(const ReportFeedbackRoute())),
+          onTap: () => unawaited(context.router.push(ReportFeedbackRoute())),
         ),
         ConfigListTile.custom(_buildVersionTile(context, ref)),
       ],

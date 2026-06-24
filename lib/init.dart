@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -27,6 +28,7 @@ Future<void> initSingletons() async {
   await PathProvider.init();
   AppSettingService.init();
   AnnouncementStateStore.init();
+  FeedbackStateStore.init();
   await AnnouncementBodyCache.init();
   EtagCache.init();
   GlobalLogger.init(

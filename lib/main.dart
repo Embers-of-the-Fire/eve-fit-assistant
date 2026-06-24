@@ -3,6 +3,7 @@ import "dart:async";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/announcements/announcements.dart";
+import "package:eve_fit_assistant/features/feedback/feedback.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart";
 import "package:eve_fit_assistant/features/welcome/welcome_gate.dart";
 import "package:eve_fit_assistant/init.dart";
@@ -93,9 +94,12 @@ class MyApp extends ConsumerWidget {
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
               child: AvailableUpdateGate(
-                child: StartupAnnouncementGate(
+                child: FeedbackGate(
                   appRouter: appRouter,
-                  child: initBuilder(context, child),
+                  child: StartupAnnouncementGate(
+                    appRouter: appRouter,
+                    child: initBuilder(context, child),
+                  ),
                 ),
               ),
             );
