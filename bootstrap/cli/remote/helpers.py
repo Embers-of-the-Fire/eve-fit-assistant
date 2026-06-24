@@ -15,7 +15,6 @@ import bootstrap.config
 
 from bootstrap.cli import runtime
 from bootstrap.color import styled
-from bootstrap.constant import PROJECT_ROOT
 from bootstrap.log import warning
 from bootstrap.remote.channel import Channel
 from bootstrap.utils import get_command
@@ -325,18 +324,3 @@ def resolve_announce_remote_target(
         )
     else:
         raise click.ClickException(f"Invalid target: {target!r} (expected minio or s3)")
-
-
-def materialize_remote_mock(origin_dir: Path, clean: bool) -> None:
-    source_dir = PROJECT_ROOT / "docs" / "examples" / "remote" / "mock-origin"
-    if not source_dir.exists():
-        raise click.ClickException(f"Missing remote mock fixture directory: {source_dir}")
-
-    if clean and origin_dir.exists():
-        shutil.rmtree(origin_dir)
-
-    origin_dir.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source_dir, origin_dir, dirs_exist_ok=True)
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Materialized remote mock origin: ") + str(origin_dir)
-    )
