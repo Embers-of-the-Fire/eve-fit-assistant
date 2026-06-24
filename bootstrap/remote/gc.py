@@ -119,10 +119,7 @@ class GarbageCollector:
         history_path = generation_dir(self.root, head_hash) / "history.pb2"
         if not history_path.is_file():
             return None
-        try:
-            return read_pb2(history_path, ServerHistory)
-        except Exception:
-            return None
+        return read_pb2(history_path, ServerHistory)
 
     def _head_hashes(self) -> set[str]:
         heads: set[str] = set()

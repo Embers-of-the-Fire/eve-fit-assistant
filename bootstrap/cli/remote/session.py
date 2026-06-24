@@ -181,6 +181,10 @@ def _add_snapshot_by_hash(
                 staged_server_ids=staged_ids,
             )
     else:
+        if replace_hash is not None:
+            raise click.ClickException(
+                "--replace is only supported for resource snapshots, not release snapshots."
+            )
         store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
 
 
@@ -394,10 +398,10 @@ def _compute_diff(root: Path, session: Session) -> dict:
         try:
             meta, _ = snap_store.load_resource_snapshot(h)
             if meta.server_id in staged_resources:
-                duplicate_servers.setdefault(meta.server_id, []).append(
-                    staged_resources[meta.server_id]
-                )
-                duplicate_servers[meta.server_id].append(h)
+                dupes = duplicate_servers.setdefault(meta.server_id, [])
+                if not dupes:
+                    dupes.append(staged_resources[meta.server_id])
+                dupes.append(h)
             else:
                 staged_resources[meta.server_id] = h
         except Exception:
@@ -526,6 +530,7 @@ def _check_duplicate_server_ids(root: Path, session: Session, issues: list) -> N
         try:
             meta, _ = snap_store.load_resource_snapshot(h)
         except Exception:
+            warning("Failed to load staged resource snapshot %s; omitted from duplicate check", h)
             continue
         if meta.server_id in seen:
             issues.append(

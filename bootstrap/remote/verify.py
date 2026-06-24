@@ -346,6 +346,17 @@ class Verifier:
                 for res_entry in resources.entries:
                     resources_map[res_entry.server_id] = res_entry.snapshot_hash
 
+                history_server_ids = {hist_entry.server_id for hist_entry in history.servers}
+                for server_id in sorted(set(resources_map) - history_server_ids):
+                    issues.append(
+                        Issue(
+                            entity=gen_hash[:12] + "...",
+                            entity_type="history",
+                            severity="warning",
+                            message=f"Server {server_id!r}: resources entry missing from history",
+                        )
+                    )
+
                 for hist_entry in history.servers:
                     if not hist_entry.snapshots:
                         continue
@@ -390,7 +401,15 @@ class Verifier:
         for channel_name in registry.channels:
             try:
                 head = self.head_store.get_head(channel_name)
-            except Exception:
+            except Exception as exc:
+                issues.append(
+                    Issue(
+                        entity=channel_name,
+                        entity_type="channel",
+                        severity="error",
+                        message=f"Failed to load head: {exc}",
+                    )
+                )
                 continue
 
             if not head.generation_hash:
