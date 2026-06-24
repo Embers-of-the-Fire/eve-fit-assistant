@@ -659,10 +659,18 @@ class TestGenerationStore:
         assert len(history.servers[0].snapshots) == 1
         assert history.servers[0].snapshots[0].generation_hash == child
 
-    def test_history_deterministic(self, gen_store: GenerationStore) -> None:
-        gen1 = self._make_two_server_gen(gen_store)
-        gen2 = self._make_two_server_gen(gen_store)
-        assert gen1 == gen2
+    def test_history_deterministic(self, gen_store: GenerationStore, tmp_root: Path) -> None:
+        root2 = Path(tempfile.mkdtemp(prefix="efa-test-"))
+        try:
+            gen_store2 = GenerationStore(root2)
+            gen1 = self._make_two_server_gen(gen_store)
+            gen2 = self._make_two_server_gen(gen_store2)
+            assert gen1 == gen2
+            h1 = self._load_history(gen_store, gen1)
+            h2 = self._load_history(gen_store2, gen2)
+            assert h1.SerializeToString() == h2.SerializeToString()
+        finally:
+            shutil.rmtree(root2, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------

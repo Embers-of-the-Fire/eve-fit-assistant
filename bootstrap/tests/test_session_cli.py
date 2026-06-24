@@ -1432,7 +1432,7 @@ class TestSessionOneSnapshotPerServer:
         """add --hash of a second snapshot for the same server_id raises."""
         _init_session(store)
         res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
-        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility", game_build="22222")
         store.add_snapshot("resource", res_a)
 
         from bootstrap.cli.remote.session import _add_snapshot_by_hash
@@ -1481,7 +1481,7 @@ class TestSessionOneSnapshotPerServer:
         """diff includes duplicate_servers when staged hashes collide on server_id."""
         _init_session(store)
         res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
-        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility", game_build="22222")
         store.add_snapshot("resource", res_a)
 
         from bootstrap.cli.remote.session import _compute_diff
@@ -1502,7 +1502,7 @@ class TestSessionOneSnapshotPerServer:
         """_check_duplicate_server_ids appends error Issue for duplicated server_id."""
         _init_session(store)
         res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
-        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility", game_build="22222")
         store.add_snapshot("resource", res_a)
 
         from bootstrap.cli.remote.session import _check_duplicate_server_ids
