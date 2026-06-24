@@ -1,0 +1,23 @@
+syntax = "proto2";
+package efa.v2;
+
+/// Per-server snapshot timeline as of one generation.
+/// Built cumulatively from the parent generation's history plus this
+/// generation's resource changes. Snapshots are ordered newest -> oldest.
+message ServerHistory {
+  required int32 schema_version = 1;
+  repeated ServerEntry servers = 2;
+
+  message ServerEntry {
+    required string server_id = 1;
+    repeated Snapshot snapshots = 2;   // newest first
+  }
+
+  message Snapshot {
+    required string snapshot_hash = 1;
+    required string generation_hash = 2;
+    required string timestamp = 3;       // ISO 8601 (generation timestamp)
+    optional string game_build = 4;
+    optional string game_version = 5;
+  }
+}

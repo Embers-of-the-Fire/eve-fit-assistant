@@ -113,10 +113,24 @@ def _resolve_snapshot_hash_from_prefix(root: Path, snap_type: str, prefix: str) 
     )
 
 
-def _add_snapshot_by_hash(store: SessionStore, root: Path, snap_type: str, hash_value: str) -> None:
-    """Verify snapshot existence + metadata type, then stage."""
+def _add_snapshot_by_hash(
+    store: SessionStore,
+    root: Path,
+    snap_type: str,
+    hash_value: str,
+    *,
+    replace_hash: str | None = None,
+) -> None:
+    """Verify snapshot existence + metadata type, then stage.
+
+    When *snap_type* is ``"resource"``:
+      - If *replace_hash* is given, validates the replace target exists, its
+        server_id matches the new snapshot, and calls ``replace_snapshot``.
+      - Otherwise rejects the add if the server_id is already staged.
+    """
     from bootstrap.remote.paths import release_snapshot_dir
     from bootstrap.remote.paths import resource_snapshot_dir
+    from bootstrap.remote.snapshot import SnapshotStore
 
     dir_for_type = {
         "resource": resource_snapshot_dir,
@@ -126,7 +140,48 @@ def _add_snapshot_by_hash(store: SessionStore, root: Path, snap_type: str, hash_
     if not snap_dir.is_dir():
         raise click.ClickException(f"Snapshot {hash_value[:16]}... not found at {snap_dir}")
     _check_snapshot_metadata(snap_type, snap_dir)
-    store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
+
+    if snap_type == "resource":
+        snap_store = SnapshotStore(root)
+        meta, _ = snap_store.load_resource_snapshot(hash_value)
+        candidate_server_id = meta.server_id
+
+        session = store.load()
+        staged_ids = _staged_server_ids(root, session)
+
+        if replace_hash is not None:
+            if replace_hash not in session.staged.resources:
+                raise click.ClickException(
+                    f"Replace target {replace_hash[:16]}... is not currently staged."
+                )
+            replace_meta, _ = snap_store.load_resource_snapshot(replace_hash)
+            if replace_meta.server_id != candidate_server_id:
+                raise click.ClickException(
+                    f"Server mismatch: --replace targets server "
+                    f"'{replace_meta.server_id}' but new snapshot is for "
+                    f"server '{candidate_server_id}'."
+                )
+            store.replace_snapshot(replace_hash, hash_value)
+        else:
+            if candidate_server_id in staged_ids:
+                conflict = staged_ids[candidate_server_id]
+                raise click.ClickException(
+                    f"Server '{candidate_server_id}' already has a staged snapshot "
+                    f"({conflict[:16]}...) in this session. "
+                    "A session may stage at most one snapshot per server. "
+                    "Commit and release this session, then run "
+                    "`./x remote session init <channel>` to start a new "
+                    "session for the additional "
+                    f"'{candidate_server_id}' snapshot."
+                )
+            store.add_snapshot(
+                "resource",
+                hash_value,
+                server_id=candidate_server_id,
+                staged_server_ids=staged_ids,
+            )
+    else:
+        store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
 
 
 def _add_snapshot_by_file(
@@ -238,7 +293,47 @@ def _add_snapshot_by_file(
     else:
         raise click.ClickException(f"Unknown snapshot type: {snap_type}")
 
-    store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
+    if snap_type == "resource":
+        session = store.load()
+        staged_ids = _staged_server_ids(root, session)
+        candidate_server_id = metadata.server_id
+        if candidate_server_id in staged_ids:
+            conflict = staged_ids[candidate_server_id]
+            raise click.ClickException(
+                f"Server '{candidate_server_id}' already has a staged snapshot "
+                f"({conflict[:16]}...) in this session. "
+                "A session may stage at most one snapshot per server. "
+                "Commit and release this session, then run "
+                "`./x remote session init <channel>` to start a new "
+                "session for the additional "
+                f"'{candidate_server_id}' snapshot."
+            )
+        store.add_snapshot(
+            snap_type,
+            hash_value,
+            server_id=candidate_server_id,
+            staged_server_ids=staged_ids,
+        )
+    else:
+        store.add_snapshot(snap_type, hash_value)  # type: ignore[arg-type]
+
+
+def _staged_server_ids(root: Path, session: Session) -> dict[str, str]:
+    """Build a map of server_id → hash for all staged resource snapshots.
+
+    Skips unloadable hashes (same tolerance as _compute_diff).
+    """
+    from bootstrap.remote.snapshot import SnapshotStore
+
+    snap_store = SnapshotStore(root)
+    result: dict[str, str] = {}
+    for h in session.staged.resources:
+        try:
+            meta, _ = snap_store.load_resource_snapshot(h)
+            result[meta.server_id] = h
+        except Exception:
+            warning("Failed to load staged resource snapshot %s; omitted from server-id map", h)
+    return result
 
 
 def _get_snapshot_summary(root: Path, snap_type: str, hash_value: str) -> str:
@@ -294,10 +389,17 @@ def _compute_diff(root: Path, session: Session) -> dict:
         pass
 
     staged_resources: dict[str, str] = {}
+    duplicate_servers: dict[str, list[str]] = {}
     for h in session.staged.resources:
         try:
             meta, _ = snap_store.load_resource_snapshot(h)
-            staged_resources[meta.server_id] = h
+            if meta.server_id in staged_resources:
+                duplicate_servers.setdefault(meta.server_id, []).append(
+                    staged_resources[meta.server_id]
+                )
+                duplicate_servers[meta.server_id].append(h)
+            else:
+                staged_resources[meta.server_id] = h
         except Exception:
             warning("Failed to load staged resource snapshot %s; omitted from diff", h)
 
@@ -322,7 +424,7 @@ def _compute_diff(root: Path, session: Session) -> dict:
     head_releases = {head_release} if head_release else set()
     staged_releases = set(session.staged.releases)
 
-    return {
+    result: dict = {
         "channel": session.channel,
         "head": head_hash,
         "resources": {
@@ -338,6 +440,11 @@ def _compute_diff(root: Path, session: Session) -> dict:
             "inherited": sorted(head_releases - staged_releases),
         },
     }
+
+    if duplicate_servers:
+        result["duplicate_servers"] = duplicate_servers
+
+    return result
 
 
 def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> None:
@@ -404,9 +511,42 @@ def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> N
             )
 
 
+def _check_duplicate_server_ids(root: Path, session: Session, issues: list) -> None:
+    """Check for multiple staged resource snapshots with the same server_id.
+
+    Appends ``Issue`` (severity ``"error"``) for each duplicated server.
+    This is a hard gate — even ``--force`` must not bypass it.
+    """
+    from bootstrap.remote.snapshot import SnapshotStore
+    from bootstrap.remote.verify import Issue
+
+    snap_store = SnapshotStore(root)
+    seen: dict[str, str] = {}
+    for h in session.staged.resources:
+        try:
+            meta, _ = snap_store.load_resource_snapshot(h)
+        except Exception:
+            continue
+        if meta.server_id in seen:
+            issues.append(
+                Issue(
+                    entity=f"{meta.server_id}",
+                    entity_type="server_id",
+                    severity="error",
+                    message=(
+                        f"Duplicate server '{meta.server_id}' in staged resources: "
+                        f"{seen[meta.server_id][:12]}... and {h[:12]}... "
+                        "A session may stage at most one snapshot per server."
+                    ),
+                )
+            )
+        else:
+            seen[meta.server_id] = h
+
+
 def _verify_staged(root: Path, session: Session) -> list:
     """Validate staged snapshots across all four verification phases."""
-    from bootstrap.remote.hash import snapshot_hash as _snapshot_hash
+    from bootstrap.remote.hash import verify_snapshot_hash as _verify_snapshot_hash
     from bootstrap.remote.paths import release_snapshot_dir
     from bootstrap.remote.paths import resource_snapshot_dir
     from bootstrap.remote.verify import Issue
@@ -472,16 +612,14 @@ def _verify_staged(root: Path, session: Session) -> list:
                     "metadata.json": meta_path.read_bytes(),
                     proto_name: proto_path.read_bytes(),
                 }
-                computed = _snapshot_hash(snap_type, files)
-                if computed != h:
+                # Dual-read: accept either v4 (binds the .pb2 index) or legacy v3.
+                if not _verify_snapshot_hash(snap_type, files, h):
                     issues.append(
                         Issue(
                             entity=h[:12] + "...",
                             entity_type=f"{snap_type}_snapshot",
                             severity="error",
-                            message=(
-                                f"Hash mismatch: expected {h[:12]}..., computed {computed[:12]}..."
-                            ),
+                            message=f"Hash mismatch: {h[:12]}... does not verify (v4/v3)",
                         )
                     )
             except Exception as exc:
@@ -499,6 +637,8 @@ def _verify_staged(root: Path, session: Session) -> list:
                 snap_dir = dir_for_type[snap_type](root, h)
                 if snap_dir.is_dir() and (snap_dir / proto_name).is_file():
                     _check_staged_resource_blobs(root, h, issues)
+
+            _check_duplicate_server_ids(root, session, issues)
 
     try:
         from bootstrap.remote.head import ChannelHeadStore
@@ -766,6 +906,12 @@ def register_remote_session(remote: click.Group) -> None:
         help="File to compute snapshot hash from (checkout catalog, registry).",
     )
     @click.option("--force", is_flag=True, default=False, help="Add to a committed session.")
+    @click.option(
+        "--replace",
+        "replace_hash",
+        default=None,
+        help="Replace an existing staged snapshot hash (only for resources).",
+    )
     @_SCHEMA_ROOT_OPTION
     def remote_session_add(
         resource_flag: bool,
@@ -773,6 +919,7 @@ def register_remote_session(remote: click.Group) -> None:
         source_hash: str | None,
         source_file: Path | None,
         force: bool,
+        replace_hash: str | None,
         schema_root: Path | None,
     ):
         """Stage a snapshot for the next generation commit."""
@@ -787,12 +934,14 @@ def register_remote_session(remote: click.Group) -> None:
 
         if source_hash is not None:
             full_hash = _resolve_snapshot_hash_from_prefix(root, snap_type, source_hash)
-            _add_snapshot_by_hash(store, root, snap_type, full_hash)
+            _add_snapshot_by_hash(store, root, snap_type, full_hash, replace_hash=replace_hash)
             click.echo(
                 styled([Style.BRIGHT, Fore.GREEN], f"Staged {snap_type} snapshot ")
                 + f"{full_hash[:16]}..."
             )
         elif source_file is not None:
+            if replace_hash is not None:
+                raise click.ClickException("--replace is not supported with --file.")
             _add_snapshot_by_file(store, root, snap_type, source_file)
             click.echo(
                 styled([Style.BRIGHT, Fore.GREEN], f"Staged {snap_type} snapshot ")
@@ -994,6 +1143,18 @@ def register_remote_session(remote: click.Group) -> None:
                 raise click.ClickException(
                     "Verification failed. Use --force to skip or fix issues first."
                 )
+
+        dupe_issues: list = []
+        _check_duplicate_server_ids(root, session, dupe_issues)
+        if dupe_issues:
+            click.echo()
+            _print_issues(dupe_issues)
+            raise click.ClickException(
+                "Duplicate server IDs in staged resources. "
+                "This error cannot be bypassed with --force. "
+                "Use './x remote session remove <hash>' to correct the duplicates, "
+                "then run commit again."
+            )
 
         mgr = SessionManager(root)
         snap_store = mgr.snap_store

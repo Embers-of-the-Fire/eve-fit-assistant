@@ -27,8 +27,10 @@ from bootstrap.remote.models import GenerationResources
 from bootstrap.remote.models import ReachabilitySet
 from bootstrap.remote.models import ReleaseSnapshotMetadata
 from bootstrap.remote.models import ResourceSnapshotMetadata
+from bootstrap.remote.models import ServerHistory
 from bootstrap.remote.models import ServerIndex
 from bootstrap.remote.models import make_resource_index
+from bootstrap.remote.models import read_pb2
 from bootstrap.remote.paths import blob_path
 from bootstrap.remote.paths import generation_dir
 from bootstrap.remote.paths import resource_snapshot_dir
@@ -450,6 +452,217 @@ class TestGenerationStore:
         assert (gen_dir / "server.pb2").is_file()
         assert (gen_dir / "resources.pb2").is_file()
         assert (gen_dir / "releases.pb2").is_file()
+        assert (gen_dir / "history.pb2").is_file()
+
+    def _load_history(self, gen_store: GenerationStore, gen_hash: str) -> ServerHistory:
+        gen_dir = generation_dir(gen_store.root, gen_hash)
+        return read_pb2(gen_dir / "history.pb2", ServerHistory)
+
+    def _make_two_server_gen(self, gen_store: GenerationStore, **kwargs) -> str:
+        meta = GenerationMetadata(
+            channel="testing",
+            timestamp="2026-06-14T12:00:00Z",
+            **kwargs,
+        )
+        server_index = ServerIndex()
+        server_index.schema_version = 1
+        s1 = server_index.servers.add()
+        s1.server_id = "tranquility"
+        s1.game_build = "1.0.0"
+        s1.game_version = "v1.0.0"
+        s2 = server_index.servers.add()
+        s2.server_id = "serenity"
+        s2.game_build = "2.0.0"
+        s2.game_version = "v2.0.0"
+
+        resources = GenerationResources()
+        resources.schema_version = 1
+        r1 = resources.entries.add()
+        r1.server_id = "tranquility"
+        r1.snapshot_hash = "aa" * 32
+        r2 = resources.entries.add()
+        r2.server_id = "serenity"
+        r2.snapshot_hash = "bb" * 32
+
+        release_ptr = GenerationPointer()
+        release_ptr.schema_version = 1
+        release_ptr.snapshot_hash = "cc" * 32
+
+        return gen_store.create(
+            metadata=meta,
+            server_index_msg=server_index,
+            resources_msg=resources,
+            release_pointer=release_ptr,
+        )
+
+    def test_history_first_gen_has_all_servers(self, gen_store: GenerationStore) -> None:
+        gen_hash = self._make_two_server_gen(gen_store)
+        history = self._load_history(gen_store, gen_hash)
+        assert len(history.servers) == 2
+        sid_map = {e.server_id: e for e in history.servers}
+        assert "tranquility" in sid_map
+        assert "serenity" in sid_map
+
+        for sid in ("tranquility", "serenity"):
+            snaps = sid_map[sid].snapshots
+            assert len(snaps) == 1
+            assert snaps[0].snapshot_hash == ("aa" * 32 if sid == "tranquility" else "bb" * 32)
+            assert snaps[0].generation_hash == gen_hash
+            assert snaps[0].timestamp == "2026-06-14T12:00:00Z"
+
+    def test_history_second_gen_prepends_changed_server(self, gen_store: GenerationStore) -> None:
+        parent = self._make_two_server_gen(gen_store)
+
+        meta = GenerationMetadata(
+            channel="testing",
+            timestamp="2026-06-15T12:00:00Z",
+            parent=parent,
+        )
+        server_index = ServerIndex()
+        server_index.schema_version = 1
+        s1 = server_index.servers.add()
+        s1.server_id = "tranquility"
+        s1.game_build = "1.0.0"
+        s1.game_version = "v1.0.0"
+        s2 = server_index.servers.add()
+        s2.server_id = "serenity"
+        s2.game_build = "2.0.0"
+        s2.game_version = "v2.0.0"
+
+        resources = GenerationResources()
+        resources.schema_version = 1
+        r1 = resources.entries.add()
+        r1.server_id = "tranquility"
+        r1.snapshot_hash = "dd" * 32  # changed
+        r2 = resources.entries.add()
+        r2.server_id = "serenity"
+        r2.snapshot_hash = "bb" * 32  # unchanged
+
+        release_ptr = GenerationPointer()
+        release_ptr.schema_version = 1
+        release_ptr.snapshot_hash = "ee" * 32
+
+        child = gen_store.create(
+            metadata=meta,
+            server_index_msg=server_index,
+            resources_msg=resources,
+            release_pointer=release_ptr,
+        )
+        history = self._load_history(gen_store, child)
+        sid_map = {e.server_id: e for e in history.servers}
+        assert len(sid_map["tranquility"].snapshots) == 2
+
+        # tranquility: newest first
+        snaps_t = sid_map["tranquility"].snapshots
+        assert snaps_t[0].snapshot_hash == "dd" * 32
+        assert snaps_t[0].generation_hash == child
+        assert snaps_t[1].snapshot_hash == "aa" * 32
+        assert snaps_t[1].generation_hash == parent
+
+        # serenity: unchanged, single entry carried forward
+        snaps_s = sid_map["serenity"].snapshots
+        assert len(snaps_s) == 1
+        assert snaps_s[0].snapshot_hash == "bb" * 32
+        assert snaps_s[0].generation_hash == parent
+
+    def test_history_noop_gen_no_prepends(self, gen_store: GenerationStore) -> None:
+        parent = self._make_two_server_gen(gen_store)
+
+        meta = GenerationMetadata(
+            channel="testing",
+            timestamp="2026-06-16T12:00:00Z",
+            parent=parent,
+        )
+        server_index = ServerIndex()
+        server_index.schema_version = 1
+        s1 = server_index.servers.add()
+        s1.server_id = "tranquility"
+        s1.game_build = "1.0.0"
+        s1.game_version = "v1.0.0"
+        s2 = server_index.servers.add()
+        s2.server_id = "serenity"
+        s2.game_build = "2.0.0"
+        s2.game_version = "v2.0.0"
+
+        resources = GenerationResources()
+        resources.schema_version = 1
+        r1 = resources.entries.add()
+        r1.server_id = "tranquility"
+        r1.snapshot_hash = "aa" * 32  # same as parent
+        r2 = resources.entries.add()
+        r2.server_id = "serenity"
+        r2.snapshot_hash = "bb" * 32  # same as parent
+
+        release_ptr = GenerationPointer()
+        release_ptr.schema_version = 1
+        release_ptr.snapshot_hash = "cc" * 32
+
+        child = gen_store.create(
+            metadata=meta,
+            server_index_msg=server_index,
+            resources_msg=resources,
+            release_pointer=release_ptr,
+        )
+        history = self._load_history(gen_store, child)
+        for entry in history.servers:
+            assert len(entry.snapshots) == 1
+
+    def test_history_game_build_version_match(self, gen_store: GenerationStore) -> None:
+        gen_hash = self._make_two_server_gen(gen_store)
+        history = self._load_history(gen_store, gen_hash)
+        sid_map = {e.server_id: e for e in history.servers}
+        t_snap = sid_map["tranquility"].snapshots[0]
+        assert t_snap.game_build == "1.0.0"
+        assert t_snap.game_version == "v1.0.0"
+        s_snap = sid_map["serenity"].snapshots[0]
+        assert s_snap.game_build == "2.0.0"
+        assert s_snap.game_version == "v2.0.0"
+
+    def test_history_parent_missing_pb2_still_succeeds(
+        self, gen_store: GenerationStore, tmp_root: Path
+    ) -> None:
+        parent = self._make_two_server_gen(gen_store)
+        gen_dir = generation_dir(tmp_root, parent)
+        (gen_dir / "history.pb2").unlink()
+
+        meta = GenerationMetadata(
+            channel="testing",
+            timestamp="2026-06-17T12:00:00Z",
+            parent=parent,
+        )
+        server_index = ServerIndex()
+        server_index.schema_version = 1
+        s1 = server_index.servers.add()
+        s1.server_id = "tranquility"
+        s1.game_build = "1.0.0"
+        s1.game_version = "v1.0.0"
+
+        resources = GenerationResources()
+        resources.schema_version = 1
+        r1 = resources.entries.add()
+        r1.server_id = "tranquility"
+        r1.snapshot_hash = "dd" * 32
+
+        release_ptr = GenerationPointer()
+        release_ptr.schema_version = 1
+        release_ptr.snapshot_hash = "ee" * 32
+
+        child = gen_store.create(
+            metadata=meta,
+            server_index_msg=server_index,
+            resources_msg=resources,
+            release_pointer=release_ptr,
+        )
+        history = self._load_history(gen_store, child)
+        assert len(history.servers) == 1
+        assert history.servers[0].server_id == "tranquility"
+        assert len(history.servers[0].snapshots) == 1
+        assert history.servers[0].snapshots[0].generation_hash == child
+
+    def test_history_deterministic(self, gen_store: GenerationStore) -> None:
+        gen1 = self._make_two_server_gen(gen_store)
+        gen2 = self._make_two_server_gen(gen_store)
+        assert gen1 == gen2
 
 
 # ---------------------------------------------------------------------------

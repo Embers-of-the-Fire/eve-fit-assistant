@@ -46,4 +46,34 @@ class RepoHash {
   ///   )
   static String hashGeneration({required String metadataJsonHash}) =>
       hashString("efa:generation:v3\nmetadata.json $metadataJsonHash\n");
+
+  // ── Structured hashes (v4 — also binds the typed .pb2 index, spec §7) ───────
+  //
+  // v4 is the canonical protocol for new snapshots. It binds the `.pb2` index
+  // in addition to `metadata.json`, so tampering with the resource/release
+  // index changes the content address. Must stay byte-for-byte identical to the
+  // Python side (`bootstrap/remote/hash.py: snapshot_hash_v4`) so the client and
+  // dev CLI agree on snapshot directory names (no split-brain hash).
+
+  /// Computes the structured resource snapshot hash (v4).
+  ///
+  ///   snapshot_hash = SHA-256(
+  ///     "efa:resource:v4\n"
+  ///     "metadata.json {sha256_of_canonical_metadata_json_bytes}\n"
+  ///     "resources.pb2 {sha256_of_resources_pb2_bytes}\n"
+  ///   )
+  static String hashResourceSnapshotV4({
+    required String metadataJsonHash,
+    required String resourcesPb2Hash,
+  }) => hashString(
+    "efa:resource:v4\nmetadata.json $metadataJsonHash\nresources.pb2 $resourcesPb2Hash\n",
+  );
+
+  /// Computes the structured release snapshot hash (v4).
+  static String hashReleaseSnapshotV4({
+    required String metadataJsonHash,
+    required String releasesPb2Hash,
+  }) => hashString(
+    "efa:release:v4\nmetadata.json $metadataJsonHash\nreleases.pb2 $releasesPb2Hash\n",
+  );
 }

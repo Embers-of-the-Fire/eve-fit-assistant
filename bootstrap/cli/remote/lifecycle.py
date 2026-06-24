@@ -91,13 +91,20 @@ def register_remote_lifecycle(remote: click.Group) -> None:
         default=False,
         help="List what would be deleted without actually deleting.",
     )
+    @click.option(
+        "--retention-depth",
+        type=click.IntRange(min=0),
+        default=0,
+        show_default=True,
+        help="Ancestor generations kept per head (head-only = 0; head + last N = N).",
+    )
     @_SCHEMA_ROOT_OPTION
-    def remote_gc(dry_run: bool, schema_root: Path | None):
+    def remote_gc(dry_run: bool, retention_depth: int, schema_root: Path | None):
         """Garbage collect unreferenced entities from local V2 storage."""
         root = runtime.resolve_schema_root(schema_root)
         mgr = SessionManager(root)
 
-        deleted = mgr.gc(dry_run=dry_run)
+        deleted = mgr.gc(dry_run=dry_run, retention_depth=retention_depth)
 
         if dry_run:
             if not deleted:

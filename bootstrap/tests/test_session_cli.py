@@ -15,13 +15,14 @@ import tempfile
 
 from pathlib import Path
 
+import click
 import pytest
 
 from bootstrap.remote import SessionManager
 from bootstrap.remote.generation import utc_timestamp
 from bootstrap.remote.hash import content_hash as _content_hash
 from bootstrap.remote.hash import ident_hash
-from bootstrap.remote.hash import snapshot_hash as _snapshot_hash
+from bootstrap.remote.hash import verify_snapshot_hash as _verify_snapshot_hash
 from bootstrap.remote.head import ChannelHeadStore
 from bootstrap.remote.models import GenerationMetadata
 from bootstrap.remote.models import GenerationPointer
@@ -586,15 +587,15 @@ def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
             try:
                 files = {
                     "metadata.json": meta_path.read_bytes(),
+                    proto_name: proto_path.read_bytes(),
                 }
-                computed = _snapshot_hash(snap_type, files)
-                if computed != h:
+                if not _verify_snapshot_hash(snap_type, files, h):
                     issues.append(
                         Issue(
                             entity=h[:12] + "...",
                             entity_type=f"{snap_type}_snapshot",
                             severity="error",
-                            message=f"Hash mismatch: expected {h[:12]}..., computed {computed[:12]}...",
+                            message=f"Hash mismatch: {h[:12]}... does not verify (v4/v3)",
                         )
                     )
             except Exception as exc:
@@ -1415,3 +1416,106 @@ class TestSessionCommitAccumulation:
         assert res_b in diff["resources"]["inherited"]
         assert len(diff["resources"]["updated"]) == 0
         assert len(diff["resources"]["unchanged"]) == 0
+
+
+# ===========================================================================
+# 12. One-snapshot-per-server enforcement
+# ===========================================================================
+
+
+class TestSessionOneSnapshotPerServer:
+    """Enforcement: a session may stage at most one resource per server_id."""
+
+    def test_add_rejects_second_snapshot_same_server(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """add --hash of a second snapshot for the same server_id raises."""
+        _init_session(store)
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        store.add_snapshot("resource", res_a)
+
+        from bootstrap.cli.remote.session import _add_snapshot_by_hash
+
+        with pytest.raises(click.ClickException, match="already has a staged snapshot"):
+            _add_snapshot_by_hash(store, tmp_root, "resource", res_b)
+
+    def test_add_replace_valid_swap(self, store: SessionStore, tmp_root: Path) -> None:
+        """add --replace <hash> of same server_id succeeds."""
+        _init_session(store)
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility", game_build="11111")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility", game_build="22222")
+        store.add_snapshot("resource", res_a)
+
+        from bootstrap.cli.remote.session import _add_snapshot_by_hash
+
+        _add_snapshot_by_hash(store, tmp_root, "resource", res_b, replace_hash=res_a)
+        session = store.load()
+        assert res_b in session.staged.resources
+        assert res_a not in session.staged.resources
+
+    def test_add_replace_wrong_hash_raises(self, store: SessionStore, tmp_root: Path) -> None:
+        """add --replace <wrong-hash> where target is not staged raises."""
+        _init_session(store)
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility")
+
+        from bootstrap.cli.remote.session import _add_snapshot_by_hash
+
+        with pytest.raises(click.ClickException, match="not currently staged"):
+            _add_snapshot_by_hash(store, tmp_root, "resource", res_b, replace_hash=res_a)
+
+    def test_add_replace_server_mismatch_raises(self, store: SessionStore, tmp_root: Path) -> None:
+        """add --replace where replace-target server differs from new raises."""
+        _init_session(store)
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="serenity")
+        store.add_snapshot("resource", res_a)
+
+        from bootstrap.cli.remote.session import _add_snapshot_by_hash
+
+        with pytest.raises(click.ClickException, match="Server mismatch"):
+            _add_snapshot_by_hash(store, tmp_root, "resource", res_b, replace_hash=res_a)
+
+    def test_diff_reports_duplicate_servers(self, store: SessionStore, tmp_root: Path) -> None:
+        """diff includes duplicate_servers when staged hashes collide on server_id."""
+        _init_session(store)
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        store.add_snapshot("resource", res_a)
+
+        from bootstrap.cli.remote.session import _compute_diff
+
+        session = store.load()
+        diff = _compute_diff(tmp_root, session)
+        assert "duplicate_servers" not in diff
+
+        session.staged.resources.append(res_b)
+        store.save(session)
+        diff = _compute_diff(tmp_root, store.load())
+        assert "duplicate_servers" in diff
+        assert "tranquility" in diff["duplicate_servers"]
+
+    def test_check_duplicate_server_ids_detects_collision(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """_check_duplicate_server_ids appends error Issue for duplicated server_id."""
+        _init_session(store)
+        res_a = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        res_b = _make_resource_snapshot(tmp_root, server_id="tranquility")
+        store.add_snapshot("resource", res_a)
+
+        from bootstrap.cli.remote.session import _check_duplicate_server_ids
+
+        session = store.load()
+        issues: list[Issue] = []
+        _check_duplicate_server_ids(tmp_root, session, issues)
+        assert len(issues) == 0
+
+        session.staged.resources.append(res_b)
+        store.save(session)
+        issues = []
+        _check_duplicate_server_ids(tmp_root, store.load(), issues)
+        assert len(issues) == 1
+        assert issues[0].severity == "error"
+        assert "Duplicate server" in issues[0].message

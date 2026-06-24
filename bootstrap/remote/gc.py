@@ -1,11 +1,17 @@
 """Garbage collection — reachability-based pruning of unreferenced entities.
 
-Reachability algorithm (spec §12):
-  1. Start from every channel head → collect all generationHash values.
-  2. For each head generation, walk parent chain → collect all reachable gens.
-  3. For each reachable generation, collect all snapshot hashes.
-  4. For each reachable resource snapshot, collect all blob (ident_hash, content_hash) pairs.
-  5. Delete everything not in the reachable set.
+Reachability algorithm (spec §8.1, §8.3):
+  1. Start from every channel head → load its `history.pb2`.
+  2. The head history is the authoritative reachability root for resource
+     snapshots: every `snapshot_hash` it records (and the snapshot's blobs) is
+     kept, decoupled from the generation that introduced it.
+  3. Generation retention is policy-driven: keep only the head + the last N
+     ancestor generations (``retention_depth``). Resource snapshots of pruned
+     generations survive solely via the history root from step 2.
+  4. Heads without a `history.pb2` (pre-feature, no feature-era commit yet)
+     fall back to the legacy full parent-chain walk so nothing is lost.
+  5. Delete everything not in the reachable set, then strip dead `history.pb2`
+     copies from retained non-head generations.
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ from bootstrap.remote.hash import ident_hash
 from bootstrap.remote.head import ChannelHeadStore
 from bootstrap.remote.models import ReachabilitySet
 from bootstrap.remote.models import read_pb2
+from bootstrap.remote.paths import generation_dir
 from bootstrap.remote.paths import resource_snapshot_dir
 
 
@@ -27,10 +34,17 @@ if TYPE_CHECKING:
 
 
 class GarbageCollector:
-    """Reachability-based GC for both local workspace and remote tiers."""
+    """Reachability-based GC for both local workspace and remote tiers.
 
-    def __init__(self, root: Path) -> None:
+    ``retention_depth`` is the number of ancestor (non-head) generations kept
+    per channel head, walked from the tip; the head itself is always kept, so a
+    head retains ``retention_depth + 1`` generations total. ``0`` (default)
+    keeps the head only.
+    """
+
+    def __init__(self, root: Path, retention_depth: int = 0) -> None:
         self.root = root
+        self.retention_depth = max(retention_depth, 0)
         self.gen_store = GenerationStore(root)
         self.head_store = ChannelHeadStore(root)
 
@@ -45,25 +59,82 @@ class GarbageCollector:
                 continue
             if not head.generation_hash:
                 continue
-
-            try:
-                for gen in self.gen_store.walk_parent_chain(head.generation_hash):
-                    reachable.generations.add(gen.hash)
-
-                    if gen.release_pointer.snapshot_hash:
-                        reachable.release_snapshots.add(gen.release_pointer.snapshot_hash)
-
-                    for entry in gen.resources.entries:
-                        snap_hash = entry.snapshot_hash
-                        if not snap_hash:
-                            continue
-                        reachable.resource_snapshots.add(snap_hash)
-                        self._collect_resource_blobs(snap_hash, reachable)
-
-            except FileNotFoundError:
-                continue
+            self._collect_for_head(head.generation_hash, reachable)
 
         return reachable
+
+    def _collect_for_head(self, head_hash: str, reachable: ReachabilitySet) -> None:
+        history = self._load_head_history(head_hash)
+        if history is None:
+            # §8.1 step 4: pre-feature head — legacy full parent-chain walk.
+            self._collect_full_chain(head_hash, reachable)
+            return
+
+        # §8.1: head history is the reachability root for resource snapshots and
+        # their blobs, decoupled from the introducing generation.
+        for server in history.servers:
+            for snap in server.snapshots:
+                if not snap.snapshot_hash:
+                    continue
+                reachable.resource_snapshots.add(snap.snapshot_hash)
+                self._collect_resource_blobs(snap.snapshot_hash, reachable)
+
+        # §8.3: retention policy — keep head + last N generations and their
+        # release snapshots. Pruned generations' resource snapshots survive via
+        # the history root above.
+        self._collect_retained_generations(head_hash, reachable)
+
+    def _collect_retained_generations(self, head_hash: str, reachable: ReachabilitySet) -> None:
+        keep = self.retention_depth + 1
+        try:
+            for idx, gen in enumerate(self.gen_store.walk_parent_chain(head_hash)):
+                if idx >= keep:
+                    break
+                reachable.generations.add(gen.hash)
+                if gen.release_pointer.snapshot_hash:
+                    reachable.release_snapshots.add(gen.release_pointer.snapshot_hash)
+        except FileNotFoundError:
+            pass
+
+    def _collect_full_chain(self, head_hash: str, reachable: ReachabilitySet) -> None:
+        try:
+            for gen in self.gen_store.walk_parent_chain(head_hash):
+                reachable.generations.add(gen.hash)
+
+                if gen.release_pointer.snapshot_hash:
+                    reachable.release_snapshots.add(gen.release_pointer.snapshot_hash)
+
+                for entry in gen.resources.entries:
+                    snap_hash = entry.snapshot_hash
+                    if not snap_hash:
+                        continue
+                    reachable.resource_snapshots.add(snap_hash)
+                    self._collect_resource_blobs(snap_hash, reachable)
+        except FileNotFoundError:
+            pass
+
+    def _load_head_history(self, head_hash: str):
+        from bootstrap.remote.models import ServerHistory
+
+        history_path = generation_dir(self.root, head_hash) / "history.pb2"
+        if not history_path.is_file():
+            return None
+        try:
+            return read_pb2(history_path, ServerHistory)
+        except Exception:
+            return None
+
+    def _head_hashes(self) -> set[str]:
+        heads: set[str] = set()
+        registry = self.head_store.get_registry()
+        for channel_name in registry.channels:
+            try:
+                head = self.head_store.get_head(channel_name)
+            except FileNotFoundError:
+                continue
+            if head.generation_hash:
+                heads.add(head.generation_hash)
+        return heads
 
     def _collect_resource_blobs(self, snap_hash: str, reachable: ReachabilitySet) -> None:
         from bootstrap.remote.models import ResourceIndex
@@ -81,6 +152,7 @@ class GarbageCollector:
 
     def prune(self, dry_run: bool = False) -> list[str]:
         reachable = self.collect_reachable()
+        head_hashes = self._head_hashes()
         deleted: list[str] = []
 
         deleted.extend(self._prune_entities("generations", reachable.generations, dry_run))
@@ -91,8 +163,28 @@ class GarbageCollector:
             self._prune_entities("release_snapshots", reachable.release_snapshots, dry_run)
         )
         deleted.extend(self._prune_blobs(reachable.blobs, dry_run))
+        deleted.extend(self._strip_nonhead_history(head_hashes, reachable.generations, dry_run))
         deleted.extend(self._prune_tmp_dirs(dry_run))
 
+        return deleted
+
+    def _strip_nonhead_history(
+        self,
+        head_hashes: set[str],
+        retained: set[str],
+        dry_run: bool,
+    ) -> list[str]:
+        """§8.2: only the head's `history.pb2` is ever read by clients; strip the
+        dead copies from retained non-head generations. Never touch a head."""
+        deleted: list[str] = []
+        for gen_hash in sorted(retained):
+            if gen_hash in head_hashes:
+                continue
+            history_path = generation_dir(self.root, gen_hash) / "history.pb2"
+            if history_path.is_file():
+                deleted.append(str(history_path))
+                if not dry_run:
+                    history_path.unlink(missing_ok=True)
         return deleted
 
     def _prune_entities(self, label: str, reachable_hashes: set[str], dry_run: bool) -> list[str]:

@@ -1,7 +1,7 @@
 """Generation store — immutable generation CRUD and parent-chain walking.
 
-Generations are stored at channels/refs/{generation_hash}/ with four files:
-  metadata.json, server.pb2, resources.pb2, releases.pb2
+Generations are stored at channels/refs/{generation_hash}/ with five files:
+  metadata.json, server.pb2, resources.pb2, releases.pb2, history.pb2
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 
 from bootstrap.remote.hash import generation_hash as _compute_generation_hash
 from bootstrap.remote.models import GenerationMetadata
+from bootstrap.remote.models import make_server_history
+from bootstrap.remote.models import merge_generation_into_history
 from bootstrap.remote.models import read_json
 from bootstrap.remote.models import read_pb2
 from bootstrap.remote.models import write_json
@@ -55,7 +57,7 @@ class GenerationStore:
     ) -> str:
         """Create a generation atomically, returning its hash.
 
-        Writes all four files to a temp directory, computes the structured
+        Writes all five files to a temp directory, computes the structured
         generation hash, then renames to the final location.
         """
         temp_dir = temp_generation_dir(self.root)
@@ -73,6 +75,17 @@ class GenerationStore:
         }
 
         gen_hash = _compute_generation_hash(files)
+
+        parent_history = self._load_parent_history(metadata.parent)
+        merged = merge_generation_into_history(
+            parent_history,
+            generation_hash=gen_hash,
+            timestamp=metadata.timestamp,
+            resources=resources_msg,
+            server_index=server_index_msg,
+        )
+        write_pb2(temp_dir / "history.pb2", merged)
+
         target_dir = generation_dir(self.root, gen_hash)
 
         if not target_dir.exists():
@@ -132,6 +145,16 @@ class GenerationStore:
         gen_dir = generation_dir(self.root, gen_hash)
         if gen_dir.exists():
             shutil.rmtree(gen_dir, ignore_errors=True)
+
+    def _load_parent_history(self, parent_hash: str | None):
+        if not parent_hash:
+            return make_server_history()
+        from bootstrap.remote.models import ServerHistory
+
+        history_path = generation_dir(self.root, parent_hash) / "history.pb2"
+        if history_path.is_file():
+            return read_pb2(history_path, ServerHistory)
+        return make_server_history()
 
 
 def utc_timestamp() -> str:

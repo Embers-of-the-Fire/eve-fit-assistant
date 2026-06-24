@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import Literal
 
-from bootstrap.remote.hash import snapshot_hash as _compute_snapshot_hash
+from bootstrap.remote.hash import snapshot_hash_v4 as _compute_snapshot_hash
 from bootstrap.remote.models import ReleaseSnapshotMetadata
 from bootstrap.remote.models import ResourceSnapshotMetadata
 from bootstrap.remote.models import read_json
@@ -131,9 +131,11 @@ class SnapshotStore:
         write_json(temp_dir / "metadata.json", metadata)
         write_pb2(temp_dir / proto_name, index_msg)
 
-        metadata_bytes = (temp_dir / "metadata.json").read_bytes()
-
-        files = {"metadata.json": metadata_bytes}
+        # v4 binds both metadata.json and the typed .pb2 index (spec §7).
+        files = {
+            "metadata.json": (temp_dir / "metadata.json").read_bytes(),
+            proto_name: (temp_dir / proto_name).read_bytes(),
+        }
         snap_hash = _compute_snapshot_hash(snap_type, files)
 
         target_dir = dir_map[snap_type](self.root, snap_hash)
