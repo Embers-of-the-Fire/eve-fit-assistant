@@ -14,7 +14,9 @@ import "package:url_launcher/url_launcher.dart";
 
 @RoutePage()
 class ReportFeedbackPage extends ConsumerStatefulWidget {
-  const ReportFeedbackPage({super.key});
+  const ReportFeedbackPage({super.key, this.initialTab = 0});
+
+  final int initialTab;
 
   @override
   ConsumerState<ReportFeedbackPage> createState() => _ReportFeedbackPageState();
@@ -53,7 +55,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
   }
 
   @override
