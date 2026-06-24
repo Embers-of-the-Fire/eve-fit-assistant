@@ -82,7 +82,7 @@ class AssetStore {
   ///
   /// Steps:
   /// 1. Write metadata.json and resources.pb2 to a temp directory
-  /// 2. Compute snapshot_hash from the metadata.json file hash only
+  /// 2. Compute snapshot_hash (v4) binding metadata.json + resources.pb2
   /// 3. Rename temp → assets/resources/{snapshot_hash}/
   ///
   /// Returns the computed snapshot_hash. Idempotent: skips if the snapshot
@@ -106,10 +106,15 @@ class AssetStore {
     // Serialize metadata.json as canonical JSON
     _writeMetadataJson("${tempDir.path}/$metaPath", meta);
 
-    // Compute snapshot hash from metadata.json only
+    // Compute snapshot hash (v4) binding metadata.json + resources.pb2 (spec §7).
     final metaBytes = File("${tempDir.path}/$metaPath").readAsBytesSync();
+    final indexBytes = File("${tempDir.path}/$indexPath").readAsBytesSync();
     final metaHash = RepoHash.hashContent(metaBytes);
-    final snapshotHash = RepoHash.hashResourceSnapshot(metaHash);
+    final indexHash = RepoHash.hashContent(indexBytes);
+    final snapshotHash = RepoHash.hashResourceSnapshotV4(
+      metadataJsonHash: metaHash,
+      resourcesPb2Hash: indexHash,
+    );
 
     final targetDir = Directory(RepoPaths.resourceSnapshotPath(snapshotHash));
     if (targetDir.existsSync()) {

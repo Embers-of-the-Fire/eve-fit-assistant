@@ -182,6 +182,7 @@ _PB2_ALIAS_MAP: dict[str, tuple[str, str]] = {
     "GenerationPointer": ("generation_pointer_pb2", "GenerationPointer"),
     "HeadReflog": ("head_reflog_pb2", "HeadReflog"),
     "CheckoutReflog": ("checkout_reflog_pb2", "CheckoutReflog"),
+    "ServerHistory": ("server_history_pb2", "ServerHistory"),
 }
 
 
@@ -245,6 +246,88 @@ def make_generation_resources(
         entry.server_id = sid
         entry.snapshot_hash = snap_hash
     return msg
+
+
+def make_server_history() -> ServerHistory:
+    msg = _load_pb2_type("ServerHistory")()
+    msg.schema_version = 1
+    return msg
+
+
+def _server_index_lookup(
+    server_index: ServerIndex,
+) -> dict[str, tuple[str, str]]:
+    """Build a {server_id: (game_build, game_version)} lookup."""
+    result: dict[str, tuple[str, str]] = {}
+    for entry in server_index.servers:
+        result[entry.server_id] = (entry.game_build, entry.game_version)
+    return result
+
+
+def merge_generation_into_history(
+    history: ServerHistory,
+    *,
+    generation_hash: str,
+    timestamp: str,
+    resources: GenerationResources,
+    server_index: ServerIndex,
+) -> ServerHistory:
+    """Merge one generation's resource changes into a ServerHistory.
+
+    Returns a *new* ServerHistory message. The original *history* is not
+    mutated. Servers not present in *resources* are carried forward unchanged.
+    Servers that are present get a new Snapshot prepended only when the
+    snapshot hash differs from the current head (or when the server has no
+    prior snapshots).
+    """
+    idx = _server_index_lookup(server_index)
+
+    existing: dict[str, ServerHistory.ServerEntry] = {}
+    for entry in history.servers:
+        existing[entry.server_id] = entry
+
+    result = make_server_history()
+
+    changed_ids: set[str] = set()
+
+    for res_entry in resources.entries:
+        sid = res_entry.server_id
+        snap_hash = res_entry.snapshot_hash
+        changed_ids.add(sid)
+
+        entry = result.servers.add()
+        entry.server_id = sid
+
+        old = existing.get(sid)
+
+        if old is not None and old.snapshots and old.snapshots[0].snapshot_hash == snap_hash:
+            for s in old.snapshots:
+                ns = entry.snapshots.add()
+                ns.CopyFrom(s)
+        else:
+            game_build, game_version = idx.get(sid, ("", ""))
+            ns = entry.snapshots.add()
+            ns.snapshot_hash = snap_hash
+            ns.generation_hash = generation_hash
+            ns.timestamp = timestamp
+            if game_build:
+                ns.game_build = game_build
+            if game_version:
+                ns.game_version = game_version
+            if old is not None:
+                for s in old.snapshots:
+                    ns2 = entry.snapshots.add()
+                    ns2.CopyFrom(s)
+
+    for sid, old in existing.items():
+        if sid not in changed_ids:
+            entry = result.servers.add()
+            entry.server_id = sid
+            for s in old.snapshots:
+                ns = entry.snapshots.add()
+                ns.CopyFrom(s)
+
+    return result
 
 
 def make_generation_pointer(snapshot_hash: str) -> GenerationPointer:

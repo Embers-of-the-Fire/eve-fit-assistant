@@ -197,8 +197,11 @@ class SessionManager:
 
     # --- Maintenance ---------------------------------------------------------
 
-    def gc(self, dry_run: bool = False) -> list[str]:
-        return self._gc.prune(dry_run=dry_run)
+    def gc(self, dry_run: bool = False, retention_depth: int = 0) -> list[str]:
+        collector = (
+            self._gc if retention_depth <= 0 else GarbageCollector(self.root, retention_depth)
+        )
+        return collector.prune(dry_run=dry_run)
 
     def verify(self) -> dict[str, list[Issue]]:
         return self._verifier.verify_all()

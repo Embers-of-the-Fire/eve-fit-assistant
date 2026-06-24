@@ -10,22 +10,27 @@ Verification levels (spec workflow.md §3.7):
 
 from __future__ import annotations
 
+import json
 import shutil
 
 from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from bootstrap.remote.generation import GenerationStore
+from bootstrap.remote.hash import SNAPSHOT_PROTO_NAME as _SNAPSHOT_PROTO_NAME
 from bootstrap.remote.hash import content_hash as _content_hash
 from bootstrap.remote.hash import generation_hash as _generation_hash
 from bootstrap.remote.hash import ident_hash as _ident_hash
-from bootstrap.remote.hash import snapshot_hash as _snapshot_hash
+from bootstrap.remote.hash import verify_snapshot_hash as _verify_snapshot_hash
 from bootstrap.remote.head import ChannelHeadStore
 from bootstrap.remote.models import read_pb2 as _models_read_pb2
 from bootstrap.remote.paths import blob_path
 from bootstrap.remote.paths import generation_dir
 from bootstrap.remote.paths import head_metadata_path
 from bootstrap.remote.paths import head_reflog_path
+from bootstrap.remote.paths import resource_snapshot_dir
 
 
 @dataclass
@@ -53,6 +58,8 @@ class Verifier:
             "generations": self.verify_generation_integrity(),
             "snapshots": self.verify_snapshot_integrity(),
             "blobs": self.verify_blob_integrity(),
+            "history": self.verify_history_consistency(),
+            "history_reachability": self.verify_history_reachability(),
         }
 
     # --- Head integrity ------------------------------------------------------
@@ -76,7 +83,7 @@ class Verifier:
 
             try:
                 head = self.head_store.get_head(channel_name)
-            except Exception as exc:
+            except (FileNotFoundError, json.JSONDecodeError, ValidationError) as exc:
                 issues.append(
                     Issue(
                         entity=channel_name,
@@ -216,17 +223,20 @@ class Verifier:
                     raise FileNotFoundError(f"Missing file: {meta_path}")
 
                 files = {"metadata.json": meta_path.read_bytes()}
-                computed = _snapshot_hash(snap_type, files)  # type: ignore[arg-type]
-                if computed != expected:
+                proto_name = _SNAPSHOT_PROTO_NAME[snap_type]  # type: ignore[index]
+                proto_path = snap_dir / proto_name
+                if not proto_path.is_file():
+                    raise FileNotFoundError(f"Missing snapshot index: {proto_path}")
+                files[proto_name] = proto_path.read_bytes()
+
+                # Dual-read: accept either v4 (binds the .pb2 index) or legacy v3.
+                if not _verify_snapshot_hash(snap_type, files, expected):  # type: ignore[arg-type]
                     issues.append(
                         Issue(
                             entity=expected[:12] + "...",
                             entity_type=f"{snap_type}_snapshot",
                             severity="error",
-                            message=(
-                                f"Hash mismatch: expected {expected[:12]}..."
-                                f", computed {computed[:12]}..."
-                            ),
+                            message=f"Hash mismatch: {expected[:12]}... does not verify (v4/v3)",
                         )
                     )
             except Exception as exc:
@@ -302,6 +312,158 @@ class Verifier:
                             message=str(exc),
                         )
                     )
+
+        return issues
+
+    # --- History consistency (§4.3) -----------------------------------------
+
+    def verify_history_consistency(self) -> list[Issue]:
+        """Check that each generation's `history.pb2` newest snapshots match its
+        `resources.pb2`. Warnings only — does not block."""
+        issues: list[Issue] = []
+        refs_dir = self.root / "channels" / "refs"
+        if not refs_dir.is_dir():
+            return issues
+
+        from bootstrap.remote.models import GenerationResources
+        from bootstrap.remote.models import ServerHistory
+
+        for entry in sorted(refs_dir.iterdir()):
+            if not entry.is_dir():
+                continue
+            if entry.name.startswith("tmp"):
+                continue
+            if not (entry / "metadata.json").is_file():
+                continue
+
+            history_path = entry / "history.pb2"
+            resources_path = entry / "resources.pb2"
+            if not history_path.is_file() or not resources_path.is_file():
+                continue
+
+            gen_hash = entry.name
+            try:
+                history = _models_read_pb2(history_path, ServerHistory)
+                resources = _models_read_pb2(resources_path, GenerationResources)
+
+                resources_map: dict[str, str] = {}
+                for res_entry in resources.entries:
+                    resources_map[res_entry.server_id] = res_entry.snapshot_hash
+
+                history_server_ids = {hist_entry.server_id for hist_entry in history.servers}
+                for server_id in sorted(set(resources_map) - history_server_ids):
+                    issues.append(
+                        Issue(
+                            entity=gen_hash[:12] + "...",
+                            entity_type="history",
+                            severity="warning",
+                            message=f"Server {server_id!r}: resources entry missing from history",
+                        )
+                    )
+
+                for hist_entry in history.servers:
+                    if not hist_entry.snapshots:
+                        continue
+                    newest_hash = hist_entry.snapshots[0].snapshot_hash
+                    res_hash = resources_map.get(hist_entry.server_id)
+                    if res_hash is not None and newest_hash != res_hash:
+                        issues.append(
+                            Issue(
+                                entity=gen_hash[:12] + "...",
+                                entity_type="history",
+                                severity="warning",
+                                message=(
+                                    f"Server {hist_entry.server_id!r}: history"
+                                    f" newest {newest_hash[:12]}..."
+                                    f" != resources {res_hash[:12]}..."
+                                ),
+                            )
+                        )
+            except Exception as exc:
+                issues.append(
+                    Issue(
+                        entity=gen_hash[:12] + "...",
+                        entity_type="history",
+                        severity="warning",
+                        message=str(exc),
+                    )
+                )
+
+        return issues
+
+    # --- History reachability (§8.5) ----------------------------------------
+
+    def verify_history_reachability(self) -> list[Issue]:
+        """For each channel head, verify every `snapshot_hash` in the head's
+        `history.pb2` resolves to an existing resource-snapshot directory.
+        Missing → error (blocks verify exit)."""
+        issues: list[Issue] = []
+        registry = self.head_store.get_registry()
+
+        from bootstrap.remote.models import ServerHistory
+
+        for channel_name in registry.channels:
+            try:
+                head = self.head_store.get_head(channel_name)
+            except (FileNotFoundError, json.JSONDecodeError, ValidationError) as exc:
+                issues.append(
+                    Issue(
+                        entity=channel_name,
+                        entity_type="channel",
+                        severity="error",
+                        message=f"Failed to load head: {exc}",
+                    )
+                )
+                continue
+
+            if not head.generation_hash:
+                continue
+
+            gen_dir = generation_dir(self.root, head.generation_hash)
+            history_path = gen_dir / "history.pb2"
+            if not history_path.is_file():
+                issues.append(
+                    Issue(
+                        entity=channel_name,
+                        entity_type="history_reachability",
+                        severity="warning",
+                        message=(
+                            f"Head generation {head.generation_hash[:12]}..."
+                            " has no history.pb2 (run backfill-history)"
+                        ),
+                    )
+                )
+                continue
+
+            try:
+                history = _models_read_pb2(history_path, ServerHistory)
+            except Exception as exc:
+                issues.append(
+                    Issue(
+                        entity=head.generation_hash[:12] + "...",
+                        entity_type="history_reachability",
+                        severity="error",
+                        message=f"Failed to read history.pb2: {exc}",
+                    )
+                )
+                continue
+
+            for hist_entry in history.servers:
+                for snap in hist_entry.snapshots:
+                    snap_dir = resource_snapshot_dir(self.root, snap.snapshot_hash)
+                    if not snap_dir.is_dir() or not (snap_dir / "resources.pb2").is_file():
+                        issues.append(
+                            Issue(
+                                entity=snap.snapshot_hash[:12] + "...",
+                                entity_type="history_reachability",
+                                severity="error",
+                                message=(
+                                    f"Snapshot {snap.snapshot_hash[:12]}..."
+                                    f" (server {hist_entry.server_id!r})"
+                                    f" not found at {snap_dir}"
+                                ),
+                            )
+                        )
 
         return issues
 

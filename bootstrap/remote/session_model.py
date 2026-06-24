@@ -29,6 +29,10 @@ class SessionExistsError(Exception):
     """Raised when init is called but a session already exists."""
 
 
+class SessionDuplicateServerError(Exception):
+    """Raised when staging a second resource snapshot for an already-staged server."""
+
+
 class StagedSnapshots(BaseModel):
     resources: list[str] = Field(default_factory=list)
     releases: list[str] = Field(default_factory=list)
@@ -160,15 +164,71 @@ class SessionStore:
         if self.is_committed():
             raise SessionManagerCommittedError("Session is committed. Use --force to override.")
 
-    def add_snapshot(self, snap_type: SnapshotType, hash_value: str) -> Session:
-        """Stage a snapshot hash. Raises SessionManagerCommittedError if committed."""
+    def add_snapshot(
+        self,
+        snap_type: SnapshotType,
+        hash_value: str,
+        *,
+        server_id: str | None = None,
+        staged_server_ids: dict[str, str] | None = None,
+    ) -> Session:
+        """Stage a snapshot hash.
+
+        When *snap_type* is ``"resource"`` and *server_id* and
+        *staged_server_ids* are both supplied, rejects the operation if
+        *server_id* is already present in *staged_server_ids* (defense-in-depth
+        — the CLI is expected to have already performed this check).
+
+        Raises SessionManagerCommittedError if committed.
+        Raises SessionDuplicateServerError on per-server duplicate.
+        """
         self.ensure_editable()
         session = self.load()
         staged = session.staged
+        if (
+            snap_type == "resource"
+            and server_id is not None
+            and staged_server_ids is not None
+            and server_id in staged_server_ids
+        ):
+            conflict = staged_server_ids[server_id]
+            raise SessionDuplicateServerError(
+                f"Server '{server_id}' already has a staged snapshot "
+                f"({conflict[:16]}...) in this session."
+            )
+
         if snap_type == "resource":
             staged.resources.append(hash_value)
         elif snap_type == "release":
             staged.releases.append(hash_value)
+        self.save(session)
+        return session
+
+    def replace_snapshot(
+        self,
+        old_hash: str,
+        new_hash: str,
+        *,
+        snap_type: SnapshotType = "resource",
+    ) -> Session:
+        """Atomically replace a staged snapshot hash with a new one.
+
+        Raises ValueError if *old_hash* is not currently staged.
+        Server-ID matching is expected to be validated by the caller.
+        """
+        self.ensure_editable()
+        session = self.load()
+        staged = session.staged
+        if snap_type == "resource":
+            if old_hash not in staged.resources:
+                raise ValueError(f"Replace target {old_hash} is not currently staged as resource.")
+            idx = staged.resources.index(old_hash)
+            staged.resources[idx] = new_hash
+        elif snap_type == "release":
+            if old_hash not in staged.releases:
+                raise ValueError(f"Replace target {old_hash} is not currently staged as release.")
+            idx = staged.releases.index(old_hash)
+            staged.releases[idx] = new_hash
         self.save(session)
         return session
 

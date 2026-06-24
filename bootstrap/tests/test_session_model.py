@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from bootstrap.remote import SessionManagerInvalidError
 from bootstrap.remote.session_model import Session
+from bootstrap.remote.session_model import SessionDuplicateServerError
 from bootstrap.remote.session_model import SessionExistsError
 from bootstrap.remote.session_model import SessionStore
 
@@ -288,3 +289,64 @@ class TestSessionStore:
         store.remove_snapshot("resource", "dup")
         session = store.load()
         assert session.staged.resources == ["dup"]
+
+    # --- server-id dedup + replace_snapshot tests -----------------------------
+
+    def test_add_snapshot_rejects_duplicate_server_id(self, tmp_path: pytest.fixture) -> None:
+        store = SessionStore(tmp_path)
+        store.init(channel="testing")
+        store.add_snapshot("resource", "aaa")
+        with pytest.raises(SessionDuplicateServerError, match="already has a staged snapshot"):
+            store.add_snapshot(
+                "resource",
+                "bbb",
+                server_id="tranquility",
+                staged_server_ids={"tranquility": "aaa"},
+            )
+
+    def test_add_snapshot_ok_with_different_server_id(self, tmp_path: pytest.fixture) -> None:
+        store = SessionStore(tmp_path)
+        store.init(channel="testing")
+        store.add_snapshot("resource", "aaa")
+        store.add_snapshot(
+            "resource",
+            "bbb",
+            server_id="serenity",
+            staged_server_ids={"tranquility": "aaa"},
+        )
+        session = store.load()
+        assert session.staged.resources == ["aaa", "bbb"]
+
+    def test_add_snapshot_no_server_id_check_when_not_provided(
+        self, tmp_path: pytest.fixture
+    ) -> None:
+        store = SessionStore(tmp_path)
+        store.init(channel="testing")
+        store.add_snapshot("resource", "aaa")
+        store.add_snapshot("resource", "bbb")
+        session = store.load()
+        assert session.staged.resources == ["aaa", "bbb"]
+
+    def test_replace_snapshot_swaps_in_place(self, tmp_path: pytest.fixture) -> None:
+        store = SessionStore(tmp_path)
+        store.init(channel="testing")
+        store.add_snapshot("resource", "aaa")
+        store.add_snapshot("resource", "bbb")
+        store.replace_snapshot("aaa", "ccc")
+        session = store.load()
+        assert session.staged.resources == ["ccc", "bbb"]
+
+    def test_replace_snapshot_raises_on_unstaged_old_hash(self, tmp_path: pytest.fixture) -> None:
+        store = SessionStore(tmp_path)
+        store.init(channel="testing")
+        store.add_snapshot("resource", "aaa")
+        with pytest.raises(ValueError, match="not currently staged"):
+            store.replace_snapshot("missing", "ccc")
+
+    def test_replace_snapshot_works_for_release(self, tmp_path: pytest.fixture) -> None:
+        store = SessionStore(tmp_path)
+        store.init(channel="testing")
+        store.add_snapshot("release", "rrr")
+        store.replace_snapshot("rrr", "sss", snap_type="release")
+        session = store.load()
+        assert session.staged.releases == ["sss"]

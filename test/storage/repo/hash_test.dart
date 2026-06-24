@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:typed_data";
 
 import "package:eve_fit_assistant/storage/repo/hash.dart";
@@ -100,6 +99,73 @@ void main() {
       final metaHash = RepoHash.hashContent(metaBytes);
       final genHash = RepoHash.hashGeneration(metadataJsonHash: metaHash);
       expect(genHash, "ef7c9ac6cc8c3c2ab2583af5027a4b1fd11c4aaca4e029a5293710b07e0e78dd");
+    });
+  });
+
+  group("hashResourceSnapshotV4", () {
+    test("produces deterministic hash", () {
+      final a = RepoHash.hashResourceSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        resourcesPb2Hash: "b" * 64,
+      );
+      final b = RepoHash.hashResourceSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        resourcesPb2Hash: "b" * 64,
+      );
+      expect(a, b);
+      expect(a.length, 64);
+    });
+
+    test("binds the resources.pb2 index (tamper sensitivity)", () {
+      final base = RepoHash.hashResourceSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        resourcesPb2Hash: "b" * 64,
+      );
+      final tampered = RepoHash.hashResourceSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        resourcesPb2Hash: "c" * 64,
+      );
+      expect(base, isNot(tampered));
+    });
+
+    test("differs from v3 (which ignores the index)", () {
+      final v3 = RepoHash.hashResourceSnapshot("a" * 64);
+      final v4 = RepoHash.hashResourceSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        resourcesPb2Hash: "b" * 64,
+      );
+      expect(v3, isNot(v4));
+    });
+
+    test("Python parity for known component hashes", () {
+      // Must match bootstrap/tests/test_verify.py::test_known_value_parity.
+      final h = RepoHash.hashResourceSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        resourcesPb2Hash: "b" * 64,
+      );
+      expect(h, "a76dfbcd80a9457f09b32241c7a9b239de581d1db784786279e59b90a3891c69");
+    });
+  });
+
+  group("hashReleaseSnapshotV4", () {
+    test("Python parity for known component hashes", () {
+      final h = RepoHash.hashReleaseSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        releasesPb2Hash: "b" * 64,
+      );
+      expect(h, "8e3558913730e810d6bcf65fe1ae9b6a859f4166976cc69e94dc60953ee665cd");
+    });
+
+    test("domain separation from resource snapshot v4", () {
+      final res = RepoHash.hashResourceSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        resourcesPb2Hash: "b" * 64,
+      );
+      final rel = RepoHash.hashReleaseSnapshotV4(
+        metadataJsonHash: "a" * 64,
+        releasesPb2Hash: "b" * 64,
+      );
+      expect(res, isNot(rel));
     });
   });
 }
