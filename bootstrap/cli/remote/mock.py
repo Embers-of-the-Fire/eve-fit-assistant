@@ -20,6 +20,35 @@ from bootstrap.color import styled
 from bootstrap.utils import get_command
 
 
+_PROTECTED_PATHS: tuple[Path, ...] | None = None
+
+
+def _get_protected_paths() -> tuple[Path, ...]:
+    global _PROTECTED_PATHS
+    if _PROTECTED_PATHS is None:
+        cfg = bootstrap.config.DEV_CONFIGURATION
+        dev_root = cfg.paths.root.resolve()
+        _PROTECTED_PATHS = (
+            Path("/"),
+            Path.home(),
+            dev_root,
+        )
+    return _PROTECTED_PATHS
+
+
+def _is_safe_rmtree_target(path: Path) -> bool:
+    resolved = path.resolve()
+    if not resolved.is_dir():
+        raise click.ClickException(f"Refusing to remove non-directory path: {resolved}")
+    protected = _get_protected_paths()
+    for p in protected:
+        if resolved == p or p in resolved.parents:
+            raise click.ClickException(
+                f"Refusing to remove protected path: {resolved} (conflicts with {p})"
+            )
+    return True
+
+
 def _start_minio_remote_mock(
     *,
     host: str,
@@ -101,6 +130,7 @@ def _start_minio_remote_mock(
 def _remove_mock_path(path: Path, label: str) -> bool:
     if not path.exists():
         return False
+    _is_safe_rmtree_target(path)
     click.echo(styled(Style.DIM, f"  Removing {label}: {path}"))
     import shutil
 
