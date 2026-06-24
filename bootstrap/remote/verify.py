@@ -10,10 +10,13 @@ Verification levels (spec workflow.md §3.7):
 
 from __future__ import annotations
 
+import json
 import shutil
 
 from dataclasses import dataclass
 from pathlib import Path
+
+from pydantic import ValidationError
 
 from bootstrap.remote.generation import GenerationStore
 from bootstrap.remote.hash import SNAPSHOT_PROTO_NAME as _SNAPSHOT_PROTO_NAME
@@ -80,7 +83,7 @@ class Verifier:
 
             try:
                 head = self.head_store.get_head(channel_name)
-            except Exception as exc:
+            except (FileNotFoundError, json.JSONDecodeError, ValidationError) as exc:
                 issues.append(
                     Issue(
                         entity=channel_name,
@@ -222,8 +225,9 @@ class Verifier:
                 files = {"metadata.json": meta_path.read_bytes()}
                 proto_name = _SNAPSHOT_PROTO_NAME[snap_type]  # type: ignore[index]
                 proto_path = snap_dir / proto_name
-                if proto_path.is_file():
-                    files[proto_name] = proto_path.read_bytes()
+                if not proto_path.is_file():
+                    raise FileNotFoundError(f"Missing snapshot index: {proto_path}")
+                files[proto_name] = proto_path.read_bytes()
 
                 # Dual-read: accept either v4 (binds the .pb2 index) or legacy v3.
                 if not _verify_snapshot_hash(snap_type, files, expected):  # type: ignore[arg-type]
@@ -401,7 +405,7 @@ class Verifier:
         for channel_name in registry.channels:
             try:
                 head = self.head_store.get_head(channel_name)
-            except Exception as exc:
+            except (FileNotFoundError, json.JSONDecodeError, ValidationError) as exc:
                 issues.append(
                     Issue(
                         entity=channel_name,
