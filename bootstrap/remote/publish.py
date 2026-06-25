@@ -25,6 +25,7 @@ from bootstrap.remote.paths import channel_registry_path
 from bootstrap.remote.paths import generation_dir
 from bootstrap.remote.paths import release_snapshot_dir
 from bootstrap.remote.paths import resource_snapshot_dir
+from bootstrap.remote.resource_manager import ResourceManager
 from bootstrap.remote.snapshot import SnapshotStore
 
 
@@ -32,8 +33,10 @@ _RELEASE_VARIANT_NAMES = ("general", "armv7", "arm64", "x64")
 
 
 if TYPE_CHECKING:
+    from concurrent.futures import Future
     from pathlib import Path
 
+    from bootstrap.remote.generation import Generation
     from bootstrap.remote.models import GenerationPointer
     from bootstrap.remote.models import GenerationResources
 
@@ -80,12 +83,26 @@ class Publisher:
 
         self._ensure_alias()
 
+        rm = ResourceManager(self, expected_total=self._count_unique_blobs(gen, prefixes))
+        with rm.progress(), ThreadPoolExecutor(max_workers=self.workers) as ex:
+            futures: list[Future[None]] = []
+            snapshot_uploads = self._enumerate_resource_blobs(
+                gen.resources, prefixes, rm, ex, futures
+            )
+            release_dir_upload = self._enumerate_release_blobs(
+                gen.release_pointer, prefixes, rm, ex, futures
+            )
+            for fut in as_completed(futures):
+                fut.result()
+        rm.log_summary()
+
+        for snap_dir, remote in snapshot_uploads:
+            self._upload_dir(snap_dir, remote)
+        if release_dir_upload is not None:
+            self._upload_dir(*release_dir_upload)
         self._upload_dir(
             generation_dir(self.local_root, gen_hash), prefixes + f"channels/refs/{gen_hash}"
         )
-
-        self._publish_resource_snapshots(gen.resources, prefixes)
-        self._publish_pointer_snapshot(gen.release_pointer, "releases", prefixes)
 
     def publish_head(self, channel: str) -> None:
         """Upload channel head metadata and reflog to remote."""
@@ -108,8 +125,23 @@ class Publisher:
 
         self._ensure_alias()
 
-        self._publish_resource_snapshots(gen.resources, prefixes)
-        self._publish_pointer_snapshot(gen.release_pointer, "releases", prefixes)
+        rm = ResourceManager(self, expected_total=self._count_unique_blobs(gen, prefixes))
+        with rm.progress(), ThreadPoolExecutor(max_workers=self.workers) as ex:
+            futures: list[Future[None]] = []
+            snapshot_uploads = self._enumerate_resource_blobs(
+                gen.resources, prefixes, rm, ex, futures
+            )
+            release_dir_upload = self._enumerate_release_blobs(
+                gen.release_pointer, prefixes, rm, ex, futures
+            )
+            for fut in as_completed(futures):
+                fut.result()
+        rm.log_summary()
+
+        for snap_dir, remote in snapshot_uploads:
+            self._upload_dir(snap_dir, remote)
+        if release_dir_upload is not None:
+            self._upload_dir(*release_dir_upload)
         self._upload_dir(
             generation_dir(self.local_root, head.generation_hash),
             prefixes + f"channels/refs/{head.generation_hash}",
@@ -172,18 +204,19 @@ class Publisher:
             )
             self._alias_set = True
 
-    def _publish_resource_snapshots(
+    def _enumerate_resource_blobs(
         self,
         resources: GenerationResources,
         prefixes: str,
-    ) -> None:
+        rm: ResourceManager,
+        ex: ThreadPoolExecutor,
+        futures: list[Future[None]],
+    ) -> list[tuple[Path, str]]:
+        """Collect unique snapshot dir uploads (direct) and dispatch their blobs to the RM."""
         from bootstrap.remote.models import ResourceIndex
 
         seen: set[str] = set()
         snapshot_uploads: list[tuple[Path, str]] = []
-        blob_uploads: list[tuple[Path, str]] = []
-
-        # Phase 1: collect unique snapshot directories and their blobs
         for entry in resources.entries:
             snap_hash = entry.snapshot_hash
             if snap_hash in seen:
@@ -192,10 +225,90 @@ class Publisher:
 
             snap_dir = resource_snapshot_dir(self.local_root, snap_hash)
             if not snap_dir.is_dir():
-                continue
+                raise FileNotFoundError(
+                    f"Resource snapshot directory missing: {snap_dir} "
+                    f"(referenced by generation {resources.gen_hash})"
+                )
 
             snapshot_uploads.append((snap_dir, prefixes + f"assets/resources/{snap_hash}"))
 
+            index = read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+            for ri_entry in index.entries:
+                ihash = ident_hash(ri_entry.resource_id)
+                bpath = blob_path(self.local_root, ihash, ri_entry.content_hash)
+                if not bpath.is_file():
+                    raise FileNotFoundError(
+                        f"Resource blob missing: {bpath} "
+                        f"(snapshot {snap_hash}, resource {ri_entry.resource_id})"
+                    )
+                remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}"
+                futures.append(ex.submit(rm.process_blob, bpath, remote))
+        return snapshot_uploads
+
+    def _enumerate_release_blobs(
+        self,
+        pointer: GenerationPointer,
+        prefixes: str,
+        rm: ResourceManager,
+        ex: ThreadPoolExecutor,
+        futures: list[Future[None]],
+    ) -> tuple[Path, str] | None:
+        """Dispatch release APK blobs to the RM; return the release snapshot dir upload."""
+        from bootstrap.remote.models import ReleaseIndex
+
+        snap_hash = pointer.snapshot_hash
+        if not snap_hash:
+            return None
+
+        snap_dir = release_snapshot_dir(self.local_root, snap_hash)
+        if not snap_dir.is_dir():
+            return None
+
+        dir_upload = (snap_dir, prefixes + f"assets/releases/{snap_hash}")
+
+        pb2_file = snap_dir / "releases.pb2"
+        if not pb2_file.is_file():
+            raise FileNotFoundError(
+                f"Release index file missing: {pb2_file} "
+                f"(snapshot {snap_hash}, referenced by generation)"
+            )
+
+        index = read_pb2(pb2_file, ReleaseIndex)
+
+        if not index.HasField("android"):
+            return dir_upload
+
+        android = index.android
+        for variant_name in _RELEASE_VARIANT_NAMES:
+            if not android.HasField(variant_name):
+                continue
+            v = getattr(android, variant_name)
+            ihash = ident_hash(v.identifier)
+            bpath = blob_path(self.local_root, ihash, v.content_hash)
+            if not bpath.is_file():
+                raise FileNotFoundError(
+                    f"Release blob missing: {bpath} (snapshot {snap_hash}, variant {variant_name})"
+                )
+            remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
+            futures.append(ex.submit(rm.process_blob, bpath, remote))
+        return dir_upload
+
+    def _count_unique_blobs(self, gen: Generation, prefixes: str) -> int:
+        """Pre-count unique blob remote paths to seed the progress bar total (spec §4)."""
+        from bootstrap.remote.models import ReleaseIndex
+        from bootstrap.remote.models import ResourceIndex
+
+        unique: set[str] = set()
+
+        seen: set[str] = set()
+        for entry in gen.resources.entries:
+            snap_hash = entry.snapshot_hash
+            if snap_hash in seen:
+                continue
+            seen.add(snap_hash)
+            snap_dir = resource_snapshot_dir(self.local_root, snap_hash)
+            if not snap_dir.is_dir():
+                continue
             try:
                 index = read_pb2(snap_dir / "resources.pb2", ResourceIndex)
             except Exception:
@@ -204,80 +317,51 @@ class Publisher:
                 ihash = ident_hash(ri_entry.resource_id)
                 bpath = blob_path(self.local_root, ihash, ri_entry.content_hash)
                 if bpath.is_file():
-                    blob_uploads.append(
-                        (
-                            bpath,
-                            prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}",
-                        )
+                    unique.add(
+                        prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}"
                     )
 
-        # Phase 2: upload snapshot directories
-        for snap_dir, remote_path in snapshot_uploads:
-            self._upload_dir(snap_dir, remote_path)
+        snap_hash = gen.release_pointer.snapshot_hash
+        if snap_hash:
+            snap_dir = release_snapshot_dir(self.local_root, snap_hash)
+            pb2_file = snap_dir / "releases.pb2"
+            if snap_dir.is_dir() and pb2_file.is_file():
+                try:
+                    rel_index = read_pb2(pb2_file, ReleaseIndex)
+                except Exception:
+                    rel_index = None
+                if rel_index is not None and rel_index.HasField("android"):
+                    android = rel_index.android
+                    for variant_name in _RELEASE_VARIANT_NAMES:
+                        if not android.HasField(variant_name):
+                            continue
+                        v = getattr(android, variant_name)
+                        ihash = ident_hash(v.identifier)
+                        bpath = blob_path(self.local_root, ihash, v.content_hash)
+                        if bpath.is_file():
+                            unique.add(
+                                prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
+                            )
 
-        # Phase 3: upload all blobs in parallel with progress bar
-        if blob_uploads:
-            self._upload_files_parallel(blob_uploads, desc="Uploading blobs")
-
-    def _publish_pointer_snapshot(
-        self,
-        pointer: GenerationPointer,
-        snap_type: str,
-        prefixes: str,
-    ) -> None:
-        snap_hash = pointer.snapshot_hash
-        if not snap_hash:
-            return
-
-        dir_map = {
-            "releases": release_snapshot_dir,
-        }
-        snap_dir = dir_map[snap_type](self.local_root, snap_hash)
-        if not snap_dir.is_dir():
-            return
-
-        self._upload_dir(snap_dir, prefixes + f"assets/{snap_type}/{snap_hash}")
-
-        if snap_type == "releases":
-            self._publish_release_blobs(snap_dir, prefixes)
-
-    def _publish_release_blobs(self, snap_dir: Path, prefixes: str) -> None:
-        from bootstrap.remote.models import ReleaseIndex
-
-        pb2_file = snap_dir / "releases.pb2"
-        if not pb2_file.is_file():
-            return
-
-        try:
-            index = read_pb2(pb2_file, ReleaseIndex)
-        except Exception:
-            return
-
-        if not index.HasField("android"):
-            return
-
-        android = index.android
-        blob_uploads: list[tuple[Path, str]] = []
-
-        for variant_name in _RELEASE_VARIANT_NAMES:
-            if not android.HasField(variant_name):
-                continue
-            v = getattr(android, variant_name)
-            ihash = ident_hash(v.identifier)
-            bpath = blob_path(self.local_root, ihash, v.content_hash)
-            if bpath.is_file():
-                blob_uploads.append(
-                    (bpath, prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}")
-                )
-
-        if blob_uploads:
-            self._upload_files_parallel(blob_uploads, desc="Uploading release blobs")
+        return len(unique)
 
     def _upload_file(self, src: Path, remote_path: str) -> None:
         if self.origin_dir is not None:
             self._upload_local(src, remote_path)
         else:
             self._upload_s3(src, remote_path)
+
+    def _remote_exists(self, remote_path: str) -> bool:
+        """True if the blob already exists at the destination (spec §3.1)."""
+        if self.origin_dir is not None:
+            return (self.origin_dir / remote_path).exists()
+        if self.mc_bin is None:
+            from bootstrap.utils import get_command
+
+            self.mc_bin = get_command("mc")
+        bucket_target = f"{self.alias_name}/{self.bucket}"
+        s3_path = f"{bucket_target}/{remote_path}"
+        return _stat_ok([self.mc_bin, "stat", s3_path])
 
     def _upload_dir(self, src_dir: Path, remote_path: str) -> None:
         if self.origin_dir is not None:
@@ -361,3 +445,18 @@ def _run(
         if stderr:
             msg += f"\n{stderr}"
         raise OSError(msg)
+
+
+def _stat_ok(cmd: list[str], timeout: float = 60) -> bool:
+    try:
+        out = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    return out.returncode == 0
