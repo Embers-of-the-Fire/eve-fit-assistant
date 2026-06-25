@@ -83,10 +83,6 @@ class Publisher:
 
         self._ensure_alias()
 
-        self._upload_dir(
-            generation_dir(self.local_root, gen_hash), prefixes + f"channels/refs/{gen_hash}"
-        )
-
         rm = ResourceManager(self, expected_total=self._count_unique_blobs(gen, prefixes))
         with rm.progress(), ThreadPoolExecutor(max_workers=self.workers) as ex:
             futures: list[Future[None]] = []
@@ -104,6 +100,9 @@ class Publisher:
             self._upload_dir(snap_dir, remote)
         if release_dir_upload is not None:
             self._upload_dir(*release_dir_upload)
+        self._upload_dir(
+            generation_dir(self.local_root, gen_hash), prefixes + f"channels/refs/{gen_hash}"
+        )
 
     def publish_head(self, channel: str) -> None:
         """Upload channel head metadata and reflog to remote."""
@@ -226,20 +225,24 @@ class Publisher:
 
             snap_dir = resource_snapshot_dir(self.local_root, snap_hash)
             if not snap_dir.is_dir():
-                continue
+                raise FileNotFoundError(
+                    f"Resource snapshot directory missing: {snap_dir} "
+                    f"(referenced by generation {resources.gen_hash})"
+                )
 
             snapshot_uploads.append((snap_dir, prefixes + f"assets/resources/{snap_hash}"))
 
-            try:
-                index = read_pb2(snap_dir / "resources.pb2", ResourceIndex)
-            except Exception:
-                continue
+            index = read_pb2(snap_dir / "resources.pb2", ResourceIndex)
             for ri_entry in index.entries:
                 ihash = ident_hash(ri_entry.resource_id)
                 bpath = blob_path(self.local_root, ihash, ri_entry.content_hash)
-                if bpath.is_file():
-                    remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}"
-                    futures.append(ex.submit(rm.process_blob, bpath, remote))
+                if not bpath.is_file():
+                    raise FileNotFoundError(
+                        f"Resource blob missing: {bpath} "
+                        f"(snapshot {snap_hash}, resource {ri_entry.resource_id})"
+                    )
+                remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}"
+                futures.append(ex.submit(rm.process_blob, bpath, remote))
         return snapshot_uploads
 
     def _enumerate_release_blobs(
@@ -265,12 +268,12 @@ class Publisher:
 
         pb2_file = snap_dir / "releases.pb2"
         if not pb2_file.is_file():
-            return dir_upload
+            raise FileNotFoundError(
+                f"Release index file missing: {pb2_file} "
+                f"(snapshot {snap_hash}, referenced by generation)"
+            )
 
-        try:
-            index = read_pb2(pb2_file, ReleaseIndex)
-        except Exception:
-            return dir_upload
+        index = read_pb2(pb2_file, ReleaseIndex)
 
         if not index.HasField("android"):
             return dir_upload
@@ -282,9 +285,12 @@ class Publisher:
             v = getattr(android, variant_name)
             ihash = ident_hash(v.identifier)
             bpath = blob_path(self.local_root, ihash, v.content_hash)
-            if bpath.is_file():
-                remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
-                futures.append(ex.submit(rm.process_blob, bpath, remote))
+            if not bpath.is_file():
+                raise FileNotFoundError(
+                    f"Release blob missing: {bpath} (snapshot {snap_hash}, variant {variant_name})"
+                )
+            remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
+            futures.append(ex.submit(rm.process_blob, bpath, remote))
         return dir_upload
 
     def _count_unique_blobs(self, gen: Generation, prefixes: str) -> int:
