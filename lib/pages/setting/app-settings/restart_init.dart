@@ -1,4 +1,8 @@
-part of "page.dart";
+import "dart:async";
+
+import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 class RestartInitTile extends ConsumerWidget {
   const RestartInitTile({super.key});
