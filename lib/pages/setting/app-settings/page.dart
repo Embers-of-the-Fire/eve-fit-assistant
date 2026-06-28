@@ -8,8 +8,6 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/components/list/dropdown_list_tile.dart";
 import "package:eve_fit_assistant/config/locale.dart" show Locale;
 import "package:eve_fit_assistant/config/type_list.dart";
-import "package:eve_fit_assistant/features/feedback/feedback_dialog.dart";
-import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -25,9 +23,7 @@ part "developer_remote_content.dart";
 part "font_scale.dart";
 part "impact_warning.dart";
 part "locale.dart";
-part "restart_init.dart";
 part "select_list.dart";
-part "trigger_feedback.dart";
 
 @RoutePage()
 class AppSettingsPage extends ConsumerWidget {
@@ -68,8 +64,6 @@ class AppSettingsPage extends ConsumerWidget {
           subtitle: context.l10n.appSettingsPageClearCacheDescription,
           onTap: () => unawaited(_clearCache(context)),
         ),
-        if (ref.watch(developerModeProvider)) const ConfigListTile.custom(RestartInitTile()),
-        if (ref.watch(developerModeProvider)) const ConfigListTile.custom(TriggerFeedbackTile()),
       ],
     ),
   );

@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/pages/setting/channel_overview/page.dart";
 import "package:eve_fit_assistant/pages/setting/data/channel_metadata.dart";
 import "package:eve_fit_assistant/pages/setting/data/checkout_management.dart";
 import "package:eve_fit_assistant/pages/setting/data/storage.dart";
+import "package:eve_fit_assistant/pages/setting/developer-tools/page.dart";
 import "package:eve_fit_assistant/pages/view.dart";
 import "package:eve_fit_assistant/pages/workspace/create-fit/page.dart";
 import "package:flutter/material.dart";
@@ -31,6 +32,7 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/data/storage", page: StorageManagement.page),
     AutoRoute(path: "/setting/data/channel-metadata", page: ChannelMetadataRoute.page),
     AutoRoute(path: "/setting/data/checkouts", page: CheckoutManagementRoute.page),
+    AutoRoute(path: "/setting/developer-tools", page: DeveloperToolsRoute.page),
     AutoRoute(path: "/setting/channel-overview", page: ChannelOverviewRoute.page),
     AutoRoute(path: "/setting/report-feedback", page: ReportFeedbackRoute.page),
     AutoRoute(path: "/setting/report-feedback/external", page: ReportExternalLinksRoute.page),

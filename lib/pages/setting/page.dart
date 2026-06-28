@@ -39,10 +39,10 @@ class SettingPage extends ConsumerWidget {
         ),
         if (developerMode)
           ConfigListTile.item(
-            icon: const Icon(Icons.info_outline),
-            title: "Channel Overview",
-            subtitle: "Remote channel metadata and sync status",
-            onTap: () => unawaited(context.router.push(const ChannelOverviewRoute())),
+            icon: const Icon(Icons.developer_mode),
+            title: "Developer Tools",
+            subtitle: "Channel overview, restart init, trigger feedback",
+            onTap: () => unawaited(context.router.push(const DeveloperToolsRoute())),
           ),
         ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),

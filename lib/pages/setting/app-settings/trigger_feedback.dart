@@ -1,4 +1,10 @@
-part of "page.dart";
+import "dart:async";
+
+import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/features/feedback/feedback_dialog.dart";
+import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 class TriggerFeedbackTile extends ConsumerWidget {
   const TriggerFeedbackTile({super.key});
