@@ -24,6 +24,12 @@ class DeveloperSettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final developerMode = ref.watch(developerModeProvider);
+    if (!developerMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(context.router.replace(const FrontRoute()));
+      });
+      return const SizedBox.shrink();
+    }
     return Layout(
       title: context.l10n.developerSettingsPageTitle,
       child: ConfigListView(
@@ -50,13 +56,12 @@ class DeveloperSettingsPage extends ConsumerWidget {
             subtitle: context.l10n.developerSettingsPageClearCacheDescription,
             onTap: () => unawaited(_clearCache(context)),
           ),
-          if (developerMode)
-            ConfigListTile.item(
-              icon: const Icon(Icons.developer_mode),
-              title: "Developer Tools",
-              subtitle: "Channel overview, restart init, trigger feedback",
-              onTap: () => unawaited(context.router.push(const DeveloperToolsRoute())),
-            ),
+          ConfigListTile.item(
+            icon: const Icon(Icons.developer_mode),
+            title: "Developer Tools",
+            subtitle: "Channel overview, restart init, trigger feedback",
+            onTap: () => unawaited(context.router.push(const DeveloperToolsRoute())),
+          ),
         ],
       ),
     );
