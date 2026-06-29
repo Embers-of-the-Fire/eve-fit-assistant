@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart" show showConfirmDialog;
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show availableUpdateProvider, unreadAnnouncementCountProvider;
@@ -8,7 +9,8 @@ import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
 import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
 import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
 import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
-import "package:eve_fit_assistant/storage/setting/setting.dart" show appSettingServiceProvider;
+import "package:eve_fit_assistant/storage/setting/setting.dart"
+    show appSettingServiceProvider, developerModeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
@@ -25,6 +27,9 @@ class VersionPage extends ConsumerStatefulWidget {
 
 class _VersionPageState extends ConsumerState<VersionPage> {
   late final Future<PackageInfo> _packageInfoFuture;
+  int _versionTapCount = 0;
+  bool _developerModeRevealed = false;
+  Timer? _versionTapResetTimer;
 
   @override
   void initState() {
@@ -33,8 +38,44 @@ class _VersionPageState extends ConsumerState<VersionPage> {
   }
 
   @override
+  void dispose() {
+    _versionTapResetTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onVersionTap() {
+    _versionTapResetTimer?.cancel();
+    _versionTapResetTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _versionTapCount = 0);
+    });
+    setState(() {
+      _versionTapCount++;
+      if (_versionTapCount >= 5) {
+        _developerModeRevealed = true;
+        _versionTapCount = 0;
+        _versionTapResetTimer?.cancel();
+      }
+    });
+  }
+
+  Future<void> _setDeveloperMode(bool value) async {
+    if (value) {
+      final confirmed = await showConfirmDialog(
+        context,
+        title: context.l10n.developerModeEnableConfirmTitle,
+        content: Text(context.l10n.developerModeEnableConfirmDescription),
+      );
+      if (!confirmed || !mounted) return;
+    }
+    ref
+        .read(appSettingServiceProvider.notifier)
+        .update((setting) => setting.copyWith(developerMode: value));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final appSetting = ref.watch(appSettingServiceProvider);
+    final developerMode = ref.watch(developerModeProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
     final availableUpdate = ref.watch(availableUpdateProvider);
     final unreadCount = ref.watch(unreadAnnouncementCountProvider);
@@ -58,6 +99,18 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                 loading: loading,
               ),
               const SizedBox(height: 24),
+              if (developerMode || _developerModeRevealed)
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: SwitchListTile(
+                    secondary: const Icon(Icons.developer_mode),
+                    title: Text(context.l10n.appSettingsPageDeveloperModeTitle),
+                    subtitle: Text(context.l10n.appSettingsPageDeveloperModeDescription),
+                    value: developerMode,
+                    onChanged: (value) => unawaited(_setDeveloperMode(value)),
+                  ),
+                ),
+              if (developerMode || _developerModeRevealed) const SizedBox(height: 24),
               if (availableUpdate != null)
                 _UpdateCard(
                   label: context.l10n.versionPageUpdateAvailable(
@@ -74,9 +127,21 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                       child: _InfoSection(
                         title: context.l10n.appTitle,
                         rows: [
-                          (label: context.l10n.versionPageAppVersion, value: info?.version),
-                          (label: context.l10n.versionPageBuildNumber, value: info?.buildNumber),
-                          (label: context.l10n.versionPagePackageName, value: info?.packageName),
+                          (
+                            label: context.l10n.versionPageAppVersion,
+                            value: info?.version,
+                            onTap: _onVersionTap,
+                          ),
+                          (
+                            label: context.l10n.versionPageBuildNumber,
+                            value: info?.buildNumber,
+                            onTap: null,
+                          ),
+                          (
+                            label: context.l10n.versionPagePackageName,
+                            value: info?.packageName,
+                            onTap: null,
+                          ),
                         ],
                         loading: loading,
                       ),
@@ -89,14 +154,17 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                           (
                             label: context.l10n.versionPageSchemaVersion,
                             value: currentSchemaVersion.toString(),
+                            onTap: null,
                           ),
                           (
                             label: context.l10n.versionPageActiveData,
                             value: _activeCheckoutLabel(context, activeCheckout),
+                            onTap: null,
                           ),
                           (
                             label: context.l10n.versionPageChannel,
                             value: appSetting.remoteContent.channel,
+                            onTap: null,
                           ),
                         ],
                         loading: loading,
@@ -110,9 +178,21 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     _InfoSection(
                       title: context.l10n.appTitle,
                       rows: [
-                        (label: context.l10n.versionPageAppVersion, value: info?.version),
-                        (label: context.l10n.versionPageBuildNumber, value: info?.buildNumber),
-                        (label: context.l10n.versionPagePackageName, value: info?.packageName),
+                        (
+                          label: context.l10n.versionPageAppVersion,
+                          value: info?.version,
+                          onTap: _onVersionTap,
+                        ),
+                        (
+                          label: context.l10n.versionPageBuildNumber,
+                          value: info?.buildNumber,
+                          onTap: null,
+                        ),
+                        (
+                          label: context.l10n.versionPagePackageName,
+                          value: info?.packageName,
+                          onTap: null,
+                        ),
                       ],
                       loading: loading,
                     ),
@@ -123,14 +203,17 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                         (
                           label: context.l10n.versionPageSchemaVersion,
                           value: currentSchemaVersion.toString(),
+                          onTap: null,
                         ),
                         (
                           label: context.l10n.versionPageActiveData,
                           value: _activeCheckoutLabel(context, activeCheckout),
+                          onTap: null,
                         ),
                         (
                           label: context.l10n.versionPageChannel,
                           value: appSetting.remoteContent.channel,
+                          onTap: null,
                         ),
                       ],
                       loading: loading,
@@ -329,7 +412,7 @@ class _InfoSection extends StatelessWidget {
   const _InfoSection({required this.title, required this.rows, required this.loading});
 
   final String title;
-  final List<({String label, String? value})> rows;
+  final List<({String label, String? value, VoidCallback? onTap})> rows;
   final bool loading;
 
   @override
@@ -361,6 +444,7 @@ class _InfoSection extends StatelessWidget {
                       _InfoRow(
                         label: row.label,
                         value: loading ? context.l10n.loading : row.value!,
+                        onTap: row.onTap,
                       ),
                     ],
                   ),
@@ -374,14 +458,20 @@ class _InfoSection extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, required this.value, this.onTap});
 
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
+    final valueWidget = Text(
+      value,
+      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+      textAlign: TextAlign.end,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -398,11 +488,13 @@ class _InfoRow extends StatelessWidget {
           const SizedBox(width: 16),
           Flexible(
             flex: 2,
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              textAlign: TextAlign.end,
-            ),
+            child: onTap != null
+                ? GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onTap,
+                    child: valueWidget,
+                  )
+                : valueWidget,
           ),
         ],
       ),

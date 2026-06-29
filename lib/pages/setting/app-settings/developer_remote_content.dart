@@ -10,8 +10,8 @@ class RemoteContentSettingsVisibilityTile extends ConsumerWidget {
     );
     return SwitchListTile(
       secondary: const Icon(Icons.visibility_outlined),
-      title: Text(context.l10n.appSettingsPageRemoteContentVisibleTitle),
-      subtitle: Text(context.l10n.appSettingsPageRemoteContentVisibleDescription),
+      title: const Text("Show Remote Content Settings"),
+      subtitle: const Text("Show or hide the Remote Content entry on the Settings page."),
       value: exposed,
       onChanged: (value) => ref
           .read(appSettingServiceProvider.notifier)
@@ -23,8 +23,10 @@ class RemoteContentSettingsVisibilityTile extends ConsumerWidget {
 Future<void> _openRemoteContentSettings(BuildContext context) async {
   final confirmed = await showConfirmDialog(
     context,
-    title: context.l10n.appSettingsPageRemoteContentWarningTitle,
-    content: Text(context.l10n.appSettingsPageRemoteContentWarningDescription),
+    title: "Open remote content settings?",
+    content: const Text(
+      "Remote content settings are experimental and can affect future document, release, and bundle metadata discovery. Continue only if you know what endpoint to use.",
+    ),
   );
   if (!confirmed || !context.mounted) {
     return;

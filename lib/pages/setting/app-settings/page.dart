@@ -18,7 +18,6 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 part "debug_log.dart";
-part "developer_mode.dart";
 part "developer_remote_content.dart";
 part "font_scale.dart";
 part "impact_warning.dart";
@@ -30,54 +29,61 @@ class AppSettingsPage extends ConsumerWidget {
   const AppSettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Layout(
-    title: context.l10n.appSettingsPageTitle,
-    child: ConfigListView(
-      children: [
-        ConfigListTile.title(context.l10n.appSettingsPageSectionGeneral),
-        const ConfigListTile.custom(LocaleTile()),
-        const ConfigListTile.custom(FontScaleTile()),
-        ConfigListTile.title(context.l10n.appSettingsPageSectionSelectList),
-        const ConfigListTile.custom(ShipCreateListTile()),
-        const ConfigListTile.custom(ListReturnBehaviorTile()),
-        ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
-        const ConfigListTile.custom(CheckoutImpactWarningTile()),
-        ConfigListTile.title(context.l10n.appSettingsPageSectionDeveloper),
-        const ConfigListTile.custom(DeveloperModeTile()),
-        const ConfigListTile.custom(DebugLogTile()),
-        const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
-        ConfigListTile.item(
-          icon: const Icon(Icons.cloud_sync_outlined),
-          title: context.l10n.appSettingsPageRemoteContentOpenTitle,
-          subtitle: context.l10n.appSettingsPageRemoteContentOpenDescription,
-          onTap: () => unawaited(_openRemoteContentSettings(context)),
-        ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.bug_report_outlined),
-          title: context.l10n.appSettingsPageCollectLogsEntryTitle,
-          subtitle: context.l10n.appSettingsPageCollectLogsEntryDescription,
-          onTap: () => unawaited(context.router.push(const CollectLogsRoute())),
-        ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.cached_outlined),
-          title: context.l10n.appSettingsPageClearCacheTitle,
-          subtitle: context.l10n.appSettingsPageClearCacheDescription,
-          onTap: () => unawaited(_clearCache(context)),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final developerMode = ref.watch(developerModeProvider);
+    return Layout(
+      title: context.l10n.appSettingsPageTitle,
+      child: ConfigListView(
+        children: [
+          ConfigListTile.title(context.l10n.appSettingsPageSectionGeneral),
+          const ConfigListTile.custom(LocaleTile()),
+          const ConfigListTile.custom(FontScaleTile()),
+          ConfigListTile.title(context.l10n.appSettingsPageSectionSelectList),
+          const ConfigListTile.custom(ShipCreateListTile()),
+          const ConfigListTile.custom(ListReturnBehaviorTile()),
+          ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
+          const ConfigListTile.custom(CheckoutImpactWarningTile()),
+          if (developerMode) ...[
+            const ConfigListTile.title("Developer"),
+            const ConfigListTile.custom(DebugLogTile()),
+            const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
+            ConfigListTile.item(
+              icon: const Icon(Icons.cloud_sync_outlined),
+              title: "Open Remote Content Settings",
+              subtitle: "Configure remote content runtime parameters.",
+              onTap: () => unawaited(_openRemoteContentSettings(context)),
+            ),
+            ConfigListTile.item(
+              icon: const Icon(Icons.bug_report_outlined),
+              title: "Collect Logs",
+              subtitle: "Select and share application logs for debugging and issue reporting.",
+              onTap: () => unawaited(context.router.push(const CollectLogsRoute())),
+            ),
+            ConfigListTile.item(
+              icon: const Icon(Icons.cached_outlined),
+              title: "Clear Remote Cache",
+              subtitle:
+                  "Clear remote content cache (e.g. ETags) to force a fresh fetch on the next sync.",
+              onTap: () => unawaited(_clearCache(context)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 Future<void> _clearCache(BuildContext context) async {
   final confirmed = await showConfirmDialog(
     context,
-    title: context.l10n.appSettingsPageClearCacheConfirmTitle,
-    content: Text(context.l10n.appSettingsPageClearCacheConfirmDescription),
+    title: "Clear remote cache?",
+    content: const Text(
+      "This will clear all cached remote content metadata. The next sync will fetch everything fresh.",
+    ),
   );
   if (!confirmed || !context.mounted) return;
   EtagCache.clearAll();
   ScaffoldMessenger.of(
     context,
-  ).showSnackBar(SnackBar(content: Text(context.l10n.appSettingsPageClearCacheDone)));
+  ).showSnackBar(const SnackBar(content: Text("Remote cache cleared.")));
 }
