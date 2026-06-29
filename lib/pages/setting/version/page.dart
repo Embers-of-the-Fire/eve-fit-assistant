@@ -3,12 +3,13 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
-import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
-import "package:eve_fit_assistant/pages/router.dart";
-import "package:eve_fit_assistant/storage/repo/models/models.dart";
-import "package:eve_fit_assistant/storage/repo/providers.dart";
-import "package:eve_fit_assistant/storage/repo/repo_version.dart";
-import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
+    show availableUpdateProvider;
+import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
+import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
+import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
+import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
+import "package:eve_fit_assistant/storage/setting/setting.dart" show appSettingServiceProvider;
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -23,7 +24,6 @@ class VersionPage extends ConsumerWidget {
     final appSetting = ref.watch(appSettingServiceProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
     final availableUpdate = ref.watch(availableUpdateProvider);
-    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
 
     return Layout(
       title: context.l10n.versionPageTitle,
@@ -66,13 +66,6 @@ class VersionPage extends ConsumerWidget {
                   ),
                   onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
                 ),
-              ConfigListTile.title(context.l10n.reportSectionGeneral),
-              ConfigListTile.custom(_ReleaseNotesTile(unreadCount: unreadCount)),
-              ConfigListTile.item(
-                icon: const Icon(Icons.storage_outlined),
-                title: context.l10n.versionPageDataManagement,
-                onTap: () => unawaited(context.router.push(const StorageManagement())),
-              ),
             ],
           );
         },
@@ -120,48 +113,6 @@ class _InfoRow extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ReleaseNotesTile extends StatelessWidget {
-  const _ReleaseNotesTile({required this.unreadCount});
-
-  final int unreadCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = context.theme;
-    return ColoredBox(
-      color: theme.colorScheme.surfaceContainer,
-      child: ListTile(
-        leading: const Icon(Icons.new_releases_outlined),
-        title: Text(context.l10n.versionPageReleaseNotes),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (unreadCount > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  unreadCount.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
-        onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
       ),
     );
   }

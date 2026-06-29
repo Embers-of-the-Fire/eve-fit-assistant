@@ -1540,8 +1540,6 @@
   "versionPageSchemaVersion": "数据模式版本",
   "versionPageActiveData": "当前数据源",
   "versionPageChannel": "频道",
-  "versionPageReleaseNotes": "发布说明",
-  "versionPageDataManagement": "数据管理",
   "versionPageUpdateAvailable": "v{version} 已发布",
   "versionPageNotApplicable": "无"
 }

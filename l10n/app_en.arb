@@ -699,8 +699,6 @@
   "versionPageSchemaVersion": "Data Schema Version",
   "versionPageActiveData": "Active Data Source",
   "versionPageChannel": "Channel",
-  "versionPageReleaseNotes": "Release Notes",
-  "versionPageDataManagement": "Data Management",
   "versionPageUpdateAvailable": "v{version} Available",
   "versionPageNotApplicable": "N/A"
 }
