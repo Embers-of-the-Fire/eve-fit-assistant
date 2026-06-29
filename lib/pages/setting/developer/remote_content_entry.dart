@@ -19,15 +19,3 @@ class RemoteContentSettingsVisibilityTile extends ConsumerWidget {
     );
   }
 }
-
-Future<void> _openRemoteContentSettings(BuildContext context) async {
-  final confirmed = await showConfirmDialog(
-    context,
-    title: context.l10n.appSettingsPageRemoteContentWarningTitle,
-    content: Text(context.l10n.appSettingsPageRemoteContentWarningDescription),
-  );
-  if (!confirmed || !context.mounted) {
-    return;
-  }
-  await context.router.push(const RemoteContentSettingsRoute());
-}

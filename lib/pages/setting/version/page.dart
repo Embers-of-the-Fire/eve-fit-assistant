@@ -4,11 +4,13 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show availableUpdateProvider, unreadAnnouncementCountProvider;
-import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
+import "package:eve_fit_assistant/pages/router.dart"
+    show AnnouncementFeedRoute, DeveloperSettingsRoute;
 import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
 import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
 import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
-import "package:eve_fit_assistant/storage/setting/setting.dart" show appSettingServiceProvider;
+import "package:eve_fit_assistant/storage/setting/setting.dart"
+    show appSettingServiceProvider, developerModeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
@@ -35,6 +37,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
   @override
   Widget build(BuildContext context) {
     final appSetting = ref.watch(appSettingServiceProvider);
+    final developerMode = ref.watch(developerModeProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
     final availableUpdate = ref.watch(availableUpdateProvider);
     final unreadCount = ref.watch(unreadAnnouncementCountProvider);
@@ -58,6 +61,15 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                 loading: loading,
               ),
               const SizedBox(height: 24),
+              if (developerMode)
+                Column(
+                  children: [
+                    _DeveloperSettingsCard(
+                      onTap: () => unawaited(context.router.push(const DeveloperSettingsRoute())),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               if (availableUpdate != null)
                 _UpdateCard(
                   label: context.l10n.versionPageUpdateAvailable(
@@ -74,9 +86,21 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                       child: _InfoSection(
                         title: context.l10n.appTitle,
                         rows: [
-                          (label: context.l10n.versionPageAppVersion, value: info?.version),
-                          (label: context.l10n.versionPageBuildNumber, value: info?.buildNumber),
-                          (label: context.l10n.versionPagePackageName, value: info?.packageName),
+                          (
+                            label: context.l10n.versionPageAppVersion,
+                            value: info?.version,
+                            onTap: null,
+                          ),
+                          (
+                            label: context.l10n.versionPageBuildNumber,
+                            value: info?.buildNumber,
+                            onTap: null,
+                          ),
+                          (
+                            label: context.l10n.versionPagePackageName,
+                            value: info?.packageName,
+                            onTap: null,
+                          ),
                         ],
                         loading: loading,
                       ),
@@ -89,14 +113,17 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                           (
                             label: context.l10n.versionPageSchemaVersion,
                             value: currentSchemaVersion.toString(),
+                            onTap: null,
                           ),
                           (
                             label: context.l10n.versionPageActiveData,
                             value: _activeCheckoutLabel(context, activeCheckout),
+                            onTap: null,
                           ),
                           (
                             label: context.l10n.versionPageChannel,
                             value: appSetting.remoteContent.channel,
+                            onTap: null,
                           ),
                         ],
                         loading: loading,
@@ -110,9 +137,21 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     _InfoSection(
                       title: context.l10n.appTitle,
                       rows: [
-                        (label: context.l10n.versionPageAppVersion, value: info?.version),
-                        (label: context.l10n.versionPageBuildNumber, value: info?.buildNumber),
-                        (label: context.l10n.versionPagePackageName, value: info?.packageName),
+                        (
+                          label: context.l10n.versionPageAppVersion,
+                          value: info?.version,
+                          onTap: null,
+                        ),
+                        (
+                          label: context.l10n.versionPageBuildNumber,
+                          value: info?.buildNumber,
+                          onTap: null,
+                        ),
+                        (
+                          label: context.l10n.versionPagePackageName,
+                          value: info?.packageName,
+                          onTap: null,
+                        ),
                       ],
                       loading: loading,
                     ),
@@ -123,14 +162,17 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                         (
                           label: context.l10n.versionPageSchemaVersion,
                           value: currentSchemaVersion.toString(),
+                          onTap: null,
                         ),
                         (
                           label: context.l10n.versionPageActiveData,
                           value: _activeCheckoutLabel(context, activeCheckout),
+                          onTap: null,
                         ),
                         (
                           label: context.l10n.versionPageChannel,
                           value: appSetting.remoteContent.channel,
+                          onTap: null,
                         ),
                       ],
                       loading: loading,
@@ -155,6 +197,40 @@ class _VersionPageState extends ConsumerState<VersionPage> {
     final localizedName = entry.name[localeName];
     if (localizedName != null && localizedName.isNotEmpty) return localizedName;
     return entry.serverId;
+  }
+}
+
+class _DeveloperSettingsCard extends StatelessWidget {
+  const _DeveloperSettingsCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.developer_mode, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  context.l10n.versionPageDeveloperSettingsTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -329,7 +405,7 @@ class _InfoSection extends StatelessWidget {
   const _InfoSection({required this.title, required this.rows, required this.loading});
 
   final String title;
-  final List<({String label, String? value})> rows;
+  final List<({String label, String? value, VoidCallback? onTap})> rows;
   final bool loading;
 
   @override
@@ -361,6 +437,7 @@ class _InfoSection extends StatelessWidget {
                       _InfoRow(
                         label: row.label,
                         value: loading ? context.l10n.loading : row.value!,
+                        onTap: row.onTap,
                       ),
                     ],
                   ),
@@ -374,14 +451,20 @@ class _InfoSection extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, required this.value, this.onTap});
 
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
+    final valueWidget = Text(
+      value,
+      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+      textAlign: TextAlign.end,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -398,11 +481,13 @@ class _InfoRow extends StatelessWidget {
           const SizedBox(width: 16),
           Flexible(
             flex: 2,
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              textAlign: TextAlign.end,
-            ),
+            child: onTap != null
+                ? GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onTap,
+                    child: valueWidget,
+                  )
+                : valueWidget,
           ),
         ],
       ),
