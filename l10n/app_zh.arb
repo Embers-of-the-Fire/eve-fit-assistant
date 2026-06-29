@@ -151,7 +151,6 @@
   "settingTileAppSettingsTitle": "设置",
   "settingTileRemoteContentTitle": "远程内容",
   "settingTileVersionTitle": "版本",
-  "settingTileVersionSubtitle": "发布说明与更新日志",
   "appSettingsPageSectionCheckout": "数据集检查",
   "appSettingsPageCheckoutImpactWarningTitle": "数据集影响警告",
   "appSettingsPageCheckoutImpactWarningDescription": "当切换数据集或导入增量补丁可能影响已保存的配置或角色时显示警告。",
@@ -1532,5 +1531,34 @@
   "welcomeDownloadConfirmWarning": "下载过程中请勿关闭应用",
   "welcomeDownloadConfirmButton": "下载",
   "welcomeDownloadSkipButton": "稍后设置",
-  "welcomeTapToEnter": "轻触进入"
+  "welcomeTapToEnter": "轻触进入",
+  "versionPageTitle": "版本信息",
+  "versionPageAppVersion": "应用版本",
+  "versionPageBuildNumber": "构建号",
+  "versionPagePackageName": "包名",
+  "versionPageSchemaVersion": "数据模式版本",
+  "versionPageActiveData": "当前数据源",
+  "versionPageChannel": "频道",
+  "versionPageReleaseNotes": "发布说明",
+  "versionPageUpdateAvailable": "v{version} 已发布",
+  "versionPageNotApplicable": "无",
+  "versionPageBuildLabel": "构建号 {buildNumber}",
+  "@versionPageBuildLabel": {
+    "placeholders": {
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "versionPageVersionWithBuild": "v{version}（构建号 {buildNumber}）",
+  "@versionPageVersionWithBuild": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  }
 }

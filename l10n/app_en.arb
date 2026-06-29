@@ -66,7 +66,6 @@
   "settingTileAppSettingsTitle": "App Settings",
   "settingTileRemoteContentTitle": "Remote Content",
   "settingTileVersionTitle": "Version",
-  "settingTileVersionSubtitle": "Release notes and changelog",
   "appSettingsPageSectionCheckout": "Data checkout",
   "appSettingsPageCheckoutImpactWarningTitle": "Checkout impact warnings",
   "appSettingsPageCheckoutImpactWarningDescription": "Warn before switching checkouts or importing incremental patches when saved fits or characters may be affected.",
@@ -691,5 +690,34 @@
   "welcomeDownloadConfirmWarning": "Do not close app when downloading",
   "welcomeDownloadConfirmButton": "Download",
   "welcomeDownloadSkipButton": "Skip for now",
-  "welcomeTapToEnter": "Tap to enter"
+  "welcomeTapToEnter": "Tap to enter",
+  "versionPageTitle": "Version",
+  "versionPageAppVersion": "App Version",
+  "versionPageBuildNumber": "Build Number",
+  "versionPagePackageName": "Package Name",
+  "versionPageSchemaVersion": "Data Schema Version",
+  "versionPageActiveData": "Active Data Source",
+  "versionPageChannel": "Channel",
+  "versionPageReleaseNotes": "Release Notes",
+  "versionPageUpdateAvailable": "v{version} Available",
+  "versionPageNotApplicable": "N/A",
+  "versionPageBuildLabel": "Build {buildNumber}",
+  "@versionPageBuildLabel": {
+    "placeholders": {
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "versionPageVersionWithBuild": "v{version} (Build {buildNumber})",
+  "@versionPageVersionWithBuild": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  }
 }
