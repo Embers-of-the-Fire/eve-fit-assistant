@@ -1540,5 +1540,24 @@
   "versionPageActiveData": "当前数据源",
   "versionPageChannel": "频道",
   "versionPageUpdateAvailable": "v{version} 已发布",
-  "versionPageNotApplicable": "无"
+  "versionPageNotApplicable": "无",
+  "versionPageBuildLabel": "构建号 {buildNumber}",
+  "@versionPageBuildLabel": {
+    "placeholders": {
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "versionPageVersionWithBuild": "v{version}（构建号 {buildNumber}）",
+  "@versionPageVersionWithBuild": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  }
 }

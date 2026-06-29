@@ -172,12 +172,14 @@ class _AppHeader extends StatelessWidget {
     );
 
     final versionText = Text(
-      isWide ? "v$version (Build $buildNumber)" : "v$version",
+      isWide
+          ? context.l10n.versionPageVersionWithBuild(version: version, buildNumber: buildNumber)
+          : "v$version",
       style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
     );
 
     final buildText = Text(
-      "Build $buildNumber",
+      context.l10n.versionPageBuildLabel(buildNumber: buildNumber),
       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
     );
 

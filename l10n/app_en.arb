@@ -699,5 +699,24 @@
   "versionPageActiveData": "Active Data Source",
   "versionPageChannel": "Channel",
   "versionPageUpdateAvailable": "v{version} Available",
-  "versionPageNotApplicable": "N/A"
+  "versionPageNotApplicable": "N/A",
+  "versionPageBuildLabel": "Build {buildNumber}",
+  "@versionPageBuildLabel": {
+    "placeholders": {
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "versionPageVersionWithBuild": "v{version} (Build {buildNumber})",
+  "@versionPageVersionWithBuild": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  }
 }
