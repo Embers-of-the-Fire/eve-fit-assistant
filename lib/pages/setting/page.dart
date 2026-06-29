@@ -59,7 +59,6 @@ class SettingPage extends ConsumerWidget {
     return ListTile(
       leading: const Icon(Icons.info_outline),
       title: Text(context.l10n.settingTileVersionTitle),
-      subtitle: Text(context.l10n.settingTileVersionSubtitle),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
