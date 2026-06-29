@@ -21,20 +21,23 @@ class _DebugLogTileState extends ConsumerState<DebugLogTile> {
   @override
   Widget build(BuildContext context) => SwitchListTile(
     secondary: const FaIcon(FontAwesomeIcons.terminal),
-    title: const Text.rich(
+    title: Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: "Enable Debug Log"),
+          TextSpan(text: context.l10n.appSettingsPageDebugLogTitle),
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
-            child: InfoButton(title: "Enable Debug Log", content: _debugLogDescription),
+            child: InfoButton(
+              title: context.l10n.appSettingsPageDebugLogTitle,
+              content: () => Text(context.l10n.appSettingsPageDebugLogDescription),
+            ),
           ),
         ],
       ),
     ),
     subtitle: (initialEnabled != enabled).then(
       () => Text(
-        "Apply after restart",
+        context.l10n.applyAfterRestart,
         style: context.theme.textTheme.bodyMedium?.copyWith(color: Colors.red),
       ),
     ),
@@ -49,8 +52,3 @@ class _DebugLogTileState extends ConsumerState<DebugLogTile> {
     },
   );
 }
-
-Widget _debugLogDescription() => const Text(
-  "The application will print all logs to the logging directory when this feature is activated.\n"
-  "It's suggested not to enable this unless a developer requires the activation.",
-);

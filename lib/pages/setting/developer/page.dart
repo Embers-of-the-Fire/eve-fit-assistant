@@ -1,0 +1,89 @@
+import "dart:async";
+
+import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
+import "package:eve_fit_assistant/components/dialog/info_dialog.dart";
+import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
+import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/fp.dart";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:font_awesome_flutter/font_awesome_flutter.dart";
+
+part "debug_log.dart";
+part "remote_content_entry.dart";
+
+@RoutePage()
+class DeveloperSettingsPage extends ConsumerWidget {
+  const DeveloperSettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final developerMode = ref.watch(developerModeProvider);
+    return Layout(
+      title: context.l10n.developerSettingsPageTitle,
+      child: ConfigListView(
+        children: [
+          ConfigListTile.title(context.l10n.developerSettingsPageSectionToggles),
+          const ConfigListTile.custom(DebugLogTile()),
+          const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
+          ConfigListTile.title(context.l10n.developerSettingsPageSectionActions),
+          ConfigListTile.item(
+            icon: const Icon(Icons.cloud_sync_outlined),
+            title: context.l10n.developerSettingsPageRemoteContentOpenTitle,
+            subtitle: context.l10n.developerSettingsPageRemoteContentOpenDescription,
+            onTap: () => unawaited(_openRemoteContentSettings(context)),
+          ),
+          ConfigListTile.item(
+            icon: const Icon(Icons.bug_report_outlined),
+            title: context.l10n.developerSettingsPageCollectLogsTitle,
+            subtitle: context.l10n.developerSettingsPageCollectLogsDescription,
+            onTap: () => unawaited(context.router.push(const CollectLogsRoute())),
+          ),
+          ConfigListTile.item(
+            icon: const Icon(Icons.cached_outlined),
+            title: context.l10n.developerSettingsPageClearCacheTitle,
+            subtitle: context.l10n.developerSettingsPageClearCacheDescription,
+            onTap: () => unawaited(_clearCache(context)),
+          ),
+          if (developerMode)
+            ConfigListTile.item(
+              icon: const Icon(Icons.developer_mode),
+              title: "Developer Tools",
+              subtitle: "Channel overview, restart init, trigger feedback",
+              onTap: () => unawaited(context.router.push(const DeveloperToolsRoute())),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _clearCache(BuildContext context) async {
+  final confirmed = await showConfirmDialog(
+    context,
+    title: context.l10n.developerSettingsPageClearCacheConfirmTitle,
+    content: Text(context.l10n.developerSettingsPageClearCacheConfirmDescription),
+  );
+  if (!confirmed || !context.mounted) return;
+  EtagCache.clearAll();
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(context.l10n.developerSettingsPageClearCacheDone)));
+}
+
+Future<void> _openRemoteContentSettings(BuildContext context) async {
+  final confirmed = await showConfirmDialog(
+    context,
+    title: context.l10n.developerSettingsPageRemoteContentWarningTitle,
+    content: Text(context.l10n.developerSettingsPageRemoteContentWarningDescription),
+  );
+  if (!confirmed || !context.mounted) {
+    return;
+  }
+  await context.router.push(const RemoteContentSettingsRoute());
+}

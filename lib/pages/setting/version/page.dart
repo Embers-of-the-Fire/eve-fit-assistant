@@ -1,11 +1,11 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart" show showConfirmDialog;
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show availableUpdateProvider, unreadAnnouncementCountProvider;
-import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
+import "package:eve_fit_assistant/pages/router.dart"
+    show AnnouncementFeedRoute, DeveloperSettingsRoute;
 import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
 import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
 import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
@@ -27,49 +27,11 @@ class VersionPage extends ConsumerStatefulWidget {
 
 class _VersionPageState extends ConsumerState<VersionPage> {
   late final Future<PackageInfo> _packageInfoFuture;
-  int _versionTapCount = 0;
-  bool _developerModeRevealed = false;
-  Timer? _versionTapResetTimer;
 
   @override
   void initState() {
     super.initState();
     _packageInfoFuture = PackageInfo.fromPlatform();
-  }
-
-  @override
-  void dispose() {
-    _versionTapResetTimer?.cancel();
-    super.dispose();
-  }
-
-  void _onVersionTap() {
-    _versionTapResetTimer?.cancel();
-    _versionTapResetTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _versionTapCount = 0);
-    });
-    setState(() {
-      _versionTapCount++;
-      if (_versionTapCount >= 5) {
-        _developerModeRevealed = true;
-        _versionTapCount = 0;
-        _versionTapResetTimer?.cancel();
-      }
-    });
-  }
-
-  Future<void> _setDeveloperMode(bool value) async {
-    if (value) {
-      final confirmed = await showConfirmDialog(
-        context,
-        title: context.l10n.developerModeEnableConfirmTitle,
-        content: Text(context.l10n.developerModeEnableConfirmDescription),
-      );
-      if (!confirmed || !mounted) return;
-    }
-    ref
-        .read(appSettingServiceProvider.notifier)
-        .update((setting) => setting.copyWith(developerMode: value));
   }
 
   @override
@@ -99,18 +61,15 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                 loading: loading,
               ),
               const SizedBox(height: 24),
-              if (developerMode || _developerModeRevealed)
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: SwitchListTile(
-                    secondary: const Icon(Icons.developer_mode),
-                    title: Text(context.l10n.appSettingsPageDeveloperModeTitle),
-                    subtitle: Text(context.l10n.appSettingsPageDeveloperModeDescription),
-                    value: developerMode,
-                    onChanged: (value) => unawaited(_setDeveloperMode(value)),
-                  ),
+              if (developerMode)
+                Column(
+                  children: [
+                    _DeveloperSettingsCard(
+                      onTap: () => unawaited(context.router.push(const DeveloperSettingsRoute())),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
-              if (developerMode || _developerModeRevealed) const SizedBox(height: 24),
               if (availableUpdate != null)
                 _UpdateCard(
                   label: context.l10n.versionPageUpdateAvailable(
@@ -130,7 +89,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                           (
                             label: context.l10n.versionPageAppVersion,
                             value: info?.version,
-                            onTap: _onVersionTap,
+                            onTap: null,
                           ),
                           (
                             label: context.l10n.versionPageBuildNumber,
@@ -181,7 +140,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                         (
                           label: context.l10n.versionPageAppVersion,
                           value: info?.version,
-                          onTap: _onVersionTap,
+                          onTap: null,
                         ),
                         (
                           label: context.l10n.versionPageBuildNumber,
@@ -238,6 +197,40 @@ class _VersionPageState extends ConsumerState<VersionPage> {
     final localizedName = entry.name[localeName];
     if (localizedName != null && localizedName.isNotEmpty) return localizedName;
     return entry.serverId;
+  }
+}
+
+class _DeveloperSettingsCard extends StatelessWidget {
+  const _DeveloperSettingsCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.developer_mode, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  context.l10n.versionPageDeveloperSettingsTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

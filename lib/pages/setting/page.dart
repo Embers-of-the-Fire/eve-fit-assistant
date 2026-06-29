@@ -17,7 +17,6 @@ class SettingPage extends ConsumerWidget {
     final showRemoteContent = ref.watch(
       appSettingServiceProvider.select((setting) => setting.remoteContent.exposed),
     );
-    final developerMode = ref.watch(developerModeProvider);
     return ConfigListView(
       children: [
         const ConfigListTile.space(20),
@@ -37,13 +36,6 @@ class SettingPage extends ConsumerWidget {
           title: context.l10n.settingTileDataStorageTitle,
           onTap: () => unawaited(context.router.push(const StorageManagement())),
         ),
-        if (developerMode)
-          ConfigListTile.item(
-            icon: const Icon(Icons.developer_mode),
-            title: "Developer Tools",
-            subtitle: "Channel overview, restart init, trigger feedback",
-            onTap: () => unawaited(context.router.push(const DeveloperToolsRoute())),
-          ),
         ConfigListTile.item(
           icon: const Icon(Icons.feedback_outlined),
           title: context.l10n.workspaceTabReportTitle,
