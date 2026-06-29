@@ -16,11 +16,24 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:package_info_plus/package_info_plus.dart";
 
 @RoutePage()
-class VersionPage extends ConsumerWidget {
+class VersionPage extends ConsumerStatefulWidget {
   const VersionPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VersionPage> createState() => _VersionPageState();
+}
+
+class _VersionPageState extends ConsumerState<VersionPage> {
+  late final Future<PackageInfo> _packageInfoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _packageInfoFuture = PackageInfo.fromPlatform();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final appSetting = ref.watch(appSettingServiceProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
     final availableUpdate = ref.watch(availableUpdateProvider);
@@ -29,7 +42,7 @@ class VersionPage extends ConsumerWidget {
     return Layout(
       title: context.l10n.versionPageTitle,
       child: FutureBuilder<PackageInfo>(
-        future: PackageInfo.fromPlatform(),
+        future: _packageInfoFuture,
         builder: (context, snapshot) {
           final info = snapshot.data;
           final loading = info == null;
