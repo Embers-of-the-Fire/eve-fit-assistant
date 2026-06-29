@@ -691,5 +691,16 @@
   "welcomeDownloadConfirmWarning": "Do not close app when downloading",
   "welcomeDownloadConfirmButton": "Download",
   "welcomeDownloadSkipButton": "Skip for now",
-  "welcomeTapToEnter": "Tap to enter"
+  "welcomeTapToEnter": "Tap to enter",
+  "versionPageTitle": "Version",
+  "versionPageAppVersion": "App Version",
+  "versionPageBuildNumber": "Build Number",
+  "versionPagePackageName": "Package Name",
+  "versionPageSchemaVersion": "Data Schema Version",
+  "versionPageActiveData": "Active Data Source",
+  "versionPageChannel": "Channel",
+  "versionPageReleaseNotes": "Release Notes",
+  "versionPageDataManagement": "Data Management",
+  "versionPageUpdateAvailable": "v{version} Available",
+  "versionPageNotApplicable": "N/A"
 }

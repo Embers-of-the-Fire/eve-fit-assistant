@@ -1532,5 +1532,16 @@
   "welcomeDownloadConfirmWarning": "下载过程中请勿关闭应用",
   "welcomeDownloadConfirmButton": "下载",
   "welcomeDownloadSkipButton": "稍后设置",
-  "welcomeTapToEnter": "轻触进入"
+  "welcomeTapToEnter": "轻触进入",
+  "versionPageTitle": "版本信息",
+  "versionPageAppVersion": "应用版本",
+  "versionPageBuildNumber": "构建号",
+  "versionPagePackageName": "包名",
+  "versionPageSchemaVersion": "数据模式版本",
+  "versionPageActiveData": "当前数据源",
+  "versionPageChannel": "频道",
+  "versionPageReleaseNotes": "发布说明",
+  "versionPageDataManagement": "数据管理",
+  "versionPageUpdateAvailable": "v{version} 已发布",
+  "versionPageNotApplicable": "无"
 }
