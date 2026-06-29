@@ -3,7 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
-    show availableUpdateProvider;
+    show availableUpdateProvider, unreadAnnouncementCountProvider;
 import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
 import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
 import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
@@ -24,6 +24,7 @@ class VersionPage extends ConsumerWidget {
     final appSetting = ref.watch(appSettingServiceProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
     final availableUpdate = ref.watch(availableUpdateProvider);
+    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
 
     return Layout(
       title: context.l10n.versionPageTitle,
@@ -123,6 +124,11 @@ class VersionPage extends ConsumerWidget {
                     ),
                   ],
                 ),
+              const SizedBox(height: 24),
+              _ReleaseNotesCard(
+                unreadCount: unreadCount,
+                onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
+              ),
             ],
           );
         },
@@ -210,6 +216,58 @@ class _AppHeader extends StatelessWidget {
           versionText,
           if (!loading) ...[const SizedBox(height: 2), buildText],
         ],
+      ),
+    );
+  }
+}
+
+class _ReleaseNotesCard extends StatelessWidget {
+  const _ReleaseNotesCard({required this.unreadCount, required this.onTap});
+
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.new_releases_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  context.l10n.versionPageReleaseNotes,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (unreadCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }
