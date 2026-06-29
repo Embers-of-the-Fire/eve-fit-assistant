@@ -57,7 +57,7 @@ class SettingPage extends ConsumerWidget {
   Widget _buildVersionTile(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadAnnouncementCountProvider);
     return ListTile(
-      leading: const Icon(Icons.new_releases_outlined),
+      leading: const Icon(Icons.info_outline),
       title: Text(context.l10n.settingTileVersionTitle),
       subtitle: Text(context.l10n.settingTileVersionSubtitle),
       trailing: Row(
@@ -80,7 +80,7 @@ class SettingPage extends ConsumerWidget {
           const Icon(Icons.chevron_right),
         ],
       ),
-      onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
+      onTap: () => unawaited(context.router.push(const VersionRoute())),
     );
   }
 }
