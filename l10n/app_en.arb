@@ -720,5 +720,86 @@
         "type": "String"
       }
     }
-  }
+  },
+  "dataUpdateTileUpdateAllTitle": "Game data",
+  "dataUpdateTileUpdateAllSubtitle": "Tap to check all checkouts",
+  "dataUpdateDialogConfirmAllTitle": "Update all checkouts?",
+  "dataUpdateDialogConfirmAllBody": "Update all {count} checkouts? Only changed files will be downloaded.",
+  "@dataUpdateDialogConfirmAllBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dataUpdateDialogOverallProgress": "{current}/{total} checkouts",
+  "@dataUpdateDialogOverallProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dataUpdateDialogCheckoutProgress": "{checkoutId}: {count}/{total} files",
+  "@dataUpdateDialogCheckoutProgress": {
+    "placeholders": {
+      "checkoutId": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dataUpdateDialogSuccessAllTitle": "Update complete",
+  "dataUpdateDialogSuccessAllBody": "{success} updated, {skipped} skipped, {failed} failed.",
+  "@dataUpdateDialogSuccessAllBody": {
+    "placeholders": {
+      "success": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "dataUpdateDialogFailureAllTitle": "Update failed",
+  "dataUpdateDialogFailureAllBody": "Could not update all checkouts.",
+  "checkoutUpdateButton": "Update",
+  "checkoutUpdateDialogTitle": "Update checkout?",
+  "checkoutUpdateDialogConfirmBody": "A newer version is available for this checkout. Only changed files will be downloaded.",
+  "dataUpdateTileTitle": "Game data",
+  "dataUpdateTileUnknownSubtitle": "Tap to check for updates",
+  "dataUpdateTileCheckingSubtitle": "Checking for updates...",
+  "dataUpdateTileUpToDateSubtitle": "Up to date",
+  "dataUpdateTileAvailableTitle": "Update available",
+  "dataUpdateTileAvailableSubtitle": "New game data ready",
+  "dataUpdateTileDownloadingSubtitle": "Updating game data...",
+  "dataUpdateTileAppliedSubtitle": "Updated just now",
+  "dataUpdateTileFailedTitle": "Update failed",
+  "dataUpdateTileFailedSubtitle": "Could not download files",
+  "dataUpdateActionCheck": "Check",
+  "dataUpdateActionUpdate": "Update",
+  "dataUpdateActionRetry": "Retry",
+  "dataUpdateDialogConfirmTitle": "Update game data?",
+  "dataUpdateDialogConfirmBody": "A newer version of the game data is available. Only changed files will be downloaded.",
+  "dataUpdateDialogProgressTitle": "Updating game data...",
+  "dataUpdateDialogProgressCount": "Downloaded {count} of {total} files",
+  "dataUpdateDialogSuccessTitle": "Update complete",
+  "dataUpdateDialogSuccessBody": "Game data is now up to date.",
+  "dataUpdateDialogFailureTitle": "Update failed",
+  "dataUpdateDialogFailureBody": "Could not download files. Check your connection and try again.",
+  "dataUpdateDialogDone": "Done",
+  "dataUpdateDialogCancel": "Cancel",
+  "dataUpdateDialogClose": "Close",
+  "dataUpdateBannerText": "New game data available"
 }

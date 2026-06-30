@@ -8,6 +8,8 @@ import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/pages/setting/data/data_update_dialog.dart";
+import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
@@ -113,6 +115,11 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
                   _chip("${l10n.checkoutFieldUpdatedAt}: ${_formatTime(entry.createdAt)}"),
                 ],
               ),
+            ),
+            IconButton(
+              tooltip: l10n.checkoutUpdateButton,
+              icon: const Icon(Icons.update_outlined),
+              onPressed: () => _updateCheckout(checkoutId),
             ),
             IconButton(
               tooltip: l10n.checkoutInfoButton,
@@ -293,6 +300,22 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
         );
       }
     }
+  }
+
+  void _updateCheckout(String checkoutId) {
+    final provider = checkoutUpdateControllerProvider(checkoutId);
+    ref.read(provider);
+    late final ProviderSubscription<DataUpdateStatus> sub;
+    sub = ref.listenManual(provider, (_, _) {}, fireImmediately: true);
+
+    unawaited(showCheckoutDataUpdateOperationDialog(context, ref, checkoutId));
+
+    final controller = ref.read(provider.notifier);
+    unawaited(
+      controller.check().then((_) async {
+        sub.close();
+      }),
+    );
   }
 
   Future<void> _deleteCheckout(String checkoutId, String displayName, bool isActive) async {

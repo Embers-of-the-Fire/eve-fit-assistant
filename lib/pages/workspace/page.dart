@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/state.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/pages/workspace/data_update_banner.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -81,13 +82,11 @@ class WorkspacePage extends ConsumerWidget {
     );
 
     final hasVersionBump = ref.watch(hasVersionBumpProvider);
-    if (!hasVersionBump) {
-      return grid;
-    }
 
     return Column(
       children: [
-        _buildVersionBumpCard(context, ref),
+        const DataUpdateBanner(),
+        if (hasVersionBump) _buildVersionBumpCard(context, ref),
         Expanded(child: grid),
       ],
     );

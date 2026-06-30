@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/pages/setting/data/data_update_tile.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -75,68 +76,75 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
 
     return Layout(
       title: l10n.storagePageTitle,
-      child: ConfigListView(
-        children: [
-          // ── Overview ──────────────────────────────────────────────────────
-          ConfigListTile.title(l10n.storageOverviewTitle),
-          ConfigListTile.custom(
-            ref
-                .watch(storageOverviewProvider)
-                .when(
-                  data: (overview) => _buildOverviewCard(overview, channelName),
-                  loading: _buildOverviewLoading,
-                  error: (err, _) => _buildOverviewError(err.toString()),
-                ),
-          ),
+      child: RefreshIndicator(
+        onRefresh: () => ref.read(batchDataUpdateControllerProvider.notifier).check(),
+        child: ConfigListView(
+          children: [
+            // ── Overview ──────────────────────────────────────────────────────
+            ConfigListTile.title(l10n.storageOverviewTitle),
+            ConfigListTile.custom(
+              ref
+                  .watch(storageOverviewProvider)
+                  .when(
+                    data: (overview) => _buildOverviewCard(overview, channelName),
+                    loading: _buildOverviewLoading,
+                    error: (err, _) => _buildOverviewError(err.toString()),
+                  ),
+            ),
 
-          // ── Data Management ───────────────────────────────────────────────
-          ConfigListTile.title(l10n.storageDataManagementTitle),
-          ConfigListTile.item(
-            icon: const Icon(Icons.inventory_2_outlined),
-            title: l10n.storageDatasourceManagement,
-            subtitle: l10n.storageDatasourceManagementDesc,
-            onTap: () => unawaited(context.router.push(const CheckoutManagementRoute())),
-          ),
+            // ── Data Management ───────────────────────────────────────────────
+            ConfigListTile.title(l10n.storageDataManagementTitle),
+            const ConfigListTile.custom(DataUpdateTile()),
+            ConfigListTile.item(
+              icon: const Icon(Icons.inventory_2_outlined),
+              title: l10n.storageDatasourceManagement,
+              subtitle: l10n.storageDatasourceManagementDesc,
+              onTap: () => unawaited(context.router.push(const CheckoutManagementRoute())),
+            ),
 
-          // ── Storage Operations ────────────────────────────────────────────
-          ConfigListTile.title(l10n.storageOperationsTitle),
-          ConfigListTile.item(
-            icon: Icon(Icons.verified_outlined, color: context.theme.colorScheme.primary),
-            title: l10n.storageVerifyButton,
-            subtitle: _verifyLoading
-                ? l10n.storageVerifyRunning
-                : _verifyResult != null
-                ? _verifyResult!.isEmpty
-                      ? l10n.storageVerifiedOk
-                      : l10n.storageMissingFiles(count: _verifyResult!.length)
-                : null,
-            onTap: _verifyLoading ? null : _runVerify,
-          ),
-          ConfigListTile.custom(_buildVerifyResults()),
-          ConfigListTile.item(
-            icon: Icon(Icons.cleaning_services_outlined, color: context.theme.colorScheme.primary),
-            title: l10n.storagePruneButton,
-            subtitle: _pruneLoading
-                ? l10n.storagePruneRunning
-                : _pruneCount != null
-                ? l10n.storagePrunedCount(count: _pruneCount!)
-                : l10n.storageCacheInfoHint,
-            onTap: _pruneLoading ? null : _runPrune,
-          ),
-          ConfigListTile.item(
-            icon: Icon(Icons.cloud_sync_outlined, color: context.theme.colorScheme.primary),
-            title: l10n.storageForceSyncButton,
-            subtitle: _forceSyncLoading ? l10n.storageForceSyncRunning : _forceSyncResult,
-            onTap: _isOperationRunning ? null : () => unawaited(_runForceSync(channelName)),
-          ),
-          ConfigListTile.item(
-            icon: Icon(Icons.delete_forever_outlined, color: context.theme.colorScheme.error),
-            title: l10n.storageClearAllButton,
-            subtitle: _clearLoading ? l10n.storageClearAllRunning : null,
-            onTap: _isOperationRunning ? null : () => unawaited(_runClearAll()),
-          ),
-          const ConfigListTile.space(24),
-        ],
+            // ── Storage Operations ────────────────────────────────────────────
+            ConfigListTile.title(l10n.storageOperationsTitle),
+            ConfigListTile.item(
+              icon: Icon(Icons.verified_outlined, color: context.theme.colorScheme.primary),
+              title: l10n.storageVerifyButton,
+              subtitle: _verifyLoading
+                  ? l10n.storageVerifyRunning
+                  : _verifyResult != null
+                  ? _verifyResult!.isEmpty
+                        ? l10n.storageVerifiedOk
+                        : l10n.storageMissingFiles(count: _verifyResult!.length)
+                  : null,
+              onTap: _verifyLoading ? null : _runVerify,
+            ),
+            ConfigListTile.custom(_buildVerifyResults()),
+            ConfigListTile.item(
+              icon: Icon(
+                Icons.cleaning_services_outlined,
+                color: context.theme.colorScheme.primary,
+              ),
+              title: l10n.storagePruneButton,
+              subtitle: _pruneLoading
+                  ? l10n.storagePruneRunning
+                  : _pruneCount != null
+                  ? l10n.storagePrunedCount(count: _pruneCount!)
+                  : l10n.storageCacheInfoHint,
+              onTap: _pruneLoading ? null : _runPrune,
+            ),
+            ConfigListTile.item(
+              icon: Icon(Icons.cloud_sync_outlined, color: context.theme.colorScheme.primary),
+              title: l10n.storageForceSyncButton,
+              subtitle: _forceSyncLoading ? l10n.storageForceSyncRunning : _forceSyncResult,
+              onTap: _isOperationRunning ? null : () => unawaited(_runForceSync(channelName)),
+            ),
+            ConfigListTile.item(
+              icon: Icon(Icons.delete_forever_outlined, color: context.theme.colorScheme.error),
+              title: l10n.storageClearAllButton,
+              subtitle: _clearLoading ? l10n.storageClearAllRunning : null,
+              onTap: _isOperationRunning ? null : () => unawaited(_runClearAll()),
+            ),
+            const ConfigListTile.space(24),
+          ],
+        ),
       ),
     );
   }

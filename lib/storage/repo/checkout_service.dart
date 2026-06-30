@@ -190,39 +190,60 @@ class CheckoutService {
     required Channel channel,
     required String channelName,
   }) async {
-    final meta = readCheckoutMeta(checkoutId);
-    if (meta.isNone()) return const None();
+    final result = await applyDataUpdate(
+      checkoutId: checkoutId,
+      channel: channel,
+      channelName: channelName,
+    );
+    return result.fold((_) => const None(), Some.new);
+  }
 
+  /// Applies a data update to [checkoutId] and reports download progress.
+  ///
+  /// Returns the new resource snapshot hash on success, or an error message on
+  /// failure. All mutations are performed inside this method; if any required
+  /// fetch or write fails the method returns `Left` without touching the
+  /// checkout pointer, registry, or channel head metadata.
+  Future<Either<String, String>> applyDataUpdate({
+    required String checkoutId,
+    required Channel channel,
+    required String channelName,
+    void Function(int downloaded, int total)? onProgress,
+  }) async {
+    final meta = readCheckoutMeta(checkoutId);
+    if (meta.isNone()) return const Left("Checkout metadata not found");
     final m = meta.toNullable()!;
 
-    // Step 1: Check remote head for update. Supply the locally cached head
-    // metadata so a 304 short-circuits to it instead of forcing a re-fetch.
+    // 1. Fetch remote head.
     final headResult = await remoteCatalogService.fetchHeadMeta(
       channelName,
       cachedPayload: _readLocalHeadMetaJson(channelName),
     );
-    if (headResult.isLeft()) return const None();
+    if (headResult.isLeft()) {
+      final err = headResult.getLeft().toNullable()!;
+      return Left(err is CatalogNetworkError ? err.message : "Failed to fetch channel head");
+    }
     final remoteHead = headResult.getRight().toNullable()!;
-
     final remoteLabel = Map<String, String>.from(remoteHead.label.unlock);
 
-    // Read local channel meta to compare
     final currentGenHash = _readLocalGenerationHash(channelName);
     if (currentGenHash == remoteHead.generationHash) {
-      // No update
-      return const None();
+      return Right(m.resourceSnapshotHash);
     }
-
     final newGenerationHash = remoteHead.generationHash;
 
-    // Step 2: Fetch generation resources to get the snapshot hash for our server
+    // 2. Fetch generation resources and resolve the server snapshot hash.
     final genResourcesBytes = await remoteCatalogService.fetchGenerationResources(
       newGenerationHash,
     );
-    if (genResourcesBytes.isLeft()) return const None();
+    if (genResourcesBytes.isLeft()) {
+      final err = genResourcesBytes.getLeft().toNullable()!;
+      return Left(
+        err is CatalogNetworkError ? err.message : "Failed to fetch generation resources",
+      );
+    }
     final genResources = GenerationResources.fromBuffer(genResourcesBytes.getRight().toNullable()!);
 
-    // Find our server's snapshot hash
     String? newSnapshotHash;
     for (final entry in genResources.entries) {
       if (entry.serverId == m.serverId) {
@@ -230,9 +251,11 @@ class CheckoutService {
         break;
       }
     }
-    if (newSnapshotHash == null) return const None();
+    if (newSnapshotHash == null) {
+      return const Left("Server not found in new generation");
+    }
 
-    // If same resource snapshot, skip blob download but update metadata
+    // 3. Same snapshot: update metadata only, skip downloads.
     if (newSnapshotHash == m.resourceSnapshotHash) {
       await _updateAfterFetch(
         checkoutId,
@@ -242,24 +265,29 @@ class CheckoutService {
         m.resourceSnapshotHash,
         label: remoteLabel,
       );
-      return Some(m.resourceSnapshotHash);
+      final ri = assetStore.readResourceIndexSync(m.resourceSnapshotHash);
+      final total = ri.match(() => 0, (r) => r.entries.length);
+      onProgress?.call(total, total);
+      return Right(m.resourceSnapshotHash);
     }
 
-    // Step 3: Fetch the new ResourceIndex
+    // 4. Fetch the new ResourceIndex and diff against the previous one.
     final indexBytes = await remoteCatalogService.fetchResourceIndex(newSnapshotHash);
-    if (indexBytes.isLeft()) return const None();
+    if (indexBytes.isLeft()) {
+      final err = indexBytes.getLeft().toNullable()!;
+      return Left(err is CatalogNetworkError ? err.message : "Failed to fetch resource index");
+    }
     final newIndex = ResourceIndex.fromBuffer(indexBytes.getRight().toNullable()!);
 
-    // Step 4: Load previous ResourceIndex if it exists, diff, download changed blobs
     final previousIndex = assetStore.readResourceIndexSync(m.resourceSnapshotHash);
     final entriesToDownload = <({String resourceId, String contentHash})>[];
+    int downloadedCount = 0;
+
     if (previousIndex.isNone()) {
-      // Full download — all entries
       for (final entry in newIndex.entries) {
         entriesToDownload.add((resourceId: entry.resourceId, contentHash: entry.contentHash));
       }
     } else {
-      // Incremental — only changed entries
       final prevMap = <String, String>{};
       for (final e in previousIndex.toNullable()!.entries) {
         prevMap[e.resourceId] = e.contentHash;
@@ -268,35 +296,50 @@ class CheckoutService {
         final prevHash = prevMap[e.resourceId];
         if (prevHash == null || prevHash != e.contentHash) {
           entriesToDownload.add((resourceId: e.resourceId, contentHash: e.contentHash));
+        } else {
+          downloadedCount++;
         }
       }
     }
 
-    // Download changed blobs
+    // Entries whose blobs are already on disk count as downloaded immediately.
+    final actualToDownload = <({String resourceId, String contentHash})>[];
     for (final dl in entriesToDownload) {
       final ihash = RepoHash.hashIdent(dl.resourceId);
-      if (assetStore.blobExistsSync(ihash, dl.contentHash)) continue;
+      if (assetStore.blobExistsSync(ihash, dl.contentHash)) {
+        downloadedCount++;
+      } else {
+        actualToDownload.add(dl);
+      }
+    }
+
+    final totalCount = newIndex.entries.length;
+    onProgress?.call(downloadedCount, totalCount);
+
+    // 5. Download changed blobs.
+    for (final dl in actualToDownload) {
+      final ihash = RepoHash.hashIdent(dl.resourceId);
       final blobResult = await remoteCatalogService.fetchBlob(ihash, dl.contentHash);
+
       if (blobResult.isRight()) {
         assetStore.writeBlobSync(ihash, blobResult.getRight().toNullable()!);
       } else if (blobResult.getLeft().toNullable()! is CatalogNotModified) {
-        // A 304 for a blob we don't have locally means the cached ETag is
-        // stale. Clear it and retry once unconditionally so the checkout is
-        // not left with missing data.
         EtagCache.remove(remoteCatalogService.blobUri(ihash, dl.contentHash));
         final retry = await remoteCatalogService.fetchBlob(ihash, dl.contentHash);
         if (retry.isRight()) {
           assetStore.writeBlobSync(ihash, retry.getRight().toNullable()!);
         } else {
-          warning("Failed to fetch blob $ihash/${dl.contentHash} after retry");
-          return const None();
+          return const Left("Failed to download changed files");
         }
       } else {
-        warning("Failed to fetch blob $ihash/${dl.contentHash}");
+        return const Left("Failed to download changed files");
       }
+
+      downloadedCount++;
+      onProgress?.call(downloadedCount, totalCount);
     }
 
-    // Step 5: Write new resource snapshot locally
+    // 6. Write the new resource snapshot.
     final metaResult = await remoteCatalogService.fetchResourceSnapshotMeta(newSnapshotHash);
     final snapshotMeta = metaResult.isRight()
         ? metaResult.getRight().toNullable()!
@@ -316,13 +359,12 @@ class CheckoutService {
       resourceIndex: newIndex,
     );
 
-    // Step 6: Fetch and write server index
+    // 7. Persist the new server index and update metadata.
     final serverIndexBytes = await remoteCatalogService.fetchServerIndex(newGenerationHash);
     if (serverIndexBytes.isRight()) {
       _writeServerIndex(channelName, serverIndexBytes.getRight().toNullable()!);
     }
 
-    // Step 7: Update metadata
     await _updateAfterFetch(
       checkoutId,
       channelName,
@@ -332,7 +374,7 @@ class CheckoutService {
       label: remoteLabel,
     );
 
-    return Some(localSnapshotHash);
+    return Right(localSnapshotHash);
   }
 
   // ── Revert (spec §2.8) ─────────────────────────────────────────────────────

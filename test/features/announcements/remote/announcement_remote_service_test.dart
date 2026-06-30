@@ -121,8 +121,7 @@ class _NotFoundAdapter implements HttpClientAdapter {
     RequestOptions options,
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
-  ) async =>
-      ResponseBody.fromString("Not Found", 404);
+  ) async => ResponseBody.fromString("Not Found", 404);
 
   @override
   void close({bool force = false}) {}
@@ -207,10 +206,7 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(
             _testAppSetting().copyWith(
-              remoteContent: const RemoteContentSetting(
-                originUrl: "",
-                channel: _defaultChannel,
-              ),
+              remoteContent: const RemoteContentSetting(originUrl: "", channel: _defaultChannel),
             ),
           ),
           announcementRemoteServiceProvider.overrideWith(

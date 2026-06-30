@@ -34,11 +34,22 @@ Future<Map<String, dynamic>> fetchRemoteJson(
     if (cachedPayload != null) {
       return cachedPayload;
     }
+    final persistedPayload = EtagCache.getPayload(uri);
+    if (persistedPayload != null) {
+      final decoded = jsonDecode(persistedPayload);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    }
     warning(
       "Remote JSON returned 304 but no cached payload available for $uri."
       " The ETag may be stale; clearing and retrying.",
     );
     EtagCache.remove(uri);
+    // Re-fetch without the stale conditional headers. [EtagCache.remove] clears
+    // the in-memory entry immediately, so the retry is effectively unconditional.
+    // If the server still answers 304, the ETag cache is corrupt or the server
+    // is misbehaving; surface a network-level error instead of a parse error.
     result = await getRemoteUri<String>(dio, uri);
     if (result.notModified) {
       throw RemoteContentException(
@@ -54,6 +65,9 @@ Future<Map<String, dynamic>> fetchRemoteJson(
   if (decoded is! Map<String, dynamic>) {
     throw RemoteContentException("Remote JSON response is not an object: $uri");
   }
+  // Persist the fresh payload alongside the ETag so future 304 responses can
+  // be satisfied even when the caller no longer has it in memory.
+  EtagCache.update(uri, payload: data);
   return decoded;
 }
 

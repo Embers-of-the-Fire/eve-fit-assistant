@@ -47,9 +47,7 @@ void main() {
           '  "dismissedIds": [],'
           '  "lastSeenAppVersion": "2.0.0"'
           "}";
-      final state = AnnouncementState.fromJson(
-        jsonDecode(jsonStr) as Map<String, dynamic>,
-      );
+      final state = AnnouncementState.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
       expect(state.schemaVersion, 1);
       expect(state.readIds, ["maintenance-2026-06"]);
       expect(state.dismissedIds, isEmpty);

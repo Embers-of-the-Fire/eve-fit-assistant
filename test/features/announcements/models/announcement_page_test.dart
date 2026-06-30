@@ -8,10 +8,7 @@ import "package:flutter_test/flutter_test.dart";
 void main() {
   group("AnnouncementPage", () {
     test("JSON round-trip empty page", () {
-      final page = AnnouncementPage(
-        uuid: "test-uuid",
-        publishedAt: DateTime.utc(2026, 6, 18),
-      );
+      final page = AnnouncementPage(uuid: "test-uuid", publishedAt: DateTime.utc(2026, 6, 18));
       final restored = AnnouncementPage.fromJson(
         jsonDecode(jsonEncode(page.toJson())) as Map<String, dynamic>,
       );
@@ -97,9 +94,7 @@ void main() {
           '    }'
           '  ]'
           "}";
-      final page = AnnouncementPage.fromJson(
-        jsonDecode(jsonStr) as Map<String, dynamic>,
-      );
+      final page = AnnouncementPage.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
       expect(page.uuid, "f6e5d4c3-b2a1-0987-fedc-ba0987654321");
       expect(page.maxEntries, 50);
       expect(page.entries, hasLength(2));
@@ -136,11 +131,7 @@ void main() {
             channels: ["stable"],
             platforms: ["android"],
             localizations: {
-              "en": LocalizationMeta(
-                title: "Test",
-                summary: "Summary",
-                bodyHash: "hash",
-              ),
+              "en": LocalizationMeta(title: "Test", summary: "Summary", bodyHash: "hash"),
             },
           ),
         ],

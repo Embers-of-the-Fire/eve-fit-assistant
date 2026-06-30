@@ -13,16 +13,8 @@ void main() {
         channels: ["stable"],
         platforms: ["android"],
         localizations: {
-          "zh_CN": LocalizationMeta(
-            title: "中文标题",
-            summary: "中文摘要",
-            bodyHash: "hash_zh_cn",
-          ),
-          "zh": LocalizationMeta(
-            title: "中文标题(语言)",
-            summary: "中文摘要(语言)",
-            bodyHash: "hash_zh",
-          ),
+          "zh_CN": LocalizationMeta(title: "中文标题", summary: "中文摘要", bodyHash: "hash_zh_cn"),
+          "zh": LocalizationMeta(title: "中文标题(语言)", summary: "中文摘要(语言)", bodyHash: "hash_zh"),
           "en": LocalizationMeta(
             title: "English Title",
             summary: "English Summary",
@@ -60,11 +52,7 @@ void main() {
         channels: ["stable"],
         platforms: ["android"],
         localizations: {
-          "ja": LocalizationMeta(
-            title: "日本語タイトル",
-            summary: "日本語要約",
-            bodyHash: "hash_ja",
-          ),
+          "ja": LocalizationMeta(title: "日本語タイトル", summary: "日本語要約", bodyHash: "hash_ja"),
         },
       );
       final result = entryNoEn.resolveLocalization("zh_CN");
