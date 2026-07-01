@@ -3,6 +3,7 @@ import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -116,6 +117,19 @@ void main() {
     createdAt: "2026-06-17T12:00:00Z",
   );
 
+  GenerationResources _generationResources({
+    required String serverId,
+    required String snapshotHash,
+  }) => GenerationResources(
+    schemaVersion: 1,
+    entries: [GenerationResources_Entry(serverId: serverId, snapshotHash: snapshotHash)],
+  );
+
+  Uint8List _generationResourcesBytes({
+    required String serverId,
+    required String snapshotHash,
+  }) => _generationResources(serverId: serverId, snapshotHash: snapshotHash).writeToBuffer();
+
   void stubRegistry(Map<String, CheckoutRegistryEntry> checkouts) {
     when(() => mockRegistryService.readRegistry()).thenReturn(
       Some(
@@ -141,6 +155,9 @@ void main() {
             label: IMap(const {"en": "Test"}),
           ),
         ),
+      );
+      when(() => mockChannelService.readGenerationResources("testing")).thenReturn(
+        Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
       );
       when(
         () => mockRemoteCatalogService.fetchHeadMeta(
@@ -193,6 +210,13 @@ void main() {
           ),
         ),
       );
+      when(
+        () => mockRemoteCatalogService.fetchGenerationResources(testRemoteHash),
+      ).thenAnswer(
+        (_) async => Right(
+          _generationResourcesBytes(serverId: "tq", snapshotHash: "new_snapshot_hash"),
+        ),
+      );
 
       final service = makeService();
       final result = await service.checkForCheckout("checkout-1");
@@ -203,6 +227,87 @@ void main() {
       expect(avail.newGenerationHash, testRemoteHash);
     });
 
+    test("returns available when generation matches but snapshot differs", () async {
+      stubRegistry({"checkout-1": testEntry()});
+      when(() => mockChannelService.localGenerationHash("testing")).thenReturn(testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenReturn(
+        Some(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: testLocalHash,
+            updatedAt: "2026-06-17T12:00:00Z",
+            label: IMap(const {"en": "Test"}),
+          ),
+        ),
+      );
+      when(() => mockChannelService.readGenerationResources("testing")).thenReturn(
+        Some(_generationResources(serverId: "tq", snapshotHash: "new_snapshot_hash")),
+      );
+      when(
+        () => mockRemoteCatalogService.fetchHeadMeta(
+          "testing",
+          cachedPayload: any(named: "cachedPayload"),
+        ),
+      ).thenAnswer(
+        (_) async => Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: testLocalHash,
+            updatedAt: "2026-06-17T12:00:00Z",
+            label: IMap(const {"en": "Test"}),
+          ),
+        ),
+      );
+
+      final service = makeService();
+      final result = await service.checkForCheckout("checkout-1");
+
+      expect(result, isA<DataUpdateCheckResultAvailable>());
+      final avail = result as DataUpdateCheckResultAvailable;
+      expect(avail.currentGenerationHash, testLocalHash);
+      expect(avail.newGenerationHash, testLocalHash);
+    });
+
+    test("returns failed when server is missing from generation resources", () async {
+      stubRegistry({"checkout-1": testEntry()});
+      when(() => mockChannelService.localGenerationHash("testing")).thenReturn(testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenReturn(
+        Some(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: testLocalHash,
+            updatedAt: "2026-06-17T12:00:00Z",
+            label: IMap(const {"en": "Test"}),
+          ),
+        ),
+      );
+      when(() => mockChannelService.readGenerationResources("testing")).thenReturn(
+        Some(_generationResources(serverId: "other", snapshotHash: "other_snapshot_hash")),
+      );
+      when(
+        () => mockRemoteCatalogService.fetchHeadMeta(
+          "testing",
+          cachedPayload: any(named: "cachedPayload"),
+        ),
+      ).thenAnswer(
+        (_) async => Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: testLocalHash,
+            updatedAt: "2026-06-17T12:00:00Z",
+            label: IMap(const {"en": "Test"}),
+          ),
+        ),
+      );
+
+      final service = makeService();
+      final result = await service.checkForCheckout("checkout-1");
+
+      expect(result, isA<DataUpdateCheckResultFailed>());
+      final failed = result as DataUpdateCheckResultFailed;
+      expect(failed.message, "Server not found in latest generation");
+      expect(failed.canRetry, isTrue);
+    });
     test("returns failed when checkout is missing", () async {
       stubRegistry({});
 
@@ -353,6 +458,9 @@ void main() {
           ),
         ),
       );
+      when(() => mockChannelService.readGenerationResources("testing")).thenReturn(
+        Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
+      );
       when(
         () => mockRemoteCatalogService.fetchHeadMeta(
           "testing",
@@ -388,6 +496,16 @@ void main() {
             updatedAt: "2026-06-17T12:00:00Z",
             label: IMap(const {"en": "Test"}),
           ),
+        ),
+      );
+      when(() => mockChannelService.readGenerationResources("testing")).thenReturn(
+        Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
+      );
+      when(
+        () => mockRemoteCatalogService.fetchGenerationResources(testRemoteHash),
+      ).thenAnswer(
+        (_) async => Right(
+          _generationResourcesBytes(serverId: "tq", snapshotHash: "new_snapshot_hash"),
         ),
       );
       var callCount = 0;
@@ -453,6 +571,13 @@ void main() {
           ),
         ),
       );
+      when(
+        () => mockRemoteCatalogService.fetchGenerationResources(testRemoteHash),
+      ).thenAnswer(
+        (_) async => Right(
+          _generationResourcesBytes(serverId: "tq", snapshotHash: "new_snapshot_hash"),
+        ),
+      );
 
       final service = makeService();
       final results = await service.checkAllCheckouts();
@@ -500,6 +625,13 @@ void main() {
             updatedAt: "2026-06-18T12:00:00Z",
             label: IMap(const {"en": "Newer"}),
           ),
+        ),
+      );
+      when(
+        () => mockRemoteCatalogService.fetchGenerationResources(testRemoteHash),
+      ).thenAnswer(
+        (_) async => Right(
+          _generationResourcesBytes(serverId: "tq", snapshotHash: "new_snapshot_hash"),
         ),
       );
       when(
@@ -567,6 +699,13 @@ void main() {
         ),
       );
       when(
+        () => mockRemoteCatalogService.fetchGenerationResources(testRemoteHash),
+      ).thenAnswer(
+        (_) async => Right(
+          _generationResourcesBytes(serverId: "tq", snapshotHash: "new_snapshot_hash"),
+        ),
+      );
+      when(
         () => mockCheckoutService.applyDataUpdate(
           checkoutId: any(named: "checkoutId"),
           channel: any(named: "channel"),
@@ -616,6 +755,9 @@ void main() {
             label: IMap(const {"en": "Test"}),
           ),
         ),
+      );
+      when(() => mockChannelService.readGenerationResources("testing")).thenReturn(
+        Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
       );
       when(
         () => mockRemoteCatalogService.fetchHeadMeta(

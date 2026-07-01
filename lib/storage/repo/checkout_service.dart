@@ -227,32 +227,45 @@ class CheckoutService {
     final remoteLabel = Map<String, String>.from(remoteHead.label.unlock);
 
     final currentGenHash = _readLocalGenerationHash(channelName);
-    if (currentGenHash == remoteHead.generationHash) {
-      return Right(m.resourceSnapshotHash);
-    }
+    final isSameGeneration = currentGenHash == remoteHead.generationHash;
     final newGenerationHash = remoteHead.generationHash;
 
-    // 2. Fetch generation resources and resolve the server snapshot hash.
-    final genResourcesBytes = await remoteCatalogService.fetchGenerationResources(
-      newGenerationHash,
-    );
-    if (genResourcesBytes.isLeft()) {
-      final err = genResourcesBytes.getLeft().toNullable()!;
-      return Left(
-        err is CatalogNetworkError ? err.message : "Failed to fetch generation resources",
-      );
-    }
-    final genResources = GenerationResources.fromBuffer(genResourcesBytes.getRight().toNullable()!);
-
     String? newSnapshotHash;
-    for (final entry in genResources.entries) {
-      if (entry.serverId == m.serverId) {
-        newSnapshotHash = entry.snapshotHash;
-        break;
+    if (isSameGeneration) {
+      final localGenResources = _readLocalGenerationResources(channelName);
+      if (localGenResources.isSome()) {
+        for (final entry in localGenResources.toNullable()!.entries) {
+          if (entry.serverId == m.serverId) {
+            newSnapshotHash = entry.snapshotHash;
+            break;
+          }
+        }
       }
     }
+
     if (newSnapshotHash == null) {
-      return const Left("Server not found in new generation");
+      final genResourcesBytes = await remoteCatalogService.fetchGenerationResources(
+        newGenerationHash,
+      );
+      if (genResourcesBytes.isLeft()) {
+        final err = genResourcesBytes.getLeft().toNullable()!;
+        return Left(
+          err is CatalogNetworkError ? err.message : "Failed to fetch generation resources",
+        );
+      }
+      final genResources = GenerationResources.fromBuffer(
+        genResourcesBytes.getRight().toNullable()!,
+      );
+
+      for (final entry in genResources.entries) {
+        if (entry.serverId == m.serverId) {
+          newSnapshotHash = entry.snapshotHash;
+          break;
+        }
+      }
+      if (newSnapshotHash == null) {
+        return const Left("Server not found in new generation");
+      }
     }
 
     // 3. Same snapshot: update metadata only, skip downloads.
@@ -464,6 +477,17 @@ class CheckoutService {
       return json["generationHash"] as String?;
     } on Exception {
       return null;
+    }
+  }
+
+  Option<GenerationResources> _readLocalGenerationResources(String channelName) {
+    final path = RepoPaths.channelResourcesPath(channelName);
+    final file = File(path);
+    if (!file.existsSync()) return const None();
+    try {
+      return Some(GenerationResources.fromBuffer(file.readAsBytesSync()));
+    } on Exception {
+      return const None();
     }
   }
 

@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
@@ -138,6 +139,23 @@ class AssetStore {
       return Some(ResourceIndex.fromBuffer(file.readAsBytesSync()));
     } on Exception catch (e, stackTrace) {
       warning("Failed to read ResourceIndex $snapshotHash", stackTrace: stackTrace);
+      return const None();
+    }
+  }
+
+  /// Reads the metadata for a resource snapshot.
+  ///
+  /// Returns [None] if the snapshot or metadata.json does not exist, or if
+  /// parsing fails.
+  Option<ResourceSnapshotMeta> readResourceSnapshotMetaSync(String snapshotHash) {
+    final path = RepoPaths.resourceSnapshotMetaPath(snapshotHash);
+    final file = File(path);
+    if (!file.existsSync()) return const None();
+    try {
+      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      return Some(ResourceSnapshotMeta.fromJson(json));
+    } on Exception catch (e, stackTrace) {
+      warning("Failed to read resource snapshot metadata $snapshotHash", stackTrace: stackTrace);
       return const None();
     }
   }

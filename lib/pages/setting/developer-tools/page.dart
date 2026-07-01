@@ -10,9 +10,11 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/restart_init.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/trigger_feedback.dart";
+import "package:eve_fit_assistant/storage/setting/reset_service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:restart_app/restart_app.dart";
 
 @RoutePage()
 class DeveloperToolsPage extends ConsumerWidget {
@@ -40,7 +42,46 @@ class DeveloperToolsPage extends ConsumerWidget {
           ),
           const ConfigListTile.custom(RestartInitTile()),
           const ConfigListTile.custom(TriggerFeedbackTile()),
+          const ConfigListTile.custom(ResetStorageTile()),
         ],
+      ),
+    );
+  }
+}
+
+class ResetStorageTile extends ConsumerWidget {
+  const ResetStorageTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListTile(
+    leading: const Icon(Icons.delete_forever, color: Colors.red),
+    title: const Text("Reset All Storage"),
+    subtitle: const Text("Wipe all app data and restart into setup flow"),
+    onTap: () => _confirm(context, ref),
+  );
+
+  void _confirm(BuildContext context, WidgetRef ref) {
+    unawaited(
+      showDialog<void>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text("Reset All Storage?"),
+          content: const Text(
+            "This will delete all settings, fits, characters, checkouts, cached remote data, and logs. The app will restart and show the welcome/setup flow.",
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(dialogCtx).pop(), child: const Text("Cancel")),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                Navigator.of(dialogCtx).pop();
+                await const ResetStorageService().resetAll();
+                await Restart.restartApp();
+              },
+              child: const Text("Reset & Restart"),
+            ),
+          ],
+        ),
       ),
     );
   }

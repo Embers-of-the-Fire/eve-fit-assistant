@@ -88,6 +88,9 @@ class _FakeAssetStore implements AssetStore {
   Option<ResourceIndex> readResourceIndexSync(String snapshotHash) => const None();
 
   @override
+  Option<ResourceSnapshotMeta> readResourceSnapshotMetaSync(String snapshotHash) => const None();
+
+  @override
   IList<String> verifyResourceIndexSync(ResourceIndex resourceIndex) => const IList.empty();
 
   @override

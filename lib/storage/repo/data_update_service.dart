@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
@@ -62,7 +63,7 @@ class DataUpdateService {
   final NativeDirResolver nativeDirResolver;
   final RemoteCatalogService remoteCatalogService;
 
-  Future<DataUpdateCheckResult> checkForCheckout(String checkoutId) {
+  Future<DataUpdateCheckResult> checkForCheckout(String checkoutId) async {
     final registry = repoService.checkoutRegistry.readRegistry();
     final entry = registry.flatMap((r) => Option.fromNullable(r.checkouts[checkoutId]));
     if (entry.isNone()) {
@@ -71,34 +72,84 @@ class DataUpdateService {
       );
     }
 
-    final channelName = entry.toNullable()!.channel;
+    final checkout = entry.toNullable()!;
+    final channelName = checkout.channel;
     final localHash = channelService.localGenerationHash(channelName);
     if (localHash == null || localHash.isEmpty) {
       return Future.value(const DataUpdateCheckResult.upToDate(currentGenerationHash: ""));
     }
 
     final localHead = channelService.readHeadMeta(channelName);
-    return remoteCatalogService
-        .fetchHeadMeta(channelName, cachedPayload: localHead.toNullable()?.toJson())
-        .then((headResult) {
-          if (headResult.isLeft()) {
-            final err = headResult.getLeft().toNullable()!;
-            return DataUpdateCheckResult.failed(
-              message: err is CatalogNetworkError ? err.message : "Failed to check for updates",
-              canRetry: true,
-            );
-          }
+    final headResult = await remoteCatalogService.fetchHeadMeta(
+      channelName,
+      cachedPayload: localHead.toNullable()?.toJson(),
+    );
+    if (headResult.isLeft()) {
+      final err = headResult.getLeft().toNullable()!;
+      return DataUpdateCheckResult.failed(
+        message: err is CatalogNetworkError ? err.message : "Failed to check for updates",
+        canRetry: true,
+      );
+    }
 
-          final remoteHead = headResult.getRight().toNullable()!;
-          if (remoteHead.generationHash == localHash) {
-            return DataUpdateCheckResult.upToDate(currentGenerationHash: localHash);
-          }
+    final remoteHead = headResult.getRight().toNullable()!;
+    final remoteGenerationHash = remoteHead.generationHash;
 
-          return DataUpdateCheckResult.available(
-            currentGenerationHash: localHash,
-            newGenerationHash: remoteHead.generationHash,
-          );
-        });
+    final targetSnapshotHash = await _resolveTargetSnapshotHash(
+      channelName: channelName,
+      serverId: checkout.serverId,
+      remoteGenerationHash: remoteGenerationHash,
+      localGenerationHash: localHash,
+    );
+
+    if (targetSnapshotHash == null) {
+      return const DataUpdateCheckResult.failed(
+        message: "Server not found in latest generation",
+        canRetry: true,
+      );
+    }
+
+    if (targetSnapshotHash == checkout.resourceSnapshotHash) {
+      return DataUpdateCheckResult.upToDate(currentGenerationHash: localHash);
+    }
+
+    return DataUpdateCheckResult.available(
+      currentGenerationHash: localHash,
+      newGenerationHash: remoteGenerationHash,
+    );
+  }
+
+  /// Resolves the resource snapshot hash for [serverId] in the latest
+  /// generation. Prefers locally-cached generation resources when the remote
+  /// generation matches the local one; otherwise fetches from remote.
+  Future<String?> _resolveTargetSnapshotHash({
+    required String channelName,
+    required String serverId,
+    required String remoteGenerationHash,
+    required String localGenerationHash,
+  }) async {
+    Option<GenerationResources> genResourcesOpt;
+    if (remoteGenerationHash == localGenerationHash) {
+      genResourcesOpt = channelService.readGenerationResources(channelName);
+    } else {
+      genResourcesOpt = const None();
+    }
+
+    if (genResourcesOpt.isNone()) {
+      final result = await remoteCatalogService.fetchGenerationResources(remoteGenerationHash);
+      if (result.isLeft()) {
+        return null;
+      }
+      genResourcesOpt = Some(GenerationResources.fromBuffer(result.getRight().toNullable()!));
+    }
+
+    final genResources = genResourcesOpt.toNullable()!;
+    for (final entry in genResources.entries) {
+      if (entry.serverId == serverId) {
+        return entry.snapshotHash;
+      }
+    }
+    return null;
   }
 
   Future<Either<String, String>> applyCheckoutUpdate(

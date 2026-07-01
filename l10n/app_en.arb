@@ -647,6 +647,110 @@
   "checkoutCreateProgressIndexFailed": "Resource index fetch failed",
   "checkoutCreateProgressCheckoutFailed": "Checkout creation failed",
   "checkoutCreateSuccess": "Checkout created and activated",
+  "checkoutHistoryButton": "View history",
+  "checkoutHistoryPageTitle": "Checkout History",
+  "checkoutHistoryPageTitleName": "{name} — History",
+  "@checkoutHistoryPageTitleName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutHistoryNotFound": "Checkout not found.",
+  "checkoutHistoryBack": "Back",
+  "checkoutHistoryEmpty": "No history recorded for this checkout yet.",
+  "checkoutHistoryHeaderServer": "Server: {serverId}",
+  "@checkoutHistoryHeaderServer": {
+    "placeholders": {
+      "serverId": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutHistoryHeaderChannel": "Channel: {channel}",
+  "@checkoutHistoryHeaderChannel": {
+    "placeholders": {
+      "channel": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutHistoryHeaderCurrentHash": "Current snapshot: {hash}",
+  "@checkoutHistoryHeaderCurrentHash": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutHistoryHeaderTransitionCount": "{count} transitions",
+  "@checkoutHistoryHeaderTransitionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "checkoutHistoryRegion": "Region",
+  "checkoutHistorySync": "Sync",
+  "checkoutHistoryBranch": "Branch",
+  "checkoutHistoryFromHash": "From",
+  "checkoutHistoryToHash": "To",
+  "checkoutHistoryBuild": "Build",
+  "checkoutHistoryVersion": "Version",
+  "checkoutHistoryAuthor": "Author",
+  "checkoutHistoryDescription": "Description",
+  "checkoutHistoryResourceCount": "{count} resources",
+  "@checkoutHistoryResourceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "checkoutHistoryResourceCountLabel": "Resources",
+  "checkoutHistoryCreatedAt": "Created",
+  "checkoutHistoryMetaUnavailable": "Metadata unavailable",
+  "checkoutHistoryCurrentBadge": "current",
+  "checkoutHistoryInitialBadge": "initial",
+  "checkoutHistoryInitialFrom": "creation",
+  "checkoutHistoryRowSemantic": "Transition {ordinal}, from {fromHash} to {toHash}, recorded at {timestamp}",
+  "@checkoutHistoryRowSemantic": {
+    "placeholders": {
+      "ordinal": {
+        "type": "int"
+      },
+      "fromHash": {
+        "type": "String"
+      },
+      "toHash": {
+        "type": "String"
+      },
+      "timestamp": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutHistoryRevertTooltip": "Revert to this snapshot",
+  "checkoutHistoryRevertTitle": "Revert checkout?",
+  "checkoutHistoryRevertConfirm": "Revert to snapshot {hash}? The checkout will switch to this previously downloaded version.",
+  "@checkoutHistoryRevertConfirm": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutHistoryRevertSuccess": "Checkout reverted",
+  "checkoutHistoryRevertFailed": "Revert failed: {message}",
+  "@checkoutHistoryRevertFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "migrationFailedError": "Migration failed: {message}",
   "migrationRequiredTitle": "Data Migration Required",
   "migrationRequiredDescription": "This version uses a new data storage format. Your existing fits and characters will be migrated. Legacy data will be cleaned up.",

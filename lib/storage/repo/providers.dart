@@ -299,11 +299,13 @@ class RepoStateNotifier extends _$RepoStateNotifier {
       if (!settings.remoteContent.enabled) return;
 
       final repo = ref.read(repoServiceProvider);
+      final originUrl = settings.remoteContent.originUrl;
 
       // Discover channels
       final discoverResult = await repo.discoverChannels();
       if (discoverResult.isLeft()) {
-        debug("Startup sync: channel discovery failed: ${discoverResult.getLeft().toNullable()}");
+        final error = discoverResult.getLeft().toNullable()!;
+        debug("Startup sync: channel discovery failed [$originUrl]: $error");
         return;
       }
 
@@ -314,10 +316,8 @@ class RepoStateNotifier extends _$RepoStateNotifier {
 
       final syncResult = await repo.syncChannelGeneration(activeChannel);
       if (syncResult.isLeft()) {
-        debug(
-          "Startup sync: generation sync failed for $activeChannel: "
-          "${syncResult.getLeft().toNullable()}",
-        );
+        final error = syncResult.getLeft().toNullable()!;
+        debug("Startup sync: generation sync failed for $activeChannel [$originUrl]: $error");
       }
     } catch (e, stackTrace) {
       debug("Startup sync failed", stackTrace: stackTrace);

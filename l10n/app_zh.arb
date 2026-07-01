@@ -1458,6 +1458,86 @@
   "checkoutCreateProgressIndexFailed": "资源索引获取失败",
   "checkoutCreateProgressCheckoutFailed": "数据版本创建失败",
   "checkoutCreateSuccess": "数据版本创建完成并已激活",
+  "checkoutHistoryButton": "查看历史",
+  "checkoutHistoryPageTitle": "数据版本历史",
+  "checkoutHistoryPageTitleName": "{name} — 历史",
+  "@checkoutHistoryPageTitleName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "checkoutHistoryNotFound": "找不到该数据版本。",
+  "checkoutHistoryBack": "返回",
+  "checkoutHistoryEmpty": "该数据版本尚未记录任何历史。",
+  "checkoutHistoryHeaderServer": "服务器：{serverId}",
+  "@checkoutHistoryHeaderServer": {
+    "placeholders": {
+      "serverId": { "type": "String" }
+    }
+  },
+  "checkoutHistoryHeaderChannel": "频道：{channel}",
+  "@checkoutHistoryHeaderChannel": {
+    "placeholders": {
+      "channel": { "type": "String" }
+    }
+  },
+  "checkoutHistoryHeaderCurrentHash": "当前快照：{hash}",
+  "@checkoutHistoryHeaderCurrentHash": {
+    "placeholders": {
+      "hash": { "type": "String" }
+    }
+  },
+  "checkoutHistoryHeaderTransitionCount": "{count} 次转换",
+  "@checkoutHistoryHeaderTransitionCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "checkoutHistoryRegion": "区域",
+  "checkoutHistorySync": "同步",
+  "checkoutHistoryBranch": "分支",
+  "checkoutHistoryFromHash": "来源",
+  "checkoutHistoryToHash": "目标",
+  "checkoutHistoryBuild": "构建",
+  "checkoutHistoryVersion": "版本",
+  "checkoutHistoryAuthor": "作者",
+  "checkoutHistoryDescription": "描述",
+  "checkoutHistoryResourceCount": "{count} 个资源",
+  "@checkoutHistoryResourceCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "checkoutHistoryResourceCountLabel": "资源数",
+  "checkoutHistoryCreatedAt": "创建时间",
+  "checkoutHistoryMetaUnavailable": "元数据不可用",
+  "checkoutHistoryCurrentBadge": "当前",
+  "checkoutHistoryInitialBadge": "初始",
+  "checkoutHistoryInitialFrom": "创建",
+  "checkoutHistoryRowSemantic": "转换 {ordinal}，从 {fromHash} 到 {toHash}，记录于 {timestamp}",
+  "@checkoutHistoryRowSemantic": {
+    "placeholders": {
+      "ordinal": { "type": "int" },
+      "fromHash": { "type": "String" },
+      "toHash": { "type": "String" },
+      "timestamp": { "type": "String" }
+    }
+  },
+  "checkoutHistoryRevertTooltip": "回退到此快照",
+  "checkoutHistoryRevertTitle": "回退数据版本？",
+  "checkoutHistoryRevertConfirm": "回退到快照 {hash}？数据版本将切换到此先前下载的版本。",
+  "@checkoutHistoryRevertConfirm": {
+    "placeholders": {
+      "hash": { "type": "String" }
+    }
+  },
+  "checkoutHistoryRevertSuccess": "数据版本已回退",
+  "checkoutHistoryRevertFailed": "回退失败：{message}",
+  "@checkoutHistoryRevertFailed": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
   "@@_MIGRATION": {},
   "migrationFailedError": "迁移失败：{message}",
   "@migrationFailedError": {

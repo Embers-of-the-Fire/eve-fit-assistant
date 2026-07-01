@@ -205,7 +205,10 @@ void main() {
       final result = await service.syncChannelGeneration("testing");
 
       expect(result.isLeft(), isTrue);
-      expect(result.getLeft().toNullable(), contains("connection refused"));
+      expect(
+        result.getLeft().toNullable(),
+        "Network error fetching channel head meta: connection refused",
+      );
     });
 
     test("writes files atomically via tmp + rename", () async {
@@ -289,6 +292,29 @@ void main() {
 
       expect(fakeRemote.lastChannelRegistryPayload, isNotNull);
       expect(fakeRemote.lastChannelRegistryPayload!["active"], "testing");
+      expect(fakeRemote.lastChannelRegistryPayload!["channels"], isA<Map<String, dynamic>>());
+      expect(
+        (fakeRemote.lastChannelRegistryPayload!["channels"] as Map<String, dynamic>)["testing"],
+        isA<Map<String, dynamic>>(),
+      );
+    });
+
+    test("cachedPayload contains serializable channel entries", () async {
+      final channels = IMap<String, ChannelEntry>({
+        "testing": ChannelEntry(label: IMap<String, String>({"en": "Testing"})),
+      });
+      final fakeRemote = _FakeRemoteCatalogService(
+        channelRegistryResult: Right(
+          ChannelRegistry(schemaVersion: 1, active: "testing", channels: channels),
+        ),
+      );
+      final service = _makeService(fakeRemote);
+
+      await service.discoverChannels();
+      await service.discoverChannels();
+
+      final payload = fakeRemote.lastChannelRegistryPayload!;
+      expect(jsonEncode(payload), contains('"testing":{"label":{"en":"Testing"}}'));
     });
 
     test("returns Left on CatalogNetworkError", () async {
@@ -300,7 +326,7 @@ void main() {
       final result = await service.discoverChannels();
 
       expect(result.isLeft(), isTrue);
-      expect(result.getLeft().toNullable(), "timeout");
+      expect(result.getLeft().toNullable(), "Network error fetching channels: timeout");
     });
 
     test("returns Left on other catalog error", () async {
@@ -312,7 +338,7 @@ void main() {
       final result = await service.discoverChannels();
 
       expect(result.isLeft(), isTrue);
-      expect(result.getLeft().toNullable(), "Failed to fetch channels");
+      expect(result.getLeft().toNullable(), "Failed to parse channel registry: bad json");
     });
   });
 
@@ -359,7 +385,10 @@ void main() {
       final result = await service.fetchChannelInfo("testing");
 
       expect(result.isLeft(), isTrue);
-      expect(result.getLeft().toNullable(), "connection refused");
+      expect(
+        result.getLeft().toNullable(),
+        "Network error fetching channel info: connection refused",
+      );
     });
 
     test("succeeds when server index fetch fails but head meta succeeds", () async {
