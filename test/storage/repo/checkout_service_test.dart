@@ -58,6 +58,7 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
 
   bool fetchGenerationResourcesCalled = false;
   String? lastFetchGenerationResourcesHash;
+  bool fetchResourceIndexCalled = false;
 
   @override
   Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(
@@ -77,8 +78,10 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
   }
 
   @override
-  Future<Either<CatalogError, Uint8List>> fetchResourceIndex(String snapshotHash) async =>
-      resourceIndexResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  Future<Either<CatalogError, Uint8List>> fetchResourceIndex(String snapshotHash) async {
+    fetchResourceIndexCalled = true;
+    return resourceIndexResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  }
 
   @override
   Future<Either<CatalogError, ResourceSnapshotMeta>> fetchResourceSnapshotMeta(
@@ -388,5 +391,78 @@ void main() {
       expect(transition.from, snapshot.hash);
       expect(transition.to, snapshot.hash);
     });
+
+    test(
+      "preserves snapshot metadata name field so local hash matches remote",
+      () async {
+        final oldSnapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+
+        final newMeta = ResourceSnapshotMeta(
+          schemaVersion: 1,
+          serverId: _testServerId,
+          name: IMap(const {"en": "Tranquility", "zh": "宁静"}),
+          gameBuild: "2026.06.16",
+          gameVersion: "1.0",
+          resourceCount: 1,
+          createdAt: "2026-06-16T12:00:00Z",
+        );
+        final newIndex = ResourceIndex(
+          schemaVersion: 1,
+          entries: [
+            ResourceIndex_Entry(
+              resourceId: "resource://static/native/types.pb2",
+              contentHash: oldSnapshot.resourceIndex.entries.first.contentHash,
+              size: oldSnapshot.resourceIndex.entries.first.size,
+            ),
+          ],
+        );
+        final expectedHash = assetStore.writeResourceSnapshotSync(
+          meta: newMeta,
+          resourceIndex: newIndex,
+        );
+
+        final fakeRemote = _FakeRemoteCatalogService(
+          headMetaResult: Right(_headMeta(generationHash: _testGenerationHashNew)),
+          serverIndexResult: Right(
+            ServerIndex(
+              schemaVersion: 1,
+              servers: [
+                ServerIndex_Entry(
+                  serverId: _testServerId,
+                  gameBuild: "2026.06.16",
+                  gameVersion: "1.0",
+                ),
+              ],
+            ).writeToBuffer(),
+          ),
+          generationResourcesResult: Right(_generationResourcesBytes(expectedHash)),
+          resourceIndexResult: Right(newIndex.writeToBuffer()),
+          resourceSnapshotMetaResult: Right(newMeta),
+        );
+        final service = _makeService(fakeRemote);
+        final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
+        _writeChannelHead(_testChannelName, _testGenerationHashOld);
+
+        final result = await service.applyDataUpdate(
+          checkoutId: checkoutId,
+          channel: Channel.testing,
+          channelName: _testChannelName,
+        );
+
+        expect(result.isRight(), isTrue);
+        expect(result.toNullable(), expectedHash);
+
+        // A second update should see the checkout as current and not re-fetch
+        // the resource index.
+        fakeRemote.fetchResourceIndexCalled = false;
+        final secondResult = await service.applyDataUpdate(
+          checkoutId: checkoutId,
+          channel: Channel.testing,
+          channelName: _testChannelName,
+        );
+        expect(secondResult.toNullable(), expectedHash);
+        expect(fakeRemote.fetchResourceIndexCalled, isFalse);
+      },
+    );
   });
 }
