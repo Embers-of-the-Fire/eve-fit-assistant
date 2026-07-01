@@ -104,14 +104,20 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 
 ## Developer Mode
 
-The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `developerMode` boolean field (default `false`). A toggle in App Settings → Developer section enables it, with a confirmation dialog on enable.
+The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `developerMode` boolean field (default `false`). It is not exposed as a normal settings toggle.
+
+**Access:** On **Settings → Version**, tap the **App Version** value in the version info table 5 times within 2 seconds. A confirmation dialog (`developerModeEnableConfirmTitle` / `developerModeEnableConfirmDescription`) is shown; confirming sets `developerMode` to `true` via `appSettingServiceProvider`. Once enabled, a **Developer Settings** card appears on the Version page.
+
+**Entry points after enabled:**
+- Version page → Developer Settings (`/setting/developer-settings`): debug log toggle, remote-content settings visibility, open remote content settings, collect logs, clear cache, and a shortcut to Developer Tools.
+- Developer Settings → Developer Tools (`/setting/developer-tools`): channel overview, restart init, trigger feedback, reset all storage.
 
 **Providers:**
 - `developerModeProvider` — reactive read via `ref.watch(developerModeProvider)` (always up-to-date).
 - `appSettingServiceProvider.select((s) => s.developerMode)` — fine-grained reactive read.
 - `ref.read(appSettingServiceProvider).developerMode` — imperative read within callbacks.
 
-**Localization rule for developer-only widgets:** UI widgets gated behind `developerMode` (i.e., only visible when dev mode is on) **must use hardcoded English**. No ARB entries or `context.l10n` calls for dev-only UI. Only the toggle itself and its confirmation dialog use localization (they are always visible in the settings page).
+**Localization rule for developer-only widgets:** UI widgets gated behind `developerMode` (i.e., only visible when dev mode is on) **must use hardcoded English**. No ARB entries or `context.l10n` calls for dev-only UI. Only the enable-confirmation dialog and the always-visible Version page elements use localization.
 
 ## Style And Generated-Code Gotchas
 

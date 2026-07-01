@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show availableUpdateProvider, unreadAnnouncementCountProvider;
@@ -27,11 +28,19 @@ class VersionPage extends ConsumerStatefulWidget {
 
 class _VersionPageState extends ConsumerState<VersionPage> {
   late final Future<PackageInfo> _packageInfoFuture;
+  int _versionTapCount = 0;
+  Timer? _versionTapResetTimer;
 
   @override
   void initState() {
     super.initState();
     _packageInfoFuture = PackageInfo.fromPlatform();
+  }
+
+  @override
+  void dispose() {
+    _versionTapResetTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -89,7 +98,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                           (
                             label: context.l10n.versionPageAppVersion,
                             value: info?.version,
-                            onTap: null,
+                            onTap: () => _onVersionRowTapped(context),
                           ),
                           (
                             label: context.l10n.versionPageBuildNumber,
@@ -140,7 +149,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                         (
                           label: context.l10n.versionPageAppVersion,
                           value: info?.version,
-                          onTap: null,
+                          onTap: () => _onVersionRowTapped(context),
                         ),
                         (
                           label: context.l10n.versionPageBuildNumber,
@@ -197,6 +206,34 @@ class _VersionPageState extends ConsumerState<VersionPage> {
     final localizedName = entry.name[localeName];
     if (localizedName != null && localizedName.isNotEmpty) return localizedName;
     return entry.serverId;
+  }
+
+  void _onVersionRowTapped(BuildContext context) {
+    if (ref.read(appSettingServiceProvider).developerMode) return;
+
+    _versionTapResetTimer?.cancel();
+    _versionTapCount++;
+    _versionTapResetTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _versionTapCount = 0);
+    });
+
+    if (_versionTapCount >= 5) {
+      _versionTapResetTimer?.cancel();
+      _versionTapCount = 0;
+      unawaited(_showEnableDeveloperModeDialog(context));
+    }
+  }
+
+  Future<void> _showEnableDeveloperModeDialog(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: context.l10n.developerModeEnableConfirmTitle,
+      content: Text(context.l10n.developerModeEnableConfirmDescription),
+    );
+    if (!confirmed || !context.mounted) return;
+    ref
+        .read(appSettingServiceProvider.notifier)
+        .update((setting) => setting.copyWith(developerMode: true));
   }
 }
 
