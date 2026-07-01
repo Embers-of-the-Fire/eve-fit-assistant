@@ -177,8 +177,8 @@ class RemoteCatalogService {
       return Left(
         CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
       );
-    } on RemoteContentException catch (e) {
-      return Left(CatalogNetworkError(message: e.message, statusCode: 304));
+    } on RemoteContentException catch (_) {
+      return const Left(CatalogNotModified());
     } on FormatException catch (e) {
       return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
     } catch (e) {

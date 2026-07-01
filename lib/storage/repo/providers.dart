@@ -344,34 +344,41 @@ class BatchDataUpdateController extends _$BatchDataUpdateController {
     if (state is BatchDataUpdateStatusChecking || state is BatchDataUpdateStatusDownloading) return;
 
     state = const BatchDataUpdateStatus.checking();
-    final results = await ref.read(dataUpdateServiceProvider).checkAllCheckouts();
+    try {
+      final results = await ref.read(dataUpdateServiceProvider).checkAllCheckouts();
 
-    final available = <String, String>{};
-    var hasFailed = false;
-    String failureMessage = "";
+      final available = <String, String>{};
+      var hasFailed = false;
+      String failureMessage = "";
 
-    for (final entry in results.entries) {
-      final result = entry.value;
-      switch (result) {
-        case DataUpdateCheckResultAvailable(:final newGenerationHash):
-          available[entry.key] = newGenerationHash;
-        case DataUpdateCheckResultFailed(:final message):
-          hasFailed = true;
-          failureMessage = message;
-        case DataUpdateCheckResultUpToDate():
-          break;
+      for (final entry in results.entries) {
+        final result = entry.value;
+        switch (result) {
+          case DataUpdateCheckResultAvailable(:final newGenerationHash):
+            available[entry.key] = newGenerationHash;
+          case DataUpdateCheckResultFailed(:final message):
+            hasFailed = true;
+            failureMessage = message;
+          case DataUpdateCheckResultUpToDate():
+            break;
+        }
       }
-    }
 
-    if (available.isNotEmpty) {
-      state = BatchDataUpdateStatus.available(available);
-    } else if (hasFailed) {
+      if (available.isNotEmpty) {
+        state = BatchDataUpdateStatus.available(available);
+      } else if (hasFailed) {
+        state = BatchDataUpdateStatus.failed(
+          message: failureMessage.isEmpty ? "Failed to check for updates" : failureMessage,
+          canRetry: true,
+        );
+      } else {
+        state = const BatchDataUpdateStatus.upToDate();
+      }
+    } catch (e) {
       state = BatchDataUpdateStatus.failed(
-        message: failureMessage.isEmpty ? "Failed to check for updates" : failureMessage,
+        message: "Failed to check for updates: $e",
         canRetry: true,
       );
-    } else {
-      state = const BatchDataUpdateStatus.upToDate();
     }
   }
 
@@ -389,24 +396,28 @@ class BatchDataUpdateController extends _$BatchDataUpdateController {
       ),
     );
 
-    final result = await ref
-        .read(dataUpdateServiceProvider)
-        .applyAllCheckouts(
-          onProgress: (progress) => state = BatchDataUpdateStatus.downloading(progress),
+    try {
+      final result = await ref
+          .read(dataUpdateServiceProvider)
+          .applyAllCheckouts(
+            onProgress: (progress) => state = BatchDataUpdateStatus.downloading(progress),
+          );
+
+      if (result.failures.isNotEmpty && result.successes.isEmpty) {
+        state = const BatchDataUpdateStatus.failed(
+          message: "No checkouts could be updated",
+          canRetry: true,
         );
+      } else {
+        state = BatchDataUpdateStatus.applied(result);
+      }
 
-    if (result.failures.isNotEmpty && result.successes.isEmpty) {
-      state = const BatchDataUpdateStatus.failed(
-        message: "No checkouts could be updated",
-        canRetry: true,
-      );
-    } else {
-      state = BatchDataUpdateStatus.applied(result);
+      // Re-initialize the repo lifecycle so the Rust engine and collection
+      // providers observe any new snapshot hashes and native directories.
+      await ref.read(repoStateProvider.notifier).initialize();
+    } catch (e) {
+      state = BatchDataUpdateStatus.failed(message: "Failed to apply update: $e", canRetry: true);
     }
-
-    // Re-initialize the repo lifecycle so the Rust engine and collection
-    // providers observe any new snapshot hashes and native directories.
-    await ref.read(repoStateProvider.notifier).initialize();
   }
 
   /// Moves the transient `applied` state back to `upToDate`.

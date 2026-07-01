@@ -75,8 +75,28 @@ class ResetStorageTile extends ConsumerWidget {
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
                 Navigator.of(dialogCtx).pop();
-                await const ResetStorageService().resetAll();
-                await Restart.restartApp();
+                try {
+                  await const ResetStorageService().resetAll();
+                  await Restart.restartApp();
+                } on Exception catch (e, st) {
+                  if (context.mounted) {
+                    await showDialog<void>(
+                      context: context,
+                      builder: (errorCtx) => AlertDialog(
+                        title: const Text("Reset failed"),
+                        content: Text("Could not reset storage: $e"),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(errorCtx).pop(),
+                            child: const Text("OK"),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  debugPrint("ResetStorageTile failed: $e");
+                  debugPrintStack(stackTrace: st);
+                }
               },
               child: const Text("Reset & Restart"),
             ),

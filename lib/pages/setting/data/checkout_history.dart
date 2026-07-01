@@ -352,7 +352,7 @@ class _HistoryRowState extends ConsumerState<_HistoryRow> {
                       ),
                   ],
                 ),
-                if (meta != null) ...[
+                if (meta != null && !_expanded) ...[
                   const SizedBox(height: 8),
                   _buildMetaBlock(l10n, meta, theme),
                 ] else if (_loadingMeta) ...[
@@ -400,16 +400,6 @@ class _HistoryRowState extends ConsumerState<_HistoryRow> {
             l10n.checkoutHistoryResourceCount(count: meta.resourceCount),
             style: TextStyle(color: theme.hintColor, fontSize: 12),
           ),
-          if (_expanded && meta.author.isNotEmpty)
-            Text(
-              "${l10n.checkoutHistoryAuthor}: ${meta.author}",
-              style: TextStyle(color: theme.hintColor, fontSize: 12),
-            ),
-          if (_expanded && meta.description.isNotEmpty)
-            Text(
-              "${l10n.checkoutHistoryDescription}: ${meta.description}",
-              style: TextStyle(color: theme.hintColor, fontSize: 12),
-            ),
         ],
       );
 
