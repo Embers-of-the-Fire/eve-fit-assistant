@@ -15,7 +15,6 @@ import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
-import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
@@ -352,21 +351,15 @@ class CheckoutService {
       onProgress?.call(downloadedCount, totalCount);
     }
 
-    // 6. Write the new resource snapshot.
+    // 6. Fetch the canonical resource snapshot metadata and write the snapshot.
     final metaResult = await remoteCatalogService.fetchResourceSnapshotMeta(newSnapshotHash);
-    final snapshotMeta = metaResult.isRight()
-        ? metaResult.getRight().toNullable()!
-        : ResourceSnapshotMeta(
-            schemaVersion: 1,
-            serverId: m.serverId,
-            gameBuild: m.gameBuild,
-            gameVersion: m.gameVersion,
-            gameRegion: m.region,
-            gameSync: m.sync,
-            gameBranch: m.branch,
-            resourceCount: newIndex.entries.length,
-            createdAt: formatTimestamp(DateTime.now().toUtc()),
-          );
+    if (metaResult.isLeft()) {
+      final err = metaResult.getLeft().toNullable()!;
+      return Left(
+        err is CatalogNetworkError ? err.message : "Failed to fetch resource snapshot metadata",
+      );
+    }
+    final snapshotMeta = metaResult.getRight().toNullable()!;
     final localSnapshotHash = assetStore.writeResourceSnapshotSync(
       meta: snapshotMeta,
       resourceIndex: newIndex,
@@ -374,9 +367,11 @@ class CheckoutService {
 
     // 7. Persist the new server index and update metadata.
     final serverIndexBytes = await remoteCatalogService.fetchServerIndex(newGenerationHash);
-    if (serverIndexBytes.isRight()) {
-      _writeServerIndex(channelName, serverIndexBytes.getRight().toNullable()!);
+    if (serverIndexBytes.isLeft()) {
+      final err = serverIndexBytes.getLeft().toNullable()!;
+      return Left(err is CatalogNetworkError ? err.message : "Failed to fetch server index");
     }
+    _writeServerIndex(channelName, serverIndexBytes.getRight().toNullable()!);
 
     await _updateAfterFetch(
       checkoutId,

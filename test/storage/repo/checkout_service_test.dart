@@ -580,5 +580,95 @@ void main() {
       final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
       expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
     });
+    test("returns Left when fetchResourceSnapshotMeta fails", () async {
+      final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
+      final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
+      final oldSnapshot = _makeSnapshot(
+        createdAt: "2026-06-15T12:00:00Z",
+        blobContent: oldBlobContent,
+      );
+      final newSnapshot = _makeSnapshot(
+        createdAt: "2026-06-16T12:00:00Z",
+        blobContent: newBlobContent,
+        writeBlob: false,
+      );
+
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(newSnapshot.hash),
+        resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
+      );
+      when(
+        () => mockRemote.fetchResourceSnapshotMeta(any()),
+      ).thenAnswer((_) async => const Left(CatalogNetworkError(message: "metadata timeout")));
+      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async => Right(newBlobContent));
+
+      final service = _makeService(mockRemote);
+      final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
+      _writeChannelHead(_testChannelName, _testGenerationHashOld);
+
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+      );
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), "metadata timeout");
+
+      final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
+
+      final registry = checkoutRegistry.readRegistry().toNullable()!;
+      expect(registry.checkouts[checkoutId]!.resourceSnapshotHash, oldSnapshot.hash);
+
+      final reflog = service.readCheckoutReflog(checkoutId).toNullable()!;
+      expect(reflog.entries.length, 1);
+    });
+
+    test("returns Left when fetchServerIndex fails", () async {
+      final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
+      final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
+      final oldSnapshot = _makeSnapshot(
+        createdAt: "2026-06-15T12:00:00Z",
+        blobContent: oldBlobContent,
+      );
+      final newSnapshot = _makeSnapshot(
+        createdAt: "2026-06-16T12:00:00Z",
+        blobContent: newBlobContent,
+        writeBlob: false,
+      );
+
+      final mockRemote = _mockRemote(
+        generationResourcesResult: _generationResourcesBytes(newSnapshot.hash),
+        resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
+        resourceSnapshotMetaResult: newSnapshot.meta,
+      );
+      when(
+        () => mockRemote.fetchServerIndex(_testGenerationHashNew),
+      ).thenAnswer((_) async => const Left(CatalogNetworkError(message: "server index timeout")));
+      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async => Right(newBlobContent));
+
+      final service = _makeService(mockRemote);
+      final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
+      _writeChannelHead(_testChannelName, _testGenerationHashOld);
+
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+      );
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), "server index timeout");
+
+      final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
+    });
   });
 }
