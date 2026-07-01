@@ -110,6 +110,7 @@ class _CheckoutHistoryPageState extends ConsumerState<CheckoutHistoryPage> {
                       final transition = entries[reverseIndex];
                       final ordinal = reverseIndex + 1;
                       return _HistoryRow(
+                        key: ValueKey("${transition.to}_${transition.timestamp}"),
                         ordinal: ordinal,
                         transition: transition,
                         currentHash: currentHash,
@@ -249,6 +250,7 @@ class _HistoryRow extends ConsumerStatefulWidget {
     required this.isInitial,
     required this.metaCache,
     required this.onRevert,
+    super.key,
   });
 
   final int ordinal;
@@ -264,25 +266,22 @@ class _HistoryRow extends ConsumerStatefulWidget {
 
 class _HistoryRowState extends ConsumerState<_HistoryRow> {
   bool _expanded = false;
-  bool _loadingMeta = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadMeta());
+    _loadMeta();
   }
 
-  Future<void> _loadMeta() async {
+  void _loadMeta() {
     final hash = widget.transition.to;
     if (widget.metaCache.containsKey(hash)) return;
     if (hash.isEmpty) {
       widget.metaCache[hash] = null;
       return;
     }
-    setState(() => _loadingMeta = true);
     final meta = ref.read(assetStoreProvider).readResourceSnapshotMetaSync(hash);
     widget.metaCache[hash] = meta.toNullable();
-    if (mounted) setState(() => _loadingMeta = false);
   }
 
   @override
@@ -355,13 +354,6 @@ class _HistoryRowState extends ConsumerState<_HistoryRow> {
                 if (meta != null && !_expanded) ...[
                   const SizedBox(height: 8),
                   _buildMetaBlock(l10n, meta, theme),
-                ] else if (_loadingMeta) ...[
-                  const SizedBox(height: 8),
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
                 ] else if (widget.metaCache.containsKey(widget.transition.to)) ...[
                   const SizedBox(height: 4),
                   Text(

@@ -2,14 +2,13 @@ import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
-import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/data/proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
@@ -24,6 +23,7 @@ import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
+import "package:mocktail/mocktail.dart";
 
 const _testServerId = "tranquility";
 const _testChannelName = "testing";
@@ -41,58 +41,50 @@ class _TestSnapshot {
   final ResourceIndex resourceIndex;
 }
 
-class _FakeRemoteCatalogService extends RemoteCatalogService {
-  _FakeRemoteCatalogService({
-    this.headMetaResult,
-    this.serverIndexResult,
-    this.generationResourcesResult,
-    this.resourceIndexResult,
-    this.resourceSnapshotMetaResult,
-  }) : super(dio: Dio(), originUrl: "https://test.local");
+ChannelHeadMeta _headMeta({required String generationHash}) => ChannelHeadMeta(
+  schemaVersion: 1,
+  generationHash: generationHash,
+  updatedAt: "2026-06-16T12:00:00Z",
+  label: IMap(const {"en": "Test Release"}),
+);
 
-  Either<CatalogError, ChannelHeadMeta>? headMetaResult;
-  Either<CatalogError, Uint8List>? serverIndexResult;
-  Either<CatalogError, Uint8List>? generationResourcesResult;
-  Either<CatalogError, Uint8List>? resourceIndexResult;
-  Either<CatalogError, ResourceSnapshotMeta>? resourceSnapshotMetaResult;
+class MockRemoteCatalogService extends Mock implements RemoteCatalogService {}
 
-  bool fetchGenerationResourcesCalled = false;
-  String? lastFetchGenerationResourcesHash;
-  bool fetchResourceIndexCalled = false;
-
-  @override
-  Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(
-    String channelName, {
-    Map<String, dynamic>? cachedPayload,
-  }) async => headMetaResult ?? Left(const CatalogNetworkError(message: "not configured"));
-
-  @override
-  Future<Either<CatalogError, Uint8List>> fetchServerIndex(String generationHash) async =>
-      serverIndexResult ?? Left(const CatalogNetworkError(message: "not configured"));
-
-  @override
-  Future<Either<CatalogError, Uint8List>> fetchGenerationResources(String generationHash) async {
-    fetchGenerationResourcesCalled = true;
-    lastFetchGenerationResourcesHash = generationHash;
-    return generationResourcesResult ?? Left(const CatalogNetworkError(message: "not configured"));
+MockRemoteCatalogService _mockRemote({
+  ChannelHeadMeta? headMetaResult,
+  Uint8List? serverIndexResult,
+  Uint8List? generationResourcesResult,
+  Uint8List? resourceIndexResult,
+  ResourceSnapshotMeta? resourceSnapshotMetaResult,
+}) {
+  final mock = MockRemoteCatalogService();
+  when(
+    () => mock.fetchHeadMeta(_testChannelName, cachedPayload: any(named: "cachedPayload")),
+  ).thenAnswer(
+    (_) async => Right(headMetaResult ?? _headMeta(generationHash: _testGenerationHashNew)),
+  );
+  if (serverIndexResult != null) {
+    when(
+      () => mock.fetchServerIndex(_testGenerationHashNew),
+    ).thenAnswer((_) async => Right(serverIndexResult));
   }
-
-  @override
-  Future<Either<CatalogError, Uint8List>> fetchResourceIndex(String snapshotHash) async {
-    fetchResourceIndexCalled = true;
-    return resourceIndexResult ?? Left(const CatalogNetworkError(message: "not configured"));
+  if (generationResourcesResult != null) {
+    when(
+      () => mock.fetchGenerationResources(_testGenerationHashNew),
+    ).thenAnswer((_) async => Right(generationResourcesResult));
   }
-
-  @override
-  Future<Either<CatalogError, ResourceSnapshotMeta>> fetchResourceSnapshotMeta(
-    String snapshotHash, {
-    Map<String, dynamic>? cachedPayload,
-  }) async =>
-      resourceSnapshotMetaResult ?? Left(const CatalogNetworkError(message: "not configured"));
-
-  @override
-  Future<Either<CatalogError, Uint8List>> fetchBlob(String identHash, String contentHash) async =>
-      Left(const CatalogNetworkError(message: "unexpected blob fetch"));
+  if (resourceIndexResult != null) {
+    when(() => mock.fetchResourceIndex(any())).thenAnswer((_) async => Right(resourceIndexResult));
+  }
+  if (resourceSnapshotMetaResult != null) {
+    when(
+      () => mock.fetchResourceSnapshotMeta(any(), cachedPayload: any(named: "cachedPayload")),
+    ).thenAnswer((_) async => Right(resourceSnapshotMetaResult));
+  }
+  when(
+    () => mock.blobUri(any(), any()),
+  ).thenReturn(Uri.parse("https://test.local/efa/v2/assets/blobs/placeholder"));
+  return mock;
 }
 
 void main() {
@@ -103,6 +95,22 @@ void main() {
   setUpAll(() {
     final logDir = Directory.systemTemp.createTempSync("efa_checkout_service_test_log_");
     GlobalLogger.init(logDir.path, enableDebugLog: false);
+
+    registerFallbackValue("");
+    registerFallbackValue(Channel.testing);
+    registerFallbackValue(
+      const ResourceSnapshotMeta(
+        schemaVersion: 1,
+        serverId: _testServerId,
+        gameBuild: "",
+        gameVersion: "",
+        resourceCount: 0,
+        createdAt: "",
+      ),
+    );
+    registerFallbackValue(ResourceIndex());
+    registerFallbackValue(Uint8List(0));
+    registerFallbackValue(IMap(const <String, String>{}));
   });
 
   setUp(() {
@@ -110,6 +118,8 @@ void main() {
     PathProvider.documentsPath = tempDir;
     assetStore = const AssetStore();
     checkoutRegistry = CheckoutRegistryService();
+    EtagCache.init();
+    EtagCache.clearAll();
   });
 
   tearDown(() {
@@ -117,24 +127,30 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  CheckoutService _makeService(_FakeRemoteCatalogService fakeRemote) => CheckoutService(
+  CheckoutService _makeService(MockRemoteCatalogService mockRemote) => CheckoutService(
     assetStore: assetStore,
-    remoteCatalogService: fakeRemote,
+    remoteCatalogService: mockRemote,
     diffEngine: const DiffEngine(),
     checkoutRegistry: checkoutRegistry,
   );
 
-  _TestSnapshot _makeSnapshot({required String createdAt}) {
-    final blobContent = Uint8List.fromList([1, 2, 3, 4]);
+  _TestSnapshot _makeSnapshot({
+    required String createdAt,
+    Uint8List? blobContent,
+    bool writeBlob = true,
+  }) {
+    final content = blobContent ?? Uint8List.fromList([1, 2, 3, 4]);
     final ihash = RepoHash.hashIdent("resource://static/native/types.pb2");
-    final blobResult = assetStore.writeBlobSync(ihash, blobContent);
+    if (writeBlob) {
+      assetStore.writeBlobSync(ihash, content);
+    }
     final resourceIndex = ResourceIndex(
       schemaVersion: 1,
       entries: [
         ResourceIndex_Entry(
           resourceId: "resource://static/native/types.pb2",
-          contentHash: blobResult.contentHash,
-          size: Int64(blobContent.length),
+          contentHash: RepoHash.hashContent(content),
+          size: Int64(content.length),
         ),
       ],
     );
@@ -165,13 +181,6 @@ void main() {
     expect(result.isSome(), isTrue);
     return result.toNullable()!;
   }
-
-  ChannelHeadMeta _headMeta({required String generationHash}) => ChannelHeadMeta(
-    schemaVersion: 1,
-    generationHash: generationHash,
-    updatedAt: "2026-06-16T12:00:00Z",
-    label: IMap(const {"en": "Test Release"}),
-  );
 
   void _writeChannelHead(String channelName, String generationHash) {
     final path = RepoPaths.channelHeadMetaPath(channelName);
@@ -211,30 +220,24 @@ void main() {
           orderedEquals(newSnapshot.resourceIndex.writeToBuffer()),
         );
 
-        final service = _makeService(
-          _FakeRemoteCatalogService(
-            headMetaResult: Right(_headMeta(generationHash: _testGenerationHashNew)),
-            serverIndexResult: Right(
-              ServerIndex(
-                schemaVersion: 1,
-                servers: [
-                  ServerIndex_Entry(
-                    serverId: _testServerId,
-                    gameBuild: "2026.06.16",
-                    gameVersion: "1.0",
-                  ),
-                ],
-              ).writeToBuffer(),
-            ),
-            resourceIndexResult: Right(newSnapshot.resourceIndex.writeToBuffer()),
-            resourceSnapshotMetaResult: Right(newSnapshot.meta),
-          ),
+        final mockRemote = _mockRemote(
+          serverIndexResult: ServerIndex(
+            schemaVersion: 1,
+            servers: [
+              ServerIndex_Entry(
+                serverId: _testServerId,
+                gameBuild: "2026.06.16",
+                gameVersion: "1.0",
+              ),
+            ],
+          ).writeToBuffer(),
+          resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
+          resourceSnapshotMetaResult: newSnapshot.meta,
         );
+        final service = _makeService(mockRemote);
         final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
         _writeChannelHead(_testChannelName, _testGenerationHashNew);
         _writeChannelResources(_testChannelName, newSnapshot.hash);
-
-        final fakeRemote = service.remoteCatalogService as _FakeRemoteCatalogService;
 
         final result = await service.applyDataUpdate(
           checkoutId: checkoutId,
@@ -244,7 +247,7 @@ void main() {
 
         expect(result.isRight(), isTrue);
         expect(result.toNullable(), newSnapshot.hash);
-        expect(fakeRemote.fetchGenerationResourcesCalled, isFalse);
+        verifyNever(() => mockRemote.fetchGenerationResources(any()));
 
         final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
         expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
@@ -264,16 +267,12 @@ void main() {
       () async {
         final snapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
 
-        final service = _makeService(
-          _FakeRemoteCatalogService(
-            headMetaResult: Right(_headMeta(generationHash: _testGenerationHashNew)),
-          ),
-        );
+        final mockRemote = _mockRemote();
+        final service = _makeService(mockRemote);
         final checkoutId = await _createCheckout(service, snapshotHash: snapshot.hash);
         _writeChannelHead(_testChannelName, _testGenerationHashNew);
         _writeChannelResources(_testChannelName, snapshot.hash);
 
-        final fakeRemote = service.remoteCatalogService as _FakeRemoteCatalogService;
         final reflogBefore = service.readCheckoutReflog(checkoutId).toNullable()!;
 
         final result = await service.applyDataUpdate(
@@ -284,7 +283,7 @@ void main() {
 
         expect(result.isRight(), isTrue);
         expect(result.toNullable(), snapshot.hash);
-        expect(fakeRemote.fetchGenerationResourcesCalled, isFalse);
+        verifyNever(() => mockRemote.fetchGenerationResources(any()));
 
         final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
         expect(updatedMeta.resourceSnapshotHash, snapshot.hash);
@@ -301,25 +300,18 @@ void main() {
       final oldSnapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
       final newSnapshot = _makeSnapshot(createdAt: "2026-06-16T12:00:00Z");
 
-      final fakeRemote = _FakeRemoteCatalogService(
-        headMetaResult: Right(_headMeta(generationHash: _testGenerationHashNew)),
-        serverIndexResult: Right(
-          ServerIndex(
-            schemaVersion: 1,
-            servers: [
-              ServerIndex_Entry(
-                serverId: _testServerId,
-                gameBuild: "2026.06.16",
-                gameVersion: "1.0",
-              ),
-            ],
-          ).writeToBuffer(),
-        ),
-        generationResourcesResult: Right(_generationResourcesBytes(newSnapshot.hash)),
-        resourceIndexResult: Right(newSnapshot.resourceIndex.writeToBuffer()),
-        resourceSnapshotMetaResult: Right(newSnapshot.meta),
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(newSnapshot.hash),
+        resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
+        resourceSnapshotMetaResult: newSnapshot.meta,
       );
-      final service = _makeService(fakeRemote);
+      final service = _makeService(mockRemote);
       final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
       _writeChannelHead(_testChannelName, _testGenerationHashOld);
 
@@ -331,8 +323,7 @@ void main() {
 
       expect(result.isRight(), isTrue);
       expect(result.toNullable(), newSnapshot.hash);
-      expect(fakeRemote.fetchGenerationResourcesCalled, isTrue);
-      expect(fakeRemote.lastFetchGenerationResourcesHash, _testGenerationHashNew);
+      verify(() => mockRemote.fetchGenerationResources(_testGenerationHashNew)).called(1);
 
       final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
       expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
@@ -349,23 +340,16 @@ void main() {
     test("changed generation but unchanged snapshot hash performs metadata-only update", () async {
       final snapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
 
-      final fakeRemote = _FakeRemoteCatalogService(
-        headMetaResult: Right(_headMeta(generationHash: _testGenerationHashNew)),
-        serverIndexResult: Right(
-          ServerIndex(
-            schemaVersion: 1,
-            servers: [
-              ServerIndex_Entry(
-                serverId: _testServerId,
-                gameBuild: "2026.06.16",
-                gameVersion: "1.0",
-              ),
-            ],
-          ).writeToBuffer(),
-        ),
-        generationResourcesResult: Right(_generationResourcesBytes(snapshot.hash)),
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(snapshot.hash),
       );
-      final service = _makeService(fakeRemote);
+      final service = _makeService(mockRemote);
       final checkoutId = await _createCheckout(service, snapshotHash: snapshot.hash);
       _writeChannelHead(_testChannelName, _testGenerationHashOld);
 
@@ -379,8 +363,7 @@ void main() {
 
       expect(result.isRight(), isTrue);
       expect(result.toNullable(), snapshot.hash);
-      expect(fakeRemote.fetchGenerationResourcesCalled, isTrue);
-      expect(fakeRemote.lastFetchGenerationResourcesHash, _testGenerationHashNew);
+      verify(() => mockRemote.fetchGenerationResources(_testGenerationHashNew)).called(1);
 
       final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
       expect(updatedMeta.resourceSnapshotHash, snapshot.hash);
@@ -392,77 +375,210 @@ void main() {
       expect(transition.to, snapshot.hash);
     });
 
-    test(
-      "preserves snapshot metadata name field so local hash matches remote",
-      () async {
-        final oldSnapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+    test("preserves snapshot metadata name field so local hash matches remote", () async {
+      final oldSnapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
 
-        final newMeta = ResourceSnapshotMeta(
-          schemaVersion: 1,
-          serverId: _testServerId,
-          name: IMap(const {"en": "Tranquility", "zh": "宁静"}),
-          gameBuild: "2026.06.16",
-          gameVersion: "1.0",
-          resourceCount: 1,
-          createdAt: "2026-06-16T12:00:00Z",
-        );
-        final newIndex = ResourceIndex(
-          schemaVersion: 1,
-          entries: [
-            ResourceIndex_Entry(
-              resourceId: "resource://static/native/types.pb2",
-              contentHash: oldSnapshot.resourceIndex.entries.first.contentHash,
-              size: oldSnapshot.resourceIndex.entries.first.size,
-            ),
-          ],
-        );
-        final expectedHash = assetStore.writeResourceSnapshotSync(
-          meta: newMeta,
-          resourceIndex: newIndex,
-        );
-
-        final fakeRemote = _FakeRemoteCatalogService(
-          headMetaResult: Right(_headMeta(generationHash: _testGenerationHashNew)),
-          serverIndexResult: Right(
-            ServerIndex(
-              schemaVersion: 1,
-              servers: [
-                ServerIndex_Entry(
-                  serverId: _testServerId,
-                  gameBuild: "2026.06.16",
-                  gameVersion: "1.0",
-                ),
-              ],
-            ).writeToBuffer(),
+      final newMeta = ResourceSnapshotMeta(
+        schemaVersion: 1,
+        serverId: _testServerId,
+        name: IMap(const {"en": "Tranquility", "zh": "宁静"}),
+        gameBuild: "2026.06.16",
+        gameVersion: "1.0",
+        resourceCount: 1,
+        createdAt: "2026-06-16T12:00:00Z",
+      );
+      final newIndex = ResourceIndex(
+        schemaVersion: 1,
+        entries: [
+          ResourceIndex_Entry(
+            resourceId: "resource://static/native/types.pb2",
+            contentHash: oldSnapshot.resourceIndex.entries.first.contentHash,
+            size: oldSnapshot.resourceIndex.entries.first.size,
           ),
-          generationResourcesResult: Right(_generationResourcesBytes(expectedHash)),
-          resourceIndexResult: Right(newIndex.writeToBuffer()),
-          resourceSnapshotMetaResult: Right(newMeta),
-        );
-        final service = _makeService(fakeRemote);
-        final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
-        _writeChannelHead(_testChannelName, _testGenerationHashOld);
+        ],
+      );
+      final expectedHash = assetStore.writeResourceSnapshotSync(
+        meta: newMeta,
+        resourceIndex: newIndex,
+      );
 
-        final result = await service.applyDataUpdate(
-          checkoutId: checkoutId,
-          channel: Channel.testing,
-          channelName: _testChannelName,
-        );
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(expectedHash),
+        resourceIndexResult: newIndex.writeToBuffer(),
+        resourceSnapshotMetaResult: newMeta,
+      );
+      final service = _makeService(mockRemote);
+      final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
+      _writeChannelHead(_testChannelName, _testGenerationHashOld);
 
-        expect(result.isRight(), isTrue);
-        expect(result.toNullable(), expectedHash);
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+      );
 
-        // A second update should see the checkout as current and not re-fetch
-        // the resource index.
-        fakeRemote.fetchResourceIndexCalled = false;
-        final secondResult = await service.applyDataUpdate(
-          checkoutId: checkoutId,
-          channel: Channel.testing,
-          channelName: _testChannelName,
-        );
-        expect(secondResult.toNullable(), expectedHash);
-        expect(fakeRemote.fetchResourceIndexCalled, isFalse);
-      },
-    );
+      expect(result.isRight(), isTrue);
+      expect(result.toNullable(), expectedHash);
+
+      // A second update should see the checkout as current and not re-fetch
+      // the resource index.
+      final secondResult = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+      );
+      expect(secondResult.toNullable(), expectedHash);
+      verify(() => mockRemote.fetchResourceIndex(expectedHash)).called(1);
+    });
+
+    test("changed blob content triggers fetchBlob download", () async {
+      final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
+      final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
+      final oldSnapshot = _makeSnapshot(
+        createdAt: "2026-06-15T12:00:00Z",
+        blobContent: oldBlobContent,
+      );
+      final newSnapshot = _makeSnapshot(
+        createdAt: "2026-06-16T12:00:00Z",
+        blobContent: newBlobContent,
+        writeBlob: false,
+      );
+
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(newSnapshot.hash),
+        resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
+        resourceSnapshotMetaResult: newSnapshot.meta,
+      );
+      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async => Right(newBlobContent));
+
+      final service = _makeService(mockRemote);
+      final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
+      _writeChannelHead(_testChannelName, _testGenerationHashOld);
+
+      final progressCalls = <(int, int)>[];
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+        onProgress: (downloaded, total) => progressCalls.add((downloaded, total)),
+      );
+
+      expect(result.isRight(), isTrue);
+      expect(result.toNullable(), newSnapshot.hash);
+      verify(() => mockRemote.fetchBlob(any(), any())).called(1);
+      expect(progressCalls, contains((0, 1)));
+      expect(progressCalls.last, (1, 1));
+
+      final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
+    });
+
+    test("retries fetchBlob when first call returns CatalogNotModified", () async {
+      final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
+      final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
+      final oldSnapshot = _makeSnapshot(
+        createdAt: "2026-06-15T12:00:00Z",
+        blobContent: oldBlobContent,
+      );
+      final newSnapshot = _makeSnapshot(
+        createdAt: "2026-06-16T12:00:00Z",
+        blobContent: newBlobContent,
+        writeBlob: false,
+      );
+
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(newSnapshot.hash),
+        resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
+        resourceSnapshotMetaResult: newSnapshot.meta,
+      );
+      var callCount = 0;
+      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) return const Left(CatalogNotModified());
+        return Right(newBlobContent);
+      });
+
+      final service = _makeService(mockRemote);
+      final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
+      _writeChannelHead(_testChannelName, _testGenerationHashOld);
+
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+      );
+
+      expect(result.isRight(), isTrue);
+      expect(result.toNullable(), newSnapshot.hash);
+      expect(callCount, 2);
+      verify(() => mockRemote.fetchBlob(any(), any())).called(2);
+
+      final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
+    });
+
+    test("returns Left when fetchBlob fails with a non-304 error", () async {
+      final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
+      final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
+      final oldSnapshot = _makeSnapshot(
+        createdAt: "2026-06-15T12:00:00Z",
+        blobContent: oldBlobContent,
+      );
+      final newSnapshot = _makeSnapshot(
+        createdAt: "2026-06-16T12:00:00Z",
+        blobContent: newBlobContent,
+        writeBlob: false,
+      );
+
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(newSnapshot.hash),
+        resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
+        resourceSnapshotMetaResult: newSnapshot.meta,
+      );
+      when(
+        () => mockRemote.fetchBlob(any(), any()),
+      ).thenAnswer((_) async => const Left(CatalogNetworkError(message: "boom")));
+
+      final service = _makeService(mockRemote);
+      final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
+      _writeChannelHead(_testChannelName, _testGenerationHashOld);
+
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+      );
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), "Failed to download changed files");
+      verify(() => mockRemote.fetchBlob(any(), any())).called(1);
+
+      final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
+    });
   });
 }

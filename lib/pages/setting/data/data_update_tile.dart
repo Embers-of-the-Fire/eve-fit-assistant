@@ -80,7 +80,7 @@ class _DataUpdateTileState extends ConsumerState<DataUpdateTile> {
                 context.l10n.dataUpdateActionRetry,
                 style: TextStyle(color: theme.colorScheme.error),
               )
-            : const Icon(Icons.error_outline, color: Colors.red),
+            : Icon(Icons.error_outline, color: theme.colorScheme.error),
     };
   }
 

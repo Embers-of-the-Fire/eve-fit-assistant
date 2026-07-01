@@ -77,7 +77,10 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     return Layout(
       title: l10n.storagePageTitle,
       child: RefreshIndicator(
-        onRefresh: () => ref.read(batchDataUpdateControllerProvider.notifier).check(),
+        onRefresh: () async {
+          ref.invalidate(storageOverviewProvider);
+          await ref.read(batchDataUpdateControllerProvider.notifier).check();
+        },
         child: ConfigListView(
           children: [
             // ── Overview ──────────────────────────────────────────────────────

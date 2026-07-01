@@ -64,19 +64,29 @@ class DataUpdateService {
   final RemoteCatalogService remoteCatalogService;
 
   Future<DataUpdateCheckResult> checkForCheckout(String checkoutId) async {
-    final registry = repoService.checkoutRegistry.readRegistry();
-    final entry = registry.flatMap((r) => Option.fromNullable(r.checkouts[checkoutId]));
-    if (entry.isNone()) {
-      return Future.value(
-        const DataUpdateCheckResult.failed(message: "Checkout not found", canRetry: false),
-      );
+    final checkout = _readCheckout(checkoutId);
+    if (checkout.isNone()) {
+      return const DataUpdateCheckResult.failed(message: "Checkout not found", canRetry: false);
     }
 
-    final checkout = entry.toNullable()!;
-    final channelName = checkout.channel;
+    final entry = checkout.toNullable()!;
+    final channelResult = await _checkChannel(entry.channel);
+    return channelResult.fold(
+      (failure) => failure,
+      (info) => _evaluateCheckout(entry, info.remoteGenerationHash, info.generationResources),
+    );
+  }
+
+  Option<CheckoutRegistryEntry> _readCheckout(String checkoutId) => repoService.checkoutRegistry
+      .readRegistry()
+      .flatMap((r) => Option.fromNullable(r.checkouts[checkoutId]));
+
+  Future<Either<DataUpdateCheckResultFailed, _ChannelUpdateInfo>> _checkChannel(
+    String channelName,
+  ) async {
     final localHash = channelService.localGenerationHash(channelName);
     if (localHash == null || localHash.isEmpty) {
-      return Future.value(const DataUpdateCheckResult.upToDate(currentGenerationHash: ""));
+      return const Right(_ChannelUpdateInfo(remoteGenerationHash: "", generationResources: null));
     }
 
     final localHead = channelService.readHeadMeta(channelName);
@@ -86,45 +96,44 @@ class DataUpdateService {
     );
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
-      return DataUpdateCheckResult.failed(
-        message: err is CatalogNetworkError ? err.message : "Failed to check for updates",
-        canRetry: true,
+      return Left(
+        DataUpdateCheckResultFailed(
+          message: err is CatalogNetworkError ? err.message : "Failed to check for updates",
+          canRetry: true,
+        ),
       );
     }
 
     final remoteHead = headResult.getRight().toNullable()!;
     final remoteGenerationHash = remoteHead.generationHash;
 
-    final targetSnapshotHash = await _resolveTargetSnapshotHash(
+    final generationResources = await _resolveGenerationResources(
       channelName: channelName,
-      serverId: checkout.serverId,
       remoteGenerationHash: remoteGenerationHash,
       localGenerationHash: localHash,
     );
-
-    if (targetSnapshotHash == null) {
-      return const DataUpdateCheckResult.failed(
-        message: "Server not found in latest generation",
-        canRetry: true,
+    if (generationResources == null) {
+      return const Left(
+        DataUpdateCheckResultFailed(
+          message: "Server not found in latest generation",
+          canRetry: true,
+        ),
       );
     }
 
-    if (targetSnapshotHash == checkout.resourceSnapshotHash) {
-      return DataUpdateCheckResult.upToDate(currentGenerationHash: localHash);
-    }
-
-    return DataUpdateCheckResult.available(
-      currentGenerationHash: localHash,
-      newGenerationHash: remoteGenerationHash,
+    return Right(
+      _ChannelUpdateInfo(
+        remoteGenerationHash: remoteGenerationHash,
+        generationResources: generationResources,
+      ),
     );
   }
 
-  /// Resolves the resource snapshot hash for [serverId] in the latest
-  /// generation. Prefers locally-cached generation resources when the remote
-  /// generation matches the local one; otherwise fetches from remote.
-  Future<String?> _resolveTargetSnapshotHash({
+  /// Resolves the generation resources for [channelName]. Prefers locally-cached
+  /// resources when the remote generation matches the local one; otherwise
+  /// fetches from remote. Returns `null` when the fetch fails.
+  Future<GenerationResources?> _resolveGenerationResources({
     required String channelName,
-    required String serverId,
     required String remoteGenerationHash,
     required String localGenerationHash,
   }) async {
@@ -143,13 +152,49 @@ class DataUpdateService {
       genResourcesOpt = Some(GenerationResources.fromBuffer(result.getRight().toNullable()!));
     }
 
-    final genResources = genResourcesOpt.toNullable()!;
-    for (final entry in genResources.entries) {
-      if (entry.serverId == serverId) {
-        return entry.snapshotHash;
+    return genResourcesOpt.toNullable();
+  }
+
+  DataUpdateCheckResult _evaluateCheckout(
+    CheckoutRegistryEntry checkout,
+    String remoteGenerationHash,
+    GenerationResources? generationResources,
+  ) {
+    final localHash = channelService.localGenerationHash(checkout.channel);
+    if (localHash == null || localHash.isEmpty) {
+      return const DataUpdateCheckResult.upToDate(currentGenerationHash: "");
+    }
+
+    if (generationResources == null) {
+      return const DataUpdateCheckResult.failed(
+        message: "Server not found in latest generation",
+        canRetry: true,
+      );
+    }
+
+    String? targetSnapshotHash;
+    for (final entry in generationResources.entries) {
+      if (entry.serverId == checkout.serverId) {
+        targetSnapshotHash = entry.snapshotHash;
+        break;
       }
     }
-    return null;
+
+    if (targetSnapshotHash == null) {
+      return const DataUpdateCheckResult.failed(
+        message: "Server not found in latest generation",
+        canRetry: true,
+      );
+    }
+
+    if (targetSnapshotHash == checkout.resourceSnapshotHash) {
+      return DataUpdateCheckResult.upToDate(currentGenerationHash: localHash);
+    }
+
+    return DataUpdateCheckResult.available(
+      currentGenerationHash: localHash,
+      newGenerationHash: remoteGenerationHash,
+    );
   }
 
   Future<Either<String, String>> applyCheckoutUpdate(
@@ -195,9 +240,24 @@ class DataUpdateService {
       (r) => r.checkouts.unlock,
     );
 
+    final byChannel = <String, List<String>>{};
+    for (final entry in checkouts.entries) {
+      byChannel.putIfAbsent(entry.value.channel, () => []).add(entry.key);
+    }
+
+    final channelResults = <String, Either<DataUpdateCheckResultFailed, _ChannelUpdateInfo>>{};
+    for (final channelName in byChannel.keys) {
+      channelResults[channelName] = await _checkChannel(channelName);
+    }
+
     final results = <String, DataUpdateCheckResult>{};
     for (final checkoutId in checkouts.keys) {
-      results[checkoutId] = await checkForCheckout(checkoutId);
+      final checkout = checkouts[checkoutId]!;
+      final channelResult = channelResults[checkout.channel]!;
+      results[checkoutId] = channelResult.fold(
+        (failure) => failure,
+        (info) => _evaluateCheckout(checkout, info.remoteGenerationHash, info.generationResources),
+      );
     }
     return results;
   }
@@ -280,4 +340,12 @@ class DataUpdateService {
     });
     return hashes;
   }
+}
+
+/// Lightweight value type for the result of checking a single channel.
+class _ChannelUpdateInfo {
+  const _ChannelUpdateInfo({required this.remoteGenerationHash, required this.generationResources});
+
+  final String remoteGenerationHash;
+  final GenerationResources? generationResources;
 }
