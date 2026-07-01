@@ -351,15 +351,17 @@ class _HistoryRowState extends ConsumerState<_HistoryRow> {
                       ),
                   ],
                 ),
-                if (meta != null && !_expanded) ...[
-                  const SizedBox(height: 8),
-                  _buildMetaBlock(l10n, meta, theme),
-                ] else if (widget.metaCache.containsKey(widget.transition.to)) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.checkoutHistoryMetaUnavailable,
-                    style: TextStyle(color: theme.hintColor, fontSize: 12),
-                  ),
+                if (!_expanded) ...[
+                  if (meta != null) ...[
+                    const SizedBox(height: 8),
+                    _buildMetaBlock(l10n, meta, theme),
+                  ] else if (widget.metaCache.containsKey(widget.transition.to)) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.checkoutHistoryMetaUnavailable,
+                      style: TextStyle(color: theme.hintColor, fontSize: 12),
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 8),
                 Wrap(
