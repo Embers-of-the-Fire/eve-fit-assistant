@@ -1,3 +1,4 @@
+import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "snapshot_meta.freezed.dart";
@@ -15,6 +16,7 @@ abstract class ResourceSnapshotMeta with _$ResourceSnapshotMeta {
     required String gameVersion,
     required int resourceCount,
     required String createdAt,
+    @Default(IMap<String, String>.empty()) IMap<String, String> name,
     @Default("") String gameRegion,
     @Default("") String gameSync,
     @Default("") String gameBranch,

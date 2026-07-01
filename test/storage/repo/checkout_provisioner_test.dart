@@ -88,6 +88,9 @@ class _FakeAssetStore implements AssetStore {
   Option<ResourceIndex> readResourceIndexSync(String snapshotHash) => const None();
 
   @override
+  Option<ResourceSnapshotMeta> readResourceSnapshotMetaSync(String snapshotHash) => const None();
+
+  @override
   IList<String> verifyResourceIndexSync(ResourceIndex resourceIndex) => const IList.empty();
 
   @override
@@ -621,10 +624,10 @@ void main() {
     });
   });
 
-  group("Default snapshot meta", () {
-    test("writes fallback metadata when remote fetch fails", () async {
-      const rid = "resource://test/fallback.bin";
-      final blobBytes = Uint8List.fromList([0xFF]);
+  group("Snapshot metadata fetch", () {
+    test("emits Fatal(retryable: true) when resource snapshot metadata fetch fails", () async {
+      const rid = "resource://test/ships.pb2";
+      final blobBytes = Uint8List.fromList([0x01]);
       final contentHash = RepoHash.hashContent(blobBytes);
       final identHash = RepoHash.hashIdent(rid);
       final ri = _buildResourceIndex([(resourceId: rid, contentHash: contentHash, size: 1)]);
@@ -640,10 +643,9 @@ void main() {
       when(
         () => mockRemoteCatalog.fetchResourceIndex(any()),
       ).thenAnswer((_) async => Right(Uint8List.fromList(ri.writeToBuffer())));
-      // meta fetch fails
       when(
         () => mockRemoteCatalog.fetchResourceSnapshotMeta(any()),
-      ).thenAnswer((_) async => Left(CatalogNetworkError(message: "metadata unavailable")));
+      ).thenAnswer((_) async => const Left(CatalogNetworkError(message: "metadata timeout")));
       when(
         () => mockRemoteCatalog.fetchServerIndex(any()),
       ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
@@ -654,12 +656,10 @@ void main() {
       configureProvisioner();
       final states = await collectStates();
 
-      expect(states.last, isA<ProvisionerComplete>());
-      final complete = states.last as ProvisionerComplete;
-      expect(complete.resourceSnapshotHash, isNotEmpty);
-
-      // The fake store records the snapshot — just verify it completed
-      expect(complete.resourceSnapshotHash, startsWith("snap-"));
+      expect(states.last, isA<ProvisionerFatal>());
+      final fatal = states.last as ProvisionerFatal;
+      expect(fatal.retryable, isTrue);
+      expect(fatal.message, contains("metadata timeout"));
     });
   });
 }

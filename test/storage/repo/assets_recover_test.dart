@@ -41,7 +41,8 @@ void main() {
     final tmpDir = fs.directory(p.join(assets.path, "tmp_resource_snapshot"))
       ..createSync(recursive: true);
     fs.file(p.join(tmpDir.path, "x")).writeAsStringSync("y");
-    final tempSuffixDir = fs.directory(p.join(assets.path, "foo_temp"))..createSync(recursive: true);
+    final tempSuffixDir = fs.directory(p.join(assets.path, "foo_temp"))
+      ..createSync(recursive: true);
 
     AssetStore.forTest(fs).recoverSync();
 

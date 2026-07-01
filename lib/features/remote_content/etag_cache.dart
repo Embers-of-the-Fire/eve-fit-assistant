@@ -5,10 +5,13 @@ import "dart:io";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:path/path.dart" as p;
 
-/// Persisted cache of ETag and Last-Modified values keyed by URL.
+/// Persisted cache of ETag, Last-Modified, and optional JSON payload keyed by
+/// URL.
 ///
 /// Enables conditional requests (If-None-Match / If-Modified-Since)
-/// to avoid re-downloading unchanged remote content.
+/// to avoid re-downloading unchanged remote content. The cached JSON payload
+/// lets 304 responses be satisfied even when the caller no longer holds the
+/// previous payload in memory.
 ///
 /// Persistence is debounced and crash-safe: in-memory mutations schedule a
 /// single coalesced write, which lands on disk via an atomic `tmp → rename`
@@ -44,18 +47,25 @@ class EtagCache {
     return _entries[uri.toString()]?.lastModified;
   }
 
-  static void update(Uri uri, {String? etag, String? lastModified}) {
+  static String? getPayload(Uri uri) {
+    _ensureInit();
+    return _entries[uri.toString()]?.payload;
+  }
+
+  static void update(Uri uri, {String? etag, String? lastModified, String? payload}) {
     _ensureInit();
     final key = uri.toString();
     final existing = _entries[key];
     if (existing != null &&
         existing.etag == (etag ?? existing.etag) &&
-        existing.lastModified == (lastModified ?? existing.lastModified)) {
+        existing.lastModified == (lastModified ?? existing.lastModified) &&
+        existing.payload == (payload ?? existing.payload)) {
       return;
     }
     _entries[key] = _EtagEntry(
       etag: etag ?? existing?.etag,
       lastModified: lastModified ?? existing?.lastModified,
+      payload: payload ?? existing?.payload,
     );
     _scheduleSync();
   }
@@ -106,6 +116,7 @@ class EtagCache {
           entries[entry.key] = _EtagEntry(
             etag: value["etag"] as String?,
             lastModified: value["lastModified"] as String?,
+            payload: value["payload"] as String?,
           );
         }
       }
@@ -182,13 +193,15 @@ class EtagCache {
 }
 
 class _EtagEntry {
-  const _EtagEntry({this.etag, this.lastModified});
+  const _EtagEntry({this.etag, this.lastModified, this.payload});
 
   final String? etag;
   final String? lastModified;
+  final String? payload;
 
   Map<String, dynamic> toJson() => {
     if (etag != null) "etag": etag,
     if (lastModified != null) "lastModified": lastModified,
+    if (payload != null) "payload": payload,
   };
 }

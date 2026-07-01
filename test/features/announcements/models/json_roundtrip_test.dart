@@ -63,11 +63,7 @@ void main() {
         channels: ["stable"],
         platforms: ["android"],
         localizations: {
-          "en": LocalizationMeta(
-            title: "Title",
-            summary: "Summary",
-            bodyHash: "hash",
-          ),
+          "en": LocalizationMeta(title: "Title", summary: "Summary", bodyHash: "hash"),
         },
       );
       final restored = AnnouncementEntry.fromJson(
@@ -92,16 +88,8 @@ void main() {
         platforms: ["android", "ios"],
         appVersion: "2.0.0",
         localizations: {
-          "en": LocalizationMeta(
-            title: "English",
-            summary: "Summary",
-            bodyHash: "en_hash",
-          ),
-          "zh": LocalizationMeta(
-            title: "中文",
-            summary: "摘要",
-            bodyHash: "zh_hash",
-          ),
+          "en": LocalizationMeta(title: "English", summary: "Summary", bodyHash: "en_hash"),
+          "zh": LocalizationMeta(title: "中文", summary: "摘要", bodyHash: "zh_hash"),
         },
       );
       final restored = AnnouncementEntry.fromJson(

@@ -8,6 +8,9 @@ import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/pages/setting/data/data_update_dialog.dart";
+import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
@@ -115,9 +118,19 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
               ),
             ),
             IconButton(
+              tooltip: l10n.checkoutUpdateButton,
+              icon: const Icon(Icons.update_outlined),
+              onPressed: () => _updateCheckout(checkoutId),
+            ),
+            IconButton(
+              tooltip: l10n.checkoutHistoryButton,
+              icon: const Icon(Icons.history),
+              onPressed: () => _openHistory(checkoutId),
+            ),
+            IconButton(
               tooltip: l10n.checkoutInfoButton,
               icon: const Icon(Icons.info_outline),
-              onPressed: () => _showInfoSheet(entry, isActive),
+              onPressed: () => _showInfoSheet(checkoutId, entry, isActive),
             ),
             IconButton(
               tooltip: l10n.checkoutDelete,
@@ -173,7 +186,7 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
     return DateFormat("yyyy-MM-dd HH:mm").format(dt.toLocal());
   }
 
-  void _showInfoSheet(CheckoutRegistryEntry entry, bool isActive) {
+  void _showInfoSheet(String checkoutId, CheckoutRegistryEntry entry, bool isActive) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final displayName = _displayName(entry);
@@ -213,6 +226,18 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
               _checkoutField(
                 l10n.checkoutFieldTotalSize,
                 totalSize >= 0 ? _formatSize(totalSize) : l10n.checkoutNA,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.history, size: 18),
+                  label: Text(l10n.checkoutHistoryButton),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _openHistory(checkoutId);
+                  },
+                ),
               ),
             ],
           ),
@@ -295,6 +320,22 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
     }
   }
 
+  void _updateCheckout(String checkoutId) {
+    final provider = checkoutUpdateControllerProvider(checkoutId);
+    ref.read(provider);
+    late final ProviderSubscription<DataUpdateStatus> sub;
+    sub = ref.listenManual(provider, (_, _) {}, fireImmediately: true);
+
+    unawaited(showCheckoutDataUpdateOperationDialog(context, ref, checkoutId));
+
+    final controller = ref.read(provider.notifier);
+    unawaited(
+      controller.check().then((_) async {
+        sub.close();
+      }),
+    );
+  }
+
   Future<void> _deleteCheckout(String checkoutId, String displayName, bool isActive) async {
     final l10n = context.l10n;
     final confirmed = await showConfirmDialog(
@@ -332,6 +373,10 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
         );
       }
     }
+  }
+
+  void _openHistory(String checkoutId) {
+    unawaited(context.router.push(CheckoutHistoryRoute(checkoutId: checkoutId)));
   }
 
   // ── Create Checkout Sheet ────────────────────────────────────────────────────

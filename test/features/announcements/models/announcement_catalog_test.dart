@@ -67,9 +67,7 @@ void main() {
           '    }'
           '  ]'
           "}";
-      final catalog = AnnouncementCatalog.fromJson(
-        jsonDecode(jsonStr) as Map<String, dynamic>,
-      );
+      final catalog = AnnouncementCatalog.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
       expect(catalog.schemaVersion, 1);
       expect(catalog.pages, hasLength(2));
       expect(catalog.pages[0].uuid, "a1b2c3d4-e5f6-7890-abcd-ef1234567890");

@@ -35,7 +35,12 @@ class ChannelService {
     );
     if (result.isLeft()) {
       final err = result.getLeft().toNullable()!;
-      return Left(err is CatalogNetworkError ? err.message : "Failed to fetch channels");
+      return Left(switch (err) {
+        CatalogNetworkError() => "Network error fetching channels: ${err.message}",
+        CatalogNotFoundError() => "Channel registry not found: ${err.message}",
+        CatalogParseError() => "Failed to parse channel registry: ${err.message}",
+        CatalogNotModified() => "Channel registry returned 304 with no cached payload",
+      });
     }
     final remoteRegistry = result.getRight().toNullable()!;
 
@@ -58,7 +63,12 @@ class ChannelService {
       if (err is CatalogNotFoundError) {
         return const Right(unit); // Channel not yet initialized on remote
       }
-      return Left(err is CatalogNetworkError ? err.message : "Failed to fetch channel info");
+      return Left(switch (err) {
+        CatalogNetworkError() => "Network error fetching channel info: ${err.message}",
+        CatalogParseError() => "Failed to parse channel info: ${err.message}",
+        CatalogNotModified() => "Channel info returned 304 with no cached payload",
+        CatalogNotFoundError() => "Channel info not found: ${err.message}",
+      });
     }
     final head = headResult.getRight().toNullable()!;
 
@@ -97,7 +107,12 @@ class ChannelService {
       if (err is CatalogNotFoundError) {
         return const Right(unit); // Channel not yet initialized on remote
       }
-      return Left(err is CatalogNetworkError ? err.message : "Failed to fetch channel head meta");
+      return Left(switch (err) {
+        CatalogNetworkError() => "Network error fetching channel head meta: ${err.message}",
+        CatalogParseError() => "Failed to parse channel head meta: ${err.message}",
+        CatalogNotModified() => "Channel head meta returned 304 with no cached payload",
+        CatalogNotFoundError() => "Channel head meta not found: ${err.message}",
+      });
     }
     final head = headResult.getRight().toNullable()!;
     final generationHash = head.generationHash;

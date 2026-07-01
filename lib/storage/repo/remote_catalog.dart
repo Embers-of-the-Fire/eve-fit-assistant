@@ -1,6 +1,7 @@
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/features/remote_content/http.dart" as remote_http;
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
@@ -176,6 +177,8 @@ class RemoteCatalogService {
       return Left(
         CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
       );
+    } on RemoteContentException catch (_) {
+      return const Left(CatalogNotModified());
     } on FormatException catch (e) {
       return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
     } catch (e) {

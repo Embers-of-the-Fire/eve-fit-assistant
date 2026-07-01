@@ -7,9 +7,12 @@ import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
 import "package:eve_fit_assistant/storage/repo/assets.dart";
+import "package:eve_fit_assistant/storage/repo/batch_data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
+import "package:eve_fit_assistant/storage/repo/data_update_service.dart";
+import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
@@ -137,6 +140,16 @@ RepoService repoService(Ref ref) => RepoService(
   assetStore: ref.watch(assetStoreProvider),
   diffEngine: ref.watch(diffEngineProvider),
   verificationService: ref.watch(verificationServiceProvider),
+  remoteCatalogService: ref.watch(remoteCatalogServiceProvider),
+);
+
+@riverpodSingleton
+DataUpdateService dataUpdateService(Ref ref) => DataUpdateService(
+  repoService: ref.watch(repoServiceProvider),
+  channelService: ref.watch(channelServiceProvider),
+  checkoutService: ref.watch(checkoutServiceProvider),
+  assetStore: ref.watch(assetStoreProvider),
+  nativeDirResolver: ref.watch(nativeDirResolverProvider),
   remoteCatalogService: ref.watch(remoteCatalogServiceProvider),
 );
 
@@ -286,11 +299,13 @@ class RepoStateNotifier extends _$RepoStateNotifier {
       if (!settings.remoteContent.enabled) return;
 
       final repo = ref.read(repoServiceProvider);
+      final originUrl = settings.remoteContent.originUrl;
 
       // Discover channels
       final discoverResult = await repo.discoverChannels();
       if (discoverResult.isLeft()) {
-        debug("Startup sync: channel discovery failed: ${discoverResult.getLeft().toNullable()}");
+        final error = discoverResult.getLeft().toNullable()!;
+        debug("Startup sync: channel discovery failed [$originUrl]: $error");
         return;
       }
 
@@ -301,14 +316,183 @@ class RepoStateNotifier extends _$RepoStateNotifier {
 
       final syncResult = await repo.syncChannelGeneration(activeChannel);
       if (syncResult.isLeft()) {
-        debug(
-          "Startup sync: generation sync failed for $activeChannel: "
-          "${syncResult.getLeft().toNullable()}",
-        );
+        final error = syncResult.getLeft().toNullable()!;
+        debug("Startup sync: generation sync failed for $activeChannel [$originUrl]: $error");
       }
     } catch (e, stackTrace) {
       debug("Startup sync failed", stackTrace: stackTrace);
     }
+  }
+}
+
+@riverpodSingleton
+class BatchDataUpdateController extends _$BatchDataUpdateController {
+  @override
+  BatchDataUpdateStatus build() {
+    ref.watch(activeCheckoutWatchProvider);
+    return const BatchDataUpdateStatus.unknown();
+  }
+
+  /// Triggers a check only when the current status is `unknown`.
+  Future<void> ensureCheck() async {
+    if (state is! BatchDataUpdateStatusUnknown) return;
+    await check();
+  }
+
+  /// Checks all checkouts for available updates.
+  Future<void> check() async {
+    if (state is BatchDataUpdateStatusChecking || state is BatchDataUpdateStatusDownloading) return;
+
+    state = const BatchDataUpdateStatus.checking();
+    try {
+      final results = await ref.read(dataUpdateServiceProvider).checkAllCheckouts();
+
+      final available = <String, String>{};
+      var hasFailed = false;
+      String failureMessage = "";
+
+      for (final entry in results.entries) {
+        final result = entry.value;
+        switch (result) {
+          case DataUpdateCheckResultAvailable(:final newGenerationHash):
+            available[entry.key] = newGenerationHash;
+          case DataUpdateCheckResultFailed(:final message):
+            hasFailed = true;
+            failureMessage = message;
+          case DataUpdateCheckResultUpToDate():
+            break;
+        }
+      }
+
+      if (available.isNotEmpty) {
+        state = BatchDataUpdateStatus.available(available);
+      } else if (hasFailed) {
+        state = BatchDataUpdateStatus.failed(
+          message: failureMessage.isEmpty ? "Failed to check for updates" : failureMessage,
+          canRetry: true,
+        );
+      } else {
+        state = const BatchDataUpdateStatus.upToDate();
+      }
+    } catch (e) {
+      state = BatchDataUpdateStatus.failed(
+        message: "Failed to check for updates: $e",
+        canRetry: true,
+      );
+    }
+  }
+
+  /// Applies updates to all checkouts that have updates available.
+  Future<void> apply() async {
+    if (state is BatchDataUpdateStatusDownloading) return;
+
+    state = const BatchDataUpdateStatus.downloading(
+      BatchUpdateProgress(
+        currentCheckoutId: "",
+        completedCount: 0,
+        totalCount: 0,
+        downloadedCount: 0,
+        totalDownloadCount: 0,
+      ),
+    );
+
+    try {
+      final result = await ref
+          .read(dataUpdateServiceProvider)
+          .applyAllCheckouts(
+            onProgress: (progress) => state = BatchDataUpdateStatus.downloading(progress),
+          );
+
+      if (result.failures.isNotEmpty && result.successes.isEmpty) {
+        state = const BatchDataUpdateStatus.failed(
+          message: "No checkouts could be updated",
+          canRetry: true,
+        );
+      } else {
+        state = BatchDataUpdateStatus.applied(result);
+      }
+
+      // Re-initialize the repo lifecycle so the Rust engine and collection
+      // providers observe any new snapshot hashes and native directories.
+      await ref.read(repoStateProvider.notifier).initialize();
+    } catch (e) {
+      state = BatchDataUpdateStatus.failed(message: "Failed to apply update: $e", canRetry: true);
+    }
+  }
+
+  /// Moves the transient `applied` state back to `upToDate`.
+  void acknowledgeApplied() => state = const BatchDataUpdateStatus.upToDate();
+}
+
+@riverpod
+class CheckoutUpdateController extends _$CheckoutUpdateController {
+  @override
+  DataUpdateStatus build(String checkoutId) => const DataUpdateStatus.unknown();
+
+  String? get _channelName {
+    final registry = ref.read(repoServiceProvider).checkoutRegistry.readRegistry();
+    return registry
+        .flatMap((r) => Option.fromNullable(r.checkouts[checkoutId]))
+        .toNullable()
+        ?.channel;
+  }
+
+  /// Checks for an update for this checkout.
+  Future<void> check() async {
+    if (state is DataUpdateStatusChecking || state is DataUpdateStatusDownloading) return;
+
+    state = const DataUpdateStatus.checking();
+    try {
+      final result = await ref.read(dataUpdateServiceProvider).checkForCheckout(checkoutId);
+
+      state = result.when(
+        upToDate: (current) => DataUpdateStatus.upToDate(currentGenerationHash: current),
+        available: (current, next) =>
+            DataUpdateStatus.available(currentGenerationHash: current, newGenerationHash: next),
+        failed: (message, canRetry) =>
+            DataUpdateStatus.failed(message: message, canRetry: canRetry),
+      );
+    } catch (e) {
+      state = DataUpdateStatus.failed(message: "Failed to check for updates: $e", canRetry: true);
+    }
+  }
+
+  /// Applies the available update for this checkout.
+  Future<void> apply() async {
+    if (state is DataUpdateStatusDownloading) return;
+
+    state = const DataUpdateStatus.downloading(downloadedCount: 0, totalCount: 0);
+
+    try {
+      final result = await ref
+          .read(dataUpdateServiceProvider)
+          .applyCheckoutUpdate(
+            checkoutId,
+            onProgress: (downloaded, total) {
+              state = DataUpdateStatus.downloading(downloadedCount: downloaded, totalCount: total);
+            },
+          );
+
+      state = result.match(
+        (err) => DataUpdateStatus.failed(message: err, canRetry: true),
+        (snapshotHash) => DataUpdateStatus.applied(newSnapshotHash: snapshotHash),
+      );
+
+      if (result.isRight()) {
+        await ref.read(repoStateProvider.notifier).initialize();
+      }
+    } catch (e) {
+      state = DataUpdateStatus.failed(message: "Failed to apply update: $e", canRetry: true);
+    }
+  }
+
+  /// Moves the transient `applied` state back to `upToDate`.
+  void acknowledgeApplied() {
+    final channelName = _channelName;
+    final currentHash = channelName != null
+        ? ref.read(channelServiceProvider).localGenerationHash(channelName) ?? ""
+        : "";
+    state = DataUpdateStatus.upToDate(currentGenerationHash: currentHash);
   }
 }
 

@@ -7,10 +7,8 @@ import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
-import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
-import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 // ── State machine ────────────────────────────────────────────────────────────
 
@@ -244,22 +242,18 @@ class CheckoutProvisioner {
     _emit(const ProvisionerFinalizing());
 
     final metaResult = await remoteCatalog.fetchResourceSnapshotMeta(resourceSnapshotHash);
-    final localSnapshotHash = metaResult.isRight()
-        ? assetStore.writeResourceSnapshotSync(
-            meta: metaResult.getRight().toNullable()!,
-            resourceIndex: resourceIndex,
-          )
-        : assetStore.writeResourceSnapshotSync(
-            meta: ResourceSnapshotMeta(
-              schemaVersion: 1,
-              serverId: serverId,
-              gameBuild: "",
-              gameVersion: "",
-              resourceCount: totalEntries,
-              createdAt: formatTimestamp(DateTime.now().toUtc()),
-            ),
-            resourceIndex: resourceIndex,
-          );
+    if (metaResult.isLeft()) {
+      final err = metaResult.getLeft().toNullable()!;
+      final msg = err is CatalogNetworkError
+          ? err.message
+          : "Failed to fetch resource snapshot metadata";
+      _emit(ProvisionerFatal(message: msg, retryable: err is CatalogNetworkError));
+      return;
+    }
+    final localSnapshotHash = assetStore.writeResourceSnapshotSync(
+      meta: metaResult.getRight().toNullable()!,
+      resourceIndex: resourceIndex,
+    );
 
     if (_cancelled) return;
 
