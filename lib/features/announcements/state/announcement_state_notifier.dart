@@ -39,4 +39,9 @@ class AnnouncementStateService extends _$AnnouncementStateService {
     AnnouncementStateStore.acknowledgeRelease(releaseId);
     state = AnnouncementStateStore.state;
   }
+
+  void clearReleaseAcknowledgment() {
+    AnnouncementStateStore.clearReleaseAcknowledgment();
+    state = AnnouncementStateStore.state;
+  }
 }

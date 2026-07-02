@@ -554,6 +554,40 @@ IList<String> installedCheckoutIds(Ref ref) {
 /// index for the configured channel.
 ///
 /// Returns [Some] with the newer [RemoteAppRelease] when the remote version is
+/// greater than the installed version. Failures are surfaced as [AsyncError] so
+/// callers can decide how to handle them, but startup code should swallow them
+/// to avoid interfering with normal operations.
+///
+/// This provider is intentionally decoupled from the active checkout: a release
+/// is global to the origin/channel, so it can be advertised even before the
+/// user has created a checkout.
+@riverpod
+Future<Option<RemoteAppRelease>> remoteAppRelease(Ref ref) async {
+  final settings = ref.watch(appSettingServiceProvider);
+  if (!settings.remoteContent.enabled) return const None();
+
+  final channelName = settings.remoteContent.channel;
+  if (channelName.isEmpty) return const None();
+
+  final pointer = ref.read(channelServiceProvider).readReleasePointer(channelName);
+  if (pointer.isNone()) return const None();
+
+  final snapshotHash = pointer.toNullable()!.snapshotHash;
+  if (snapshotHash.isEmpty) return const None();
+
+  final result = await ref
+      .read(releaseSyncServiceProvider)
+      .checkFromSnapshotHash(snapshotHash: snapshotHash);
+
+  return result.fold(
+    (error) => Future<Option<RemoteAppRelease>>.error(error, StackTrace.current),
+    Future<Option<RemoteAppRelease>>.value,
+  );
+}
+
+/// Detects whether a newer app release is available and has not been dismissed.
+///
+/// Returns [Some] with the newer [RemoteAppRelease] when the remote version is
 /// greater than the installed version and the release has not been acknowledged.
 /// Failures are surfaced as [AsyncError] so callers can decide how to handle
 /// them, but startup code should swallow them to avoid interfering with normal
@@ -563,39 +597,13 @@ IList<String> installedCheckoutIds(Ref ref) {
 /// is global to the origin/channel, so it can be advertised even before the
 /// user has created a checkout.
 @riverpod
-class AvailableAppRelease extends _$AvailableAppRelease {
-  @override
-  Future<Option<RemoteAppRelease>> build() async {
-    final settings = ref.watch(appSettingServiceProvider);
-    if (!settings.remoteContent.enabled) return const None();
+Future<Option<RemoteAppRelease>> availableAppRelease(Ref ref) async {
+  final release = await ref.watch(remoteAppReleaseProvider.future);
+  final releaseValue = release.toNullable();
+  if (releaseValue == null) return const None();
 
-    final channelName = settings.remoteContent.channel;
-    if (channelName.isEmpty) return const None();
+  final acknowledgedId = AnnouncementStateStore.lastAcknowledgedReleaseId;
+  if (releaseValue.releaseId == acknowledgedId) return const None();
 
-    final pointer = ref.read(channelServiceProvider).readReleasePointer(channelName);
-    if (pointer.isNone()) return const None();
-
-    final snapshotHash = pointer.toNullable()!.snapshotHash;
-    if (snapshotHash.isEmpty) return const None();
-
-    final result = await ref
-        .read(releaseSyncServiceProvider)
-        .checkFromSnapshotHash(snapshotHash: snapshotHash);
-
-    return result.fold((error) => throw error, (releaseOption) {
-      final release = releaseOption.toNullable();
-      if (release == null) return const None();
-
-      final acknowledgedId = AnnouncementStateStore.lastAcknowledgedReleaseId;
-      if (release.releaseId == acknowledgedId) return const None();
-
-      return Some(release);
-    });
-  }
-
-  /// Marks [releaseId] as acknowledged and hides the available release.
-  void acknowledge(String releaseId) {
-    ref.read(announcementStateServiceProvider.notifier).acknowledgeRelease(releaseId);
-    ref.invalidateSelf();
-  }
+  return release;
 }

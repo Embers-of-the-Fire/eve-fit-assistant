@@ -337,24 +337,26 @@ def make_generation_pointer(snapshot_hash: str) -> GenerationPointer:
     return msg
 
 
-def _make_artifact_variant(data: dict[str, str]) -> AndroidArtifactVariant:
+def _make_artifact_variant(data: dict[str, object]) -> AndroidArtifactVariant:
     v = _load_pb2_type("AndroidArtifactVariant")()
     v.identifier = data["identifier"]
     v.content_hash = data["content_hash"]
+    v.size = data["size"]
     return v
 
 
 def make_release_index(
     release_id: str,
     version: str,
-    android: dict[str, dict[str, str]] | None = None,
+    android: dict[str, dict[str, object]] | None = None,
 ) -> ReleaseIndex:
     """Build a ReleaseIndex with optional AndroidArtifacts.
 
     android keys: general (required), armv7, arm64, x64 (optional).
-    Each value is a dict with {"identifier": str, "content_hash": str}.
+    Each value is a dict with {"identifier": str, "content_hash": str, "size": int}.
     identifier is the literal release URI (e.g. "release://1.0.0/android/general").
     content_hash is the SHA-256 of the artifact file bytes.
+    size is the artifact file size in bytes.
     """
     msg = _load_pb2_type("ReleaseIndex")()
     msg.schema_version = 1

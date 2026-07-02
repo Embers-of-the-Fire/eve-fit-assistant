@@ -69,6 +69,12 @@ class AnnouncementStateStore {
     _sync();
   }
 
+  static void clearReleaseAcknowledgment() {
+    if (_state.lastAcknowledgedReleaseId == null) return;
+    _state = _state.copyWith(lastAcknowledgedReleaseId: null);
+    _sync();
+  }
+
   static Future<void> get ensureSynced => _pendingSync;
 
   static void replaceState(AnnouncementState newState) {

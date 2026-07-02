@@ -21,10 +21,17 @@ class ReleaseSyncVersionParseError extends ReleaseSyncError {
 }
 
 class RemoteAppRelease {
-  const RemoteAppRelease({required this.releaseId, required this.version});
+  const RemoteAppRelease({
+    required this.releaseId,
+    required this.version,
+    required this.snapshotHash,
+    required this.index,
+  });
 
   final String releaseId;
   final String version;
+  final String snapshotHash;
+  final ReleaseIndex index;
 }
 
 /// Detects whether a newer app release is available against the remote
@@ -87,7 +94,16 @@ class ReleaseSyncService {
     final cmp = _compareVersions(remoteVersion, installedVersion);
     if (cmp == null || cmp <= 0) return const Right(None());
 
-    return Right(Some(RemoteAppRelease(releaseId: index.id, version: index.version)));
+    return Right(
+      Some(
+        RemoteAppRelease(
+          releaseId: index.id,
+          version: index.version,
+          snapshotHash: snapshotHash,
+          index: index,
+        ),
+      ),
+    );
   }
 }
 

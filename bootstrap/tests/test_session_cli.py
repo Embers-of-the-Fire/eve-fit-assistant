@@ -130,6 +130,7 @@ def _make_release_snapshot(
             "general": {
                 "identifier": f"release://{version}/android/general",
                 "content_hash": "ab" * 32,
+                "size": 12345,
             }
         },
     )

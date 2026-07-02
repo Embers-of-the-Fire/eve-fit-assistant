@@ -6,6 +6,8 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
+import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -19,6 +21,14 @@ import "package:mocktail/mocktail.dart";
 class MockChannelService extends Mock implements ChannelService {}
 
 class MockReleaseSyncService extends Mock implements ReleaseSyncService {}
+
+RemoteAppRelease _release({required String releaseId, required String version}) =>
+    RemoteAppRelease(
+      releaseId: releaseId,
+      version: version,
+      snapshotHash: "release_snapshot",
+      index: ReleaseIndex(schemaVersion: 1, id: releaseId, version: version),
+    );
 
 void main() {
   late String tempDir;
@@ -100,9 +110,7 @@ void main() {
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
       () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer(
-      (_) async => const Right(Some(RemoteAppRelease(releaseId: "rel-2", version: "2.0.0"))),
-    );
+    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
 
     final result = await container.read(availableAppReleaseProvider.future);
 
@@ -122,9 +130,7 @@ void main() {
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
       () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer(
-      (_) async => const Right(Some(RemoteAppRelease(releaseId: "rel-2", version: "2.0.0"))),
-    );
+    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
 
     final result = await container.read(availableAppReleaseProvider.future);
 
@@ -139,12 +145,11 @@ void main() {
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
       () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer(
-      (_) async => const Right(Some(RemoteAppRelease(releaseId: "rel-2", version: "2.0.0"))),
-    );
+    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
 
     await container.read(availableAppReleaseProvider.future);
-    container.read(availableAppReleaseProvider.notifier).acknowledge("rel-2");
+    container.read(announcementStateServiceProvider.notifier).acknowledgeRelease("rel-2");
+    container.invalidate(availableAppReleaseProvider);
     final result = await container.read(availableAppReleaseProvider.future);
 
     expect(result, const None());
@@ -153,7 +158,6 @@ void main() {
 
   test("surfaces sync errors as AsyncError", () async {
     final container = _container(remoteEnabled: true);
-    addTearDown(container.dispose);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
@@ -161,15 +165,14 @@ void main() {
       () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
     ).thenAnswer((_) async => Left(ReleaseSyncNetworkError(message: "network down")));
 
-    final completer = Completer<Object>();
-    final sub = container.listen(availableAppReleaseProvider, (_, next) {
-      if (next.hasError && !completer.isCompleted) {
-        completer.complete(next.error!);
+    final sub = container.listen(remoteAppReleaseProvider, (previous, next) {
+      if (next is AsyncError && next.error is ReleaseSyncNetworkError) {
+        expect(next.error, isA<ReleaseSyncNetworkError>());
       }
-    }, fireImmediately: true);
-    addTearDown(sub.close);
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 100));
 
-    final error = await completer.future;
-    expect(error, isA<ReleaseSyncNetworkError>());
+    sub.close();
+    container.dispose();
   });
 }

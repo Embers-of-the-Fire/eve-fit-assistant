@@ -5,8 +5,10 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/info_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
@@ -57,6 +59,12 @@ class DeveloperSettingsPage extends ConsumerWidget {
             onTap: () => unawaited(_clearCache(context)),
           ),
           ConfigListTile.item(
+            icon: const Icon(Icons.update_disabled_outlined),
+            title: context.l10n.developerSettingsPageClearUpdateAckTitle,
+            subtitle: context.l10n.developerSettingsPageClearUpdateAckDescription,
+            onTap: () => unawaited(_clearUpdateAcknowledgment(context, ref)),
+          ),
+          ConfigListTile.item(
             icon: const Icon(Icons.developer_mode),
             title: "Developer Tools",
             subtitle: "Channel overview, restart init, trigger feedback",
@@ -79,6 +87,15 @@ Future<void> _clearCache(BuildContext context) async {
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text(context.l10n.developerSettingsPageClearCacheDone)));
+}
+
+Future<void> _clearUpdateAcknowledgment(BuildContext context, WidgetRef ref) async {
+  ref.read(announcementStateServiceProvider.notifier).clearReleaseAcknowledgment();
+  ref.invalidate(availableAppReleaseProvider);
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(context.l10n.developerSettingsPageClearUpdateAckDone)));
 }
 
 Future<void> _openRemoteContentSettings(BuildContext context) async {
