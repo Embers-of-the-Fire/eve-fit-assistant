@@ -9,7 +9,7 @@ import "package:path/path.dart" as p;
 class AnnouncementStateStore {
   AnnouncementStateStore._();
 
-  static const int _currentVersion = 1;
+  static const int _currentVersion = 2;
   static const String _fileName = "announcement_state.json";
   static late AnnouncementState _state;
   static Future<void> _pendingSync = Future<void>.value();
@@ -28,6 +28,8 @@ class AnnouncementStateStore {
   static bool isDismissed(String id) => _state.dismissedIds.contains(id);
 
   static String? get lastSeenAppVersion => _state.lastSeenAppVersion;
+
+  static String? get lastAcknowledgedReleaseId => _state.lastAcknowledgedReleaseId;
 
   static void markRead(String id) {
     if (_state.readIds.contains(id)) return;
@@ -61,6 +63,12 @@ class AnnouncementStateStore {
     _sync();
   }
 
+  static void acknowledgeRelease(String releaseId) {
+    if (_state.lastAcknowledgedReleaseId == releaseId) return;
+    _state = _state.copyWith(lastAcknowledgedReleaseId: releaseId);
+    _sync();
+  }
+
   static Future<void> get ensureSynced => _pendingSync;
 
   static void replaceState(AnnouncementState newState) {
@@ -74,21 +82,19 @@ class AnnouncementStateStore {
         final text = _file.readAsStringSync();
         final json = jsonDecode(text) as Map<String, dynamic>;
         final state = AnnouncementState.fromJson(json);
-        if (state.schemaVersion < _currentVersion) {
-          return _migrate(state);
-        }
-        return state;
+        return _migrate(state);
       }
 
       final legacyState = _tryReadLegacyState();
       if (legacyState != null) {
+        final migrated = _migrate(legacyState);
         _sync();
-        return legacyState;
+        return migrated;
       }
 
-      return AnnouncementState.initial();
+      return _migrate(AnnouncementState.initial());
     } on Object {
-      return AnnouncementState.initial();
+      return _migrate(AnnouncementState.initial());
     }
   }
 
@@ -118,8 +124,12 @@ class AnnouncementStateStore {
     }
   }
 
-  static AnnouncementState _migrate(AnnouncementState old) =>
-      old.copyWith(schemaVersion: _currentVersion);
+  static AnnouncementState _migrate(AnnouncementState old) {
+    if (old.schemaVersion < 2) {
+      return old.copyWith(schemaVersion: 2);
+    }
+    return old.copyWith(schemaVersion: _currentVersion);
+  }
 
   static void _sync() {
     final filePath = _file.path;

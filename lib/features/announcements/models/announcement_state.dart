@@ -10,6 +10,7 @@ abstract class AnnouncementState with _$AnnouncementState {
     @Default(<String>[]) List<String> readIds,
     @Default(<String>[]) List<String> dismissedIds,
     String? lastSeenAppVersion,
+    String? lastAcknowledgedReleaseId,
   }) = _AnnouncementState;
 
   factory AnnouncementState.initial() => const AnnouncementState();

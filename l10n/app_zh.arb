@@ -1622,6 +1622,8 @@
   "versionPageChannel": "频道",
   "versionPageReleaseNotes": "发布说明",
   "versionPageUpdateAvailable": "v{version} 已发布",
+  "appReleaseUpdateDialogBody": "发现新版本应用。",
+  "appReleaseUpdateAcknowledge": "知道了",
   "versionPageNotApplicable": "无",
   "versionPageBuildLabel": "构建号 {buildNumber}",
   "@versionPageBuildLabel": {

@@ -4,11 +4,12 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
-    show availableUpdateProvider, unreadAnnouncementCountProvider;
+    show unreadAnnouncementCountProvider;
 import "package:eve_fit_assistant/pages/router.dart"
     show AnnouncementFeedRoute, DeveloperSettingsRoute;
 import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
-import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
+import "package:eve_fit_assistant/storage/repo/providers.dart"
+    show activeCheckoutProvider, availableAppReleaseProvider;
 import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
 import "package:eve_fit_assistant/storage/setting/setting.dart"
     show appSettingServiceProvider, developerModeProvider;
@@ -48,7 +49,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
     final appSetting = ref.watch(appSettingServiceProvider);
     final developerMode = ref.watch(developerModeProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
-    final availableUpdate = ref.watch(availableUpdateProvider);
+    final appReleaseAsync = ref.watch(availableAppReleaseProvider);
     final unreadCount = ref.watch(unreadAnnouncementCountProvider);
 
     return Layout(
@@ -79,14 +80,27 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     const SizedBox(height: 24),
                   ],
                 ),
-              if (availableUpdate != null)
-                _UpdateCard(
-                  label: context.l10n.versionPageUpdateAvailable(
-                    version: availableUpdate.appVersion ?? "",
-                  ),
-                  onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
-                ),
-              if (availableUpdate != null) const SizedBox(height: 24),
+              appReleaseAsync.when(
+                data: (option) {
+                  final release = option.toNullable();
+                  if (release == null) return const SizedBox.shrink();
+                  return Column(
+                    children: [
+                      _UpdateCard(
+                        label: context.l10n.versionPageUpdateAvailable(version: release.version),
+                        onTap: () {
+                          ref
+                              .read(availableAppReleaseProvider.notifier)
+                              .acknowledge(release.releaseId);
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
               if (isWide)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

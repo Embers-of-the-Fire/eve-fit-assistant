@@ -47,7 +47,7 @@ void main() {
     test("fresh install produces initial state", () async {
       await initAndSync();
 
-      expect(AnnouncementStateStore.state.schemaVersion, 1);
+      expect(AnnouncementStateStore.state.schemaVersion, 2);
       expect(AnnouncementStateStore.state.readIds, isEmpty);
       expect(AnnouncementStateStore.state.dismissedIds, isEmpty);
       expect(AnnouncementStateStore.state.lastSeenAppVersion, isNull);
@@ -109,7 +109,7 @@ void main() {
 
       await initAndSync();
 
-      expect(AnnouncementStateStore.state.schemaVersion, 1);
+      expect(AnnouncementStateStore.state.schemaVersion, 2);
       expect(AnnouncementStateStore.state.readIds, isEmpty);
       expect(AnnouncementStateStore.state.dismissedIds, isEmpty);
     });
@@ -128,7 +128,7 @@ void main() {
 
       final writtenText = newStateFile().readAsStringSync();
       final writtenJson = jsonDecode(writtenText) as Map<String, dynamic>;
-      expect(writtenJson["schemaVersion"], 1);
+      expect(writtenJson["schemaVersion"], 2);
       expect(writtenJson["readIds"], contains("entry-x"));
     });
 

@@ -34,4 +34,9 @@ class AnnouncementStateService extends _$AnnouncementStateService {
     AnnouncementStateStore.setLastSeenAppVersion(version);
     state = AnnouncementStateStore.state;
   }
+
+  void acknowledgeRelease(String releaseId) {
+    AnnouncementStateStore.acknowledgeRelease(releaseId);
+    state = AnnouncementStateStore.state;
+  }
 }

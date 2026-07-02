@@ -805,6 +805,8 @@
   "versionPageChannel": "Channel",
   "versionPageReleaseNotes": "Release Notes",
   "versionPageUpdateAvailable": "v{version} Available",
+  "appReleaseUpdateDialogBody": "A new version of the app is available.",
+  "appReleaseUpdateAcknowledge": "Acknowledged",
   "versionPageNotApplicable": "N/A",
   "versionPageBuildLabel": "Build {buildNumber}",
   "@versionPageBuildLabel": {
