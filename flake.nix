@@ -142,7 +142,7 @@
 
       jsPackages = with pkgs; [ nodejs_26 pnpm ];
 
-      releasePackages = with pkgs; [ git-cliff cargo-expand minio minio-client wrangler ];
+      releasePackages = with pkgs; [ cargo-expand minio minio-client wrangler ];
 
       # --- Shared environment variables ---
       localeEnv = {

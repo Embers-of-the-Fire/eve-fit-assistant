@@ -8,7 +8,6 @@ from bootstrap.cli.dev import register_dev_commands
 from bootstrap.cli.etc import register_etc_commands
 from bootstrap.cli.generate import register_generate_commands
 from bootstrap.cli.lint import register_lint_commands
-from bootstrap.cli.release import register_release_commands
 from bootstrap.cli.remote import register_remote_commands
 from bootstrap.cli.test import register_test_commands
 from bootstrap.cli.workspace import register_workspace_commands
@@ -26,7 +25,6 @@ def register_all_commands(cli_group: click.Group) -> None:
     register_dev_commands(cli_group)
     register_remote_commands(cli_group)
     register_build_commands(cli_group)
-    register_release_commands(cli_group)
     register_etc_commands(cli_group)
     register_test_commands(cli_group)
     register_ci_commands(cli_group)

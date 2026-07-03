@@ -82,14 +82,9 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Build selected workspace data with `./x build data`.
 - Generated data depends on external EVE FSD/resource files described by `data/resources/*/descriptor.toml`; missing local resources can block data builds.
 
-## Version And Release
+## Version
 
 - The canonical version lives in `efa.config.toml` under `[version]`. All other targets (`pubspec.yaml`, `rust/Cargo.toml`, `pyproject.toml`) are derived from it. The engine submodule `rust/lib/eve-fit-os` has independent versioning.
-- `./x release version show` — display current version.
-- `./x release version bump <major|minor|patch> [--pre-label ...] [--clear-pre]` — bump and auto-sync.
-- `./x release check` — runs 10 pre-release gates (version-sync, git-clean, schema-bump, persistence-check, submodule, generate, lint, changelog, etc.). Fatal gates block release unless `--force`.
-- `./x release commit` — creates a signed `chore: release v<version>` commit and annotated tag.
-- All releases happen from the `dev` branch.
 
 ## Validation Expectations
 

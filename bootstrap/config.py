@@ -101,35 +101,6 @@ class ProjectVersion(BaseModel):
             base = f"{base}-{self.pre_label}.{self.pre_num}"
         return base
 
-    def render_tag(self) -> str:
-        return f"v{self.render_semver()}"
-
-    def bump_major(self) -> ProjectVersion:
-        self.major += 1
-        self.minor = 0
-        self.patch = 0
-        if self.is_prerelease():
-            self.pre_num = 1
-        return self
-
-    def bump_minor(self) -> ProjectVersion:
-        self.minor += 1
-        self.patch = 0
-        if self.is_prerelease():
-            self.pre_num = 1
-        return self
-
-    def bump_patch(self) -> ProjectVersion:
-        self.patch += 1
-        if self.is_prerelease():
-            self.pre_num = 1
-        return self
-
-    def clear_prerelease(self) -> ProjectVersion:
-        self.pre_label = ""
-        self.pre_num = 0
-        return self
-
 
 class SchemaConfig(BaseModel):
     """Schema version configuration."""

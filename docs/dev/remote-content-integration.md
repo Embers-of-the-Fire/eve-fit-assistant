@@ -333,20 +333,3 @@ The Flutter client resolves data through the V2 repository system:
 - Fits and characters store a `CheckoutRef` binding (checkout hash + server
   metadata) for compatibility verification on load.
 
-### Release Check Updates for V2
-
-`./x release check` now includes v2-specific gates:
-
-- **DART_MODEL changes** under `lib/storage/repo/models/` require bumping
-  `[schema].schema_version` in `efa.config.toml`. The `check_schema_diff`
-  gate enforces this — failing release if models change without a version bump.
-- **REMOTE_API changes** in `lib/features/remote_content/endpoint.dart` are
-  flagged as breaking.
-- **Migration code** under `lib/storage/repo/migration/` is informational
-  (non-blocking).
-
-Run before release:
-
-```bash
-./x release check
-```
