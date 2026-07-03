@@ -2,8 +2,8 @@ import "dart:async";
 
 import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
+import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
-import "package:eve_fit_assistant/storage/repo/release_sync.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 

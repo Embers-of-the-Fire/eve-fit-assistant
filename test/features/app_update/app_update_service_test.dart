@@ -41,7 +41,6 @@ class _FakeAppUpdatePlatform extends AppUpdatePlatform {
   }
 }
 
-
 class _ChunkedFakeAdapter implements HttpClientAdapter {
   _ChunkedFakeAdapter(this.data, {this.chunkSize = 16});
 
@@ -103,10 +102,10 @@ void main() {
   });
 
   AppUpdateService _service({Dio Function()? dioFactory}) => AppUpdateService(
-        remoteCatalogService: remoteCatalog,
-        platform: platform,
-        dioFactory: dioFactory ?? (() => _createTestDio()),
-      );
+    remoteCatalogService: remoteCatalog,
+    platform: platform,
+    dioFactory: dioFactory ?? (() => _createTestDio()),
+  );
 
   AndroidArtifacts _artifacts({
     String? arm64Hash,
@@ -169,9 +168,7 @@ void main() {
   });
 
   test("downloadArtifact writes file and verifies hash", () async {
-    final apkData = Uint8List.fromList(
-      List<int>.generate(1024, (index) => index % 256),
-    );
+    final apkData = Uint8List.fromList(List<int>.generate(1024, (index) => index % 256));
     final contentHash = sha256.convert(apkData).toString();
     final identifier = "release://1.0.0/android/general";
     final artifact = AppUpdateArtifact(
@@ -185,9 +182,9 @@ void main() {
     tempApkFile.writeAsBytesSync(apkData);
 
     final identHash = RepoHash.hashIdent(identifier);
-    when(() => remoteCatalog.blobUri(identHash, contentHash)).thenReturn(
-      Uri.parse("http://localhost:0/${tempApkFile.path}"),
-    );
+    when(
+      () => remoteCatalog.blobUri(identHash, contentHash),
+    ).thenReturn(Uri.parse("http://localhost:0/${tempApkFile.path}"));
 
     Dio createDio() => Dio()..httpClientAdapter = _ChunkedFakeAdapter(apkData, chunkSize: 64);
 
@@ -210,9 +207,7 @@ void main() {
   });
 
   test("downloadArtifact emits progress ending at full size", () async {
-    final apkData = Uint8List.fromList(
-      List<int>.generate(100, (index) => index % 256),
-    );
+    final apkData = Uint8List.fromList(List<int>.generate(100, (index) => index % 256));
     final contentHash = sha256.convert(apkData).toString();
     final identifier = "release://1.0.0/android/general";
     final artifact = AppUpdateArtifact(
@@ -226,9 +221,9 @@ void main() {
     tempApkFile.writeAsBytesSync(apkData);
 
     final identHash = RepoHash.hashIdent(artifact.identifier);
-    when(() => remoteCatalog.blobUri(identHash, artifact.contentHash)).thenReturn(
-      Uri.parse("http://localhost:0/${tempApkFile.path}"),
-    );
+    when(
+      () => remoteCatalog.blobUri(identHash, artifact.contentHash),
+    ).thenReturn(Uri.parse("http://localhost:0/${tempApkFile.path}"));
 
     Dio createDio() => Dio()..httpClientAdapter = _ChunkedFakeAdapter(apkData, chunkSize: 16);
 
@@ -281,69 +276,9 @@ void main() {
 }
 
 Dio _createTestDio() => Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 1),
-        sendTimeout: const Duration(seconds: 1),
-        receiveTimeout: const Duration(seconds: 1),
-      ),
-    );
-
-class _FakeHttpResponse implements HttpClientResponse {
-  _FakeHttpResponse({required this.body});
-
-  final Uint8List body;
-
-  @override
-  Future<dynamic> pipe(StreamConsumer<List<int>> streamConsumer) =>
-      Stream<List<int>>.fromIterable([body]).pipe(streamConsumer);
-
-  @override
-  HttpClientResponseCompressionState get compressionState =>
-      HttpClientResponseCompressionState.notCompressed;
-
-  @override
-  int get contentLength => body.length;
-
-  @override
-  List<Cookie> get cookies => <Cookie>[];
-
-  @override
-  Future<Socket> detachSocket() async => throw UnsupportedError("detachSocket");
-
-  @override
-  bool get isRedirect => false;
-
-  @override
-  StreamSubscription<List<int>> listen(
-    void Function(List<int> event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) =>
-      Stream<List<int>>.fromIterable([body]).listen(
-        onData,
-        onError: onError,
-        onDone: onDone,
-        cancelOnError: cancelOnError,
-      );
-
-  @override
-  bool get persistentConnection => false;
-
-  @override
-  String get reasonPhrase => "OK";
-
-  @override
-  int get statusCode => 200;
-
-  @override
-  HttpHeaders get headers => _FakeHttpHeaders();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeHttpHeaders implements HttpHeaders {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+  BaseOptions(
+    connectTimeout: const Duration(seconds: 1),
+    sendTimeout: const Duration(seconds: 1),
+    receiveTimeout: const Duration(seconds: 1),
+  ),
+);

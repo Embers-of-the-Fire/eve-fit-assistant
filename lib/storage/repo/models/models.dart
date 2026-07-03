@@ -12,6 +12,7 @@
 /// | ServerMeta | — | Server metadata (from ServerIndex protobuf) |
 /// | BlobIdent | §5 | URI-based blob identification with ident_hash |
 /// | CheckoutRef | — | Lightweight reference to a checkout used by fit/character records |
+/// | RemoteAppRelease | — | A newer app release discovered from the remote release index |
 /// | Diff + DiffAdd + DiffDelete + DiffModify | — | On-demand diff between resource index snapshots |
 /// | CompatibilityCheck / CheckoutResolution | — | Compatibility check result and checkout resolution strategies |
 /// | MissingFiles | — | Verification result listing missing or hash-mismatched asset files |
@@ -28,6 +29,7 @@ export "compatibility.dart";
 export "diff.dart";
 export "generation_meta.dart";
 export "missing_files.dart";
+export "remote_app_release.dart";
 export "server_meta.dart";
 export "shared.dart";
 export "snapshot_meta.dart";

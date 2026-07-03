@@ -1,6 +1,7 @@
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
+import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fpdart/fpdart.dart";
 
@@ -18,20 +19,6 @@ class ReleaseSyncVersionParseError extends ReleaseSyncError {
   const ReleaseSyncVersionParseError({required this.message});
 
   final String message;
-}
-
-class RemoteAppRelease {
-  const RemoteAppRelease({
-    required this.releaseId,
-    required this.version,
-    required this.snapshotHash,
-    required this.index,
-  });
-
-  final String releaseId;
-  final String version;
-  final String snapshotHash;
-  final ReleaseIndex index;
 }
 
 /// Detects whether a newer app release is available against the remote

@@ -17,6 +17,7 @@ import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
+import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/release_sync.dart";
@@ -341,7 +342,7 @@ class RepoStateNotifier extends _$RepoStateNotifier {
           Object e,
           StackTrace st,
         ) {
-          debug("Startup app-release check failed", stackTrace: st);
+          debug("Startup app-release check failed: $e", stackTrace: st);
         }),
       );
     } catch (e, stackTrace) {

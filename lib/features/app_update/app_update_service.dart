@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:convert/convert.dart";
 import "package:crypto/crypto.dart";
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -282,9 +283,13 @@ class AppUpdateService {
       return Left(AppUpdateVerifyError(message: "APK file not found at $apkPath"));
     }
 
-    final bytes = await file.readAsBytes();
-    final digest = sha256.convert(bytes);
-    final actual = digest.toString();
+    final output = AccumulatorSink<Digest>();
+    final input = sha256.startChunkedConversion(output);
+    await for (final chunk in file.openRead()) {
+      input.add(chunk);
+    }
+    input.close();
+    final actual = output.events.single.toString();
     if (actual != expectedHash) {
       return Left(
         AppUpdateVerifyError(message: "APK hash mismatch: expected $expectedHash, got $actual"),

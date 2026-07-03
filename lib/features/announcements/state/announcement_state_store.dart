@@ -128,12 +128,8 @@ class AnnouncementStateStore {
     }
   }
 
-  static AnnouncementState _migrate(AnnouncementState old) {
-    if (old.schemaVersion < 2) {
-      return old.copyWith(schemaVersion: 2);
-    }
-    return old.copyWith(schemaVersion: _currentVersion);
-  }
+  static AnnouncementState _migrate(AnnouncementState old) =>
+      old.copyWith(schemaVersion: _currentVersion);
 
   static void _sync() {
     final filePath = _file.path;
