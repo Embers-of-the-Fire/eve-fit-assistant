@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
+import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/release_sync.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
