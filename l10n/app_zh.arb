@@ -225,6 +225,7 @@
   "appReleaseUpdateDownload": "下载",
   "appReleaseUpdateInstall": "安装",
   "appReleaseUpdateInstalling": "正在安装…",
+  "appReleaseUpdateVerifying": "正在校验…",
   "appReleaseUpdateRetry": "重试",
   "appReleaseUpdateCancel": "取消",
   "appReleaseUpdateDownloadProgress": "{received} / {total}",

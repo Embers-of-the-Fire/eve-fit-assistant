@@ -79,6 +79,7 @@ class AppUpdateController extends _$AppUpdateController {
       state = const AppUpdateStatus.failed(
         message: "Install permission is required to update the app.",
         canRetry: true,
+        permissionRequired: true,
       );
       return;
     }

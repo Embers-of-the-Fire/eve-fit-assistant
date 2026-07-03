@@ -107,19 +107,19 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               status is AppUpdateStatusVerifying
-                  ? "Verifying…"
+                  ? context.l10n.appReleaseUpdateVerifying
                   : context.l10n.appReleaseUpdateInstalling,
               style: context.theme.textTheme.bodySmall,
             ),
           ],
         ),
         AppUpdateStatusReadyToInstall() => Text(context.l10n.appReleaseUpdateInstall),
-        AppUpdateStatusFailed(:final message, :final canRetry) => Column(
+        AppUpdateStatusFailed(:final message, :final canRetry, :final permissionRequired) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(message),
-            if (canRetry && message == context.l10n.appReleaseUpdatePermissionRequired) ...[
+            if (canRetry && permissionRequired) ...[
               const SizedBox(height: 12),
               TextButton.icon(
                 onPressed: () => unawaited(

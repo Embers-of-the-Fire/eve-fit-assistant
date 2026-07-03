@@ -185,28 +185,32 @@ class AppUpdateService {
         artifact.contentHash,
       );
 
-      final response = await dio.getUri<Uint8List>(
-        uri,
-        options: Options(
-          responseType: ResponseType.bytes,
-          headers: <String, dynamic>{"Accept-Encoding": "identity"},
-          followRedirects: true,
-          validateStatus: (status) => status != null && status >= 200 && status < 300,
-        ),
-        onReceiveProgress: (received, total) {
-          onProgress?.call(received, total);
-        },
-      );
-      final data = response.data;
-      if (data is! Uint8List) {
-        return const Left(AppUpdateDownloadError(message: "Download returned unexpected data"));
+      try {
+        final response = await dio.getUri<Uint8List>(
+          uri,
+          options: Options(
+            responseType: ResponseType.bytes,
+            headers: <String, dynamic>{"Accept-Encoding": "identity"},
+            followRedirects: true,
+            validateStatus: (status) => status != null && status >= 200 && status < 300,
+          ),
+          onReceiveProgress: (received, total) {
+            onProgress?.call(received, total);
+          },
+        );
+        final data = response.data;
+        if (data is! Uint8List) {
+          return const Left(AppUpdateDownloadError(message: "Download returned unexpected data"));
+        }
+        await tempFile.writeAsBytes(data, flush: true);
+
+        tempFile.renameSync(apkFile.path);
+
+        final verifyResult = await _verifyApk(apkFile.path, artifact.contentHash);
+        return verifyResult.fold(Left.new, (_) => Right(apkFile.path));
+      } finally {
+        dio.close();
       }
-      await tempFile.writeAsBytes(data, flush: true);
-
-      tempFile.renameSync(apkFile.path);
-
-      final verifyResult = await _verifyApk(apkFile.path, artifact.contentHash);
-      return verifyResult.fold(Left.new, (_) => Right(apkFile.path));
     } on DioException catch (e) {
       return Left(AppUpdateDownloadError(message: "Download failed: ${e.message ?? e.toString()}"));
     } on FileSystemException catch (e) {

@@ -16,6 +16,9 @@ sealed class AppUpdateStatus with _$AppUpdateStatus {
 
   const factory AppUpdateStatus.installing() = AppUpdateStatusInstalling;
 
-  const factory AppUpdateStatus.failed({required String message, required bool canRetry}) =
-      AppUpdateStatusFailed;
+  const factory AppUpdateStatus.failed({
+    required String message,
+    required bool canRetry,
+    @Default(false) bool permissionRequired,
+  }) = AppUpdateStatusFailed;
 }

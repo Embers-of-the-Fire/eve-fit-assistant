@@ -42,7 +42,12 @@ class MainActivity : FlutterActivity() {
                             Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                             Uri.parse("package:$packageName"),
                         )
-                        startActivity(intent)
+                        try {
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            result.error("OPEN_SETTINGS_FAILED", e.message, null)
+                            return@setMethodCallHandler
+                        }
                     }
                     result.success(null)
                 }

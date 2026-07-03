@@ -22,13 +22,12 @@ class MockChannelService extends Mock implements ChannelService {}
 
 class MockReleaseSyncService extends Mock implements ReleaseSyncService {}
 
-RemoteAppRelease _release({required String releaseId, required String version}) =>
-    RemoteAppRelease(
-      releaseId: releaseId,
-      version: version,
-      snapshotHash: "release_snapshot",
-      index: ReleaseIndex(schemaVersion: 1, id: releaseId, version: version),
-    );
+RemoteAppRelease _release({required String releaseId, required String version}) => RemoteAppRelease(
+  releaseId: releaseId,
+  version: version,
+  snapshotHash: "release_snapshot",
+  index: ReleaseIndex(schemaVersion: 1, id: releaseId, version: version),
+);
 
 void main() {
   late String tempDir;
@@ -165,13 +164,15 @@ void main() {
       () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
     ).thenAnswer((_) async => Left(ReleaseSyncNetworkError(message: "network down")));
 
+    var sawExpectedError = false;
     final sub = container.listen(remoteAppReleaseProvider, (previous, next) {
-      if (next is AsyncError && next.error is ReleaseSyncNetworkError) {
-        expect(next.error, isA<ReleaseSyncNetworkError>());
+      if (next.hasError && next.error is ReleaseSyncNetworkError) {
+        sawExpectedError = true;
       }
     });
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
+    expect(sawExpectedError, isTrue, reason: "Expected a ReleaseSyncNetworkError AsyncError");
     sub.close();
     container.dispose();
   });
