@@ -34,6 +34,7 @@ void main() {
     expect(AnnouncementStateStore.state.readIds, containsAll(["legacy-read-1", "legacy-read-2"]));
     expect(AnnouncementStateStore.state.dismissedIds, ["legacy-dismissed-1"]);
     expect(AnnouncementStateStore.state.lastSeenAppVersion, "1.2.3");
+    expect(AnnouncementStateStore.state.lastAcknowledgedReleaseId, isNull);
     expect(AnnouncementStateStore.state.schemaVersion, 2);
 
     final migratedFile = File(p.join(settingsDir.path, "announcement_state.json"));
@@ -44,5 +45,6 @@ void main() {
     expect(migratedJson["readIds"], containsAll(["legacy-read-1", "legacy-read-2"]));
     expect(migratedJson["dismissedIds"], ["legacy-dismissed-1"]);
     expect(migratedJson["lastSeenAppVersion"], "1.2.3");
+    expect(migratedJson["lastAcknowledgedReleaseId"], isNull);
   });
 }
