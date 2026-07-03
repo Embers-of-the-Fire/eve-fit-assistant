@@ -93,9 +93,7 @@ class AnnouncementStateStore {
 
       final legacyState = _tryReadLegacyState();
       if (legacyState != null) {
-        final migrated = _migrate(legacyState);
-        _sync();
-        return migrated;
+        return _migrate(legacyState);
       }
 
       return _migrate(AnnouncementState.initial());
