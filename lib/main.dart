@@ -93,13 +93,11 @@ class MyApp extends ConsumerWidget {
             }
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
-              child: AvailableUpdateGate(
-                child: FeedbackGate(
+              child: FeedbackGate(
+                appRouter: appRouter,
+                child: StartupAnnouncementGate(
                   appRouter: appRouter,
-                  child: StartupAnnouncementGate(
-                    appRouter: appRouter,
-                    child: initBuilder(context, child),
-                  ),
+                  child: initBuilder(context, child),
                 ),
               ),
             );

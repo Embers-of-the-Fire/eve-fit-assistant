@@ -290,6 +290,7 @@ class TestSnapshotStore:
                 "general": {
                     "identifier": "release://1.0.0/android/general",
                     "content_hash": "aa" * 32,
+                    "size": 12345,
                 },
             },
         )
@@ -303,6 +304,7 @@ class TestSnapshotStore:
         assert loaded_index.version == "1.0.0"
         assert loaded_index.android.general.identifier == "release://1.0.0/android/general"
         assert loaded_index.android.general.content_hash == "aa" * 32
+        assert loaded_index.android.general.size == 12345
 
     def test_list_snapshots(self, snap_store: SnapshotStore) -> None:
         meta = ResourceSnapshotMetadata(

@@ -272,7 +272,11 @@ def _add_snapshot_by_file(
                         uri = f"release://{version}/{platform_key}/{variant}"
                         ihash = ident_hash(uri)
                         chash = blob_store.store_from_path(file_path, ihash)
-                        platform_data[variant] = {"identifier": uri, "content_hash": chash}
+                        platform_data[variant] = {
+                            "identifier": uri,
+                            "content_hash": chash,
+                            "size": file_path.stat().st_size,
+                        }
 
             android = release.get("android")
             android_dict = None

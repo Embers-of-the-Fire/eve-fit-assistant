@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/announcements/state/state.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
@@ -16,8 +17,10 @@ import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
+import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
+import "package:eve_fit_assistant/storage/repo/release_sync.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/repo_error.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
@@ -61,6 +64,10 @@ RemoteCatalogService remoteCatalogService(Ref ref) => RemoteCatalogService(
   dio: ref.watch(remoteDioProvider),
   originUrl: ref.watch(remoteContentOriginUrlProvider),
 );
+
+@riverpodSingleton
+ReleaseSyncService releaseSyncService(Ref ref) =>
+    ReleaseSyncService(remoteCatalogService: ref.watch(remoteCatalogServiceProvider));
 
 @riverpodSingleton
 GenerationNavigationService generationNavigationService(Ref ref) =>
@@ -309,16 +316,35 @@ class RepoStateNotifier extends _$RepoStateNotifier {
         return;
       }
 
-      // Sync active channel generation metadata
+      // Sync generation metadata for the configured channel (so release checks
+      // work even without an active checkout) and for the active checkout's
+      // channel (so data-update checks stay current).
+      final configuredChannel = settings.remoteContent.channel;
       final activeEntry = repo.checkoutRegistry.activeCheckoutEntry();
-      if (activeEntry.isNone()) return;
-      final activeChannel = activeEntry.toNullable()!.channel;
+      final channelsToSync = <String>{
+        if (configuredChannel.isNotEmpty) configuredChannel,
+        if (activeEntry.isSome()) activeEntry.toNullable()!.channel,
+      };
 
-      final syncResult = await repo.syncChannelGeneration(activeChannel);
-      if (syncResult.isLeft()) {
-        final error = syncResult.getLeft().toNullable()!;
-        debug("Startup sync: generation sync failed for $activeChannel [$originUrl]: $error");
+      for (final channel in channelsToSync) {
+        final syncResult = await repo.syncChannelGeneration(channel);
+        if (syncResult.isLeft()) {
+          final error = syncResult.getLeft().toNullable()!;
+          debug("Startup sync: generation sync failed for $channel [$originUrl]: $error");
+        }
       }
+
+      // After generation metadata is synced, check whether a newer app release
+      // is available. This is best-effort and must not block normal operation.
+      ref.invalidate(availableAppReleaseProvider);
+      unawaited(
+        ref.read(availableAppReleaseProvider.future).then((_) => null).catchError((
+          Object e,
+          StackTrace st,
+        ) {
+          debug("Startup app-release check failed: $e", stackTrace: st);
+        }),
+      );
     } catch (e, stackTrace) {
       debug("Startup sync failed", stackTrace: stackTrace);
     }
@@ -521,4 +547,64 @@ IList<String> installedCheckoutIds(Ref ref) {
   ref.watch(activeCheckoutWatchProvider);
   final registry = ref.watch(checkoutRegistryServiceProvider).readRegistry();
   return registry.match(() => const IList.empty(), (r) => r.checkouts.keys.toIList());
+}
+
+// ── App release update provider ───────────────────────────────────────────────
+
+/// Detects whether a newer app release is available from the remote release
+/// index for the configured channel.
+///
+/// Returns [Some] with the newer [RemoteAppRelease] when the remote version is
+/// greater than the installed version. Failures are surfaced as [AsyncError] so
+/// callers can decide how to handle them, but startup code should swallow them
+/// to avoid interfering with normal operations.
+///
+/// This provider is intentionally decoupled from the active checkout: a release
+/// is global to the origin/channel, so it can be advertised even before the
+/// user has created a checkout.
+@riverpod
+Future<Option<RemoteAppRelease>> remoteAppRelease(Ref ref) async {
+  final settings = ref.watch(appSettingServiceProvider);
+  if (!settings.remoteContent.enabled) return const None();
+
+  final channelName = settings.remoteContent.channel;
+  if (channelName.isEmpty) return const None();
+
+  final pointer = ref.read(channelServiceProvider).readReleasePointer(channelName);
+  if (pointer.isNone()) return const None();
+
+  final snapshotHash = pointer.toNullable()!.snapshotHash;
+  if (snapshotHash.isEmpty) return const None();
+
+  final result = await ref
+      .read(releaseSyncServiceProvider)
+      .checkFromSnapshotHash(snapshotHash: snapshotHash);
+
+  return result.fold(
+    (error) => Future<Option<RemoteAppRelease>>.error(error, StackTrace.current),
+    Future<Option<RemoteAppRelease>>.value,
+  );
+}
+
+/// Detects whether a newer app release is available and has not been dismissed.
+///
+/// Returns [Some] with the newer [RemoteAppRelease] when the remote version is
+/// greater than the installed version and the release has not been acknowledged.
+/// Failures are surfaced as [AsyncError] so callers can decide how to handle
+/// them, but startup code should swallow them to avoid interfering with normal
+/// operations.
+///
+/// This provider is intentionally decoupled from the active checkout: a release
+/// is global to the origin/channel, so it can be advertised even before the
+/// user has created a checkout.
+@riverpod
+Future<Option<RemoteAppRelease>> availableAppRelease(Ref ref) async {
+  final release = await ref.watch(remoteAppReleaseProvider.future);
+  final releaseValue = release.toNullable();
+  if (releaseValue == null) return const None();
+
+  final acknowledgedId = AnnouncementStateStore.lastAcknowledgedReleaseId;
+  if (releaseValue.releaseId == acknowledgedId) return const None();
+
+  return release;
 }

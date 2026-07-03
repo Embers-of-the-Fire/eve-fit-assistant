@@ -1,10 +1,11 @@
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
+import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fpdart/fpdart.dart";
 
-sealed class ReleaseSyncError {
+sealed class ReleaseSyncError implements Exception {
   const ReleaseSyncError();
 }
 
@@ -20,13 +21,6 @@ class ReleaseSyncVersionParseError extends ReleaseSyncError {
   final String message;
 }
 
-class AppRelease {
-  const AppRelease({required this.releaseId, required this.version});
-
-  final String releaseId;
-  final String version;
-}
-
 /// Detects whether a newer app release is available against the remote
 /// release index. Detection only — does not download or install artifacts.
 class ReleaseSyncService {
@@ -38,10 +32,13 @@ class ReleaseSyncService {
   final RemoteCatalogService remoteCatalogService;
   final Future<String> Function() currentVersionProvider;
 
-  Future<Either<ReleaseSyncError, Option<AppRelease>>> check({
+  /// Checks for a newer release starting from a [generationHash].
+  ///
+  /// Fetches the generation's release pointer, resolves the release snapshot
+  /// hash, then delegates to [checkFromSnapshotHash].
+  Future<Either<ReleaseSyncError, Option<RemoteAppRelease>>> check({
     required String generationHash,
   }) async {
-    // Step 1: Get the release snapshot hash via GenerationPointer
     final pointerResult = await remoteCatalogService.fetchGenerationPointer(generationHash);
     if (pointerResult.isLeft()) {
       final err = pointerResult.getLeft().toNullable()!;
@@ -54,7 +51,13 @@ class ReleaseSyncService {
       return const Left(ReleaseSyncNetworkError(message: "Release pointer has no snapshot hash"));
     }
 
-    // Step 2: Fetch ReleaseIndex
+    return checkFromSnapshotHash(snapshotHash: snapshotHash);
+  }
+
+  /// Checks for a newer release given an already-resolved release snapshot hash.
+  Future<Either<ReleaseSyncError, Option<RemoteAppRelease>>> checkFromSnapshotHash({
+    required String snapshotHash,
+  }) async {
     final indexResult = await remoteCatalogService.fetchReleaseIndex(snapshotHash);
     if (indexResult.isLeft()) {
       final err = indexResult.getLeft().toNullable()!;
@@ -78,7 +81,16 @@ class ReleaseSyncService {
     final cmp = _compareVersions(remoteVersion, installedVersion);
     if (cmp == null || cmp <= 0) return const Right(None());
 
-    return Right(Some(AppRelease(releaseId: index.id, version: index.version)));
+    return Right(
+      Some(
+        RemoteAppRelease(
+          releaseId: index.id,
+          version: index.version,
+          snapshotHash: snapshotHash,
+          index: index,
+        ),
+      ),
+    );
   }
 }
 

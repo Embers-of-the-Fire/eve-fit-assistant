@@ -31,7 +31,7 @@ void main() {
 
   group("AnnouncementStateStore", () {
     test("init produces initial state on first run", () {
-      expect(AnnouncementStateStore.state.schemaVersion, 1);
+      expect(AnnouncementStateStore.state.schemaVersion, 2);
       expect(AnnouncementStateStore.state.readIds, isEmpty);
       expect(AnnouncementStateStore.state.dismissedIds, isEmpty);
       expect(AnnouncementStateStore.state.lastSeenAppVersion, isNull);
@@ -125,7 +125,7 @@ void main() {
 
       AnnouncementStateStore.init();
 
-      expect(AnnouncementStateStore.state.schemaVersion, 1);
+      expect(AnnouncementStateStore.state.schemaVersion, 2);
       expect(AnnouncementStateStore.isRead("old-entry"), isTrue);
     });
 
@@ -136,7 +136,7 @@ void main() {
 
       AnnouncementStateStore.init();
 
-      expect(AnnouncementStateStore.state.schemaVersion, 1);
+      expect(AnnouncementStateStore.state.schemaVersion, 2);
       expect(AnnouncementStateStore.state.readIds, isEmpty);
     });
 

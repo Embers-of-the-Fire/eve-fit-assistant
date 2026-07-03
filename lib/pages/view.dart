@@ -3,6 +3,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
 import "package:eve_fit_assistant/features/fit_io/import_dialog.dart";
 import "package:eve_fit_assistant/pages/character/page.dart";
 import "package:eve_fit_assistant/pages/fit-list/page.dart";
@@ -48,105 +49,107 @@ class _FrontPageState extends State<FrontPage> {
       Icons.settings_rounded,
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: const Icon(Icons.link),
-        title: Text(pageTitles[_currentIndex]),
-        titleTextStyle: context.theme.appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
-      ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) => setState(() => _currentIndex = index),
-        children: pages,
-      ),
-      // FloatingActionButton: docked in the center (notched BottomAppBar).
-      floatingActionButton: Consumer(
-        builder: (context, ref, _) => GestureDetector(
-          onDoubleTap: () => showFitImportDialog(context, ref),
-          child: FloatingActionButton(
-            onPressed: () async {
-              if (context.mounted) {
-                unawaited(context.router.push(const FitCreationRoute()));
-              }
-            },
-            tooltip: loc.workspaceTabActionCreateFitName,
-            shape: const CircleBorder(),
-            child: const Icon(Icons.add),
+    return AppReleaseUpdateGate(
+      child: Scaffold(
+        appBar: AppBar(
+          leading: const Icon(Icons.link),
+          title: Text(pageTitles[_currentIndex]),
+          titleTextStyle: context.theme.appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
+        ),
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: (index) => setState(() => _currentIndex = index),
+          children: pages,
+        ),
+        // FloatingActionButton: docked in the center (notched BottomAppBar).
+        floatingActionButton: Consumer(
+          builder: (context, ref, _) => GestureDetector(
+            onDoubleTap: () => showFitImportDialog(context, ref),
+            child: FloatingActionButton(
+              onPressed: () async {
+                if (context.mounted) {
+                  unawaited(context.router.push(const FitCreationRoute()));
+                }
+              },
+              tooltip: loc.workspaceTabActionCreateFitName,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add),
+            ),
           ),
         ),
-      ),
-      // Center docked so BottomAppBar shows a notch for the FAB.
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        // Center docked so BottomAppBar shows a notch for the FAB.
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // BottomAppBar with internal Divider as top border (so notch clips it).
-      bottomNavigationBar: MediaQuery(
-        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
-        child: BottomAppBar(
-          color:
-              context.theme.bottomNavigationBarTheme.backgroundColor ??
-              context.theme.colorScheme.surface,
-          elevation: 8,
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 6,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: kBottomNavigationBarHeight,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          const Expanded(child: SizedBox()),
-                          _NavItem(
-                            index: 0,
-                            icon: pageIcons[0],
-                            label: pageTitles[0],
-                            selected: _currentIndex == 0,
-                            onTap: _selectPage,
-                          ),
-                          const Expanded(child: SizedBox()),
-                          _NavItem(
-                            index: 1,
-                            icon: pageIcons[1],
-                            label: pageTitles[1],
-                            selected: _currentIndex == 1,
-                            onTap: _selectPage,
-                          ),
-                          const Expanded(child: SizedBox()),
-                        ],
+        // BottomAppBar with internal Divider as top border (so notch clips it).
+        bottomNavigationBar: MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+          child: BottomAppBar(
+            color:
+                context.theme.bottomNavigationBarTheme.backgroundColor ??
+                context.theme.colorScheme.surface,
+            elevation: 8,
+            shape: const CircularNotchedRectangle(),
+            notchMargin: 6,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: kBottomNavigationBarHeight,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            const Expanded(child: SizedBox()),
+                            _NavItem(
+                              index: 0,
+                              icon: pageIcons[0],
+                              label: pageTitles[0],
+                              selected: _currentIndex == 0,
+                              onTap: _selectPage,
+                            ),
+                            const Expanded(child: SizedBox()),
+                            _NavItem(
+                              index: 1,
+                              icon: pageIcons[1],
+                              label: pageTitles[1],
+                              selected: _currentIndex == 1,
+                              onTap: _selectPage,
+                            ),
+                            const Expanded(child: SizedBox()),
+                          ],
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          const Expanded(child: SizedBox()),
-                          _NavItem(
-                            index: 2,
-                            icon: pageIcons[2],
-                            label: pageTitles[2],
-                            selected: _currentIndex == 2,
-                            onTap: _selectPage,
-                          ),
-                          const Expanded(child: SizedBox()),
-                          _NavItem(
-                            index: 3,
-                            icon: pageIcons[3],
-                            label: pageTitles[3],
-                            selected: _currentIndex == 3,
-                            onTap: _selectPage,
-                          ),
-                          const Expanded(child: SizedBox()),
-                        ],
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            const Expanded(child: SizedBox()),
+                            _NavItem(
+                              index: 2,
+                              icon: pageIcons[2],
+                              label: pageTitles[2],
+                              selected: _currentIndex == 2,
+                              onTap: _selectPage,
+                            ),
+                            const Expanded(child: SizedBox()),
+                            _NavItem(
+                              index: 3,
+                              icon: pageIcons[3],
+                              label: pageTitles[3],
+                              selected: _currentIndex == 3,
+                              onTap: _selectPage,
+                            ),
+                            const Expanded(child: SizedBox()),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

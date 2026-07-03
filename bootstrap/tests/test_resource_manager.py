@@ -332,7 +332,9 @@ def _build_shared_blob_generation(root: Path) -> dict[str, str]:
     rel_index = make_release_index(
         release_id="rel-001",
         version="1.0.0",
-        android={"general": {"identifier": apk_id, "content_hash": apk_chash}},
+        android={
+            "general": {"identifier": apk_id, "content_hash": apk_chash, "size": len(apk_data)}
+        },
     )
     rel_meta = ReleaseSnapshotMetadata(
         releaseCount=1,
@@ -394,7 +396,9 @@ def _build_apk_dedup_generation(root: Path) -> dict[str, str]:
     rel_index = make_release_index(
         release_id="rel-002",
         version="2.0.0",
-        android={"general": {"identifier": apk_id, "content_hash": apk_chash}},
+        android={
+            "general": {"identifier": apk_id, "content_hash": apk_chash, "size": len(apk_data)}
+        },
     )
     rel_meta = ReleaseSnapshotMetadata(releaseCount=1, createdAt="2026-01-01T00:00:00Z")
     release_snap = snap_store.create_release_snapshot(rel_meta, rel_index)

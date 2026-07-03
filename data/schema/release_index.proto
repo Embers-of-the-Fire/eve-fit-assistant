@@ -12,6 +12,7 @@ message ReleaseIndex {
 message AndroidArtifactVariant {
   required string identifier = 1;
   required string content_hash = 2;
+  required int64 size = 3;
 }
 
 message AndroidArtifacts {

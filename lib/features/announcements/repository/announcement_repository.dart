@@ -282,39 +282,6 @@ final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
   );
 });
 
-/// Available app update (latest version entry where appVersion > installed
-/// and appVersion > lastSeenAppVersion).
-final availableUpdateProvider = Provider<AnnouncementRecord?>((Ref ref) {
-  ref.watch(announcementStateServiceProvider);
-  final appVer = ref
-      .watch(appVersionProvider)
-      .when(data: (v) => v, loading: () => null, error: (_, _) => null);
-  if (appVer == null) return null;
-
-  final versionFeed = ref.watch(announcementVersionFeedProvider);
-  final records = versionFeed.when(
-    data: (r) => r,
-    loading: () => const <AnnouncementRecord>[],
-    error: (_, _) => const <AnnouncementRecord>[],
-  );
-
-  final candidates = records
-      .where((r) => r.appVersion != null && compareVersions(r.appVersion!, appVer) > 0)
-      .toList();
-  if (candidates.isEmpty) return null;
-
-  candidates.sort((a, b) => compareVersions(b.appVersion!, a.appVersion!));
-  final latest = candidates.first;
-
-  final state = ref.read(announcementStateServiceProvider);
-  if (state.lastSeenAppVersion != null &&
-      compareVersions(latest.appVersion!, state.lastSeenAppVersion!) <= 0) {
-    return null;
-  }
-
-  return latest;
-});
-
 /// Startup announcement to show as dialog (first unread, un-dismissed,
 /// startup-flagged entry).
 final startupAnnouncementProvider = FutureProvider<AnnouncementRecord?>((Ref ref) async {
