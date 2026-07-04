@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -15,7 +14,7 @@ from bootstrap.utils import get_command
 
 
 def register_etc_commands(cli_group: click.Group) -> None:
-    @cli_group.group(cls=ClickAliasedGroup)
+    @cli_group.group()
     def etc():
         """Extra toolsets."""
 
@@ -34,7 +33,7 @@ def register_etc_commands(cli_group: click.Group) -> None:
             + str(output_file)
         )
 
-    @etc.group(cls=ClickAliasedGroup)
+    @etc.group()
     def site():
         """Landing page site commands."""
 

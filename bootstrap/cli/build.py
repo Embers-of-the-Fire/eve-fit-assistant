@@ -8,7 +8,6 @@ from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -179,7 +178,7 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None) -
 
 
 def register_build_commands(cli_group: click.Group) -> None:
-    @cli_group.group(cls=ClickAliasedGroup)
+    @cli_group.group()
     def build():
         """Build related commands."""
 
@@ -217,7 +216,7 @@ def register_build_commands(cli_group: click.Group) -> None:
             )
         )
 
-    @build.command("announcements", aliases=["anno"])
+    @build.command("announcements")
     def build_announcements_cmd():
         """Build bundled announcement catalog assets."""
         from bootstrap.docs import build_bundled_announcements
@@ -354,7 +353,7 @@ def register_build_commands(cli_group: click.Group) -> None:
         else:
             _build_release_merge(list(merge_files), ver, output)
 
-    @build.command("list", aliases=["ls"])
+    @build.command("list")
     @click.option("--apps", is_flag=True, default=False, help="Show APK builds.")
     @click.option("--resources", is_flag=True, default=False, help="Show resource snapshots.")
     @click.option("--releases", is_flag=True, default=False, help="Show release snapshots.")

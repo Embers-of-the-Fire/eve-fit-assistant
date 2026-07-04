@@ -7,7 +7,6 @@ from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -21,7 +20,7 @@ from bootstrap.utils import get_command
 
 
 def register_ci_commands(cli_group: click.Group) -> None:
-    @cli_group.group(aliases=["c"], cls=ClickAliasedGroup)
+    @cli_group.group()
     def ci():
         """CI/CD helper commands."""
 

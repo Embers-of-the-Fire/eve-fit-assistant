@@ -44,7 +44,6 @@ __fix_env()
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 from colorama import init
@@ -73,7 +72,6 @@ WorkspaceCache.load_from_global()
     context_settings={
         "help_option_names": ["-h", "--help"],
     },
-    cls=ClickAliasedGroup,
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show the command without executing.")
 @click.option("--workspace", "--ws", "ws_name", default=None, help="Set current workspace.")

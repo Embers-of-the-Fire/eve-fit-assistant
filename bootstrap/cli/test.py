@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -12,7 +11,7 @@ from bootstrap.utils import get_command
 
 
 def register_test_commands(cli_group: click.Group) -> None:
-    @cli_group.group(aliases=["t"], cls=ClickAliasedGroup)
+    @cli_group.group()
     def test():
         """Run project test suites."""
 

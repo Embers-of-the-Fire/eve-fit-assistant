@@ -7,7 +7,6 @@ from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 from watchfiles import awatch
@@ -131,7 +130,7 @@ def _run_l10n_once() -> None:
 
 
 def register_generate_commands(cli_group: click.Group) -> None:
-    @cli_group.group(aliases=["gen"], cls=ClickAliasedGroup)
+    @cli_group.group()
     @click.option(
         "--format",
         "-f",
@@ -158,7 +157,7 @@ def register_generate_commands(cli_group: click.Group) -> None:
         if ctx.obj.get("format_source", False):
             runtime.run_format()
 
-    @generate.command(aliases=["proto", "pb"])
+    @generate.command("protobuf")
     @click.pass_context
     def protobuf(ctx: click.Context):
         """Generate protobuf code for all supported languages."""
@@ -166,7 +165,7 @@ def register_generate_commands(cli_group: click.Group) -> None:
         if ctx.obj.get("format_source", False):
             runtime.run_format()
 
-    @generate.command("rust", aliases=["rs"])
+    @generate.command("rust")
     @click.pass_context
     def rust_cmd(ctx: click.Context):
         """Generate flutter-rust-bridge glue code."""
@@ -209,7 +208,7 @@ def register_generate_commands(cli_group: click.Group) -> None:
         if ctx.obj.get("format_source", False):
             runtime.run_format()
 
-    @generate.group("values", cls=ClickAliasedGroup)
+    @generate.group("values")
     def generate_values():
         """Generate value-dependent code from the selected workspace."""
 

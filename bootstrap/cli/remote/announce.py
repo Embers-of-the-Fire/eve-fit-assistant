@@ -6,7 +6,6 @@ from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -18,7 +17,7 @@ from bootstrap.color import styled
 
 
 def register_remote_announce(remote: click.Group) -> None:
-    @remote.group("announce", cls=ClickAliasedGroup)
+    @remote.group("announce")
     def remote_announce():
         """Remote announcement management — sync, author, publish."""
 

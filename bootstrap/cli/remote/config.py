@@ -4,8 +4,6 @@ import json
 
 import click
 
-from click_aliases import ClickAliasedGroup
-
 import bootstrap.config
 
 from bootstrap.cli import runtime
@@ -13,7 +11,7 @@ from bootstrap.cli.remote.helpers import redact_remote_config
 
 
 def register_remote_config(remote: click.Group) -> None:
-    @remote.group("config", cls=ClickAliasedGroup)
+    @remote.group("config")
     def remote_config():
         """Remote mock configuration commands."""
 

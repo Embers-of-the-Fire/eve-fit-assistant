@@ -6,7 +6,6 @@ from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -795,7 +794,7 @@ _SCHEMA_ROOT_OPTION = click.option(
 
 
 def register_remote_session(remote: click.Group) -> None:
-    @remote.group("session", cls=ClickAliasedGroup)
+    @remote.group("session")
     def remote_session():
         """Staged generation assembly — build, stage, review, commit."""
 
