@@ -101,6 +101,9 @@ class ProjectVersion(BaseModel):
             base = f"{base}-{self.pre_label}.{self.pre_num}"
         return base
 
+    def render_tag(self) -> str:
+        return f"v{self.render_semver()}"
+
 
 class SchemaConfig(BaseModel):
     """Schema version configuration."""
