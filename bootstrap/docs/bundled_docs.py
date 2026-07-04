@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
-import re
 import shutil
 
 from dataclasses import dataclass
@@ -21,6 +20,7 @@ from bootstrap.constant import PROJECT_ROOT
 from bootstrap.docs.announcements_remote import AnnouncementCatalogPage
 from bootstrap.docs.announcements_remote import AnnouncementEntry
 from bootstrap.docs.announcements_remote import AnnouncementPage
+from bootstrap.docs.document_parser import parse_locale_document
 from bootstrap.log import info
 
 
@@ -159,13 +159,6 @@ class LocalizedDocument:
     body_hash: str
 
 
-@dataclass(frozen=True)
-class BundledEntry:
-    id: str
-    metadata: BundledSourceMetadata
-    localizations: dict[str, LocalizedDocument]
-
-
 def _load_general_announcement(entry_id: str, directory: Path) -> BundledEntry:
     spec = _load_spec(directory / "spec.yaml")
     if spec.id != entry_id:
@@ -181,52 +174,25 @@ def _load_general_announcement(entry_id: str, directory: Path) -> BundledEntry:
     return BundledEntry(id=entry_id, metadata=spec, localizations=localizations)
 
 
+@dataclass(frozen=True)
+class BundledEntry:
+    id: str
+    metadata: BundledSourceMetadata
+    localizations: dict[str, LocalizedDocument]
+
+
 def _parse_locale_document(path: Path, locale: str) -> LocalizedDocument:
-    raw = path.read_text(encoding="utf-8")
-    lines = raw.splitlines()
-
-    title_index = next(
-        (index for index, line in enumerate(lines) if line.strip().startswith("# ")),
-        None,
-    )
-    if title_index is None:
-        raise ValueError(f"Locale file is missing a level-1 heading: {path}")
-
-    title = lines[title_index].strip()[2:].strip()
-    body_lines = lines[title_index + 1 :]
-    while body_lines and not body_lines[0].strip():
-        body_lines.pop(0)
-
-    body_text = "\n".join(body_lines).strip()
-    if not body_text:
-        raise ValueError(f"Locale file has no body after removing the title: {path}")
-
-    summary = _extract_summary(body_text)
-    if summary is None:
-        raise ValueError(f"Locale file has no usable summary paragraph: {path}")
-
-    body_markdown = body_text + "\n"
-    body_hash = hashlib.sha256(body_markdown.encode("utf-8")).hexdigest()
+    """Parse a localized Markdown document and compute its content hash."""
+    parsed = parse_locale_document(path, locale)
+    body_hash = hashlib.sha256(parsed.body_markdown.encode("utf-8")).hexdigest()
     return LocalizedDocument(
-        locale=locale,
-        source_path=path,
-        title=title,
-        summary=summary,
-        body_markdown=body_markdown,
+        locale=parsed.locale,
+        source_path=parsed.source_path,
+        title=parsed.title,
+        summary=parsed.summary,
+        body_markdown=parsed.body_markdown,
         body_hash=body_hash,
     )
-
-
-def _extract_summary(body_markdown: str) -> str | None:
-    paragraphs = re.split(r"\n\s*\n", body_markdown.strip())
-    for block in paragraphs:
-        stripped = block.strip()
-        if not stripped or stripped.startswith(("#", "```")):
-            continue
-        if stripped.startswith(("- ", "* ", "+ ")) or re.match(r"\d+\.\s", stripped):
-            continue
-        return " ".join(line.strip() for line in stripped.splitlines()).strip()
-    return None
 
 
 def _compose_release_body(human_body: str, changelog: str) -> str:
