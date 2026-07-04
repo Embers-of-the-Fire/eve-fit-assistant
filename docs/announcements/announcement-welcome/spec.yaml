@@ -1,0 +1,10 @@
+id: announcement-welcome
+publishedAt: '2026-04-14T00:00:00Z'
+tags:
+- welcome
+startup: true
+channels:
+- testing
+platforms:
+- android
+- ios

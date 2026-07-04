@@ -216,13 +216,13 @@ def register_build_commands(cli_group: click.Group) -> None:
             )
         )
 
-    @build.command("announcements")
-    def build_announcements_cmd():
-        """Build bundled announcement catalog assets."""
-        from bootstrap.docs import build_bundled_announcements
+    @build.command("docs")
+    def build_docs_cmd():
+        """Build bundled announcement and release-note assets."""
+        from bootstrap.docs import build_bundled_docs
 
         try:
-            build_bundled_announcements()
+            build_bundled_docs()
         except ValueError as exception:
             raise click.ClickException(str(exception)) from exception
 

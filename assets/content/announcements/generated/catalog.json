@@ -18,10 +18,10 @@
     "maxEntries": 50,
     "entries": [
       {
-        "id": "alpha-bug-report",
-        "publishedAt": "2024-04-16T00:00:00Z",
+        "id": "version-0-1-0-beta-6",
+        "publishedAt": "2026-06-16T14:24:42Z",
         "tags": [
-          "announcement"
+          "release-note"
         ],
         "startup": false,
         "minAppVersion": null,
@@ -33,27 +33,27 @@
           "android",
           "ios"
         ],
-        "appVersion": null,
+        "appVersion": "0.1.0-beta.6",
         "localizations": {
           "zh": {
-            "title": "Alpha 测试阶段错误报告指南",
-            "summary": "本公告包含了在 Alpha 测试阶段报告错误的指南和建议， 以帮助我们更快地识别和解决问题。",
-            "bodyHash": "bb9ac498bee6282be8e74de271578563c10bdc4d5ad6cd970c94152f16011727"
+            "title": "v0.1.0-beta.6 发布说明",
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "189d2dc05c52330e63d845b1bea9a6de69b33e863e38af4689984dfe1b2799b8"
           },
           "en": {
-            "title": "Alpha Testing Bug Report Guide",
-            "summary": "This announcement contains guidelines and suggestions for reporting bugs during the Alpha testing phase, helping us identify and resolve issues more quickly.",
-            "bodyHash": "a1372dc5fbce7b293d1136fac48e8110d17e306c37c5d067e14fd9becb4ed49e"
+            "title": "v0.1.0-beta.6 Release Notes",
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "bf19f712d33f2c5317eb433bc1846657b180ae3fb5e65f00dc3906cce9a19fbd"
           }
         }
       },
       {
-        "id": "announcement-welcome",
-        "publishedAt": "2026-04-14T00:00:00Z",
+        "id": "version-0-1-0-beta-5",
+        "publishedAt": "2026-06-13T10:40:31Z",
         "tags": [
-          "welcome"
+          "release-note"
         ],
-        "startup": true,
+        "startup": false,
         "minAppVersion": null,
         "maxAppVersion": null,
         "channels": [
@@ -63,17 +63,167 @@
           "android",
           "ios"
         ],
-        "appVersion": null,
+        "appVersion": "0.1.0-beta.5",
         "localizations": {
           "zh": {
-            "title": "欢迎使用文档中心",
-            "summary": "本次更新为公告和版本说明提供了专用入口。",
-            "bodyHash": "f5723f1a49217669ad43b1dace8bdf3d3c90cfa5b748a1c2914e5bd4a2702654"
+            "title": "v0.1.0-beta.5 发布说明",
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "2eef8fb45efd3a3131b5539f17504d2bd326761752c273949d047c80a7f83615"
           },
           "en": {
-            "title": "Welcome to the document center",
-            "summary": "This release adds a dedicated place for announcements and version notes.",
-            "bodyHash": "28acfbc2623837ceef637f17bdfc18fa2a4423cd7ec7008ad4f849b550d40aee"
+            "title": "v0.1.0-beta.5 Release Notes",
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "a1d97da01a63d9165c2bc25739d531de7e6b34199eb4c30f868d8254e110085b"
+          }
+        }
+      },
+      {
+        "id": "version-0-1-0-beta-4",
+        "publishedAt": "2026-06-09T11:23:44Z",
+        "tags": [
+          "release-note"
+        ],
+        "startup": false,
+        "minAppVersion": null,
+        "maxAppVersion": null,
+        "channels": [
+          "testing"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ],
+        "appVersion": "0.1.0-beta.4",
+        "localizations": {
+          "zh": {
+            "title": "v0.1.0-beta.4 发布说明",
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "236f3e42fec3bd486ffe6508fd20bcceff57416aa121a016dfc9f4c767ffccd5"
+          },
+          "en": {
+            "title": "v0.1.0-beta.4 Release Notes",
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "b38953886f763aa642dd00ca540a84a844f5bc6f8402dea93c8ded3fa190f2b6"
+          }
+        }
+      },
+      {
+        "id": "version-0-1-0-beta-3",
+        "publishedAt": "2026-06-06T12:11:22Z",
+        "tags": [
+          "release-note"
+        ],
+        "startup": false,
+        "minAppVersion": null,
+        "maxAppVersion": null,
+        "channels": [
+          "testing"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ],
+        "appVersion": "0.1.0-beta.3",
+        "localizations": {
+          "zh": {
+            "title": "v0.1.0-beta.3 发布说明",
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "c5f2a3ab7f18a94023ccb3d78629f6bf9e14a3822b526468d430fbdf18588509"
+          },
+          "en": {
+            "title": "v0.1.0-beta.3 Release Notes",
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "8e45e0f2038408d9c8673d20bc917030724c8f28bc9bde0486cd0e384b29faaf"
+          }
+        }
+      },
+      {
+        "id": "version-0-1-0-beta-2",
+        "publishedAt": "2026-06-06T11:11:56Z",
+        "tags": [
+          "release-note"
+        ],
+        "startup": false,
+        "minAppVersion": null,
+        "maxAppVersion": null,
+        "channels": [
+          "testing"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ],
+        "appVersion": "0.1.0-beta.2",
+        "localizations": {
+          "zh": {
+            "title": "v0.1.0-beta.2 发布说明",
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "56b2973c9235b59bd4cbb0b2041ac60183eff8cf7e6ff402e68aa93602d4d5dd"
+          },
+          "en": {
+            "title": "v0.1.0-beta.2 Release Notes",
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "1eeaf59c2d31d4b798403bc2eebc2bd9cd601e2f39c4a32df56c38b9a5ea6216"
+          }
+        }
+      },
+      {
+        "id": "version-0-1-0-beta-1",
+        "publishedAt": "2026-06-06T08:44:24Z",
+        "tags": [
+          "release-note"
+        ],
+        "startup": false,
+        "minAppVersion": null,
+        "maxAppVersion": null,
+        "channels": [
+          "testing"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ],
+        "appVersion": "0.1.0-beta.1",
+        "localizations": {
+          "zh": {
+            "title": "v0.1.0-beta.1 发布说明",
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "437560cac6a928c48a2d15a53c8281260e61efe2e3e0f75fa572ede8430d0255"
+          },
+          "en": {
+            "title": "v0.1.0-beta.1 Release Notes",
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "33a9796d123be17aca4cf74461add0b7f8b373412f80bf91f3c6b7c7a0e4d415"
+          }
+        }
+      },
+      {
+        "id": "version-alpha-0-0-1",
+        "publishedAt": "2026-05-03T00:00:00Z",
+        "tags": [
+          "release-note"
+        ],
+        "startup": false,
+        "minAppVersion": null,
+        "maxAppVersion": null,
+        "channels": [
+          "testing"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ],
+        "appVersion": "0.0.1",
+        "localizations": {
+          "zh": {
+            "title": "版本 Alpha 0.0.1",
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "d56cfcfb12ea41efcf3cdf238172871e50304bceb8eb81ba418340c891ebce35"
+          },
+          "en": {
+            "title": "Version Alpha 0.0.1",
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "886e36f16ec753451552a35de8efc264a094e076a03d136e7d26f09536aafcc6"
           }
         }
       },
@@ -100,22 +250,22 @@
           "zh": {
             "title": "Alpha 测试说明",
             "summary": "这份说明用于帮助测试者快速了解当前 Alpha 构建已支持的流程、仍然存在的限制，以及在数据上下文不一致时推荐的恢复方式。",
-            "bodyHash": "884082e89b68aa81185758ed956b0678f98b6510307562049d1c726416cdc675"
+            "bodyHash": "c783438d3705dc8075efcea41050000388503a675af668e6398d894dccc873ef"
           },
           "en": {
             "title": "Alpha tester guide",
             "summary": "This note explains what the current alpha build is ready for, where the main limits still are, and how to recover when data context gets out of sync.",
-            "bodyHash": "fffa698bf64f9b648a86c2c785e953dfddb9a165c505ce34c73fb51e2fda4b9a"
+            "bodyHash": "74c686c15f9165143f2b786e62b95705036fe94608881779c92cd7cff8907c2e"
           }
         }
       },
       {
-        "id": "version-0-1-0-beta-1",
-        "publishedAt": "2026-06-06T08:44:24Z",
+        "id": "announcement-welcome",
+        "publishedAt": "2026-04-14T00:00:00Z",
         "tags": [
-          "release-note"
+          "welcome"
         ],
-        "startup": false,
+        "startup": true,
         "minAppVersion": null,
         "maxAppVersion": null,
         "channels": [
@@ -125,167 +275,17 @@
           "android",
           "ios"
         ],
-        "appVersion": "0.1.0-beta.1",
+        "appVersion": null,
         "localizations": {
           "zh": {
-            "title": "v0.1.0-beta.1 发布说明",
-            "summary": "实现远程内容管道，支持 S3/MinIO 存储、发布/导入工作流、ETag 缓存与会话管理",
-            "bodyHash": "914f5d216356299260dcb6e9fab330d8579e7ec82931a9f152486b936312ed64"
+            "title": "欢迎使用文档中心",
+            "summary": "本次更新为公告和版本说明提供了专用入口。",
+            "bodyHash": "10789a01f4d49acba74dd29f849054ac9a0a8b4f3d92dc17050b609e859855f2"
           },
           "en": {
-            "title": "v0.1.0-beta.1 Release Notes",
-            "summary": "Remote content pipeline with S3/MinIO storage, publish/import workflows, ETag caching, and session management",
-            "bodyHash": "5733de2e33b6f948e59e21ab20ba0e86757fd0353b7a00c3e50a6d03a4fea566"
-          }
-        }
-      },
-      {
-        "id": "version-0-1-0-beta-2",
-        "publishedAt": "2026-06-06T11:11:56Z",
-        "tags": [
-          "release-note"
-        ],
-        "startup": false,
-        "minAppVersion": null,
-        "maxAppVersion": null,
-        "channels": [
-          "testing"
-        ],
-        "platforms": [
-          "android",
-          "ios"
-        ],
-        "appVersion": "0.1.0-beta.2",
-        "localizations": {
-          "zh": {
-            "title": "v0.1.0-beta.2 发布说明",
-            "summary": "新增日志收集页面与多语言键值",
-            "bodyHash": "b1f9868f200834bd42197ce8b203da4e7088aac5802954c54e1b37e33fa9c67a"
-          },
-          "en": {
-            "title": "v0.1.0-beta.2 Release Notes",
-            "summary": "Add log collection page and localization keys",
-            "bodyHash": "c9c9615dfc94345c064e537d891d26cd2643653dda8217c35b4e242db9c48206"
-          }
-        }
-      },
-      {
-        "id": "version-0-1-0-beta-3",
-        "publishedAt": "2026-06-06T12:11:22Z",
-        "tags": [
-          "release-note"
-        ],
-        "startup": false,
-        "minAppVersion": null,
-        "maxAppVersion": null,
-        "channels": [
-          "testing"
-        ],
-        "platforms": [
-          "android",
-          "ios"
-        ],
-        "appVersion": "0.1.0-beta.3",
-        "localizations": {
-          "zh": {
-            "title": "v0.1.0-beta.3 发布说明",
-            "summary": "添加 APK 输出路径和 SHA1 工具函数",
-            "bodyHash": "dd21d8548fcac1a0191a939f185123ccba8d5b9c42099568ac8253fe171fd982"
-          },
-          "en": {
-            "title": "v0.1.0-beta.3 Release Notes",
-            "summary": "Add APK output path and SHA1 utility functions",
-            "bodyHash": "15c764c4e3e353fa8b25b12fc574023172532447141ec089813990ba6c4f6ed5"
-          }
-        }
-      },
-      {
-        "id": "version-0-1-0-beta-4",
-        "publishedAt": "2026-06-09T11:23:44Z",
-        "tags": [
-          "release-note"
-        ],
-        "startup": false,
-        "minAppVersion": null,
-        "maxAppVersion": null,
-        "channels": [
-          "testing"
-        ],
-        "platforms": [
-          "android",
-          "ios"
-        ],
-        "appVersion": "0.1.0-beta.4",
-        "localizations": {
-          "zh": {
-            "title": "v0.1.0-beta.4 发布说明",
-            "summary": "增强bundle描述符的本地化名称与展示字段",
-            "bodyHash": "bc94355fbdee7833e796c1e6a0b79ba32fe42bc4ea8a3bb6ced385e1fc0ecfcf"
-          },
-          "en": {
-            "title": "v0.1.0-beta.4 Release Notes",
-            "summary": "Enhance bundle descriptor with localized names and display fields",
-            "bodyHash": "c0d99dc7ac132f35e25c253a50b5cc78d8da7af5ff83b17032af34d40c881c16"
-          }
-        }
-      },
-      {
-        "id": "version-0-1-0-beta-5",
-        "publishedAt": "2026-06-13T10:40:31Z",
-        "tags": [
-          "release-note"
-        ],
-        "startup": false,
-        "minAppVersion": null,
-        "maxAppVersion": null,
-        "channels": [
-          "testing"
-        ],
-        "platforms": [
-          "android",
-          "ios"
-        ],
-        "appVersion": "0.1.0-beta.5",
-        "localizations": {
-          "zh": {
-            "title": "v0.1.0-beta.5 发布说明",
-            "summary": "CI 矩阵命令与 GitHub Actions 测试工作流",
-            "bodyHash": "87e8a5b73330dded33041fa0977ec2f0fcc484aa7f19868136b38146408a4a9a"
-          },
-          "en": {
-            "title": "v0.1.0-beta.5 Release Notes",
-            "summary": "CI matrix command and GitHub Actions testing workflow",
-            "bodyHash": "7e8bafbee943a5a1a0f92a6b87e90516ddef1e8afa43df3219037852bc74cc8c"
-          }
-        }
-      },
-      {
-        "id": "version-0-1-0-beta-6",
-        "publishedAt": "2026-06-16T14:24:42Z",
-        "tags": [
-          "release-note"
-        ],
-        "startup": false,
-        "minAppVersion": null,
-        "maxAppVersion": null,
-        "channels": [
-          "testing"
-        ],
-        "platforms": [
-          "android",
-          "ios"
-        ],
-        "appVersion": "0.1.0-beta.6",
-        "localizations": {
-          "zh": {
-            "title": "v0.1.0-beta.6 发布说明",
-            "summary": "新增伤害配置文件的本地化、目录和用户界面对话框",
-            "bodyHash": "3e663affaff4ae4449482278c4ddb269ccfbae92cf63859c85dce0ed6dcac399"
-          },
-          "en": {
-            "title": "v0.1.0-beta.6 Release Notes",
-            "summary": "Add damage profile localization, catalog, and UI dialog",
-            "bodyHash": "689416da0fbce427761d5e6b90a113f9621915a0796a6ac63693c5ebc542f984"
+            "title": "Welcome to the document center",
+            "summary": "This release adds a dedicated place for announcements and version notes.",
+            "bodyHash": "956c69e088a8c0562df570307f218b11d1540c23acc099e6b68240ad3991692c"
           }
         }
       },
@@ -309,21 +309,21 @@
         "localizations": {
           "zh": {
             "title": "版本 Alpha 0.0.0",
-            "summary": "设置页中的版本入口。",
-            "bodyHash": "6e639f20f246f4dc3c50c0b1cc36d09380a45ca418e7c90179667c4526a5d78a"
+            "summary": "本次更新包含以下改动。",
+            "bodyHash": "0ba391e121a4ea893119ab2e442a8a43af6af01649776b81087abce9fc9888a6"
           },
           "en": {
             "title": "Version Alpha 0.0.0",
-            "summary": "A new version route under Settings.",
-            "bodyHash": "3a2e79dd79005924e064863b194ab660b730cc90bb378910a5aab8c413500bc4"
+            "summary": "This release includes the changes listed below.",
+            "bodyHash": "53c01bcf04dc0515985be22df73431c21aec73f61ae794cc3b4fb8d482a8b2a6"
           }
         }
       },
       {
-        "id": "version-alpha-0-0-1",
-        "publishedAt": "2026-05-03T00:00:00Z",
+        "id": "alpha-bug-report",
+        "publishedAt": "2024-04-16T00:00:00Z",
         "tags": [
-          "release-note"
+          "announcement"
         ],
         "startup": false,
         "minAppVersion": null,
@@ -335,17 +335,17 @@
           "android",
           "ios"
         ],
-        "appVersion": "0.0.1",
+        "appVersion": null,
         "localizations": {
           "zh": {
-            "title": "版本 Alpha 0.0.1",
-            "summary": "新增启动公告弹窗，支持\"不要再显示\"和跳转查看详情。",
-            "bodyHash": "f929756555b420c9c818929e7b4be836cda8d937c00ff42c90dfe1524ce61358"
+            "title": "Alpha 测试阶段错误报告指南",
+            "summary": "本公告包含了在 Alpha 测试阶段报告错误的指南和建议， 以帮助我们更快地识别和解决问题。",
+            "bodyHash": "06603b5fd14eab989baa6cc0112567cd68c2fa021c5e453abd1430ff10d25eeb"
           },
           "en": {
-            "title": "Version Alpha 0.0.1",
-            "summary": "A startup announcement dialog with \"don't show again\" persistence and a detail-link action.",
-            "bodyHash": "d2303487d41239cd60458ad72c2215f90abf480221d6950aea17949203364ce0"
+            "title": "Alpha Testing Bug Report Guide",
+            "summary": "This announcement contains guidelines and suggestions for reporting bugs during the Alpha testing phase, helping us identify and resolve issues more quickly.",
+            "bodyHash": "73d73810472406b9c061b11f058f7215c9bc9150f0db7009f7c279a3f4a14a77"
           }
         }
       }
