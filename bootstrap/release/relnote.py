@@ -13,6 +13,8 @@ import yaml
 
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.utils import get_command
+from bootstrap.utils import normalize_version_dir
+from bootstrap.utils import version_dir_to_entry_id
 
 
 if TYPE_CHECKING:
@@ -27,14 +29,6 @@ CLIFF_CONFIG = PROJECT_ROOT / "cliff.toml"
 _DEFAULT_CHANNELS = ["testing"]
 _DEFAULT_PLATFORMS = ["android", "ios"]
 _DEFAULT_TAGS = ["release-note"]
-
-
-def normalize_version_dir(version: str) -> str:
-    return version.replace(".", "-")
-
-
-def version_dir_to_entry_id(name: str) -> str:
-    return f"version-{normalize_version_dir(name)}"
 
 
 def parse_version_override(value: str) -> dict[str, object]:
@@ -93,16 +87,23 @@ def _run_cliff(tag: str) -> str:
         "--strip",
         "header",
     ]
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        cwd=PROJECT_ROOT,
-    )
+    # CWE-78 / S603 are false positives here: cmd is a list passed without
+    # shell=True, and tag originates from a Pydantic-validated ProjectVersion,
+    # so there is no shell-interpretation vector.
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=PROJECT_ROOT,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise click.ClickException(f"git-cliff timed out after {e.timeout} seconds") from e
     if result.returncode != 0:
-        raise RuntimeError(f"git-cliff failed: {result.stderr.strip()}")
+        raise click.ClickException(f"git-cliff failed: {result.stderr.strip()}")
     return result.stdout.strip() + "\n"
 
 

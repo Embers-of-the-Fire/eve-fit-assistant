@@ -8,12 +8,9 @@ from colorama import Style
 from bootstrap.color import styled
 from bootstrap.config import CONFIGURATION
 from bootstrap.config import ProjectVersion
-from bootstrap.release.relnote import CHANGELOG_ROOT
 from bootstrap.release.relnote import create_raw_release_note
-from bootstrap.release.relnote import normalize_version_dir
 from bootstrap.release.relnote import parse_version_override
 from bootstrap.release.relnote import split_csv
-from bootstrap.release.relnote import version_dir_to_entry_id
 
 
 def register_release_commands(cli_group: click.Group) -> None:
@@ -76,20 +73,6 @@ def register_release_commands(cli_group: click.Group) -> None:
         channels_list = split_csv(channels)
         platforms_list = split_csv(platforms)
 
-        if dry_run:
-            app_version = version.render_semver()
-            dir_name = normalize_version_dir(app_version)
-            entry_id = version_dir_to_entry_id(app_version)
-            directory = CHANGELOG_ROOT / dir_name
-            click.echo(
-                styled([Style.BRIGHT, Fore.CYAN], "[DRY-RUN] ")
-                + f"Would create release note for {app_version}"
-            )
-            click.echo(f"  directory: {directory}")
-            click.echo(f"  entry id:  {entry_id}")
-            click.echo("  files:     spec.yaml, changelog.md")
-            return
-
         directory, entry_id = create_raw_release_note(
             version,
             dry_run=dry_run,
@@ -98,6 +81,16 @@ def register_release_commands(cli_group: click.Group) -> None:
             channels=channels_list,
             platforms=platforms_list,
         )
+
+        if dry_run:
+            click.echo(
+                styled([Style.BRIGHT, Fore.CYAN], "[DRY-RUN] ")
+                + f"Would create release note for {version.render_semver()}"
+            )
+            click.echo(f"  directory: {directory}")
+            click.echo(f"  entry id:  {entry_id}")
+            click.echo("  files:     spec.yaml, changelog.md")
+            return
 
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Created raw release note: ") + str(directory)

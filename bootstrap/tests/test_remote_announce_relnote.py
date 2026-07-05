@@ -15,10 +15,10 @@ from bootstrap.config import ProjectVersion
 from bootstrap.docs.announcements_remote import ACTIVE_KEY
 from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 from bootstrap.docs.document_parser import parse_locale_document
-from bootstrap.release.relnote import normalize_version_dir
 from bootstrap.release.relnote import parse_version_override
 from bootstrap.release.relnote import split_csv
-from bootstrap.release.relnote import version_dir_to_entry_id
+from bootstrap.utils import normalize_version_dir
+from bootstrap.utils import version_dir_to_entry_id
 
 
 if TYPE_CHECKING:
@@ -239,7 +239,7 @@ class TestAddReleaseNote:
             zh_body="# 标题\n\n摘要。\n",
             en_body="# Title\n\nSummary.\n",
             changelog="- Fix\n",
-            extra_spec="tags:\n- hotfix\n- release-note\n",
+            extra_spec="tags:\n- custom-tag\n",
         )
         workspace = _build_workspace(tmp_path)
         _write_empty_remote_state(workspace)
@@ -261,7 +261,7 @@ class TestAddReleaseNote:
 
         overlay = workspace.read_overlay()
         entry = overlay.pages[ACTIVE_KEY]["version-1-0-0"]
-        assert entry.tags == ["hotfix", "release-note"]
+        assert entry.tags == ["custom-tag"]
 
     def test_cli_overrides_take_precedence(self, tmp_path: Path) -> None:
         from bootstrap.cli.remote.announce import register_remote_announce

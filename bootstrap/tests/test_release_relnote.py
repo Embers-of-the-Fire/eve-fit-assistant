@@ -149,6 +149,28 @@ def test_create_raw_release_note_dry_run_does_not_write(
     assert not directory.exists()
 
 
+def test_create_raw_release_note_dry_run_force_preserves_existing(
+    version: ProjectVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    directory = isolated_changelog_root / "0-2-0-beta-1"
+    directory.mkdir()
+    existing = directory / "existing.txt"
+    existing.write_text("keep", encoding="utf-8")
+
+    with patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root):
+        returned_directory, entry_id = relnote.create_raw_release_note(
+            version, dry_run=True, force=True
+        )
+
+    assert returned_directory == directory
+    assert entry_id == "version-0-2-0-beta-1"
+    assert directory.is_dir()
+    assert existing.read_text(encoding="utf-8") == "keep"
+    assert not (directory / "spec.yaml").exists()
+    assert not (directory / "changelog.md").exists()
+
+
 def test_version_dir_to_entry_id() -> None:
     assert relnote.version_dir_to_entry_id("0.2.0") == "version-0-2-0"
     assert relnote.version_dir_to_entry_id("0.2.0-beta.1") == "version-0-2-0-beta-1"

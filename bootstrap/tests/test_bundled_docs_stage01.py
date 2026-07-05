@@ -8,8 +8,8 @@ import pytest
 from bootstrap.docs.bundled_docs import _iter_announcement_dirs
 from bootstrap.docs.bundled_docs import _iter_changelog_dirs
 from bootstrap.docs.bundled_docs import _load_spec
-from bootstrap.docs.bundled_docs import _normalize_version_dir
-from bootstrap.docs.bundled_docs import _version_dir_to_entry_id
+from bootstrap.utils import normalize_version_dir
+from bootstrap.utils import version_dir_to_entry_id
 
 
 if TYPE_CHECKING:
@@ -87,10 +87,10 @@ appVersion: \"1.5.0\"
 
 class TestVersionNormalization:
     def test_version_dir_normalization(self) -> None:
-        assert _normalize_version_dir("0.1.0-beta.6") == "0-1-0-beta-6"
-        assert _version_dir_to_entry_id("0.1.0-beta.6") == "version-0-1-0-beta-6"
-        assert _normalize_version_dir("version-1.2.3") == "1-2-3"
-        assert _version_dir_to_entry_id("version-1.2.3") == "version-1-2-3"
+        assert normalize_version_dir("0.1.0-beta.6") == "0-1-0-beta-6"
+        assert version_dir_to_entry_id("0.1.0-beta.6") == "version-0-1-0-beta-6"
+        assert normalize_version_dir("version-1.2.3") == "1-2-3"
+        assert version_dir_to_entry_id("version-1.2.3") == "version-1-2-3"
 
 
 class TestChangelogLoading:

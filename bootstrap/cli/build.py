@@ -141,9 +141,10 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
             if offering not in merged_metadata.setdefault("offerings", []):
                 merged_metadata["offerings"].append(offering)
 
-        merged_metadata.setdefault("versionMin", meta.get("versionMin"))
-        merged_metadata.setdefault("versionMax", meta.get("versionMax"))
-        merged_metadata.setdefault("createdAt", meta.get("createdAt"))
+        for key in ("versionMin", "versionMax", "createdAt"):
+            value = meta.get(key)
+            if value is not None and merged_metadata.get(key) is None:
+                merged_metadata[key] = value
 
         for pkey, pdict in rel.items():
             if pkey in ("id", "version"):
@@ -157,6 +158,10 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
                 for variant, path_str in pdict.items():
                     if isinstance(path_str, str):
                         pp = root / Path(path_str)
+                        if pp.is_absolute() and not pp.is_relative_to(root):
+                            raise click.ClickException(
+                                f"Path {path_str!r} escapes root {root} in {fp}"
+                            )
                         all_paths.append(pp)
                         normalized[variant] = str(pp.relative_to(root))
                 merged_release[pkey] = normalized

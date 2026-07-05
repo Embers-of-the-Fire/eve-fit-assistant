@@ -22,6 +22,8 @@ from bootstrap.docs.announcements_remote import AnnouncementEntry
 from bootstrap.docs.announcements_remote import AnnouncementPage
 from bootstrap.docs.document_parser import parse_locale_document
 from bootstrap.log import info
+from bootstrap.utils import normalize_version_dir
+from bootstrap.utils import version_dir_to_entry_id
 
 
 if TYPE_CHECKING:
@@ -66,16 +68,6 @@ class BundledSourceMetadata(BaseModel):
     app_version: str | None = Field(alias="appVersion", default=None)
 
 
-def _normalize_version_dir(name: str) -> str:
-    """Replace dots with hyphens and strip a leading 'version-' prefix."""
-    name = name.replace(".", "-")
-    return name.removeprefix("version-")
-
-
-def _version_dir_to_entry_id(name: str) -> str:
-    return f"version-{_normalize_version_dir(name)}"
-
-
 def _iter_announcement_dirs() -> Iterable[tuple[str, Path]]:
     """Yield (id, directory path) for docs/announcements/<id>."""
     root = ANNOUNCEMENTS_SOURCE_ROOT
@@ -95,7 +87,7 @@ def _iter_changelog_dirs() -> Iterable[tuple[str, Path]]:
     for path in root.iterdir():
         if path.name.startswith(".") or not path.is_dir():
             continue
-        yield _normalize_version_dir(path.name), path
+        yield normalize_version_dir(path.name), path
 
 
 def _load_spec(path: Path) -> BundledSourceMetadata:
@@ -126,7 +118,7 @@ def _load_spec(path: Path) -> BundledSourceMetadata:
                 f"'{directory_name}': {path}"
             )
     elif source_type == _SOURCE_TYPE_CHANGELOG:
-        expected_id = _version_dir_to_entry_id(directory_name)
+        expected_id = version_dir_to_entry_id(directory_name)
         if metadata.id is not None and metadata.id != expected_id:
             raise ValueError(
                 f"Changelog id '{metadata.id}' does not match derived id '{expected_id}': {path}"
@@ -161,8 +153,6 @@ class LocalizedDocument:
 
 def _load_general_announcement(entry_id: str, directory: Path) -> BundledEntry:
     spec = _load_spec(directory / "spec.yaml")
-    if spec.id != entry_id:
-        raise ValueError(f"spec id {spec.id!r} does not match directory {entry_id!r}")
 
     localizations: dict[str, LocalizedDocument] = {}
     for locale in ("zh", "en"):
@@ -203,17 +193,8 @@ def _compose_release_body(human_body: str, changelog: str) -> str:
 
 
 def _load_release_note(version_dir_name: str, directory: Path) -> BundledEntry:
-    entry_id = _version_dir_to_entry_id(version_dir_name)
+    entry_id = version_dir_to_entry_id(version_dir_name)
     spec = _load_spec(directory / "spec.yaml")
-
-    if spec.id is not None and spec.id != entry_id:
-        raise ValueError(f"changelog spec id {spec.id!r} must be {entry_id!r}")
-
-    if spec.app_version is None:
-        raise ValueError(f"changelog {entry_id!r} is missing appVersion")
-
-    if not spec.tags:
-        spec = spec.model_copy(update={"tags": ["release-note"]})
 
     changelog_path = directory / "changelog.md"
     if not changelog_path.exists():
