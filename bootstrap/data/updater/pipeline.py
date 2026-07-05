@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+import aiohttp
 
 import bootstrap.config
 
@@ -19,7 +20,6 @@ from bootstrap.data.updater.server import SERVER_ALIASES
 from bootstrap.data.updater.server import get_server_config
 from bootstrap.data.updater.uploader import upload_artifacts
 from bootstrap.log import info
-from bootstrap.utils import get_command
 
 
 if TYPE_CHECKING:
@@ -63,38 +63,33 @@ def _get_raw_artifacts_dir(server_id: ServerId) -> Path:
 
 
 async def _read_bucket_build(server_id: ServerId) -> int | None:
-    """Read the current build number stored in the CI bucket, if any."""
+    """Read the current build number stored in the CI bucket, if any.
+
+    This uses the public bucket URL so the check step can run without
+    consuming storage credentials.
+    """
     bootstrap.config.DeveloperConfiguration.ensure_loaded()
     storage = bootstrap.config.DEV_CONFIGURATION.ci.storage
     raw_artifacts = bootstrap.config.DEV_CONFIGURATION.ci.raw_artifacts
-    if storage is None or raw_artifacts is None:
+    if raw_artifacts is None:
         return None
 
-    alias = raw_artifacts.alias or storage.alias
-    bucket = raw_artifacts.bucket or storage.bucket
-    remote_root = raw_artifacts.remote_root
-    build_path = f"{alias}/{bucket}/{remote_root}/{server_id}/build.txt"
+    public_url = raw_artifacts.public_url
+    if public_url is None and storage is not None:
+        public_url = storage.public_url
+    if not public_url:
+        return None
 
-    mc = get_command("mc")
-    cmd = [mc, "cat", build_path]
-    info(f"Reading bucket build: {' '.join(cmd)}")
+    url = f"{public_url}/{raw_artifacts.remote_root}/{server_id}/build.txt"
+    info(f"Reading bucket build: {url}")
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=60,
-            check=False,
-        )
-    except FileNotFoundError:
-        return None
-    if result.returncode != 0:
-        return None
-    try:
-        return int(result.stdout.strip())
-    except ValueError:
+        async with aiohttp.ClientSession() as session, session.get(url) as response:
+            if response.status == 404:
+                return None
+            response.raise_for_status()
+            text = await response.text()
+            return int(text.strip())
+    except (aiohttp.ClientError, ValueError):
         return None
 
 

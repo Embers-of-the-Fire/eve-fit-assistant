@@ -91,3 +91,7 @@ remote_root = "data-generator/raw-artifact"
 # alias = "efa-ci-raw-artifacts"
 # access_key = "..."
 # secret_key = "..."
+
+# Optional: public URL used to read build.txt without credentials.
+# If omitted, [ci.storage].public_url is used when available.
+# public_url = "https://ci.storage.efa-tech.dev"

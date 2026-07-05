@@ -9,14 +9,17 @@ import pytest
 
 from pydantic import SecretStr
 
+from bootstrap.config import DeveloperCi
 from bootstrap.config import DeveloperCiRawArtifacts
 from bootstrap.config import DeveloperCiStorage
+from bootstrap.config import DeveloperConfiguration
 from bootstrap.config import _apply_overrides
 from bootstrap.data.updater.index import _parse_index_file
 from bootstrap.data.updater.index import download_index
 from bootstrap.data.updater.index import download_metadata
 from bootstrap.data.updater.manifest import fetch_build
 from bootstrap.data.updater.pipeline import UpdateCheckResult
+from bootstrap.data.updater.pipeline import _read_bucket_build
 from bootstrap.data.updater.pipeline import check_server
 from bootstrap.data.updater.server import get_server_config
 from bootstrap.data.updater.uploader import _resolve_storage
@@ -29,9 +32,16 @@ if TYPE_CHECKING:
 class _MockResponse:
     """A minimal async-context-manager response for aiohttp tests."""
 
-    def __init__(self, *, json_data: dict | None = None, body: bytes = b"") -> None:
+    def __init__(
+        self,
+        *,
+        json_data: dict | None = None,
+        body: bytes = b"",
+        status: int = 200,
+    ) -> None:
         self._json = json_data
         self._body = body
+        self.status = status
 
     async def __aenter__(self) -> _MockResponse:
         return self
@@ -47,6 +57,9 @@ class _MockResponse:
 
     async def read(self) -> bytes:
         return self._body
+
+    async def text(self) -> str:
+        return self._body.decode("utf-8", errors="replace")
 
 
 class _MockSession:
@@ -245,6 +258,53 @@ class TestCheckServer:
             result = await check_server("tranquility")
 
         assert result == UpdateCheckResult(needs_update=True, remote_build=100, bucket_build=None)
+
+
+class TestReadBucketBuild:
+    def _dev_config(
+        self, public_url: str | None = "https://public.example.com"
+    ) -> DeveloperConfiguration:
+        raw_artifacts = DeveloperCiRawArtifacts(
+            remote_root="data-generator/raw-artifact",
+            public_url=public_url,
+        )
+        return DeveloperConfiguration(ci=DeveloperCi(raw_artifacts=raw_artifacts))
+
+    async def test_returns_bucket_build_from_public_url(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            "bootstrap.data.updater.pipeline.bootstrap.config.DEV_CONFIGURATION",
+            self._dev_config(),
+        )
+        response = _MockResponse(body=b"123456")
+        session = _MockSession(response)
+
+        with patch("bootstrap.data.updater.pipeline.aiohttp.ClientSession", return_value=session):
+            result = await _read_bucket_build("tranquility")
+
+        assert result == 123456
+
+    async def test_returns_none_on_404(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            "bootstrap.data.updater.pipeline.bootstrap.config.DEV_CONFIGURATION",
+            self._dev_config(),
+        )
+        response = _MockResponse(body=b"not found", status=404)
+        session = _MockSession(response)
+
+        with patch("bootstrap.data.updater.pipeline.aiohttp.ClientSession", return_value=session):
+            result = await _read_bucket_build("tranquility")
+
+        assert result is None
+
+    async def test_returns_none_when_public_url_missing(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            "bootstrap.data.updater.pipeline.bootstrap.config.DEV_CONFIGURATION",
+            self._dev_config(public_url=None),
+        )
+
+        result = await _read_bucket_build("tranquility")
+
+        assert result is None
 
 
 class TestUploader:

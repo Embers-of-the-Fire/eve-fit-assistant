@@ -312,6 +312,7 @@ class DeveloperCiRawArtifacts(BaseModel):
     alias: str | None = None
     access_key: SecretStr | None = None
     secret_key: SecretStr | None = None
+    public_url: str | None = None
 
 
 def _fail_remote_sub(toml_key: str, command_group: str) -> None:
