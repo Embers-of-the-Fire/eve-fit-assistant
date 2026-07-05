@@ -28,7 +28,7 @@ def register_lint_commands(cli_group: click.Group) -> None:
             raise click.ClickException("--no-check and --check cannot be used together.")
         run_lint(lang, no_check=no_check, check_only=check_only, dry_run=runtime.is_dry_run())
 
-    @cli_group.command("format", aliases=["fmt"])
+    @cli_group.command("format")
     @click.pass_context
     def format_cmd(ctx: click.Context):
         """Format the code. This is equivalent to `x lint --no-check`."""

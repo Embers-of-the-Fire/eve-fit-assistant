@@ -1,0 +1,9 @@
+publishedAt: '2026-06-06T12:11:22Z'
+tags:
+- release-note
+channels:
+- testing
+platforms:
+- android
+- ios
+appVersion: 0.1.0-beta.3

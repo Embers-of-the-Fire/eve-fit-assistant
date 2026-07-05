@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -15,7 +14,7 @@ from bootstrap.utils import get_command
 
 
 def register_etc_commands(cli_group: click.Group) -> None:
-    @cli_group.group(cls=ClickAliasedGroup)
+    @cli_group.group()
     def etc():
         """Extra toolsets."""
 
@@ -33,19 +32,3 @@ def register_etc_commands(cli_group: click.Group) -> None:
             styled([Style.BRIGHT, Fore.GREEN], "Codeart image generated successfully: ")
             + str(output_file)
         )
-
-    @etc.group(cls=ClickAliasedGroup)
-    def site():
-        """Landing page site commands."""
-
-    @site.command("dev")
-    def site_dev():
-        """Start the SvelteKit dev server."""
-        pnpm = get_command("pnpm")
-        runtime.execute([pnpm, "--filter", "efa-tech", "dev"], "SITE DEV", live_stdout=True)
-
-    @site.command("build")
-    def site_build():
-        """Build the static site for Cloudflare Pages."""
-        pnpm = get_command("pnpm")
-        runtime.execute([pnpm, "--filter", "efa-tech", "build"], "SITE BUILD", live_stdout=True)

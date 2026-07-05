@@ -126,3 +126,14 @@ def get_file_sha1(file: Path) -> str:
         for chunk in iter(lambda: f.read(8192), b""):
             hasher.update(chunk)
         return hasher.hexdigest()
+
+
+def normalize_version_dir(name: str) -> str:
+    """Replace dots with hyphens and strip a leading 'version-' prefix."""
+    name = name.replace(".", "-")
+    return name.removeprefix("version-")
+
+
+def version_dir_to_entry_id(name: str) -> str:
+    """Convert a version directory name to a canonical entry id."""
+    return f"version-{normalize_version_dir(name)}"

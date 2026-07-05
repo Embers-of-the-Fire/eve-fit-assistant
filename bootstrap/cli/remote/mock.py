@@ -7,7 +7,6 @@ from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -139,7 +138,7 @@ def _remove_mock_path(path: Path, label: str) -> bool:
 
 
 def register_remote_mock(remote: click.Group) -> None:
-    @remote.group(cls=ClickAliasedGroup)
+    @remote.group()
     def mock():
         """Remote mock origin commands."""
 

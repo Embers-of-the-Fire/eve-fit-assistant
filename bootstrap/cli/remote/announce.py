@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import datetime as dt
 import json
 
 from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -15,10 +15,46 @@ import bootstrap.config
 from bootstrap.cli.remote.helpers import get_announce_workspace
 from bootstrap.cli.remote.helpers import resolve_announce_remote_target
 from bootstrap.color import styled
+from bootstrap.config import CONFIGURATION
+from bootstrap.config import ProjectVersion
+from bootstrap.docs.announcements_remote import ACTIVE_KEY
+from bootstrap.docs.announcements_remote import DOCUMENT_ID_PATTERN
+from bootstrap.docs.announcements_remote import AnnouncementEntry
+from bootstrap.docs.announcements_remote import AnnouncementLocalization
+from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
+from bootstrap.docs.announcements_remote import AnnouncementWorkspace
+from bootstrap.docs.announcements_remote import run_preflight_validation
+from bootstrap.docs.document_parser import parse_locale_document
+from bootstrap.release.relnote import CHANGELOG_ROOT
+from bootstrap.release.relnote import normalize_version_dir
+from bootstrap.release.relnote import parse_version_override
+from bootstrap.release.relnote import split_csv
+from bootstrap.release.relnote import version_dir_to_entry_id
+
+
+def _load_spec_or_defaults(directory: Path) -> dict[str, object]:
+    spec_path = directory / "spec.yaml"
+    if not spec_path.exists():
+        return {}
+    import yaml
+
+    raw = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise click.ClickException(f"Spec file must be a YAML mapping: {spec_path}")
+    return raw
+
+
+def _compose_release_body(human_body: str, changelog: str) -> str:
+    human_body = human_body.strip()
+    changelog = changelog.strip()
+    parts = [human_body, "---", "", changelog]
+    return "\n".join(parts).strip() + "\n"
 
 
 def register_remote_announce(remote: click.Group) -> None:
-    @remote.group("announce", cls=ClickAliasedGroup)
+    @remote.group("announce")
     def remote_announce():
         """Remote announcement management — sync, author, publish."""
 
@@ -45,7 +81,6 @@ def register_remote_announce(remote: click.Group) -> None:
         full: bool,
     ):
         """Download current server state to remote/ workspace."""
-        from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
         endpoint, bucket, access_key, secret_key, alias = resolve_announce_remote_target(
@@ -106,7 +141,6 @@ def register_remote_announce(remote: click.Group) -> None:
         then uploads them.  Fails if the remote already has content unless
         --force is given.
         """
-        from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
         endpoint, bucket, access_key, secret_key, alias = resolve_announce_remote_target(
@@ -190,7 +224,6 @@ def register_remote_announce(remote: click.Group) -> None:
         import re as _re
 
         from bootstrap.docs.announcements_remote import ACTIVE_KEY
-        from bootstrap.docs.announcements_remote import DOCUMENT_ID_PATTERN
         from bootstrap.docs.announcements_remote import AnnouncementEntry
         from bootstrap.docs.announcements_remote import AnnouncementLocalization
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
@@ -619,9 +652,7 @@ def register_remote_announce(remote: click.Group) -> None:
         """
         import tempfile
 
-        from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
-        from bootstrap.docs.announcements_remote import run_preflight_validation
 
         endpoint, bucket, access_key, secret_key, alias = resolve_announce_remote_target(
             target, endpoint, bucket, access_key, secret_key, alias
@@ -732,3 +763,160 @@ def register_remote_announce(remote: click.Group) -> None:
             import shutil as _shutil3
 
             _shutil3.rmtree(temp_dir, ignore_errors=True)
+
+    @remote_announce.command("add-release-note")
+    @click.option(
+        "--version",
+        "version_override",
+        default=None,
+        help="Override the app version (semver, e.g. 0.1.0-beta.7).",
+    )
+    @click.option(
+        "--directory",
+        type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True, path_type=Path),
+        default=None,
+        help="Release note source directory (default: docs/changelog/<version-dashed>).",
+    )
+    @click.option(
+        "--channels",
+        default=None,
+        help="Comma-separated channel list (default: from spec.yaml or testing).",
+    )
+    @click.option(
+        "--platforms",
+        default=None,
+        help="Comma-separated platform list (default: from spec.yaml or android,ios).",
+    )
+    @click.option(
+        "--published-at",
+        default=None,
+        help="Override publishedAt timestamp (ISO-8601, default: from spec.yaml or now).",
+    )
+    @click.option(
+        "--tags",
+        default=None,
+        help="Comma-separated tags (default: release-note).",
+    )
+    def remote_announce_add_release_note(
+        version_override: str | None,
+        directory: Path | None,
+        channels: str | None,
+        platforms: str | None,
+        published_at: str | None,
+        tags: str | None,
+    ):
+        """Stage a docs/changelog release note as a remote announcement entry.
+
+        Reads spec.yaml, changelog.md, content.zh.md, and content.en.md from the
+        release note directory, composes localized bodies, and adds an entry to
+        the active page overlay.  The entry is published with
+        ``remote announce publish``.
+        """
+        if version_override is not None:
+            version = ProjectVersion.model_validate(parse_version_override(version_override))
+        else:
+            bootstrap.config.ProjectConfiguration.ensure_loaded()
+            version = CONFIGURATION.version
+
+        app_version = version.render_semver()
+        dir_name = normalize_version_dir(app_version)
+        entry_id = version_dir_to_entry_id(app_version)
+
+        if directory is None:
+            directory = CHANGELOG_ROOT / dir_name
+
+        if not directory.exists():
+            raise click.ClickException(
+                f"Release note directory does not exist: {directory}. "
+                "Run './x release relnote' first or use --directory."
+            )
+
+        spec = _load_spec_or_defaults(directory)
+
+        spec_id = spec.get("id")
+        if spec_id is not None and spec_id != entry_id:
+            raise click.ClickException(
+                f"Spec id {spec_id!r} does not match expected id {entry_id!r}"
+            )
+
+        spec_app_version = spec.get("appVersion")
+        if spec_app_version is not None and spec_app_version != app_version:
+            raise click.ClickException(
+                f"Spec appVersion {spec_app_version!r} does not match {app_version!r}"
+            )
+
+        changelog_path = directory / "changelog.md"
+        if not changelog_path.exists():
+            raise click.ClickException(
+                f"Missing changelog.md in {directory}. Run './x release relnote' to generate it."
+            )
+        changelog_body = changelog_path.read_text(encoding="utf-8")
+
+        from datetime import UTC
+        from datetime import datetime as _datetime
+
+        spec_published_at = spec.get("publishedAt")
+        if isinstance(spec_published_at, dt.datetime):
+            spec_published_at = (
+                spec_published_at.astimezone(dt.UTC).isoformat().replace("+00:00", "Z")
+            )
+
+        effective_published_at = (
+            published_at
+            or spec_published_at
+            or _datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        )
+        effective_channels = split_csv(channels) or spec.get("channels") or ["testing"]
+        effective_platforms = split_csv(platforms) or spec.get("platforms") or ["android", "ios"]
+        effective_tags = split_csv(tags) or spec.get("tags") or ["release-note"]
+
+        workspace_root = get_announce_workspace()
+        workspace = AnnouncementWorkspace(workspace_root)
+        workspace.ensure_remote_directories()
+
+        effective_ids = workspace.get_effective_entry_ids(ACTIVE_KEY)
+        if entry_id in effective_ids:
+            raise click.ClickException(
+                f"Entry {entry_id!r} already exists. Use 'edit' to modify it."
+            )
+
+        localizations: dict[str, AnnouncementLocalization] = {}
+        for locale in ("zh", "en"):
+            content_path = directory / f"content.{locale}.md"
+            if not content_path.exists():
+                raise click.ClickException(f"Missing required locale file: {content_path}")
+            parsed = parse_locale_document(content_path, locale)
+            composed_body = _compose_release_body(parsed.body_markdown, changelog_body)
+            body_hash = workspace.store_document(composed_body)
+            localizations[locale] = AnnouncementLocalization(
+                title=parsed.title,
+                summary=parsed.summary,
+                body_hash=body_hash,
+            )
+
+        new_entry = AnnouncementEntry(
+            id=entry_id,
+            published_at=effective_published_at,
+            tags=effective_tags,
+            startup=False,
+            min_app_version=None,
+            max_app_version=None,
+            channels=effective_channels,
+            platforms=effective_platforms,
+            app_version=app_version,
+            localizations=localizations,
+        )
+
+        overlay = workspace.overlay_upsert_entry(ACTIVE_KEY, new_entry)
+        workspace.write_overlay(overlay)
+
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Staged release note entry: {entry_id}"))
+        click.echo(styled([Fore.GREEN], f"  appVersion: {app_version}"))
+        click.echo(styled([Fore.GREEN], f"  zh title: {localizations['zh'].title}"))
+        click.echo(styled([Fore.GREEN], f"  en title: {localizations['en'].title}"))
+        click.echo(
+            styled(
+                [Fore.CYAN],
+                "  Run './x remote announce publish' to publish the overlay.",
+            )
+        )

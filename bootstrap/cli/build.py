@@ -8,7 +8,6 @@ from pathlib import Path
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -79,10 +78,11 @@ def _build_release_platform(
     release_id: str | None,
     version_min: str | None,
     version_max: str | None,
+    root: Path,
 ) -> None:
     dir_name = _PLATFORM_DIR[platform]
     suffix = _PLATFORM_SUFFIX[platform]
-    src_dir = PROJECT_ROOT / "cache" / "releases" / dir_name / ver
+    src_dir = root / dir_name / ver
     if not src_dir.is_dir():
         raise click.ClickException(f"Build directory not found: {src_dir}")
 
@@ -93,9 +93,9 @@ def _build_release_platform(
             prefix = f"{ver}-{platform}-"
             if name.startswith(prefix):
                 variant = name[len(prefix) : -len(suffix)]
-                artifacts[variant] = str(f.resolve())
+                artifacts[variant] = str(f.relative_to(root))
             elif name == f"{ver}-{platform}{suffix}":
-                artifacts["general"] = str(f.resolve())
+                artifacts["general"] = str(f.relative_to(root))
 
     if not artifacts:
         raise click.ClickException(f"No {suffix} files found in {src_dir}")
@@ -122,7 +122,7 @@ def _build_release_platform(
     _emit_release_json(data, output, src_dir / f"{ver}-{platform}.json")
 
 
-def _build_release_merge(fragments: list[Path], ver: str, output: Path | None) -> None:
+def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, root: Path) -> None:
     merged_metadata: dict = {}
     merged_release: dict = {}
     all_paths: list[Path] = []
@@ -141,26 +141,30 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None) -
             if offering not in merged_metadata.setdefault("offerings", []):
                 merged_metadata["offerings"].append(offering)
 
-        merged_metadata.setdefault("versionMin", meta.get("versionMin"))
-        merged_metadata.setdefault("versionMax", meta.get("versionMax"))
-        merged_metadata.setdefault("createdAt", meta.get("createdAt"))
+        for key in ("versionMin", "versionMax", "createdAt"):
+            value = meta.get(key)
+            if value is not None and merged_metadata.get(key) is None:
+                merged_metadata[key] = value
 
         for pkey, pdict in rel.items():
             if pkey in ("id", "version"):
                 merged_release.setdefault(pkey, pdict)
             elif isinstance(pdict, dict):
-                for _variant, path_str in pdict.items():
-                    if isinstance(path_str, str):
-                        pp = Path(path_str)
-                        all_paths.append(pp)
-
-        for pkey, pdict in rel.items():
-            if pkey not in ("id", "version") and isinstance(pdict, dict):
                 if pkey in merged_release:
                     raise click.ClickException(
                         f"Duplicate platform fragment for {pkey!r} while merging {fp}"
                     )
-                merged_release[pkey] = pdict
+                normalized: dict[str, str] = {}
+                for variant, path_str in pdict.items():
+                    if isinstance(path_str, str):
+                        pp = root / Path(path_str)
+                        if pp.is_absolute() and not pp.is_relative_to(root):
+                            raise click.ClickException(
+                                f"Path {path_str!r} escapes root {root} in {fp}"
+                            )
+                        all_paths.append(pp)
+                        normalized[variant] = str(pp.relative_to(root))
+                merged_release[pkey] = normalized
 
     missing = [str(p) for p in all_paths if not p.exists()]
     if missing:
@@ -174,12 +178,12 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None) -
         "release": merged_release,
     }
 
-    default_output = PROJECT_ROOT / "cache" / "releases" / "merge" / f"{ver}.json"
+    default_output = root / "merge" / f"{ver}.json"
     _emit_release_json(data, output, default_output)
 
 
 def register_build_commands(cli_group: click.Group) -> None:
-    @cli_group.group(cls=ClickAliasedGroup)
+    @cli_group.group()
     def build():
         """Build related commands."""
 
@@ -217,13 +221,13 @@ def register_build_commands(cli_group: click.Group) -> None:
             )
         )
 
-    @build.command("announcements", aliases=["anno"])
-    def build_announcements_cmd():
-        """Build bundled announcement catalog assets."""
-        from bootstrap.docs import build_bundled_announcements
+    @build.command("docs")
+    def build_docs_cmd():
+        """Build bundled announcement and release-note assets."""
+        from bootstrap.docs import build_bundled_docs
 
         try:
-            build_bundled_announcements()
+            build_bundled_docs()
         except ValueError as exception:
             raise click.ClickException(str(exception)) from exception
 
@@ -233,14 +237,38 @@ def register_build_commands(cli_group: click.Group) -> None:
     )
     @click.option("--flavor", default=None, help="Flutter flavor to build (e.g. dev, prod).")
     @click.option(
-        "--debug", is_flag=True, default=False, help="Build debug APK (single ABI only, no split)."
+        "--root",
+        "-r",
+        type=click.Path(path_type=Path),
+        default=PROJECT_ROOT / "cache" / "releases",
+        help="Release root directory (default: cache/releases).",
     )
-    def build_apk_cmd(clean: bool, flavor: str | None, debug: bool):
-        """Build Android APKs with versioned filenames."""
+    @click.option(
+        "--output",
+        "-o",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Release fragment output path (default: <root>/apk/<ver>/<ver>-android.json).",
+    )
+    @click.option(
+        "--release-id", default=None, help="Override release.id (default: rel-{version})."
+    )
+    @click.option("--version-min", default=None, help="Override minimum version string.")
+    @click.option("--version-max", default=None, help="Override maximum version string.")
+    def build_apk_cmd(
+        clean: bool,
+        flavor: str | None,
+        root: Path,
+        output: Path | None,
+        release_id: str | None,
+        version_min: str | None,
+        version_max: str | None,
+    ):
+        """Build Android APKs with versioned filenames and emit a release fragment."""
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
         ver = version.render_full()
-        output_dir = PROJECT_ROOT / "cache" / "releases" / "apk" / ver
+        output_dir = root / "apk" / ver
         output_dir.mkdir(parents=True, exist_ok=True)
         apk_source = PROJECT_ROOT / "build" / "app" / "outputs" / "flutter-apk"
 
@@ -252,50 +280,37 @@ def register_build_commands(cli_group: click.Group) -> None:
         if clean:
             runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
 
-        if debug:
-            runtime.execute(
-                [flutter, "build", "apk", "--debug", *flavor_args], "BUILDING DEBUG APK"
-            )
-            src_prefix = f"app-{flavor}-" if flavor else "app-"
-            src_apk = apk_source / f"{src_prefix}debug.apk"
-            src_sha1 = apk_source / f"{src_prefix}debug.apk.sha1"
-            if not src_apk.exists():
-                raise click.ClickException(f"Expected debug APK not found: {src_apk}")
-            dst_apk = output_dir / f"{ver}-android-debug.apk"
-            dst_sha1 = output_dir / f"{ver}-android-debug.apk.sha1"
-            _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
-        else:
-            runtime.execute([flutter, "build", "apk", *flavor_args], "BUILDING GENERAL APK")
-            src_apk = apk_source / (f"app-{flavor}-release.apk" if flavor else "app-release.apk")
-            src_sha1 = apk_source / (
-                f"app-{flavor}-release.apk.sha1" if flavor else "app-release.apk.sha1"
-            )
-            if not src_apk.exists():
-                raise click.ClickException(f"Expected general APK not found: {src_apk}")
-            dst_apk = output_dir / f"{ver}-android.apk"
-            dst_sha1 = output_dir / f"{ver}-android.apk.sha1"
-            _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
+        runtime.execute([flutter, "build", "apk", *flavor_args], "BUILDING GENERAL APK")
+        src_apk = apk_source / (f"app-{flavor}-release.apk" if flavor else "app-release.apk")
+        src_sha1 = apk_source / (
+            f"app-{flavor}-release.apk.sha1" if flavor else "app-release.apk.sha1"
+        )
+        if not src_apk.exists():
+            raise click.ClickException(f"Expected general APK not found: {src_apk}")
+        dst_apk = output_dir / f"{ver}-android.apk"
+        dst_sha1 = output_dir / f"{ver}-android.apk.sha1"
+        _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
-            runtime.execute(
-                [flutter, "build", "apk", "--split-per-abi", *flavor_args],
-                "BUILDING SPLIT ABI APKS",
+        runtime.execute(
+            [flutter, "build", "apk", "--split-per-abi", *flavor_args],
+            "BUILDING SPLIT ABI APKS",
+        )
+        for flutter_abi, apk_suffix in _ABI_FLUTTER_TO_APK.items():
+            src_apk = apk_source / (
+                f"app-{flavor}-{flutter_abi}-release.apk"
+                if flavor
+                else f"app-{flutter_abi}-release.apk"
             )
-            for flutter_abi, apk_suffix in _ABI_FLUTTER_TO_APK.items():
-                src_apk = apk_source / (
-                    f"app-{flavor}-{flutter_abi}-release.apk"
-                    if flavor
-                    else f"app-{flutter_abi}-release.apk"
-                )
-                src_sha1 = apk_source / (
-                    f"app-{flavor}-{flutter_abi}-release.apk.sha1"
-                    if flavor
-                    else f"app-{flutter_abi}-release.apk.sha1"
-                )
-                if not src_apk.exists():
-                    raise click.ClickException(f"Expected ABI APK not found: {src_apk}")
-                dst_apk = output_dir / f"{ver}-android-{apk_suffix}.apk"
-                dst_sha1 = output_dir / f"{ver}-android-{apk_suffix}.apk.sha1"
-                _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
+            src_sha1 = apk_source / (
+                f"app-{flavor}-{flutter_abi}-release.apk.sha1"
+                if flavor
+                else f"app-{flutter_abi}-release.apk.sha1"
+            )
+            if not src_apk.exists():
+                raise click.ClickException(f"Expected ABI APK not found: {src_apk}")
+            dst_apk = output_dir / f"{ver}-android-{apk_suffix}.apk"
+            dst_sha1 = output_dir / f"{ver}-android-{apk_suffix}.apk.sha1"
+            _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
         for f in sorted(output_dir.iterdir()):
@@ -303,58 +318,52 @@ def register_build_commands(cli_group: click.Group) -> None:
                 size = get_bin_size(f.stat().st_size)
                 click.echo(f"  {f.name} ({size})")
 
+        _build_release_platform(
+            platform="android",
+            ver=ver,
+            ver_semver=version.render_semver(),
+            output=output,
+            release_id=release_id,
+            version_min=version_min,
+            version_max=version_max,
+            root=root,
+        )
+
     @build.command("release")
     @click.option(
-        "--platform",
-        default=None,
-        type=click.Choice(["android"]),
-        help="Platform to produce a fragment for.",
+        "--root",
+        "-r",
+        type=click.Path(path_type=Path),
+        default=PROJECT_ROOT / "cache" / "releases",
+        help="Release root directory (default: cache/releases).",
     )
     @click.option(
-        "--merge",
-        "merge_files",
+        "--fragments",
+        required=True,
         multiple=True,
         type=click.Path(exists=True, path_type=Path),
         help="Fragment JSON files to merge (repeatable).",
     )
     @click.option(
         "--output",
+        "-o",
         type=click.Path(path_type=Path),
         default=None,
-        help="Output file path (default: auto-determined within cache, or stdout for '-').",
+        help="Output file path (default: <root>/merge/<ver>.json, or stdout for '-').",
     )
-    @click.option(
-        "--release-id", default=None, help="Override release.id (default: rel-{version})."
-    )
-    @click.option("--version-min", default=None, help="Override minimum version string.")
-    @click.option("--version-max", default=None, help="Override maximum version string.")
     def build_release_cmd(
-        platform: str | None,
-        merge_files: list[Path],
+        root: Path,
+        fragments: list[Path],
         output: Path | None,
-        release_id: str | None,
-        version_min: str | None,
-        version_max: str | None,
     ):
-        """Build or merge release registry fragments."""
-        if platform and merge_files:
-            raise click.ClickException("Cannot use --platform and --merge together.")
-        if not platform and not merge_files:
-            raise click.ClickException("Must specify --platform or --merge.")
-
+        """Merge release registry fragments into a single release JSON."""
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
         ver = version.render_full()
-        ver_semver = version.render_semver()
 
-        if platform:
-            _build_release_platform(
-                platform, ver, ver_semver, output, release_id, version_min, version_max
-            )
-        else:
-            _build_release_merge(list(merge_files), ver, output)
+        _build_release_merge(list(fragments), ver, output, root)
 
-    @build.command("list", aliases=["ls"])
+    @build.command("list")
     @click.option("--apps", is_flag=True, default=False, help="Show APK builds.")
     @click.option("--resources", is_flag=True, default=False, help="Show resource snapshots.")
     @click.option("--releases", is_flag=True, default=False, help="Show release snapshots.")

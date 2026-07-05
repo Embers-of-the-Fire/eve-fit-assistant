@@ -32,8 +32,8 @@ class NewPage extends StatelessWidget {
 
 **Note:** After adding new routes, you must run dart build runner:
 ```bash
-./x gen dart # one-shot command to run build runner
-./x gen dart -w # watch mode to auto-generate code on file changes
+./x generate dart # one-shot command to run build runner
+./x generate dart -w # watch mode to auto-generate code on file changes
 ```
 
 Then, the page configuration will be generated in `lib/pages/router.gr.dart`.

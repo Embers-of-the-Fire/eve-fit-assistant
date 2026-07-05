@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from click_aliases import ClickAliasedGroup
-
 from bootstrap.cli.remote.announce import register_remote_announce
 from bootstrap.cli.remote.config import register_remote_config
 from bootstrap.cli.remote.lifecycle import register_remote_lifecycle
@@ -16,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def register_remote_commands(cli_group: click.Group) -> None:
-    @cli_group.group(cls=ClickAliasedGroup)
+    @cli_group.group()
     def remote():
         """Remote content management — prepare, publish, validate, fetch, mock."""
 

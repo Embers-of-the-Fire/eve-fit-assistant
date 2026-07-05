@@ -1,0 +1,11 @@
+id: information-alpha-test-scope
+publishedAt: '2026-04-16T00:00:00Z'
+tags:
+- information
+- alpha
+- tester
+channels:
+- testing
+platforms:
+- android
+- ios

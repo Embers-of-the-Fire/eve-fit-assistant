@@ -180,18 +180,6 @@ wheels = [
 ]
 
 [[package]]
-name = "click-aliases"
-version = "1.0.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "click" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/67/43/fc99880a8cba558ab26cb87f0a317c09f870d4b49275207bd5824e4380dc/click_aliases-1.0.6.tar.gz", hash = "sha256:9372e58d00aa146f0d235e4e5e8bd280e84fe78e52db5fd80eacb14ecdf2e0d4", size = 2972, upload-time = "2026-05-15T14:54:20.719Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/34/67b8cd38f683233191da35d2460e0f6c1475fd9e4d0f4f9299a30a4f5aa4/click_aliases-1.0.6-py3-none-any.whl", hash = "sha256:fc4e047de3d950d9b575c5928010308b733b85baa76240ff7448b81e5d7c290d", size = 3585, upload-time = "2026-05-15T14:54:19.604Z" },
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -362,7 +350,6 @@ dependencies = [
     { name = "canonicaljson" },
     { name = "case-converter" },
     { name = "click" },
-    { name = "click-aliases" },
     { name = "colorama" },
     { name = "convert" },
     { name = "pydantic" },
@@ -388,7 +375,6 @@ requires-dist = [
     { name = "canonicaljson", specifier = ">=2.0.0" },
     { name = "case-converter", specifier = ">=1.2.0" },
     { name = "click", specifier = ">=8.3.2" },
-    { name = "click-aliases", specifier = ">=1.0.5" },
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "convert", editable = "rust/lib/eve-fit-os" },
     { name = "pydantic", specifier = ">=2.13.2" },

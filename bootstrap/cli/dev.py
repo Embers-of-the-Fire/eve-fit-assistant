@@ -4,7 +4,6 @@ import shutil
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -231,7 +230,7 @@ def _apply_options(options):
 
 
 def register_dev_commands(cli_group: click.Group) -> None:
-    @cli_group.group(cls=ClickAliasedGroup)
+    @cli_group.group()
     def dev():
         """Developer environment commands."""
 
@@ -250,7 +249,7 @@ def register_dev_commands(cli_group: click.Group) -> None:
             styled([Style.BRIGHT, Fore.GREEN], "Created developer config: ") + str(DEV_CONFIG_PATH)
         )
 
-    @dev.group(cls=ClickAliasedGroup)
+    @dev.group()
     def env():
         """Developer environment setup commands."""
 
@@ -260,7 +259,7 @@ def register_dev_commands(cli_group: click.Group) -> None:
         runtime.env_install()
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment setup completed successfully."))
 
-    @env.command("upgrade", aliases=["update"])
+    @env.command("upgrade")
     def dev_env_upgrade():
         """Upgrade all tools in the current environment."""
         runtime.env_upgrade()
@@ -324,7 +323,7 @@ def register_dev_commands(cli_group: click.Group) -> None:
         """
         _env_add(list(ctx.args), python, rust, dart, dry_run)
 
-    @cli_group.group(aliases=["env"], cls=ClickAliasedGroup)
+    @cli_group.group()
     def environment():
         """Environment related commands. Prefer `x dev env`."""
 
@@ -346,7 +345,7 @@ def register_dev_commands(cli_group: click.Group) -> None:
         runtime.env_install()
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Environment setup completed successfully."))
 
-    @environment.command(aliases=["update"])
+    @environment.command()
     def upgrade():
         """Upgrade all tools in the current environment. Prefer `x dev env upgrade`."""
         runtime.env_upgrade()

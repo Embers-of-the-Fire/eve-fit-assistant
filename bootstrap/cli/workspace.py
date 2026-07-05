@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import click
 
-from click_aliases import ClickAliasedGroup
 from colorama import Fore
 from colorama import Style
 
@@ -14,11 +13,11 @@ from bootstrap.data.workspace.config import WorkspaceConfig
 
 
 def register_workspace_commands(cli_group: click.Group) -> None:
-    @cli_group.group(aliases=["ws"], cls=ClickAliasedGroup)
+    @cli_group.group()
     def workspace():
         """Workspace related commands."""
 
-    @workspace.command("list", aliases=["ls"])
+    @workspace.command("list")
     def list_cmd():
         """List configured workspaces."""
         workspaces = bootstrap.config.CONFIGURATION.resources
