@@ -53,6 +53,8 @@ from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.config import ProjectConfiguration
 from bootstrap.config import WorkspaceCache
+from bootstrap.config import apply_dev_config_overrides
+from bootstrap.config import apply_project_config_overrides
 
 
 init(autoreset=True)
@@ -64,8 +66,20 @@ if __name__ != "__main__":
     )
     exit(0)
 
-ProjectConfiguration.load_from_global()
-WorkspaceCache.load_from_global()
+
+def _parse_env_option(
+    _ctx: click.Context,
+    _param: click.Parameter,
+    value: tuple[str, ...] | None,
+) -> list[tuple[str, str]]:
+    """Parse repeated ``key=value`` options into a list of overrides."""
+    overrides: list[tuple[str, str]] = []
+    for item in value or ():
+        if "=" not in item:
+            raise click.BadParameter(f"Invalid override {item!r}, expected format: key=value")
+        key, val = item.split("=", 1)
+        overrides.append((key, val))
+    return overrides
 
 
 @click.group(
@@ -75,9 +89,32 @@ WorkspaceCache.load_from_global()
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show the command without executing.")
 @click.option("--workspace", "--ws", "ws_name", default=None, help="Set current workspace.")
-def cli(dry_run, ws_name):
+@click.option(
+    "--dev-env",
+    "dev_env_overrides",
+    multiple=True,
+    callback=_parse_env_option,
+    default=None,
+    help="Override a value in efa.dev.toml before validation (e.g. --dev-env ci.storage.secret_key=abc).",
+)
+@click.option(
+    "--conf-env",
+    "conf_env_overrides",
+    multiple=True,
+    callback=_parse_env_option,
+    default=None,
+    help="Override a value in efa.config.toml before validation (e.g. --conf-env version.major=1).",
+)
+@click.pass_context
+def cli(ctx, dry_run, ws_name, dev_env_overrides, conf_env_overrides):
     """EFA Workspace Manager."""
     runtime.set_dry_run(dry_run)
+
+    apply_dev_config_overrides(dev_env_overrides)
+    apply_project_config_overrides(conf_env_overrides)
+
+    ProjectConfiguration.load_from_global()
+    WorkspaceCache.load_from_global()
 
     if ws_name:
         WorkspaceCache.select_workspace(ws_name)

@@ -80,3 +80,14 @@ alias = "efa-ci-storage"
 access_key = "your-r2-access-key"
 secret_key = "your-r2-secret-key"
 public_url = "https://ci.storage.efa-tech.dev"
+
+[ci.raw_artifacts]
+# Prefix inside the CI bucket where raw artifact trees are stored.
+remote_root = "data-generator/raw-artifact"
+
+# Optional: override [ci.storage] values for the raw-artifact target.
+# endpoint = "https://<account_id>.r2.cloudflarestorage.com"
+# bucket = "efa-ci-data"
+# alias = "efa-ci-raw-artifacts"
+# access_key = "..."
+# secret_key = "..."

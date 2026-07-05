@@ -14,8 +14,8 @@ from bootstrap.ci.codegen import run_codegen
 from bootstrap.ci.lint import run_lint
 from bootstrap.ci.suites import SUITE_DEFINITIONS
 from bootstrap.ci.suites import calculate_ci_matrix
+from bootstrap.cli import runtime
 from bootstrap.color import styled
-from bootstrap.utils import execute_command
 from bootstrap.utils import get_command
 
 
@@ -136,18 +136,28 @@ def register_ci_commands(cli_group: click.Group) -> None:
 
         if upload:
             mc = get_command("mc")
-            execute_command(
+            redacted = "<redacted>"
+            runtime.execute_redacted(
                 [
                     mc,
                     "alias",
                     "set",
                     storage.alias,
                     storage.endpoint,
-                    storage.access_key,
-                    storage.secret_key,
+                    storage.access_key.get_secret_value(),
+                    storage.secret_key.get_secret_value(),
+                ],
+                [
+                    mc,
+                    "alias",
+                    "set",
+                    storage.alias,
+                    storage.endpoint,
+                    redacted,
+                    redacted,
                 ],
                 "CI STORAGE ALIAS",
             )
-            execute_command([mc, "cp", str(out_path), remote_path], "CI STORAGE UPLOAD")
+            runtime.execute([mc, "cp", str(out_path), remote_path], "CI STORAGE UPLOAD")
         else:
             click.echo(f"Upload with: mc cp {out_path} {remote_path}")

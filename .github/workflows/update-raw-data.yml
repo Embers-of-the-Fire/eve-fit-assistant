@@ -1,0 +1,102 @@
+name: Update Raw EVE Data
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check for updates
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Determine update matrix
+        id: matrix
+        run: |
+          MATRIX=$(nix develop .#python --command bash -c \
+            'uv run x.py ci raw-data check --all --format json')
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  update:
+    name: Update raw artifacts
+    needs: check
+    if: ${{ needs.check.outputs.matrix != '[]' }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        server: ${{ fromJSON(needs.check.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Download portable Python 2.7
+        run: |
+          curl.exe -L -o tools/eve-fsd-dumper/py27.zip `
+            https://ci.storage.efa-tech.dev/build-dependencies/py27.zip
+
+      - name: Update raw artifacts
+        run: uv run x.py ci raw-data update --server ${{ matrix.server }} --no-upload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raw-artifacts-${{ matrix.server }}
+          path: cache/raw-artifacts/${{ matrix.server }}/
+          retention-days: 1
+
+  upload:
+    name: Upload raw artifacts
+    needs: update
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        server: ${{ fromJSON(needs.check.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: raw-artifacts-${{ matrix.server }}
+          path: raw-artifacts/${{ matrix.server }}/
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Upload to CI storage
+        env:
+          CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+          CI_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
+          CI_ALIAS: ${{ secrets.CI_STORAGE_ALIAS }}
+          CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+          CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
+              --dev-env ci.storage.bucket="$CI_BUCKET" \
+              --dev-env ci.storage.alias="$CI_ALIAS" \
+              --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
+              --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
+              --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
+              ci raw-data upload --server ${{ matrix.server }} --from-dir raw-artifacts/${{ matrix.server }}/'

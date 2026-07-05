@@ -52,16 +52,24 @@ def _resolve_remote_target(target: str, endpoint, bucket, access_key, secret_key
         return (
             endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}",
             bucket or minio_cfg.bucket,
-            access_key or minio_cfg.access_key,
-            secret_key or minio_cfg.secret_key,
+            (access_key or minio_cfg.access_key).get_secret_value()
+            if access_key or minio_cfg.access_key
+            else "",
+            (secret_key or minio_cfg.secret_key).get_secret_value()
+            if secret_key or minio_cfg.secret_key
+            else "",
             alias_name or minio_cfg.alias,
         )
     s3_cfg = remote_cfg.require_s3(op)
     return (
         endpoint or s3_cfg.endpoint,
         bucket or s3_cfg.bucket,
-        access_key or s3_cfg.access_key,
-        secret_key or s3_cfg.secret_key,
+        (access_key or s3_cfg.access_key).get_secret_value()
+        if access_key or s3_cfg.access_key
+        else "",
+        (secret_key or s3_cfg.secret_key).get_secret_value()
+        if secret_key or s3_cfg.secret_key
+        else "",
         alias_name or s3_cfg.alias,
     )
 

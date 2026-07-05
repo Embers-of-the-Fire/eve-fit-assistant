@@ -304,8 +304,12 @@ def resolve_announce_remote_target(
         return (
             endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}",
             bucket or minio_cfg.bucket,
-            access_key or minio_cfg.access_key,
-            secret_key or minio_cfg.secret_key,
+            (access_key or minio_cfg.access_key).get_secret_value()
+            if access_key or minio_cfg.access_key
+            else "",
+            (secret_key or minio_cfg.secret_key).get_secret_value()
+            if secret_key or minio_cfg.secret_key
+            else "",
             alias or minio_cfg.alias,
         )
     elif target == "s3":
@@ -318,8 +322,12 @@ def resolve_announce_remote_target(
         return (
             endpoint or s3_cfg.endpoint,
             bucket or s3_cfg.bucket,
-            access_key or s3_cfg.access_key,
-            secret_key or s3_cfg.secret_key,
+            (access_key or s3_cfg.access_key).get_secret_value()
+            if access_key or s3_cfg.access_key
+            else "",
+            (secret_key or s3_cfg.secret_key).get_secret_value()
+            if secret_key or s3_cfg.secret_key
+            else "",
             alias or s3_cfg.alias,
         )
     else:
