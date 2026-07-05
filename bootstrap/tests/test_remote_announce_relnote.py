@@ -11,14 +11,14 @@ from click.testing import CliRunner
 
 from bootstrap.cli.remote.announce import _compose_release_body
 from bootstrap.cli.remote.announce import _load_spec_or_defaults
-from bootstrap.cli.remote.announce import _normalize_version_dir
-from bootstrap.cli.remote.announce import _parse_version
-from bootstrap.cli.remote.announce import _split_csv
-from bootstrap.cli.remote.announce import _version_dir_to_entry_id
 from bootstrap.config import ProjectVersion
 from bootstrap.docs.announcements_remote import ACTIVE_KEY
 from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 from bootstrap.docs.document_parser import parse_locale_document
+from bootstrap.release.relnote import normalize_version_dir
+from bootstrap.release.relnote import parse_version_override
+from bootstrap.release.relnote import split_csv
+from bootstrap.release.relnote import version_dir_to_entry_id
 
 
 if TYPE_CHECKING:
@@ -88,15 +88,15 @@ def _write_empty_remote_state(workspace: AnnouncementWorkspace) -> None:
 
 class TestHelpers:
     def test_normalize_version_dir(self) -> None:
-        assert _normalize_version_dir("0.1.0-beta.7") == "0-1-0-beta-7"
-        assert _normalize_version_dir("1.0.0") == "1-0-0"
+        assert normalize_version_dir("0.1.0-beta.7") == "0-1-0-beta-7"
+        assert normalize_version_dir("1.0.0") == "1-0-0"
 
     def test_version_dir_to_entry_id(self) -> None:
-        assert _version_dir_to_entry_id("0.1.0-beta.7") == "version-0-1-0-beta-7"
-        assert _version_dir_to_entry_id("1.0.0") == "version-1-0-0"
+        assert version_dir_to_entry_id("0.1.0-beta.7") == "version-0-1-0-beta-7"
+        assert version_dir_to_entry_id("1.0.0") == "version-1-0-0"
 
     def test_parse_version(self) -> None:
-        parsed = _parse_version("0.1.0-beta.7")
+        parsed = parse_version_override("0.1.0-beta.7")
         assert parsed == {
             "major": 0,
             "minor": 1,
@@ -106,17 +106,17 @@ class TestHelpers:
         }
 
     def test_parse_version_with_explicit_pre_num(self) -> None:
-        parsed = _parse_version("0.1.0-beta.7")
+        parsed = parse_version_override("0.1.0-beta.7")
         assert parsed["pre_num"] == 1
 
     def test_parse_version_invalid(self) -> None:
         with pytest.raises(click.ClickException):
-            _parse_version("not-a-version")
+            parse_version_override("not-a-version")
 
     def test_split_csv(self) -> None:
-        assert _split_csv("a, b, c") == ["a", "b", "c"]
-        assert _split_csv(None) is None
-        assert _split_csv("  ") == []
+        assert split_csv("a, b, c") == ["a", "b", "c"]
+        assert split_csv(None) is None
+        assert split_csv("  ") == []
 
     def test_load_spec_or_defaults(self, tmp_path: Path) -> None:
         directory = tmp_path / "rel"
@@ -228,6 +228,40 @@ class TestAddReleaseNote:
         entry = overlay.pages[ACTIVE_KEY]["version-1-0-0"]
         assert entry.channels == ["stable"]
         assert entry.platforms == ["ios"]
+
+    def test_uses_spec_tags(self, tmp_path: Path) -> None:
+        from bootstrap.cli.remote.announce import register_remote_announce
+
+        directory = _make_release_note_dir(
+            tmp_path,
+            "1-0-0",
+            app_version="1.0.0",
+            zh_body="# 标题\n\n摘要。\n",
+            en_body="# Title\n\nSummary.\n",
+            changelog="- Fix\n",
+            extra_spec="tags:\n- hotfix\n- release-note\n",
+        )
+        workspace = _build_workspace(tmp_path)
+        _write_empty_remote_state(workspace)
+
+        version = ProjectVersion(major=1, minor=0, patch=0)
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "bootstrap.cli.remote.announce.get_announce_workspace",
+                lambda: tmp_path / "announce-workspace",
+            )
+            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+
+            group = click.Group()
+            register_remote_announce(group)
+            cmd = group.commands["announce"].commands["add-release-note"]
+            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
+            assert result.exit_code == 0
+
+        overlay = workspace.read_overlay()
+        entry = overlay.pages[ACTIVE_KEY]["version-1-0-0"]
+        assert entry.tags == ["hotfix", "release-note"]
 
     def test_cli_overrides_take_precedence(self, tmp_path: Path) -> None:
         from bootstrap.cli.remote.announce import register_remote_announce

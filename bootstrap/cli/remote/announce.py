@@ -26,53 +26,10 @@ from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 from bootstrap.docs.announcements_remote import run_preflight_validation
 from bootstrap.docs.document_parser import parse_locale_document
 from bootstrap.release.relnote import CHANGELOG_ROOT
-
-
-def _normalize_version_dir(version: str) -> str:
-    return version.replace(".", "-")
-
-
-def _version_dir_to_entry_id(name: str) -> str:
-    return f"version-{_normalize_version_dir(name)}"
-
-
-def _parse_version(value: str) -> dict[str, object]:
-    parts = value.split(".")
-    if len(parts) < 3:
-        raise click.ClickException(f"Invalid version override: {value!r}")
-    try:
-        major = int(parts[0])
-        minor = int(parts[1])
-    except ValueError as e:
-        raise click.ClickException(f"Invalid version override: {value!r}") from e
-
-    patch_part = parts[2]
-    pre_label = ""
-    pre_num = 0
-    if "-" in patch_part:
-        patch_part, pre = patch_part.split("-", 1)
-        if "." in pre:
-            pre_label, pre_num_str = pre.split(".", 1)
-            try:
-                pre_num = int(pre_num_str)
-            except ValueError as e:
-                raise click.ClickException(f"Invalid version override: {value!r}") from e
-        else:
-            pre_label = pre
-            pre_num = 1
-
-    try:
-        patch = int(patch_part)
-    except ValueError as e:
-        raise click.ClickException(f"Invalid version override: {value!r}") from e
-
-    return {
-        "major": major,
-        "minor": minor,
-        "patch": patch,
-        "pre_label": pre_label,
-        "pre_num": pre_num,
-    }
+from bootstrap.release.relnote import normalize_version_dir
+from bootstrap.release.relnote import parse_version_override
+from bootstrap.release.relnote import split_csv
+from bootstrap.release.relnote import version_dir_to_entry_id
 
 
 def _load_spec_or_defaults(directory: Path) -> dict[str, object]:
@@ -87,12 +44,6 @@ def _load_spec_or_defaults(directory: Path) -> dict[str, object]:
     if not isinstance(raw, dict):
         raise click.ClickException(f"Spec file must be a YAML mapping: {spec_path}")
     return raw
-
-
-def _split_csv(value: str | None) -> list[str] | None:
-    if value is None:
-        return None
-    return [part.strip() for part in value.split(",") if part.strip()]
 
 
 def _compose_release_body(human_body: str, changelog: str) -> str:
@@ -862,13 +813,14 @@ def register_remote_announce(remote: click.Group) -> None:
         ``remote announce publish``.
         """
         if version_override is not None:
-            version = ProjectVersion.model_validate(_parse_version(version_override))
+            version = ProjectVersion.model_validate(parse_version_override(version_override))
         else:
+            bootstrap.config.ProjectConfiguration.ensure_loaded()
             version = CONFIGURATION.version
 
         app_version = version.render_semver()
-        dir_name = _normalize_version_dir(app_version)
-        entry_id = _version_dir_to_entry_id(app_version)
+        dir_name = normalize_version_dir(app_version)
+        entry_id = version_dir_to_entry_id(app_version)
 
         if directory is None:
             directory = CHANGELOG_ROOT / dir_name
@@ -914,9 +866,9 @@ def register_remote_announce(remote: click.Group) -> None:
             or spec_published_at
             or _datetime.now(UTC).isoformat().replace("+00:00", "Z")
         )
-        effective_channels = _split_csv(channels) or spec.get("channels") or ["testing"]
-        effective_platforms = _split_csv(platforms) or spec.get("platforms") or ["android", "ios"]
-        effective_tags = _split_csv(tags) or ["release-note"]
+        effective_channels = split_csv(channels) or spec.get("channels") or ["testing"]
+        effective_platforms = split_csv(platforms) or spec.get("platforms") or ["android", "ios"]
+        effective_tags = split_csv(tags) or spec.get("tags") or ["release-note"]
 
         workspace_root = get_announce_workspace()
         workspace = AnnouncementWorkspace(workspace_root)

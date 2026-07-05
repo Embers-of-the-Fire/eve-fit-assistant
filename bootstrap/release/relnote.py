@@ -29,12 +29,57 @@ _DEFAULT_PLATFORMS = ["android", "ios"]
 _DEFAULT_TAGS = ["release-note"]
 
 
-def _normalize_version_dir(version: str) -> str:
+def normalize_version_dir(version: str) -> str:
     return version.replace(".", "-")
 
 
-def _version_dir_to_entry_id(name: str) -> str:
-    return f"version-{_normalize_version_dir(name)}"
+def version_dir_to_entry_id(name: str) -> str:
+    return f"version-{normalize_version_dir(name)}"
+
+
+def parse_version_override(value: str) -> dict[str, object]:
+    parts = value.split(".")
+    if len(parts) < 3:
+        raise click.ClickException(f"Invalid version override: {value!r}")
+    try:
+        major = int(parts[0])
+        minor = int(parts[1])
+    except ValueError as e:
+        raise click.ClickException(f"Invalid version override: {value!r}") from e
+
+    patch_part = parts[2]
+    pre_label = ""
+    pre_num = 0
+    if "-" in patch_part:
+        patch_part, pre = patch_part.split("-", 1)
+        if "." in pre:
+            pre_label, pre_num_str = pre.split(".", 1)
+            try:
+                pre_num = int(pre_num_str)
+            except ValueError as e:
+                raise click.ClickException(f"Invalid version override: {value!r}") from e
+        else:
+            pre_label = pre
+            pre_num = 1
+
+    try:
+        patch = int(patch_part)
+    except ValueError as e:
+        raise click.ClickException(f"Invalid version override: {value!r}") from e
+
+    return {
+        "major": major,
+        "minor": minor,
+        "patch": patch,
+        "pre_label": pre_label,
+        "pre_num": pre_num,
+    }
+
+
+def split_csv(value: str | None) -> list[str] | None:
+    if value is None:
+        return None
+    return [part.strip() for part in value.split(",") if part.strip()]
 
 
 def _run_cliff(tag: str) -> str:
@@ -69,7 +114,7 @@ def _build_spec(
     platforms: list[str] | None,
 ) -> dict[str, object]:
     app_version = version.render_semver()
-    entry_id = _version_dir_to_entry_id(app_version)
+    entry_id = version_dir_to_entry_id(app_version)
     when = published_at or dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
         "id": entry_id,
@@ -95,8 +140,8 @@ def create_raw_release_note(
     Emits only spec.yaml and changelog.md; no localized content.*.md files.
     """
     app_version = version.render_semver()
-    dir_name = _normalize_version_dir(app_version)
-    entry_id = _version_dir_to_entry_id(app_version)
+    dir_name = normalize_version_dir(app_version)
+    entry_id = version_dir_to_entry_id(app_version)
     directory = CHANGELOG_ROOT / dir_name
 
     if directory.exists() and any(directory.iterdir()):
@@ -104,6 +149,8 @@ def create_raw_release_note(
             raise click.ClickException(
                 f"Release note directory already exists: {directory}. Use --force to overwrite."
             )
+        if dry_run:
+            return directory, entry_id
         shutil.rmtree(directory)
 
     if dry_run:
@@ -121,11 +168,7 @@ def create_raw_release_note(
     changelog_path = directory / "changelog.md"
 
     tag = version.render_tag()
-    if not dry_run:
-        changelog_body = _run_cliff(tag)
-
-    if dry_run:
-        return directory, entry_id
+    changelog_body = _run_cliff(tag)
 
     spec_path.write_text(
         yaml.safe_dump(spec, allow_unicode=True, sort_keys=False),

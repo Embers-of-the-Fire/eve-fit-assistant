@@ -10,6 +10,10 @@ from bootstrap.config import CONFIGURATION
 from bootstrap.config import ProjectVersion
 from bootstrap.release.relnote import CHANGELOG_ROOT
 from bootstrap.release.relnote import create_raw_release_note
+from bootstrap.release.relnote import normalize_version_dir
+from bootstrap.release.relnote import parse_version_override
+from bootstrap.release.relnote import split_csv
+from bootstrap.release.relnote import version_dir_to_entry_id
 
 
 def register_release_commands(cli_group: click.Group) -> None:
@@ -65,17 +69,17 @@ def register_release_commands(cli_group: click.Group) -> None:
         The changelog body is generated with git-cliff using cliff.toml.
         """
         if version_override is not None:
-            version = ProjectVersion.model_validate(_parse_version(version_override))
+            version = ProjectVersion.model_validate(parse_version_override(version_override))
         else:
             version = CONFIGURATION.version
 
-        channels_list = _split(channels)
-        platforms_list = _split(platforms)
+        channels_list = split_csv(channels)
+        platforms_list = split_csv(platforms)
 
         if dry_run:
             app_version = version.render_semver()
-            dir_name = app_version.replace(".", "-")
-            entry_id = f"version-{dir_name}"
+            dir_name = normalize_version_dir(app_version)
+            entry_id = version_dir_to_entry_id(app_version)
             directory = CHANGELOG_ROOT / dir_name
             click.echo(
                 styled([Style.BRIGHT, Fore.CYAN], "[DRY-RUN] ")
@@ -99,48 +103,3 @@ def register_release_commands(cli_group: click.Group) -> None:
             styled([Style.BRIGHT, Fore.GREEN], "Created raw release note: ") + str(directory)
         )
         click.echo(f"  entry id: {entry_id}")
-
-
-def _split(value: str | None) -> list[str] | None:
-    if value is None:
-        return None
-    return [part.strip() for part in value.split(",") if part.strip()]
-
-
-def _parse_version(value: str) -> dict[str, object]:
-    parts = value.split(".")
-    if len(parts) < 3:
-        raise click.ClickException(f"Invalid version override: {value!r}")
-    try:
-        major = int(parts[0])
-        minor = int(parts[1])
-    except ValueError as e:
-        raise click.ClickException(f"Invalid version override: {value!r}") from e
-
-    patch_part = parts[2]
-    pre_label = ""
-    pre_num = 0
-    if "-" in patch_part:
-        patch_part, pre = patch_part.split("-", 1)
-        if "." in pre:
-            pre_label, pre_num_str = pre.split(".", 1)
-            try:
-                pre_num = int(pre_num_str)
-            except ValueError as e:
-                raise click.ClickException(f"Invalid version override: {value!r}") from e
-        else:
-            pre_label = pre
-            pre_num = 1
-
-    try:
-        patch = int(patch_part)
-    except ValueError as e:
-        raise click.ClickException(f"Invalid version override: {value!r}") from e
-
-    return {
-        "major": major,
-        "minor": minor,
-        "patch": patch,
-        "pre_label": pre_label,
-        "pre_num": pre_num,
-    }

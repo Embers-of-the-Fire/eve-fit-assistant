@@ -150,5 +150,5 @@ def test_create_raw_release_note_dry_run_does_not_write(
 
 
 def test_version_dir_to_entry_id() -> None:
-    assert relnote._version_dir_to_entry_id("0.2.0") == "version-0-2-0"
-    assert relnote._version_dir_to_entry_id("0.2.0-beta.1") == "version-0-2-0-beta-1"
+    assert relnote.version_dir_to_entry_id("0.2.0") == "version-0-2-0"
+    assert relnote.version_dir_to_entry_id("0.2.0-beta.1") == "version-0-2-0-beta-1"
