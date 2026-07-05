@@ -102,11 +102,12 @@ class TestHelpers:
             "minor": 1,
             "patch": 0,
             "pre_label": "beta",
-            "pre_num": 1,
+            "pre_num": 7,
         }
 
-    def test_parse_version_with_explicit_pre_num(self) -> None:
-        parsed = parse_version_override("0.1.0-beta.7")
+    def test_parse_version_without_pre_num(self) -> None:
+        parsed = parse_version_override("0.1.0-beta")
+        assert parsed["pre_label"] == "beta"
         assert parsed["pre_num"] == 1
 
     def test_parse_version_invalid(self) -> None:

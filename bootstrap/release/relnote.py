@@ -32,20 +32,25 @@ _DEFAULT_TAGS = ["release-note"]
 
 
 def parse_version_override(value: str) -> dict[str, object]:
-    parts = value.split(".")
-    if len(parts) < 3:
+    if "-" in value:
+        core, pre = value.split("-", 1)
+    else:
+        core = value
+        pre = ""
+
+    parts = core.split(".")
+    if len(parts) != 3:
         raise click.ClickException(f"Invalid version override: {value!r}")
     try:
         major = int(parts[0])
         minor = int(parts[1])
+        patch = int(parts[2])
     except ValueError as e:
         raise click.ClickException(f"Invalid version override: {value!r}") from e
 
-    patch_part = parts[2]
     pre_label = ""
     pre_num = 0
-    if "-" in patch_part:
-        patch_part, pre = patch_part.split("-", 1)
+    if pre:
         if "." in pre:
             pre_label, pre_num_str = pre.split(".", 1)
             try:
@@ -55,11 +60,6 @@ def parse_version_override(value: str) -> dict[str, object]:
         else:
             pre_label = pre
             pre_num = 1
-
-    try:
-        patch = int(patch_part)
-    except ValueError as e:
-        raise click.ClickException(f"Invalid version override: {value!r}") from e
 
     return {
         "major": major,
