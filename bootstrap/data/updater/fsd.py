@@ -109,7 +109,7 @@ async def generate_fsd(
         [sys.executable, str(work_dir / "collect.py"), str(index_file), str(resfileindex_file)],
         "COLLECT FSD BINARIES",
         work_dir,
-        env=env,
+        extra_env=env,
     )
 
     python2 = await _ensure_python2(work_dir / "py27")
