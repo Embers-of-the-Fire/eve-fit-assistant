@@ -207,7 +207,7 @@ class TestFetchBuild:
 
 
 class TestIndexParsing:
-    def test_parse_index_file(self, tmp_path: Path) -> None:
+    async def test_parse_index_file(self, tmp_path: Path) -> None:
         index_file = tmp_path / "index.txt"
         index_file.write_text(
             "app:/resfileindex.txt,ab/cd1234,hash1,0,0\n"
@@ -215,7 +215,7 @@ class TestIndexParsing:
             "res:/foo/bar.png,ij/kl9012,hash3,0,0\n",
             encoding="utf-8",
         )
-        entries = _parse_index_file(index_file)
+        entries = await _parse_index_file(index_file)
         assert entries["app:/resfileindex.txt"] == "ab/cd1234"
         assert entries["app:/start.ini"] == "ef/gh5678"
         assert entries["res:/foo/bar.png"] == "ij/kl9012"
