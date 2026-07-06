@@ -100,8 +100,6 @@ async def upload_artifacts(
     )
 
     server_root = f"{alias}/{bucket}/{config.remote_root}/{server_id}"
-    build_file = artifacts_dir.parent / "build.txt"
-    build_file.write_text(str(build), encoding="utf-8")
 
     await _run_mc(
         [
@@ -114,6 +112,7 @@ async def upload_artifacts(
         f"UPLOAD {server_id} ARTIFACTS",
     )
 
+    build_file = artifacts_dir.parent / "build.txt"
     await _run_mc(
         ["cp", str(build_file), f"{server_root}/build.txt"],
         f"UPLOAD {server_id} BUILD.TXT",

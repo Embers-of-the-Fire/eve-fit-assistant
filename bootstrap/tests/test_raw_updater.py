@@ -536,6 +536,8 @@ class TestRunMc:
 
         artifacts_dir = tmp_path / "artifacts"
         artifacts_dir.mkdir()
+        build_file = tmp_path / "build.txt"
+        build_file.write_text("123456", encoding="utf-8")
 
         await upload_artifacts("tranquility", artifacts_dir, 123456, config, storage)
 
@@ -545,6 +547,66 @@ class TestRunMc:
         alias_cmd = next(cmd for cmd in commands if cmd[1:3] == ["alias", "set"])
         assert "ACCESS_KEY" not in alias_cmd
         assert "SECRET_KEY" not in alias_cmd
+
+
+class TestUpdateServer:
+    async def test_writes_build_txt_when_upload_disabled(self, monkeypatch, tmp_path: Path) -> None:
+        from bootstrap.data.updater.pipeline import update_server
+
+        async def _fake_fetch_build(_server):
+            return 123456
+
+        async def _fake_download_index(_build, _server, out_dir):
+            return out_dir / "index_tranquility.txt"
+
+        async def _fake_download_metadata(_index_file, _server, _out_dir):
+            return
+
+        async def _fake_download_resource_index(_index_file, _server, _out_dir):
+            return _out_dir / "resfileindex.txt"
+
+        async def _fake_generate_fsd(
+            _index_file, _resfileindex_file, _server, _out_dir, _temp_root
+        ):
+            return
+
+        monkeypatch.setattr("bootstrap.data.updater.pipeline.fetch_build", _fake_fetch_build)
+        monkeypatch.setattr("bootstrap.data.updater.pipeline.download_index", _fake_download_index)
+        monkeypatch.setattr(
+            "bootstrap.data.updater.pipeline.download_metadata", _fake_download_metadata
+        )
+        monkeypatch.setattr(
+            "bootstrap.data.updater.pipeline.download_resource_index",
+            _fake_download_resource_index,
+        )
+        monkeypatch.setattr("bootstrap.data.updater.pipeline.generate_fsd", _fake_generate_fsd)
+        monkeypatch.setattr(
+            "bootstrap.config.DEV_CONFIGURATION",
+            self._dev_config(),
+        )
+
+        monkeypatch.setattr(
+            "bootstrap.data.updater.pipeline._get_raw_artifacts_dir",
+            lambda _server_id: tmp_path / "tranquility",
+        )
+
+        result = await update_server("tranquility", upload=False, keep_temp=False)
+
+        assert result.server_id == "tranquility"
+        assert result.build == 123456
+        assert result.uploaded is False
+        build_file = result.artifacts_dir.parent / "build.txt"
+        assert build_file.is_file()
+        assert build_file.read_text(encoding="utf-8") == "123456"
+
+    def _dev_config(
+        self, public_url: str | None = "https://public.example.com"
+    ) -> DeveloperConfiguration:
+        raw_artifacts = DeveloperCiRawArtifacts(
+            remote_root="data-generator/raw-artifact",
+            public_url=public_url,
+        )
+        return DeveloperConfiguration(ci=DeveloperCi(raw_artifacts=raw_artifacts))
 
 
 class TestUploader:
