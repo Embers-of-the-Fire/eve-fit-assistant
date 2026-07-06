@@ -84,9 +84,7 @@ jobs:
             https://ci.storage.efa-tech.dev/build-dependencies/py27.zip
 
       - name: Update raw artifacts
-        env:
-          SERVER: ${{ matrix.server }}
-        run: uv run x.py ci raw-data update --server "$SERVER" --no-upload
+        run: uv run x.py ci raw-data update --server "${{ matrix.server }}" --no-upload
 
       - uses: actions/upload-artifact@v4
         with:
