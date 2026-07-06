@@ -128,6 +128,9 @@ async def update_server(
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     temp_root.mkdir(parents=True, exist_ok=True)
 
+    build_file = base_dir / "build.txt"
+    build_file.write_text(str(build), encoding="utf-8")
+
     index_file = await download_index(build, server, artifacts_dir)
     await download_metadata(index_file, server, artifacts_dir)
     resfileindex_file = await download_resource_index(index_file, server, artifacts_dir)
