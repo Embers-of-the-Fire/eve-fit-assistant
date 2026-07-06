@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 
 from typing import TYPE_CHECKING
 
@@ -21,22 +22,32 @@ if TYPE_CHECKING:
 _REDACTED = "<redacted>"
 
 
-async def _run_mc(cmd: list[str], title: str, *, redacted_indices: set[int] | None = None) -> None:
+async def _run_mc(
+    cmd: list[str],
+    title: str,
+    *,
+    env: dict[str, str] | None = None,
+    secrets: set[str] | None = None,
+) -> None:
     """Run an ``mc`` subcommand and raise on failure.
 
-    Arguments at ``redacted_indices`` are replaced with ``<redacted>`` in logs.
+    Any argument whose value is present in ``secrets`` is replaced with
+    ``<redacted>`` in logs. Value-based redaction is robust against future
+    changes to argument order.
+
+    ``env`` is merged into the subprocess environment; values are not logged.
     """
+
     mc = get_command("mc")
     full_cmd = [mc, *cmd]
-    redacted_cmd = list(full_cmd)
-    for idx in redacted_indices or set():
-        if 0 <= idx < len(redacted_cmd):
-            redacted_cmd[idx] = _REDACTED
+    redacted = {s for s in (secrets or set()) if s != ""}
+    redacted_cmd = [_REDACTED if arg in redacted else arg for arg in full_cmd]
     info(f"{title}: {' '.join(redacted_cmd)}")
     process = await asyncio.create_subprocess_exec(
         *full_cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
+        env={**os.environ, **(env or {})},
     )
     assert process.stdout is not None
     async for line in process.stdout:
@@ -73,9 +84,13 @@ async def upload_artifacts(
     endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
 
     await _run_mc(
-        ["alias", "set", alias, endpoint, access_key, secret_key, "--api", "s3v4"],
+        ["alias", "set", alias, endpoint, "--api", "s3v4"],
         "CI RAW ARTIFACTS ALIAS",
-        redacted_indices={5, 6},
+        env={
+            f"MC_HOST_{alias}": (
+                f"https://{access_key}:{secret_key}@{endpoint.removeprefix('https://')}"
+            ),
+        },
     )
 
     server_root = f"{alias}/{bucket}/{config.remote_root}/{server_id}"

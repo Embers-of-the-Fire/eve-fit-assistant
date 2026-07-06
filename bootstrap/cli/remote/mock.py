@@ -207,8 +207,16 @@ def register_remote_mock(remote: click.Group) -> None:
         resolved_port = port or minio.port
         resolved_console_port = console_port or minio.console_port
         resolved_bucket = bucket or minio.bucket
-        resolved_access_key = (access_key or minio.access_key).get_secret_value()
-        resolved_secret_key = (secret_key or minio.secret_key).get_secret_value()
+        resolved_access_key = (
+            access_key
+            if access_key
+            else (minio.access_key.get_secret_value() if minio.access_key else "")
+        )
+        resolved_secret_key = (
+            secret_key
+            if secret_key
+            else (minio.secret_key.get_secret_value() if minio.secret_key else "")
+        )
         resolved_alias = alias_name or minio.alias
         resolved_public_download = (
             public_download if public_download is not None else minio.public_download

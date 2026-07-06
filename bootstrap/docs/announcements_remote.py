@@ -850,8 +850,11 @@ class AnnouncementRemoteSync:
                 f"Failed to execute [{title}] ({' '.join(redacted_cmd)}): {result.stderr}"
             )
 
-    def _ensure_alias(self) -> None:
-        """Set the S3 alias once, redacting credentials in any error message."""
+    def _ensure_alias(self) -> tuple[str, str]:
+        """Set the S3 alias once, redacting credentials in any error message.
+
+        Returns the resolved ``mc`` binary path and the alias target URL prefix.
+        """
         mc_bin = get_command("mc")
         alias_target = f"{self.alias_name}/{self.bucket}"
         redacted = "<redacted>"
@@ -880,7 +883,7 @@ class AnnouncementRemoteSync:
             ],
             "ANNOUNCE ALIAS",
         )
-        return alias_target
+        return mc_bin, alias_target
 
     def init_remote(self, force: bool = False) -> None:
         """Initialize a new empty announcement workspace on the remote.
@@ -935,11 +938,11 @@ class AnnouncementRemoteSync:
             (self.workspace.remote_dir / "active.json", "announcements/active.json"),
         ]
 
-        alias_target = self._ensure_alias()
+        mc_bin, alias_target = self._ensure_alias()
 
         for local_path, remote_path in uploads:
             target_url = f"{alias_target}/{self.resource_root}/{remote_path}"
-            cmd = ["mc", "cp", str(local_path), target_url]
+            cmd = [mc_bin, "cp", str(local_path), target_url]
             result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to upload {local_path}: {result.stderr}")
@@ -977,7 +980,7 @@ class AnnouncementRemoteSync:
                 print(f"Would upload: {local_path} → {remote_path}")
             return
 
-        alias_target = self._ensure_alias()
+        mc_bin, alias_target = self._ensure_alias()
         seen: set[str] = set()
 
         for local_path, remote_path in files_to_upload:
@@ -988,7 +991,7 @@ class AnnouncementRemoteSync:
                 continue
             seen.add(key)
             target_url = f"{alias_target}/{self.resource_root}/{remote_path}"
-            cmd = ["mc", "cp", str(local_path), target_url]
+            cmd = [mc_bin, "cp", str(local_path), target_url]
             result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to upload {local_path}: {result.stderr}")

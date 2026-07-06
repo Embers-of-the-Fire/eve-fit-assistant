@@ -56,10 +56,19 @@ async def _ensure_python2(extract_dir: Path) -> Path:
     info(f"Extracting portable Python 2.7 from {_PY27_ZIP}")
     extract_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(_PY27_ZIP, "r") as zf:
-        zf.extractall(extract_dir)
+        _safe_extractall(zf, extract_dir)
     if not python_exe.is_file():
         raise FileNotFoundError(f"python.exe not found after extracting {_PY27_ZIP}")
     return python_exe
+
+
+def _safe_extractall(zf: zipfile.ZipFile, dest: Path) -> None:
+    dest_resolved = dest.resolve()
+    for member in zf.namelist():
+        member_path = (dest / member).resolve()
+        if dest_resolved not in member_path.parents and member_path != dest_resolved:
+            raise ValueError(f"Unsafe path in zip archive: {member}")
+    zf.extractall(dest)
 
 
 async def _run_script(
@@ -101,6 +110,11 @@ async def generate_fsd(
     """
     work_dir = temp_root / "fsd-work"
     work_dir.mkdir(parents=True, exist_ok=True)
+
+    if sys.platform != "win32":
+        raise OSError(
+            "FSD binary conversion requires Windows because CCP's loaders are .pyd files."
+        )
 
     await _copy_scripts(work_dir)
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -23,6 +25,7 @@ from bootstrap.data.updater.pipeline import _read_bucket_build
 from bootstrap.data.updater.pipeline import check_server
 from bootstrap.data.updater.server import get_server_config
 from bootstrap.data.updater.uploader import _resolve_storage
+from bootstrap.data.updater.uploader import _run_mc
 
 
 if TYPE_CHECKING:
@@ -307,6 +310,176 @@ class TestReadBucketBuild:
         assert result is None
 
 
+class _MockProcess:
+    """A minimal async process for testing _run_mc."""
+
+    def __init__(self, returncode: int = 0, stdout_lines: list[bytes] | None = None) -> None:
+        self.returncode = returncode
+        self.stdout = _AsyncIterator(stdout_lines or [])
+
+    async def wait(self) -> int:
+        return self.returncode
+
+
+class _AsyncIterator:
+    """Async iterator wrapping a list of bytes for mocking stdout."""
+
+    def __init__(self, items: list[bytes]) -> None:
+        self._items = items
+        self._idx = 0
+
+    def __aiter__(self) -> _AsyncIterator:
+        return self
+
+    async def __anext__(self) -> bytes:
+        if self._idx >= len(self._items):
+            raise StopAsyncIteration
+        item = self._items[self._idx]
+        self._idx += 1
+        return item
+
+
+class TestRunMc:
+    async def test_redacts_secret_values(self, monkeypatch) -> None:
+        logged: list[str] = []
+        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
+
+        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
+            return _MockProcess()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
+
+        await _run_mc(
+            ["alias", "set", "myalias", "https://s3.example.com", "ACCESS", "SECRET"],
+            "TEST",
+            secrets={"ACCESS", "SECRET"},
+        )
+
+        assert len(logged) == 1
+        assert "ACCESS" not in logged[0]
+        assert "SECRET" not in logged[0]
+        assert "<redacted> <redacted>" in logged[0]
+
+    async def test_does_not_redact_unrelated_arguments(self, monkeypatch) -> None:
+        logged: list[str] = []
+        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
+
+        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
+            return _MockProcess()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
+
+        await _run_mc(
+            ["alias", "set", "myalias", "https://s3.example.com", "ACCESS", "SECRET"],
+            "TEST",
+            secrets={"OTHER"},
+        )
+
+        assert "ACCESS" in logged[0]
+        assert "SECRET" in logged[0]
+        assert "<redacted>" not in logged[0]
+
+    async def test_empty_secrets_do_not_redact(self, monkeypatch) -> None:
+        logged: list[str] = []
+        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
+
+        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
+            return _MockProcess()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
+
+        await _run_mc(
+            ["alias", "set", "myalias", "https://s3.example.com", "ACCESS", ""],
+            "TEST",
+            secrets={""},
+        )
+
+        assert "ACCESS" in logged[0]
+        assert "<redacted>" not in logged[0]
+
+    async def test_env_is_passed_to_subprocess(self, monkeypatch) -> None:
+        logged: list[str] = []
+        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
+
+        captured_env: dict[str, str] | None = None
+
+        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
+            nonlocal captured_env
+            captured_env = kwargs.get("env")
+            return _MockProcess()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
+
+        await _run_mc(
+            ["alias", "set", "myalias", "https://s3.example.com"],
+            "TEST",
+            env={"MC_HOST_myalias": "https://key:secret@s3.example.com"},
+        )
+
+        assert captured_env is not None
+        assert captured_env["MC_HOST_myalias"] == "https://key:secret@s3.example.com"
+
+    async def test_env_is_merged_with_os_environ(self, monkeypatch) -> None:
+        monkeypatch.setenv("EXISTING_VAR", "existing_value")
+        monkeypatch.setattr("bootstrap.data.updater.uploader.info", lambda _: None)
+
+        captured_env: dict[str, str] | None = None
+
+        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
+            nonlocal captured_env
+            captured_env = kwargs.get("env")
+            return _MockProcess()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
+
+        await _run_mc(
+            ["cp", "a", "b"],
+            "TEST",
+            env={"NEW_VAR": "new_value"},
+        )
+
+        assert captured_env is not None
+        assert captured_env["EXISTING_VAR"] == "existing_value"
+        assert captured_env["NEW_VAR"] == "new_value"
+
+    async def test_upload_artifacts_uses_mc_host_env(self, monkeypatch, tmp_path: Path) -> None:
+        from bootstrap.data.updater.uploader import upload_artifacts
+
+        captured_env: dict[str, str] | None = None
+        commands: list[list[str]] = []
+
+        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
+            nonlocal captured_env
+            if captured_env is None:
+                captured_env = kwargs.get("env")
+            commands.append(list(args))
+            return _MockProcess()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
+
+        storage = DeveloperCiStorage(
+            endpoint="https://s3.example.com",
+            bucket="bucket",
+            alias="myalias",
+            access_key="ACCESS_KEY",
+            secret_key="SECRET_KEY",  # noqa: S106
+            public_url="https://public.example.com",
+        )
+        config = DeveloperCiRawArtifacts(remote_root="data-generator/raw-artifact")
+
+        artifacts_dir = tmp_path / "artifacts"
+        artifacts_dir.mkdir()
+
+        await upload_artifacts("tranquility", artifacts_dir, 123456, config, storage)
+
+        assert captured_env is not None
+        assert captured_env["MC_HOST_myalias"] == "https://ACCESS_KEY:SECRET_KEY@s3.example.com"
+
+        alias_cmd = next(cmd for cmd in commands if cmd[1:3] == ["alias", "set"])
+        assert "ACCESS_KEY" not in alias_cmd
+        assert "SECRET_KEY" not in alias_cmd
+
+
 class TestUploader:
     def test_resolve_storage_without_overrides(self) -> None:
         config = DeveloperCiRawArtifacts(remote_root="data-generator/raw-artifact")
@@ -315,7 +488,7 @@ class TestUploader:
             bucket="bucket",
             alias="alias",
             access_key="key",
-            secret_key="secret",
+            secret_key="secret",  # noqa: S106
             public_url="https://public.example.com",
         )
         endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
@@ -323,7 +496,7 @@ class TestUploader:
         assert bucket == "bucket"
         assert alias == "alias"
         assert access_key == "key"
-        assert secret_key == "secret"
+        assert secret_key == "secret"  # noqa: S105
 
     def test_resolve_storage_with_overrides(self) -> None:
         config = DeveloperCiRawArtifacts(
@@ -332,14 +505,14 @@ class TestUploader:
             bucket="override-bucket",
             alias="override-alias",
             access_key="override-key",
-            secret_key="override-secret",
+            secret_key="override-secret",  # noqa: S106
         )
         storage = DeveloperCiStorage(
             endpoint="https://example.com",
             bucket="bucket",
             alias="alias",
             access_key="key",
-            secret_key="secret",
+            secret_key="secret",  # noqa: S106
             public_url="https://public.example.com",
         )
         endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
@@ -347,7 +520,7 @@ class TestUploader:
         assert bucket == "override-bucket"
         assert alias == "override-alias"
         assert access_key == "override-key"
-        assert secret_key == "override-secret"
+        assert secret_key == "override-secret"  # noqa: S105
 
 
 class TestConfigOverrides:
@@ -380,7 +553,7 @@ class TestConfigOverrides:
             {},
             [("ci.storage.secret_key", "abc=def+ghi")],
         )
-        assert cfg["ci"]["storage"]["secret_key"] == "abc=def+ghi"
+        assert cfg["ci"]["storage"]["secret_key"] == "abc=def+ghi"  # noqa: S105
 
 
 class TestSecretStrRedaction:
@@ -390,7 +563,7 @@ class TestSecretStrRedaction:
             bucket="bucket",
             alias="alias",
             access_key="ACCESS_KEY",
-            secret_key="SECRET_KEY",
+            secret_key="SECRET_KEY",  # noqa: S106
             public_url="https://public.example.com",
         )
         dumped = storage.model_dump()
@@ -407,7 +580,7 @@ class TestSecretStrRedaction:
             bucket="bucket",
             alias="alias",
             access_key="ACCESS_KEY",
-            secret_key="SECRET_KEY",
+            secret_key="SECRET_KEY",  # noqa: S106
             public_url="https://public.example.com",
         )
         assert storage.access_key.get_secret_value() == "ACCESS_KEY"
@@ -419,7 +592,7 @@ class TestSecretStrRedaction:
             bucket="bucket",
             alias="alias",
             access_key="ACCESS_KEY",
-            secret_key="SECRET_KEY",
+            secret_key="SECRET_KEY",  # noqa: S106
             public_url="https://public.example.com",
         )
         text = str(storage)

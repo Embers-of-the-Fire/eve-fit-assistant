@@ -46,14 +46,16 @@ def get_server_config(server_id: ServerId) -> ServerConfig:
             fsd_dumper_server="tq",
         )
     if server_id == "serenity":
+        # The Serenity OSS bucket supports HTTPS; use it for the manifest and
+        # index so these files cannot be tampered with in transit.
         return ServerConfig(
             id=server_id,
             manifest_url=(
-                "http://eve-china-version-files.oss-cn-hangzhou.aliyuncs.com/"
+                "https://eve-china-version-files.oss-cn-hangzhou.aliyuncs.com/"
                 "eveclient_SERENITY.json"
             ),
             index_url_template=(
-                "http://eve-china-version-files.oss-cn-hangzhou.aliyuncs.com/eveonline_{build}.txt"
+                "https://eve-china-version-files.oss-cn-hangzhou.aliyuncs.com/eveonline_{build}.txt"
             ),
             binary_download_url="https://ma79.gdl.netease.com/eve/binaries/{resource_url}",
             resource_download_url="https://ma79.gdl.netease.com/eve/resources/{resource_url}",

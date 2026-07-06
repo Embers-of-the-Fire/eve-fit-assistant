@@ -8,14 +8,14 @@ if (!(Test-Path $ZipPath)) {
     exit 1
 }
 
-if (!(Test-Path $ExtractPath)) {
+$pythonExe = Join-Path $ExtractPath "python.exe"
+if (!(Test-Path $pythonExe)) {
     Write-Host "Extracting portable Python 2.7 to $ExtractPath ..."
     Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
 } else {
     Write-Host "Python 2.7 already extracted at $ExtractPath."
 }
 
-$pythonExe = Join-Path $ExtractPath "python.exe"
 if (!(Test-Path $pythonExe)) {
     Write-Error "python.exe not found in $ExtractPath"
     exit 1

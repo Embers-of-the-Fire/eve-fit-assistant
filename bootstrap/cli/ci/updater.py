@@ -34,17 +34,6 @@ def _resolve_server_input(server: str | None, all_flag: bool) -> list[str]:
     return [normalized]
 
 
-async def _check_all() -> list[str]:
-    """Check all servers and return those needing an update."""
-    results: list[str] = []
-    for server_id in _ALL_SERVERS:
-        result = await check_server(server_id)
-        click.echo(f"{server_id}: remote={result.remote_build}, bucket={result.bucket_build}")
-        if result.needs_update:
-            results.append(server_id)
-    return results
-
-
 def register_raw_data_commands(ci: click.Group) -> None:
     @ci.group("raw-data")
     def raw_data():
@@ -81,7 +70,7 @@ def register_raw_data_commands(ci: click.Group) -> None:
             if output_format == "json":
                 click.echo(json.dumps(results))
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     @raw_data.command("update")
     @click.option("--server", default=None, help="Server id (tranquility, serenity, singularity).")
@@ -103,7 +92,7 @@ def register_raw_data_commands(ci: click.Group) -> None:
                     f"Updated {result.server_id} to build {result.build}: {result.artifacts_dir}"
                 )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     @raw_data.command("upload")
     @click.option("--server", required=True, help="Server id (tranquility, serenity, singularity).")
@@ -123,18 +112,21 @@ def register_raw_data_commands(ci: click.Group) -> None:
         build_file = from_dir / "build.txt"
         if not build_file.is_file():
             raise click.ClickException(f"Build file not found: {build_file}")
-        build = int(build_file.read_text(encoding="utf-8").strip())
+        try:
+            build = int(build_file.read_text(encoding="utf-8").strip())
+        except ValueError as exc:
+            raise click.ClickException(
+                f"Build file does not contain a valid integer: {build_file}"
+            ) from exc
 
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         ci = bootstrap.config.DEV_CONFIGURATION.ci
-        if ci.raw_artifacts is None:
-            ci.raw_artifacts = bootstrap.config.DeveloperCiRawArtifacts()
         raw_artifacts, storage = ci.require_raw_artifacts()
 
         async def run():
             await upload_artifacts(normalized, artifacts_dir, build, raw_artifacts, storage)
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
         click.echo(f"Uploaded {normalized} build {build} from {from_dir}")
 
     @raw_data.command("sync-local")
@@ -148,8 +140,6 @@ def register_raw_data_commands(ci: click.Group) -> None:
 
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         ci = bootstrap.config.DEV_CONFIGURATION.ci
-        if ci.raw_artifacts is None:
-            ci.raw_artifacts = bootstrap.config.DeveloperCiRawArtifacts()
         raw_artifacts, storage = ci.require_raw_artifacts()
 
         base_dir = PROJECT_ROOT / "cache" / "raw-artifacts" / normalized
@@ -165,5 +155,5 @@ def register_raw_data_commands(ci: click.Group) -> None:
         async def run():
             await upload_artifacts(normalized, artifacts_dir, 0, raw_artifacts, storage)
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
         click.echo(f"Synced local {normalized} resources to CI storage")

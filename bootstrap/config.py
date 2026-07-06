@@ -366,13 +366,7 @@ class DeveloperCi(BaseModel):
 
     def require_raw_artifacts(self) -> tuple[DeveloperCiRawArtifacts, DeveloperCiStorage]:
         if self.raw_artifacts is None:
-            print(
-                "Error: [ci.raw_artifacts] is not configured in efa.dev.toml.\n"
-                "       Required for `./x ci raw-data` upload commands.\n"
-                "       See efa.dev.example.toml.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            self.raw_artifacts = DeveloperCiRawArtifacts()
         return self.raw_artifacts, self.require_storage()
 
 

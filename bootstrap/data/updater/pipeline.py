@@ -82,6 +82,9 @@ async def _read_bucket_build(server_id: ServerId) -> int | None:
 
     url = f"{public_url}/{raw_artifacts.remote_root}/{server_id}/build.txt"
     info(f"Reading bucket build: {url}")
+    # Only a real 404 should mean "no build". Swallowing aiohttp.ClientError
+    # or a malformed build.txt lets check_server treat outages/corruption as
+    # needs_update=True, which can queue unnecessary update runs.
     try:
         async with aiohttp.ClientSession() as session, session.get(url) as response:
             if response.status == 404:
@@ -135,8 +138,6 @@ async def update_server(
     if upload:
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         ci = bootstrap.config.DEV_CONFIGURATION.ci
-        if ci.raw_artifacts is None:
-            ci.raw_artifacts = bootstrap.config.DeveloperCiRawArtifacts()
         raw_artifacts, storage = ci.require_raw_artifacts()
         await upload_artifacts(resolved, artifacts_dir, build, raw_artifacts, storage)
         uploaded = True
