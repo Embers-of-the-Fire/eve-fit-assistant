@@ -31,13 +31,14 @@ class ServerConfig:
     fsd_dumper_server: str
 
 
-def _discover_server_ids() -> frozenset[str]:
+def _discover_server_ids(resources_root: Path | None = None) -> frozenset[str]:
     """Return the set of server ids declared under ``data/resources``.
 
     A resource directory is treated as a server when its ``descriptor.toml`` has
     ``metadata.server = true`` and is not ignored.
     """
-    resources_root = PROJECT_ROOT / "data" / "resources"
+    if resources_root is None:
+        resources_root = PROJECT_ROOT / "data" / "resources"
     if not resources_root.is_dir():
         return frozenset()
 
@@ -153,35 +154,7 @@ def list_server_ids() -> list[ServerId]:
 def _reset_for_tests(resources_root: Path | None = None) -> None:
     """Internal hook used by tests to recompute server ids from a fake tree."""
     global SERVER_IDS
-    if resources_root is None:
-        SERVER_IDS = _discover_server_ids()
-    else:
-
-        def discover_from(path: Path) -> frozenset[str]:
-            server_ids: set[str] = set()
-            if not path.is_dir():
-                return frozenset(server_ids)
-            for entry in path.iterdir():
-                if not entry.is_dir():
-                    continue
-                descriptor_path = entry / "descriptor.toml"
-                if not descriptor_path.is_file():
-                    continue
-                try:
-                    with open(descriptor_path, "rb") as f:
-                        data = tomllib.load(f)
-                except Exception:
-                    continue
-                if data.get("ignore", False):
-                    continue
-                metadata = data.get("metadata") or {}
-                if metadata.get("server", False):
-                    identifier = metadata.get("identifier")
-                    if isinstance(identifier, str) and identifier:
-                        server_ids.add(identifier)
-            return frozenset(server_ids)
-
-        SERVER_IDS = discover_from(resources_root)
+    SERVER_IDS = _discover_server_ids(resources_root)
     _validate_server_definitions()
 
 
