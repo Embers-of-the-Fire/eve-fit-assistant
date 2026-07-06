@@ -144,12 +144,56 @@ class TestHelpers:
 
 
 class TestAddReleaseNote:
-    def test_stages_release_note_entry(self, tmp_path: Path) -> None:
+    @pytest.fixture
+    def register_remote_announce(self):
         import bootstrap.config
 
         bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
+        return register_remote_announce
+
+    @pytest.fixture
+    def announce_workspace(self, tmp_path: Path) -> AnnouncementWorkspace:
+        workspace = _build_workspace(tmp_path)
+        _write_empty_remote_state(workspace)
+        return workspace
+
+    @pytest.fixture
+    def invoke_add_release_note(
+        self,
+        tmp_path: Path,
+        register_remote_announce,
+        announce_workspace: AnnouncementWorkspace,
+    ):
+        def _invoke(
+            directory: Path,
+            version: ProjectVersion,
+            *,
+            args: list[str] | None = None,
+        ) -> click.testing.Result:
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(
+                    "bootstrap.cli.remote.announce.get_announce_workspace",
+                    lambda: tmp_path / "announce-workspace",
+                )
+                mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+                group = click.Group()
+                register_remote_announce(group)
+                cmd = group.commands["announce"].commands["add-release-note"]
+                all_args = [f"--directory={directory}"]
+                if args:
+                    all_args.extend(args)
+                return CliRunner().invoke(cmd, all_args)
+
+        return _invoke
+
+    def test_stages_release_note_entry(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "0-1-0-beta-7",
@@ -158,30 +202,12 @@ class TestAddReleaseNote:
             en_body="# v0.1.0-beta.7 Release Notes\n\nThis release includes the changes below.\n\n- Feature A\n",
             changelog="## [v0.1.0-beta.7] - 2026-07-04\n\n### Added\n\n- Feature A\n",
         )
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=0, minor=1, patch=0, pre_label="beta", pre_num=7)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code == 0
 
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(
-                cmd,
-                [
-                    f"--directory={directory}",
-                ],
-            )
-            assert result.exit_code == 0
-
-        overlay = workspace.read_overlay()
+        overlay = announce_workspace.read_overlay()
         assert ACTIVE_KEY in overlay.pages
         entry = overlay.pages[ACTIVE_KEY]["version-0-1-0-beta-7"]
         assert entry is not None
@@ -195,15 +221,15 @@ class TestAddReleaseNote:
         en = entry.localizations["en"]
         assert zh.title == "v0.1.0-beta.7 发布说明"
         assert en.title == "v0.1.0-beta.7 Release Notes"
-        assert "Feature A" in workspace.get_document(en.body_hash)
-        assert "---" in workspace.get_document(en.body_hash)
+        assert "Feature A" in announce_workspace.get_document(en.body_hash)
+        assert "---" in announce_workspace.get_document(en.body_hash)
 
-    def test_uses_spec_channels_and_platforms(self, tmp_path: Path) -> None:
-        import bootstrap.config
-
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        from bootstrap.cli.remote.announce import register_remote_announce
-
+    def test_uses_spec_channels_and_platforms(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "1-0-0",
@@ -213,35 +239,22 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="channels:\n- stable\nplatforms:\n- ios\n",
         )
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=1, minor=0, patch=0)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code == 0
 
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
-            assert result.exit_code == 0
-
-        overlay = workspace.read_overlay()
+        overlay = announce_workspace.read_overlay()
         entry = overlay.pages[ACTIVE_KEY]["version-1-0-0"]
         assert entry.channels == ["stable"]
         assert entry.platforms == ["ios"]
 
-    def test_uses_spec_tags(self, tmp_path: Path) -> None:
-        import bootstrap.config
-
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        from bootstrap.cli.remote.announce import register_remote_announce
-
+    def test_uses_spec_tags(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "1-0-0",
@@ -251,34 +264,21 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="tags:\n- custom-tag\n",
         )
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=1, minor=0, patch=0)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code == 0
 
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
-            assert result.exit_code == 0
-
-        overlay = workspace.read_overlay()
+        overlay = announce_workspace.read_overlay()
         entry = overlay.pages[ACTIVE_KEY]["version-1-0-0"]
         assert entry.tags == ["custom-tag"]
 
-    def test_cli_overrides_take_precedence(self, tmp_path: Path) -> None:
-        import bootstrap.config
-
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        from bootstrap.cli.remote.announce import register_remote_announce
-
+    def test_cli_overrides_take_precedence(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "1-0-0",
@@ -288,46 +288,33 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="channels:\n- stable\n",
         )
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=1, minor=0, patch=0)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+        result = invoke_add_release_note(
+            directory,
+            version,
+            args=[
+                "--channels=testing,stable",
+                "--platforms=ios",
+                "--published-at=2026-01-01T00:00:00Z",
+                "--tags=version",
+            ],
+        )
+        assert result.exit_code == 0
 
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(
-                cmd,
-                [
-                    f"--directory={directory}",
-                    "--channels=testing,stable",
-                    "--platforms=ios",
-                    "--published-at=2026-01-01T00:00:00Z",
-                    "--tags=version",
-                ],
-            )
-            assert result.exit_code == 0
-
-        overlay = workspace.read_overlay()
+        overlay = announce_workspace.read_overlay()
         entry = overlay.pages[ACTIVE_KEY]["version-1-0-0"]
         assert entry.channels == ["testing", "stable"]
         assert entry.platforms == ["ios"]
         assert entry.published_at == "2026-01-01T00:00:00Z"
         assert entry.tags == ["version"]
 
-    def test_missing_changelog_fails(self, tmp_path: Path) -> None:
-        import bootstrap.config
-
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        from bootstrap.cli.remote.announce import register_remote_announce
-
+    def test_missing_changelog_fails(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "1-0-0",
@@ -337,31 +324,18 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
         )
         (directory / "changelog.md").unlink()
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=1, minor=0, patch=0)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code != 0
+        assert "release relnote" in result.output
 
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
-            assert result.exit_code != 0
-            assert "release relnote" in result.output
-
-    def test_missing_content_locale_fails(self, tmp_path: Path) -> None:
-        import bootstrap.config
-
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        from bootstrap.cli.remote.announce import register_remote_announce
-
+    def test_missing_content_locale_fails(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "1-0-0",
@@ -371,31 +345,18 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
         )
         (directory / "content.zh.md").unlink()
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=1, minor=0, patch=0)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code != 0
+        assert "Missing required locale file" in result.output
 
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
-            assert result.exit_code != 0
-            assert "Missing required locale file" in result.output
-
-    def test_duplicate_entry_fails(self, tmp_path: Path) -> None:
-        import bootstrap.config
-
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        from bootstrap.cli.remote.announce import register_remote_announce
-
+    def test_duplicate_entry_fails(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "1-0-0",
@@ -404,34 +365,21 @@ class TestAddReleaseNote:
             en_body="# Title\n\nSummary.\n",
             changelog="- Fix\n",
         )
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=1, minor=0, patch=0)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code == 0
 
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
-            assert result.exit_code == 0
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code != 0
+        assert "already exists" in result.output
 
-            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
-            assert result.exit_code != 0
-            assert "already exists" in result.output
-
-    def test_spec_id_mismatch_fails(self, tmp_path: Path) -> None:
-        import bootstrap.config
-
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        from bootstrap.cli.remote.announce import register_remote_announce
-
+    def test_spec_id_mismatch_fails(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
         directory = _make_release_note_dir(
             tmp_path,
             "1-0-0",
@@ -441,24 +389,11 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="id: version-wrong\n",
         )
-        workspace = _build_workspace(tmp_path)
-        _write_empty_remote_state(workspace)
-
         version = ProjectVersion(major=1, minor=0, patch=0)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "bootstrap.cli.remote.announce.get_announce_workspace",
-                lambda: tmp_path / "announce-workspace",
-            )
-            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
-
-            group = click.Group()
-            register_remote_announce(group)
-            cmd = group.commands["announce"].commands["add-release-note"]
-            result = CliRunner().invoke(cmd, [f"--directory={directory}"])
-            assert result.exit_code != 0
-            assert "does not match expected id" in result.output
+        result = invoke_add_release_note(directory, version)
+        assert result.exit_code != 0
+        assert "does not match expected id" in result.output
 
 
 class TestDocumentParser:

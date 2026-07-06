@@ -51,49 +51,77 @@ def _ensure_handlers() -> None:
     if LOGGER.handlers:
         return
 
-    bootstrap.config.ProjectConfiguration.ensure_loaded()
-    bootstrap.config.DeveloperConfiguration.ensure_loaded()
-    log_path = bootstrap.config.DEV_CONFIGURATION.paths.log_path
-    if not log_path.exists():
-        log_path.mkdir(parents=True, exist_ok=True)
+    try:
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        log_path = bootstrap.config.DEV_CONFIGURATION.paths.log_path
+        if not log_path.exists():
+            log_path.mkdir(parents=True, exist_ok=True)
 
-    LOGGER.setLevel(logging.DEBUG)
-    log_filename = f"{time.strftime('%Y%m%d-%H%M%S')}.log"
-    file_handler = logging.FileHandler(log_path / log_filename, mode="w", encoding="utf-8")
-    file_handler.setLevel(logging.DEBUG)
+        LOGGER.setLevel(logging.DEBUG)
+        log_filename = f"{time.strftime('%Y%m%d-%H%M%S')}.log"
+        file_handler = logging.FileHandler(log_path / log_filename, mode="w", encoding="utf-8")
+        file_handler.setLevel(logging.DEBUG)
 
-    console_handler = logging.StreamHandler(sys.stderr)
-    console_handler.setLevel(logging.INFO)
+        console_handler = logging.StreamHandler(sys.stderr)
+        console_handler.setLevel(logging.INFO)
 
-    file_formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(pathname)s]: %(message)s")
-    file_handler.setFormatter(file_formatter)
+        file_formatter = logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] [%(pathname)s]: %(message)s"
+        )
+        file_handler.setFormatter(file_formatter)
 
-    console_handler.setFormatter(ColoredTerminalFormatter())
+        console_handler.setFormatter(ColoredTerminalFormatter())
 
-    LOGGER.addHandler(file_handler)
-    LOGGER.addHandler(console_handler)
+        LOGGER.addHandler(file_handler)
+        LOGGER.addHandler(console_handler)
+    except Exception as exc:
+        # Config or filesystem setup failed. Install a minimal stderr fallback
+        # so the message being logged (often from an ``except`` block) is not
+        # swallowed by this secondary failure.
+        fallback = logging.StreamHandler(sys.stderr)
+        fallback.setLevel(logging.NOTSET)
+        fallback.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        LOGGER.setLevel(logging.DEBUG)
+        LOGGER.addHandler(fallback)
+        fallback.emit(
+            logging.LogRecord(
+                name=LOGGER.name,
+                level=logging.WARNING,
+                pathname=__file__,
+                lineno=0,
+                msg="Logging setup failed, using stderr fallback: %s",
+                args=(exc,),
+                exc_info=None,
+            )
+        )
 
 
 def info(msg: object, *args, **kwargs) -> None:
     _ensure_handlers()
+    kwargs.setdefault("stacklevel", 2)
     LOGGER.info(msg, *args, **kwargs)
 
 
 def warning(msg: object, *args, **kwargs) -> None:
     _ensure_handlers()
+    kwargs.setdefault("stacklevel", 2)
     LOGGER.warning(msg, *args, **kwargs)
 
 
 def error(msg: object, *args, **kwargs) -> None:
     _ensure_handlers()
+    kwargs.setdefault("stacklevel", 2)
     LOGGER.error(msg, *args, **kwargs)
 
 
 def debug(msg: object, *args, **kwargs) -> None:
     _ensure_handlers()
+    kwargs.setdefault("stacklevel", 2)
     LOGGER.debug(msg, *args, **kwargs)
 
 
 def critical(msg: object, *args, **kwargs) -> None:
     _ensure_handlers()
+    kwargs.setdefault("stacklevel", 2)
     LOGGER.critical(msg, *args, **kwargs)
