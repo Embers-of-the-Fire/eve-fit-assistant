@@ -122,9 +122,18 @@
         ;
 
       # --- Named package sets ---
-      pythonPackages = with pkgs; [ python3 uv ];
+      pythonPackages = with pkgs; [
+        python3
+        uv
+      ];
 
-      rustPackages = with pkgs; [ rustc cargo rustfmt clippy rust-analyzer ];
+      rustPackages = with pkgs; [
+        rustc
+        cargo
+        rustfmt
+        clippy
+        rust-analyzer
+      ];
 
       nativeBuildPackages = with pkgs; [
         pkg-config
@@ -134,15 +143,30 @@
         llvmPackages.libclang
       ];
 
-      dartPackages = with pkgs; [ flutter jdk17 ];
+      dartPackages = with pkgs; [
+        flutter
+        jdk17
+      ];
 
-      protobufPackages = with pkgs; [ protobuf protoc-gen-dart ];
+      protobufPackages = with pkgs; [
+        protobuf
+        protoc-gen-dart
+      ];
 
       frbPackages = with pkgs; [ flutter_rust_bridge_codegen ];
 
-      jsPackages = with pkgs; [ nodejs_26 pnpm ];
+      jsPackages = with pkgs; [
+        nodejs_26
+        pnpm
+      ];
 
-      releasePackages = with pkgs; [ cargo-expand git-cliff minio minio-client wrangler ];
+      releasePackages = with pkgs; [
+        cargo-expand
+        git-cliff
+        minio
+        minio-client
+        wrangler
+      ];
 
       # --- Shared environment variables ---
       localeEnv = {
@@ -234,7 +258,7 @@
 
         # Minimal Python shell: linting, formatting, and tests
         python = pkgs.mkShell {
-          packages = pythonPackages;
+          packages = pythonPackages ++ [ pkgs.minio-client ];
 
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
