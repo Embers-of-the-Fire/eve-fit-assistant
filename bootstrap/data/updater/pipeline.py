@@ -16,8 +16,8 @@ from bootstrap.data.updater.index import download_index
 from bootstrap.data.updater.index import download_metadata
 from bootstrap.data.updater.index import download_resource_index
 from bootstrap.data.updater.manifest import fetch_build
-from bootstrap.data.updater.server import SERVER_ALIASES
 from bootstrap.data.updater.server import get_server_config
+from bootstrap.data.updater.server import resolve_server_id
 from bootstrap.data.updater.uploader import upload_artifacts
 from bootstrap.log import info
 
@@ -49,10 +49,7 @@ class UpdateResult:
 
 def _resolve_server_id(server_id: str) -> ServerId:
     """Normalize a server identifier to the canonical form."""
-    normalized = SERVER_ALIASES.get(server_id.lower(), server_id.lower())
-    if normalized in ("tranquility", "serenity", "singularity"):
-        return normalized  # type: ignore[return-value]
-    raise ValueError(f"Unknown server id: {server_id}")
+    return resolve_server_id(server_id)
 
 
 def _get_raw_artifacts_dir(server_id: ServerId) -> Path:

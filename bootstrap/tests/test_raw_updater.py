@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import tomllib
 
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from bootstrap.config import DeveloperCiRawArtifacts
 from bootstrap.config import DeveloperCiStorage
 from bootstrap.config import DeveloperConfiguration
 from bootstrap.config import _apply_overrides
+from bootstrap.constant import PROJECT_ROOT
 from bootstrap.data.updater.index import _parse_index_file
 from bootstrap.data.updater.index import download_index
 from bootstrap.data.updater.index import download_metadata
@@ -23,7 +25,11 @@ from bootstrap.data.updater.manifest import fetch_build
 from bootstrap.data.updater.pipeline import UpdateCheckResult
 from bootstrap.data.updater.pipeline import _read_bucket_build
 from bootstrap.data.updater.pipeline import check_server
+from bootstrap.data.updater.server import SERVER_ALIASES
+from bootstrap.data.updater.server import SERVER_IDS
 from bootstrap.data.updater.server import get_server_config
+from bootstrap.data.updater.server import list_server_ids
+from bootstrap.data.updater.server import resolve_server_id
 from bootstrap.data.updater.uploader import _resolve_storage
 from bootstrap.data.updater.uploader import _run_mc
 
@@ -124,8 +130,54 @@ class TestServerConfig:
 
     def test_unknown_server_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown server id"):
-            # type: ignore[arg-type]
             get_server_config("invalid")
+
+
+class TestServerDiscovery:
+    def test_server_ids_match_resources_tree(self) -> None:
+        """SERVER_IDS must stay in sync with data/resources descriptor files."""
+        resources_root = PROJECT_ROOT / "data" / "resources"
+        expected: set[str] = set()
+        for entry in resources_root.iterdir():
+            if not entry.is_dir():
+                continue
+            descriptor_path = entry / "descriptor.toml"
+            if not descriptor_path.is_file():
+                continue
+            with open(descriptor_path, "rb") as f:
+                data = tomllib.load(f)
+            if data.get("ignore", False):
+                continue
+            metadata = data.get("metadata") or {}
+            if metadata.get("server", False):
+                identifier = metadata.get("identifier")
+                if isinstance(identifier, str) and identifier:
+                    expected.add(identifier)
+        assert frozenset(expected) == SERVER_IDS
+
+    def test_server_aliases_target_known_servers(self) -> None:
+        for alias, target in SERVER_ALIASES.items():
+            assert target in SERVER_IDS, f"alias {alias!r} targets unknown server {target!r}"
+
+    def test_server_configs_cover_all_servers(self) -> None:
+        for server_id in SERVER_IDS:
+            cfg = get_server_config(server_id)
+            assert cfg.id == server_id
+
+    def test_list_server_ids_is_sorted(self) -> None:
+        server_ids = list_server_ids()
+        assert server_ids == sorted(server_ids)
+        assert set(server_ids) == SERVER_IDS
+
+    def test_resolve_server_id_normalizes_aliases(self) -> None:
+        assert resolve_server_id("tq") == "tranquility"
+        assert resolve_server_id("TQ") == "tranquility"
+        assert resolve_server_id("se") == "serenity"
+        assert resolve_server_id("sisi") == "singularity"
+
+    def test_resolve_server_id_rejects_unknown(self) -> None:
+        with pytest.raises(ValueError, match="Unknown server id"):
+            resolve_server_id("not-a-server")
 
 
 class TestFetchBuild:

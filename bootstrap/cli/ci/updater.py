@@ -16,20 +16,18 @@ from bootstrap.constant import PROJECT_ROOT
 from bootstrap.data.updater.pipeline import check_server
 from bootstrap.data.updater.pipeline import update_server
 from bootstrap.data.updater.server import SERVER_ALIASES
+from bootstrap.data.updater.server import SERVER_IDS
 from bootstrap.data.updater.uploader import upload_artifacts
-
-
-_ALL_SERVERS = ["tranquility", "serenity", "singularity"]
 
 
 def _resolve_server_input(server: str | None, all_flag: bool) -> list[str]:
     """Return the list of server identifiers to operate on."""
     if all_flag:
-        return list(_ALL_SERVERS)
+        return sorted(SERVER_IDS)
     if server is None:
         raise click.UsageError("Provide --server or --all.")
     normalized = SERVER_ALIASES.get(server.lower(), server.lower())
-    if normalized not in _ALL_SERVERS:
+    if normalized not in SERVER_IDS:
         raise click.UsageError(f"Unknown server: {server}")
     return [normalized]
 
@@ -40,7 +38,7 @@ def register_raw_data_commands(ci: click.Group) -> None:
         """Manage CI raw EVE client artifact updates."""
 
     @raw_data.command("check")
-    @click.option("--server", default=None, help="Server id (tranquility, serenity, singularity).")
+    @click.option("--server", default=None, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
     @click.option("--all", "all_flag", is_flag=True, help="Check all servers.")
     @click.option(
         "--format",
@@ -73,7 +71,7 @@ def register_raw_data_commands(ci: click.Group) -> None:
         asyncio.run(run())
 
     @raw_data.command("update")
-    @click.option("--server", default=None, help="Server id (tranquility, serenity, singularity).")
+    @click.option("--server", default=None, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
     @click.option("--all", "all_flag", is_flag=True, help="Update all servers.")
     @click.option("--no-upload", is_flag=True, help="Skip uploading to CI storage.")
     @click.option("--keep-temp", is_flag=True, help="Keep temporary working directories.")
@@ -95,7 +93,7 @@ def register_raw_data_commands(ci: click.Group) -> None:
         asyncio.run(run())
 
     @raw_data.command("upload")
-    @click.option("--server", required=True, help="Server id (tranquility, serenity, singularity).")
+    @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
     @click.option(
         "--from-dir",
         type=click.Path(exists=True, file_okay=False, path_type=Path),
@@ -130,7 +128,7 @@ def register_raw_data_commands(ci: click.Group) -> None:
         click.echo(f"Uploaded {normalized} build {build} from {from_dir}")
 
     @raw_data.command("sync-local")
-    @click.option("--server", required=True, help="Server id (tranquility, serenity, singularity).")
+    @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
     def raw_data_sync_local(server: str):
         """Upload the local ``data/resources/<server>/`` tree to CI storage as-is."""
         normalized = _resolve_server_input(server, False)[0]
