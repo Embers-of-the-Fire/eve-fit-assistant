@@ -38,6 +38,20 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+class _MockContent:
+    """A minimal aiohttp-compatible content object supporting iter_chunked."""
+
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    def iter_chunked(self, chunk_size: int):
+        async def _gen():
+            for i in range(0, len(self._body), chunk_size):
+                yield self._body[i : i + chunk_size]
+
+        return _gen()
+
+
 class _MockResponse:
     """A minimal async-context-manager response for aiohttp tests."""
 
@@ -51,6 +65,7 @@ class _MockResponse:
         self._json = json_data
         self._body = body
         self.status = status
+        self.content = _MockContent(body)
 
     async def __aenter__(self) -> _MockResponse:
         return self
