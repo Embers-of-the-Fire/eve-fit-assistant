@@ -89,8 +89,10 @@ async def _read_bucket_build(server_id: ServerId) -> int | None:
             response.raise_for_status()
             text = await response.text()
             return int(text.strip())
-    except (aiohttp.ClientError, ValueError):
-        return None
+    except aiohttp.ClientResponseError as exc:
+        if exc.status == 404:
+            return None
+        raise
 
 
 async def check_server(server_id: str) -> UpdateCheckResult:
