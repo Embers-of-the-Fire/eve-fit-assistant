@@ -293,14 +293,14 @@ class DeveloperRemoteS3(BaseModel):
 
 
 class DeveloperCiStorage(BaseModel):
-    """CI data storage configuration (Cloudflare R2). All fields required."""
+    """CI data storage configuration (Cloudflare R2)."""
 
     endpoint: str
     bucket: str
     alias: str
     access_key: SecretStr
     secret_key: SecretStr
-    public_url: str
+    public_url: str | None = None
 
 
 class DeveloperCiRawArtifacts(BaseModel):
@@ -357,7 +357,8 @@ class DeveloperCi(BaseModel):
         if self.storage is None:
             print(
                 "Error: [ci.storage] is not configured in efa.dev.toml.\n"
-                "       Required for `./x ci pack-data`.\n"
+                "       Required for CI storage commands (e.g. ``./x ci pack-data`` "
+                "and ``./x ci raw-data upload``).\n"
                 "       See efa.dev.example.toml.",
                 file=sys.stderr,
             )

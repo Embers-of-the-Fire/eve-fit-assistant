@@ -15,7 +15,6 @@ import bootstrap.config
 from bootstrap.cli.remote.helpers import get_announce_workspace
 from bootstrap.cli.remote.helpers import resolve_announce_remote_target
 from bootstrap.color import styled
-from bootstrap.config import CONFIGURATION
 from bootstrap.config import ProjectVersion
 from bootstrap.docs.announcements_remote import ACTIVE_KEY
 from bootstrap.docs.announcements_remote import DOCUMENT_ID_PATTERN
@@ -816,7 +815,7 @@ def register_remote_announce(remote: click.Group) -> None:
             version = ProjectVersion.model_validate(parse_version_override(version_override))
         else:
             bootstrap.config.ProjectConfiguration.ensure_loaded()
-            version = CONFIGURATION.version
+            version = bootstrap.config.CONFIGURATION.version
 
         app_version = version.render_semver()
         dir_name = normalize_version_dir(app_version)

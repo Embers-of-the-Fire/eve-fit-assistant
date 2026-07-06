@@ -5,8 +5,9 @@ import click
 from colorama import Fore
 from colorama import Style
 
+import bootstrap.config
+
 from bootstrap.color import styled
-from bootstrap.config import CONFIGURATION
 from bootstrap.config import ProjectVersion
 from bootstrap.release.relnote import create_raw_release_note
 from bootstrap.release.relnote import parse_version_override
@@ -68,7 +69,8 @@ def register_release_commands(cli_group: click.Group) -> None:
         if version_override is not None:
             version = ProjectVersion.model_validate(parse_version_override(version_override))
         else:
-            version = CONFIGURATION.version
+            bootstrap.config.ProjectConfiguration.ensure_loaded()
+            version = bootstrap.config.CONFIGURATION.version
 
         channels_list = split_csv(channels)
         platforms_list = split_csv(platforms)

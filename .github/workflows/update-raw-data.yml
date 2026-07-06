@@ -138,5 +138,6 @@ jobs:
               --dev-env ci.storage.alias="$CI_ALIAS" \
               --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
               --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
+              --dev-env ci.storage.public_url="https://ci.storage.efa-tech.dev" \
               --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
               ci raw-data upload --server "$SERVER" --from-dir raw-artifacts/"$SERVER"/'
