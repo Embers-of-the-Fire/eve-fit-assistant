@@ -145,6 +145,9 @@ class TestHelpers:
 
 class TestAddReleaseNote:
     def test_stages_release_note_entry(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -165,7 +168,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)
@@ -196,6 +199,9 @@ class TestAddReleaseNote:
         assert "---" in workspace.get_document(en.body_hash)
 
     def test_uses_spec_channels_and_platforms(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -217,7 +223,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)
@@ -231,6 +237,9 @@ class TestAddReleaseNote:
         assert entry.platforms == ["ios"]
 
     def test_uses_spec_tags(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -252,7 +261,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)
@@ -265,6 +274,9 @@ class TestAddReleaseNote:
         assert entry.tags == ["custom-tag"]
 
     def test_cli_overrides_take_precedence(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -286,7 +298,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)
@@ -311,6 +323,9 @@ class TestAddReleaseNote:
         assert entry.tags == ["version"]
 
     def test_missing_changelog_fails(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -332,7 +347,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)
@@ -342,6 +357,9 @@ class TestAddReleaseNote:
             assert "release relnote" in result.output
 
     def test_missing_content_locale_fails(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -363,7 +381,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)
@@ -373,6 +391,9 @@ class TestAddReleaseNote:
             assert "Missing required locale file" in result.output
 
     def test_duplicate_entry_fails(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -393,7 +414,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)
@@ -406,6 +427,9 @@ class TestAddReleaseNote:
             assert "already exists" in result.output
 
     def test_spec_id_mismatch_fails(self, tmp_path: Path) -> None:
+        import bootstrap.config
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         from bootstrap.cli.remote.announce import register_remote_announce
 
         directory = _make_release_note_dir(
@@ -427,7 +451,7 @@ class TestAddReleaseNote:
                 "bootstrap.cli.remote.announce.get_announce_workspace",
                 lambda: tmp_path / "announce-workspace",
             )
-            mp.setattr("bootstrap.cli.remote.announce.CONFIGURATION.version", version)
+            mp.setattr("bootstrap.config.CONFIGURATION.version", version)
 
             group = click.Group()
             register_remote_announce(group)

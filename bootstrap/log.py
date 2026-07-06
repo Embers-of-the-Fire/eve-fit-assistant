@@ -39,7 +39,18 @@ class ColoredTerminalFormatter(logging.Formatter):
 
 LOGGER = logging.getLogger("EFA")
 
-if len(LOGGER.handlers) == 0:
+
+def _ensure_handlers() -> None:
+    """Initialize logging handlers lazily on first use.
+
+    Import-time config loading caused ``--dev-env`` overrides to be ignored,
+    because the CLI registers those overrides only after the command modules
+    have been imported. Lazy initialization ensures the first log call triggers
+    config load after overrides are in place.
+    """
+    if LOGGER.handlers:
+        return
+
     bootstrap.config.ProjectConfiguration.ensure_loaded()
     bootstrap.config.DeveloperConfiguration.ensure_loaded()
     log_path = bootstrap.config.DEV_CONFIGURATION.paths.log_path
@@ -62,8 +73,27 @@ if len(LOGGER.handlers) == 0:
     LOGGER.addHandler(file_handler)
     LOGGER.addHandler(console_handler)
 
-info = LOGGER.info
-warning = LOGGER.warning
-error = LOGGER.error
-debug = LOGGER.debug
-critical = LOGGER.critical
+
+def info(msg: object, *args, **kwargs) -> None:
+    _ensure_handlers()
+    LOGGER.info(msg, *args, **kwargs)
+
+
+def warning(msg: object, *args, **kwargs) -> None:
+    _ensure_handlers()
+    LOGGER.warning(msg, *args, **kwargs)
+
+
+def error(msg: object, *args, **kwargs) -> None:
+    _ensure_handlers()
+    LOGGER.error(msg, *args, **kwargs)
+
+
+def debug(msg: object, *args, **kwargs) -> None:
+    _ensure_handlers()
+    LOGGER.debug(msg, *args, **kwargs)
+
+
+def critical(msg: object, *args, **kwargs) -> None:
+    _ensure_handlers()
+    LOGGER.critical(msg, *args, **kwargs)

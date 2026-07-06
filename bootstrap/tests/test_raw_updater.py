@@ -684,6 +684,26 @@ class TestConfigOverrides:
         )
         assert cfg["ci"]["storage"]["secret_key"] == "abc=def+ghi"  # noqa: S105
 
+    def test_dev_env_overrides_create_ci_storage_without_dev_toml(self) -> None:
+        cfg = _apply_overrides(
+            {},
+            [
+                ("ci.storage.endpoint", "https://test.example.com"),
+                ("ci.storage.bucket", "bucket"),
+                ("ci.storage.alias", "alias"),
+                ("ci.storage.access_key", "key"),
+                ("ci.storage.secret_key", "secret"),
+            ],
+        )
+        dev = DeveloperConfiguration.model_validate(cfg)
+        assert dev.ci.storage is not None
+        assert dev.ci.storage.endpoint == "https://test.example.com"
+        assert dev.ci.storage.bucket == "bucket"
+        assert dev.ci.storage.alias == "alias"
+        assert dev.ci.storage.access_key.get_secret_value() == "key"
+        assert dev.ci.storage.secret_key.get_secret_value() == "secret"
+        assert dev.ci.storage.public_url is None
+
 
 class TestSecretStrRedaction:
     def test_storage_secrets_are_redacted_in_dump(self) -> None:
