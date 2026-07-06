@@ -301,11 +301,25 @@ def resolve_announce_remote_target(
                 "[remote.minio] is not configured in efa.dev.toml. "
                 "See efa.dev.example.toml for the expected format."
             )
+        if access_key:
+            resolved_access_key = access_key
+        elif minio_cfg.access_key:
+            resolved_access_key = minio_cfg.access_key.get_secret_value()
+        else:
+            resolved_access_key = ""
+
+        if secret_key:
+            resolved_secret_key = secret_key
+        elif minio_cfg.secret_key:
+            resolved_secret_key = minio_cfg.secret_key.get_secret_value()
+        else:
+            resolved_secret_key = ""
+
         return (
             endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}",
             bucket or minio_cfg.bucket,
-            access_key or minio_cfg.access_key,
-            secret_key or minio_cfg.secret_key,
+            resolved_access_key,
+            resolved_secret_key,
             alias or minio_cfg.alias,
         )
     elif target == "s3":
@@ -315,11 +329,25 @@ def resolve_announce_remote_target(
                 "[remote.s3] is not configured in efa.dev.toml. "
                 "See efa.dev.example.toml for the expected format."
             )
+        if access_key:
+            resolved_access_key = access_key
+        elif s3_cfg.access_key:
+            resolved_access_key = s3_cfg.access_key.get_secret_value()
+        else:
+            resolved_access_key = ""
+
+        if secret_key:
+            resolved_secret_key = secret_key
+        elif s3_cfg.secret_key:
+            resolved_secret_key = s3_cfg.secret_key.get_secret_value()
+        else:
+            resolved_secret_key = ""
+
         return (
             endpoint or s3_cfg.endpoint,
             bucket or s3_cfg.bucket,
-            access_key or s3_cfg.access_key,
-            secret_key or s3_cfg.secret_key,
+            resolved_access_key,
+            resolved_secret_key,
             alias or s3_cfg.alias,
         )
     else:

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from bootstrap.ci import register_ci_commands
 from bootstrap.cli.build import register_build_commands
+from bootstrap.cli.ci.updater import register_raw_data_commands
 from bootstrap.cli.dev import register_dev_commands
 from bootstrap.cli.etc import register_etc_commands
 from bootstrap.cli.generate import register_generate_commands
@@ -30,6 +31,7 @@ def register_all_commands(cli_group: click.Group) -> None:
     register_etc_commands(cli_group)
     register_test_commands(cli_group)
     register_ci_commands(cli_group)
+    register_raw_data_commands(cli_group.commands["ci"])
 
 
 __all__ = ["register_all_commands"]

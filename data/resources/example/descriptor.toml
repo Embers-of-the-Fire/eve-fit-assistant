@@ -18,6 +18,11 @@ ignore = true
 # This is also used as the output archive file name.
 identifier = "example"
 
+# Whether this resource represents a CI raw-data server that should be tracked
+# by the updater pipeline. Only descriptors with `server = true` are discovered
+# as valid server ids, and they must also have `ignore = false`.
+server = false
+
 # The start configuration file for the resource.
 # See data/README.md for more details.
 start_cfg = "start.ini"

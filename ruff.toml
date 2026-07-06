@@ -8,6 +8,7 @@ exclude = [
     "__pycache__",
     "**/*_pb2.py",
     "rust/lib/",
+    "tools/eve-fsd-dumper/",
 ]
 
 [format]
@@ -25,6 +26,8 @@ extend-select = [
     "PIE", # flake8-pie
     "PGH", # pygrep
     "RUF", # ruff checks
+    "S105", # hardcoded-password-string
+    "S106", # hardcoded-password-funcarg
     "SIM", # flake8-simplify
     "T20", # flake8-print
     "TCH", # flake8-type-checking

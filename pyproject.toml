@@ -17,6 +17,7 @@ dependencies = [
     "case-converter>=1.2.0",
     "tqdm>=4.67.0",
     "canonicaljson>=2.0.0",
+    "requests>=2.32.5",
 ]
 
 [dependency-groups]
@@ -33,7 +34,7 @@ dev = [
 testpaths = ["bootstrap/tests"]
 pythonpath = [".", "bootstrap/data/schema"]
 asyncio_mode = "auto"
-addopts = ["--disable-socket"]
+addopts = ["--disable-socket", "--allow-unix-socket"]
 
 [tool.uv.sources]
 convert = { workspace = true }

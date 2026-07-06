@@ -42,6 +42,8 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
+from bootstrap.utils import get_command
+
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -840,6 +842,49 @@ class AnnouncementRemoteSync:
                                 f"Failed to download document {body_hash}: {e}"
                             ) from e
 
+    def _run_mc(self, cmd: list[str], redacted_cmd: list[str], title: str) -> None:
+        """Run an ``mc`` command, logging only the redacted version."""
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to execute [{title}] ({' '.join(redacted_cmd)}): {result.stderr}"
+            )
+
+    def _ensure_alias(self) -> tuple[str, str]:
+        """Set the S3 alias once, redacting credentials in any error message.
+
+        Returns the resolved ``mc`` binary path and the alias target URL prefix.
+        """
+        mc_bin = get_command("mc")
+        alias_target = f"{self.alias_name}/{self.bucket}"
+        redacted = "<redacted>"
+        self._run_mc(
+            [
+                mc_bin,
+                "alias",
+                "set",
+                self.alias_name,
+                self.endpoint,
+                self.access_key,
+                self.secret_key,
+                "--api",
+                "s3v4",
+            ],
+            [
+                mc_bin,
+                "alias",
+                "set",
+                self.alias_name,
+                self.endpoint,
+                redacted,
+                redacted,
+                "--api",
+                "s3v4",
+            ],
+            "ANNOUNCE ALIAS",
+        )
+        return mc_bin, alias_target
+
     def init_remote(self, force: bool = False) -> None:
         """Initialize a new empty announcement workspace on the remote.
 
@@ -893,8 +938,7 @@ class AnnouncementRemoteSync:
             (self.workspace.remote_dir / "active.json", "announcements/active.json"),
         ]
 
-        mc_bin = "mc"
-        alias_target = f"{self.alias_name}/{self.bucket}"
+        mc_bin, alias_target = self._ensure_alias()
 
         for local_path, remote_path in uploads:
             target_url = f"{alias_target}/{self.resource_root}/{remote_path}"
@@ -936,8 +980,7 @@ class AnnouncementRemoteSync:
                 print(f"Would upload: {local_path} → {remote_path}")
             return
 
-        mc_bin = "mc"
-        alias_target = f"{self.alias_name}/{self.bucket}"
+        mc_bin, alias_target = self._ensure_alias()
         seen: set[str] = set()
 
         for local_path, remote_path in files_to_upload:

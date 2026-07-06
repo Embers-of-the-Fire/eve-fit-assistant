@@ -2,6 +2,7 @@
 start_cfg = "start.ini"
 name = {en = "Singularity", zh = "奇点"}
 identifier = "singularity"
+server = true
 
 [resources]
 fsd = "fsd"

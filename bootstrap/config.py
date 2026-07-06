@@ -23,6 +23,7 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import SecretStr
 from pydantic import ValidationError
 from pydantic import model_validator
 
@@ -37,6 +38,62 @@ from bootstrap.validator import ProjectPath  # noqa:TC001
 CONFIGURATION: ProjectConfiguration | None = None
 DEV_CONFIGURATION: DeveloperConfiguration | None = None
 WORKSPACE_CACHE: WorkspaceCache | None = None
+
+_DEV_CONFIG_OVERRIDES: list[tuple[str, str]] = []
+_PROJECT_CONFIG_OVERRIDES: list[tuple[str, str]] = []
+
+
+def _split_key(key: str) -> list[str]:
+    """Split a dotted override key into its path components."""
+    return key.split(".")
+
+
+def _set_nested_value(data: dict, key_path: list[str], value: Any) -> None:
+    """Set ``value`` at ``key_path`` inside ``data``, creating tables as needed.
+
+    Raises ``KeyError`` if an intermediate value is not a dictionary.
+    """
+    *head, tail = key_path
+    node = data
+    for part in head:
+        if part not in node:
+            node[part] = {}
+        node = node[part]
+        if not isinstance(node, dict):
+            raise KeyError(".".join(key_path))
+    node[tail] = value
+
+
+def _apply_overrides(
+    cfg: dict,
+    overrides: list[tuple[str, str]],
+) -> dict:
+    """Apply CLI overrides to a raw TOML dictionary.
+
+    Values are parsed as TOML primitives so numbers, booleans, and arrays work.
+    If a value is not valid bare TOML (e.g. contains special characters), it is
+    treated as a literal string.
+    """
+    for raw_key, raw_value in overrides:
+        key_path = _split_key(raw_key)
+        try:
+            parsed_value = tomllib.loads(f"value = {raw_value}")["value"]
+        except tomllib.TOMLDecodeError:
+            parsed_value = raw_value
+        _set_nested_value(cfg, key_path, parsed_value)
+    return cfg
+
+
+def apply_dev_config_overrides(overrides: list[tuple[str, str]]) -> None:
+    """Register overrides to apply when loading ``efa.dev.toml``."""
+    global _DEV_CONFIG_OVERRIDES
+    _DEV_CONFIG_OVERRIDES = overrides
+
+
+def apply_project_config_overrides(overrides: list[tuple[str, str]]) -> None:
+    """Register overrides to apply when loading ``efa.config.toml``."""
+    global _PROJECT_CONFIG_OVERRIDES
+    _PROJECT_CONFIG_OVERRIDES = overrides
 
 
 class ProjectLocalizations(BaseModel):
@@ -135,6 +192,8 @@ class ProjectConfiguration(BaseModel):
             print(f"Unable to find `eva.config.toml`, expected to be placed at {CONFIG_PATH}")
             raise
 
+        cfg = _apply_overrides(cfg, _PROJECT_CONFIG_OVERRIDES)
+
         try:
             global CONFIGURATION
             CONFIGURATION = ProjectConfiguration.model_validate(cfg)
@@ -211,8 +270,8 @@ class DeveloperRemoteMinio(BaseModel):
     port: int
     console_port: int
     bucket: str
-    access_key: str
-    secret_key: str
+    access_key: SecretStr
+    secret_key: SecretStr
     data_dir: Path
     alias: str
     public_download: bool
@@ -225,12 +284,35 @@ class DeveloperRemoteS3(BaseModel):
 
     endpoint: str
     bucket: str
-    access_key: str
-    secret_key: str
+    access_key: SecretStr
+    secret_key: SecretStr
     alias: str
     public_download: bool
     verify_upload: bool = True
     verify_workers: int = 4
+
+
+class DeveloperCiStorage(BaseModel):
+    """CI data storage configuration (Cloudflare R2). All fields required."""
+
+    endpoint: str
+    bucket: str
+    alias: str
+    access_key: SecretStr
+    secret_key: SecretStr
+    public_url: str
+
+
+class DeveloperCiRawArtifacts(BaseModel):
+    """Raw artifact upload target inside the CI bucket."""
+
+    remote_root: str = Field(default="data-generator/raw-artifact")
+    endpoint: str | None = None
+    bucket: str | None = None
+    alias: str | None = None
+    access_key: SecretStr | None = None
+    secret_key: SecretStr | None = None
+    public_url: str | None = None
 
 
 def _fail_remote_sub(toml_key: str, command_group: str) -> None:
@@ -265,21 +347,11 @@ class DeveloperRemote(BaseModel):
         return self.s3  # type: ignore[return-value]
 
 
-class DeveloperCiStorage(BaseModel):
-    """CI data storage configuration (Cloudflare R2). All fields required."""
-
-    endpoint: str
-    bucket: str
-    alias: str
-    access_key: str
-    secret_key: str
-    public_url: str
-
-
 class DeveloperCi(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
     storage: DeveloperCiStorage | None = None
+    raw_artifacts: DeveloperCiRawArtifacts | None = None
 
     def require_storage(self) -> DeveloperCiStorage:
         if self.storage is None:
@@ -291,6 +363,11 @@ class DeveloperCi(BaseModel):
             )
             sys.exit(1)
         return self.storage
+
+    def require_raw_artifacts(self) -> tuple[DeveloperCiRawArtifacts, DeveloperCiStorage]:
+        if self.raw_artifacts is None:
+            self.raw_artifacts = DeveloperCiRawArtifacts()
+        return self.raw_artifacts, self.require_storage()
 
 
 class DeveloperConfiguration(BaseModel):
@@ -310,6 +387,8 @@ class DeveloperConfiguration(BaseModel):
                 cfg = tomllib.load(cfg_f)
         except FileNotFoundError:
             pass
+
+        cfg = _apply_overrides(cfg, _DEV_CONFIG_OVERRIDES)
 
         try:
             global DEV_CONFIGURATION
