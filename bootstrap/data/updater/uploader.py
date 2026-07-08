@@ -84,19 +84,18 @@ async def upload_artifacts(
     """Upload raw artifacts and ``build.txt`` to the CI bucket."""
     endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
 
+    mc_env = {
+        f"MC_HOST_{alias}": (
+            "https://"
+            f"{quote(access_key, safe='')}:{quote(secret_key, safe='')}"
+            f"@{endpoint.removeprefix('https://')}"
+        ),
+    }
+
     await _run_mc(
         ["alias", "set", alias, endpoint, "--api", "s3v4"],
         "CI RAW ARTIFACTS ALIAS",
-        env={
-            # ``MC_HOST_<alias>`` is parsed as a URL, so access/secret key characters that
-            # are special in the userinfo segment (``/``, ``+``, ``=``, ``@``, ``:``) must
-            # be percent-encoded. ``mc`` then decodes them before sending to S3.
-            f"MC_HOST_{alias}": (
-                "https://"
-                f"{quote(access_key, safe='')}:{quote(secret_key, safe='')}"
-                f"@{endpoint.removeprefix('https://')}"
-            ),
-        },
+        env=mc_env,
     )
 
     server_root = f"{alias}/{bucket}/{config.remote_root}/{server_id}"
@@ -110,10 +109,12 @@ async def upload_artifacts(
             f"{server_root}/artifacts/",
         ],
         f"UPLOAD {server_id} ARTIFACTS",
+        env=mc_env,
     )
 
     build_file = artifacts_dir.parent / "build.txt"
     await _run_mc(
         ["cp", str(build_file), f"{server_root}/build.txt"],
         f"UPLOAD {server_id} BUILD.TXT",
+        env=mc_env,
     )
