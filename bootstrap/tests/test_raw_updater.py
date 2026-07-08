@@ -512,14 +512,12 @@ class TestRunMc:
     async def test_upload_artifacts_uses_mc_host_env(self, monkeypatch, tmp_path: Path) -> None:
         from bootstrap.data.updater.uploader import upload_artifacts
 
-        captured_env: dict[str, str] | None = None
         commands: list[list[str]] = []
+        envs: list[dict[str, str] | None] = []
 
         async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            nonlocal captured_env
-            if captured_env is None:
-                captured_env = kwargs.get("env")
             commands.append(list(args))
+            envs.append(kwargs.get("env"))
             return _MockProcess()
 
         monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
@@ -541,8 +539,10 @@ class TestRunMc:
 
         await upload_artifacts("tranquility", artifacts_dir, 123456, config, storage)
 
-        assert captured_env is not None
-        assert captured_env["MC_HOST_myalias"] == "https://ACCESS_KEY:SECRET_KEY@s3.example.com"
+        assert len(envs) == 3
+        for env in envs:
+            assert env is not None
+            assert env["MC_HOST_myalias"] == "https://ACCESS_KEY:SECRET_KEY@s3.example.com"
 
         alias_cmd = next(cmd for cmd in commands if cmd[1:3] == ["alias", "set"])
         assert "ACCESS_KEY" not in alias_cmd
