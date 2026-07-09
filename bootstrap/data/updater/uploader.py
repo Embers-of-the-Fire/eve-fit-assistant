@@ -74,16 +74,13 @@ def _resolve_storage(
     )
 
 
-async def upload_artifacts(
-    server_id: ServerId,
-    artifacts_dir: Path,
-    build: int,
-    config: DeveloperCiRawArtifacts,
-    storage: DeveloperCiStorage,
-) -> None:
-    """Upload raw artifacts and ``build.txt`` to the CI bucket."""
-    endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
-
+async def _setup_mc(
+    endpoint: str,
+    access_key: str,
+    secret_key: str,
+    alias: str,
+) -> dict[str, str]:
+    """Configure the MinIO client environment and alias for subsequent calls."""
     mc_env = {
         f"MC_HOST_{alias}": (
             "https://"
@@ -97,6 +94,20 @@ async def upload_artifacts(
         "CI RAW ARTIFACTS ALIAS",
         env=mc_env,
     )
+    return mc_env
+
+
+async def upload_artifacts(
+    server_id: ServerId,
+    artifacts_dir: Path,
+    build: int,
+    config: DeveloperCiRawArtifacts,
+    storage: DeveloperCiStorage,
+) -> None:
+    """Upload raw artifacts and ``build.txt`` to the CI bucket."""
+    endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
+
+    mc_env = await _setup_mc(endpoint, access_key, secret_key, alias)
 
     server_root = f"{alias}/{bucket}/{config.remote_root}/{server_id}"
 
@@ -129,19 +140,7 @@ async def download_artifacts(
     """Download raw artifacts from the CI bucket to a local directory."""
     endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
 
-    mc_env = {
-        f"MC_HOST_{alias}": (
-            "https://"
-            f"{quote(access_key, safe='')}:{quote(secret_key, safe='')}"
-            f"@{endpoint.removeprefix('https://')}"
-        ),
-    }
-
-    await _run_mc(
-        ["alias", "set", alias, endpoint, "--api", "s3v4"],
-        "CI RAW ARTIFACTS ALIAS",
-        env=mc_env,
-    )
+    mc_env = await _setup_mc(endpoint, access_key, secret_key, alias)
 
     server_root = f"{alias}/{bucket}/{config.remote_root}/{server_id}"
     target_dir = output_dir / server_id
