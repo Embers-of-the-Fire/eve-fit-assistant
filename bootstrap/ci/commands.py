@@ -22,8 +22,6 @@ from bootstrap.color import styled
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.data.updater.server import SERVER_IDS
 from bootstrap.data.workspace.config import WorkspaceConfig
-from bootstrap.data.workspace.generate import run_generator
-from bootstrap.remote import SessionManager
 from bootstrap.utils import get_command
 
 
@@ -206,6 +204,8 @@ def register_ci_commands(cli_group: click.Group) -> None:
     )
     def release_data_build(output: Path, hashes: Path, server: tuple[str, ...]):
         """Build resource snapshots for all servers and emit snapshot-hashes.json."""
+        from bootstrap.data.workspace.generate import run_generator
+
         schema_root = (PROJECT_ROOT / output).resolve()
         servers = list(server) if server else sorted(SERVER_IDS)
         if not servers:
@@ -290,6 +290,8 @@ def register_ci_commands(cli_group: click.Group) -> None:
         sync_depth: int,
     ):
         """Publish resource snapshots to a remote channel."""
+        from bootstrap.remote import SessionManager
+
         resolved_root = (PROJECT_ROOT / schema_root).resolve()
 
         hashes_path = (PROJECT_ROOT / hashes).resolve()
