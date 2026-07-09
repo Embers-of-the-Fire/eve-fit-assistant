@@ -49,6 +49,9 @@ jobs:
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
 
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+
       - name: Download raw artifacts
         env:
           CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
@@ -140,6 +143,9 @@ jobs:
 
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
       - name: Determine mode
         id: mode
