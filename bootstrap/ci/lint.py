@@ -46,6 +46,17 @@ def run_lint(
             execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT", dry_run)
 
     if lang in ("all", "dart"):
+        from bootstrap.docs import build_bundled_docs
+
+        _echo("build bundled docs")
+        if dry_run:
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "[Dry-Run] Skipping build bundled docs"))
+        else:
+            try:
+                build_bundled_docs()
+            except ValueError as exception:
+                raise click.ClickException(str(exception)) from exception
+
         dart = get_command("dart")
 
         if not no_check or check_only:
