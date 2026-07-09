@@ -19,8 +19,6 @@ from bootstrap.utils import try_get_attr
 if TYPE_CHECKING:
     from bootstrap.data.workspace.generate import GeneratorDatasource
 
-_graphic_semaphore = asyncio.Semaphore(32)
-
 
 class GraphicIconInfo(BaseModel):
     folder: str | None = Field(default=None)
@@ -53,8 +51,10 @@ async def generate(data: GeneratorDatasource, tree_shake_graphics: set[int]):
         )
     )
 
+    graphic_semaphore = asyncio.Semaphore(32)
+
     tasks = (
-        __download_graphic(graphic_id, graphic_folder, data)
+        __download_graphic(graphic_id, graphic_folder, data, graphic_semaphore)
         for graphic_id, graphic_folder in filtered_graphics
     )
     await asyncio.gather(*tasks)
@@ -62,7 +62,12 @@ async def generate(data: GeneratorDatasource, tree_shake_graphics: set[int]):
     info(f"Generated {len(filtered_graphics)} graphics.")
 
 
-async def __download_graphic(graphic_id: int, graphic_folder: str, data: GeneratorDatasource):
+async def __download_graphic(
+    graphic_id: int,
+    graphic_folder: str,
+    data: GeneratorDatasource,
+    graphic_semaphore: asyncio.Semaphore,
+):
     maybe_graphic_files = [
         (f"{graphic_folder}/{graphic_id}_64.png", GraphicVariantType.NONE),
         (f"{graphic_folder}/{graphic_id}_64_bp.png", GraphicVariantType.BP),
@@ -83,7 +88,7 @@ async def __download_graphic(graphic_id: int, graphic_folder: str, data: Generat
             continue
 
         async with (
-            _graphic_semaphore,
+            graphic_semaphore,
             graphic_file.open() as f_input,
             aiofiles.open(target_dir, "wb+") as f_output,
         ):
