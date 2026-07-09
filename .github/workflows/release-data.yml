@@ -61,64 +61,19 @@ jobs:
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
           nix develop .#python --command bash -c \
-            'python3 - <<PY
-          import os
-          import subprocess
-          import urllib.parse
-
-          alias = os.environ["CI_ALIAS"]
-          endpoint = os.environ["CI_ENDPOINT"]
-          access_key = os.environ["CI_ACCESS_KEY"]
-          secret_key = os.environ["CI_SECRET_KEY"]
-          host = (
-              "https://"
-              + urllib.parse.quote(access_key, safe="")
-              + ":"
-              + urllib.parse.quote(secret_key, safe="")
-              + "@"
-              + endpoint.removeprefix("https://").removeprefix("http://")
-          )
-          os.environ[f"MC_HOST_{alias}"] = host
-          bucket = os.environ["CI_BUCKET"]
-          for server in ("tranquility", "serenity", "singularity"):
-              os.makedirs(f"data/resources/{server}", exist_ok=True)
-              subprocess.run(
-                  [
-                      "mc", "mirror", "--overwrite",
-                      f"{alias}/{bucket}/data-generator/raw-artifact/{server}/artifacts/",
-                      f"data/resources/{server}/",
-                  ],
-                  check=True,
-              )
-          PY'
+            'uv run x.py \
+              --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
+              --dev-env ci.storage.bucket="$CI_BUCKET" \
+              --dev-env ci.storage.alias="$CI_ALIAS" \
+              --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
+              --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
+              --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
+              ci raw-data download --all'
 
       - name: Build resource snapshots
         run: |
-          set -euo pipefail
-          mkdir -p cache/snapshot-hashes
-          nix develop .#python --command bash -c '
-            set -euo pipefail
-            for server in tranquility serenity singularity; do
-              uv run x.py --ws "${server}" build data \
-                --schema-root cache/remote \
-                --output-snapshot-hash "cache/snapshot-hashes/${server}.txt"
-            done
-          '
-
-      - name: Create snapshot-hashes.json
-        run: |
           nix develop .#python --command bash -c \
-            'python3 - <<PY
-          import json
-          from pathlib import Path
-
-          hashes = {}
-          for server in ("tranquility", "serenity", "singularity"):
-              hashes[server] = Path(f"cache/snapshot-hashes/{server}.txt").read_text().strip()
-          Path("snapshot-hashes.json").write_text(
-              json.dumps(hashes, indent=2, sort_keys=True) + "\n"
-          )
-          PY'
+            'uv run x.py ci release-data build --output cache/remote --hashes snapshot-hashes.json'
 
       - uses: actions/upload-artifact@v4
         with:
@@ -144,9 +99,6 @@ jobs:
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
 
-      - name: Generate protobuf
-        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
-
       - name: Determine mode
         id: mode
         run: |
@@ -161,99 +113,28 @@ jobs:
           name: v2-snapshots
           path: .
 
-      - name: Initialize session and stage snapshots
-        run: |
-          nix develop .#python --command bash -c \
-            'set -euo pipefail
-          uv run x.py remote session init testing --schema-root cache/remote
-          python3 - <<PY
-          import json
-          import subprocess
-          from pathlib import Path
-
-          hashes = json.loads(Path("snapshot-hashes.json").read_text())
-          for server in ("tranquility", "serenity", "singularity"):
-              hash_value = hashes[server]
-              subprocess.run(
-                  [
-                      "uv", "run", "x.py", "remote", "session", "add",
-                      "--resource", "--hash", hash_value,
-                      "--schema-root", "cache/remote",
-                  ],
-                  check=True,
-              )
-          PY'
-
-      - name: Diff staged snapshots
-        run: |
-          nix develop .#python --command bash -c \
-            'uv run x.py remote session diff --json --schema-root cache/remote'
-
-      - name: Verify staged snapshots
-        run: |
-          nix develop .#python --command bash -c \
-            'uv run x.py remote session verify --schema-root cache/remote'
-
-      - name: Commit generation
-        id: commit
+      - name: Publish to testing channel
         env:
           IS_TEST_MODE: ${{ steps.mode.outputs.is_test_mode }}
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
           if [ "${IS_TEST_MODE}" = "true" ]; then
-            nix develop .#python --command bash -c \
-              'uv run x.py remote session commit --no-push --schema-root cache/remote'
+            TEST_MODE_FLAG="--test-mode"
           else
-            nix develop .#python --command bash -c \
-              'uv run x.py remote session commit --schema-root cache/remote'
-            G=$(nix develop .#python --command bash -c \
-              'python3 -c "import json; print(json.load(open(\"cache/remote/channels/heads/testing/metadata.json\"))[\"generationHash\"])"')
-            echo "generation_hash=${G}" >> "$GITHUB_OUTPUT"
+            TEST_MODE_FLAG=""
           fi
-
-      - name: Publish to remote
-        if: steps.mode.outputs.is_test_mode != 'true'
-        env:
-          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
-          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
-          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
-        run: |
+          export TEST_MODE_FLAG
           nix develop .#python --command bash -c \
-            'uv run x.py remote publish testing --target s3 \
+            'uv run x.py ci release-data publish testing \
+              --hashes snapshot-hashes.json \
+              --schema-root cache/remote \
+              --target s3 \
               --endpoint "${REMOTE_ENDPOINT}" \
               --bucket "${REMOTE_BUCKET}" \
               --access-key "${REMOTE_ACCESS_KEY}" \
               --secret-key "${REMOTE_SECRET_KEY}" \
               --alias efa-remote-publish \
-              --schema-root cache/remote'
-
-      - name: Sync remote metadata
-        if: steps.mode.outputs.is_test_mode != 'true'
-        env:
-          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
-          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
-          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
-        run: |
-          nix develop .#python --command bash -c \
-            'uv run x.py remote sync --target s3 --channel testing --depth 1 \
-              --endpoint "${REMOTE_ENDPOINT}" \
-              --bucket "${REMOTE_BUCKET}" \
-              --access-key "${REMOTE_ACCESS_KEY}" \
-              --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish \
-              --schema-root cache/remote'
-
-      - name: Verify remote head
-        if: steps.mode.outputs.is_test_mode != 'true'
-        env:
-          GENERATION_HASH: ${{ steps.commit.outputs.generation_hash }}
-        run: |
-          COMMITTED="${GENERATION_HASH}"
-          SYNCED=$(nix develop .#python --command bash -c \
-            'python3 -c "import json; print(json.load(open(\"cache/remote/channels/heads/testing/metadata.json\"))[\"generationHash\"])"')
-          if [ "${COMMITTED}" != "${SYNCED}" ]; then
-            echo "Remote head verification failed: committed=${COMMITTED}, synced=${SYNCED}" >&2
-            exit 1
-          fi
-          echo "Remote head verified: ${SYNCED}"
+              ${TEST_MODE_FLAG}'

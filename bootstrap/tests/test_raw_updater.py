@@ -548,6 +548,46 @@ class TestRunMc:
         assert "ACCESS_KEY" not in alias_cmd
         assert "SECRET_KEY" not in alias_cmd
 
+    async def test_download_artifacts_uses_mc_host_env(self, monkeypatch, tmp_path: Path) -> None:
+        from bootstrap.data.updater.uploader import download_artifacts
+
+        commands: list[list[str]] = []
+        envs: list[dict[str, str] | None] = []
+
+        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
+            commands.append(list(args))
+            envs.append(kwargs.get("env"))
+            return _MockProcess()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
+
+        storage = DeveloperCiStorage(
+            endpoint="https://s3.example.com",
+            bucket="bucket",
+            alias="myalias",
+            access_key="ACCESS_KEY",
+            secret_key="SECRET_KEY",  # noqa: S106
+            public_url="https://public.example.com",
+        )
+        config = DeveloperCiRawArtifacts(remote_root="data-generator/raw-artifact")
+
+        output_dir = tmp_path / "out"
+
+        await download_artifacts("tranquility", output_dir, config, storage)
+
+        assert len(envs) == 2
+        for env in envs:
+            assert env is not None
+            assert env["MC_HOST_myalias"] == "https://ACCESS_KEY:SECRET_KEY@s3.example.com"
+
+        mirror_cmd = next(cmd for cmd in commands if cmd[1:2] == ["mirror"])
+        assert mirror_cmd[-2] == "myalias/bucket/data-generator/raw-artifact/tranquility/artifacts/"
+        assert mirror_cmd[-1] == f"{output_dir / 'tranquility'}/"
+
+        alias_cmd = next(cmd for cmd in commands if cmd[1:3] == ["alias", "set"])
+        assert "ACCESS_KEY" not in alias_cmd
+        assert "SECRET_KEY" not in alias_cmd
+
 
 class TestUpdateServer:
     async def test_writes_build_txt_when_upload_disabled(self, monkeypatch, tmp_path: Path) -> None:

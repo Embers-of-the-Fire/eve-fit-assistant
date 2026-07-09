@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import tarfile
 
@@ -15,7 +16,14 @@ from bootstrap.ci.lint import run_lint
 from bootstrap.ci.suites import SUITE_DEFINITIONS
 from bootstrap.ci.suites import calculate_ci_matrix
 from bootstrap.cli import runtime
+from bootstrap.cli.generate import _run_protobuf
+from bootstrap.cli.remote.helpers import validate_remote_channel
 from bootstrap.color import styled
+from bootstrap.constant import PROJECT_ROOT
+from bootstrap.data.updater.server import SERVER_IDS
+from bootstrap.data.workspace.config import WorkspaceConfig
+from bootstrap.data.workspace.generate import run_generator
+from bootstrap.remote import SessionManager
 from bootstrap.utils import get_command
 
 
@@ -161,3 +169,227 @@ def register_ci_commands(cli_group: click.Group) -> None:
             runtime.execute([mc, "cp", str(out_path), remote_path], "CI STORAGE UPLOAD")
         else:
             click.echo(f"Upload with: mc cp {out_path} {remote_path}")
+
+    def _lookup_command(ctx: click.Context, *path: str) -> click.Command:
+        """Walk from the root CLI group to a nested command by name."""
+        root_ctx = ctx
+        while root_ctx.parent is not None:
+            root_ctx = root_ctx.parent
+        cmd = root_ctx.command
+        for name in path:
+            cmd = cmd.commands[name]
+        return cmd
+
+    @ci.group("release-data")
+    def release_data():
+        """Manage CI release data snapshots."""
+
+    @release_data.command("build")
+    @click.option(
+        "--output",
+        "-o",
+        type=click.Path(file_okay=False, path_type=Path),
+        default="cache/remote",
+        help="Schema V2 root for the generated snapshots (default: cache/remote).",
+    )
+    @click.option(
+        "--hashes",
+        type=click.Path(file_okay=True, path_type=Path),
+        default="snapshot-hashes.json",
+        help="Output path for the snapshot hashes JSON file.",
+    )
+    @click.option(
+        "--server",
+        multiple=True,
+        default=None,
+        help="Server to build (default: all configured servers).",
+    )
+    def release_data_build(output: Path, hashes: Path, server: tuple[str, ...]):
+        """Build resource snapshots for all servers and emit snapshot-hashes.json."""
+        schema_root = (PROJECT_ROOT / output).resolve()
+        servers = list(server) if server else sorted(SERVER_IDS)
+        if not servers:
+            raise click.ClickException("No servers configured.")
+
+        hashes_data: dict[str, str] = {}
+        for server_id in servers:
+            if server_id not in SERVER_IDS:
+                raise click.ClickException(f"Unknown server: {server_id}")
+            ws_descriptor = runtime.get_workspace(server_id)
+            ws_config = WorkspaceConfig.load_from_descriptor(ws_descriptor)
+            snapshot_hash = asyncio.run(run_generator(ws_config, set(), schema_root=schema_root))
+            if snapshot_hash is None:
+                raise click.ClickException(f"No snapshot produced for {server_id}")
+            hashes_data[server_id] = snapshot_hash
+            click.echo(f"Built {server_id} snapshot: {snapshot_hash[:16]}...")
+
+        hashes_path = (PROJECT_ROOT / hashes).resolve()
+        hashes_path.parent.mkdir(parents=True, exist_ok=True)
+        hashes_path.write_text(
+            json.dumps(hashes_data, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Wrote snapshot hashes to {hashes_path}"))
+
+    @release_data.command("publish")
+    @click.argument("channel")
+    @click.option(
+        "--hashes",
+        type=click.Path(exists=True, file_okay=True, path_type=Path),
+        default="snapshot-hashes.json",
+        help="Path to the snapshot hashes JSON file.",
+    )
+    @click.option(
+        "--schema-root",
+        type=click.Path(file_okay=False, path_type=Path),
+        default="cache/remote",
+        help="Schema V2 root containing the snapshots (default: cache/remote).",
+    )
+    @click.option(
+        "--test-mode",
+        is_flag=True,
+        help="Commit with --no-push and skip publish/sync/verify.",
+    )
+    @click.option(
+        "--target",
+        type=click.Choice(["minio", "s3"]),
+        default="s3",
+        help="Remote target type (default: s3).",
+    )
+    @click.option("--endpoint", default=None, help="Override remote endpoint URL.")
+    @click.option("--bucket", default=None, help="Override remote bucket name.")
+    @click.option("--access-key", default=None, help="Override remote access key.")
+    @click.option("--secret-key", default=None, help="Override remote secret key.")
+    @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
+    @click.option(
+        "--workers",
+        type=click.IntRange(min=1),
+        default=8,
+        help="Number of parallel upload/download workers.",
+    )
+    @click.option(
+        "--sync-depth",
+        type=click.IntRange(min=-1),
+        default=1,
+        help="Max generations to sync after publish (default: 1).",
+    )
+    @click.pass_context
+    def release_data_publish(
+        ctx: click.Context,
+        channel: str,
+        hashes: Path,
+        schema_root: Path,
+        test_mode: bool,
+        target: str,
+        endpoint: str | None,
+        bucket: str | None,
+        access_key: str | None,
+        secret_key: str | None,
+        alias_name: str | None,
+        workers: int,
+        sync_depth: int,
+    ):
+        """Publish resource snapshots to a remote channel."""
+        resolved_root = (PROJECT_ROOT / schema_root).resolve()
+
+        hashes_path = (PROJECT_ROOT / hashes).resolve()
+        hashes_data = json.loads(hashes_path.read_text(encoding="utf-8"))
+        if not isinstance(hashes_data, dict):
+            raise click.ClickException(f"Invalid hashes file: {hashes_path}")
+
+        resolved_channel = validate_remote_channel(channel).value
+
+        _run_protobuf()
+
+        init_cmd = _lookup_command(ctx, "remote", "session", "init")
+        add_cmd = _lookup_command(ctx, "remote", "session", "add")
+        diff_cmd = _lookup_command(ctx, "remote", "session", "diff")
+        verify_cmd = _lookup_command(ctx, "remote", "session", "verify")
+        commit_cmd = _lookup_command(ctx, "remote", "session", "commit")
+
+        ctx.invoke(
+            init_cmd,
+            channel=resolved_channel,
+            schema_root=resolved_root,
+            force_overwrite=False,
+        )
+
+        for server_id, hash_value in hashes_data.items():
+            ctx.invoke(
+                add_cmd,
+                resource_flag=True,
+                release_flag=False,
+                source_hash=hash_value,
+                source_file=None,
+                force=False,
+                replace_hash=None,
+                schema_root=resolved_root,
+            )
+            click.echo(f"Staged {server_id} snapshot: {hash_value[:16]}...")
+
+        ctx.invoke(diff_cmd, as_json=True, schema_root=resolved_root)
+        ctx.invoke(verify_cmd, repair=False, schema_root=resolved_root)
+        ctx.invoke(
+            commit_cmd,
+            no_push=test_mode,
+            force=False,
+            schema_root=resolved_root,
+        )
+
+        mgr = SessionManager(resolved_root)
+        committed_hash = mgr.get_head(resolved_channel).generation_hash
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.GREEN],
+                f"Committed generation: {committed_hash[:16]}...",
+            )
+        )
+
+        if test_mode:
+            click.echo(
+                styled([Style.BRIGHT, Fore.YELLOW], "Test mode: skipped publish/sync/verify.")
+            )
+            return
+
+        publish_cmd = _lookup_command(ctx, "remote", "publish")
+        sync_cmd = _lookup_command(ctx, "remote", "sync")
+
+        ctx.invoke(
+            publish_cmd,
+            channel=resolved_channel,
+            target=target,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            alias_name=alias_name,
+            workers=workers,
+            schema_root=resolved_root,
+        )
+
+        ctx.invoke(
+            sync_cmd,
+            target=target,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            alias_name=alias_name,
+            depth=sync_depth,
+            workers=workers,
+            schema_root=resolved_root,
+            channel=resolved_channel,
+        )
+
+        synced_hash = mgr.get_head(resolved_channel).generation_hash
+        if committed_hash != synced_hash:
+            raise click.ClickException(
+                f"Remote head verification failed: "
+                f"committed={committed_hash[:16]}..., synced={synced_hash[:16]}..."
+            )
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.GREEN],
+                f"Remote head verified: {synced_hash[:16]}...",
+            )
+        )

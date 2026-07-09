@@ -118,3 +118,42 @@ async def upload_artifacts(
         f"UPLOAD {server_id} BUILD.TXT",
         env=mc_env,
     )
+
+
+async def download_artifacts(
+    server_id: ServerId,
+    output_dir: Path,
+    config: DeveloperCiRawArtifacts,
+    storage: DeveloperCiStorage,
+) -> None:
+    """Download raw artifacts from the CI bucket to a local directory."""
+    endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
+
+    mc_env = {
+        f"MC_HOST_{alias}": (
+            "https://"
+            f"{quote(access_key, safe='')}:{quote(secret_key, safe='')}"
+            f"@{endpoint.removeprefix('https://')}"
+        ),
+    }
+
+    await _run_mc(
+        ["alias", "set", alias, endpoint, "--api", "s3v4"],
+        "CI RAW ARTIFACTS ALIAS",
+        env=mc_env,
+    )
+
+    server_root = f"{alias}/{bucket}/{config.remote_root}/{server_id}"
+    target_dir = output_dir / server_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    await _run_mc(
+        [
+            "mirror",
+            "--overwrite",
+            f"{server_root}/artifacts/",
+            f"{target_dir}/",
+        ],
+        f"DOWNLOAD {server_id} ARTIFACTS",
+        env=mc_env,
+    )
