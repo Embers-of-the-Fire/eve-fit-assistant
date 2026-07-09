@@ -196,7 +196,25 @@ def register_build_commands(cli_group: click.Group) -> None:
     )
     @click.option("--author", default=None, help="Author identifier for the snapshot.")
     @click.option("--description", default=None, help="Description for the snapshot.")
-    def data_cmd(skip: list[str], author: str | None, description: str | None):
+    @click.option(
+        "--schema-root",
+        type=click.Path(file_okay=False, path_type=Path),
+        default=None,
+        help="Schema V2 storage root for the generated snapshot (default from dev config).",
+    )
+    @click.option(
+        "--output-snapshot-hash",
+        type=click.Path(file_okay=True, path_type=Path),
+        default=None,
+        help="Write the generated snapshot hash to this file.",
+    )
+    def data_cmd(
+        skip: list[str],
+        author: str | None,
+        description: str | None,
+        schema_root: Path | None,
+        output_snapshot_hash: Path | None,
+    ):
         """Build data files."""
         from bootstrap.data.workspace.generate import run_generator
 
@@ -212,14 +230,25 @@ def register_build_commands(cli_group: click.Group) -> None:
             click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
             exit(1)
 
-        asyncio.run(
+        snapshot_hash = asyncio.run(
             run_generator(
                 runtime.current_workspace_descriptor(),
                 to_skip,
                 author=author,
                 description=description,
+                schema_root=schema_root,
             )
         )
+
+        if output_snapshot_hash is not None:
+            if snapshot_hash is None:
+                raise click.ClickException(
+                    f"No snapshot was produced; cannot write {output_snapshot_hash}"
+                )
+            output_snapshot_hash.parent.mkdir(parents=True, exist_ok=True)
+            output_snapshot_hash.write_text(snapshot_hash, encoding="utf-8")
+
+        return snapshot_hash
 
     @build.command("docs")
     def build_docs_cmd():

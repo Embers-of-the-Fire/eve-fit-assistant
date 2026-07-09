@@ -17,6 +17,8 @@ from .data import GeneratorDatasource
 
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from bootstrap.data.workspace.config import WorkspaceConfig
 
 
@@ -25,7 +27,8 @@ async def run_generator(
     skip: set[str],
     author: str | None = None,
     description: str | None = None,
-):
+    schema_root: Path | None = None,
+) -> str | None:
     info("Running data generator...")
     datasource = GeneratorDatasource(config)
     try:
@@ -47,10 +50,10 @@ async def run_generator(
 
             await images.generate(datasource, collection_cache)
 
-        schema_generator.generate_schema_checkout(
+        snapshot_hash = schema_generator.generate_schema_checkout(
             config,
             build_dir=datasource.paths.full_generate_out_path,
-            schema_root=DEV_CONFIGURATION.paths.schema_dir,
+            schema_root=schema_root or DEV_CONFIGURATION.paths.schema_dir,
             author=author,
             description=description,
         )
@@ -58,3 +61,4 @@ async def run_generator(
         info("Data generator finished.")
     finally:
         await datasource.aclose()
+    return snapshot_hash
