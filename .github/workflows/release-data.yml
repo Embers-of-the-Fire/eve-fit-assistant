@@ -196,8 +196,10 @@ jobs:
 
       - name: Commit generation
         id: commit
+        env:
+          IS_TEST_MODE: ${{ steps.mode.outputs.is_test_mode }}
         run: |
-          if [ "${{ steps.mode.outputs.is_test_mode }}" = "true" ]; then
+          if [ "${IS_TEST_MODE}" = "true" ]; then
             nix develop .#python --command bash -c \
               'uv run x.py remote session commit --no-push --schema-root cache/remote'
           else
@@ -244,8 +246,10 @@ jobs:
 
       - name: Verify remote head
         if: steps.mode.outputs.is_test_mode != 'true'
+        env:
+          GENERATION_HASH: ${{ steps.commit.outputs.generation_hash }}
         run: |
-          COMMITTED="${{ steps.commit.outputs.generation_hash }}"
+          COMMITTED="${GENERATION_HASH}"
           SYNCED=$(nix develop .#python --command bash -c \
             'python3 -c "import json; print(json.load(open(\"cache/remote/channels/heads/testing/metadata.json\"))[\"generationHash\"])"')
           if [ "${COMMITTED}" != "${SYNCED}" ]; then
