@@ -113,6 +113,9 @@ jobs:
           name: v2-snapshots
           path: .
 
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+
       - name: Publish to testing channel
         env:
           IS_TEST_MODE: ${{ steps.mode.outputs.is_test_mode }}

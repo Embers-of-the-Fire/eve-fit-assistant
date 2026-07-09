@@ -16,7 +16,6 @@ from bootstrap.ci.lint import run_lint
 from bootstrap.ci.suites import SUITE_DEFINITIONS
 from bootstrap.ci.suites import calculate_ci_matrix
 from bootstrap.cli import runtime
-from bootstrap.cli.generate import _run_protobuf
 from bootstrap.cli.remote.helpers import validate_remote_channel
 from bootstrap.color import styled
 from bootstrap.constant import PROJECT_ROOT
@@ -300,8 +299,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
             raise click.ClickException(f"Invalid hashes file: {hashes_path}")
 
         resolved_channel = validate_remote_channel(channel).value
-
-        _run_protobuf()
 
         init_cmd = _lookup_command(ctx, "remote", "session", "init")
         add_cmd = _lookup_command(ctx, "remote", "session", "add")
