@@ -7,6 +7,10 @@ on:
         description: "Check/update all servers"
         type: boolean
         default: true
+      server:
+        description: "Check/update a single server (takes precedence over all)"
+        type: string
+        default: ""
       no_upload:
         description: "Skip uploading to CI storage"
         type: boolean
@@ -43,12 +47,20 @@ jobs:
         env:
           CI_PUBLIC_URL: https://ci.storage.efa-tech.dev
           CHECK_ALL: ${{ inputs.all && '--all' || '' }}
+          SERVER: ${{ inputs.server }}
         run: |
           # shellcheck disable=SC2016
-          MATRIX=$(nix develop .#python --command bash -c \
-            'uv run x.py \
-              --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
-              ci raw-data check ${CHECK_ALL:+"$CHECK_ALL"} --format json')
+          if [ -n "$SERVER" ]; then
+            MATRIX=$(nix develop .#python --command bash -c \
+              'uv run x.py \
+                --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
+                ci raw-data check --server "$SERVER" --format json')
+          else
+            MATRIX=$(nix develop .#python --command bash -c \
+              'uv run x.py \
+                --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
+                ci raw-data check ${CHECK_ALL:+"$CHECK_ALL"} --format json')
+          fi
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           if [ "$MATRIX" = "[]" ] || [ -z "$MATRIX" ]; then
             echo "has_updates=false" >> "$GITHUB_OUTPUT"

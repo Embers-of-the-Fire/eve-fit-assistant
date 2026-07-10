@@ -33,3 +33,4 @@ jobs:
     secrets: inherit
     with:
       test_mode: false
+      servers: ${{ needs.update.outputs.matrix }}

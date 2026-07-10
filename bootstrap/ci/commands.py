@@ -272,6 +272,12 @@ def register_ci_commands(cli_group: click.Group) -> None:
         default=1,
         help="Max generations to sync after publish (default: 1).",
     )
+    @click.option(
+        "--merge",
+        is_flag=True,
+        default=False,
+        help="Include unchanged server snapshots from the current channel head.",
+    )
     @click.pass_context
     def release_data_publish(
         ctx: click.Context,
@@ -287,6 +293,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
         alias_name: str | None,
         workers: int,
         sync_depth: int,
+        merge: bool,
     ):
         """Publish resource snapshots to a remote channel."""
         from bootstrap.remote import SessionManager
@@ -299,6 +306,24 @@ def register_ci_commands(cli_group: click.Group) -> None:
             raise click.ClickException(f"Invalid hashes file: {hashes_path}")
 
         resolved_channel = validate_remote_channel(channel).value
+
+        mgr = SessionManager(resolved_root)
+        if merge:
+            from bootstrap.remote.generation import GenerationStore
+
+            try:
+                head = mgr.get_head(resolved_channel)
+            except FileNotFoundError:
+                head = None
+            if head and head.generation_hash:
+                prev_gen = GenerationStore(resolved_root).load(head.generation_hash)
+                for entry in prev_gen.resources.entries:
+                    if entry.server_id not in hashes_data:
+                        hashes_data[entry.server_id] = entry.snapshot_hash
+                        click.echo(
+                            f"Carried forward {entry.server_id} snapshot: "
+                            f"{entry.snapshot_hash[:16]}..."
+                        )
 
         init_cmd = _lookup_command(ctx, "remote", "session", "init")
         add_cmd = _lookup_command(ctx, "remote", "session", "add")
@@ -335,7 +360,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
             schema_root=resolved_root,
         )
 
-        mgr = SessionManager(resolved_root)
         committed_hash = mgr.get_head(resolved_channel).generation_hash
         click.echo(
             styled(

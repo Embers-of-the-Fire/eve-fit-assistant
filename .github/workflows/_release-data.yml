@@ -7,6 +7,10 @@ on:
         description: "Run in test mode (skip publish)"
         type: boolean
         default: false
+      servers:
+        description: "JSON array of server IDs to rebuild (default: all)"
+        type: string
+        default: "[]"
 
 permissions:
   contents: read
@@ -31,26 +35,37 @@ jobs:
 
       - name: Download raw artifacts
         env:
+          SERVERS_JSON: ${{ inputs.servers }}
           CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
           CI_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
-          # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
-            'uv run x.py \
-              --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
-              --dev-env ci.storage.bucket="$CI_BUCKET" \
-              --dev-env ci.storage.alias="efa-ci-storage" \
-              --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
-              --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
-              --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
-              ci raw-data download --all'
+            'uv run python -c "
+              import json, os, subprocess
+              servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\")
+              if not servers:
+                  subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--all\"])
+              else:
+                  for s in servers:
+                      subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--server\", s])
+            "'
 
       - name: Build resource snapshots
+        env:
+          SERVERS_JSON: ${{ inputs.servers }}
         run: |
           nix develop .#python --command bash -c \
-            'uv run x.py ci release-data build --output cache/remote --hashes snapshot-hashes.json'
+            'uv run python -c "
+              import json, os, subprocess
+              servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\")
+              cmd = [\"uv\", \"run\", \"x.py\", \"ci\", \"release-data\", \"build\"]
+              for s in servers:
+                  cmd.extend([\"--server\", s])
+              cmd.extend([\"--output\", \"cache/remote\", \"--hashes\", \"snapshot-hashes.json\"])
+              subprocess.run(cmd)
+            "'
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,6 +99,31 @@ jobs:
       - name: Generate protobuf
         run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
+      - name: Sync remote channel head
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              --dev-env remote.s3.alias=efa-remote-publish \
+              --dev-env remote.s3.public_download=true \
+              remote sync \
+              --target s3 \
+              --endpoint "${REMOTE_ENDPOINT}" \
+              --bucket "${REMOTE_BUCKET}" \
+              --access-key "${REMOTE_ACCESS_KEY}" \
+              --secret-key "${REMOTE_SECRET_KEY}" \
+              --alias efa-remote-publish \
+              --channel testing'
+
       - name: Publish to testing channel
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
@@ -108,4 +148,5 @@ jobs:
               --bucket "${REMOTE_BUCKET}" \
               --access-key "${REMOTE_ACCESS_KEY}" \
               --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish'
+              --alias efa-remote-publish \
+              --merge'
