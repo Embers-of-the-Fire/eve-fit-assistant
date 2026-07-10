@@ -56,7 +56,6 @@ jobs:
         env:
           CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
           CI_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
-          CI_ALIAS: ${{ secrets.CI_STORAGE_ALIAS }}
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
@@ -64,7 +63,7 @@ jobs:
             'uv run x.py \
               --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
               --dev-env ci.storage.bucket="$CI_BUCKET" \
-              --dev-env ci.storage.alias="$CI_ALIAS" \
+              --dev-env ci.storage.alias="efa-ci-storage" \
               --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
               --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
               --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
@@ -103,9 +102,9 @@ jobs:
         id: mode
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "is_test_mode=true" >> "$GITHUB_OUTPUT"
+            echo "flag=--test-mode" >> "$GITHUB_OUTPUT"
           else
-            echo "is_test_mode=false" >> "$GITHUB_OUTPUT"
+            echo "flag=" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/download-artifact@v4
@@ -118,26 +117,21 @@ jobs:
 
       - name: Publish to testing channel
         env:
-          IS_TEST_MODE: ${{ steps.mode.outputs.is_test_mode }}
+          TEST_MODE_FLAG: ${{ steps.mode.outputs.flag }}
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
-          if [ "${IS_TEST_MODE}" = "true" ]; then
-            TEST_MODE_FLAG="--test-mode"
-          else
-            TEST_MODE_FLAG=""
-          fi
-          export TEST_MODE_FLAG
           nix develop .#python --command bash -c \
-            'uv run x.py ci release-data publish testing \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              --dev-env remote.s3.alias=efa-remote-publish \
+              --dev-env remote.s3.public_download=true \
+              ci release-data publish testing \
               --hashes snapshot-hashes.json \
               --schema-root cache/remote \
-              --target s3 \
-              --endpoint "${REMOTE_ENDPOINT}" \
-              --bucket "${REMOTE_BUCKET}" \
-              --access-key "${REMOTE_ACCESS_KEY}" \
-              --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish \
               ${TEST_MODE_FLAG}'
