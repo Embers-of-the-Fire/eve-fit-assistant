@@ -42,12 +42,13 @@ jobs:
         id: matrix
         env:
           CI_PUBLIC_URL: https://ci.storage.efa-tech.dev
+          CHECK_ALL: ${{ inputs.all && '--all' || '' }}
         run: |
           # shellcheck disable=SC2016
           MATRIX=$(nix develop .#python --command bash -c \
             'uv run x.py \
               --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
-              ci raw-data check --all --format json')
+              ci raw-data check ${CHECK_ALL:+"$CHECK_ALL"} --format json')
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           if [ "$MATRIX" = "[]" ] || [ -z "$MATRIX" ]; then
             echo "has_updates=false" >> "$GITHUB_OUTPUT"
