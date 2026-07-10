@@ -1,43 +1,20 @@
-name: Release Data Snapshot
+name: Release Data Snapshot (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      test_mode:
+        description: "Run in test mode (skip publish)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-
-on:
-  workflow_run:
-    workflows: [Update Raw EVE Data]
-    types: [completed]
-    branches: [dev]
-  workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
-    branches: [dev]
-
-concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('release-data-test-{0}', github.ref) || 'release-data' }}
-  cancel-in-progress: true
 
 jobs:
   build:
     name: Build resource snapshots
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' || (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event != 'pull_request' &&
-        github.ref == 'refs/heads/dev' &&
-        github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
-        github.event.repository.fork == false
-      ) || (
-        github.event_name == 'pull_request' &&
-        (
-          contains(github.event.pull_request.labels.*.name, 'D-CI-Data Release') ||
-          contains(github.event.pull_request.labels.*.name, 'D-Full CI')
-        ) &&
-        github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
-        github.event.repository.fork == false
-      )
     steps:
       - uses: actions/checkout@v6
         with:
@@ -59,6 +36,7 @@ jobs:
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
+          # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             'uv run x.py \
               --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
@@ -86,7 +64,7 @@ jobs:
     name: Publish to testing channel
     needs: build
     runs-on: ubuntu-latest
-    if: needs.build.result == 'success'
+    if: inputs.test_mode == false
     steps:
       - uses: actions/checkout@v6
         with:
@@ -98,15 +76,6 @@ jobs:
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
 
-      - name: Determine mode
-        id: mode
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "flag=--test-mode" >> "$GITHUB_OUTPUT"
-          else
-            echo "flag=" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/download-artifact@v4
         with:
           name: v2-snapshots
@@ -117,12 +86,12 @@ jobs:
 
       - name: Publish to testing channel
         env:
-          TEST_MODE_FLAG: ${{ steps.mode.outputs.flag }}
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
+          # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             'uv run x.py \
               --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
@@ -134,4 +103,9 @@ jobs:
               ci release-data publish testing \
               --hashes snapshot-hashes.json \
               --schema-root cache/remote \
-              ${TEST_MODE_FLAG}'
+              --target s3 \
+              --endpoint "${REMOTE_ENDPOINT}" \
+              --bucket "${REMOTE_BUCKET}" \
+              --access-key "${REMOTE_ACCESS_KEY}" \
+              --secret-key "${REMOTE_SECRET_KEY}" \
+              --alias efa-remote-publish'
