@@ -125,7 +125,6 @@ jobs:
           SERVER: ${{ matrix.server }}
           CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
           CI_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
-          CI_ALIAS: ${{ secrets.CI_STORAGE_ALIAS }}
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
@@ -133,7 +132,7 @@ jobs:
             'uv run x.py \
               --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
               --dev-env ci.storage.bucket="$CI_BUCKET" \
-              --dev-env ci.storage.alias="$CI_ALIAS" \
+              --dev-env ci.storage.alias="efa-ci-storage" \
               --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
               --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
               --dev-env ci.storage.public_url="https://ci.storage.efa-tech.dev" \
