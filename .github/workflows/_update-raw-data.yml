@@ -91,7 +91,7 @@ jobs:
         run: uv sync
 
       - name: Download portable Python 2.7
-        run: uv run x.py ci raw-data setup-py27
+        run: uv run x.py --dev-env ci.raw_artifacts.public_url="https://ci.storage.efa-tech.dev" ci raw-data setup-py27
 
       - name: Update raw artifacts
         run: uv run x.py ci raw-data update --server "${{ matrix.server }}" --no-upload

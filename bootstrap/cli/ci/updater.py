@@ -170,8 +170,25 @@ def register_raw_data_commands(ci: click.Group) -> None:
     )
     def raw_data_setup_py27(output: Path, url: str):
         """Download portable Python 2.7 for the FSD dumper."""
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        ci = bootstrap.config.DEV_CONFIGURATION.ci
+        public_url: str | None = None
+        if ci.raw_artifacts is not None:
+            public_url = ci.raw_artifacts.public_url
+        if public_url is None and ci.storage is not None:
+            public_url = ci.storage.public_url
+        if public_url:
+            url = f"{public_url}/build-dependencies/py27.zip"
         output.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(url, output)
+        request = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; EFA-CI/1.0)"},
+        )
+        with (
+            urllib.request.urlopen(request) as response,
+            open(output, "wb") as f,
+        ):
+            shutil.copyfileobj(response, f)
         click.echo(f"Downloaded Python 2.7 to {output}")
 
     @raw_data.command("sync-local")
