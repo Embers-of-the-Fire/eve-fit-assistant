@@ -42,30 +42,14 @@ jobs:
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
           nix develop .#python --command bash -c \
-            'uv run python -c "
-              import json, os, subprocess
-              servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\")
-              if not servers:
-                  subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--all\"])
-              else:
-                  for s in servers:
-                      subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--server\", s])
-            "'
+            'uv run python -c "import json, os, subprocess; servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\"); subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--all\"]) if not servers else [subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--server\", s]) for s in servers]"'
 
       - name: Build resource snapshots
         env:
           SERVERS_JSON: ${{ inputs.servers }}
         run: |
           nix develop .#python --command bash -c \
-            'uv run python -c "
-              import json, os, subprocess
-              servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\")
-              cmd = [\"uv\", \"run\", \"x.py\", \"ci\", \"release-data\", \"build\"]
-              for s in servers:
-                  cmd.extend([\"--server\", s])
-              cmd.extend([\"--output\", \"cache/remote\", \"--hashes\", \"snapshot-hashes.json\"])
-              subprocess.run(cmd)
-            "'
+            'uv run python -c "import json, os, subprocess; servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\"); cmd = [\"uv\", \"run\", \"x.py\", \"ci\", \"release-data\", \"build\"]; [cmd.extend([\"--server\", s]) for s in servers]; cmd.extend([\"--output\", \"cache/remote\", \"--hashes\", \"snapshot-hashes.json\"]); subprocess.run(cmd)"'
 
       - uses: actions/upload-artifact@v4
         with:
