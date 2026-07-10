@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
+import urllib.request
 
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from bootstrap.data.updater.pipeline import check_server
 from bootstrap.data.updater.pipeline import update_server
 from bootstrap.data.updater.server import SERVER_ALIASES
 from bootstrap.data.updater.server import SERVER_IDS
+from bootstrap.data.updater.uploader import download_artifacts
 from bootstrap.data.updater.uploader import upload_artifacts
 
 
@@ -126,6 +128,51 @@ def register_raw_data_commands(ci: click.Group) -> None:
 
         asyncio.run(run())
         click.echo(f"Uploaded {normalized} build {build} from {from_dir}")
+
+    @raw_data.command("download")
+    @click.option("--server", default=None, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
+    @click.option("--all", "all_flag", is_flag=True, help="Download all servers.")
+    @click.option(
+        "--output-dir",
+        type=click.Path(file_okay=False, path_type=Path),
+        default=None,
+        help="Output directory (default: data/resources).",
+    )
+    def raw_data_download(server: str | None, all_flag: bool, output_dir: Path | None):
+        """Download raw artifacts from CI storage to the local data/resources tree."""
+        server_ids = _resolve_server_input(server, all_flag)
+        if output_dir is None:
+            output_dir = PROJECT_ROOT / "data" / "resources"
+
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        ci = bootstrap.config.DEV_CONFIGURATION.ci
+        raw_artifacts, storage = ci.require_raw_artifacts()
+
+        async def run():
+            for server_id in server_ids:
+                await download_artifacts(server_id, output_dir, raw_artifacts, storage)
+                click.echo(f"Downloaded {server_id} artifacts to {output_dir / server_id}")
+
+        asyncio.run(run())
+
+    @raw_data.command("setup-py27")
+    @click.option(
+        "--output",
+        "-o",
+        type=click.Path(file_okay=True, path_type=Path),
+        default="tools/eve-fsd-dumper/py27.zip",
+        help="Output path for py27.zip.",
+    )
+    @click.option(
+        "--url",
+        default="https://ci.storage.efa-tech.dev/build-dependencies/py27.zip",
+        help="Download URL for portable Python 2.7.",
+    )
+    def raw_data_setup_py27(output: Path, url: str):
+        """Download portable Python 2.7 for the FSD dumper."""
+        output.parent.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(url, output)
+        click.echo(f"Downloaded Python 2.7 to {output}")
 
     @raw_data.command("sync-local")
     @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")

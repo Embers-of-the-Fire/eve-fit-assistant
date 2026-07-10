@@ -16,8 +16,6 @@ from bootstrap.log import warning
 if TYPE_CHECKING:
     from bootstrap.data.workspace.generate import GeneratorDatasource
 
-_icon_semaphore = asyncio.Semaphore(32)
-
 
 class IconDef(BaseModel):
     iconFile: str
@@ -30,8 +28,10 @@ async def generate(data: GeneratorDatasource, tree_shake_icons: set[int]):
 
     info(f"Tree shaken {len(set(icons.keys()).difference(tree_shake_icons))} icons.")
 
+    icon_semaphore = asyncio.Semaphore(32)
+
     tasks = (
-        __download_icon(icon_id, IconDef.model_validate(icon), data)
+        __download_icon(icon_id, IconDef.model_validate(icon), data, icon_semaphore)
         for icon_id, icon in icons.items()
         if icon_id in tree_shake_icons
     )
@@ -40,7 +40,9 @@ async def generate(data: GeneratorDatasource, tree_shake_icons: set[int]):
     info(f"Generated {len(icons)} icons.")
 
 
-async def __download_icon(icon_id: int, icon: IconDef, data: GeneratorDatasource):
+async def __download_icon(
+    icon_id: int, icon: IconDef, data: GeneratorDatasource, icon_semaphore: asyncio.Semaphore
+):
     icon_file = data.resources.res.get_resource(icon.iconFile)
     if icon_file is None:
         warning(f"Icon file {icon.iconFile} for icon ID {icon_id} not found.")
@@ -52,7 +54,7 @@ async def __download_icon(icon_id: int, icon: IconDef, data: GeneratorDatasource
         return
 
     async with (
-        _icon_semaphore,
+        icon_semaphore,
         icon_file.open("rb") as f_input,
         aiofiles.open(out_path, "wb") as f_output,
     ):

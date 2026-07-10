@@ -1,0 +1,143 @@
+name: Release Data Snapshot
+
+permissions:
+  contents: read
+
+on:
+  workflow_run:
+    workflows: [Update Raw EVE Data]
+    types: [completed]
+    branches: [dev]
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [dev]
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('release-data-test-{0}', github.ref) || 'release-data' }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build resource snapshots
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' || (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event != 'pull_request' &&
+        github.ref == 'refs/heads/dev' &&
+        github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+        github.event.repository.fork == false
+      ) || (
+        github.event_name == 'pull_request' &&
+        (
+          contains(github.event.pull_request.labels.*.name, 'D-CI-Data Release') ||
+          contains(github.event.pull_request.labels.*.name, 'D-Full CI')
+        ) &&
+        github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+        github.event.repository.fork == false
+      )
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+
+      - name: Download raw artifacts
+        env:
+          CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+          CI_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
+          CI_ALIAS: ${{ secrets.CI_STORAGE_ALIAS }}
+          CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+          CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
+              --dev-env ci.storage.bucket="$CI_BUCKET" \
+              --dev-env ci.storage.alias="$CI_ALIAS" \
+              --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
+              --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
+              --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
+              ci raw-data download --all'
+
+      - name: Build resource snapshots
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release-data build --output cache/remote --hashes snapshot-hashes.json'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2-snapshots
+          path: |
+            cache/remote/assets/
+            snapshot-hashes.json
+          retention-days: 1
+
+  publish:
+    name: Publish to testing channel
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.result == 'success'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Determine mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "is_test_mode=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_test_mode=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: v2-snapshots
+          path: .
+
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+
+      - name: Publish to testing channel
+        env:
+          IS_TEST_MODE: ${{ steps.mode.outputs.is_test_mode }}
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          if [ "${IS_TEST_MODE}" = "true" ]; then
+            TEST_MODE_FLAG="--test-mode"
+          else
+            TEST_MODE_FLAG=""
+          fi
+          export TEST_MODE_FLAG
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release-data publish testing \
+              --hashes snapshot-hashes.json \
+              --schema-root cache/remote \
+              --target s3 \
+              --endpoint "${REMOTE_ENDPOINT}" \
+              --bucket "${REMOTE_BUCKET}" \
+              --access-key "${REMOTE_ACCESS_KEY}" \
+              --secret-key "${REMOTE_SECRET_KEY}" \
+              --alias efa-remote-publish \
+              ${TEST_MODE_FLAG}'
