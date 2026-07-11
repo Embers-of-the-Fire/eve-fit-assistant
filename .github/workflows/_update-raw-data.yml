@@ -1,39 +1,36 @@
-name: Update Raw EVE Data
+name: Update Raw EVE Data (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      all:
+        description: "Check/update all servers"
+        type: boolean
+        default: true
+      server:
+        description: "Check/update a single server (takes precedence over all)"
+        type: string
+        default: ""
+      no_upload:
+        description: "Skip uploading to CI storage"
+        type: boolean
+        default: false
+    outputs:
+      matrix:
+        value: ${{ jobs.check.outputs.matrix }}
+      has_updates:
+        value: ${{ jobs.check.outputs.has_updates }}
 
 permissions:
   contents: read
-
-on:
-  schedule:
-    - cron: "0 0 * * *"
-  workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
-    branches: [dev]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   check:
     name: Check for updates
     runs-on: ubuntu-latest
-    if: |
-      (
-        contains(fromJSON('["schedule", "workflow_dispatch"]'), github.event_name) &&
-        github.ref == 'refs/heads/dev' &&
-        github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
-        github.event.repository.fork == false
-      ) || (
-        github.event_name == 'pull_request' &&
-        (
-          contains(github.event.pull_request.labels.*.name, 'D-Full CI') ||
-          contains(github.event.pull_request.labels.*.name, 'D-CI-Data Update')
-        )
-      )
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      has_updates: ${{ steps.matrix.outputs.has_updates }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -49,12 +46,27 @@ jobs:
         id: matrix
         env:
           CI_PUBLIC_URL: https://ci.storage.efa-tech.dev
+          CHECK_ALL: ${{ inputs.all && '--all' || '' }}
+          SERVER: ${{ inputs.server }}
         run: |
-          MATRIX=$(nix develop .#python --command bash -c \
-            'uv run x.py \
-              --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
-              ci raw-data check --all --format json')
+          # shellcheck disable=SC2016
+          if [ -n "$SERVER" ]; then
+            MATRIX=$(nix develop .#python --command bash -c \
+              'uv run x.py \
+                --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
+                ci raw-data check --server "$SERVER" --format json')
+          else
+            MATRIX=$(nix develop .#python --command bash -c \
+              'uv run x.py \
+                --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
+                ci raw-data check ${CHECK_ALL:+"$CHECK_ALL"} --format json')
+          fi
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          if [ "$MATRIX" = "[]" ] || [ -z "$MATRIX" ]; then
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_updates=true" >> "$GITHUB_OUTPUT"
+          fi
 
   update:
     name: Update raw artifacts
@@ -79,7 +91,7 @@ jobs:
         run: uv sync
 
       - name: Download portable Python 2.7
-        run: uv run x.py ci raw-data setup-py27
+        run: uv run x.py --dev-env ci.raw_artifacts.public_url="https://ci.storage.efa-tech.dev" ci raw-data setup-py27
 
       - name: Update raw artifacts
         run: uv run x.py ci raw-data update --server "${{ matrix.server }}" --no-upload
@@ -94,10 +106,7 @@ jobs:
     name: Upload raw artifacts
     needs: [check, update]
     if: |
-      github.event_name != 'pull_request' &&
-      github.ref == 'refs/heads/dev' &&
-      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
-      github.event.repository.fork == false &&
+      inputs.no_upload == false &&
       needs.check.outputs.matrix != '' &&
       needs.check.outputs.matrix != '[]'
     runs-on: ubuntu-latest
@@ -128,6 +137,7 @@ jobs:
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
+          # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             'uv run x.py \
               --dev-env ci.storage.endpoint="$CI_ENDPOINT" \

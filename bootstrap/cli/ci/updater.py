@@ -5,11 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
-import urllib.request
 
 from pathlib import Path
 
 import click
+import requests
 
 import bootstrap.config
 
@@ -170,8 +170,37 @@ def register_raw_data_commands(ci: click.Group) -> None:
     )
     def raw_data_setup_py27(output: Path, url: str):
         """Download portable Python 2.7 for the FSD dumper."""
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        ci = bootstrap.config.DEV_CONFIGURATION.ci
+        public_url: str | None = None
+        if ci.raw_artifacts is not None:
+            public_url = ci.raw_artifacts.public_url
+        if public_url is None and ci.storage is not None:
+            public_url = ci.storage.public_url
+        if public_url:
+            # Strip trailing slash from public_url to avoid double-slash in constructed URL.
+            public_url = public_url.rstrip("/")
+            url = f"{public_url}/build-dependencies/py27.zip"
         output.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(url, output)
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; EFA-CI/1.0)"}
+        tmp_output = output.with_suffix(output.suffix + ".tmp")
+        try:
+            with requests.get(
+                url,
+                headers=headers,
+                stream=True,
+                timeout=(10, 300),
+            ) as response:
+                response.raise_for_status()
+                with tmp_output.open("wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+            tmp_output.replace(output)
+        except Exception:
+            if tmp_output.exists():
+                tmp_output.unlink()
+            raise
         click.echo(f"Downloaded Python 2.7 to {output}")
 
     @raw_data.command("sync-local")

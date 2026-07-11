@@ -1,0 +1,28 @@
+name: Release Data Snapshot (test)
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Build and test publish
+    if: |
+      (
+        contains(github.event.pull_request.labels.*.name, 'D-CI-Data Release') ||
+        contains(github.event.pull_request.labels.*.name, 'D-Full CI')
+      ) &&
+      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+      github.event.repository.fork == false
+    uses: ./.github/workflows/_release-data.yml
+    secrets: inherit
+    with:
+      test_mode: true
