@@ -178,6 +178,8 @@ def register_raw_data_commands(ci: click.Group) -> None:
         if public_url is None and ci.storage is not None:
             public_url = ci.storage.public_url
         if public_url:
+            # Strip trailing slash from public_url to avoid double-slash in constructed URL.
+            public_url = public_url.rstrip("/")
             url = f"{public_url}/build-dependencies/py27.zip"
         output.parent.mkdir(parents=True, exist_ok=True)
         headers = {"User-Agent": "Mozilla/5.0 (compatible; EFA-CI/1.0)"}
