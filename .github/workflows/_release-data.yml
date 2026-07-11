@@ -33,7 +33,7 @@ jobs:
       - name: Generate protobuf
         run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
-      - name: Download raw artifacts
+      - name: Download raw artifacts and build snapshots
         env:
           SERVERS_JSON: ${{ inputs.servers }}
           CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
@@ -41,15 +41,21 @@ jobs:
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
+          # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
-            'uv run python -c "import json, os, subprocess; servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\"); subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--all\"]) if not servers else [subprocess.run([\"uv\", \"run\", \"x.py\", \"ci\", \"raw-data\", \"download\", \"--server\", s]) for s in servers]"'
-
-      - name: Build resource snapshots
-        env:
-          SERVERS_JSON: ${{ inputs.servers }}
-        run: |
-          nix develop .#python --command bash -c \
-            'uv run python -c "import json, os, subprocess; servers = json.loads(os.environ.get(\"SERVERS_JSON\") or \"[]\"); cmd = [\"uv\", \"run\", \"x.py\", \"ci\", \"release-data\", \"build\"]; [cmd.extend([\"--server\", s]) for s in servers]; cmd.extend([\"--output\", \"cache/remote\", \"--hashes\", \"snapshot-hashes.json\"]); subprocess.run(cmd)"'
+            'uv run x.py \
+              --dev-env ci.storage.endpoint="${CI_ENDPOINT}" \
+              --dev-env ci.storage.bucket="${CI_BUCKET}" \
+              --dev-env ci.storage.alias="efa-ci-storage" \
+              --dev-env ci.storage.access_key="${CI_ACCESS_KEY}" \
+              --dev-env ci.storage.secret_key="${CI_SECRET_KEY}" \
+              --dev-env ci.storage.public_url="https://ci.storage.efa-tech.dev" \
+              --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
+              ci release-data build \
+                --download \
+                --servers "${SERVERS_JSON}" \
+                --output cache/remote \
+                --hashes snapshot-hashes.json'
 
       - uses: actions/upload-artifact@v4
         with:

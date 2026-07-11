@@ -201,34 +201,105 @@ def register_ci_commands(cli_group: click.Group) -> None:
         default=None,
         help="Server to build (default: all configured servers).",
     )
-    def release_data_build(output: Path, hashes: Path, server: tuple[str, ...]):
+    @click.option(
+        "--servers",
+        default=None,
+        help="JSON array of server IDs to build (default: all configured servers).",
+    )
+    @click.option(
+        "--download",
+        is_flag=True,
+        help="Download raw artifacts from CI storage before building.",
+    )
+    @click.option(
+        "--resources-dir",
+        type=click.Path(file_okay=False, path_type=Path),
+        default="data/resources",
+        help="Directory to download raw artifacts into (default: data/resources).",
+    )
+    def release_data_build(
+        output: Path,
+        hashes: Path,
+        server: tuple[str, ...],
+        servers: str | None,
+        download: bool,
+        resources_dir: Path,
+    ):
         """Build resource snapshots for all servers and emit snapshot-hashes.json."""
         from bootstrap.data.workspace.generate import run_generator
 
-        schema_root = (PROJECT_ROOT / output).resolve()
-        servers = list(server) if server else sorted(SERVER_IDS)
-        if not servers:
+        if servers is not None:
+            if servers.strip() == "":
+                servers_to_build = sorted(SERVER_IDS)
+            else:
+                try:
+                    parsed_servers = json.loads(servers)
+                except json.JSONDecodeError as exc:
+                    raise click.BadParameter(f"Invalid JSON in --servers: {exc}") from exc
+                if not isinstance(parsed_servers, list):
+                    raise click.BadParameter("--servers must be a JSON array")
+                servers_to_build = parsed_servers
+        elif server:
+            servers_to_build = list(server)
+        else:
+            servers_to_build = sorted(SERVER_IDS)
+
+        if not servers_to_build:
+            servers_to_build = sorted(SERVER_IDS)
+        if not servers_to_build:
             raise click.ClickException("No servers configured.")
 
-        hashes_data: dict[str, str] = {}
-        for server_id in servers:
+        for server_id in servers_to_build:
             if server_id not in SERVER_IDS:
                 raise click.ClickException(f"Unknown server: {server_id}")
-            ws_descriptor = runtime.get_workspace(server_id)
-            ws_config = WorkspaceConfig.load_from_descriptor(ws_descriptor)
-            snapshot_hash = asyncio.run(run_generator(ws_config, set(), schema_root=schema_root))
-            if snapshot_hash is None:
-                raise click.ClickException(f"No snapshot produced for {server_id}")
-            hashes_data[server_id] = snapshot_hash
-            click.echo(f"Built {server_id} snapshot: {snapshot_hash[:16]}...")
 
-        hashes_path = (PROJECT_ROOT / hashes).resolve()
-        hashes_path.parent.mkdir(parents=True, exist_ok=True)
-        hashes_path.write_text(
-            json.dumps(hashes_data, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Wrote snapshot hashes to {hashes_path}"))
+        schema_root = (PROJECT_ROOT / output).resolve()
+        resolved_resources_dir = (PROJECT_ROOT / resources_dir).resolve()
+
+        raw_artifacts = None
+        storage = None
+        if download:
+            import bootstrap.config
+
+            from bootstrap.data.updater.uploader import download_artifacts
+
+            bootstrap.config.DeveloperConfiguration.ensure_loaded()
+            ci = bootstrap.config.DEV_CONFIGURATION.ci
+            raw_artifacts, storage = ci.require_raw_artifacts()
+
+        async def run_pipeline():
+            if download:
+                assert raw_artifacts is not None
+                assert storage is not None
+                for server_id in servers_to_build:
+                    await download_artifacts(
+                        server_id, resolved_resources_dir, raw_artifacts, storage
+                    )
+                    click.echo(
+                        f"Downloaded {server_id} artifacts to {resolved_resources_dir / server_id}"
+                    )
+
+            hashes_data: dict[str, str] = {}
+            for server_id in servers_to_build:
+                ws_descriptor = runtime.get_workspace(server_id)
+                ws_config = WorkspaceConfig.load_from_descriptor(ws_descriptor)
+                snapshot_hash = await run_generator(ws_config, set(), schema_root=schema_root)
+                if snapshot_hash is None:
+                    raise click.ClickException(f"No snapshot produced for {server_id}")
+                hashes_data[server_id] = snapshot_hash
+                click.echo(f"Built {server_id} snapshot: {snapshot_hash[:16]}...")
+
+            hashes_path = (PROJECT_ROOT / hashes).resolve()
+            hashes_path.parent.mkdir(parents=True, exist_ok=True)
+            hashes_path.write_text(
+                json.dumps(hashes_data, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], f"Wrote snapshot hashes to {hashes_path}")
+            )
+
+        asyncio.run(run_pipeline())
 
     @release_data.command("publish")
     @click.argument("channel")
