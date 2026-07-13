@@ -1,11 +1,12 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io" show Platform;
 
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
 import "package:eve_fit_assistant/features/announcements/state/state.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
-import "package:eve_fit_assistant/utils/fp.dart";
 import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -59,6 +60,8 @@ class AnnouncementRepository {
         }
       }
       records.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+      _pruneState(records);
+      _pruneBodyCache(records);
       return SyncResult(
         allRecords: records,
         versionAnnouncements: records.where((r) => r.appVersion != null).toList(),
@@ -126,11 +129,20 @@ class AnnouncementRepository {
     // 11. Separate version announcements
     final versionAnnouncements = records.where((r) => r.appVersion != null).toList();
 
+    _pruneState(records);
+    _pruneBodyCache(records);
     return SyncResult(
       allRecords: records,
       versionAnnouncements: versionAnnouncements,
       remoteReachable: true,
     );
+  }
+
+  /// Force the next feed fetch to hit the network by clearing the remote
+  /// service's in-memory caches and invalidating the feed provider.
+  Future<void> refresh() async {
+    _ref.read(announcementRemoteServiceProvider).invalidateCache();
+    _ref.invalidate(announcementFeedProvider);
   }
 
   /// Apply the 5-step client-side filter chain for feed eligibility (spec §9.1).
@@ -188,6 +200,7 @@ class AnnouncementRepository {
   ) {
     final resolved = entry.resolveLocalization(localeCode);
     final loc = resolved?.meta;
+    final stateStore = _ref.read(announcementStateStoreProvider);
     return AnnouncementRecord(
       id: entry.id,
       source: source,
@@ -201,8 +214,9 @@ class AnnouncementRepository {
       minAppVersion: entry.minAppVersion,
       maxAppVersion: entry.maxAppVersion,
       appVersion: entry.appVersion,
-      isRead: AnnouncementStateStore.isRead(entry.id),
-      isDismissed: AnnouncementStateStore.isDismissed(entry.id),
+      isRead: stateStore.isRead(entry.id),
+      isDismissed: stateStore.isDismissed(entry.id),
+      entry: entry,
     );
   }
 
@@ -237,6 +251,16 @@ class AnnouncementRepository {
     } on Object {
       return null;
     }
+  }
+
+  void _pruneState(List<AnnouncementRecord> records) {
+    final activeIds = records.map((r) => r.id).toSet();
+    _ref.read(announcementStateServiceProvider.notifier).pruneStaleIds(activeIds: activeIds);
+  }
+
+  void _pruneBodyCache(List<AnnouncementRecord> records) {
+    final hashes = records.map((r) => r.bodyHash).where((h) => h.isNotEmpty).toSet();
+    unawaited(AnnouncementBodyCache.prune(referencedHashes: hashes));
   }
 }
 
@@ -282,19 +306,29 @@ final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
   );
 });
 
-/// Startup announcement to show as dialog (first unread, un-dismissed,
-/// startup-flagged entry).
-final startupAnnouncementProvider = FutureProvider<AnnouncementRecord?>((Ref ref) async {
+/// Queue of startup announcements to show as dialogs, in feed order (newest
+/// first). Contains all unread, un-dismissed, startup-flagged entries whose
+/// `appVersion` is either absent or newer than the installed version.
+final startupAnnouncementQueueProvider = FutureProvider<List<AnnouncementRecord>>((Ref ref) async {
   ref.watch(announcementStateServiceProvider);
   final feed = await ref.watch(announcementFeedProvider.future);
   final appVer = await ref.watch(appVersionProvider.future);
-  return feed.firstWhereOrNull(
-    (r) =>
-        r.startup &&
-        !r.isRead &&
-        !r.isDismissed &&
-        (r.appVersion == null || compareVersions(r.appVersion!, appVer) > 0),
-  );
+  return feed
+      .where(
+        (r) =>
+            r.startup &&
+            !r.isRead &&
+            !r.isDismissed &&
+            (r.appVersion == null || compareVersions(r.appVersion!, appVer) > 0),
+      )
+      .toList();
+});
+
+/// Deprecated alias returning the head of the startup queue.
+@Deprecated("Use startupAnnouncementQueueProvider instead")
+final startupAnnouncementProvider = FutureProvider<AnnouncementRecord?>((Ref ref) async {
+  final queue = await ref.watch(startupAnnouncementQueueProvider.future);
+  return queue.firstOrNull;
 });
 
 /// Unread count for version entries specifically.
@@ -320,22 +354,20 @@ final unreadVersionCountProvider = Provider<int>((Ref ref) {
 });
 
 /// Whether the current app version is a newly-installed bump with matching
-/// version entries to show.
-final hasVersionBumpProvider = Provider<bool>((Ref ref) {
+/// version entries that has not yet been acknowledged via either the APK
+/// update flow or the announcement flow.
+final pendingVersionBumpProvider = Provider<bool>((Ref ref) {
   ref.watch(announcementStateServiceProvider);
   final appVer = ref
       .watch(appVersionProvider)
       .when(data: (v) => v, loading: () => null, error: (_, _) => null);
-  final state = ref.read(announcementStateServiceProvider);
-  final lastSeen = state.lastSeenAppVersion;
-  if (appVer == null || appVer == lastSeen) {
-    return false;
-  }
-  final versionFeed = ref.watch(announcementVersionFeedProvider);
-  final records = versionFeed.when(
-    data: (r) => r,
-    loading: () => const <AnnouncementRecord>[],
-    error: (_, _) => const <AnnouncementRecord>[],
-  );
-  return records.any((r) => r.appVersion == appVer);
+  final lastSeen = ref.watch(appVersionStateServiceProvider).lastSeenAppVersion;
+  if (appVer == null || appVer == lastSeen) return false;
+  final feed = ref.watch(announcementVersionFeedProvider).value ?? const [];
+  return feed.any((AnnouncementRecord r) => r.appVersion == appVer);
 });
+
+/// Legacy alias — kept so external consumers keep compiling during the
+/// migration. Prefer [pendingVersionBumpProvider].
+@Deprecated("Use pendingVersionBumpProvider instead")
+final hasVersionBumpProvider = pendingVersionBumpProvider;

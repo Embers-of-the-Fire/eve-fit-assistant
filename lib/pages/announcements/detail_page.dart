@@ -14,7 +14,7 @@ final announcementBodyProvider = FutureProvider.family<String?, String>((
   String bodyHash,
 ) async {
   if (bodyHash.isEmpty) return null;
-  final cached = AnnouncementBodyCache.get(bodyHash);
+  final cached = await AnnouncementBodyCache.get(bodyHash);
   if (cached != null) return cached;
 
   final repo = ref.read(announcementRepositoryProvider);

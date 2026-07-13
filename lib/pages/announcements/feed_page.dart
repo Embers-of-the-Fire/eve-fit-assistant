@@ -1,5 +1,6 @@
 import "package:auto_route/annotations.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
+import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/state.dart";
 import "package:eve_fit_assistant/pages/announcements/detail_page.dart";
@@ -13,21 +14,26 @@ import "package:intl/intl.dart";
 
 @RoutePage()
 class AnnouncementFeedPage extends StatelessWidget {
-  const AnnouncementFeedPage({super.key});
+  const AnnouncementFeedPage({super.key, this.initialRecordId});
+
+  /// Optional record ID to pre-select when the page first loads.
+  final String? initialRecordId;
 
   @override
-  Widget build(BuildContext context) => const _AnnouncementHubPage();
+  Widget build(BuildContext context) => _AnnouncementHubPage(initialRecordId: initialRecordId);
 }
 
 class _AnnouncementHubPage extends ConsumerStatefulWidget {
-  const _AnnouncementHubPage();
+  const _AnnouncementHubPage({this.initialRecordId});
+
+  final String? initialRecordId;
 
   @override
   ConsumerState<_AnnouncementHubPage> createState() => _AnnouncementHubPageState();
 }
 
 class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
-  String? _selectedRecordId;
+  late String? _selectedRecordId = widget.initialRecordId;
 
   bool _useSplitLayout(BuildContext context) => supportsThreePaneLayout(context);
 
@@ -79,10 +85,13 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
                     children: [
                       _buildActionBar(context, records),
                       Expanded(
-                        child: _AnnouncementListPane(
-                          records: records,
-                          selectedRecordId: selectedRecord?.id,
-                          onSelect: _selectRecord,
+                        child: RefreshIndicator(
+                          onRefresh: _refreshFeed,
+                          child: _AnnouncementListPane(
+                            records: records,
+                            selectedRecordId: selectedRecord?.id,
+                            onSelect: _selectRecord,
+                          ),
                         ),
                       ),
                     ],
@@ -99,10 +108,13 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
               children: [
                 _buildActionBar(context, records),
                 Expanded(
-                  child: _AnnouncementListPane(
-                    records: records,
-                    selectedRecordId: null,
-                    onSelect: _selectRecord,
+                  child: RefreshIndicator(
+                    onRefresh: _refreshFeed,
+                    child: _AnnouncementListPane(
+                      records: records,
+                      selectedRecordId: null,
+                      onSelect: _selectRecord,
+                    ),
                   ),
                 ),
               ],
@@ -131,6 +143,15 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _refreshFeed() async {
+    ref.read(announcementRemoteServiceProvider).invalidateCache();
+    ref.invalidate(announcementFeedProvider);
+    // Wait for the next feed resolution so the indicator dismisses once data
+    // is available again. Errors are intentionally swallowed — the provider
+    // will surface them via its AsyncValue.
+    await ref.read(announcementFeedProvider.future).then((_) => null).catchError((Object _) {});
   }
 
   String _appBarTitle(BuildContext context, List<AnnouncementRecord>? records, bool splitLayout) {
@@ -198,6 +219,7 @@ class _AnnouncementListPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView.builder(
+    physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
     itemCount: records.length,
     itemBuilder: (context, index) {

@@ -1,9 +1,9 @@
 import "dart:async";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
-import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -56,6 +56,10 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
     );
 
     if (mounted) {
+      // Acknowledging the APK update dialog (or completing the install) also
+      // counts as having "seen" this app version, which suppresses the
+      // workspace version-bump card for the same release.
+      ref.read(appVersionStateServiceProvider.notifier).acknowledgeVersion(release.version);
       _shownReleaseId = release.releaseId;
       _isShowing = false;
     }
@@ -140,9 +144,7 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
       AppUpdateStatusIdle() => [
         TextButton(
           onPressed: () {
-            ref
-                .read(announcementStateServiceProvider.notifier)
-                .acknowledgeRelease(release.releaseId);
+            ref.read(appVersionStateServiceProvider.notifier).acknowledgeRelease(release.releaseId);
             Navigator.of(context).pop();
           },
           child: Text(context.l10n.appReleaseUpdateAcknowledge),
@@ -171,9 +173,7 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
       AppUpdateStatusFailed(:final canRetry) => [
         TextButton(
           onPressed: () {
-            ref
-                .read(announcementStateServiceProvider.notifier)
-                .acknowledgeRelease(release.releaseId);
+            ref.read(appVersionStateServiceProvider.notifier).acknowledgeRelease(release.releaseId);
             Navigator.of(context).pop();
           },
           child: Text(context.l10n.appReleaseUpdateAcknowledge),

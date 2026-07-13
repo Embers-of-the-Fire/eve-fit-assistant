@@ -127,6 +127,24 @@ class _NotFoundAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _UnsupportedSchemaAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(
+    '{"schemaVersion": 999, "pages": []}',
+    200,
+    headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    },
+  );
+
+  @override
+  void close({bool force = false}) {}
+}
+
 AppSetting _testAppSetting({bool remoteEnabled = true}) => AppSetting(
   locale: Locale.en,
   enableDebugLog: false,
@@ -220,6 +238,33 @@ void main() {
       final catalog = await service.fetchCatalog();
       expect(catalog, isNull);
     });
+
+    test("returns null for unsupported schema version", () async {
+      final dio = Dio(BaseOptions())..httpClientAdapter = _UnsupportedSchemaAdapter();
+      final container = _createContainer(dio: dio);
+      final service = container.read(announcementRemoteServiceProvider);
+
+      final catalog = await service.fetchCatalog();
+      expect(catalog, isNull);
+    });
+
+    test("invalidateCache clears catalog and page caches", () async {
+      final dio = Dio(BaseOptions())..httpClientAdapter = _SuccessAdapter();
+      final container = _createContainer(dio: dio);
+      final service = container.read(announcementRemoteServiceProvider);
+
+      // First fetch populates the in-memory cache.
+      await service.fetchCatalog();
+      await service.fetchPage("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+      // After invalidation, the next fetch should still succeed (hits network
+      // again rather than returning stale in-memory data).
+      service.invalidateCache();
+      final catalog = await service.fetchCatalog();
+      final page = await service.fetchPage("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+      expect(catalog, isNotNull);
+      expect(page, isNotNull);
+    });
   });
 
   group("AnnouncementRemoteService fetchPage", () {
@@ -291,7 +336,7 @@ void main() {
       expect(body, _sampleBodyContent);
 
       // Verify it was cached
-      final cached = AnnouncementBodyCache.get(_bodyHash);
+      final cached = await AnnouncementBodyCache.get(_bodyHash);
       expect(cached, _sampleBodyContent);
     });
 

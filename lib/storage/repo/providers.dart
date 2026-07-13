@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/features/announcements/state/state.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
@@ -603,7 +603,7 @@ Future<Option<RemoteAppRelease>> availableAppRelease(Ref ref) async {
   final releaseValue = release.toNullable();
   if (releaseValue == null) return const None();
 
-  final acknowledgedId = AnnouncementStateStore.lastAcknowledgedReleaseId;
+  final acknowledgedId = ref.read(appVersionStateStoreProvider).lastAcknowledgedReleaseId;
   if (releaseValue.releaseId == acknowledgedId) return const None();
 
   return release;

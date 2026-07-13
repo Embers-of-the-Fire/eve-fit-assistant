@@ -137,7 +137,6 @@ void main() {
         schemaVersion: 1,
         readIds: ["a", "b", "c"],
         dismissedIds: ["x"],
-        lastSeenAppVersion: "3.0.0",
       );
       final restored = AnnouncementState.fromJson(
         jsonDecode(jsonEncode(state.toJson())) as Map<String, dynamic>,
@@ -186,7 +185,38 @@ void main() {
       );
       expect(record.source, AnnouncementEntrySource.bundled);
       expect(record.isRead, isTrue);
-      expect(record.isDismissed, isFalse);
+    });
+
+    test("AnnouncementRecord retains entry reference", () {
+      final entry = AnnouncementEntry(
+        id: "entry-1",
+        publishedAt: DateTime.utc(2026, 1, 1),
+        tags: ["news"],
+        startup: true,
+        channels: ["stable"],
+        platforms: ["android"],
+        appVersion: "2.0.0",
+        localizations: {
+          "en": LocalizationMeta(title: "Title", summary: "Summary", bodyHash: "hash"),
+        },
+      );
+      final record = AnnouncementRecord(
+        id: entry.id,
+        source: AnnouncementEntrySource.remote,
+        title: "Title",
+        summary: "Summary",
+        bodyHash: "hash",
+        publishedAt: entry.publishedAt,
+        localeCode: "en",
+        tags: entry.tags,
+        startup: entry.startup,
+        appVersion: entry.appVersion,
+        entry: entry,
+      );
+      expect(record.entry, entry);
+      expect(record.entry!.channels, ["stable"]);
+      expect(record.entry!.platforms, ["android"]);
+      expect(record.entry!.localizations["en"]!.title, "Title");
     });
   });
 }

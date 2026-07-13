@@ -2,7 +2,6 @@ import "dart:convert";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/features/announcements/models/announcement_state.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
@@ -22,11 +21,6 @@ void main() {
     tempDir.deleteSync(recursive: true);
   });
 
-  Future<void> initAndSync() async {
-    AnnouncementStateStore.init();
-    await AnnouncementStateStore.ensureSynced;
-  }
-
   Directory settingsDir() => Directory(p.join(tempDir.path, "settings"));
 
   File legacyFile() => File(p.join(tempDir.path, "settings", "document_storage.json"));
@@ -45,15 +39,16 @@ void main() {
 
   group("Migration from legacy document_storage.json", () {
     test("fresh install produces initial state", () async {
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      await store.init();
+      await store.ensureSynced;
 
-      expect(AnnouncementStateStore.state.schemaVersion, 2);
-      expect(AnnouncementStateStore.state.readIds, isEmpty);
-      expect(AnnouncementStateStore.state.dismissedIds, isEmpty);
-      expect(AnnouncementStateStore.state.lastSeenAppVersion, isNull);
+      expect(store.state.schemaVersion, 3);
+      expect(store.state.readIds, isEmpty);
+      expect(store.state.dismissedIds, isEmpty);
     });
 
-    test("migrates read IDs, dismissed IDs, and lastSeenAppVersion", () async {
+    test("migrates read IDs and dismissed IDs", () async {
       final legacyJson = {
         "version": 3,
         "readTimestamps": {
@@ -69,13 +64,15 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final migration = await store.init();
+      await store.ensureSynced;
 
-      expect(AnnouncementStateStore.isRead("announcement-1"), isTrue);
-      expect(AnnouncementStateStore.isRead("announcement-2"), isTrue);
-      expect(AnnouncementStateStore.isDismissed("startup-1"), isTrue);
-      expect(AnnouncementStateStore.isDismissed("startup-2"), isTrue);
-      expect(AnnouncementStateStore.lastSeenAppVersion, "2.0.0");
+      expect(store.isRead("announcement-1"), isTrue);
+      expect(store.isRead("announcement-2"), isTrue);
+      expect(store.isDismissed("startup-1"), isTrue);
+      expect(store.isDismissed("startup-2"), isTrue);
+      expect(migration?.lastSeenAppVersion, "2.0.0");
     });
 
     test("new state file wins over legacy", () async {
@@ -95,23 +92,27 @@ void main() {
       };
       newStateFile().writeAsStringSync(jsonEncode(newStateJson));
 
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final migration = await store.init();
+      await store.ensureSynced;
 
-      expect(AnnouncementStateStore.isRead("modern-entry"), isTrue);
-      expect(AnnouncementStateStore.isRead("legacy-entry"), isFalse);
-      expect(AnnouncementStateStore.isDismissed("modern-dismissed"), isTrue);
-      expect(AnnouncementStateStore.isDismissed("legacy-dismissed"), isFalse);
-      expect(AnnouncementStateStore.lastSeenAppVersion, "3.0.0");
+      expect(store.isRead("modern-entry"), isTrue);
+      expect(store.isRead("legacy-entry"), isFalse);
+      expect(store.isDismissed("modern-dismissed"), isTrue);
+      expect(store.isDismissed("legacy-dismissed"), isFalse);
+      expect(migration?.lastSeenAppVersion, "3.0.0");
     });
 
     test("corrupted legacy file falls back to initial", () async {
       legacyFile().writeAsStringSync("not valid json {{{");
 
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      await store.init();
+      await store.ensureSynced;
 
-      expect(AnnouncementStateStore.state.schemaVersion, 2);
-      expect(AnnouncementStateStore.state.readIds, isEmpty);
-      expect(AnnouncementStateStore.state.dismissedIds, isEmpty);
+      expect(store.state.schemaVersion, 3);
+      expect(store.state.readIds, isEmpty);
+      expect(store.state.dismissedIds, isEmpty);
     });
 
     test("post-migration writes announcement_state.json to disk", () async {
@@ -123,12 +124,14 @@ void main() {
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
       expect(newStateFile().existsSync(), isFalse);
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      await store.init();
+      await store.ensureSynced;
       expect(newStateFile().existsSync(), isTrue);
 
       final writtenText = newStateFile().readAsStringSync();
       final writtenJson = jsonDecode(writtenText) as Map<String, dynamic>;
-      expect(writtenJson["schemaVersion"], 2);
+      expect(writtenJson["schemaVersion"], 3);
       expect(writtenJson["readIds"], contains("entry-x"));
     });
 
@@ -139,7 +142,9 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      await store.init();
+      await store.ensureSynced;
 
       expect(legacyFile().existsSync(), isTrue);
       final legacyContent = legacyFile().readAsStringSync();
@@ -154,11 +159,13 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final migration = await store.init();
+      await store.ensureSynced;
 
-      expect(AnnouncementStateStore.state.readIds, isEmpty);
-      expect(AnnouncementStateStore.isDismissed("d-1"), isTrue);
-      expect(AnnouncementStateStore.lastSeenAppVersion, "4.0.0");
+      expect(store.state.readIds, isEmpty);
+      expect(store.isDismissed("d-1"), isTrue);
+      expect(migration?.lastSeenAppVersion, "4.0.0");
     });
 
     test("missing dismissedStartupAnnouncementIds produces empty dismissedIds", () async {
@@ -169,11 +176,13 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      await initAndSync();
+      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final migration = await store.init();
+      await store.ensureSynced;
 
-      expect(AnnouncementStateStore.isRead("entry-a"), isTrue);
-      expect(AnnouncementStateStore.state.dismissedIds, isEmpty);
-      expect(AnnouncementStateStore.lastSeenAppVersion, "5.0.0");
+      expect(store.isRead("entry-a"), isTrue);
+      expect(store.state.dismissedIds, isEmpty);
+      expect(migration?.lastSeenAppVersion, "5.0.0");
     });
   });
 }

@@ -207,7 +207,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
               const SizedBox(height: 24),
               _ReleaseNotesCard(
                 unreadCount: unreadCount,
-                onTap: () => unawaited(context.router.push(const AnnouncementFeedRoute())),
+                onTap: () => unawaited(context.router.push(AnnouncementFeedRoute())),
               ),
             ],
           );

@@ -23,6 +23,13 @@ class AnnouncementRemoteService {
   Map<String, dynamic>? _cachedCatalogPayload;
   final Map<String, Map<String, dynamic>> _pageCache = <String, Map<String, dynamic>>{};
 
+  /// Drop in-memory catalog and page caches so the next fetch hits the
+  /// network.
+  void invalidateCache() {
+    _cachedCatalogPayload = null;
+    _pageCache.clear();
+  }
+
   Future<AnnouncementCatalog?> fetchCatalog() async {
     final endpoint = _resolveEndpoint();
     if (endpoint == null) return null;
@@ -34,7 +41,15 @@ class AnnouncementRemoteService {
         cachedPayload: _cachedCatalogPayload,
       );
       _cachedCatalogPayload = payload;
-      return AnnouncementCatalog.fromJson(payload);
+      final catalog = AnnouncementCatalog.fromJson(payload);
+      if (!catalog.isSupported) {
+        warning(
+          "Unsupported announcement catalog schemaVersion ${catalog.schemaVersion}; "
+          "falling back to bundled entries only",
+        );
+        return null;
+      }
+      return catalog;
     } on Object catch (e, st) {
       warning("Failed to fetch announcement catalog: $e", stackTrace: st);
       return null;
@@ -60,7 +75,7 @@ class AnnouncementRemoteService {
   }
 
   Future<String?> fetchBody(String bodyHash) async {
-    final cached = AnnouncementBodyCache.get(bodyHash);
+    final cached = await AnnouncementBodyCache.get(bodyHash);
     if (cached != null) return cached;
 
     final endpoint = _resolveEndpoint();

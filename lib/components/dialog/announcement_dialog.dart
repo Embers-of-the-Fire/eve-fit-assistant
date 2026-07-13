@@ -1,8 +1,10 @@
 import "dart:async";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
+import "package:markdown_widget/markdown_widget.dart";
 
 typedef AnnouncementDialogDetailCallback = FutureOr<void> Function();
 typedef AnnouncementDialogPersistenceCallback =
@@ -11,7 +13,8 @@ typedef AnnouncementDialogPersistenceCallback =
 Future<void> showAnnouncementDialog(
   BuildContext context, {
   required String title,
-  required String informationText,
+  String? informationText,
+  String? bodyMarkdown,
   AnnouncementDialogDetailCallback? onShowDetail,
   AnnouncementDialogPersistenceCallback? onPersistPreference,
   bool barrierDismissible = true,
@@ -23,6 +26,7 @@ Future<void> showAnnouncementDialog(
   builder: (context) => AnnouncementDialog(
     title: title,
     informationText: informationText,
+    bodyMarkdown: bodyMarkdown,
     onShowDetail: onShowDetail,
     onPersistPreference: onPersistPreference,
     initialDontShowAgain: initialDontShowAgain,
@@ -32,15 +36,20 @@ Future<void> showAnnouncementDialog(
 class AnnouncementDialog extends StatefulWidget {
   const AnnouncementDialog({
     required this.title,
-    required this.informationText,
     super.key,
+    this.informationText,
+    this.bodyMarkdown,
     this.onShowDetail,
     this.onPersistPreference,
     this.initialDontShowAgain = false,
-  });
+  }) : assert(
+         informationText != null || bodyMarkdown != null,
+         "Provide either informationText or bodyMarkdown",
+       );
 
   final String title;
-  final String informationText;
+  final String? informationText;
+  final String? bodyMarkdown;
   final AnnouncementDialogDetailCallback? onShowDetail;
   final AnnouncementDialogPersistenceCallback? onPersistPreference;
   final bool initialDontShowAgain;
@@ -63,7 +72,14 @@ class _AnnouncementDialogState extends State<AnnouncementDialog> {
         children: [
           Flexible(
             child: SingleChildScrollView(
-              child: Text(widget.informationText, style: context.theme.textTheme.bodyMedium),
+              child: widget.bodyMarkdown != null
+                  ? MarkdownWidget(
+                      data: widget.bodyMarkdown!,
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      config: markdownDarkConfig,
+                    )
+                  : Text(widget.informationText ?? "", style: context.theme.textTheme.bodyMedium),
             ),
           ),
           if (widget.onPersistPreference != null) ...[

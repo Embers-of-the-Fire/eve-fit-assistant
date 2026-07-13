@@ -17,21 +17,21 @@ import "package:mocktail/mocktail.dart";
 class _MockAppUpdateService extends Mock implements AppUpdateService {}
 
 RemoteAppRelease _release({String version = "2.0.0"}) => RemoteAppRelease(
-      releaseId: "rel-2",
-      version: version,
-      snapshotHash: "snapshot",
-      index: ReleaseIndex(
-        schemaVersion: 1,
-        id: "rel-2",
-        version: version,
-        android: AndroidArtifacts()
-          ..general = AndroidArtifactVariant(
-            identifier: "release://2.0.0/android/general",
-            contentHash: "aa" * 32,
-            size: Int64(100),
-          ),
+  releaseId: "rel-2",
+  version: version,
+  snapshotHash: "snapshot",
+  index: ReleaseIndex(
+    schemaVersion: 1,
+    id: "rel-2",
+    version: version,
+    android: AndroidArtifacts()
+      ..general = AndroidArtifactVariant(
+        identifier: "release://2.0.0/android/general",
+        contentHash: "aa" * 32,
+        size: Int64(100),
       ),
-    );
+  ),
+);
 
 void main() {
   late String tempDir;
@@ -50,9 +50,7 @@ void main() {
     mockService = _MockAppUpdateService();
 
     container = ProviderContainer(
-      overrides: [
-        appUpdateServiceProvider.overrideWithValue(mockService),
-      ],
+      overrides: [appUpdateServiceProvider.overrideWithValue(mockService)],
     );
   });
 
@@ -79,13 +77,11 @@ void main() {
         size: 100,
       );
 
-      when(() => mockService.resolveArtifact(release.index.android))
-          .thenAnswer((_) async => Right(artifact));
       when(
-        () => mockService.downloadArtifact(
-          artifact,
-          onProgress: any(named: "onProgress"),
-        ),
+        () => mockService.resolveArtifact(release.index.android),
+      ).thenAnswer((_) async => Right(artifact));
+      when(
+        () => mockService.downloadArtifact(artifact, onProgress: any(named: "onProgress")),
       ).thenAnswer((_) async => const Right("/tmp/update.apk"));
 
       final states = <AppUpdateStatus>[];
@@ -107,8 +103,9 @@ void main() {
       final release = _release();
       release.index.clearAndroid();
 
-      when(() => mockService.resolveArtifact(release.index.android))
-          .thenAnswer((_) async => const Left(AppUpdateNoArtifactError(message: "no artifact")));
+      when(
+        () => mockService.resolveArtifact(release.index.android),
+      ).thenAnswer((_) async => const Left(AppUpdateNoArtifactError(message: "no artifact")));
 
       await container.read(appUpdateControllerProvider(release).notifier).download();
 
@@ -118,13 +115,11 @@ void main() {
 
     test("install transitions to installing then readyToInstall on success", () async {
       final release = _release();
-      container
-          .read(appUpdateControllerProvider(release).notifier)
-          .state = const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk");
+      container.read(appUpdateControllerProvider(release).notifier).state =
+          const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk");
 
       when(() => mockService.canInstall()).thenAnswer((_) async => true);
-      when(() => mockService.install("/tmp/update.apk"))
-          .thenAnswer((_) async => const Right(unit));
+      when(() => mockService.install("/tmp/update.apk")).thenAnswer((_) async => const Right(unit));
 
       final states = <AppUpdateStatus>[];
       final sub = container.listen(
@@ -143,9 +138,8 @@ void main() {
 
     test("install fails when permission denied", () async {
       final release = _release();
-      container
-          .read(appUpdateControllerProvider(release).notifier)
-          .state = const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk");
+      container.read(appUpdateControllerProvider(release).notifier).state =
+          const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk");
 
       when(() => mockService.canInstall()).thenAnswer((_) async => false);
 

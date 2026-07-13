@@ -6,8 +6,10 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
+import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
-import "package:eve_fit_assistant/features/announcements/state/state.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -117,61 +119,39 @@ void main() {
     PathProvider.cachesPath = tempDir.path;
   });
 
-  setUp(() {
-    AnnouncementStateStore.init();
+  late AnnouncementStateStore stateStore;
+  late AppVersionStateStore versionStore;
+
+  setUp(() async {
+    stateStore = AnnouncementStateStore(settingsPath: tempDir.path);
+    await stateStore.init();
+    versionStore = AppVersionStateStore(settingsPath: tempDir.path);
+    await versionStore.init();
   });
 
   tearDownAll(() {
     tempDir.deleteSync(recursive: true);
   });
 
-  group("startupAnnouncementProvider version gating", () {
-    test("excludes startup entry where appVersion <= installed", () async {
+  group("startupAnnouncementQueueProvider version gating", () {
+    test("returns queue with eligible entries", () async {
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
           announcementFeedProvider.overrideWith((_) async => _testFeed()),
           appVersionProvider.overrideWith((_) async => _installedVersion),
         ],
       );
       addTearDown(container.dispose);
 
-      final record = await container.read(startupAnnouncementProvider.future);
-      expect(record, isNotNull);
-      // Should be the "New Version Startup" (3.0.0 > 2.0.0), not the old one
-      expect(record!.id, "new-version-startup");
-    });
-
-    test("includes general startup entry with no appVersion", () async {
-      final feed = [
-        // Only the general startup entry (no appVersion)
-        AnnouncementRecord(
-          id: "general-startup",
-          source: AnnouncementEntrySource.bundled,
-          title: "General Startup",
-          summary: "General announcement",
-          bodyHash: "c".padRight(64, "0"),
-          publishedAt: DateTime(2026, 6, 14),
-          localeCode: "en",
-          tags: ["announcement"],
-          startup: true,
-          isRead: false,
-          isDismissed: false,
-        ),
-      ];
-
-      final container = ProviderContainer(
-        overrides: [
-          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
-          announcementFeedProvider.overrideWith((_) async => feed),
-          appVersionProvider.overrideWith((_) async => _installedVersion),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final record = await container.read(startupAnnouncementProvider.future);
-      expect(record, isNotNull);
-      expect(record!.id, "general-startup");
+      final queue = await container.read(startupAnnouncementQueueProvider.future);
+      // Old-version-startup (1.0.0 <= 2.0.0) is excluded
+      // New-version-startup (3.0.0 > 2.0.0) is included
+      // General-startup (no appVersion) is included
+      expect(queue.length, 2);
+      expect(queue.map((r) => r.id), containsAll(["new-version-startup", "general-startup"]));
     });
 
     test("excludes read startup entries", () async {
@@ -195,14 +175,16 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
           announcementFeedProvider.overrideWith((_) async => feed),
           appVersionProvider.overrideWith((_) async => _installedVersion),
         ],
       );
       addTearDown(container.dispose);
 
-      final record = await container.read(startupAnnouncementProvider.future);
-      expect(record, isNull);
+      final queue = await container.read(startupAnnouncementQueueProvider.future);
+      expect(queue, isEmpty);
     });
 
     test("excludes dismissed startup entries", () async {
@@ -226,14 +208,35 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
           announcementFeedProvider.overrideWith((_) async => feed),
           appVersionProvider.overrideWith((_) async => _installedVersion),
         ],
       );
       addTearDown(container.dispose);
 
+      final queue = await container.read(startupAnnouncementQueueProvider.future);
+      expect(queue, isEmpty);
+    });
+  });
+
+  group("startupAnnouncementProvider (deprecated alias)", () {
+    test("returns first entry from queue", () async {
+      final container = ProviderContainer(
+        overrides: [
+          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
+          announcementFeedProvider.overrideWith((_) async => _testFeed()),
+          appVersionProvider.overrideWith((_) async => _installedVersion),
+        ],
+      );
+      addTearDown(container.dispose);
+
       final record = await container.read(startupAnnouncementProvider.future);
-      expect(record, isNull);
+      expect(record, isNotNull);
+      expect(record!.id, "new-version-startup");
     });
   });
 
@@ -242,6 +245,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
           announcementFeedProvider.overrideWith((_) async => _testFeed()),
           appVersionProvider.overrideWith((_) async => _installedVersion),
         ],
@@ -253,11 +258,6 @@ void main() {
       await container.read(announcementVersionFeedProvider.future);
 
       final count = container.read(unreadVersionCountProvider);
-      // New-version-non-startup (2.5.0) is read → excluded
-      // Old-version-non-startup (1.5.0 <= installed) → excluded by gating
-      // Old-version-startup (1.0.0 <= installed) → excluded by gating
-      // New-version-startup (3.0.0 > installed) → unread → counted
-      // General-startup (no appVersion) → not in version feed
       expect(count, 1);
     });
 
@@ -296,6 +296,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
           announcementFeedProvider.overrideWith((_) async => feed),
           appVersionProvider.overrideWith((_) async => _installedVersion),
         ],
@@ -314,10 +316,10 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
           announcementFeedProvider.overrideWith((_) async => _testFeed()),
           appVersionProvider.overrideWith((_) async {
-            // Simulate never resolving
-            // ignore: only_throw_errors
             throw UnimplementedError();
           }),
         ],
@@ -325,17 +327,88 @@ void main() {
       addTearDown(container.dispose);
 
       final count = container.read(unreadVersionCountProvider);
-      // appVer is null when error → all entries counted (no gating)
-      // But we should still get a number, not crash
       expect(count, greaterThanOrEqualTo(0));
+    });
+  });
+
+  group("pendingVersionBumpProvider", () {
+    test("returns true when version bump and matching entries exist", () async {
+      final feed = [
+        AnnouncementRecord(
+          id: "v-bump",
+          source: AnnouncementEntrySource.remote,
+          title: "Bump",
+          summary: "",
+          bodyHash: "a".padRight(64, "0"),
+          publishedAt: DateTime(2026, 6, 15),
+          localeCode: "en",
+          tags: [],
+          startup: false,
+          appVersion: "2.0.0",
+          isRead: false,
+          isDismissed: false,
+        ),
+      ];
+
+      final container = ProviderContainer(
+        overrides: [
+          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
+          announcementFeedProvider.overrideWith((_) async => feed),
+          appVersionProvider.overrideWith((_) async => "2.0.0"),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(announcementFeedProvider.future);
+      await container.read(appVersionProvider.future);
+      await container.read(announcementVersionFeedProvider.future);
+
+      expect(container.read(pendingVersionBumpProvider), isTrue);
+    });
+
+    test("returns false when lastSeenAppVersion equals current", () async {
+      versionStore.setLastSeenAppVersion("2.0.0");
+
+      final feed = [
+        AnnouncementRecord(
+          id: "v-bump",
+          source: AnnouncementEntrySource.remote,
+          title: "Bump",
+          summary: "",
+          bodyHash: "a".padRight(64, "0"),
+          publishedAt: DateTime(2026, 6, 15),
+          localeCode: "en",
+          tags: [],
+          startup: false,
+          appVersion: "2.0.0",
+          isRead: false,
+          isDismissed: false,
+        ),
+      ];
+
+      final container = ProviderContainer(
+        overrides: [
+          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          announcementStateStoreProvider.overrideWithValue(stateStore),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
+          announcementFeedProvider.overrideWith((_) async => feed),
+          appVersionProvider.overrideWith((_) async => "2.0.0"),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(announcementFeedProvider.future);
+      await container.read(appVersionProvider.future);
+      await container.read(announcementVersionFeedProvider.future);
+
+      expect(container.read(pendingVersionBumpProvider), isFalse);
     });
   });
 
   group("version entry appears in feed when appVersion <= installed", () {
     test("old version entries pass _filterEntry and appear in feed", () {
-      // Verify via compareVersions: the installed version is 2.0.0,
-      // so 1.5.0 <= 2.0.0 — this entry should NOT be filtered by
-      // step 6 (which was removed).
       expect(compareVersions("1.5.0", _installedVersion) <= 0, isTrue);
     });
 

@@ -9,6 +9,8 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
@@ -22,12 +24,41 @@ import "package:flutter_easyloading/flutter_easyloading.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fluttertoast/fluttertoast.dart";
 
-Future<void> initSingletons() async {
+/// Holds the initialized state stores so callers can build ProviderScope
+/// overrides from them.
+class InitializedStores {
+  const InitializedStores({
+    required this.announcementStateStore,
+    required this.appVersionStateStore,
+  });
+
+  final AnnouncementStateStore announcementStateStore;
+  final AppVersionStateStore appVersionStateStore;
+}
+
+Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   await PathProvider.init();
   AppSettingService.init();
-  AnnouncementStateStore.init();
+
+  final announcementStateStore = AnnouncementStateStore(settingsPath: PathProvider.settingsPath);
+  final migration = await announcementStateStore.init();
+
+  final appVersionStateStore = AppVersionStateStore(settingsPath: PathProvider.settingsPath);
+  await appVersionStateStore.init();
+  if (migration != null) {
+    final lastSeen = migration.lastSeenAppVersion;
+    if (lastSeen != null && appVersionStateStore.lastSeenAppVersion == null) {
+      appVersionStateStore.setLastSeenAppVersion(lastSeen);
+    }
+    final lastAck = migration.lastAcknowledgedReleaseId;
+    if (lastAck != null && appVersionStateStore.lastAcknowledgedReleaseId == null) {
+      appVersionStateStore.acknowledgeRelease(lastAck);
+    }
+    await appVersionStateStore.ensureSynced;
+  }
+
   FeedbackStateStore.init();
   await AnnouncementBodyCache.init();
   EtagCache.init();
@@ -38,6 +69,10 @@ Future<void> initSingletons() async {
   initErrorBoundary();
   await repairStartupPersistence();
   GlobalLoading.init();
+  return InitializedStores(
+    announcementStateStore: announcementStateStore,
+    appVersionStateStore: appVersionStateStore,
+  );
 }
 
 Widget initBuilder(BuildContext context, Widget? child) =>
@@ -78,8 +113,9 @@ Future<void> _initVersionTracking(WidgetRef ref) async {
 
   try {
     final appVersion = await completer.future.timeout(const Duration(milliseconds: 500));
-    if (AnnouncementStateStore.lastSeenAppVersion != null) return;
-    AnnouncementStateStore.setLastSeenAppVersion(appVersion);
+    final store = ref.read(appVersionStateStoreProvider);
+    if (store.lastSeenAppVersion != null) return;
+    store.setLastSeenAppVersion(appVersion);
   } on TimeoutException {
     // Provider didn't resolve in time
   } catch (_) {
