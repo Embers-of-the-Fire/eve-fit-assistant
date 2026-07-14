@@ -21,10 +21,9 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@v22
 
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
-
-      - name: Verify release version
+      - name: Run release preflight checks
         run: |
-          nix develop .#python --command bash -c \
-            'uv run x.py ci release verify --base-ref ${{ github.base_ref }} --check-notes'
+          nix develop .#codegen --command bash -c \
+            'uv sync && uv run x.py ci release verify \
+              --base-ref ${{ github.base_ref }} \
+              --check-all'

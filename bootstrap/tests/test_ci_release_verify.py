@@ -10,7 +10,10 @@ import click
 import click.testing
 import pytest
 
+from bootstrap.ci.release import _check_note_content
 from bootstrap.ci.release import _check_notes
+from bootstrap.ci.release import _check_submodules
+from bootstrap.ci.release import _check_tag_does_not_exist
 from bootstrap.ci.release import _load_version_from_config
 from bootstrap.ci.release import _normalize_version_for_notes
 from bootstrap.ci.release import _read_pubspec_version
@@ -56,6 +59,29 @@ def _make_notes(root: Path, version: ProjectVersion) -> None:
     notes_dir.mkdir(parents=True, exist_ok=True)
     (notes_dir / "spec.yaml").write_text("---\n", encoding="utf-8")
     (notes_dir / "changelog.md").write_text("# Changelog\n", encoding="utf-8")
+
+
+def _make_release_note(root: Path, version: ProjectVersion) -> None:
+    """Create a fully valid release note directory."""
+    normalized = _normalize_version_for_notes(version)
+    notes_dir = root / "docs" / "changelog" / normalized
+    notes_dir.mkdir(parents=True, exist_ok=True)
+    (notes_dir / "spec.yaml").write_text(
+        f"publishedAt: '2026-06-06T08:44:24Z'\n"
+        f"tags:\n- release-note\n"
+        f"channels:\n- testing\n"
+        f"platforms:\n- android\n- ios\n"
+        f"appVersion: {version.render_semver()}\n",
+        encoding="utf-8",
+    )
+    (notes_dir / "changelog.md").write_text("## Changelog\n", encoding="utf-8")
+    for locale in ("zh", "en"):
+        (notes_dir / f"content.{locale}.md").write_text(
+            f"# Release Note {locale.upper()}\n\n"
+            f"This is the {locale} summary paragraph.\n\n"
+            f"Additional body content.\n",
+            encoding="utf-8",
+        )
 
 
 @pytest.fixture
@@ -224,3 +250,246 @@ class TestReleaseVerifyIntegration:
         assert result.exit_code != 0
         assert "Version mismatch" in result.output
         assert "pubspec.yaml" in result.output
+
+
+class TestCheckTagDoesNotExist:
+    def _mock_run_tag_missing(self, cmd, **kwargs):
+        class Result:
+            returncode = 1
+            stdout = ""
+            stderr = ""
+
+        return Result()
+
+    def _mock_run_tag_exists(self, cmd, **kwargs):
+        class Result:
+            returncode = 0
+            stdout = "abc123\n"
+            stderr = ""
+
+        return Result()
+
+    def test_tag_missing(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_run_tag_missing)
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        version = ProjectVersion(major=0, minor=1, patch=0, pre_label="beta", pre_num=2)
+        _check_tag_does_not_exist(version)  # should not raise
+
+    def test_tag_exists(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_run_tag_exists)
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        version = ProjectVersion(major=0, minor=1, patch=0, pre_label="beta", pre_num=2)
+        with pytest.raises(click.ClickException, match="already exists"):
+            _check_tag_does_not_exist(version)
+
+
+class TestCheckNoteContent:
+    def test_valid(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        version = ProjectVersion(major=0, minor=1, patch=0, pre_label="beta", pre_num=2)
+        _make_release_note(tmp_project, version)
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        _check_note_content(version)  # should not raise
+
+    def test_missing_content_file(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        version = ProjectVersion(major=0, minor=1, patch=0, pre_label="beta", pre_num=2)
+        _make_release_note(tmp_project, version)
+        notes_dir = tmp_project / "docs" / "changelog" / _normalize_version_for_notes(version)
+        (notes_dir / "content.zh.md").unlink()
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        with pytest.raises(click.ClickException, match="Missing required locale file"):
+            _check_note_content(version)
+
+    def test_invalid_spec(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        version = ProjectVersion(major=0, minor=1, patch=0, pre_label="beta", pre_num=2)
+        _make_release_note(tmp_project, version)
+        notes_dir = tmp_project / "docs" / "changelog" / _normalize_version_for_notes(version)
+        (notes_dir / "spec.yaml").write_text("publishedAt: invalid\n", encoding="utf-8")
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        with pytest.raises(click.ClickException, match="invalid"):
+            _check_note_content(version)
+
+
+class TestCheckSubmodules:
+    def _mock_subprocess_run(
+        self, expected_commit: str = "abc123def456", actual_commit: str | None = None
+    ):
+        if actual_commit is None:
+            actual_commit = expected_commit
+
+        def _fake_run(cmd, **kwargs):
+            class Result:
+                returncode = 0
+                stdout = ""
+                stderr = ""
+
+            if "ls-tree" in cmd:
+                Result.stdout = f"160000 commit {expected_commit}\n"
+            elif "rev-parse" in cmd and "HEAD" in cmd:
+                Result.stdout = f"{actual_commit}\n"
+            return Result()
+
+        return _fake_run
+
+    def test_clean(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+            (tmp_project / path).mkdir(parents=True, exist_ok=True)
+            (tmp_project / path / ".git").mkdir()
+        monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        _check_submodules()  # should not raise
+
+    def test_uninitialized(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        with pytest.raises(click.ClickException, match="not initialized"):
+            _check_submodules()
+
+    def test_wrong_commit(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+            (tmp_project / path).mkdir(parents=True, exist_ok=True)
+            (tmp_project / path / ".git").mkdir()
+        monkeypatch.setattr(
+            "bootstrap.ci.release.subprocess.run",
+            self._mock_subprocess_run("abc123def456", "000000000000"),
+        )
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        with pytest.raises(click.ClickException, match="expected"):
+            _check_submodules()
+
+    def test_dirty(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+            (tmp_project / path).mkdir(parents=True, exist_ok=True)
+            (tmp_project / path / ".git").mkdir()
+
+        def _fake_run(cmd, **kwargs):
+            class Result:
+                returncode = 0
+                stdout = ""
+                stderr = ""
+
+            if "ls-tree" in cmd:
+                Result.stdout = "160000 commit abc123def456\n"
+            elif "rev-parse" in cmd and "HEAD" in cmd:
+                Result.stdout = "abc123def456\n"
+            elif "diff" in cmd and "--cached" in cmd:
+                Result.returncode = 1  # staged changes
+            return Result()
+
+        monkeypatch.setattr("bootstrap.ci.release.subprocess.run", _fake_run)
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        with pytest.raises(click.ClickException, match="uncommitted"):
+            _check_submodules()
+
+
+class TestReleaseVerifyPreflightFlags:
+    def _fake_execute(
+        self, cmd: list, title: str, capture_stdout: bool = False, live_stdout: bool = False
+    ) -> str:
+        return ""
+
+    def _mock_subprocess_run(self, expected_commit: str = "abc123def456"):
+        def _fake_run(cmd, **kwargs):
+            class Result:
+                returncode = 0
+                stdout = ""
+                stderr = ""
+
+            cmd_str = " ".join(cmd)
+            if "rev-parse" in cmd and "--verify" in cmd_str:
+                # Tag does not exist
+                Result.returncode = 1
+            elif "ls-tree" in cmd:
+                Result.stdout = f"160000 commit {expected_commit}\n"
+            elif "rev-parse" in cmd and "HEAD" in cmd:
+                Result.stdout = f"{expected_commit}\n"
+            elif "git" in cmd and "diff" in cmd:
+                Result.returncode = 0
+            return Result()
+
+        return _fake_run
+
+    def test_check_tag_success(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        version = {"major": 0, "minor": 1, "patch": 0, "pre_label": "beta", "pre_num": 2}
+        _write_config(tmp_project, version)
+        ver = ProjectVersion.model_validate(version)
+        _write_pubspec(tmp_project, ver.render_full())
+        _write_cargo(tmp_project, ver.render_semver())
+        _write_pyproject(tmp_project, ver.render_semver())
+        _make_notes(tmp_project, ver)
+
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
+
+        @click.group()
+        def cli():
+            pass
+
+        register_all_commands(cli)
+        runner = click.testing.CliRunner()
+        result = runner.invoke(cli, ["ci", "release", "verify", "--check-tag"])
+        assert result.exit_code == 0, result.output
+        assert "Tag check OK" in result.output
+
+    def test_check_note_content_success(
+        self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        version = {"major": 0, "minor": 1, "patch": 0, "pre_label": "beta", "pre_num": 2}
+        _write_config(tmp_project, version)
+        ver = ProjectVersion.model_validate(version)
+        _write_pubspec(tmp_project, ver.render_full())
+        _write_cargo(tmp_project, ver.render_semver())
+        _write_pyproject(tmp_project, ver.render_semver())
+        _make_release_note(tmp_project, ver)
+
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+
+        @click.group()
+        def cli():
+            pass
+
+        register_all_commands(cli)
+        runner = click.testing.CliRunner()
+        result = runner.invoke(cli, ["ci", "release", "verify", "--check-note-content"])
+        assert result.exit_code == 0, result.output
+        assert "Release note content OK" in result.output
+
+    def test_check_all_success(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        version = {"major": 0, "minor": 1, "patch": 0, "pre_label": "beta", "pre_num": 2}
+        _write_config(tmp_project, version)
+        ver = ProjectVersion.model_validate(version)
+        _write_pubspec(tmp_project, ver.render_full())
+        _write_cargo(tmp_project, ver.render_semver())
+        _write_pyproject(tmp_project, ver.render_semver())
+        _make_release_note(tmp_project, ver)
+
+        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+            (tmp_project / path).mkdir(parents=True, exist_ok=True)
+            (tmp_project / path / ".git").mkdir()
+
+        # Create tracked generated files so _check_generated passes existence check.
+        (tmp_project / "lib" / "constant").mkdir(parents=True, exist_ok=True)
+        (tmp_project / "lib" / "constant" / "eve_dogma_unit_generated.dart").write_text(
+            "// generated\n", encoding="utf-8"
+        )
+        (tmp_project / "lib" / "storage" / "repo").mkdir(parents=True, exist_ok=True)
+        (tmp_project / "lib" / "storage" / "repo" / "repo_version.dart").write_text(
+            "// generated\n", encoding="utf-8"
+        )
+
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.runtime.execute", self._fake_execute)
+        monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
+
+        @click.group()
+        def cli():
+            pass
+
+        register_all_commands(cli)
+        runner = click.testing.CliRunner()
+        result = runner.invoke(cli, ["ci", "release", "verify", "--check-all"])
+        assert result.exit_code == 0, result.output
+        assert "Tag check OK" in result.output
+        assert "Release note content OK" in result.output
+        assert "Submodule check OK" in result.output
+        assert "Generated code OK" in result.output
+        assert "Build check OK" in result.output
+        assert "Tests OK" in result.output

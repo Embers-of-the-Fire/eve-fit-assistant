@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 import tomllib
 
 from typing import TYPE_CHECKING
 
 import click
 
+from bootstrap.cli import runtime
 from bootstrap.config import ProjectVersion
 from bootstrap.constant import PROJECT_ROOT
 
@@ -132,6 +134,143 @@ def _check_notes(version: ProjectVersion) -> None:
         )
 
 
+def _check_tag_does_not_exist(version: ProjectVersion) -> None:
+    """Fail if the expected release tag already exists in the repository."""
+    tag = version.render_tag()
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "-q", "--verify", f"refs/tags/{tag}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=PROJECT_ROOT,
+        )
+    except FileNotFoundError as exc:
+        raise click.ClickException("git is required for --check-tag") from exc
+    if result.returncode == 0:
+        raise click.ClickException(f"Tag {tag} already exists")
+
+
+def _check_note_content(version: ProjectVersion) -> None:
+    """Validate the full content of the release note directory."""
+    from bootstrap.docs.bundled_docs import _load_release_note
+    from bootstrap.utils import normalize_version_dir
+
+    dir_name = normalize_version_dir(version.render_semver())
+    notes_dir = PROJECT_ROOT / "docs" / "changelog" / dir_name
+    if not notes_dir.is_dir():
+        raise click.ClickException(
+            f"Changelog directory not found: {notes_dir}\nExpected docs/changelog/{dir_name}/"
+        )
+
+    try:
+        _load_release_note(dir_name, notes_dir)
+    except ValueError as exc:
+        raise click.ClickException(f"Release note content is invalid: {exc}") from exc
+
+
+def _get_submodule_expected_commit(path: str) -> str:
+    result = subprocess.run(
+        ["git", "ls-tree", "HEAD", path],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=PROJECT_ROOT,
+    )
+    parts = result.stdout.strip().split()
+    if len(parts) < 3:
+        raise click.ClickException(f"Failed to parse git ls-tree output for {path}")
+    return parts[2]
+
+
+def _get_submodule_actual_commit(path: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(PROJECT_ROOT / path), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _ensure_submodule_clean(path: str) -> None:
+    """Fail if the submodule has unstaged or staged changes."""
+    for flag in ("", "--cached"):
+        cmd = ["git", "-C", str(PROJECT_ROOT / path), "diff", "--quiet"]
+        if flag:
+            cmd.append(flag)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            raise click.ClickException(f"Submodule {path} has uncommitted changes")
+
+
+def _check_submodules() -> None:
+    """Verify engine and FSD dumper submodules are initialized and clean."""
+    submodules = ["rust/lib/eve-fit-os", "tools/eve-fsd-dumper"]
+    for path in submodules:
+        submodule_path = PROJECT_ROOT / path
+        if not (submodule_path / ".git").exists():
+            raise click.ClickException(f"Submodule {path} is not initialized")
+
+        expected = _get_submodule_expected_commit(path)
+        actual = _get_submodule_actual_commit(path)
+        if expected != actual:
+            raise click.ClickException(
+                f"Submodule {path} is at {actual[:12]}, expected {expected[:12]}"
+            )
+
+        _ensure_submodule_clean(path)
+
+
+def _check_generated() -> None:
+    """Regenerate code and verify tracked generated files are up to date."""
+    from bootstrap.utils import get_command
+
+    flutter = get_command("flutter")
+    runtime.execute([flutter, "pub", "get"], "FLUTTER PUB GET")
+    runtime.execute([sys.executable, "x.py", "generate", "all"], "GENERATE ALL")
+
+    tracked = [
+        PROJECT_ROOT / "lib" / "constant" / "eve_dogma_unit_generated.dart",
+        PROJECT_ROOT / "lib" / "storage" / "repo" / "repo_version.dart",
+    ]
+    for path in tracked:
+        if not path.exists():
+            raise click.ClickException(f"Tracked generated file missing: {path}")
+
+    result = subprocess.run(
+        ["git", "diff", "--exit-code", "--", *(str(path) for path in tracked)],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=PROJECT_ROOT,
+    )
+    if result.returncode != 0:
+        raise click.ClickException(
+            "Tracked generated files are out of date; run `./x generate all` and commit the changes"
+        )
+
+
+def _check_tests() -> None:
+    """Run Python and Flutter test suites."""
+    from bootstrap.utils import get_command
+
+    uv = get_command("uv")
+    runtime.execute([uv, "run", "pytest", "bootstrap/tests/"], "PYTHON TESTS")
+
+    flutter = get_command("flutter")
+    runtime.execute([flutter, "test"], "FLUTTER TESTS")
+
+
+def _check_build() -> None:
+    """Run static buildability checks that do not require engine data."""
+    from bootstrap.utils import get_command
+
+    flutter = get_command("flutter")
+    runtime.execute([flutter, "pub", "get"], "FLUTTER PUB GET")
+    runtime.execute([flutter, "analyze"], "FLUTTER ANALYZE")
+
+
 def register_ci_release_commands(ci_group: click.Group) -> None:
     @ci_group.group("release")
     def release_group():
@@ -149,8 +288,69 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
         default=False,
         help="Verify that changelog notes exist for the current version.",
     )
-    def release_verify(base_ref: str | None, check_notes: bool):
+    @click.option(
+        "--check-tag",
+        is_flag=True,
+        default=False,
+        help="Verify that the expected release tag does not already exist.",
+    )
+    @click.option(
+        "--check-note-content",
+        is_flag=True,
+        default=False,
+        help="Validate the full content of the release note directory.",
+    )
+    @click.option(
+        "--check-submodules",
+        is_flag=True,
+        default=False,
+        help="Verify submodules are initialized at the expected commit and clean.",
+    )
+    @click.option(
+        "--check-generated",
+        is_flag=True,
+        default=False,
+        help="Regenerate code and verify tracked generated files are up to date.",
+    )
+    @click.option(
+        "--check-build",
+        is_flag=True,
+        default=False,
+        help="Run static buildability checks that do not require engine data.",
+    )
+    @click.option(
+        "--check-tests",
+        is_flag=True,
+        default=False,
+        help="Run Python and Flutter test suites.",
+    )
+    @click.option(
+        "--check-all",
+        is_flag=True,
+        default=False,
+        help="Enable all optional preflight checks.",
+    )
+    def release_verify(
+        base_ref: str | None,
+        check_notes: bool,
+        check_tag: bool,
+        check_note_content: bool,
+        check_submodules: bool,
+        check_generated: bool,
+        check_build: bool,
+        check_tests: bool,
+        check_all: bool,
+    ):
         """Verify that the current version is consistent and valid."""
+        if check_all:
+            check_notes = True
+            check_tag = True
+            check_note_content = True
+            check_submodules = True
+            check_generated = True
+            check_build = True
+            check_tests = True
+
         config_path = PROJECT_ROOT / "efa.config.toml"
         version = _load_version_from_config(config_path)
         full = version.render_full()
@@ -189,8 +389,32 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
                 )
             click.echo(f"  Version check OK: {semver} > {base_version.render_semver()}")
 
+        if check_tag:
+            _check_tag_does_not_exist(version)
+            click.echo(f"  Tag check OK: {tag} does not exist")
+
         if check_notes:
             _check_notes(version)
             click.echo("  Changelog notes OK")
+
+        if check_note_content:
+            _check_note_content(version)
+            click.echo("  Release note content OK")
+
+        if check_submodules:
+            _check_submodules()
+            click.echo("  Submodule check OK")
+
+        if check_generated:
+            _check_generated()
+            click.echo("  Generated code OK")
+
+        if check_build:
+            _check_build()
+            click.echo("  Build check OK")
+
+        if check_tests:
+            _check_tests()
+            click.echo("  Tests OK")
 
         click.echo(f"Expected tag: {tag}")
