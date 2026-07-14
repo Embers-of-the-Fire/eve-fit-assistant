@@ -1,0 +1,203 @@
+name: Release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      test_mode:
+        description: "Run in test mode (skip tag, remote publish, and remote side effects)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Verify release version
+        id: verify
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release verify --check-notes' | tee /tmp/verify.log
+          echo "version=$(grep '^Canonical version:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(grep '^Expected tag:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
+
+      - name: Create Git tag
+        if: inputs.test_mode == false
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = "${{ steps.verify.outputs.tag }}";
+            try {
+              await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tag}`,
+              });
+              core.setFailed(`Tag ${tag} already exists; aborting.`);
+              return;
+            } catch (error) {
+              const status = error.status || error.response?.status;
+              if (status !== 404) {
+                throw error;
+              }
+            }
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tag}`,
+              sha: context.sha,
+            });
+            core.info(`Created tag ${tag}`);
+
+      - name: Setup CI developer config
+        run: nix develop .#python --command bash -c 'cp bootstrap/ci/efa.dev.ci.toml efa.dev.toml && uv run x.py dev env write-backend'
+
+      - name: Fetch native CI data
+        run: |
+          curl -sfLo /tmp/ci-native-data.tar.gz \
+            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+          mkdir -p "$GITHUB_WORKSPACE/ci-native"
+          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
+          mkdir -p rust/lib/eve-fit-os/data/out
+          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+
+      - name: Install Flutter dependencies
+        run: nix develop .#dart --command bash -c 'flutter pub get'
+
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+
+      - name: Build APK
+        run: nix develop .#dart --command bash -c 'uv run x.py build apk'
+
+      - name: Merge release registry
+        run: |
+          VERSION="${{ steps.verify.outputs.version }}"
+          nix develop .#python --command bash -c \
+            "uv run x.py build release --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json"
+
+      - name: Sync remote channel head
+        if: inputs.test_mode == false
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              --dev-env remote.s3.alias=efa-remote-publish \
+              --dev-env remote.s3.public_download=true \
+              remote sync \
+              --target s3 \
+              --endpoint "${REMOTE_ENDPOINT}" \
+              --bucket "${REMOTE_BUCKET}" \
+              --access-key "${REMOTE_ACCESS_KEY}" \
+              --secret-key "${REMOTE_SECRET_KEY}" \
+              --alias efa-remote-publish \
+              --channel testing'
+
+      - name: Stage release snapshot
+        if: inputs.test_mode == false
+        run: |
+          VERSION="${{ steps.verify.outputs.version }}"
+          nix develop .#python --command bash -c \
+            "uv run x.py remote session init testing --schema-root cache/remote"
+          nix develop .#python --command bash -c \
+            "uv run x.py remote session add --release --file cache/releases/merge/${VERSION}.json --schema-root cache/remote"
+
+      - name: Verify and commit generation
+        if: inputs.test_mode == false
+        id: commit
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote session verify --schema-root cache/remote'
+          committed_hash=$(nix develop .#python --command bash -c \
+            'uv run x.py remote session commit --json --schema-root cache/remote' | jq -r '.generation_hash')
+          echo "committed_hash=$committed_hash" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to testing channel
+        if: inputs.test_mode == false
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              --dev-env remote.s3.alias=efa-remote-publish \
+              --dev-env remote.s3.public_download=true \
+              remote publish testing \
+              --target s3 \
+              --endpoint "${REMOTE_ENDPOINT}" \
+              --bucket "${REMOTE_BUCKET}" \
+              --access-key "${REMOTE_ACCESS_KEY}" \
+              --secret-key "${REMOTE_SECRET_KEY}" \
+              --alias efa-remote-publish'
+
+      - name: Sync and verify remote head
+        if: inputs.test_mode == false
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              --dev-env remote.s3.alias=efa-remote-publish \
+              --dev-env remote.s3.public_download=true \
+              remote sync \
+              --target s3 \
+              --endpoint "${REMOTE_ENDPOINT}" \
+              --bucket "${REMOTE_BUCKET}" \
+              --access-key "${REMOTE_ACCESS_KEY}" \
+              --secret-key "${REMOTE_SECRET_KEY}" \
+              --alias efa-remote-publish \
+              --channel testing'
+          synced_hash=$(nix develop .#python --command bash -c \
+            'uv run python -c "from bootstrap.remote import SessionManager; m = SessionManager(\"cache/remote\"); print(m.get_head(\"testing\").generation_hash)"')
+          committed="${{ steps.commit.outputs.committed_hash }}"
+          if [ "$synced_hash" != "$committed" ]; then
+            echo "Remote head verification failed: committed=$committed synced=$synced_hash"
+            exit 1
+          fi
+          echo "Remote head verified: $synced_hash"
+
+      - name: Upload APK artifacts
+        if: inputs.test_mode
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: cache/releases/apk/**/*.apk
+          retention-days: 1
