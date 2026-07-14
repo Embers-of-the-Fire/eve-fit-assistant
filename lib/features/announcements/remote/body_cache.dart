@@ -20,7 +20,7 @@ class AnnouncementBodyCache {
       if (!file.existsSync()) {
         return null;
       }
-      return file.readAsString();
+      return await file.readAsString();
     } on FileSystemException catch (e) {
       warning("Failed to read cached announcement body $bodyHash: $e");
       return null;

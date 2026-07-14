@@ -1,7 +1,6 @@
 import "dart:io";
 
 import "package:eve_fit_assistant/config/locale.dart";
-import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
@@ -111,7 +110,8 @@ List<AnnouncementRecord> _testFeed() => [
 void main() {
   late Directory tempDir;
 
-  setUpAll(() {
+  setUp(() {
+    // Per-test tempDir so on-disk state does not leak between tests.
     tempDir = Directory.systemTemp.createTempSync("efa_repo_test_");
     PathProvider.documentsPath = tempDir.path;
     PathProvider.tempPath = tempDir.path;
@@ -129,7 +129,11 @@ void main() {
     await versionStore.init();
   });
 
-  tearDownAll(() {
+  tearDown(() async {
+    // Stores sync to disk on a background isolate; wait for pending writes
+    // before deleting the temp dir to avoid racy ENOTEMPTY failures.
+    await stateStore.ensureSynced;
+    await versionStore.ensureSynced;
     tempDir.deleteSync(recursive: true);
   });
 
