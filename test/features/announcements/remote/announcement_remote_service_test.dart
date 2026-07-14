@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/announcements/remote/announcement_remote_service.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
+import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
 import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -101,6 +102,60 @@ class _SuccessAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Adapter that honors conditional requests: answers 304 when the client
+/// sends a matching `If-None-Match` header and 200 otherwise. Tracks how many
+/// times each resource was fetched so tests can assert whether a request
+/// actually reached the network.
+class _ConditionalAdapter implements HttpClientAdapter {
+  static const String etag = '"test-etag"';
+
+  int catalogFetchCount = 0;
+  int pageFetchCount = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final path = options.uri.path;
+    final String body;
+    if (path.endsWith("/catalog.json")) {
+      catalogFetchCount++;
+      body = _sampleCatalogJson;
+    } else if (path == "/efa/v2/announcements/active.json" ||
+        path.startsWith("/efa/v2/announcements/pages/")) {
+      pageFetchCount++;
+      body = _samplePageJson;
+    } else {
+      return ResponseBody.fromString("", 404);
+    }
+    if (_ifNoneMatch(options) == etag) {
+      return ResponseBody.fromString("", 304);
+    }
+    return ResponseBody.fromString(
+      body,
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+        "etag": [etag],
+      },
+    );
+  }
+
+  static String? _ifNoneMatch(RequestOptions options) {
+    for (final MapEntry<String, dynamic> entry in options.headers.entries) {
+      if (entry.key.toLowerCase() == "if-none-match") {
+        return entry.value?.toString();
+      }
+    }
+    return null;
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _ErrorAdapter implements HttpClientAdapter {
   @override
   Future<ResponseBody> fetch(
@@ -122,6 +177,24 @@ class _NotFoundAdapter implements HttpClientAdapter {
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async => ResponseBody.fromString("Not Found", 404);
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _UnsupportedSchemaAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(
+    '{"schemaVersion": 999, "pages": []}',
+    200,
+    headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    },
+  );
 
   @override
   void close({bool force = false}) {}
@@ -220,6 +293,66 @@ void main() {
       final catalog = await service.fetchCatalog();
       expect(catalog, isNull);
     });
+
+    test("returns null for unsupported schema version", () async {
+      final dio = Dio(BaseOptions())..httpClientAdapter = _UnsupportedSchemaAdapter();
+      final container = _createContainer(dio: dio);
+      final service = container.read(announcementRemoteServiceProvider);
+
+      final catalog = await service.fetchCatalog();
+      expect(catalog, isNull);
+    });
+
+    test("invalidateCache clears catalog and page caches", () async {
+      final adapter = _ConditionalAdapter();
+      final dio = Dio(BaseOptions())..httpClientAdapter = adapter;
+      final container = _createContainer(dio: dio);
+      final service = container.read(announcementRemoteServiceProvider);
+
+      const pageUuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+      // Start from a clean persisted cache so the test is deterministic
+      // regardless of entries left behind by earlier tests.
+      EtagCache.clearAll();
+
+      // First fetch populates the in-memory caches and the persisted ETag
+      // entries.
+      expect(await service.fetchCatalog(), isNotNull);
+      expect(await service.fetchPage(pageUuid), isNotNull);
+      expect(adapter.catalogFetchCount, 1);
+      expect(adapter.pageFetchCount, 1);
+
+      // A second fetch sends conditional headers and is answered 304; the
+      // in-memory caches satisfy it with exactly one network call each.
+      expect(await service.fetchCatalog(), isNotNull);
+      expect(await service.fetchPage(pageUuid), isNotNull);
+      expect(adapter.catalogFetchCount, 2);
+      expect(adapter.pageFetchCount, 2);
+
+      // Drop the persisted payloads so only the service's in-memory caches
+      // could satisfy a 304; keep the ETags so requests stay conditional.
+      final endpoint = RemoteContentEndpoint(
+        originUri: Uri.parse(_defaultOriginUrl),
+        channel: _defaultChannel,
+      );
+      EtagCache.clearAll();
+      EtagCache.update(endpoint.announcementV2CatalogUri, etag: _ConditionalAdapter.etag);
+      EtagCache.update(endpoint.announcementV2PageUri(pageUuid), etag: _ConditionalAdapter.etag);
+
+      service.invalidateCache();
+
+      // With the in-memory caches cleared, each 304 has no payload to fall
+      // back to, forcing an unconditional retry: two additional network
+      // calls per resource instead of one. If invalidateCache() failed to
+      // clear a cache, the stale payload would answer the 304 and the count
+      // would be one lower.
+      final catalog = await service.fetchCatalog();
+      final page = await service.fetchPage(pageUuid);
+      expect(catalog, isNotNull);
+      expect(page, isNotNull);
+      expect(adapter.catalogFetchCount, 4);
+      expect(adapter.pageFetchCount, 4);
+    });
   });
 
   group("AnnouncementRemoteService fetchPage", () {
@@ -291,7 +424,7 @@ void main() {
       expect(body, _sampleBodyContent);
 
       // Verify it was cached
-      final cached = AnnouncementBodyCache.get(_bodyHash);
+      final cached = await AnnouncementBodyCache.get(_bodyHash);
       expect(cached, _sampleBodyContent);
     });
 

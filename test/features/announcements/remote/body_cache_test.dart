@@ -26,7 +26,7 @@ void main() {
       const hash = "a1b2c3d4e5f6789012345678901234567890abcd12345678901234567890abcdef";
       const content = "# Hello World\n\nThis is a test body.";
       await AnnouncementBodyCache.put(hash, content);
-      final result = AnnouncementBodyCache.get(hash);
+      final result = await AnnouncementBodyCache.get(hash);
       expect(result, content);
     });
 
@@ -45,9 +45,9 @@ void main() {
       );
     });
 
-    test("get returns null for missing hash", () {
+    test("get returns null for missing hash", () async {
       expect(
-        AnnouncementBodyCache.get(
+        await AnnouncementBodyCache.get(
           "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         ),
         isNull,
@@ -70,7 +70,7 @@ void main() {
       const hash = "1111111111111111111111111111111111111111111111111111111111111111";
       await AnnouncementBodyCache.put(hash, "first");
       await AnnouncementBodyCache.put(hash, "second");
-      expect(AnnouncementBodyCache.get(hash), "second");
+      expect(await AnnouncementBodyCache.get(hash), "second");
     });
 
     test("multiple hashes with same prefix share directory", () async {
@@ -79,11 +79,41 @@ void main() {
       await AnnouncementBodyCache.put(hash1, "one");
       await AnnouncementBodyCache.put(hash2, "two");
 
-      expect(AnnouncementBodyCache.get(hash1), "one");
-      expect(AnnouncementBodyCache.get(hash2), "two");
+      expect(await AnnouncementBodyCache.get(hash1), "one");
+      expect(await AnnouncementBodyCache.get(hash2), "two");
 
       final dir = Directory("$tempDir/announcements/bodies/aa");
       expect(dir.listSync().length, 2);
+    });
+
+    test("prune deletes unreferenced files", () async {
+      const keepHash = "aa00000000000000000000000000000000000000000000000000000000000000";
+      const dropHash = "bb11111111111111111111111111111111111111111111111111111111111111";
+      await AnnouncementBodyCache.put(keepHash, "keep");
+      await AnnouncementBodyCache.put(dropHash, "drop");
+
+      await AnnouncementBodyCache.prune(referencedHashes: {keepHash});
+
+      expect(await AnnouncementBodyCache.get(keepHash), "keep");
+      expect(await AnnouncementBodyCache.get(dropHash), isNull);
+    });
+
+    test("prune keeps all files when all are referenced", () async {
+      const hash1 = "aa00000000000000000000000000000000000000000000000000000000000000";
+      const hash2 = "bb11111111111111111111111111111111111111111111111111111111111111";
+      await AnnouncementBodyCache.put(hash1, "one");
+      await AnnouncementBodyCache.put(hash2, "two");
+
+      await AnnouncementBodyCache.prune(referencedHashes: {hash1, hash2});
+
+      expect(await AnnouncementBodyCache.get(hash1), "one");
+      expect(await AnnouncementBodyCache.get(hash2), "two");
+    });
+
+    test("prune on empty directory is a no-op", () async {
+      await AnnouncementBodyCache.prune(referencedHashes: {});
+      // No crash, no files created.
+      expect(Directory("$tempDir/announcements/bodies").existsSync(), isFalse);
     });
   });
 }

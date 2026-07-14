@@ -1,11 +1,12 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io" show Platform;
 
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
 import "package:eve_fit_assistant/features/announcements/state/state.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
-import "package:eve_fit_assistant/utils/fp.dart";
 import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -14,16 +15,15 @@ import "package:package_info_plus/package_info_plus.dart";
 const String _bundledCatalogAssetPath = "assets/content/announcements/generated/catalog.json";
 const String _bundledDocumentsAssetPath = "assets/content/announcements/generated/documents";
 
-class SyncResult {
-  const SyncResult({
-    required this.allRecords,
-    required this.versionAnnouncements,
-    required this.remoteReachable,
-  });
+/// Network-shaped result of a feed sync: raw entries plus the set of IDs that
+/// came from the remote catalog (so callers can tag records with the right
+/// source). Does NOT carry read/dismiss state — that is attached downstream
+/// by [announcementFeedProvider] so local read toggles never re-run sync.
+class AnnouncementRawFeed {
+  const AnnouncementRawFeed({required this.entries, required this.remoteIds});
 
-  final List<AnnouncementRecord> allRecords;
-  final List<AnnouncementRecord> versionAnnouncements;
-  final bool remoteReachable;
+  final List<AnnouncementEntry> entries;
+  final Set<String> remoteIds;
 }
 
 final announcementRepositoryProvider = Provider<AnnouncementRepository>(
@@ -36,37 +36,37 @@ class AnnouncementRepository {
   final Ref _ref;
 
   /// Perform a full sync: fetch catalog, determine relevant pages,
-  /// fetch those pages, merge with bundled catalog, return all records.
-  Future<SyncResult> sync({
+  /// fetch those pages, merge with bundled catalog, return raw entries.
+  ///
+  /// The result is purely network-shaped — no read/dismiss state is attached,
+  /// and no state pruning side effects fire here. Consumers that need
+  /// [AnnouncementRecord]s with state should use [announcementFeedProvider].
+  Future<AnnouncementRawFeed> sync({
     required String localeCode,
     required String currentChannel,
     required String currentPlatform,
     required String installedVersion,
   }) async {
-    // 1. Load bundled entries (stub for Stage 06)
+    // 1. Load bundled entries.
     final bundledEntries = await _loadBundledEntries();
 
-    // 2. Fetch remote catalog
+    // 2. Fetch remote catalog.
     final remoteService = _ref.read(announcementRemoteServiceProvider);
     final catalog = await remoteService.fetchCatalog();
 
     if (catalog == null) {
-      // Remote unreachable — use bundled only
-      final records = <AnnouncementRecord>[];
+      // Remote unreachable — use bundled only.
+      final entries = <AnnouncementEntry>[];
       for (final entry in bundledEntries) {
         if (_filterEntry(entry, localeCode, currentChannel, currentPlatform, installedVersion)) {
-          records.add(_buildRecord(entry, localeCode, AnnouncementEntrySource.bundled));
+          entries.add(entry);
         }
       }
-      records.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
-      return SyncResult(
-        allRecords: records,
-        versionAnnouncements: records.where((r) => r.appVersion != null).toList(),
-        remoteReachable: false,
-      );
+      entries.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+      return AnnouncementRawFeed(entries: entries, remoteIds: const <String>{});
     }
 
-    // 3. Determine relevant pages
+    // 3. Determine relevant closed pages.
     final closedPageUuids = <String>[];
     for (final summary in catalog.pages) {
       if (summary.active) continue;
@@ -75,10 +75,10 @@ class AnnouncementRepository {
       closedPageUuids.add(summary.uuid);
     }
 
-    // 4. Fetch active page
+    // 4. Fetch active page.
     final activePage = await remoteService.fetchPage("", active: true);
 
-    // 5. Fetch closed pages
+    // 5. Fetch closed pages.
     final remoteEntries = <AnnouncementEntry>[];
     if (activePage != null) {
       remoteEntries.addAll(activePage.entries);
@@ -90,19 +90,19 @@ class AnnouncementRepository {
       }
     }
 
-    // 6. Deduplicate remote entries by id (last wins)
+    // 6. Deduplicate remote entries by id (last wins).
     final remoteById = <String, AnnouncementEntry>{};
     for (final entry in remoteEntries) {
       remoteById[entry.id] = entry;
     }
 
-    // 7. Merge bundled with remote (remote overrides bundled)
+    // 7. Merge bundled with remote (remote overrides bundled).
     final mergedEntries = _mergeEntries(
       bundled: bundledEntries,
       remote: remoteById.values.toList(),
     );
 
-    // 8. Apply client-side filters
+    // 8. Apply client-side filters.
     final filtered = <AnnouncementEntry>[];
     for (final entry in mergedEntries) {
       if (_filterEntry(entry, localeCode, currentChannel, currentPlatform, installedVersion)) {
@@ -110,27 +110,10 @@ class AnnouncementRepository {
       }
     }
 
-    // 9. Sort by publishedAt desc
+    // 9. Sort by publishedAt desc.
     filtered.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
 
-    // 10. Build records with read/dismissed state
-    final remoteIds = remoteById.keys.toSet();
-    final records = <AnnouncementRecord>[];
-    for (final entry in filtered) {
-      final source = remoteIds.contains(entry.id)
-          ? AnnouncementEntrySource.remote
-          : AnnouncementEntrySource.bundled;
-      records.add(_buildRecord(entry, localeCode, source));
-    }
-
-    // 11. Separate version announcements
-    final versionAnnouncements = records.where((r) => r.appVersion != null).toList();
-
-    return SyncResult(
-      allRecords: records,
-      versionAnnouncements: versionAnnouncements,
-      remoteReachable: true,
-    );
+    return AnnouncementRawFeed(entries: filtered, remoteIds: remoteById.keys.toSet());
   }
 
   /// Apply the 5-step client-side filter chain for feed eligibility (spec §9.1).
@@ -180,32 +163,6 @@ class AnnouncementRepository {
     return byId.values.toList(growable: false);
   }
 
-  /// Build an [AnnouncementRecord] from an entry, resolving locale and attaching state.
-  AnnouncementRecord _buildRecord(
-    AnnouncementEntry entry,
-    String localeCode,
-    AnnouncementEntrySource source,
-  ) {
-    final resolved = entry.resolveLocalization(localeCode);
-    final loc = resolved?.meta;
-    return AnnouncementRecord(
-      id: entry.id,
-      source: source,
-      title: loc?.title ?? "",
-      summary: loc?.summary ?? "",
-      bodyHash: loc?.bodyHash ?? "",
-      publishedAt: entry.publishedAt,
-      localeCode: resolved?.localeCode ?? localeCode,
-      tags: entry.tags,
-      startup: entry.startup,
-      minAppVersion: entry.minAppVersion,
-      maxAppVersion: entry.maxAppVersion,
-      appVersion: entry.appVersion,
-      isRead: AnnouncementStateStore.isRead(entry.id),
-      isDismissed: AnnouncementStateStore.isDismissed(entry.id),
-    );
-  }
-
   /// Load the announcement body for a given hash.
   /// Checks bundled assets first, then falls back to the remote body cache.
   Future<String?> fetchAnnouncementBody(String bodyHash) async {
@@ -246,24 +203,91 @@ final appVersionProvider = FutureProvider<String>((Ref ref) async {
   return info.version;
 });
 
-/// The full announcement feed (sorted, filtered, merged).
-final announcementFeedProvider = FutureProvider<List<AnnouncementRecord>>((Ref ref) async {
-  ref.watch(announcementStateServiceProvider);
+/// Raw feed — the network layer. Depends only on inputs that change the
+/// network result (locale, settings, installed version). Does NOT depend on
+/// [announcementStateServiceProvider], so toggling read/dismiss state never
+/// re-fires this provider.
+final announcementRawFeedProvider = FutureProvider<AnnouncementRawFeed>((Ref ref) async {
   final locale = ref.watch(localeProvider);
   final setting = ref.watch(appSettingServiceProvider);
   final repo = ref.watch(announcementRepositoryProvider);
 
   final version = await ref.watch(appVersionProvider.future);
 
-  final result = await repo.sync(
+  final raw = await repo.sync(
     localeCode: locale.name,
     currentChannel: setting.remoteContent.channel,
     currentPlatform: Platform.operatingSystem,
     installedVersion: version,
   );
 
-  return result.allRecords;
+  // Prune stale read/dismiss IDs and unused body-cache entries now that we
+  // know the active set. This runs once per sync — NOT on every state toggle.
+  ref
+      .read(announcementStateServiceProvider.notifier)
+      .pruneStaleIds(activeIds: raw.entries.map((e) => e.id).toSet());
+  final referencedHashes = raw.entries
+      .map((e) => e.resolveLocalization(locale.name)?.meta.bodyHash ?? "")
+      .where((h) => h.isNotEmpty)
+      .toSet();
+  unawaited(AnnouncementBodyCache.prune(referencedHashes: referencedHashes));
+
+  return raw;
 });
+
+/// The full announcement feed with read/dismiss state attached.
+///
+/// Re-runs whenever [announcementStateServiceProvider] emits (e.g. on
+/// mark-read / mark-all-read), but re-uses the cached
+/// [announcementRawFeedProvider] future — no network call is made on local
+/// state toggles.
+final announcementFeedProvider = FutureProvider<List<AnnouncementRecord>>((Ref ref) async {
+  ref.watch(announcementStateServiceProvider);
+  final locale = ref.watch(localeProvider);
+  final raw = await ref.watch(announcementRawFeedProvider.future);
+  final stateStore = ref.read(announcementStateStoreProvider);
+
+  return raw.entries.map((entry) {
+    final source = raw.remoteIds.contains(entry.id)
+        ? AnnouncementEntrySource.remote
+        : AnnouncementEntrySource.bundled;
+    return _buildRecord(
+      entry: entry,
+      localeCode: locale.name,
+      source: source,
+      stateStore: stateStore,
+    );
+  }).toList();
+});
+
+/// Build an [AnnouncementRecord] from a raw entry, resolving localization and
+/// attaching read/dismiss state from [stateStore].
+AnnouncementRecord _buildRecord({
+  required AnnouncementEntry entry,
+  required String localeCode,
+  required AnnouncementEntrySource source,
+  required AnnouncementStateStore stateStore,
+}) {
+  final resolved = entry.resolveLocalization(localeCode);
+  final loc = resolved?.meta;
+  return AnnouncementRecord(
+    id: entry.id,
+    source: source,
+    title: loc?.title ?? "",
+    summary: loc?.summary ?? "",
+    bodyHash: loc?.bodyHash ?? "",
+    publishedAt: entry.publishedAt,
+    localeCode: resolved?.localeCode ?? localeCode,
+    tags: entry.tags,
+    startup: entry.startup,
+    minAppVersion: entry.minAppVersion,
+    maxAppVersion: entry.maxAppVersion,
+    appVersion: entry.appVersion,
+    isRead: stateStore.isRead(entry.id),
+    isDismissed: stateStore.isDismissed(entry.id),
+    entry: entry,
+  );
+}
 
 /// Version announcements (entries with appVersion != null).
 final announcementVersionFeedProvider = FutureProvider<List<AnnouncementRecord>>((Ref ref) async {
@@ -282,19 +306,29 @@ final unreadAnnouncementCountProvider = Provider<int>((Ref ref) {
   );
 });
 
-/// Startup announcement to show as dialog (first unread, un-dismissed,
-/// startup-flagged entry).
-final startupAnnouncementProvider = FutureProvider<AnnouncementRecord?>((Ref ref) async {
+/// Queue of startup announcements to show as dialogs, in feed order (newest
+/// first). Contains all unread, un-dismissed, startup-flagged entries whose
+/// `appVersion` is either absent or newer than the installed version.
+final startupAnnouncementQueueProvider = FutureProvider<List<AnnouncementRecord>>((Ref ref) async {
   ref.watch(announcementStateServiceProvider);
   final feed = await ref.watch(announcementFeedProvider.future);
   final appVer = await ref.watch(appVersionProvider.future);
-  return feed.firstWhereOrNull(
-    (r) =>
-        r.startup &&
-        !r.isRead &&
-        !r.isDismissed &&
-        (r.appVersion == null || compareVersions(r.appVersion!, appVer) > 0),
-  );
+  return feed
+      .where(
+        (r) =>
+            r.startup &&
+            !r.isRead &&
+            !r.isDismissed &&
+            (r.appVersion == null || compareVersions(r.appVersion!, appVer) > 0),
+      )
+      .toList();
+});
+
+/// Deprecated alias returning the head of the startup queue.
+@Deprecated("Use startupAnnouncementQueueProvider instead")
+final startupAnnouncementProvider = FutureProvider<AnnouncementRecord?>((Ref ref) async {
+  final queue = await ref.watch(startupAnnouncementQueueProvider.future);
+  return queue.firstOrNull;
 });
 
 /// Unread count for version entries specifically.
@@ -320,22 +354,20 @@ final unreadVersionCountProvider = Provider<int>((Ref ref) {
 });
 
 /// Whether the current app version is a newly-installed bump with matching
-/// version entries to show.
-final hasVersionBumpProvider = Provider<bool>((Ref ref) {
+/// version entries that has not yet been acknowledged via either the APK
+/// update flow or the announcement flow.
+final pendingVersionBumpProvider = Provider<bool>((Ref ref) {
   ref.watch(announcementStateServiceProvider);
   final appVer = ref
       .watch(appVersionProvider)
       .when(data: (v) => v, loading: () => null, error: (_, _) => null);
-  final state = ref.read(announcementStateServiceProvider);
-  final lastSeen = state.lastSeenAppVersion;
-  if (appVer == null || appVer == lastSeen) {
-    return false;
-  }
-  final versionFeed = ref.watch(announcementVersionFeedProvider);
-  final records = versionFeed.when(
-    data: (r) => r,
-    loading: () => const <AnnouncementRecord>[],
-    error: (_, _) => const <AnnouncementRecord>[],
-  );
-  return records.any((r) => r.appVersion == appVer);
+  final lastSeen = ref.watch(appVersionStateServiceProvider).lastSeenAppVersion;
+  if (appVer == null || appVer == lastSeen) return false;
+  final feed = ref.watch(announcementVersionFeedProvider).value ?? const [];
+  return feed.any((AnnouncementRecord r) => r.appVersion == appVer);
 });
+
+/// Legacy alias — kept so external consumers keep compiling during the
+/// migration. Prefer [pendingVersionBumpProvider].
+@Deprecated("Use pendingVersionBumpProvider instead")
+final hasVersionBumpProvider = pendingVersionBumpProvider;

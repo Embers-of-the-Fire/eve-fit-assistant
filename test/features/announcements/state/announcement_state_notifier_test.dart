@@ -19,9 +19,18 @@ void main() {
     PathProvider.cachesPath = tempDir.path;
   });
 
-  setUp(() {
-    AnnouncementStateStore.init();
+  late AnnouncementStateStore store;
+  late ProviderContainer container;
+
+  setUp(() async {
+    store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+    await store.init();
+    container = ProviderContainer(
+      overrides: [announcementStateStoreProvider.overrideWithValue(store)],
+    );
   });
+
+  tearDown(() => container.dispose());
 
   tearDownAll(() {
     tempDir.deleteSync(recursive: true);
@@ -29,31 +38,22 @@ void main() {
 
   group("AnnouncementStateService", () {
     test("build reads store state correctly", () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      AnnouncementStateStore.markRead("entry-1");
+      store.markRead("entry-1");
       final serviceState = container.read(announcementStateServiceProvider);
 
       expect(serviceState.readIds, contains("entry-1"));
     });
 
     test("markRead updates state reactively", () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
       final notifier = container.read(announcementStateServiceProvider.notifier);
       notifier.markRead("entry-1");
 
       final serviceState = container.read(announcementStateServiceProvider);
       expect(serviceState.readIds, contains("entry-1"));
-      expect(AnnouncementStateStore.isRead("entry-1"), isTrue);
+      expect(store.isRead("entry-1"), isTrue);
     });
 
     test("markAllRead updates state reactively", () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
       final notifier = container.read(announcementStateServiceProvider.notifier);
       notifier.markAllRead(["a", "b", "c"]);
 
@@ -62,32 +62,26 @@ void main() {
     });
 
     test("dismiss updates state reactively", () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
       final notifier = container.read(announcementStateServiceProvider.notifier);
       notifier.dismiss("entry-3");
 
       final serviceState = container.read(announcementStateServiceProvider);
       expect(serviceState.dismissedIds, contains("entry-3"));
-      expect(AnnouncementStateStore.isDismissed("entry-3"), isTrue);
+      expect(store.isDismissed("entry-3"), isTrue);
     });
 
-    test("acknowledgeVersion updates state reactively", () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
+    test("pruneStaleIds removes stale ids", () {
       final notifier = container.read(announcementStateServiceProvider.notifier);
-      notifier.acknowledgeVersion("5.0.0");
+      notifier.markRead("keep");
+      notifier.markRead("drop");
+
+      notifier.pruneStaleIds(activeIds: {"keep"});
 
       final serviceState = container.read(announcementStateServiceProvider);
-      expect(serviceState.lastSeenAppVersion, "5.0.0");
+      expect(serviceState.readIds, ["keep"]);
     });
 
     test("listener is notified on state change", () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
       final changes = <AnnouncementState>[];
       container.listen(announcementStateServiceProvider, (_, next) => changes.add(next));
 

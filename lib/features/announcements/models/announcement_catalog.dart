@@ -11,8 +11,13 @@ abstract class AnnouncementCatalog with _$AnnouncementCatalog {
     @Default(<PageSummary>[]) List<PageSummary> pages,
   }) = _AnnouncementCatalog;
 
+  const AnnouncementCatalog._();
+
   factory AnnouncementCatalog.empty() => const AnnouncementCatalog(schemaVersion: 1);
 
   factory AnnouncementCatalog.fromJson(Map<String, dynamic> json) =>
       _$AnnouncementCatalogFromJson(json);
+
+  /// Returns whether the catalog schema is supported by this client version.
+  bool get isSupported => schemaVersion <= 1;
 }

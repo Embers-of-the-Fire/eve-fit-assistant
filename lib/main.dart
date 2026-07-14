@@ -3,6 +3,8 @@ import "dart:async";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/announcements/announcements.dart";
+import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/feedback/feedback.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart";
 import "package:eve_fit_assistant/features/welcome/welcome_gate.dart";
@@ -15,8 +17,16 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 void main() async {
-  await initSingletons();
-  runApp(const ProviderScope(child: MyApp()));
+  final stores = await initSingletons();
+  runApp(
+    ProviderScope(
+      overrides: [
+        announcementStateStoreProvider.overrideWithValue(stores.announcementStateStore),
+        appVersionStateStoreProvider.overrideWithValue(stores.appVersionStateStore),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends ConsumerWidget {

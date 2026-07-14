@@ -14,13 +14,13 @@ class AnnouncementBodyCache {
     }
   }
 
-  static String? get(String bodyHash) {
+  static Future<String?> get(String bodyHash) async {
     try {
       final file = File(_filePath(bodyHash));
       if (!file.existsSync()) {
         return null;
       }
-      return file.readAsStringSync();
+      return await file.readAsString();
     } on FileSystemException catch (e) {
       warning("Failed to read cached announcement body $bodyHash: $e");
       return null;
@@ -43,6 +43,30 @@ class AnnouncementBodyCache {
       return File(_filePath(bodyHash)).existsSync();
     } on FileSystemException {
       return false;
+    }
+  }
+
+  /// Delete any cached body files whose hashes are not in [referencedHashes].
+  /// Failures are logged and skipped so a single bad file does not abort the
+  /// sweep.
+  static Future<void> prune({required Set<String> referencedHashes}) async {
+    try {
+      final root = Directory(_cacheDir);
+      if (!root.existsSync()) return;
+      final entities = root.listSync(recursive: true);
+      for (final entity in entities) {
+        if (entity is! File) continue;
+        if (!entity.path.endsWith(".md")) continue;
+        final fileName = p.basenameWithoutExtension(entity.path);
+        if (referencedHashes.contains(fileName)) continue;
+        try {
+          await entity.delete();
+        } on FileSystemException catch (e) {
+          warning("Failed to prune cached announcement body ${entity.path}: $e");
+        }
+      }
+    } on FileSystemException catch (e) {
+      warning("Failed to list announcement body cache for pruning: $e");
     }
   }
 

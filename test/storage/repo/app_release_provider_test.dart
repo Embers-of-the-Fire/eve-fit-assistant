@@ -7,8 +7,8 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
-import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
-import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
+import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -34,16 +34,18 @@ void main() {
   late String tempDir;
   late MockChannelService mockChannelService;
   late MockReleaseSyncService mockReleaseSyncService;
+  late AppVersionStateStore versionStore;
 
   setUpAll(() {
     final logDir = Directory.systemTemp.createTempSync("efa_app_release_provider_test_log_");
     GlobalLogger.init(logDir.path, enableDebugLog: false);
   });
 
-  setUp(() {
+  setUp(() async {
     tempDir = Directory.systemTemp.createTempSync("efa_app_release_provider_test_").path;
     PathProvider.documentsPath = tempDir;
-    AnnouncementStateStore.init();
+    versionStore = AppVersionStateStore(settingsPath: tempDir);
+    await versionStore.init();
 
     mockChannelService = MockChannelService();
     mockReleaseSyncService = MockReleaseSyncService();
@@ -68,6 +70,7 @@ void main() {
               remoteContent: RemoteContentSetting(enabled: remoteEnabled, channel: channel),
             ),
           ),
+          appVersionStateStoreProvider.overrideWithValue(versionStore),
           channelServiceProvider.overrideWith((_) => mockChannelService),
           releaseSyncServiceProvider.overrideWith((_) => mockReleaseSyncService),
         ],
@@ -124,7 +127,7 @@ void main() {
     final container = _container(remoteEnabled: true);
     addTearDown(container.dispose);
 
-    AnnouncementStateStore.acknowledgeRelease("rel-2");
+    versionStore.acknowledgeRelease("rel-2");
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
@@ -148,12 +151,12 @@ void main() {
     ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
 
     await container.read(availableAppReleaseProvider.future);
-    container.read(announcementStateServiceProvider.notifier).acknowledgeRelease("rel-2");
+    container.read(appVersionStateServiceProvider.notifier).acknowledgeRelease("rel-2");
     container.invalidate(availableAppReleaseProvider);
     final result = await container.read(availableAppReleaseProvider.future);
 
     expect(result, const None());
-    expect(AnnouncementStateStore.lastAcknowledgedReleaseId, "rel-2");
+    expect(versionStore.lastAcknowledgedReleaseId, "rel-2");
   });
 
   test("surfaces sync errors as AsyncError", () async {

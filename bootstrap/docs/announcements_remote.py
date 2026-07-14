@@ -34,8 +34,6 @@ from datetime import UTC
 from datetime import datetime
 from typing import TYPE_CHECKING
 from typing import Any
-from urllib.request import Request
-from urllib.request import urlopen
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
@@ -745,41 +743,32 @@ class AnnouncementRemoteSync:
         self.alias_name = alias_name
         self.resource_root = resource_root.rstrip("/")
 
-    def _build_url(self, path: str) -> str:
-        return f"{self.endpoint.rstrip('/')}/{self.bucket}/{self.resource_root}/{path.lstrip('/')}"
+    def _cat_bytes(self, key: str) -> bytes:
+        """Download *key* via the configured ``mc`` alias (signed request)."""
+        mc_bin, alias_target = self._ensure_alias()
+        target_url = f"{alias_target}/{self.resource_root}/{key.lstrip('/')}"
+        result = subprocess.run(
+            [mc_bin, "cat", target_url], capture_output=True, text=False, timeout=30
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.decode("utf-8", errors="replace").strip()
+            raise RuntimeError(f"Failed to download {key}: {stderr}")
+        return result.stdout
 
     def _download_json(self, path: str) -> dict[str, Any]:
-        url = self._build_url(path)
-        req = Request(url)
-        try:
-            with urlopen(req, timeout=30) as response:
-                if response.status != 200:
-                    raise RuntimeError(f"HTTP {response.status} for {url}")
-                return json.loads(response.read().decode("utf-8"))
-        except Exception as e:
-            raise RuntimeError(f"Failed to download {url}: {e}") from e
+        return json.loads(self._cat_bytes(path).decode("utf-8"))
 
     def _download_file(self, path: str) -> bytes:
-        url = self._build_url(path)
-        req = Request(url)
-        try:
-            with urlopen(req, timeout=30) as response:
-                if response.status != 200:
-                    raise RuntimeError(f"HTTP {response.status} for {url}")
-                return response.read()
-        except Exception as e:
-            raise RuntimeError(f"Failed to download {url}: {e}") from e
+        return self._cat_bytes(path)
 
     def sync(self, full: bool = False) -> None:
         """Sync remote state to local workspace."""
         self.workspace.ensure_remote_directories()
+        self._ensure_alias()
 
         # Download catalog.json
-        try:
-            catalog_data = self._download_json("announcements/catalog.json")
-            catalog = AnnouncementCatalog.model_validate(catalog_data)
-        except Exception as e:
-            raise RuntimeError(f"Failed to download catalog.json: {e}") from e
+        catalog_data = self._download_json("announcements/catalog.json")
+        catalog = AnnouncementCatalog.model_validate(catalog_data)
 
         (self.workspace.remote_dir / "catalog.json").write_text(
             json.dumps(catalog.model_dump(mode="json", by_alias=True), indent=2, ensure_ascii=False)
@@ -791,38 +780,32 @@ class AnnouncementRemoteSync:
         for page_meta in catalog.pages:
             if page_meta.active:
                 continue
-            try:
-                page_data = self._download_json(f"announcements/pages/{page_meta.uuid}.json")
-                page = AnnouncementPage.model_validate(page_data)
-                page_path = self.workspace.remote_dir / "pages" / f"{page_meta.uuid}.json"
-                page_path.parent.mkdir(parents=True, exist_ok=True)
-                page_path.write_text(
-                    json.dumps(
-                        page.model_dump(mode="json", by_alias=True),
-                        indent=2,
-                        ensure_ascii=False,
-                    )
-                    + "\n",
-                    encoding="utf-8",
-                )
-            except Exception as e:
-                raise RuntimeError(f"Failed to download page {page_meta.uuid}: {e}") from e
-
-        # Download active.json
-        try:
-            active_data = self._download_json("announcements/active.json")
-            active = AnnouncementPage.model_validate(active_data)
-            (self.workspace.remote_dir / "active.json").write_text(
+            page_data = self._download_json(f"announcements/pages/{page_meta.uuid}.json")
+            page = AnnouncementPage.model_validate(page_data)
+            page_path = self.workspace.remote_dir / "pages" / f"{page_meta.uuid}.json"
+            page_path.parent.mkdir(parents=True, exist_ok=True)
+            page_path.write_text(
                 json.dumps(
-                    active.model_dump(mode="json", by_alias=True),
+                    page.model_dump(mode="json", by_alias=True),
                     indent=2,
                     ensure_ascii=False,
                 )
                 + "\n",
                 encoding="utf-8",
             )
-        except Exception as e:
-            raise RuntimeError(f"Failed to download active.json: {e}") from e
+
+        # Download active.json
+        active_data = self._download_json("announcements/active.json")
+        active = AnnouncementPage.model_validate(active_data)
+        (self.workspace.remote_dir / "active.json").write_text(
+            json.dumps(
+                active.model_dump(mode="json", by_alias=True),
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
         # If --full, download all document bodies
         if full:
@@ -834,13 +817,8 @@ class AnnouncementRemoteSync:
                         doc_path = self.workspace.documents_dir / f"{body_hash}.md"
                         if doc_path.exists():
                             continue
-                        try:
-                            content = self._download_file(f"announcements/documents/{body_hash}.md")
-                            doc_path.write_bytes(content)
-                        except Exception as e:
-                            raise RuntimeError(
-                                f"Failed to download document {body_hash}: {e}"
-                            ) from e
+                        content = self._download_file(f"announcements/documents/{body_hash}.md")
+                        doc_path.write_bytes(content)
 
     def _run_mc(self, cmd: list[str], redacted_cmd: list[str], title: str) -> None:
         """Run an ``mc`` command, logging only the redacted version."""

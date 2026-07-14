@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:eve_fit_assistant/features/announcements/models/announcement_state.dart";
+import "package:eve_fit_assistant/features/app_update/models/app_version_state.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
@@ -10,7 +11,6 @@ void main() {
       expect(state.schemaVersion, 1);
       expect(state.readIds, isEmpty);
       expect(state.dismissedIds, isEmpty);
-      expect(state.lastSeenAppVersion, isNull);
     });
 
     test("JSON round-trip initial state", () {
@@ -28,7 +28,6 @@ void main() {
         schemaVersion: 1,
         readIds: ["entry-1", "entry-2"],
         dismissedIds: ["entry-3"],
-        lastSeenAppVersion: "2.0.0",
       );
       final restored = AnnouncementState.fromJson(
         jsonDecode(jsonEncode(state.toJson())) as Map<String, dynamic>,
@@ -36,7 +35,6 @@ void main() {
       expect(restored, state);
       expect(restored.readIds, ["entry-1", "entry-2"]);
       expect(restored.dismissedIds, ["entry-3"]);
-      expect(restored.lastSeenAppVersion, "2.0.0");
     });
 
     test("deserialize from spec example announcement_state.json", () {
@@ -44,14 +42,35 @@ void main() {
           "{"
           '  "schemaVersion": 1,'
           '  "readIds": ["maintenance-2026-06"],'
-          '  "dismissedIds": [],'
-          '  "lastSeenAppVersion": "2.0.0"'
+          '  "dismissedIds": []'
           "}";
       final state = AnnouncementState.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
       expect(state.schemaVersion, 1);
       expect(state.readIds, ["maintenance-2026-06"]);
       expect(state.dismissedIds, isEmpty);
-      expect(state.lastSeenAppVersion, "2.0.0");
+    });
+  });
+
+  group("AppVersionState", () {
+    test("initial factory produces defaults", () {
+      final state = AppVersionState.initial();
+      expect(state.schemaVersion, 1);
+      expect(state.lastSeenAppVersion, isNull);
+      expect(state.lastAcknowledgedReleaseId, isNull);
+    });
+
+    test("JSON round-trip with data", () {
+      const state = AppVersionState(
+        schemaVersion: 1,
+        lastSeenAppVersion: "2.0.0",
+        lastAcknowledgedReleaseId: "release-123",
+      );
+      final restored = AppVersionState.fromJson(
+        jsonDecode(jsonEncode(state.toJson())) as Map<String, dynamic>,
+      );
+      expect(restored, state);
+      expect(restored.lastSeenAppVersion, "2.0.0");
+      expect(restored.lastAcknowledgedReleaseId, "release-123");
     });
   });
 }

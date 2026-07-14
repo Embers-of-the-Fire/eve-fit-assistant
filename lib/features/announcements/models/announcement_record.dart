@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/features/announcements/models/announcement_entry.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "announcement_record.freezed.dart";
@@ -21,5 +22,6 @@ abstract class AnnouncementRecord with _$AnnouncementRecord {
     String? appVersion,
     @Default(false) bool isRead,
     @Default(false) bool isDismissed,
+    AnnouncementEntry? entry,
   }) = _AnnouncementRecord;
 }

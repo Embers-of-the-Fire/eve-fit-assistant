@@ -9,8 +9,6 @@ abstract class AnnouncementState with _$AnnouncementState {
     @Default(1) int schemaVersion,
     @Default(<String>[]) List<String> readIds,
     @Default(<String>[]) List<String> dismissedIds,
-    String? lastSeenAppVersion,
-    String? lastAcknowledgedReleaseId,
   }) = _AnnouncementState;
 
   factory AnnouncementState.initial() => const AnnouncementState();

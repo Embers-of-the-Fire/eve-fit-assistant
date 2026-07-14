@@ -7,8 +7,6 @@ import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
 // Regression test for first-ever init() with a legacy document_storage.json.
-// This must live in its own file because AnnouncementStateStore uses static
-// late state; earlier init() calls in other tests would mask the bug.
 void main() {
   test("legacy document_storage.json migrates on first-ever init", () async {
     final tempDir = Directory.systemTemp.createTempSync("efa_legacy_migration_test_");
@@ -28,23 +26,28 @@ void main() {
       }),
     );
 
-    AnnouncementStateStore.init();
-    await AnnouncementStateStore.ensureSynced;
+    final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+    final migration = await store.init();
+    await store.ensureSynced;
 
-    expect(AnnouncementStateStore.state.readIds, containsAll(["legacy-read-1", "legacy-read-2"]));
-    expect(AnnouncementStateStore.state.dismissedIds, ["legacy-dismissed-1"]);
-    expect(AnnouncementStateStore.state.lastSeenAppVersion, "1.2.3");
-    expect(AnnouncementStateStore.state.lastAcknowledgedReleaseId, isNull);
-    expect(AnnouncementStateStore.state.schemaVersion, 2);
+    expect(store.state.readIds, containsAll(["legacy-read-1", "legacy-read-2"]));
+    expect(store.state.dismissedIds, ["legacy-dismissed-1"]);
+    expect(store.state.schemaVersion, 3);
+
+    // The migration data should carry lastSeenAppVersion for the caller to
+    // apply to AppVersionStateStore.
+    expect(migration, isNotNull);
+    expect(migration!.lastSeenAppVersion, "1.2.3");
+    expect(migration.lastAcknowledgedReleaseId, isNull);
 
     final migratedFile = File(p.join(settingsDir.path, "announcement_state.json"));
     expect(migratedFile.existsSync(), isTrue);
 
     final migratedJson = jsonDecode(migratedFile.readAsStringSync()) as Map<String, dynamic>;
-    expect(migratedJson["schemaVersion"], 2);
+    expect(migratedJson["schemaVersion"], 3);
     expect(migratedJson["readIds"], containsAll(["legacy-read-1", "legacy-read-2"]));
     expect(migratedJson["dismissedIds"], ["legacy-dismissed-1"]);
-    expect(migratedJson["lastSeenAppVersion"], "1.2.3");
-    expect(migratedJson["lastAcknowledgedReleaseId"], isNull);
+    expect(migratedJson.containsKey("lastSeenAppVersion"), isFalse);
+    expect(migratedJson.containsKey("lastAcknowledgedReleaseId"), isFalse);
   });
 }
