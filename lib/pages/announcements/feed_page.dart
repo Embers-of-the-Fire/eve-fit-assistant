@@ -54,7 +54,7 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
       _initialLoadTriggered = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          unawaited(_refreshIndicatorKey.currentState?.show() ?? Future<void>.value());
+          unawaited(_refreshIndicatorKey.currentState?.show());
         }
       });
     } else if (!isInitialLoad) {
@@ -175,6 +175,16 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
   }
 
   Future<void> _refreshFeed() async {
+    // If the initial load is already in progress (the provider was watched in
+    // build and a fetch is in-flight), don't invalidate it. Invalidating here
+    // would cancel or supersede the existing request and trigger a duplicate
+    // network call. Instead, just await the existing future.
+    final current = ref.read(announcementFeedProvider);
+    if (current.isLoading && !current.hasValue) {
+      await ref.read(announcementFeedProvider.future).then((_) => null).catchError((Object _) {});
+      return;
+    }
+
     // Clear the remote service's in-memory cache so the next fetch hits the
     // network, then invalidate the raw feed provider. The derived feed
     // provider re-runs as a consequence.
