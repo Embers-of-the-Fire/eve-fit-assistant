@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from bootstrap.ci import register_ci_commands
 from bootstrap.cli.build import register_build_commands
-from bootstrap.cli.ci.updater import register_raw_data_commands
 from bootstrap.cli.dev import register_dev_commands
 from bootstrap.cli.etc import register_etc_commands
 from bootstrap.cli.generate import register_generate_commands
@@ -21,6 +19,9 @@ if TYPE_CHECKING:
 
 def register_all_commands(cli_group: click.Group) -> None:
     """Attach every command group to the root CLI group."""
+    from bootstrap.ci import register_ci_commands
+    from bootstrap.cli.ci.updater import register_raw_data_commands
+
     register_lint_commands(cli_group)
     register_workspace_commands(cli_group)
     register_generate_commands(cli_group)

@@ -1,0 +1,30 @@
+name: Release Preflight
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'V-Release')
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Verify release version
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release verify --base-ref ${{ github.base_ref }} --check-notes'
