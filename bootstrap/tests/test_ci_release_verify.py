@@ -386,6 +386,9 @@ class TestReleaseVerifyPreflightFlags:
     ) -> str:
         return ""
 
+    def _fake_get_command(self, cmd: str) -> Path:
+        return Path(cmd)
+
     def _mock_subprocess_run(self, expected_commit: str = "abc123def456"):
         def _fake_run(cmd, **kwargs):
             class Result:
@@ -478,6 +481,7 @@ class TestReleaseVerifyPreflightFlags:
         monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
         monkeypatch.setattr("bootstrap.ci.release.runtime.execute", self._fake_execute)
         monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
+        monkeypatch.setattr("bootstrap.utils.get_command", self._fake_get_command)
 
         @click.group()
         def cli():
