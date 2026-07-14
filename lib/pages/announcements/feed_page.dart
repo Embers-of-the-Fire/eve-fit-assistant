@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:auto_route/annotations.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
@@ -34,6 +36,8 @@ class _AnnouncementHubPage extends ConsumerStatefulWidget {
 
 class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
   late String? _selectedRecordId = widget.initialRecordId;
+  final _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+  bool _initialLoadTriggered = false;
 
   bool _useSplitLayout(BuildContext context) => supportsThreePaneLayout(context);
 
@@ -41,6 +45,21 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
   Widget build(BuildContext context) {
     final entriesAsync = ref.watch(announcementFeedProvider);
     final splitLayout = _useSplitLayout(context);
+
+    // On the very first load (no cached records yet) show the page skeleton
+    // with the RefreshIndicator actively spinning, matching the pull-to-refresh
+    // UX used for subsequent updates instead of a full-screen centered loader.
+    final isInitialLoad = entriesAsync.isLoading && !entriesAsync.hasValue;
+    if (isInitialLoad && !_initialLoadTriggered) {
+      _initialLoadTriggered = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_refreshIndicatorKey.currentState?.show() ?? Future<void>.value());
+        }
+      });
+    } else if (!isInitialLoad) {
+      _initialLoadTriggered = false;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -51,9 +70,10 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
                 icon: const Icon(Icons.arrow_back),
               )
             : null,
-        title: Text(_appBarTitle(context, entriesAsync.asData?.value, splitLayout)),
+        title: Text(_appBarTitle(context, entriesAsync.value, splitLayout)),
       ),
       body: entriesAsync.when(
+        skipLoadingOnReload: true,
         data: (records) {
           if (records.isEmpty) {
             return Center(
@@ -123,7 +143,16 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
 
           return AnnouncementDetailContent(record: selectedRecord);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => RefreshIndicator(
+          key: _refreshIndicatorKey,
+          onRefresh: _refreshFeed,
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            itemCount: 4,
+            itemBuilder: (context, index) => const _AnnouncementCardSkeleton(),
+          ),
+        ),
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -358,4 +387,59 @@ class _AnnouncementBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Skeleton placeholder that mimics the layout of [_AnnouncementCard] while
+/// the feed is loading for the first time. Keeps the page from looking empty.
+class _AnnouncementCardSkeleton extends StatelessWidget {
+  const _AnnouncementCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.theme.colorScheme;
+    final skeletonColor = colorScheme.surfaceContainerHighest;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: colorScheme.surfaceContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _SkeletonBox(width: 80, height: 26, color: skeletonColor),
+                _SkeletonBox(width: 100, height: 26, color: skeletonColor),
+                _SkeletonBox(width: 90, height: 26, color: skeletonColor),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _SkeletonBox(width: 200, height: 20, color: skeletonColor),
+            const SizedBox(height: 8),
+            _SkeletonBox(width: double.infinity, height: 14, color: skeletonColor),
+            const SizedBox(height: 4),
+            _SkeletonBox(width: 250, height: 14, color: skeletonColor),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({required this.width, required this.height, required this.color});
+
+  final double width;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+  );
 }
