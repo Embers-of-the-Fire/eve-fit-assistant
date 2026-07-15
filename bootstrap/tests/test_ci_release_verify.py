@@ -384,6 +384,9 @@ class TestReleaseVerifyPreflightFlags:
     def _fake_execute(
         self, cmd: list, title: str, capture_stdout: bool = False, live_stdout: bool = False
     ) -> str:
+        if not hasattr(self, "_execute_calls"):
+            self._execute_calls = []
+        self._execute_calls.append((cmd, title))
         return ""
 
     def _fake_get_command(self, cmd: str) -> Path:
@@ -497,3 +500,8 @@ class TestReleaseVerifyPreflightFlags:
         assert "Generated code OK" in result.output
         assert "Build check OK" in result.output
         assert "Tests OK" in result.output
+
+        pub_get_calls = [call for call in self._execute_calls if call[1] == "FLUTTER PUB GET"]
+        assert len(pub_get_calls) == 1, (
+            "flutter pub get should run exactly once when both checks are enabled"
+        )

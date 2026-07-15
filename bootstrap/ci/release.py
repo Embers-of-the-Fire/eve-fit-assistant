@@ -170,13 +170,20 @@ def _check_note_content(version: ProjectVersion) -> None:
 
 
 def _get_submodule_expected_commit(path: str) -> str:
-    result = subprocess.run(
-        ["git", "ls-tree", "HEAD", path],
-        capture_output=True,
-        text=True,
-        check=True,
-        cwd=PROJECT_ROOT,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "ls-tree", "HEAD", path],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=PROJECT_ROOT,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise click.ClickException(
+            f"Failed to read expected commit for submodule {path}: {exc.stderr.strip()}"
+        ) from exc
+    except FileNotFoundError as exc:
+        raise click.ClickException("git is required for submodule checks") from exc
     parts = result.stdout.strip().split()
     if len(parts) < 3:
         raise click.ClickException(f"Failed to parse git ls-tree output for {path}")
@@ -184,12 +191,19 @@ def _get_submodule_expected_commit(path: str) -> str:
 
 
 def _get_submodule_actual_commit(path: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(PROJECT_ROOT / path), "rev-parse", "HEAD"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT / path), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise click.ClickException(
+            f"Failed to read current commit for submodule {path}: {exc.stderr.strip()}"
+        ) from exc
+    except FileNotFoundError as exc:
+        raise click.ClickException("git is required for submodule checks") from exc
     return result.stdout.strip()
 
 
@@ -199,7 +213,10 @@ def _ensure_submodule_clean(path: str) -> None:
         cmd = ["git", "-C", str(PROJECT_ROOT / path), "diff", "--quiet"]
         if flag:
             cmd.append(flag)
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        except FileNotFoundError as exc:
+            raise click.ClickException("git is required for submodule checks") from exc
         if result.returncode != 0:
             raise click.ClickException(f"Submodule {path} has uncommitted changes")
 
@@ -224,10 +241,6 @@ def _check_submodules() -> None:
 
 def _check_generated() -> None:
     """Regenerate code and verify tracked generated files are up to date."""
-    from bootstrap.utils import get_command
-
-    flutter = get_command("flutter")
-    runtime.execute([flutter, "pub", "get"], "FLUTTER PUB GET")
     runtime.execute([sys.executable, "x.py", "generate", "all"], "GENERATE ALL")
 
     tracked = [
@@ -267,7 +280,6 @@ def _check_build() -> None:
     from bootstrap.utils import get_command
 
     flutter = get_command("flutter")
-    runtime.execute([flutter, "pub", "get"], "FLUTTER PUB GET")
     runtime.execute([flutter, "analyze"], "FLUTTER ANALYZE")
 
 
@@ -351,6 +363,11 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
             check_build = True
             check_tests = True
 
+        if check_generated or check_build:
+            from bootstrap.utils import get_command
+
+            flutter = get_command("flutter")
+            runtime.execute([flutter, "pub", "get"], "FLUTTER PUB GET")
         config_path = PROJECT_ROOT / "efa.config.toml"
         version = _load_version_from_config(config_path)
         full = version.render_full()
