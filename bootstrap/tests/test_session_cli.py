@@ -1554,7 +1554,7 @@ class TestSessionAddByFileRelease:
                     "release": {
                         "id": f"rel-{version}",
                         "version": version,
-                        "android": {"general": str(Path(".." / apk_file.relative_to(tmp_root)))},
+                        "android": {"general": str(Path("..") / apk_file.relative_to(tmp_root))},
                     },
                 }
             ),
