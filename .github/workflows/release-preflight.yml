@@ -25,5 +25,5 @@ jobs:
         run: |
           nix develop .#codegen --command bash -c \
             'uv sync && uv run x.py ci release verify \
-              --base-ref ${{ github.base_ref }} \
+              --base-ref origin/${{ github.base_ref }} \
               --check-all'
