@@ -23,6 +23,7 @@ from bootstrap.cli.remote.session import _add_snapshot_by_file
 from bootstrap.cli.remote.session import _build_generation_data
 from bootstrap.cli.remote.session import _check_duplicate_server_ids
 from bootstrap.cli.remote.session import _compute_diff
+from bootstrap.cli.remote.session import register_remote_session
 from bootstrap.remote import SessionManager
 from bootstrap.remote.generation import utc_timestamp
 from bootstrap.remote.hash import content_hash as _content_hash
@@ -1573,3 +1574,37 @@ class TestSessionAddByFileRelease:
         assert index.android.general.identifier == f"release://{version}/android/general"
         assert index.android.general.size == apk_file.stat().st_size
         assert index.android.general.content_hash
+
+
+# ===========================================================================
+# 14. CLI commit --json output
+# ===========================================================================
+
+
+class TestSessionCommitJson:
+    def test_commit_json_output_is_single_valid_json(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """commit --json must emit a single parseable JSON document and no human-readable text."""
+        _init_session(store)
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+
+        remote_group = click.Group()
+        register_remote_session(remote_group)
+        session_group = remote_group.commands["session"]
+
+        result = click.testing.CliRunner().invoke(
+            session_group,
+            ["commit", "--json", "--schema-root", str(tmp_root)],
+        )
+
+        assert result.exit_code == 0
+        output = result.output.strip()
+        data = json.loads(output)
+        assert isinstance(data, dict)
+        assert "generation_hash" in data
+        assert len(data["generation_hash"]) > 0
+        assert data["reused"] is False
+        assert data["head_advanced"] is True
+        assert output == json.dumps(data)

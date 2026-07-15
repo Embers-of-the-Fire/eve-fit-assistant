@@ -1234,6 +1234,18 @@ def register_remote_session(remote: click.Group) -> None:
 
         store.mark_committed()
 
+        if as_json:
+            click.echo(
+                json.dumps(
+                    {
+                        "generation_hash": gen_hash,
+                        "reused": reused,
+                        "head_advanced": not no_push,
+                    }
+                )
+            )
+            return
+
         if reused:
             click.echo(
                 styled(
@@ -1264,14 +1276,3 @@ def register_remote_session(remote: click.Group) -> None:
         )
         release_label = f"{release_hash[:16]}..." if release_hash else "none"
         click.echo(styled(Style.DIM, f"  Releases:      {release_label}"))
-
-        if as_json:
-            click.echo(
-                json.dumps(
-                    {
-                        "generation_hash": gen_hash,
-                        "reused": reused,
-                        "head_advanced": not no_push,
-                    }
-                )
-            )
