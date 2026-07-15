@@ -1,0 +1,49 @@
+name: Release
+
+permissions:
+  contents: read
+  pull-requests: read
+
+on:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  identify:
+    name: Identify release PR
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.identify.outputs.skip }}
+    steps:
+      - uses: actions/github-script@v7
+        id: identify
+        with:
+          script: |
+            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+            });
+            const releasePrs = prs.data
+              .filter((pr) => pr.merged_at && pr.labels.some((l) => l.name === "V-Release"))
+              .sort((a, b) => new Date(b.merged_at).getTime() - new Date(a.merged_at).getTime());
+            if (releasePrs.length === 0) {
+              core.info("No V-Release merged PR associated with this push; skipping.");
+              core.setOutput("skip", "true");
+              return;
+            }
+            core.info(`Found V-Release PR #${releasePrs[0].number}`);
+            core.setOutput("skip", "false");
+
+  release:
+    name: Build and publish
+    needs: identify
+    if: needs.identify.outputs.skip == 'false'
+    uses: ./.github/workflows/_release.yml
+    secrets: inherit
+    with:
+      test_mode: false

@@ -1,0 +1,25 @@
+name: Release (test)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [dev]
+
+concurrency:
+  group: release-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Build and test release
+    if: |
+      (
+        contains(github.event.pull_request.labels.*.name, 'D-Full CI') ||
+        contains(github.event.pull_request.labels.*.name, 'D-CI-App Release')
+      ) &&
+      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+      github.event.pull_request.head.repo.fork == false
+    uses: ./.github/workflows/_release.yml
+    secrets: inherit
+    with:
+      test_mode: true

@@ -266,8 +266,12 @@ def _add_snapshot_by_file(
                 if not isinstance(platform_data, dict):
                     continue
                 for variant, value in list(platform_data.items()):
-                    if isinstance(value, str) and value.startswith("/"):
-                        file_path = Path(value)
+                    if isinstance(value, str):
+                        candidate = Path(value)
+                        if candidate.is_absolute():
+                            file_path = candidate
+                        else:
+                            file_path = (source_file.parent / candidate).resolve()
                         uri = f"release://{version}/{platform_key}/{variant}"
                         ihash = ident_hash(uri)
                         chash = blob_store.store_from_path(file_path, ihash)
@@ -281,10 +285,9 @@ def _add_snapshot_by_file(
             android_dict = None
             if android is not None:
                 android_dict = {
-                    "general": android.get("general"),
-                    "armv7": android.get("armv7"),
-                    "arm64": android.get("arm64"),
-                    "x64": android.get("x64"),
+                    key: android.get(key)
+                    for key in ("general", "armv7", "arm64", "x64")
+                    if android.get(key) is not None
                 }
             index = make_release_index(
                 release_id=release["id"],
@@ -1119,8 +1122,15 @@ def register_remote_session(remote: click.Group) -> None:
         default=False,
         help="Skip verification and override committed session.",
     )
+    @click.option(
+        "--json",
+        "as_json",
+        is_flag=True,
+        default=False,
+        help="Emit machine-readable JSON with the generation hash.",
+    )
     @_SCHEMA_ROOT_OPTION
-    def remote_session_commit(no_push: bool, force: bool, schema_root: Path | None):
+    def remote_session_commit(no_push: bool, force: bool, as_json: bool, schema_root: Path | None):
         """Assemble a generation from staged snapshots and advance the channel head."""
         from bootstrap.remote.generation import utc_timestamp
         from bootstrap.remote.models import GenerationMetadata
@@ -1223,6 +1233,18 @@ def register_remote_session(remote: click.Group) -> None:
             mgr.push(resolved_channel, gen_hash)
 
         store.mark_committed()
+
+        if as_json:
+            click.echo(
+                json.dumps(
+                    {
+                        "generation_hash": gen_hash,
+                        "reused": reused,
+                        "head_advanced": not no_push,
+                    }
+                )
+            )
+            return
 
         if reused:
             click.echo(
