@@ -61,7 +61,10 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Formatting only: `./x format` (`./x lint --no-check`).
 - Generate all code and then format: `./x generate -f all`.
 - Focused generators: `./x generate protobuf`, `./x generate rust`, `./x generate dart`, `./x generate l10n`, `./x generate values dogma-units`.
-- Android build: `flutter build apk`.
+- Android build: `flutter build apk` (or `./x build apk` from the workspace CLI).
+- Release preflight checks: `./x ci release verify --check-all`.
+- Create raw release note: `./x release relnote` (emits `spec.yaml` and `changelog.md`; author `content.zh.md` and `content.en.md` separately).
+- Sync canonical version to manifests: `./x release version sync`.
 - Bridge crate build/test: `cargo build -p rust_lib_eve_fit_assistant`, `cargo test -p rust_lib_eve_fit_assistant`.
 - Engine build/test: `cargo build -p eve-fit-os`, `cargo test -p eve-fit-os`.
 - Single Rust integration test file/function: `cargo test -p eve-fit-os --test test_basic_fit -- --nocapture`; `cargo test -p eve-fit-os test_basic_fit -- --exact --nocapture`.
@@ -85,6 +88,16 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 ## Version
 
 - The canonical version lives in `efa.config.toml` under `[version]`. All other targets (`pubspec.yaml`, `rust/Cargo.toml`, `pyproject.toml`) are derived from it. The engine submodule `rust/lib/eve-fit-os` has independent versioning.
+
+## CI / Release Automation
+
+- App releases are driven by GitHub Actions workflows in `.github/workflows/` (see `RELEASING.md` for the manual procedure).
+- Release PRs target the `dev` branch and use three labels:
+  - `V-Release` — marks the PR as a release and triggers fast preflight checks (`release-preflight.yml`).
+  - `V-Test` — triggers the full release test suite (`release-full.yml`), which builds the app and data snapshots in test mode.
+  - `V-Tested Release` — added automatically by `release-full.yml` after both app and data tests pass.
+- Merging a `V-Release` PR that also has `V-Tested Release` triggers the real release (`release.yml`), which builds the APK, publishes the release to the remote `testing` channel, and creates the Git tag.
+- The reusable app release workflow is `_release.yml`; the reusable data snapshot workflow is `_release-data.yml`.
 
 ## Validation Expectations
 
@@ -131,5 +144,6 @@ The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `develope
 
 ## Local Instruction Sources
 
-- No `.github/workflows/` (no CI). No `.cursor/rules/`, `.cursorrules`, or `opencode.json`.
+- `flake.nix` and `.github/workflows/` are the sources of truth for CI/CD; release procedures are documented in `RELEASING.md`.
+- No `.cursor/rules/`, `.cursorrules`, or `opencode.json`.
 - `CLAUDE.md` is a symlink to this file.
