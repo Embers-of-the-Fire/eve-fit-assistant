@@ -1,7 +1,7 @@
 name: Release
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: read
 
 on:
@@ -50,6 +50,8 @@ jobs:
     name: Build and publish
     needs: identify
     if: needs.identify.outputs.skip == 'false'
+    permissions:
+      contents: write
     uses: ./.github/workflows/_release.yml
     secrets: inherit
     with:
