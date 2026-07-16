@@ -50,13 +50,13 @@ jobs:
           ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
 
       - name: Install Flutter dependencies
-        run: nix develop .#dart --command bash -c 'flutter pub get'
+        run: nix develop .#full --command bash -c 'flutter pub get'
 
-      - name: Generate protobuf
-        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+      - name: Generate all
+        run: nix develop .#full --command bash -c 'uv run x.py generate -f all'
 
       - name: Build APK
-        run: nix develop .#dart --command bash -c 'uv run x.py build apk'
+        run: nix develop .#full --command bash -c 'uv run x.py build apk'
 
       - name: Merge release registry
         run: |

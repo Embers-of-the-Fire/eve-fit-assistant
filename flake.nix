@@ -175,10 +175,9 @@
       };
     in
     {
-      devShells.${system} = {
-
-        # Full development shell (unchanged behavior)
-        default = pkgs.mkShell {
+      devShells.${system} = let
+        # Full development shell
+        fullShell = pkgs.mkShell {
           packages =
             pythonPackages
             ++ rustPackages
@@ -255,6 +254,10 @@
             fi
           '';
         };
+      in
+      {
+        default = fullShell;
+        full = fullShell;
 
         # Minimal Python shell: linting, formatting, and tests
         python = pkgs.mkShell {
