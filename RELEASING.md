@@ -126,7 +126,7 @@ This triggers `release-full.yml`, which runs:
 - `Data release test` — builds data snapshots in test mode using `_release-data.yml`.
 - `Mark as tested release` — adds `V-Tested Release` and removes `V-Test` after both jobs succeed.
 
-The test jobs only run if all three labels are present and the PR is from the upstream repository.
+The test jobs only run if `V-Release` and `V-Test` labels are present and the PR is from the upstream repository.
 
 ## 4. Merge the release PR
 
