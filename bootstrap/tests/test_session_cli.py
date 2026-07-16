@@ -19,6 +19,7 @@ import click
 import click.testing
 import pytest
 
+from bootstrap.cli.build import _build_release_merge
 from bootstrap.cli.remote.session import _add_snapshot_by_file
 from bootstrap.cli.remote.session import _build_generation_data
 from bootstrap.cli.remote.session import _check_duplicate_server_ids
@@ -1574,6 +1575,52 @@ class TestSessionAddByFileRelease:
         assert index.android.general.identifier == f"release://{version}/android/general"
         assert index.android.general.size == apk_file.stat().st_size
         assert index.android.general.content_hash
+
+    def test_build_release_merge_emits_self_relative_paths(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """Merged release registry paths are relative to the merge JSON file."""
+        _init_session(store)
+
+        version = "1.0.0"
+        release_root = tmp_root / "releases"
+        apk_dir = release_root / "apk" / version
+        apk_dir.mkdir(parents=True, exist_ok=True)
+        apk_file = apk_dir / f"{version}-android.apk"
+        apk_file.write_bytes(b"fake apk content")
+
+        fragment_file = apk_dir / f"{version}-android.json"
+        fragment_file.write_text(
+            json.dumps(
+                {
+                    "metadata": {
+                        "versionMin": version,
+                        "versionMax": version,
+                        "offerings": ["android"],
+                        "releaseCount": 1,
+                        "createdAt": "2026-01-01T00:00:00Z",
+                    },
+                    "release": {
+                        "id": f"rel-{version}",
+                        "version": version,
+                        "android": {"general": str(apk_file.relative_to(release_root))},
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        _build_release_merge([fragment_file], version, None, release_root)
+
+        merge_file = release_root / "merge" / f"{version}.json"
+        assert merge_file.is_file()
+        data = json.loads(merge_file.read_text(encoding="utf-8"))
+        assert data["release"]["android"]["general"] == "../apk/1.0.0/1.0.0-android.apk"
+
+        _add_snapshot_by_file(store, tmp_root, "release", merge_file)
+
+        session = store.load()
+        assert len(session.staged.releases) == 1
 
 
 # ===========================================================================

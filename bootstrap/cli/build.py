@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 
 from pathlib import Path
@@ -127,6 +128,10 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
     merged_release: dict = {}
     all_paths: list[Path] = []
 
+    default_output = root / "merge" / f"{ver}.json"
+    effective_output = output if output is not None else default_output
+    ref_dir = root if effective_output == Path("-") else effective_output.parent
+
     for fp in fragments:
         raw = fp.read_text(encoding="utf-8")
         try:
@@ -163,7 +168,7 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
                                 f"Path {path_str!r} escapes root {root} in {fp}"
                             )
                         all_paths.append(pp)
-                        normalized[variant] = str(pp.relative_to(root))
+                        normalized[variant] = os.path.relpath(pp, ref_dir).replace(os.sep, "/")
                 merged_release[pkey] = normalized
 
     missing = [str(p) for p in all_paths if not p.exists()]
@@ -178,7 +183,6 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
         "release": merged_release,
     }
 
-    default_output = root / "merge" / f"{ver}.json"
     _emit_release_json(data, output, default_output)
 
 
