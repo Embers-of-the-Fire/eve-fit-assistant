@@ -41,11 +41,13 @@ jobs:
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest
-    # Clear stale testing labels on every synchronization.
-    # Requiring V-Release allows this bypass: remove V-Release, push a commit, then restore it.
-    # The old V-Tested Release label survives and .github/workflows/release.yml accepts an untested head.
+    # Drop stale testing labels only when a release branch is updated. This
+    # keeps the bypass protection intact (any commit to a release/ PR clears
+    # V-Test/V-Tested Release) while avoiding noise on unrelated PRs.
     if: |
-      github.event.action == 'synchronize'
+      github.event.action == 'synchronize' &&
+      startsWith(github.event.pull_request.head.ref, 'release/') &&
+      github.event.pull_request.head.repo.fork == false
     steps:
       - uses: actions/github-script@v7
         with:
