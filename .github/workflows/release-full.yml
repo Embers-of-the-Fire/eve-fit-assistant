@@ -74,9 +74,24 @@ jobs:
               return;
             }
             if (!labels.includes('V-Test')) {
+              // V-Test is the retry trigger for this job. If it is removed
+              // before V-Tested Release is added, a failure in addLabels
+              // would cause a rerun to skip this step at Line 72, leaving
+              // the successful test run unmarked.
               core.info('V-Test is no longer present; skipping label update.');
               return;
             }
+
+            // Add V-Tested Release before cleaning up V-Test so the tested
+            // state is persisted even if the cleanup step fails or the job
+            // needs to be retried.
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['V-Tested Release'],
+            });
+            core.info('Added label V-Tested Release');
 
             try {
               await github.rest.issues.removeLabel({
@@ -94,11 +109,3 @@ jobs:
                 throw error;
               }
             }
-
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: ['V-Tested Release'],
-            });
-            core.info('Added label V-Tested Release');

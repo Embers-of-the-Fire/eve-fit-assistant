@@ -2,7 +2,6 @@ name: Release Preflight
 
 permissions:
   contents: read
-  pull-requests: write
 
 on:
   pull_request:
@@ -39,9 +38,13 @@ jobs:
 
   drop-labels:
     name: Drop test labels on update
+    permissions:
+      pull-requests: write
     runs-on: ubuntu-latest
+    # Clear stale testing labels on every synchronization.
+    # Requiring V-Release allows this bypass: remove V-Release, push a commit, then restore it.
+    # The old V-Tested Release label survives and .github/workflows/release.yml accepts an untested head.
     if: |
-      contains(github.event.pull_request.labels.*.name, 'V-Release') &&
       github.event.action == 'synchronize'
     steps:
       - uses: actions/github-script@v7
