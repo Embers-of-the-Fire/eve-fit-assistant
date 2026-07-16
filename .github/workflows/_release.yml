@@ -9,12 +9,14 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     name: Build and publish
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -174,11 +176,17 @@ jobs:
           path: cache/releases/apk/**/*.apk
           retention-days: 1
 
-      - name: Create Git tag
-        if: inputs.test_mode == false
-        uses: actions/github-script@v7
-        env:
-          TAG: ${{ steps.verify.outputs.tag }}
+  tag:
+    name: Create Git tag
+    needs: release
+    runs-on: ubuntu-latest
+    if: inputs.test_mode == false
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.release.outputs.tag }}
+    steps:
+      - uses: actions/github-script@v7
         with:
           script: |
             const tag = process.env.TAG;

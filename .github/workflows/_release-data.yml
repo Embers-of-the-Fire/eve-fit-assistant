@@ -11,6 +11,31 @@ on:
         description: "JSON array of server IDs to rebuild (default: all)"
         type: string
         default: "[]"
+    secrets:
+      CI_STORAGE_ENDPOINT:
+        description: "CI storage S3 endpoint"
+        required: true
+      CI_STORAGE_BUCKET:
+        description: "CI storage S3 bucket"
+        required: true
+      CI_STORAGE_ACCESS_KEY:
+        description: "CI storage access key"
+        required: true
+      CI_STORAGE_SECRET_KEY:
+        description: "CI storage secret key"
+        required: true
+      REMOTE_STORAGE_ENDPOINT:
+        description: "Remote S3 endpoint for publishing"
+        required: false
+      REMOTE_STORAGE_BUCKET:
+        description: "Remote S3 bucket for publishing"
+        required: false
+      REMOTE_STORAGE_ACCESS_KEY:
+        description: "Remote S3 access key for publishing"
+        required: false
+      REMOTE_STORAGE_SECRET_KEY:
+        description: "Remote S3 secret key for publishing"
+        required: false
 
 permissions:
   contents: read

@@ -1,8 +1,7 @@
 name: Release Full Test
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 on:
   pull_request:
@@ -22,7 +21,6 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/_release.yml
-    secrets: inherit
     with:
       test_mode: true
 
@@ -34,12 +32,18 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/_release-data.yml
-    secrets: inherit
+    secrets:
+      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+      CI_STORAGE_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
+      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
     with:
       test_mode: true
 
   mark-tested:
     name: Mark as tested release
+    permissions:
+      pull-requests: write
     needs: [app-release-test, data-release-test]
     runs-on: ubuntu-latest
     if: |
