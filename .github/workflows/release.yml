@@ -1,7 +1,7 @@
 name: Release
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 
 on:
@@ -36,7 +36,14 @@ jobs:
               core.setOutput("skip", "true");
               return;
             }
-            core.info(`Found V-Release PR #${releasePrs[0].number}`);
+            const releasePr = releasePrs[0];
+            if (!releasePr.labels.some((l) => l.name === "V-Tested Release")) {
+              core.setFailed(
+                `V-Release PR #${releasePr.number} is missing the V-Tested Release label; aborting release.`
+              );
+              return;
+            }
+            core.info(`Found V-Release PR #${releasePr.number} with V-Tested Release`);
             core.setOutput("skip", "false");
 
   release:

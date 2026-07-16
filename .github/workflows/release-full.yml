@@ -1,0 +1,111 @@
+name: Release Full Test
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: release-full-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  app-release-test:
+    name: App release test
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'V-Release') &&
+      contains(github.event.pull_request.labels.*.name, 'V-Test') &&
+      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+      github.event.pull_request.head.repo.fork == false
+    uses: ./.github/workflows/_release.yml
+    with:
+      test_mode: true
+
+  data-release-test:
+    name: Data release test
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'V-Release') &&
+      contains(github.event.pull_request.labels.*.name, 'V-Test') &&
+      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+      github.event.pull_request.head.repo.fork == false
+    uses: ./.github/workflows/_release-data.yml
+    secrets:
+      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+      CI_STORAGE_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
+      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+    with:
+      test_mode: true
+
+  mark-tested:
+    name: Mark as tested release
+    permissions:
+      pull-requests: write
+    needs: [app-release-test, data-release-test]
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      needs.app-release-test.result == 'success' &&
+      needs.data-release-test.result == 'success'
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const labels = pr.labels.map((l) => l.name);
+
+            if (pr.head.sha !== process.env.PR_HEAD_SHA) {
+              core.info(
+                `PR HEAD has moved (${pr.head.sha} vs ${process.env.PR_HEAD_SHA}); skipping label update.`
+              );
+              return;
+            }
+            if (!labels.includes('V-Release')) {
+              core.info('V-Release is no longer present; skipping label update.');
+              return;
+            }
+            if (!labels.includes('V-Test')) {
+              // V-Test is the retry trigger for this job. If it is removed
+              // before V-Tested Release is added, a failure in addLabels
+              // would cause a rerun to skip this step at Line 72, leaving
+              // the successful test run unmarked.
+              core.info('V-Test is no longer present; skipping label update.');
+              return;
+            }
+
+            // Add V-Tested Release before cleaning up V-Test so the tested
+            // state is persisted even if the cleanup step fails or the job
+            // needs to be retried.
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['V-Tested Release'],
+            });
+            core.info('Added label V-Tested Release');
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'V-Test',
+              });
+              core.info('Removed label V-Test');
+            } catch (error) {
+              const status = error.status || error.response?.status;
+              if (status === 404) {
+                core.info('V-Test was not present');
+              } else {
+                throw error;
+              }
+            }
