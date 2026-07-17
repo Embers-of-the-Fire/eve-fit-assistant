@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import TYPE_CHECKING
 
+from google.protobuf.message import DecodeError
 from tqdm import tqdm
 
 from bootstrap.remote.generation import GenerationStore
@@ -314,12 +315,22 @@ class Publisher:
                 bpath = blob_path(self.local_root, ihash, ri_entry.content_hash)
                 remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}"
                 if not bpath.is_file():
-                    if self._remote_exists(remote):
-                        continue
-                    raise FileNotFoundError(
-                        f"Resource blob missing: {bpath} "
-                        f"(snapshot {snap_hash}, resource {ri_entry.resource_id})"
-                    )
+
+                    def _check_remote_resource(
+                        local_bpath: Path = bpath,
+                        remote_path: str = remote,
+                        snap: str = snap_hash,
+                        res_id: str = ri_entry.resource_id,
+                    ) -> None:
+                        if self._remote_exists(remote_path):
+                            return
+                        raise FileNotFoundError(
+                            f"Resource blob missing: {local_bpath} "
+                            f"(snapshot {snap}, resource {res_id})"
+                        )
+
+                    futures.append(ex.submit(_check_remote_resource))
+                    continue
                 futures.append(ex.submit(rm.process_blob, bpath, remote))
         return snapshot_uploads
 
@@ -374,11 +385,21 @@ class Publisher:
             bpath = blob_path(self.local_root, ihash, v.content_hash)
             remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
             if not bpath.is_file():
-                if self._remote_exists(remote):
-                    continue
-                raise FileNotFoundError(
-                    f"Release blob missing: {bpath} (snapshot {snap_hash}, variant {variant_name})"
-                )
+
+                def _check_remote_release(
+                    local_bpath: Path = bpath,
+                    remote_path: str = remote,
+                    snap: str = snap_hash,
+                    variant: str = variant_name,
+                ) -> None:
+                    if self._remote_exists(remote_path):
+                        return
+                    raise FileNotFoundError(
+                        f"Release blob missing: {local_bpath} (snapshot {snap}, variant {variant})"
+                    )
+
+                futures.append(ex.submit(_check_remote_release))
+                continue
             futures.append(ex.submit(rm.process_blob, bpath, remote))
         return dir_upload
 
@@ -427,7 +448,7 @@ class Publisher:
                 if snap_dir.is_dir() and pb2_file.is_file():
                     try:
                         rel_index = read_pb2(pb2_file, ReleaseIndex)
-                    except Exception:
+                    except (OSError, DecodeError):
                         rel_index = None
                     if rel_index is not None and rel_index.HasField("android"):
                         android = rel_index.android
