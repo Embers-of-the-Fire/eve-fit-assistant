@@ -415,7 +415,127 @@ def _build_apk_dedup_generation(root: Path) -> dict[str, str]:
     return {"apk_remote": remote_blob_path(apk_id, apk_chash)}
 
 
+def _build_inherited_release_generation(root: Path) -> dict[str, str]:
+    """Parent generation with resources only; child generation adds a release."""
+    snap_store = SnapshotStore(root)
+    gen_store = GenerationStore(root)
+    head_store = ChannelHeadStore(root)
+
+    a_data = b"unique-a-bytes"
+    a_chash = content_hash(a_data)
+    b_data = b"unique-b-bytes"
+    b_chash = content_hash(b_data)
+    make_blob(root, "resource://a.bin", a_chash, a_data)
+    make_blob(root, "resource://b.bin", b_chash, b_data)
+
+    idx_a = ResourceIndex()
+    idx_a.schema_version = 1
+    e = idx_a.entries.add()
+    e.resource_id = "resource://a.bin"
+    e.content_hash = a_chash
+    e.size = len(a_data)
+    meta_a = ResourceSnapshotMetadata(
+        serverId="srvA",
+        gameBuild="1.0",
+        gameVersion="Test",
+        resourceCount=1,
+        createdAt="2026-01-01T00:00:00Z",
+    )
+    snap_a = snap_store.create_resource_snapshot(meta_a, idx_a)
+
+    idx_b = ResourceIndex()
+    idx_b.schema_version = 1
+    e = idx_b.entries.add()
+    e.resource_id = "resource://b.bin"
+    e.content_hash = b_chash
+    e.size = len(b_data)
+    meta_b = ResourceSnapshotMetadata(
+        serverId="srvB",
+        gameBuild="1.0",
+        gameVersion="Test",
+        resourceCount=1,
+        createdAt="2026-01-01T00:00:00Z",
+    )
+    snap_b = snap_store.create_resource_snapshot(meta_b, idx_b)
+
+    server_index = make_server_index(
+        [
+            ("srvA", {"en": "Server A"}, "1.0", "Test", "", "", ""),
+            ("srvB", {"en": "Server B"}, "1.0", "Test", "", "", ""),
+        ]
+    )
+    resources = make_generation_resources([("srvA", snap_a), ("srvB", snap_b)])
+
+    parent_release_ptr = make_generation_pointer("")
+    parent_meta = GenerationMetadata(channel="stable", timestamp="2026-01-01T00:00:00Z")
+    parent_hash = gen_store.create(parent_meta, server_index, resources, parent_release_ptr)
+
+    apk_data = b"apk-bytes"
+    apk_chash = content_hash(apk_data)
+    apk_id = "release://1.0.0/android/general"
+    make_blob(root, apk_id, apk_chash, apk_data)
+    rel_index = make_release_index(
+        release_id="rel-001",
+        version="1.0.0",
+        android={
+            "general": {
+                "identifier": apk_id,
+                "content_hash": apk_chash,
+                "size": len(apk_data),
+            }
+        },
+    )
+    rel_meta = ReleaseSnapshotMetadata(releaseCount=1, createdAt="2026-01-01T00:00:00Z")
+    release_snap = snap_store.create_release_snapshot(rel_meta, rel_index)
+
+    child_release_ptr = make_generation_pointer(release_snap)
+    child_meta = GenerationMetadata(
+        channel="stable",
+        timestamp="2026-01-01T01:00:00Z",
+        parent=parent_hash,
+    )
+    child_hash = gen_store.create(child_meta, server_index, resources, child_release_ptr)
+
+    head_store.ensure_channel("stable")
+    head_store.push("stable", child_hash)
+
+    return {
+        "parent_hash": parent_hash,
+        "child_hash": child_hash,
+        "snap_a": snap_a,
+        "snap_b": snap_b,
+        "release_snap": release_snap,
+        "a_remote": remote_blob_path("resource://a.bin", a_chash),
+        "b_remote": remote_blob_path("resource://b.bin", b_chash),
+        "apk_remote": remote_blob_path(apk_id, apk_chash),
+    }
+
+
 class TestPublisherIntegration:
+    def test_publish_only_uploads_changed_snapshots(self, tmp_path: Path) -> None:
+        root = tmp_path / "local"
+        root.mkdir(parents=True, exist_ok=True)
+        origin = make_origin(tmp_path)
+        info = _build_inherited_release_generation(root)
+        pub = Publisher(root, origin_dir=origin)
+        head_store = ChannelHeadStore(root)
+
+        head_store.push("stable", info["parent_hash"])
+        with mock.patch.object(pub, "_upload_file", wraps=pub._upload_file) as spy:
+            pub.publish_all_for_head("stable")
+        parent_puts = blob_puts(spy)
+        assert info["a_remote"] in parent_puts
+        assert info["b_remote"] in parent_puts
+        assert info["apk_remote"] not in parent_puts
+
+        head_store.push("stable", info["child_hash"])
+        with mock.patch.object(pub, "_upload_file", wraps=pub._upload_file) as spy:
+            pub.publish_all_for_head("stable")
+        child_puts = blob_puts(spy)
+        assert info["a_remote"] not in child_puts
+        assert info["b_remote"] not in child_puts
+        assert info["apk_remote"] in child_puts
+
     def test_publish_dedups_shared_blob(self, tmp_path: Path) -> None:
         root = tmp_path / "local"
         root.mkdir(parents=True, exist_ok=True)
@@ -446,6 +566,72 @@ class TestPublisherIntegration:
         assert (base / "assets" / "releases" / info["release_snap"] / "metadata.json").is_file()
         assert (base / "channels" / "refs" / info["gen_hash"] / "metadata.json").is_file()
         assert (base / "channels" / "heads" / "stable" / "metadata.json").is_file()
+
+    def test_publish_skips_missing_local_blob_when_remote_exists(self, tmp_path: Path) -> None:
+        root = tmp_path / "local"
+        root.mkdir(parents=True, exist_ok=True)
+        origin = make_origin(tmp_path)
+        _build_shared_blob_generation(root)
+        pub = Publisher(root, origin_dir=origin)
+
+        pub.publish_all_for_head("stable")
+
+        local_shared = blob_path(
+            root,
+            ident_hash("resource://shared.bin"),
+            content_hash(b"shared-resource-bytes"),
+        )
+        assert local_shared.is_file()
+        local_shared.unlink()
+
+        with mock.patch.object(pub, "_upload_file", wraps=pub._upload_file) as spy:
+            pub.publish_all_for_head("stable")
+
+        puts = blob_puts(spy)
+        shared_remote = remote_blob_path(
+            "resource://shared.bin", content_hash(b"shared-resource-bytes")
+        )
+        assert shared_remote not in puts
+
+    def test_publish_skips_missing_local_release_blob_when_remote_exists(
+        self, tmp_path: Path
+    ) -> None:
+        root = tmp_path / "local"
+        root.mkdir(parents=True, exist_ok=True)
+        origin = make_origin(tmp_path)
+        _build_apk_dedup_generation(root)
+        pub = Publisher(root, origin_dir=origin)
+
+        pub.publish_all_for_head("stable")
+
+        apk_id = "release://2.0.0/android/general"
+        apk_chash = content_hash(b"apk-and-resource-identical")
+        local_apk = blob_path(root, ident_hash(apk_id), apk_chash)
+        assert local_apk.is_file()
+        local_apk.unlink()
+
+        with mock.patch.object(pub, "_upload_file", wraps=pub._upload_file) as spy:
+            pub.publish_all_for_head("stable")
+
+        puts = blob_puts(spy)
+        assert remote_blob_path(apk_id, apk_chash) not in puts
+
+    def test_publish_fails_when_blob_missing_everywhere(self, tmp_path: Path) -> None:
+        root = tmp_path / "local"
+        root.mkdir(parents=True, exist_ok=True)
+        origin = make_origin(tmp_path)
+        _build_shared_blob_generation(root)
+        pub = Publisher(root, origin_dir=origin)
+
+        local_shared = blob_path(
+            root,
+            ident_hash("resource://shared.bin"),
+            content_hash(b"shared-resource-bytes"),
+        )
+        local_shared.unlink()
+
+        with pytest.raises(FileNotFoundError, match="Resource blob missing"):
+            pub.publish_all_for_head("stable")
 
     def test_republish_is_noop(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         root = tmp_path / "local"
