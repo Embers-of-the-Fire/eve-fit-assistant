@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import TYPE_CHECKING
 
+from google.protobuf.message import DecodeError
 from tqdm import tqdm
 
 from bootstrap.remote.generation import GenerationStore
@@ -79,18 +80,33 @@ class Publisher:
     def publish_generation(self, channel: str, gen_hash: str) -> None:
         """Upload a single generation and all its referenced snapshots and blobs."""
         gen = self.gen_store.load(gen_hash)
+        parent_gen = self._load_parent_generation(gen)
         prefixes = self._gen_remote_prefix()
 
         self._ensure_alias()
 
-        rm = ResourceManager(self, expected_total=self._count_unique_blobs(gen, prefixes))
+        rm = ResourceManager(
+            self, expected_total=self._count_unique_blobs(gen, parent_gen, prefixes)
+        )
         with rm.progress(), ThreadPoolExecutor(max_workers=self.workers) as ex:
             futures: list[Future[None]] = []
+            changed_resource_hashes = self._changed_resource_snapshots(gen, parent_gen)
+            changed_release = self._changed_release(gen, parent_gen)
             snapshot_uploads = self._enumerate_resource_blobs(
-                gen.resources, prefixes, rm, ex, futures
+                gen.resources,
+                prefixes,
+                rm,
+                ex,
+                futures,
+                only_snapshots=changed_resource_hashes,
             )
             release_dir_upload = self._enumerate_release_blobs(
-                gen.release_pointer, prefixes, rm, ex, futures
+                gen.release_pointer,
+                prefixes,
+                rm,
+                ex,
+                futures,
+                skip=not changed_release,
             )
             for fut in as_completed(futures):
                 fut.result()
@@ -121,18 +137,33 @@ class Publisher:
             return
 
         gen = self.gen_store.load(head.generation_hash)
+        parent_gen = self._load_parent_generation(gen)
         prefixes = self._gen_remote_prefix()
 
         self._ensure_alias()
 
-        rm = ResourceManager(self, expected_total=self._count_unique_blobs(gen, prefixes))
+        rm = ResourceManager(
+            self, expected_total=self._count_unique_blobs(gen, parent_gen, prefixes)
+        )
         with rm.progress(), ThreadPoolExecutor(max_workers=self.workers) as ex:
             futures: list[Future[None]] = []
+            changed_resource_hashes = self._changed_resource_snapshots(gen, parent_gen)
+            changed_release = self._changed_release(gen, parent_gen)
             snapshot_uploads = self._enumerate_resource_blobs(
-                gen.resources, prefixes, rm, ex, futures
+                gen.resources,
+                prefixes,
+                rm,
+                ex,
+                futures,
+                only_snapshots=changed_resource_hashes,
             )
             release_dir_upload = self._enumerate_release_blobs(
-                gen.release_pointer, prefixes, rm, ex, futures
+                gen.release_pointer,
+                prefixes,
+                rm,
+                ex,
+                futures,
+                skip=not changed_release,
             )
             for fut in as_completed(futures):
                 fut.result()
@@ -160,6 +191,42 @@ class Publisher:
         channel-independent.
         """
         return f"{self.remote_root}/"
+
+    def _load_parent_generation(self, gen: Generation) -> Generation | None:
+        """Load the parent generation, if one is recorded and present locally."""
+        parent_hash = gen.metadata.parent or ""
+        if not parent_hash:
+            return None
+        try:
+            return self.gen_store.load(parent_hash)
+        except FileNotFoundError:
+            return None
+
+    def _changed_resource_snapshots(
+        self, gen: Generation, parent_gen: Generation | None
+    ) -> set[str]:
+        """Return the set of resource snapshot hashes that changed vs. parent.
+
+        If there is no parent generation, every snapshot is considered changed.
+        """
+        if parent_gen is None:
+            return {entry.snapshot_hash for entry in gen.resources.entries}
+        parent_hashes = {
+            entry.server_id: entry.snapshot_hash for entry in parent_gen.resources.entries
+        }
+        return {
+            entry.snapshot_hash
+            for entry in gen.resources.entries
+            if parent_hashes.get(entry.server_id) != entry.snapshot_hash
+        }
+
+    def _changed_release(self, gen: Generation, parent_gen: Generation | None) -> bool:
+        """True when the release pointer differs from the parent generation."""
+        if not gen.release_pointer.snapshot_hash:
+            return False
+        if parent_gen is None:
+            return True
+        return gen.release_pointer.snapshot_hash != parent_gen.release_pointer.snapshot_hash
 
     def _ensure_alias(self) -> None:
         """Set the S3 alias once (thread-safe, idempotent)."""
@@ -211,8 +278,15 @@ class Publisher:
         rm: ResourceManager,
         ex: ThreadPoolExecutor,
         futures: list[Future[None]],
+        *,
+        only_snapshots: set[str] | None = None,
     ) -> list[tuple[Path, str]]:
-        """Collect unique snapshot dir uploads (direct) and dispatch their blobs to the RM."""
+        """Collect changed snapshot dir uploads and dispatch their blobs to the RM.
+
+        Snapshots not listed in ``only_snapshots`` are skipped entirely under the
+        assumption that they were already uploaded as part of the parent
+        generation. When ``only_snapshots`` is None, every snapshot is processed.
+        """
         from bootstrap.remote.models import ResourceIndex
 
         seen: set[str] = set()
@@ -222,6 +296,9 @@ class Publisher:
             if snap_hash in seen:
                 continue
             seen.add(snap_hash)
+
+            if only_snapshots is not None and snap_hash not in only_snapshots:
+                continue
 
             snap_dir = resource_snapshot_dir(self.local_root, snap_hash)
             if not snap_dir.is_dir():
@@ -236,12 +313,24 @@ class Publisher:
             for ri_entry in index.entries:
                 ihash = ident_hash(ri_entry.resource_id)
                 bpath = blob_path(self.local_root, ihash, ri_entry.content_hash)
-                if not bpath.is_file():
-                    raise FileNotFoundError(
-                        f"Resource blob missing: {bpath} "
-                        f"(snapshot {snap_hash}, resource {ri_entry.resource_id})"
-                    )
                 remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}"
+                if not bpath.is_file():
+
+                    def _check_remote_resource(
+                        local_bpath: Path = bpath,
+                        remote_path: str = remote,
+                        snap: str = snap_hash,
+                        res_id: str = ri_entry.resource_id,
+                    ) -> None:
+                        if self._remote_exists(remote_path):
+                            return
+                        raise FileNotFoundError(
+                            f"Resource blob missing: {local_bpath} "
+                            f"(snapshot {snap}, resource {res_id})"
+                        )
+
+                    futures.append(ex.submit(_check_remote_resource))
+                    continue
                 futures.append(ex.submit(rm.process_blob, bpath, remote))
         return snapshot_uploads
 
@@ -252,9 +341,18 @@ class Publisher:
         rm: ResourceManager,
         ex: ThreadPoolExecutor,
         futures: list[Future[None]],
+        *,
+        skip: bool = False,
     ) -> tuple[Path, str] | None:
-        """Dispatch release APK blobs to the RM; return the release snapshot dir upload."""
+        """Dispatch release APK blobs to the RM; return the release snapshot dir upload.
+
+        When ``skip`` is True, the release snapshot is assumed unchanged from the
+        parent generation and is not enumerated or uploaded.
+        """
         from bootstrap.remote.models import ReleaseIndex
+
+        if skip:
+            return None
 
         snap_hash = pointer.snapshot_hash
         if not snap_hash:
@@ -285,25 +383,46 @@ class Publisher:
             v = getattr(android, variant_name)
             ihash = ident_hash(v.identifier)
             bpath = blob_path(self.local_root, ihash, v.content_hash)
-            if not bpath.is_file():
-                raise FileNotFoundError(
-                    f"Release blob missing: {bpath} (snapshot {snap_hash}, variant {variant_name})"
-                )
             remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
+            if not bpath.is_file():
+
+                def _check_remote_release(
+                    local_bpath: Path = bpath,
+                    remote_path: str = remote,
+                    snap: str = snap_hash,
+                    variant: str = variant_name,
+                ) -> None:
+                    if self._remote_exists(remote_path):
+                        return
+                    raise FileNotFoundError(
+                        f"Release blob missing: {local_bpath} (snapshot {snap}, variant {variant})"
+                    )
+
+                futures.append(ex.submit(_check_remote_release))
+                continue
             futures.append(ex.submit(rm.process_blob, bpath, remote))
         return dir_upload
 
-    def _count_unique_blobs(self, gen: Generation, prefixes: str) -> int:
-        """Pre-count unique blob remote paths to seed the progress bar total (spec §4)."""
+    def _count_unique_blobs(
+        self, gen: Generation, parent_gen: Generation | None, prefixes: str
+    ) -> int:
+        """Pre-count unique blob remote paths for changed snapshots only.
+
+        Unchanged snapshots inherited from the parent generation are not
+        counted, because they are skipped during enumeration.
+        """
         from bootstrap.remote.models import ReleaseIndex
         from bootstrap.remote.models import ResourceIndex
+
+        changed_resource_hashes = self._changed_resource_snapshots(gen, parent_gen)
+        changed_release = self._changed_release(gen, parent_gen)
 
         unique: set[str] = set()
 
         seen: set[str] = set()
         for entry in gen.resources.entries:
             snap_hash = entry.snapshot_hash
-            if snap_hash in seen:
+            if snap_hash in seen or snap_hash not in changed_resource_hashes:
                 continue
             seen.add(snap_hash)
             snap_dir = resource_snapshot_dir(self.local_root, snap_hash)
@@ -321,27 +440,28 @@ class Publisher:
                         prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{ri_entry.content_hash}"
                     )
 
-        snap_hash = gen.release_pointer.snapshot_hash
-        if snap_hash:
-            snap_dir = release_snapshot_dir(self.local_root, snap_hash)
-            pb2_file = snap_dir / "releases.pb2"
-            if snap_dir.is_dir() and pb2_file.is_file():
-                try:
-                    rel_index = read_pb2(pb2_file, ReleaseIndex)
-                except Exception:
-                    rel_index = None
-                if rel_index is not None and rel_index.HasField("android"):
-                    android = rel_index.android
-                    for variant_name in _RELEASE_VARIANT_NAMES:
-                        if not android.HasField(variant_name):
-                            continue
-                        v = getattr(android, variant_name)
-                        ihash = ident_hash(v.identifier)
-                        bpath = blob_path(self.local_root, ihash, v.content_hash)
-                        if bpath.is_file():
-                            unique.add(
-                                prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
-                            )
+        if changed_release:
+            snap_hash = gen.release_pointer.snapshot_hash
+            if snap_hash:
+                snap_dir = release_snapshot_dir(self.local_root, snap_hash)
+                pb2_file = snap_dir / "releases.pb2"
+                if snap_dir.is_dir() and pb2_file.is_file():
+                    try:
+                        rel_index = read_pb2(pb2_file, ReleaseIndex)
+                    except (OSError, DecodeError):
+                        rel_index = None
+                    if rel_index is not None and rel_index.HasField("android"):
+                        android = rel_index.android
+                        for variant_name in _RELEASE_VARIANT_NAMES:
+                            if not android.HasField(variant_name):
+                                continue
+                            v = getattr(android, variant_name)
+                            ihash = ident_hash(v.identifier)
+                            bpath = blob_path(self.local_root, ihash, v.content_hash)
+                            if bpath.is_file():
+                                unique.add(
+                                    prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
+                                )
 
         return len(unique)
 
