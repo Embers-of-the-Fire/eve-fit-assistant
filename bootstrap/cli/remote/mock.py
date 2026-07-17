@@ -230,7 +230,7 @@ def register_remote_mock(remote: click.Group) -> None:
                 break
             time.sleep(0.25)
         else:
-            os.kill(pid, signal.SIGKILL)
+            os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
 
         resolved_pid.unlink(missing_ok=True)
         click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Stopped MinIO mock (pid {pid})."))
