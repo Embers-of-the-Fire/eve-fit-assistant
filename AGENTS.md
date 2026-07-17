@@ -98,6 +98,8 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
   - `V-Tested Release` — added automatically by `release-full.yml` after both app and data tests pass.
 - Merging a `V-Release` PR that also has `V-Tested Release` triggers the real release (`release.yml`), which builds the APK, publishes the release to the remote `testing` channel, and creates the Git tag.
 - The reusable app release workflow is `_release.yml`; the reusable data snapshot workflow is `_release-data.yml`.
+- In test mode both workflows exercise the full commit → publish → sync → verify cycle against a local MinIO mock (`./x remote mock launch --daemon`, stop with `./x remote mock stop`) instead of touching the real remote.
+- CI workflows share the tracked developer config `ci/config/efa.dev.toml` (non-secret values; secret fields are `.invalid` placeholders). The composite action `.github/actions/init-dev-env` copies it to `./efa.dev.toml` after checkout; jobs inject real secrets via `--dev-env` overrides on top.
 
 ## Validation Expectations
 

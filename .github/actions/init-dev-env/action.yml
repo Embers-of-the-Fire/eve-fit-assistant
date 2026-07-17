@@ -1,0 +1,13 @@
+name: Init dev env
+
+description: >-
+  Copy the tracked CI developer configuration (ci/config/efa.dev.toml) to
+  ./efa.dev.toml so subsequent x.py invocations share the same dev config.
+  Secrets are injected separately via --dev-env overrides.
+
+runs:
+  using: composite
+  steps:
+    - name: Copy CI dev config
+      shell: bash
+      run: cp ci/config/efa.dev.toml efa.dev.toml

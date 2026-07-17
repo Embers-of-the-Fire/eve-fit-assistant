@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       test_mode:
-        description: "Run in test mode (skip publish)"
+        description: "Run in test mode (publish to a local MinIO mock instead of the real remote)"
         type: boolean
         default: false
       servers:
@@ -55,6 +55,9 @@ jobs:
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
 
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
       - name: Generate protobuf
         run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
@@ -71,11 +74,8 @@ jobs:
             'uv run x.py \
               --dev-env ci.storage.endpoint="${CI_ENDPOINT}" \
               --dev-env ci.storage.bucket="${CI_BUCKET}" \
-              --dev-env ci.storage.alias="efa-ci-storage" \
               --dev-env ci.storage.access_key="${CI_ACCESS_KEY}" \
               --dev-env ci.storage.secret_key="${CI_SECRET_KEY}" \
-              --dev-env ci.storage.public_url="https://ci.storage.efa-tech.dev" \
-              --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
               ci release-data build \
                 --download \
                 --servers "${SERVERS_JSON}" \
@@ -94,7 +94,6 @@ jobs:
     name: Publish to testing channel
     needs: build
     runs-on: ubuntu-latest
-    if: inputs.test_mode == false
     steps:
       - uses: actions/checkout@v6
         with:
@@ -114,7 +113,17 @@ jobs:
       - name: Generate protobuf
         run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
+      - name: Start MinIO mock
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote mock launch --daemon'
+
       - name: Sync remote channel head
+        if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
@@ -128,18 +137,12 @@ jobs:
               --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
               --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
-              --dev-env remote.s3.alias=efa-remote-publish \
-              --dev-env remote.s3.public_download=true \
               remote sync \
               --target s3 \
-              --endpoint "${REMOTE_ENDPOINT}" \
-              --bucket "${REMOTE_BUCKET}" \
-              --access-key "${REMOTE_ACCESS_KEY}" \
-              --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish \
               --channel testing'
 
       - name: Publish to testing channel
+        if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
@@ -153,15 +156,17 @@ jobs:
               --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
               --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
-              --dev-env remote.s3.alias=efa-remote-publish \
-              --dev-env remote.s3.public_download=true \
               ci release-data publish testing \
               --hashes snapshot-hashes.json \
               --schema-root cache/remote \
               --target s3 \
-              --endpoint "${REMOTE_ENDPOINT}" \
-              --bucket "${REMOTE_BUCKET}" \
-              --access-key "${REMOTE_ACCESS_KEY}" \
-              --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish \
               --merge'
+
+      - name: Publish to testing channel (MinIO mock)
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release-data publish testing \
+              --hashes snapshot-hashes.json \
+              --schema-root cache/remote \
+              --target minio'

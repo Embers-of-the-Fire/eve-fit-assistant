@@ -1,0 +1,52 @@
+# CI developer configuration.
+# Copied to efa.dev.toml by the init-dev-env composite action in CI workflows.
+# Holds shared non-secret values only; secret fields carry placeholder
+# sentinels that real-release jobs overwrite via --dev-env overrides.
+
+[workspace]
+default = "tranquility"
+
+[native]
+fsd_format = "msgpack"
+fsd_binary_dir = "/nonexistent"
+fsd_loc_en_dir = "/nonexistent"
+output_dir = "ci-native"
+
+[codegen]
+attr_id_source = "ci-native/json/dogmaAttributes.json"
+
+# Local MinIO mock used by test-mode release checks. Values are real (the mock
+# runs inside the CI job) but intentionally throwaway.
+[remote.minio]
+port = 9110
+console_port = 9111
+bucket = "efa-ci-mock"
+access_key = "efa-ci-mock-access"
+secret_key = "efa-ci-mock-secret"
+data_dir = "/tmp/efa-ci-minio"
+alias = "efa-ci-mock"
+public_download = true
+
+# Real remote publish target. Only non-secret defaults live here; the secret
+# fields are placeholders overwritten by --dev-env in release jobs.
+[remote.s3]
+endpoint = "https://s3.placeholder.invalid"
+bucket = "placeholder-bucket"
+access_key = "placeholder-access-key"
+secret_key = "placeholder-secret-key"
+alias = "efa-remote-publish"
+public_download = true
+
+# CI artifact storage. Only non-secret defaults live here; the secret fields
+# are placeholders overwritten by --dev-env in jobs that talk to CI storage.
+[ci.storage]
+endpoint = "https://ci-storage.placeholder.invalid"
+bucket = "placeholder-bucket"
+alias = "efa-ci-storage"
+access_key = "placeholder-access-key"
+secret_key = "placeholder-secret-key"
+public_url = "https://ci.storage.efa-tech.dev"
+
+[ci.raw_artifacts]
+remote_root = "data-generator/raw-artifact"
+public_url = "https://ci.storage.efa-tech.dev"
