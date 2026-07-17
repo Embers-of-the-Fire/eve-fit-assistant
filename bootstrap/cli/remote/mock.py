@@ -56,6 +56,12 @@ def _default_daemon_paths(data_dir: Path, pid_file: Path | None, log_file: Path 
     return resolved_pid, resolved_log
 
 
+def _is_stale_pid_error(exc: BaseException) -> bool:
+    if isinstance(exc, ProcessLookupError):
+        return True
+    return isinstance(exc, OSError) and getattr(exc, "winerror", None) == 87
+
+
 def _start_minio_remote_mock(
     *,
     host: str,
@@ -218,19 +224,29 @@ def register_remote_mock(remote: click.Group) -> None:
         pid = int(resolved_pid.read_text(encoding="utf-8").strip())
         try:
             os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            click.echo(styled(Style.DIM, f"Process {pid} is not running; removing stale PID file."))
-            resolved_pid.unlink()
-            return
+        except OSError as exc:
+            if _is_stale_pid_error(exc):
+                click.echo(
+                    styled(Style.DIM, f"Process {pid} is not running; removing stale PID file.")
+                )
+                resolved_pid.unlink(missing_ok=True)
+                return
+            raise
 
         for _ in range(40):
             try:
                 os.kill(pid, 0)
-            except ProcessLookupError:
-                break
+            except OSError as exc:
+                if _is_stale_pid_error(exc):
+                    break
+                raise
             time.sleep(0.25)
         else:
-            os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
+            try:
+                os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
+            except OSError as exc:
+                if not _is_stale_pid_error(exc):
+                    raise
 
         resolved_pid.unlink(missing_ok=True)
         click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Stopped MinIO mock (pid {pid})."))
