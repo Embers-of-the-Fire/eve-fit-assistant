@@ -18,6 +18,7 @@ from colorama import Style
 import bootstrap.config
 
 from bootstrap.color import styled
+from bootstrap.constant import PROJECT_ROOT
 from bootstrap.data.workspace.config import WorkspaceConfig
 from bootstrap.log import info
 from bootstrap.utils import execute_command
@@ -70,7 +71,9 @@ def resolve_dev_path(path: Path) -> Path:
 def resolve_schema_root(schema_root: Path | None) -> Path:
     bootstrap.config.DeveloperConfiguration.ensure_loaded()
     if schema_root is not None:
-        return resolve_dev_path(schema_root)
+        if schema_root.is_absolute():
+            return schema_root
+        return (PROJECT_ROOT / schema_root).resolve()
     return resolve_dev_path(bootstrap.config.DEV_CONFIGURATION.paths.schema_dir)
 
 
