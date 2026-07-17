@@ -88,7 +88,8 @@ jobs:
               --access-key "${REMOTE_ACCESS_KEY}" \
               --secret-key "${REMOTE_SECRET_KEY}" \
               --alias efa-remote-publish \
-              --channel testing'
+              --channel testing \
+              --schema-root cache/remote'
 
       - name: Stage release snapshot
         if: inputs.test_mode == false
@@ -132,7 +133,8 @@ jobs:
               --bucket "${REMOTE_BUCKET}" \
               --access-key "${REMOTE_ACCESS_KEY}" \
               --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish'
+              --alias efa-remote-publish \
+              --schema-root cache/remote'
 
       - name: Sync and verify remote head
         if: inputs.test_mode == false
@@ -158,9 +160,10 @@ jobs:
               --access-key "${REMOTE_ACCESS_KEY}" \
               --secret-key "${REMOTE_SECRET_KEY}" \
               --alias efa-remote-publish \
-              --channel testing'
+              --channel testing \
+              --schema-root cache/remote'
           synced_hash=$(nix develop .#python --command bash -c \
-            'uv run python -c "from bootstrap.remote import SessionManager; m = SessionManager(\"cache/remote\"); print(m.get_head(\"testing\").generation_hash)"')
+            'uv run python -c "from pathlib import Path; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(\"testing\").generation_hash)"')
           committed="${{ steps.commit.outputs.committed_hash }}"
           if [ "$synced_hash" != "$committed" ]; then
             echo "Remote head verification failed: committed=$committed synced=$synced_hash"
