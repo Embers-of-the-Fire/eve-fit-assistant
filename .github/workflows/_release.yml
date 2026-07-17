@@ -37,8 +37,11 @@ jobs:
           echo "version=$(grep '^Canonical version:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
           echo "tag=$(grep '^Expected tag:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
 
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
       - name: Setup CI developer config
-        run: nix develop .#python --command bash -c 'cp bootstrap/ci/efa.dev.ci.toml efa.dev.toml && uv run x.py dev env write-backend'
+        run: nix develop .#python --command bash -c 'uv run x.py dev env write-backend'
 
       - name: Fetch native CI data
         run: |
@@ -64,6 +67,12 @@ jobs:
           nix develop .#python --command bash -c \
             "uv run x.py build release --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json"
 
+      - name: Start MinIO mock
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote mock launch --daemon'
+
       - name: Sync remote channel head
         if: inputs.test_mode == false
         env:
@@ -79,20 +88,12 @@ jobs:
               --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
               --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
-              --dev-env remote.s3.alias=efa-remote-publish \
-              --dev-env remote.s3.public_download=true \
               remote sync \
               --target s3 \
-              --endpoint "${REMOTE_ENDPOINT}" \
-              --bucket "${REMOTE_BUCKET}" \
-              --access-key "${REMOTE_ACCESS_KEY}" \
-              --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish \
               --channel testing \
               --schema-root cache/remote'
 
       - name: Stage release snapshot
-        if: inputs.test_mode == false
         run: |
           VERSION="${{ steps.verify.outputs.version }}"
           nix develop .#python --command bash -c \
@@ -101,7 +102,6 @@ jobs:
             "uv run x.py remote session add --release --file cache/releases/merge/${VERSION}.json --schema-root cache/remote"
 
       - name: Verify and commit generation
-        if: inputs.test_mode == false
         id: commit
         run: |
           nix develop .#python --command bash -c \
@@ -125,15 +125,16 @@ jobs:
               --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
               --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
-              --dev-env remote.s3.alias=efa-remote-publish \
-              --dev-env remote.s3.public_download=true \
               remote publish testing \
               --target s3 \
-              --endpoint "${REMOTE_ENDPOINT}" \
-              --bucket "${REMOTE_BUCKET}" \
-              --access-key "${REMOTE_ACCESS_KEY}" \
-              --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish \
+              --schema-root cache/remote'
+
+      - name: Publish to testing channel (MinIO mock)
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote publish testing \
+              --target minio \
               --schema-root cache/remote'
 
       - name: Sync and verify remote head
@@ -151,15 +152,25 @@ jobs:
               --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
               --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
-              --dev-env remote.s3.alias=efa-remote-publish \
-              --dev-env remote.s3.public_download=true \
               remote sync \
               --target s3 \
-              --endpoint "${REMOTE_ENDPOINT}" \
-              --bucket "${REMOTE_BUCKET}" \
-              --access-key "${REMOTE_ACCESS_KEY}" \
-              --secret-key "${REMOTE_SECRET_KEY}" \
-              --alias efa-remote-publish \
+              --channel testing \
+              --schema-root cache/remote'
+          synced_hash=$(nix develop .#python --command bash -c \
+            'uv run python -c "from pathlib import Path; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(\"testing\").generation_hash)"')
+          committed="${{ steps.commit.outputs.committed_hash }}"
+          if [ "$synced_hash" != "$committed" ]; then
+            echo "Remote head verification failed: committed=$committed synced=$synced_hash"
+            exit 1
+          fi
+          echo "Remote head verified: $synced_hash"
+
+      - name: Sync and verify remote head (MinIO mock)
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote sync \
+              --target minio \
               --channel testing \
               --schema-root cache/remote'
           synced_hash=$(nix develop .#python --command bash -c \

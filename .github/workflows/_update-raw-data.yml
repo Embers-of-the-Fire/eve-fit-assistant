@@ -42,24 +42,22 @@ jobs:
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
 
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
       - name: Determine update matrix
         id: matrix
         env:
-          CI_PUBLIC_URL: https://ci.storage.efa-tech.dev
           CHECK_ALL: ${{ inputs.all && '--all' || '' }}
           SERVER: ${{ inputs.server }}
         run: |
           # shellcheck disable=SC2016
           if [ -n "$SERVER" ]; then
             MATRIX=$(nix develop .#python --command bash -c \
-              'uv run x.py \
-                --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
-                ci raw-data check --server "$SERVER" --format json')
+              'uv run x.py ci raw-data check --server "$SERVER" --format json')
           else
             MATRIX=$(nix develop .#python --command bash -c \
-              'uv run x.py \
-                --dev-env ci.raw_artifacts.public_url="$CI_PUBLIC_URL" \
-                ci raw-data check ${CHECK_ALL:+"$CHECK_ALL"} --format json')
+              'uv run x.py ci raw-data check ${CHECK_ALL:+"$CHECK_ALL"} --format json')
           fi
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           if [ "$MATRIX" = "[]" ] || [ -z "$MATRIX" ]; then
@@ -90,8 +88,11 @@ jobs:
       - name: Install Python dependencies
         run: uv sync
 
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
       - name: Download portable Python 2.7
-        run: uv run x.py --dev-env ci.raw_artifacts.public_url="https://ci.storage.efa-tech.dev" ci raw-data setup-py27
+        run: uv run x.py ci raw-data setup-py27
 
       - name: Update raw artifacts
         run: uv run x.py ci raw-data update --server "${{ matrix.server }}" --no-upload
@@ -129,6 +130,9 @@ jobs:
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
 
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
       - name: Upload to CI storage
         env:
           SERVER: ${{ matrix.server }}
@@ -142,9 +146,6 @@ jobs:
             'uv run x.py \
               --dev-env ci.storage.endpoint="$CI_ENDPOINT" \
               --dev-env ci.storage.bucket="$CI_BUCKET" \
-              --dev-env ci.storage.alias="efa-ci-storage" \
               --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
               --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
-              --dev-env ci.storage.public_url="https://ci.storage.efa-tech.dev" \
-              --dev-env ci.raw_artifacts.remote_root="data-generator/raw-artifact" \
               ci raw-data upload --server "$SERVER" --from-dir raw-artifacts/"$SERVER"/'

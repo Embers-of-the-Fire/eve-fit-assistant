@@ -259,9 +259,12 @@
         default = fullShell;
         full = fullShell;
 
-        # Minimal Python shell: linting, formatting, and tests
+        # Minimal Python shell: linting, formatting, tests, and CI remote mocks
         python = pkgs.mkShell {
-          packages = pythonPackages ++ [ pkgs.minio-client ];
+          packages = pythonPackages ++ [
+            pkgs.minio
+            pkgs.minio-client
+          ];
 
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";

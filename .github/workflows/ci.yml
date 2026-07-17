@@ -77,9 +77,12 @@ jobs:
           tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
           mkdir -p rust/lib/eve-fit-os/data/out
           ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+      - name: Init dev env
+        if: matrix.suite == 'dart'
+        uses: ./.github/actions/init-dev-env
       - name: Setup CI dev config
         if: matrix.suite == 'dart'
-        run: nix develop .#dart --command bash -c 'cp bootstrap/ci/efa.dev.ci.toml efa.dev.toml && uv run x.py dev env write-backend'
+        run: nix develop .#dart --command bash -c 'uv run x.py dev env write-backend'
       - name: Generate code
         run: nix develop .#codegen --command bash -c '${{ matrix.codegen_command }}'
       - name: Lint ${{ matrix.suite }}

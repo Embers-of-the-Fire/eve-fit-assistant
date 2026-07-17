@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
+import time
 
 from pathlib import Path
 
@@ -48,6 +50,12 @@ def _is_safe_rmtree_target(path: Path) -> bool:
     return True
 
 
+def _default_daemon_paths(data_dir: Path, pid_file: Path | None, log_file: Path | None):
+    resolved_pid = pid_file or data_dir.parent / f"{data_dir.name}.pid"
+    resolved_log = log_file or data_dir.parent / f"{data_dir.name}.log"
+    return resolved_pid, resolved_log
+
+
 def _start_minio_remote_mock(
     *,
     host: str,
@@ -59,6 +67,9 @@ def _start_minio_remote_mock(
     secret_key: str,
     alias_name: str,
     public_download: bool,
+    daemon: bool = False,
+    pid_file: Path | None = None,
+    log_file: Path | None = None,
 ) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     endpoint = f"http://{host}:{port}"
@@ -81,7 +92,19 @@ def _start_minio_remote_mock(
     env = os.environ.copy()
     env["MINIO_ROOT_USER"] = access_key
     env["MINIO_ROOT_PASSWORD"] = secret_key
-    process = subprocess.Popen(command, env=env, text=True)
+    if daemon:
+        resolved_pid, resolved_log = _default_daemon_paths(data_dir, pid_file, log_file)
+        with open(resolved_log, "a", encoding="utf-8") as log_handle:
+            process = subprocess.Popen(
+                command,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+    else:
+        process = subprocess.Popen(command, env=env, text=True)
     try:
         wait_for_http(f"{endpoint}/minio/health/ready")
 
@@ -115,6 +138,16 @@ def _start_minio_remote_mock(
             )
         )
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO console: ") + console_endpoint)
+        if daemon:
+            resolved_pid.write_text(f"{process.pid}\n", encoding="utf-8")
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO endpoint: ") + endpoint)
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO PID: ") + f"{process.pid}")
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO PID file: ") + str(resolved_pid))
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO log file: ") + str(resolved_log))
+            click.echo(
+                styled(Style.DIM, "  Detached. Stop with `./x remote mock stop` or kill the PID.")
+            )
+            return
         run_foreground(process, "\nMinIO remote mock interrupted by user.")
     except Exception:
         process.terminate()
@@ -165,6 +198,43 @@ def register_remote_mock(remote: click.Group) -> None:
         else:
             click.echo(styled(Style.DIM, "Nothing to clean."))
 
+    @mock.command("stop")
+    @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+    @click.option("--pid-file", type=click.Path(path_type=Path), default=None)
+    def remote_mock_stop(data_dir: Path | None, pid_file: Path | None):
+        """Stop a detached MinIO remote mock started with `launch --daemon`."""
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
+        minio = remote_cfg.require_minio("stop")
+
+        resolved_data_dir = runtime.resolve_dev_path(data_dir or minio.data_dir)
+        resolved_pid_file = runtime.resolve_dev_path(pid_file) if pid_file else None
+        resolved_pid, _ = _default_daemon_paths(resolved_data_dir, resolved_pid_file, None)
+
+        if not resolved_pid.is_file():
+            click.echo(styled(Style.DIM, "No PID file found; nothing to stop."))
+            return
+
+        pid = int(resolved_pid.read_text(encoding="utf-8").strip())
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            click.echo(styled(Style.DIM, f"Process {pid} is not running; removing stale PID file."))
+            resolved_pid.unlink()
+            return
+
+        for _ in range(40):
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.25)
+        else:
+            os.kill(pid, signal.SIGKILL)
+
+        resolved_pid.unlink(missing_ok=True)
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Stopped MinIO mock (pid {pid})."))
+
     @mock.command("launch")
     @click.option("--host", default=None, help="Override remote mock host.")
     @click.option("--port", type=int, default=None, help="Override MinIO API port.")
@@ -180,6 +250,24 @@ def register_remote_mock(remote: click.Group) -> None:
         default=None,
         help="Configure anonymous bucket downloads.",
     )
+    @click.option(
+        "--daemon",
+        is_flag=True,
+        default=False,
+        help="Detach after startup instead of running in the foreground.",
+    )
+    @click.option(
+        "--pid-file",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="PID file path for --daemon (default: <data-dir>.pid).",
+    )
+    @click.option(
+        "--log-file",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Log file path for --daemon (default: <data-dir>.log).",
+    )
     def remote_mock_launch(
         host: str | None,
         port: int | None,
@@ -190,6 +278,9 @@ def register_remote_mock(remote: click.Group) -> None:
         alias_name: str | None,
         data_dir: Path | None,
         public_download: bool | None,
+        daemon: bool,
+        pid_file: Path | None,
+        log_file: Path | None,
     ):
         """Launch a local MinIO remote mock against persisted storage.
 
@@ -221,6 +312,8 @@ def register_remote_mock(remote: click.Group) -> None:
         resolved_public_download = (
             public_download if public_download is not None else minio.public_download
         )
+        resolved_pid_file = runtime.resolve_dev_path(pid_file) if pid_file else None
+        resolved_log_file = runtime.resolve_dev_path(log_file) if log_file else None
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO data path: ") + str(resolved_data_dir))
         click.echo(
@@ -239,4 +332,7 @@ def register_remote_mock(remote: click.Group) -> None:
             secret_key=resolved_secret_key,
             alias_name=resolved_alias,
             public_download=resolved_public_download,
+            daemon=daemon,
+            pid_file=resolved_pid_file,
+            log_file=resolved_log_file,
         )
