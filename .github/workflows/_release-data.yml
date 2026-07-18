@@ -159,8 +159,7 @@ jobs:
               ci release-data publish testing \
               --hashes snapshot-hashes.json \
               --schema-root cache/remote \
-              --target s3 \
-              --merge'
+              --target s3'
 
       - name: Publish to testing channel (MinIO mock)
         if: inputs.test_mode
