@@ -565,7 +565,11 @@ def run_preflight_validation(
         except (json.JSONDecodeError, ValueError) as e:
             errors.append(f"Failed to load active.json: {e}")
 
-    # Check 6-10: Entry-level validations across all pages
+    # Check 6-10: Entry-level validations across all pages.
+    # Bodies unchanged from the remote mirror already exist on the remote, so
+    # they are not required in the local documents/ directory.
+    remote_body_hashes = _load_remote_body_hashes(remote_dir)
+
     ws = _FakeWorkspaceRead(workspace_dir)
     for page_meta in catalog.pages:
         page_uuid = page_meta.uuid
@@ -600,6 +604,8 @@ def run_preflight_validation(
 
                 doc_path = documents_dir / f"{loc.body_hash}.md"
                 if not doc_path.exists():
+                    if remote_body_hashes.get(entry_id, {}).get(locale) == loc.body_hash:
+                        continue
                     errors.append(
                         f"entry {entry_id}/{locale}: body {loc.body_hash} not found in documents/"
                     )
@@ -657,6 +663,30 @@ class _FakeWorkspaceRead:
         if uuid == active_uuid:
             return self._read_active(workspace_dir)
         return self._read_page(workspace_dir, uuid)
+
+
+def _load_remote_body_hashes(remote_dir: Path | None) -> dict[str, dict[str, str]]:
+    """Map entry id → locale → bodyHash from the last-synced remote mirror.
+
+    Used by preflight to skip local body checks for entries whose bodies are
+    unchanged and therefore already published on the remote.
+    """
+    hashes: dict[str, dict[str, str]] = {}
+    if remote_dir is None or not (remote_dir / "catalog.json").exists():
+        return hashes
+    ws = _FakeWorkspaceRead(remote_dir)
+    try:
+        catalog = ws._read_catalog(remote_dir)
+    except (json.JSONDecodeError, ValueError):
+        return hashes
+    for page_meta in catalog.pages:
+        with contextlib.suppress(FileNotFoundError):
+            page = ws._read_any_page(remote_dir, page_meta.uuid)
+            for entry in page.entries:
+                hashes[entry.id] = {
+                    locale: loc.body_hash for locale, loc in entry.localizations.items()
+                }
+    return hashes
 
 
 def _run_remote_compatibility_check(
