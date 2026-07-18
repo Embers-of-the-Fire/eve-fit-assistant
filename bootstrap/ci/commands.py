@@ -347,10 +347,10 @@ def register_ci_commands(cli_group: click.Group) -> None:
         help="Max generations to sync after publish (default: 1).",
     )
     @click.option(
-        "--merge",
+        "--merge/--no-merge",
         is_flag=True,
-        default=False,
-        help="Include unchanged server snapshots from the current channel head.",
+        default=True,
+        help="Include unchanged server snapshots from the current channel head (default: true).",
     )
     @click.pass_context
     def release_data_publish(
