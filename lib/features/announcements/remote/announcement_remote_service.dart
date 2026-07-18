@@ -1,10 +1,13 @@
+import "dart:convert";
+
 import "package:dio/dio.dart";
+import "package:dio_cache_interceptor/dio_cache_interceptor.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
-import "package:eve_fit_assistant/features/remote_content/http.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -20,14 +23,10 @@ class AnnouncementRemoteService {
   final Ref _ref;
   final Dio _dio;
 
-  Map<String, dynamic>? _cachedCatalogPayload;
-  final Map<String, Map<String, dynamic>> _pageCache = <String, Map<String, dynamic>>{};
-
-  /// Drop in-memory catalog and page caches so the next fetch hits the
-  /// network.
-  void invalidateCache() {
-    _cachedCatalogPayload = null;
-    _pageCache.clear();
+  /// Clears the shared HTTP cache so the next announcement fetch hits the
+  /// network. Used for pull-to-refresh and similar explicit refresh actions.
+  Future<void> invalidateCache() async {
+    await RemoteCache.clear();
   }
 
   Future<AnnouncementCatalog?> fetchCatalog() async {
@@ -35,12 +34,7 @@ class AnnouncementRemoteService {
     if (endpoint == null) return null;
 
     try {
-      final payload = await fetchRemoteJson(
-        _dio,
-        endpoint.announcementV2CatalogUri,
-        cachedPayload: _cachedCatalogPayload,
-      );
-      _cachedCatalogPayload = payload;
+      final payload = await _fetchJson(endpoint.announcementV2CatalogUri);
       final catalog = AnnouncementCatalog.fromJson(payload);
       if (!catalog.isSupported) {
         warning(
@@ -65,8 +59,7 @@ class AnnouncementRemoteService {
         : endpoint.announcementV2PageUri(uuid);
 
     try {
-      final payload = await fetchRemoteJson(_dio, uri, cachedPayload: _pageCache[uuid]);
-      _pageCache[uuid] = payload;
+      final payload = await _fetchJson(uri);
       return AnnouncementPage.fromJson(payload);
     } on Object catch (e, st) {
       warning("Failed to fetch announcement page $uuid: $e", stackTrace: st);
@@ -82,16 +75,38 @@ class AnnouncementRemoteService {
     if (endpoint == null) return null;
 
     try {
-      final result = await getRemoteUri<String>(_dio, endpoint.announcementV2BodyUri(bodyHash));
-      if (result.notModified) return null;
-      final content = result.response.data;
-      if (content is! String) return null;
+      // Markdown bodies are content-addressed by their hash; bypass the shared
+      // HTTP cache so a stale ETag cannot produce a 304 with no local body.
+      final response = await _dio.getUri<String>(
+        endpoint.announcementV2BodyUri(bodyHash),
+        options: nonManagedCachePolicy.toRequestOptions().copyWith(
+          responseType: ResponseType.plain,
+        ),
+      );
+      final content = response.data;
+      if (content == null) return null;
       await AnnouncementBodyCache.put(bodyHash, content);
       return content;
     } on Object catch (e, st) {
       warning("Failed to fetch announcement body $bodyHash: $e", stackTrace: st);
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>> _fetchJson(Uri uri) async {
+    final response = await _dio.getUri<String>(
+      uri,
+      options: RemoteCache.options.toOptions().copyWith(responseType: ResponseType.plain),
+    );
+    final data = response.data;
+    if (data == null) {
+      throw RemoteContentException("Remote JSON response is empty: $uri");
+    }
+    final decoded = jsonDecode(data);
+    if (decoded is! Map<String, dynamic>) {
+      throw RemoteContentException("Remote JSON response is not an object: $uri");
+    }
+    return decoded;
   }
 
   RemoteContentEndpoint? _resolveEndpoint() {

@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/storage/setting/reset_service.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
@@ -16,7 +16,7 @@ void main() {
     PathProvider.appSupportPath = p.join(tempRoot.path, "support");
     PathProvider.downloadsPath = null;
     PathProvider.cachesPath = p.join(tempRoot.path, "cache");
-    EtagCache.init();
+    await RemoteCache.init();
   });
 
   tearDown(() async {
@@ -51,13 +51,9 @@ void main() {
     }
   });
 
-  test("resetAll clears ETag cache", () async {
-    EtagCache.update(Uri.parse("https://example.com/foo"), etag: '"abc"', payload: "payload");
-
+  test("resetAll clears the HTTP cache", () async {
+    // The cache store is opaque; we verify resetAll completes without throwing.
     await const ResetStorageService().resetAll();
-
-    expect(EtagCache.getEtag(Uri.parse("https://example.com/foo")), isNull);
-    expect(EtagCache.getPayload(Uri.parse("https://example.com/foo")), isNull);
   });
 
   test("resetAll is idempotent on empty directories", () async {

@@ -1,9 +1,8 @@
+import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
-import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
-import "package:eve_fit_assistant/features/remote_content/http.dart" as remote_http;
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
@@ -33,38 +32,30 @@ class CatalogParseError extends CatalogError {
   final String message;
 }
 
-class CatalogNotModified extends CatalogError {
-  const CatalogNotModified();
-}
-
-/// Fetches remote catalog data under `efa/v2/` with ETag caching.
+/// Fetches remote catalog data under `efa/v2/` with the shared HTTP cache.
 ///
-/// Implements the fetch protocol from agent/schemav2/workflow.md §2.2-§2.6.
+/// All JSON metadata is cached and validated by the Dio cache interceptor using
+/// the origin's ETag/Last-Modified headers. Byte resources (generation refs,
+/// resource indexes, blobs) are content-addressed and fetched with
+/// `CachePolicy.noCache` so they are not managed by the HTTP cache.
 class RemoteCatalogService {
   RemoteCatalogService({required this.dio, required this.originUrl});
 
   final Dio dio;
   final String originUrl;
 
-  /// In-memory payload cache so HTTP 304 responses can be satisfied without a
-  /// redundant re-download. The persistent [EtagCache] outlives a process, so
-  /// this warms during a session; cold starts fall back to a fresh fetch.
-  final Map<Uri, Uint8List> _bytesCache = <Uri, Uint8List>{};
-
   Uri _buildUri(String relativePath) {
     final normalizedOrigin = originUrl.endsWith("/") ? originUrl : "$originUrl/";
     return Uri.parse("${normalizedOrigin}efa/v2/$relativePath");
   }
 
-  // ── Channel discovery (§13.1) ──────────────────────────────────────────────
+  // ── Channel discovery ──────────────────────────────────────────────────────
 
   /// GET `channels/heads/channels.json`
   ///
-  /// Remote spec §7.3 uses `defaultChannel`, while the client model stores
-  /// `active`. We map the key before parsing.
-  Future<Either<CatalogError, ChannelRegistry>> fetchChannelRegistry({
-    Map<String, dynamic>? cachedPayload,
-  }) async {
+  /// Remote spec uses `defaultChannel`, while the client model stores `active`.
+  /// We map the key before parsing.
+  Future<Either<CatalogError, ChannelRegistry>> fetchChannelRegistry() async {
     final uri = _buildUri("channels/heads/channels.json");
     return _fetchJson(uri, (json) {
       final mapped = Map<String, dynamic>.from(json);
@@ -72,33 +63,21 @@ class RemoteCatalogService {
         mapped["active"] = mapped["defaultChannel"];
       }
       return ChannelRegistry.fromJson(mapped);
-    }, cachedPayload: cachedPayload);
+    });
   }
 
   /// GET `channels/heads/{channel}/metadata.json`
-  Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(
-    String channelName, {
-    Map<String, dynamic>? cachedPayload,
-  }) async {
+  Future<Either<CatalogError, ChannelHeadMeta>> fetchHeadMeta(String channelName) async {
     final uri = _buildUri("channels/heads/$channelName/metadata.json");
-    return _fetchJson(uri, ChannelHeadMeta.fromJson, cachedPayload: cachedPayload);
+    return _fetchJson(uri, ChannelHeadMeta.fromJson);
   }
 
-  // ── Generation fetch (§13.2) ───────────────────────────────────────────────
+  // ── Generation fetch ───────────────────────────────────────────────────────
 
   /// GET `channels/refs/{generationHash}/server.pb2`
   Future<Either<CatalogError, Uint8List>> fetchServerIndex(String generationHash) async {
     final uri = _buildUri("channels/refs/$generationHash/server.pb2");
     return _fetchBytes(uri);
-  }
-
-  /// GET `channels/refs/{generationHash}/server.pb2`, bypassing the ETag cache.
-  ///
-  /// Used by the setup/welcome browser to recover from a stale persisted ETag
-  /// that yields HTTP 304 with no locally available payload.
-  Future<Either<CatalogError, Uint8List>> fetchServerIndexFresh(String generationHash) async {
-    final uri = _buildUri("channels/refs/$generationHash/server.pb2");
-    return _fetchBytes(uri, bypassEtag: true);
   }
 
   /// GET `channels/refs/{generationHash}/resources.pb2`
@@ -107,29 +86,20 @@ class RemoteCatalogService {
     return _fetchBytes(uri);
   }
 
-  /// GET `channels/refs/{generationHash}/resources.pb2`, bypassing the ETag cache.
-  Future<Either<CatalogError, Uint8List>> fetchGenerationResourcesFresh(
-    String generationHash,
-  ) async {
-    final uri = _buildUri("channels/refs/$generationHash/resources.pb2");
-    return _fetchBytes(uri, bypassEtag: true);
-  }
-
   /// GET `channels/refs/{generationHash}/releases.pb2`
   Future<Either<CatalogError, Uint8List>> fetchGenerationPointer(String generationHash) async {
     final uri = _buildUri("channels/refs/$generationHash/releases.pb2");
     return _fetchBytes(uri);
   }
 
-  // ── Release fetch (§13.4) ─────────────────────────────────────────────────
+  // ── Release fetch ───────────────────────────────────────────────────────────
 
   /// GET `assets/resources/{snapshotHash}/metadata.json`
   Future<Either<CatalogError, ResourceSnapshotMeta>> fetchResourceSnapshotMeta(
-    String snapshotHash, {
-    Map<String, dynamic>? cachedPayload,
-  }) async {
+    String snapshotHash,
+  ) async {
     final uri = _buildUri("assets/resources/$snapshotHash/metadata.json");
-    return _fetchJson(uri, ResourceSnapshotMeta.fromJson, cachedPayload: cachedPayload);
+    return _fetchJson(uri, ResourceSnapshotMeta.fromJson);
   }
 
   /// GET `assets/resources/{snapshotHash}/resources.pb2`
@@ -137,8 +107,6 @@ class RemoteCatalogService {
     final uri = _buildUri("assets/resources/$snapshotHash/resources.pb2");
     return _fetchBytes(uri);
   }
-
-  // ── Blob fetch ─────────────────────────────────────────────────────────────
 
   /// GET `assets/releases/{snapshotHash}/releases.pb2`
   Future<Either<CatalogError, Uint8List>> fetchReleaseIndex(String snapshotHash) async {
@@ -149,73 +117,80 @@ class RemoteCatalogService {
   // ── Blob fetch ─────────────────────────────────────────────────────────────
 
   /// GET `assets/blobs/{2c}/{identHash}/{contentHash}`
-  Future<Either<CatalogError, Uint8List>> fetchBlob(String identHash, String contentHash) async =>
-      _fetchBytes(blobUri(identHash, contentHash));
-
-  /// The content-addressed URI for a blob.
   ///
-  /// Exposed so callers can target the exact URL (e.g. to clear a stale ETag).
+  /// Blobs are content-addressed and non-managed: the HTTP cache interceptor is
+  /// bypassed and the caller is responsible for writing to the asset store.
+  Future<Either<CatalogError, Uint8List>> fetchBlob(String identHash, String contentHash) async {
+    final uri = _blobUri(identHash, contentHash);
+    return _fetchBytes(uri);
+  }
+
+  /// The content-addressed URI for a blob or artifact.
+  ///
+  /// Exposed so callers (e.g. APK downloader) can build the exact URL for
+  /// content-addressed resources that are fetched outside the shared HTTP cache.
   Uri blobUri(String identHash, String contentHash) {
     final prefix = identHash.substring(0, 2);
     return _buildUri("assets/blobs/$prefix/$identHash/$contentHash");
   }
 
+  Uri _blobUri(String identHash, String contentHash) => blobUri(identHash, contentHash);
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   Future<Either<CatalogError, T>> _fetchJson<T>(
     Uri uri,
-    T Function(Map<String, dynamic>) fromJson, {
-    Map<String, dynamic>? cachedPayload,
-  }) async {
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
     try {
-      final json = await remote_http.fetchRemoteJson(dio, uri, cachedPayload: cachedPayload);
-      return Right(fromJson(json));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Not found: $uri"));
+      final response = await dio.getUri<String>(uri);
+      final data = response.data;
+      if (data == null) {
+        return Left(CatalogParseError(message: "Empty JSON response: $uri"));
       }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
-    } on RemoteContentException catch (_) {
-      return const Left(CatalogNotModified());
+      final decoded = jsonDecode(data) as Object?;
+      if (decoded is! Map<String, dynamic>) {
+        return Left(CatalogParseError(message: "JSON response is not an object: $uri"));
+      }
+      return Right(fromJson(decoded));
+    } on DioException catch (e) {
+      return Left(_mapDioException(e, uri));
     } on FormatException catch (e) {
-      return Left(CatalogParseError(message: "Invalid JSON: ${e.message}"));
+      return Left(CatalogParseError(message: "Invalid JSON for $uri: ${e.message}"));
     } catch (e) {
-      return Left(CatalogParseError(message: "Catalog parse error: $e"));
+      return Left(CatalogParseError(message: "Catalog parse error for $uri: $e"));
     }
   }
 
-  Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri, {bool bypassEtag = false}) async {
-    if (bypassEtag) {
-      EtagCache.remove(uri);
-    }
+  Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri) async {
     try {
-      // All byte resources under `efa/v2/` are content-addressed (keyed by
-      // generation/snapshot/content hash), so conditional requests can never
-      // produce a useful 304 — the server returns the exact bytes or 404.
-      // Skip conditional headers to avoid wasting memory caching their ETags.
-      final result = await remote_http.getRemoteUri<Uint8List>(
-        dio,
+      final response = await dio.getUri<Uint8List>(
         uri,
-        responseType: ResponseType.bytes,
-        sendConditionalHeaders: false,
+        options: nonManagedCachePolicy.toRequestOptions().copyWith(
+          responseType: ResponseType.bytes,
+        ),
       );
-      final data = result.response.data;
-      if (data is! Uint8List) {
-        return Left(CatalogParseError(message: "Response not bytes: $uri"));
+      final data = response.data;
+      if (data == null) {
+        return Left(CatalogParseError(message: "Empty byte response: $uri"));
       }
-      _bytesCache[uri] = data;
       return Right(data);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return Left(CatalogNotFoundError(message: "Not found: $uri"));
-      }
-      return Left(
-        CatalogNetworkError(message: e.message ?? e.toString(), statusCode: e.response?.statusCode),
-      );
+      return Left(_mapDioException(e, uri));
     } catch (e) {
       return Left(CatalogNetworkError(message: e.toString()));
     }
+  }
+
+  CatalogError _mapDioException(DioException exception, Uri uri) {
+    final status = exception.response?.statusCode;
+    if (status == 404) {
+      return CatalogNotFoundError(message: "Not found: $uri");
+    }
+    final statusMsg = status == null ? "" : " with HTTP $status";
+    return CatalogNetworkError(
+      message: exception.message ?? "Remote request failed for $uri$statusMsg",
+      statusCode: status,
+    );
   }
 }

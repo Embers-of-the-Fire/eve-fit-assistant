@@ -157,12 +157,7 @@ void main() {
       when(
         () => mockChannelService.readGenerationResources("testing"),
       ).thenReturn(Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")));
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -193,12 +188,7 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -238,12 +228,7 @@ void main() {
       when(
         () => mockChannelService.readGenerationResources("testing"),
       ).thenReturn(Some(_generationResources(serverId: "tq", snapshotHash: "new_snapshot_hash")));
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -279,12 +264,7 @@ void main() {
       when(() => mockChannelService.readGenerationResources("testing")).thenReturn(
         Some(_generationResources(serverId: "other", snapshotHash: "other_snapshot_hash")),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -340,10 +320,7 @@ void main() {
         ),
       );
       when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
+        () => mockRemoteCatalogService.fetchHeadMeta("testing"),
       ).thenAnswer((_) async => Left(const CatalogNetworkError(message: "connection refused")));
 
       final service = makeService();
@@ -456,12 +433,7 @@ void main() {
       when(
         () => mockChannelService.readGenerationResources("testing"),
       ).thenReturn(Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")));
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -493,12 +465,7 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -519,12 +486,7 @@ void main() {
       expect(results.length, 2);
       expect(results["checkout-1"], isA<DataUpdateCheckResultAvailable>());
       expect(results["checkout-2"], isA<DataUpdateCheckResultAvailable>());
-      verify(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).called(1);
+      verify(() => mockRemoteCatalogService.fetchHeadMeta("testing")).called(1);
       verify(() => mockRemoteCatalogService.fetchGenerationResources(testRemoteHash)).called(1);
     });
 
@@ -552,12 +514,7 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -567,12 +524,7 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "stable",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("stable")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -595,18 +547,8 @@ void main() {
 
       expect(results["checkout-1"], isA<DataUpdateCheckResultAvailable>());
       expect(results["checkout-2"], isA<DataUpdateCheckResultUpToDate>());
-      verify(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).called(1);
-      verify(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "stable",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).called(1);
+      verify(() => mockRemoteCatalogService.fetchHeadMeta("testing")).called(1);
+      verify(() => mockRemoteCatalogService.fetchHeadMeta("stable")).called(1);
       verify(() => mockRemoteCatalogService.fetchGenerationResources(testRemoteHash)).called(1);
     });
 
@@ -623,12 +565,7 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -676,12 +613,7 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -744,12 +676,7 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,
@@ -817,12 +744,7 @@ void main() {
       when(
         () => mockChannelService.readGenerationResources("testing"),
       ).thenReturn(Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")));
-      when(
-        () => mockRemoteCatalogService.fetchHeadMeta(
-          "testing",
-          cachedPayload: any(named: "cachedPayload"),
-        ),
-      ).thenAnswer(
+      when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
             schemaVersion: 1,

@@ -1,13 +1,9 @@
-import "dart:convert";
-import "dart:io";
-
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
-import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -114,25 +110,13 @@ class GenerationNavigationService {
     required Channel channel,
     required String channelName,
   }) async {
-    // Get current generation hash. Pass the locally cached head metadata so a
-    // 304 short-circuits to it instead of forcing a full re-fetch.
-    final headResult = await remoteCatalogService.fetchHeadMeta(
-      channelName,
-      cachedPayload: _readLocalHeadMetaJson(channelName),
-    );
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) {
       return const Left(GenerationNavNetworkError(message: "Failed to fetch head metadata"));
     }
     final generationHash = headResult.getRight().toNullable()!.generationHash;
 
-    // Fetch server index from generation. A persisted but stale ETag can yield
-    // a "not modified" result with no locally available payload (e.g. on a cold
-    // start during welcome, before any checkout has persisted the index); in
-    // that case retry with a fresh fetch that bypasses the ETag cache.
-    var serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
-    if (serverResult.getLeft().toNullable() is CatalogNotModified) {
-      serverResult = await remoteCatalogService.fetchServerIndexFresh(generationHash);
-    }
+    final serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
     if (serverResult.isLeft()) {
       return const Left(GenerationNavNetworkError(message: "Failed to fetch server index"));
     }
@@ -141,24 +125,10 @@ class GenerationNavigationService {
     return Right(serverIndex.servers.map(ServerSummary.fromEntry).toIList());
   }
 
-  /// Reads the raw local channel head metadata JSON for [channelName], or null.
-  ///
-  /// Used as the conditional-request fallback payload for `fetchHeadMeta`.
-  Map<String, dynamic>? _readLocalHeadMetaJson(String channelName) {
-    final file = File(RepoPaths.channelHeadMetaPath(channelName));
-    if (!file.existsSync()) return null;
-    try {
-      final json = jsonDecode(file.readAsStringSync());
-      return json is Map<String, dynamic> ? json : null;
-    } on Exception {
-      return null;
-    }
-  }
-
   /// Fetches the server list and per-server blob maps for [channelName].
   ///
   /// Fetches head metadata, server index, generation resources, and resource
-  /// index protobufs for every unique snapshot hash in parallel.  Each resource
+  /// index protobufs for every unique snapshot hash in parallel. Each resource
   /// index is parsed into a `{contentHash → size}` map so the UI can union
   /// selected servers' blob sets and display the deduplicated download total.
   Future<Either<GenerationNavError, ServerSelectionData>> fetchServerSelectionData({
@@ -171,19 +141,13 @@ class GenerationNavigationService {
     }
     final generationHash = headResult.getRight().toNullable()!.generationHash;
 
-    var serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
-    if (serverResult.getLeft().toNullable() is CatalogNotModified) {
-      serverResult = await remoteCatalogService.fetchServerIndexFresh(generationHash);
-    }
+    final serverResult = await remoteCatalogService.fetchServerIndex(generationHash);
     if (serverResult.isLeft()) {
       return const Left(GenerationNavNetworkError(message: "Failed to fetch server index"));
     }
     final serverIndex = ServerIndex.fromBuffer(serverResult.getRight().toNullable()!);
 
-    var genResourcesResult = await remoteCatalogService.fetchGenerationResources(generationHash);
-    if (genResourcesResult.getLeft().toNullable() is CatalogNotModified) {
-      genResourcesResult = await remoteCatalogService.fetchGenerationResourcesFresh(generationHash);
-    }
+    final genResourcesResult = await remoteCatalogService.fetchGenerationResources(generationHash);
     if (genResourcesResult.isLeft()) {
       return const Left(GenerationNavNetworkError(message: "Failed to fetch generation resources"));
     }

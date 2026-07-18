@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:path/path.dart" as p;
 
 /// Wipes all application-local storage and resets the app to first-launch state.
@@ -33,8 +33,7 @@ class ResetStorageService {
       await _deleteRecursively(Directory(path));
     }
 
-    EtagCache.clearAll();
-    await EtagCache.flush();
+    await RemoteCache.clear();
   }
 
   Future<void> _deleteRecursively(Directory dir) async {

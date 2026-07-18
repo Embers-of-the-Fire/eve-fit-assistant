@@ -6,7 +6,7 @@ import "package:eve_fit_assistant/components/dialog/info_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -83,7 +83,8 @@ Future<void> _clearCache(BuildContext context) async {
     content: Text(context.l10n.developerSettingsPageClearCacheConfirmDescription),
   );
   if (!confirmed || !context.mounted) return;
-  EtagCache.clearAll();
+  await RemoteCache.clear();
+  if (!context.mounted) return;
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text(context.l10n.developerSettingsPageClearCacheDone)));

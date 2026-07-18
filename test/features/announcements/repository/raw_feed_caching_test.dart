@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/features/announcements/state/announcement_stat
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -100,6 +101,13 @@ class _FeedHarness {
 
 void main() {
   late Directory tempDir;
+  late Directory cacheDir;
+
+  setUpAll(() async {
+    cacheDir = Directory.systemTemp.createTempSync("efa_raw_feed_cache_test_");
+    PathProvider.cachesPath = cacheDir.path;
+    await RemoteCache.init();
+  });
 
   setUp(() {
     // Per-test tempDir so on-disk state does not leak between tests.
@@ -107,7 +115,6 @@ void main() {
     PathProvider.documentsPath = tempDir.path;
     PathProvider.tempPath = tempDir.path;
     PathProvider.appSupportPath = tempDir.path;
-    PathProvider.cachesPath = tempDir.path;
   });
 
   late AnnouncementStateStore stateStore;
@@ -122,6 +129,11 @@ void main() {
 
   tearDown(() {
     tempDir.deleteSync(recursive: true);
+  });
+
+  tearDownAll(() async {
+    await RemoteCache.clear();
+    cacheDir.deleteSync(recursive: true);
   });
 
   ProviderContainer buildContainer(

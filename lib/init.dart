@@ -12,7 +12,7 @@ import "package:eve_fit_assistant/features/announcements/state/announcement_stat
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
@@ -61,7 +61,7 @@ Future<InitializedStores> initSingletons() async {
 
   FeedbackStateStore.init();
   await AnnouncementBodyCache.init();
-  EtagCache.init();
+  await RemoteCache.init();
   GlobalLogger.init(
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,
