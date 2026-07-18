@@ -13,6 +13,10 @@
 migrate_working_dir/
 temp/
 
+# JVM crash byproducts (heap dumps can be multi-GB)
+*.hprof
+core.[0-9]*
+
 # IntelliJ related
 *.iml
 *.ipr

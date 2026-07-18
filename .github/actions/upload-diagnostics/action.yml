@@ -1,0 +1,111 @@
+name: Upload diagnostics
+
+description: >-
+  Collect failure diagnostics (x.py logs, JVM crash logs, Gradle daemon logs,
+  MinIO mock log, environment snapshot) into a staging directory, redact any
+  secret values passed via env, and upload them as a workflow artifact.
+  Invoke as the last step of a job with `if: failure()`.
+
+inputs:
+  name:
+    description: "Artifact name (must be unique per job/matrix leg)"
+    required: true
+  retention-days:
+    description: "Artifact retention in days"
+    required: false
+    default: "7"
+  redact-values:
+    description: >-
+      Newline-separated secret values to redact from staged files before upload
+      (artifacts bypass GitHub log masking). Pass secrets via expressions.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Collect diagnostics
+      shell: bash
+      run: |
+        set -u
+        STAGE=".diagnostics"
+        mkdir -p "$STAGE"
+
+        copy_glob() {
+          # copy_glob <subdir> <find args...>
+          local subdir="$1"; shift
+          while IFS= read -r f; do
+            mkdir -p "$STAGE/$subdir"
+            cp "$f" "$STAGE/$subdir/" 2>/dev/null || true
+          done < <(find "$@" 2>/dev/null)
+        }
+
+        # x.py orchestrator logs (repo-relative; works on all runners)
+        if [ -d cache/log ]; then
+          mkdir -p "$STAGE/xpy-log"
+          cp cache/log/*.log "$STAGE/xpy-log/" 2>/dev/null || true
+        fi
+
+        # JVM crash logs (Gradle/AGP); never copy heap dumps or core dumps
+        copy_glob "jvm-crash" . \
+          \( -path ./.git -o -path ./target -o -path ./build -o -path ./android/build \) -prune \
+          -o -type f \( -name 'hs_err_pid*.log' -o -name 'replay_pid*.log' \) -print
+
+        # Gradle daemon logs
+        if [ -d "${HOME:-/nonexistent}/.gradle/daemon" ]; then
+          copy_glob "gradle-daemon" "$HOME/.gradle/daemon" \
+            -type f -name 'daemon-*.out.log'
+        fi
+
+        # MinIO mock daemon log (test-mode release jobs, ubuntu only)
+        for f in /tmp/efa-ci-minio.log; do
+          if [ -f "$f" ]; then
+            mkdir -p "$STAGE/minio"
+            cp "$f" "$STAGE/minio/" 2>/dev/null || true
+          fi
+        done
+
+        # Environment snapshot (disk/memory pressure, OOM-killer evidence)
+        {
+          echo "== date =="; date || true
+          echo "== uname =="; uname -a || true
+          echo "== df -h =="; df -h || true
+          echo "== free -m =="; free -m || true
+          echo "== oom-killer evidence =="
+          if command -v sudo >/dev/null 2>&1; then
+            sudo -n dmesg -T 2>/dev/null | grep -iE 'oom|killed process' || echo "(none)"
+          elif command -v dmesg >/dev/null 2>&1; then
+            dmesg -T 2>/dev/null | grep -iE 'oom|killed process' || echo "(none)"
+          else
+            echo "(dmesg unavailable)"
+          fi
+        } > "$STAGE/environment.txt" 2>&1
+
+        # Guard against multi-GB crash byproducts slipping in
+        find "$STAGE" -type f \( -name '*.hprof' -o -name 'core.[0-9]*' \) -delete 2>/dev/null || true
+
+        echo "Staged diagnostics:"
+        find "$STAGE" -type f -print || true
+
+    - name: Redact secret values
+      shell: bash
+      env:
+        REDACT_VALUES: ${{ inputs.redact-values }}
+      run: |
+        set -u
+        STAGE=".diagnostics"
+        [ -d "$STAGE" ] || exit 0
+        while IFS= read -r value; do
+          if [ -n "$value" ]; then
+            find "$STAGE" -type f -print0 \
+              | xargs -0 sed -i "s|${value}|<redacted>|g" 2>/dev/null || true
+          fi
+        done <<< "$REDACT_VALUES"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}
+        path: .diagnostics/
+        if-no-files-found: ignore
+        include-hidden-files: true
+        retention-days: ${{ inputs.retention-days }}

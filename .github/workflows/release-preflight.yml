@@ -36,6 +36,12 @@ jobs:
               --base-ref origin/${{ github.base_ref }} \
               --check-notes --check-tag --check-note-content'
 
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-preflight
+
   drop-labels:
     name: Drop test labels on update
     permissions:

@@ -90,6 +90,15 @@ jobs:
             snapshot-hashes.json
           retention-days: 1
 
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-data-build
+          redact-values: |
+            ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+            ${{ secrets.CI_STORAGE_SECRET_KEY }}
+
   publish:
     name: Publish to testing channel
     needs: build
@@ -169,3 +178,14 @@ jobs:
               --hashes snapshot-hashes.json \
               --schema-root cache/remote \
               --target minio'
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-data-publish
+          redact-values: |
+            ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+            ${{ secrets.CI_STORAGE_SECRET_KEY }}
+            ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+            ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
