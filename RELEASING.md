@@ -45,6 +45,10 @@ You must author the localized content files separately:
 
 For version `0.1.0-beta.7`, the directory is `docs/changelog/0-1-0-beta-7/`.
 
+When the release PR is merged, the release workflow automatically stages the
+release note as a remote announcement entry and publishes it alongside the
+release channel data.
+
 To override the version or published time:
 
 ```bash
@@ -138,7 +142,9 @@ The `release.yml` workflow on the merge commit then:
 2. Reuses `_release.yml` to build and publish the APK.
 3. Merges the release registry fragment.
 4. Publishes the release to the remote `testing` channel.
-5. Creates a lightweight Git tag (`v<version>`) pointing at the merge commit.
+5. Publishes the release note as a remote announcement entry so users are notified
+   of the new version.
+6. Creates a lightweight Git tag (`v<version>`) pointing at the merge commit.
 
 If the merged PR is missing `V-Tested Release`, the release aborts.
 
