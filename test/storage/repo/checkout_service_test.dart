@@ -8,7 +8,6 @@ import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
@@ -58,9 +57,7 @@ MockRemoteCatalogService _mockRemote({
   ResourceSnapshotMeta? resourceSnapshotMetaResult,
 }) {
   final mock = MockRemoteCatalogService();
-  when(
-    () => mock.fetchHeadMeta(_testChannelName, cachedPayload: any(named: "cachedPayload")),
-  ).thenAnswer(
+  when(() => mock.fetchHeadMeta(_testChannelName)).thenAnswer(
     (_) async => Right(headMetaResult ?? _headMeta(generationHash: _testGenerationHashNew)),
   );
   if (serverIndexResult != null) {
@@ -78,12 +75,9 @@ MockRemoteCatalogService _mockRemote({
   }
   if (resourceSnapshotMetaResult != null) {
     when(
-      () => mock.fetchResourceSnapshotMeta(any(), cachedPayload: any(named: "cachedPayload")),
+      () => mock.fetchResourceSnapshotMeta(any()),
     ).thenAnswer((_) async => Right(resourceSnapshotMetaResult));
   }
-  when(
-    () => mock.blobUri(any(), any()),
-  ).thenReturn(Uri.parse("https://test.local/efa/v2/assets/blobs/placeholder"));
   return mock;
 }
 
@@ -116,10 +110,9 @@ void main() {
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync("efa_checkout_service_test_").path;
     PathProvider.documentsPath = tempDir;
+    PathProvider.cachesPath = tempDir;
     assetStore = const AssetStore();
     checkoutRegistry = CheckoutRegistryService();
-    EtagCache.init();
-    EtagCache.clearAll();
   });
 
   tearDown(() {
@@ -485,56 +478,6 @@ void main() {
       expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
     });
 
-    test("retries fetchBlob when first call returns CatalogNotModified", () async {
-      final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
-      final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
-      final oldSnapshot = _makeSnapshot(
-        createdAt: "2026-06-15T12:00:00Z",
-        blobContent: oldBlobContent,
-      );
-      final newSnapshot = _makeSnapshot(
-        createdAt: "2026-06-16T12:00:00Z",
-        blobContent: newBlobContent,
-        writeBlob: false,
-      );
-
-      final mockRemote = _mockRemote(
-        serverIndexResult: ServerIndex(
-          schemaVersion: 1,
-          servers: [
-            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
-          ],
-        ).writeToBuffer(),
-        generationResourcesResult: _generationResourcesBytes(newSnapshot.hash),
-        resourceIndexResult: newSnapshot.resourceIndex.writeToBuffer(),
-        resourceSnapshotMetaResult: newSnapshot.meta,
-      );
-      var callCount = 0;
-      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async {
-        callCount++;
-        if (callCount == 1) return const Left(CatalogNotModified());
-        return Right(newBlobContent);
-      });
-
-      final service = _makeService(mockRemote);
-      final checkoutId = await _createCheckout(service, snapshotHash: oldSnapshot.hash);
-      _writeChannelHead(_testChannelName, _testGenerationHashOld);
-
-      final result = await service.applyDataUpdate(
-        checkoutId: checkoutId,
-        channel: Channel.testing,
-        channelName: _testChannelName,
-      );
-
-      expect(result.isRight(), isTrue);
-      expect(result.toNullable(), newSnapshot.hash);
-      expect(callCount, 2);
-      verify(() => mockRemote.fetchBlob(any(), any())).called(2);
-
-      final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
-      expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
-    });
-
     test("returns Left when fetchBlob fails with a non-304 error", () async {
       final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
       final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
@@ -580,6 +523,7 @@ void main() {
       final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
       expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
     });
+
     test("returns Left when fetchResourceSnapshotMeta fails", () async {
       final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
       final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);

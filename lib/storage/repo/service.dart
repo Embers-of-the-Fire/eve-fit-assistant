@@ -1,7 +1,7 @@
 import "dart:io";
 
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
@@ -200,10 +200,13 @@ class RepoService {
     if (failures.isNotEmpty) {
       return Left("Failed to delete: ${failures.join(", ")}");
     }
-    // Clear cached ETags: the assets they referenced are now gone, so any
-    // surviving ETag would cause conditional re-fetches to receive 304 with no
-    // local data to fall back on, breaking all subsequent downloads.
-    EtagCache.clearAll();
+    // Clear the shared HTTP cache so that the next sync re-fetches metadata
+    // instead of relying on ETags that referenced now-deleted assets.
+    try {
+      await RemoteCache.clear();
+    } catch (e) {
+      return Left("Failed to clear HTTP cache: $e");
+    }
     return const Right(unit);
   }
 

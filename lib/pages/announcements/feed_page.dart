@@ -188,7 +188,7 @@ class _AnnouncementHubPageState extends ConsumerState<_AnnouncementHubPage> {
     // Clear the remote service's in-memory cache so the next fetch hits the
     // network, then invalidate the raw feed provider. The derived feed
     // provider re-runs as a consequence.
-    ref.read(announcementRemoteServiceProvider).invalidateCache();
+    await ref.read(announcementRemoteServiceProvider).invalidateCache();
     ref.invalidate(announcementRawFeedProvider);
     // Wait for the next feed resolution so the indicator dismisses once data
     // is available again. Errors are intentionally swallowed — the provider

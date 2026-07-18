@@ -29,17 +29,13 @@ class ChannelService {
   ///
   /// On first launch, uses defaultChannel from the remote.
   Future<Either<String, ChannelRegistry>> discoverChannels() async {
-    final localReg = readLocalChannelRegistry();
-    final result = await remoteCatalogService.fetchChannelRegistry(
-      cachedPayload: localReg.isSome() ? localReg.toNullable()!.toJson() : null,
-    );
+    final result = await remoteCatalogService.fetchChannelRegistry();
     if (result.isLeft()) {
       final err = result.getLeft().toNullable()!;
       return Left(switch (err) {
         CatalogNetworkError() => "Network error fetching channels: ${err.message}",
         CatalogNotFoundError() => "Channel registry not found: ${err.message}",
         CatalogParseError() => "Failed to parse channel registry: ${err.message}",
-        CatalogNotModified() => "Channel registry returned 304 with no cached payload",
       });
     }
     final remoteRegistry = result.getRight().toNullable()!;
@@ -53,11 +49,7 @@ class ChannelService {
   /// Fetches and persists channel head metadata and server index for [channelName].
   Future<Either<String, Unit>> fetchChannelInfo(String channelName) async {
     // Fetch head metadata
-    final localHead = readHeadMeta(channelName);
-    final headResult = await remoteCatalogService.fetchHeadMeta(
-      channelName,
-      cachedPayload: localHead.isSome() ? localHead.toNullable()!.toJson() : null,
-    );
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
       if (err is CatalogNotFoundError) {
@@ -66,7 +58,6 @@ class ChannelService {
       return Left(switch (err) {
         CatalogNetworkError() => "Network error fetching channel info: ${err.message}",
         CatalogParseError() => "Failed to parse channel info: ${err.message}",
-        CatalogNotModified() => "Channel info returned 304 with no cached payload",
         CatalogNotFoundError() => "Channel info not found: ${err.message}",
       });
     }
@@ -97,11 +88,7 @@ class ChannelService {
   /// - channels/{channel}/releases.pb2    — GenerationPointer (releases)
   Future<Either<String, Unit>> syncChannelGeneration(String channelName) async {
     // Fetch head metadata to get the generation hash
-    final localHead = readHeadMeta(channelName);
-    final headResult = await remoteCatalogService.fetchHeadMeta(
-      channelName,
-      cachedPayload: localHead.isSome() ? localHead.toNullable()!.toJson() : null,
-    );
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
       if (err is CatalogNotFoundError) {
@@ -110,7 +97,6 @@ class ChannelService {
       return Left(switch (err) {
         CatalogNetworkError() => "Network error fetching channel head meta: ${err.message}",
         CatalogParseError() => "Failed to parse channel head meta: ${err.message}",
-        CatalogNotModified() => "Channel head meta returned 304 with no cached payload",
         CatalogNotFoundError() => "Channel head meta not found: ${err.message}",
       });
     }
@@ -250,11 +236,7 @@ class ChannelService {
     final localHash = localGenerationHash(channelName);
     if (localHash == null) return true; // No local state → needs fetch
 
-    final localHead = readHeadMeta(channelName);
-    final headResult = await remoteCatalogService.fetchHeadMeta(
-      channelName,
-      cachedPayload: localHead.isSome() ? localHead.toNullable()!.toJson() : null,
-    );
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) return false;
 
     return headResult.getRight().toNullable()!.generationHash != localHash;
@@ -289,8 +271,6 @@ class ChannelService {
       final err = result.getLeft().toNullable()!;
       if (err is CatalogNotFoundError) {
         debug("Generation file not found for $channelName: $path");
-      } else if (err is CatalogNotModified) {
-        return; // data already cached locally
       } else {
         warning(
           "Failed to fetch generation file for $channelName: ${err is CatalogNetworkError ? err.message : err.toString()}",

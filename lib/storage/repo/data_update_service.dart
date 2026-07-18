@@ -89,11 +89,7 @@ class DataUpdateService {
       return const Right(_ChannelUpdateInfo(remoteGenerationHash: "", generationResources: null));
     }
 
-    final localHead = channelService.readHeadMeta(channelName);
-    final headResult = await remoteCatalogService.fetchHeadMeta(
-      channelName,
-      cachedPayload: localHead.toNullable()?.toJson(),
-    );
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
       return Left(

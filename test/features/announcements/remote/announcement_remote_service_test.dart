@@ -1,14 +1,15 @@
 import "dart:io";
 
 import "package:dio/dio.dart";
+import "package:dio_cache_interceptor/dio_cache_interceptor.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/announcements/remote/announcement_remote_service.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
+import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/features/remote_content/endpoint.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -70,21 +71,30 @@ const _bodyHash = "deadbeef12345678901234567890123456789012345678901234567890abc
 const _sampleBodyContent = "# Test Body\n\nThis is a test body document.";
 
 class _SuccessAdapter implements HttpClientAdapter {
+  /// Count of requests without an `If-None-Match` header, i.e. requests that
+  /// could not be answered by cache revalidation and fetched a fresh body.
+  int unconditionalRequests = 0;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    if (options.headers["if-none-match"] == null) {
+      unconditionalRequests += 1;
+    }
     final path = options.uri.path;
     String body;
-    if (path.endsWith("/catalog.json")) {
+    if (path.endsWith("/catalog.json") && path.contains("/announcements/")) {
       body = _sampleCatalogJson;
     } else if (path == "/efa/v2/announcements/active.json" ||
         path.startsWith("/efa/v2/announcements/pages/")) {
       body = _samplePageJson;
     } else if (path.startsWith("/efa/v2/announcements/documents/")) {
       body = _sampleBodyContent;
+    } else if (path == "/efa/v2/manifest/index.json") {
+      body = '{"schemaVersion": 1, "generations": []}';
     } else {
       return ResponseBody.fromString("", 404);
     }
@@ -96,60 +106,6 @@ class _SuccessAdapter implements HttpClientAdapter {
         "etag": ['"test-etag"'],
       },
     );
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
-
-/// Adapter that honors conditional requests: answers 304 when the client
-/// sends a matching `If-None-Match` header and 200 otherwise. Tracks how many
-/// times each resource was fetched so tests can assert whether a request
-/// actually reached the network.
-class _ConditionalAdapter implements HttpClientAdapter {
-  static const String etag = '"test-etag"';
-
-  int catalogFetchCount = 0;
-  int pageFetchCount = 0;
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<List<int>>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    final path = options.uri.path;
-    final String body;
-    if (path.endsWith("/catalog.json")) {
-      catalogFetchCount++;
-      body = _sampleCatalogJson;
-    } else if (path == "/efa/v2/announcements/active.json" ||
-        path.startsWith("/efa/v2/announcements/pages/")) {
-      pageFetchCount++;
-      body = _samplePageJson;
-    } else {
-      return ResponseBody.fromString("", 404);
-    }
-    if (_ifNoneMatch(options) == etag) {
-      return ResponseBody.fromString("", 304);
-    }
-    return ResponseBody.fromString(
-      body,
-      200,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-        "etag": [etag],
-      },
-    );
-  }
-
-  static String? _ifNoneMatch(RequestOptions options) {
-    for (final MapEntry<String, dynamic> entry in options.headers.entries) {
-      if (entry.key.toLowerCase() == "if-none-match") {
-        return entry.value?.toString();
-      }
-    }
-    return null;
   }
 
   @override
@@ -228,14 +184,24 @@ ProviderContainer _createContainer({bool remoteEnabled = true, Dio? dio}) {
   return container;
 }
 
+Dio _createCachingDio(HttpClientAdapter adapter) {
+  final dio = Dio(BaseOptions());
+  dio.interceptors.add(DioCacheInterceptor(options: RemoteCache.options));
+  dio.httpClientAdapter = adapter;
+  return dio;
+}
+
+String _urlPattern(String url) => "^${RegExp.escape(url)}\$";
+
 void main() {
   late String tempDir;
 
-  setUpAll(() {
+  setUpAll(() async {
     tempDir = Directory.systemTemp.createTempSync("efa_rsvc_test_").path;
     PathProvider.documentsPath = tempDir;
     PathProvider.cachesPath = tempDir;
-    EtagCache.init();
+    await RemoteCache.init();
+    await RemoteCache.clear();
     GlobalLogger.init(tempDir, enableDebugLog: false);
   });
 
@@ -303,55 +269,74 @@ void main() {
       expect(catalog, isNull);
     });
 
-    test("invalidateCache clears catalog and page caches", () async {
-      final adapter = _ConditionalAdapter();
-      final dio = Dio(BaseOptions())..httpClientAdapter = adapter;
+    test("invalidateCache deletes announcement shared cache entries", () async {
+      final adapter = _SuccessAdapter();
+      final dio = _createCachingDio(adapter);
       final container = _createContainer(dio: dio);
       final service = container.read(announcementRemoteServiceProvider);
 
       const pageUuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-
-      // Start from a clean persisted cache so the test is deterministic
-      // regardless of entries left behind by earlier tests.
-      EtagCache.clearAll();
-
-      // First fetch populates the in-memory caches and the persisted ETag
-      // entries.
-      expect(await service.fetchCatalog(), isNotNull);
-      expect(await service.fetchPage(pageUuid), isNotNull);
-      expect(adapter.catalogFetchCount, 1);
-      expect(adapter.pageFetchCount, 1);
-
-      // A second fetch sends conditional headers and is answered 304; the
-      // in-memory caches satisfy it with exactly one network call each.
-      expect(await service.fetchCatalog(), isNotNull);
-      expect(await service.fetchPage(pageUuid), isNotNull);
-      expect(adapter.catalogFetchCount, 2);
-      expect(adapter.pageFetchCount, 2);
-
-      // Drop the persisted payloads so only the service's in-memory caches
-      // could satisfy a 304; keep the ETags so requests stay conditional.
       final endpoint = RemoteContentEndpoint(
         originUri: Uri.parse(_defaultOriginUrl),
         channel: _defaultChannel,
       );
-      EtagCache.clearAll();
-      EtagCache.update(endpoint.announcementV2CatalogUri, etag: _ConditionalAdapter.etag);
-      EtagCache.update(endpoint.announcementV2PageUri(pageUuid), etag: _ConditionalAdapter.etag);
+      final catalogUri = endpoint.announcementV2CatalogUri.toString();
+      final pageUri = endpoint.announcementV2PageUri(pageUuid).toString();
 
-      service.invalidateCache();
+      // First fetch populates the shared cache.
+      expect(await service.fetchCatalog(), isNotNull);
+      expect(await service.fetchPage(pageUuid), isNotNull);
+      expect(await RemoteCache.store.getFromPath(RegExp(_urlPattern(catalogUri))), isNotEmpty);
+      expect(await RemoteCache.store.getFromPath(RegExp(_urlPattern(pageUri))), isNotEmpty);
+      expect(adapter.unconditionalRequests, 2);
 
-      // With the in-memory caches cleared, each 304 has no payload to fall
-      // back to, forcing an unconditional retry: two additional network
-      // calls per resource instead of one. If invalidateCache() failed to
-      // clear a cache, the stale payload would answer the 304 and the count
-      // would be one lower.
-      final catalog = await service.fetchCatalog();
-      final page = await service.fetchPage(pageUuid);
-      expect(catalog, isNotNull);
-      expect(page, isNotNull);
-      expect(adapter.catalogFetchCount, 4);
-      expect(adapter.pageFetchCount, 4);
+      // With cache entries intact a refetch only revalidates via ETag and
+      // issues no new unconditional adapter request.
+      expect(await service.fetchCatalog(), isNotNull);
+      expect(adapter.unconditionalRequests, 2);
+
+      // After invalidation the announcement entries are gone and refetching
+      // issues fresh unconditional adapter requests again.
+      await service.invalidateCache();
+      expect(await RemoteCache.store.getFromPath(RegExp(_urlPattern(catalogUri))), isEmpty);
+      expect(await RemoteCache.store.getFromPath(RegExp(_urlPattern(pageUri))), isEmpty);
+
+      expect(await service.fetchCatalog(), isNotNull);
+      expect(await service.fetchPage(pageUuid), isNotNull);
+      expect(adapter.unconditionalRequests, 4);
+    });
+
+    test("invalidateCache keeps non-announcement shared cache entries", () async {
+      final adapter = _SuccessAdapter();
+      final dio = _createCachingDio(adapter);
+      final container = _createContainer(dio: dio);
+      final service = container.read(announcementRemoteServiceProvider);
+
+      const pageUuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+      final endpoint = RemoteContentEndpoint(
+        originUri: Uri.parse(_defaultOriginUrl),
+        channel: _defaultChannel,
+      );
+      final catalogUri = endpoint.announcementV2CatalogUri.toString();
+      final pageUri = endpoint.announcementV2PageUri(pageUuid).toString();
+      const manifestIndexUrl = "https://cdn.example.com/efa/v2/manifest/index.json";
+
+      // Populate announcement and non-announcement cache entries.
+      expect(await service.fetchCatalog(), isNotNull);
+      expect(await service.fetchPage(pageUuid), isNotNull);
+      await dio.getUri<String>(
+        Uri.parse(manifestIndexUrl),
+        options: RemoteCache.options.toOptions().copyWith(responseType: ResponseType.plain),
+      );
+
+      // After scoped invalidation only announcement entries are removed.
+      await service.invalidateCache();
+      expect(await RemoteCache.store.getFromPath(RegExp(_urlPattern(catalogUri))), isEmpty);
+      expect(await RemoteCache.store.getFromPath(RegExp(_urlPattern(pageUri))), isEmpty);
+      expect(
+        await RemoteCache.store.getFromPath(RegExp(_urlPattern(manifestIndexUrl))),
+        isNotEmpty,
+      );
     });
   });
 

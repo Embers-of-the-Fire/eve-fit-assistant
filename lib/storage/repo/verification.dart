@@ -1,6 +1,5 @@
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
@@ -176,16 +175,6 @@ class VerificationService {
           final blobResult = await remoteCatalogService.fetchBlob(ihash, entry.contentHash);
           if (blobResult.isRight()) {
             assetStore.writeBlobSync(ihash, blobResult.getRight().toNullable()!);
-          } else if (blobResult.getLeft().toNullable()! is CatalogNotModified) {
-            // A 304 for a blob missing locally means the cached ETag is stale.
-            // Clear it and retry once unconditionally.
-            EtagCache.remove(remoteCatalogService.blobUri(ihash, entry.contentHash));
-            final retry = await remoteCatalogService.fetchBlob(ihash, entry.contentHash);
-            if (retry.isRight()) {
-              assetStore.writeBlobSync(ihash, retry.getRight().toNullable()!);
-            } else {
-              unresolved.add(issue);
-            }
           } else {
             unresolved.add(issue);
           }

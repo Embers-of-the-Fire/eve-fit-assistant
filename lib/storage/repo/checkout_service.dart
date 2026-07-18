@@ -8,7 +8,6 @@ import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/features/remote_content/etag_cache.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
@@ -214,10 +213,7 @@ class CheckoutService {
     final m = meta.toNullable()!;
 
     // 1. Fetch remote head.
-    final headResult = await remoteCatalogService.fetchHeadMeta(
-      channelName,
-      cachedPayload: _readLocalHeadMetaJson(channelName),
-    );
+    final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
       return Left(err is CatalogNetworkError ? err.message : "Failed to fetch channel head");
@@ -335,14 +331,6 @@ class CheckoutService {
 
       if (blobResult.isRight()) {
         assetStore.writeBlobSync(ihash, blobResult.getRight().toNullable()!);
-      } else if (blobResult.getLeft().toNullable()! is CatalogNotModified) {
-        EtagCache.remove(remoteCatalogService.blobUri(ihash, dl.contentHash));
-        final retry = await remoteCatalogService.fetchBlob(ihash, dl.contentHash);
-        if (retry.isRight()) {
-          assetStore.writeBlobSync(ihash, retry.getRight().toNullable()!);
-        } else {
-          return const Left("Failed to download changed files");
-        }
       } else {
         return const Left("Failed to download changed files");
       }
@@ -483,20 +471,6 @@ class CheckoutService {
       return Some(GenerationResources.fromBuffer(file.readAsBytesSync()));
     } on Exception {
       return const None();
-    }
-  }
-
-  /// Reads the raw local channel head metadata JSON for [channelName], or null.
-  ///
-  /// Used as the conditional-request fallback payload for `fetchHeadMeta`.
-  Map<String, dynamic>? _readLocalHeadMetaJson(String channelName) {
-    final file = File(RepoPaths.channelHeadMetaPath(channelName));
-    if (!file.existsSync()) return null;
-    try {
-      final json = jsonDecode(file.readAsStringSync());
-      return json is Map<String, dynamic> ? json : null;
-    } on Exception {
-      return null;
     }
   }
 
