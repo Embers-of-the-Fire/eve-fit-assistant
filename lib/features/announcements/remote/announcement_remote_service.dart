@@ -23,10 +23,21 @@ class AnnouncementRemoteService {
   final Ref _ref;
   final Dio _dio;
 
-  /// Clears the shared HTTP cache so the next announcement fetch hits the
-  /// network. Used for pull-to-refresh and similar explicit refresh actions.
+  /// Clears only the shared HTTP cache entries for announcement resources under
+  /// the configured remote content endpoint.
+  ///
+  /// [RemoteCache.clear()] evicts the entire shared store, which would also
+  /// discard cached remote catalog and other content. We instead use the
+  /// configured endpoint's origin to build a URI/prefix pattern and delete only
+  /// announcement entries.
   Future<void> invalidateCache() async {
-    await RemoteCache.clear();
+    final endpoint = _resolveEndpoint();
+    if (endpoint == null) return;
+
+    final origin = endpoint.originUri.toString();
+    final base = origin.endsWith("/") ? origin : "$origin/";
+    final pattern = RegExp("${RegExp.escape(base)}.*efa/v2/announcements/");
+    await RemoteCache.store.deleteFromPath(pattern);
   }
 
   Future<AnnouncementCatalog?> fetchCatalog() async {

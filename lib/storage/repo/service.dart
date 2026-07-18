@@ -202,7 +202,11 @@ class RepoService {
     }
     // Clear the shared HTTP cache so that the next sync re-fetches metadata
     // instead of relying on ETags that referenced now-deleted assets.
-    await RemoteCache.clear();
+    try {
+      await RemoteCache.clear();
+    } catch (e) {
+      return Left("Failed to clear HTTP cache: $e");
+    }
     return const Right(unit);
   }
 

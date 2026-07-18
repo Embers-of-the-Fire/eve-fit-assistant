@@ -228,7 +228,7 @@ void main() {
         expect(countingRepo.syncCount, 1);
 
         // Mirror what _refreshFeed does in feed_page.dart.
-        container.read(announcementRemoteServiceProvider).invalidateCache();
+        await container.read(announcementRemoteServiceProvider).invalidateCache();
         container.invalidate(announcementRawFeedProvider);
 
         await harness.nextData();
