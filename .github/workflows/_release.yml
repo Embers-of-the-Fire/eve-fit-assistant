@@ -93,6 +93,41 @@ jobs:
               --channel testing \
               --schema-root cache/remote'
 
+      - name: Initialize remote announcement workspace (MinIO mock)
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote announce init --target minio --force'
+
+      - name: Sync remote announcements
+        if: inputs.test_mode == false
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              remote announce sync \
+              --target s3'
+
+      - name: Sync remote announcements (MinIO mock)
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote announce sync --target minio'
+
+      - name: Stage release note as announcement
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote announce add-release-note'
+
       - name: Stage release snapshot
         run: |
           VERSION="${{ steps.verify.outputs.version }}"
@@ -129,6 +164,24 @@ jobs:
               --target s3 \
               --schema-root cache/remote'
 
+      - name: Publish announcements
+        if: inputs.test_mode == false
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              remote announce publish \
+              --target s3'
+
       - name: Publish to testing channel (MinIO mock)
         if: inputs.test_mode
         run: |
@@ -136,6 +189,12 @@ jobs:
             'uv run x.py remote publish testing \
               --target minio \
               --schema-root cache/remote'
+
+      - name: Publish announcements (MinIO mock)
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote announce publish --target minio'
 
       - name: Sync and verify remote head
         if: inputs.test_mode == false
