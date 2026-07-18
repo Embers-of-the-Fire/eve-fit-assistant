@@ -720,6 +720,52 @@ class TestPreflightValidation:
         )
         assert any("exists on remote but not in staging" in e for e in errors)
 
+    def test_unchanged_remote_bodies_not_required_locally(self, workspace: AnnouncementWorkspace):
+        """Publish scenario: remote entries keep their bodies on the remote.
+
+        Only the newly staged entry's bodies are stored locally; preflight
+        must not demand local copies of unchanged remote bodies.
+        """
+        old_entry = _make_entry(entry_id="old-entry", zh_body="old zh", en_body="old en")
+        _setup_remote(workspace, [old_entry])
+
+        new_entry = _make_entry(entry_id="new-entry", zh_body="new zh", en_body="new en")
+        workspace.store_document("new zh")
+        workspace.store_document("new en")
+        overlay = workspace.overlay_upsert_entry(ACTIVE_KEY, new_entry)
+        workspace.write_overlay(overlay)
+
+        temp = workspace.root / "temp"
+        workspace.build_publish_workspace(temp)
+        errors = run_preflight_validation(
+            workspace_dir=temp,
+            documents_dir=workspace.documents_dir,
+            remote_dir=workspace.remote_dir,
+            check_remote=True,
+        )
+        assert errors == []
+
+    def test_changed_body_still_required_locally(self, workspace: AnnouncementWorkspace):
+        """Editing an entry's body requires the new body in documents/."""
+        old_entry = _make_entry(entry_id="edit-me", zh_body="old zh", en_body="old en")
+        _setup_remote(workspace, [old_entry])
+
+        edited = _make_entry(entry_id="edit-me", zh_body="revised zh", en_body="old en")
+        overlay = workspace.overlay_upsert_entry(ACTIVE_KEY, edited)
+        workspace.write_overlay(overlay)
+
+        temp = workspace.root / "temp"
+        workspace.build_publish_workspace(temp)
+        errors = run_preflight_validation(
+            workspace_dir=temp,
+            documents_dir=workspace.documents_dir,
+            remote_dir=workspace.remote_dir,
+            check_remote=True,
+        )
+        zh_hash = edited.localizations["zh"].body_hash
+        assert any(f"body {zh_hash} not found" in e for e in errors)
+        assert not any("edit-me/en" in e for e in errors)
+
 
 # ---------------------------------------------------------------------------
 # Status diff tests
