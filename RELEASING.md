@@ -185,8 +185,10 @@ Operational notes:
   access `production-app` secrets. Data releases and raw-data uploads run
   unattended (`dev`-branch restriction only).
 - Cleanup after the migration: once the PR test paths and a dispatched cron run
-  are green, delete the repository-level `REMOTE_STORAGE_*` secrets and the
-  `CI_STORAGE_BUCKET` secret. Do not re-create them.
+  are green, delete the repository-level `REMOTE_STORAGE_*` secrets and any
+  legacy `CI_STORAGE_BUCKET` secret left over from before the migration. Retain
+  the repository-level `CI_STORAGE_BUCKET` **variable** — PR builds still read
+  the bucket name from it. Do not re-create the deleted secrets.
 
 ## Quick reference
 
