@@ -52,8 +52,10 @@ def test_redact_binary_safe(tmp_path: Path):
 
 
 def test_redact_non_utf8_secret(tmp_path: Path):
-    target = _write(tmp_path / "log.txt", "töken value töken\n".encode())
-    _, redacted = redact_staged_files(tmp_path, ["töken"])
+    secret_bytes = b"\xff\xfetoken"
+    secret = secret_bytes.decode("utf-8", errors="surrogateescape")
+    target = _write(tmp_path / "log.txt", secret_bytes + b" value " + secret_bytes + b"\n")
+    _, redacted = redact_staged_files(tmp_path, [secret])
     assert redacted == 1
     assert target.read_bytes() == b"<redacted> value <redacted>\n"
 

@@ -32,7 +32,15 @@ runs:
         # Collection, redaction and staging are implemented in the x CLI
         # (`uv run x.py ci diagnostics`); see bootstrap/ci/diagnostics.py.
         # Redaction is literal (no regex) and fail-closed per file.
-        nix develop .#python --command uv run x.py ci diagnostics || true
+        # The CLI is best-effort and exits 0 on internal failures, so a
+        # non-zero exit here means the harness itself broke (nix develop,
+        # uv, uncaught error); surface it instead of silently uploading
+        # nothing.
+        status=0
+        nix develop .#python --command uv run x.py ci diagnostics || status=$?
+        if [ "$status" -ne 0 ]; then
+          echo "::warning::Diagnostics collection failed (exit $status); artifact may be missing."
+        fi
 
     - uses: actions/upload-artifact@v4
       with:
