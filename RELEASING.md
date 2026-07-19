@@ -159,6 +159,7 @@ environment protection rules gate which refs may do so.
 | `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`. Variable: `REMOTE_STORAGE_BUCKET` | `_release.yml` (real app releases) |
 | `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish job (real data releases) |
 | `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `_update-raw-data.yml` upload job |
+| `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
 
 Each environment holds a separately generated token/endpoint group scoped to the
 permissions that environment needs; endpoints therefore live in secrets alongside
@@ -175,8 +176,11 @@ Repository-level entries that remain:
 
 Operational notes:
 
-- Test-mode runs (`V-Test`, `D-*` labels) declare no environment and publish to
-  the local MinIO mock; they see no production credentials by construction.
+- Test-mode runs (`V-Test`, `D-*` labels) declare the dedicated `ci-testing`
+  environment and publish to the local MinIO mock. `ci-testing` carries no
+  production secrets or variables, so test runs see no production credentials
+  by construction; the `production-app` / `production-data` secrets are never
+  exposed to them.
 - Real app releases pause for a required-reviewer approval before the job can
   access `production-app` secrets. Data releases and raw-data uploads run
   unattended (`dev`-branch restriction only).
