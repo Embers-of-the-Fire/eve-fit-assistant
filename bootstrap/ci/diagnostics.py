@@ -23,7 +23,17 @@ GRADLE_DAEMON_DIR = "gradle-daemon"
 MINIO_DIR = "minio"
 
 JVM_CRASH_PATTERNS = ("hs_err_pid*.log", "replay_pid*.log")
-PRUNE_PREFIXES = ((".git",), ("target",), ("build",), ("android", "build"))
+PRUNE_DIR_NAMES = frozenset(
+    {
+        ".dart_tool",
+        ".git",
+        ".venv",
+        "__pycache__",
+        "build",
+        "node_modules",
+        "target",
+    }
+)
 CRASH_BYPRODUCT_PATTERNS = ("*.hprof", "core.[0-9]*")
 MINIO_LOG_PATHS = (Path("/tmp/efa-ci-minio.log"),)
 
@@ -48,15 +58,10 @@ def _collect_xpy_logs(root: Path, stage: Path) -> list[Path]:
     return _copy_into(sorted(src.glob("*.log")), stage / XPY_LOG_DIR)
 
 
-def _matches_prune_prefix(path: Path) -> bool:
-    return any(path.parts[: len(prefix)] == prefix for prefix in PRUNE_PREFIXES)
-
-
 def _collect_jvm_crash_logs(root: Path, stage: Path) -> list[Path]:
     found = []
     for dirpath, dirnames, filenames in os.walk(root):
-        rel = Path(dirpath).relative_to(root)
-        dirnames[:] = [d for d in dirnames if not _matches_prune_prefix(rel / d)]
+        dirnames[:] = [d for d in dirnames if d not in PRUNE_DIR_NAMES]
         for name in filenames:
             if any(fnmatch.fnmatch(name, pattern) for pattern in JVM_CRASH_PATTERNS):
                 found.append(Path(dirpath) / name)

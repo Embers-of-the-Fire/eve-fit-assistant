@@ -91,6 +91,8 @@ def test_collect_jvm_crash_logs_with_pruning(tmp_path: Path):
     _write(root / "build" / "hs_err_pid999.log", b"skip\n")
     _write(root / "android" / "build" / "replay_pid1.log", b"skip\n")
     _write(root / ".git" / "hs_err_pid1.log", b"skip\n")
+    _write(root / "sub" / "node_modules" / "hs_err_pid5.log", b"skip\n")
+    _write(root / "sub" / "nested" / ".dart_tool" / "replay_pid7.log", b"skip\n")
     stage = tmp_path / "stage"
 
     collect_diagnostics(root, stage)
