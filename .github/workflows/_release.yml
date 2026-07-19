@@ -59,8 +59,33 @@ jobs:
       - name: Generate all
         run: nix develop .#full --command bash -c 'uv run x.py generate -f all'
 
+      - name: Prepare release signing
+        if: inputs.test_mode == false
+        env:
+          APP_KEYSTORE: ${{ secrets.APP_KEYSTORE }}
+          APP_KEYSTORE_PASSWORD: ${{ secrets.APP_KEYSTORE_PASSWORD }}
+          APP_KEY_ALIAS: ${{ secrets.APP_KEY_ALIAS }}
+          APP_KEY_PASSWORD: ${{ secrets.APP_KEY_PASSWORD }}
+        run: |
+          printf '%s' "$APP_KEYSTORE" | base64 -d > "$RUNNER_TEMP/efa-release.keystore"
+          chmod 600 "$RUNNER_TEMP/efa-release.keystore"
+          {
+            echo "EFA_KEYSTORE_FILE=$RUNNER_TEMP/efa-release.keystore"
+            echo "EFA_KEYSTORE_PASSWORD=$APP_KEYSTORE_PASSWORD"
+            echo "EFA_KEY_ALIAS=$APP_KEY_ALIAS"
+            echo "EFA_KEY_PASSWORD=$APP_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
       - name: Build APK
         run: nix develop .#full --command bash -c 'uv run x.py build apk'
+
+      - name: Verify APK signature
+        if: inputs.test_mode == false
+        env:
+          APP_KEY_SHA256: ${{ vars.APP_KEY_SHA256 }}
+        run: |
+          nix develop .#full --command bash -c \
+            'uv run x.py ci release verify-signing'
 
       - name: Merge release registry
         run: |
@@ -258,6 +283,14 @@ jobs:
           redact-values: |
             ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
             ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+            ${{ secrets.APP_KEYSTORE }}
+            ${{ secrets.APP_KEYSTORE_PASSWORD }}
+            ${{ secrets.APP_KEY_PASSWORD }}
+            ${{ secrets.APP_KEY_ALIAS }}
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/efa-release.keystore"
 
   tag:
     name: Create Git tag

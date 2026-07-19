@@ -156,7 +156,7 @@ environment protection rules gate which refs may do so.
 
 | Environment | Protection | Contents | Consumed by |
 |-------------|------------|----------|-------------|
-| `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`. Variable: `REMOTE_STORAGE_BUCKET` | `_release.yml` (real app releases) |
+| `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`; signing secrets `APP_KEYSTORE` (base64-encoded keystore), `APP_KEYSTORE_PASSWORD`, `APP_KEY_ALIAS`, `APP_KEY_PASSWORD`. Variables: `REMOTE_STORAGE_BUCKET`, `APP_KEY_SHA256` (release-key certificate fingerprint) | `_release.yml` (real app releases) |
 | `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish job (real data releases) |
 | `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `_update-raw-data.yml` upload job |
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
@@ -184,6 +184,16 @@ Operational notes:
 - Real app releases pause for a required-reviewer approval before the job can
   access `production-app` secrets. Data releases and raw-data uploads run
   unattended (`dev`-branch restriction only).
+- Android release signing: real app releases sign the APK with the EFA release
+  key. `_release.yml` decodes `APP_KEYSTORE` (base64) into a runner-temp file
+  and passes it plus the passwords/alias to Gradle as `EFA_*` environment
+  variables (`android/app/build.gradle.kts` falls back to debug signing when
+  they are absent, so test mode and local builds are unaffected). After the
+  build the workflow runs `./x ci release verify-signing`, which checks every
+  APK's certificate SHA-256 against the `APP_KEY_SHA256` variable and aborts
+  before publish on mismatch. The
+  Bitwarden vault item holding the keystore and passwords is the source of
+  truth; the GitHub secrets are a mirror — rotate both together.
 - Cleanup after the migration: once the PR test paths and a dispatched cron run
   are green, delete the repository-level `REMOTE_STORAGE_*` secrets and any
   legacy `CI_STORAGE_BUCKET` secret left over from before the migration. Retain
