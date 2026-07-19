@@ -159,6 +159,67 @@ void main() {
     expect(versionStore.lastAcknowledgedReleaseId, "rel-2");
   });
 
+  test("re-detects release after pointer is cached and base provider is invalidated", () async {
+    final container = _container(remoteEnabled: true);
+    addTearDown(container.dispose);
+
+    // First-run state: the release pointer is not cached locally yet.
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(const None());
+
+    // Keep the provider alive for the whole scenario, mirroring the
+    // AppReleaseUpdateGate listener in production.
+    final sub = container.listen(availableAppReleaseProvider, (_, _) {});
+    addTearDown(sub.close);
+
+    final initial = await container.read(availableAppReleaseProvider.future);
+    expect(initial, const None());
+
+    // The startup background sync persists the pointer, then invalidates the
+    // base provider so the fresh pointer is re-read.
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(
+      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
+
+    container.invalidate(remoteAppReleaseProvider);
+    final result = await container.read(availableAppReleaseProvider.future);
+
+    final release = result.toNullable();
+    expect(release, isNotNull);
+    expect(release!.releaseId, "rel-2");
+  });
+
+  test("re-detection requires invalidating the base remoteAppReleaseProvider", () async {
+    final container = _container(remoteEnabled: true);
+    addTearDown(container.dispose);
+
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(const None());
+
+    final sub = container.listen(availableAppReleaseProvider, (_, _) {});
+    addTearDown(sub.close);
+
+    final initial = await container.read(availableAppReleaseProvider.future);
+    expect(initial, const None());
+
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(
+      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
+
+    // Invalidating only the derived provider reuses the stale base value; the
+    // startup sync must invalidate remoteAppReleaseProvider instead (see
+    // RepoStateNotifier._startBackgroundSync).
+    container.invalidate(availableAppReleaseProvider);
+    final stale = await container.read(availableAppReleaseProvider.future);
+    expect(stale, const None());
+
+    container.invalidate(remoteAppReleaseProvider);
+    final result = await container.read(availableAppReleaseProvider.future);
+    expect(result.toNullable()?.releaseId, "rel-2");
+  });
+
   test("surfaces sync errors as AsyncError", () async {
     final container = _container(remoteEnabled: true);
 

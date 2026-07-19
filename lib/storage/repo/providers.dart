@@ -336,7 +336,9 @@ class RepoStateNotifier extends _$RepoStateNotifier {
 
       // After generation metadata is synced, check whether a newer app release
       // is available. This is best-effort and must not block normal operation.
-      ref.invalidate(availableAppReleaseProvider);
+      // The base provider is invalidated (rather than the derived one) so the
+      // freshly cached release pointer is actually re-read.
+      ref.invalidate(remoteAppReleaseProvider);
       unawaited(
         ref.read(availableAppReleaseProvider.future).then((_) => null).catchError((
           Object e,

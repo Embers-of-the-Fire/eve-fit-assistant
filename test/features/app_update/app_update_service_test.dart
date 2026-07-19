@@ -263,6 +263,38 @@ void main() {
     expect(platform.lastInstalledPath, isNull);
   });
 
+  test("resolveDownloadUri returns blob URI for matching ABI", () async {
+    platform.abis = <String>["arm64-v8a"];
+    final artifacts = _artifacts(arm64Hash: "aa" * 32, arm64Size: 100);
+    final identHash = RepoHash.hashIdent("release://1.0.0/android/arm64");
+    final expected = Uri.parse("https://example.com/blobs/$identHash/${"aa" * 32}");
+    when(() => remoteCatalog.blobUri(identHash, "aa" * 32)).thenReturn(expected);
+
+    final uri = await _service().resolveDownloadUri(artifacts);
+
+    expect(uri, expected);
+  });
+
+  test("resolveDownloadUri falls back to general artifact", () async {
+    platform.abis = <String>["x86_64"];
+    final artifacts = _artifacts(generalHash: "bb" * 32, generalSize: 100);
+    final identHash = RepoHash.hashIdent("release://1.0.0/android/general");
+    final expected = Uri.parse("https://example.com/blobs/$identHash/${"bb" * 32}");
+    when(() => remoteCatalog.blobUri(identHash, "bb" * 32)).thenReturn(expected);
+
+    final uri = await _service().resolveDownloadUri(artifacts);
+
+    expect(uri, expected);
+  });
+
+  test("resolveDownloadUri returns null when no artifact available", () async {
+    platform.abis = <String>[];
+
+    final uri = await _service().resolveDownloadUri(AndroidArtifacts());
+
+    expect(uri, isNull);
+  });
+
   test("clearCache removes update files", () async {
     final updatesDir = Directory("$tempDir/resources/updates");
     updatesDir.createSync(recursive: true);

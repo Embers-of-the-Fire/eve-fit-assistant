@@ -6,9 +6,11 @@ import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show unreadAnnouncementCountProvider;
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
+import "package:eve_fit_assistant/features/app_update/download_link.dart";
 import "package:eve_fit_assistant/pages/router.dart"
     show AnnouncementFeedRoute, DeveloperSettingsRoute;
-import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
+import "package:eve_fit_assistant/storage/repo/models/models.dart"
+    show CheckoutRegistryEntry, RemoteAppRelease;
 import "package:eve_fit_assistant/storage/repo/providers.dart"
     show activeCheckoutProvider, remoteAppReleaseProvider;
 import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
@@ -88,7 +90,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                   return Column(
                     children: [
                       _UpdateCard(
-                        label: context.l10n.versionPageUpdateAvailable(version: release.version),
+                        release: release,
                         onTap: () async {
                           await showDialog<void>(
                             context: context,
@@ -415,14 +417,14 @@ class _ReleaseNotesCard extends StatelessWidget {
   }
 }
 
-class _UpdateCard extends StatelessWidget {
-  const _UpdateCard({required this.label, required this.onTap});
+class _UpdateCard extends ConsumerWidget {
+  const _UpdateCard({required this.release, required this.onTap});
 
-  final String label;
+  final RemoteAppRelease release;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = context.theme;
     return Card.filled(
       color: theme.colorScheme.primaryContainer,
@@ -437,13 +439,31 @@ class _UpdateCard extends StatelessWidget {
               Icon(Icons.system_update_alt, color: theme.colorScheme.onPrimaryContainer),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.versionPageUpdateAvailable(version: release.version),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n.versionPageUpdateManualDownloadHint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              IconButton(
+                onPressed: () => unawaited(copyReleaseDownloadLink(context, ref, release)),
+                icon: const Icon(Icons.link),
+                tooltip: context.l10n.appReleaseUpdateCopyDownloadLink,
+                color: theme.colorScheme.onPrimaryContainer,
               ),
               Icon(Icons.chevron_right, color: theme.colorScheme.onPrimaryContainer),
             ],
