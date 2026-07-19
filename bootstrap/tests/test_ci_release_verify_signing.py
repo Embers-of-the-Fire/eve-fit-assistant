@@ -56,6 +56,20 @@ def _make_fake_apksigner(
     return script
 
 
+def _put_apksigner_on_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    output: str = _APKSIGNER_OUTPUT,
+    exit_code: int = 0,
+) -> Path:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    script = _make_fake_apksigner(bin_dir, output=output, exit_code=exit_code)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    return script
+
+
 class TestNormalizeSha256:
     def test_plain_lowercase(self) -> None:
         assert _normalize_sha256(_DIGEST) == _DIGEST
@@ -77,28 +91,12 @@ class TestParseApksignerDigest:
 
 
 class TestFindApksigner:
-    def test_picks_newest_build_tools(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        for version in ("30.0.3", "34.0.0", "33.0.1"):
-            tool_dir = tmp_path / "build-tools" / version
-            tool_dir.mkdir(parents=True)
-            (tool_dir / "apksigner").write_text("", encoding="utf-8")
-        monkeypatch.setenv("ANDROID_HOME", str(tmp_path))
-        monkeypatch.delenv("ANDROID_SDK_ROOT", raising=False)
-        assert _find_apksigner() == tmp_path / "build-tools" / "34.0.0" / "apksigner"
+    def test_finds_on_path(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        script = _put_apksigner_on_path(tmp_path, monkeypatch)
+        assert _find_apksigner() == str(script)
 
-    def test_falls_back_to_sdk_root(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        tool_dir = tmp_path / "build-tools" / "34.0.0"
-        tool_dir.mkdir(parents=True)
-        (tool_dir / "apksigner").write_text("", encoding="utf-8")
-        monkeypatch.delenv("ANDROID_HOME", raising=False)
-        monkeypatch.setenv("ANDROID_SDK_ROOT", str(tmp_path))
-        assert _find_apksigner() == tool_dir / "apksigner"
-
-    def test_missing_sdk_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("ANDROID_HOME", raising=False)
-        monkeypatch.delenv("ANDROID_SDK_ROOT", raising=False)
+    def test_missing_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PATH", str(tmp_path))
         with pytest.raises(click.ClickException, match="apksigner not found"):
             _find_apksigner()
 
@@ -108,32 +106,28 @@ class TestVerifyApkSignature:
         apksigner = _make_fake_apksigner(tmp_path)
         apk = tmp_path / "app-release.apk"
         apk.write_bytes(b"fake-apk")
-        _verify_apk_signature(apksigner, apk, _DIGEST)
+        _verify_apk_signature(str(apksigner), apk, _DIGEST)
 
     def test_mismatched_digest_fails(self, tmp_path: Path) -> None:
         apksigner = _make_fake_apksigner(tmp_path)
         apk = tmp_path / "app-release.apk"
         apk.write_bytes(b"fake-apk")
         with pytest.raises(click.ClickException, match="certificate SHA-256 mismatch"):
-            _verify_apk_signature(apksigner, apk, "ff" * 32)
+            _verify_apk_signature(str(apksigner), apk, "ff" * 32)
 
     def test_apksigner_failure_fails(self, tmp_path: Path) -> None:
         apksigner = _make_fake_apksigner(tmp_path, exit_code=1)
         apk = tmp_path / "app-release.apk"
         apk.write_bytes(b"fake-apk")
-        with pytest.raises(click.ClickException, match="apksigner verification failed"):
-            _verify_apk_signature(apksigner, apk, _DIGEST)
+        with pytest.raises(SystemExit):
+            _verify_apk_signature(str(apksigner), apk, _DIGEST)
 
 
 class TestVerifySigning:
     def test_verifies_all_apks_recursively(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        tool_dir = tmp_path / "sdk" / "build-tools" / "34.0.0"
-        tool_dir.mkdir(parents=True)
-        _make_fake_apksigner(tool_dir)
-        monkeypatch.setenv("ANDROID_HOME", str(tmp_path / "sdk"))
-        monkeypatch.delenv("ANDROID_SDK_ROOT", raising=False)
+        _put_apksigner_on_path(tmp_path, monkeypatch)
         apk_dir = tmp_path / "out"
         (apk_dir / "nested").mkdir(parents=True)
         (apk_dir / "app-release.apk").write_bytes(b"fake-apk")
@@ -153,11 +147,7 @@ class TestVerifySigningCommand:
     def test_expected_sha256_from_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        tool_dir = tmp_path / "sdk" / "build-tools" / "34.0.0"
-        tool_dir.mkdir(parents=True)
-        _make_fake_apksigner(tool_dir)
-        monkeypatch.setenv("ANDROID_HOME", str(tmp_path / "sdk"))
-        monkeypatch.delenv("ANDROID_SDK_ROOT", raising=False)
+        _put_apksigner_on_path(tmp_path, monkeypatch)
         monkeypatch.setenv("APP_KEY_SHA256", _DIGEST_COLONED)
         (tmp_path / "app-release.apk").write_bytes(b"fake-apk")
 

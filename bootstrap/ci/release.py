@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys
@@ -13,6 +12,7 @@ import click
 from bootstrap.cli import runtime
 from bootstrap.config import ProjectVersion
 from bootstrap.constant import PROJECT_ROOT
+from bootstrap.utils import get_command
 
 
 _VERSION_RE = re.compile(r"^version\s*:\s*(.+?)\s*$", re.MULTILINE)
@@ -294,40 +294,25 @@ def _parse_apksigner_digest(output: str) -> str:
     return _normalize_sha256(match.group(1))
 
 
-def _find_apksigner() -> Path:
-    """Locate the newest apksigner under the Android SDK build-tools directories."""
-    candidates: list[Path] = []
-    for env_name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
-        root = os.environ.get(env_name)
-        if root:
-            candidates.extend(Path(root).glob("build-tools/*/apksigner"))
-    if not candidates:
-        raise click.ClickException(
-            "apksigner not found: set ANDROID_HOME or ANDROID_SDK_ROOT to the Android SDK"
-        )
-
-    def sort_key(path: Path) -> tuple[int, ...]:
-        return tuple(int(part) if part.isdigit() else 0 for part in path.parent.name.split("."))
-
-    return sorted(candidates, key=sort_key)[-1]
-
-
-def _verify_apk_signature(apksigner: Path, apk: Path, expected: str) -> None:
-    """Verify one APK's signature and certificate digest against the expected value."""
+def _find_apksigner() -> str:
+    """Locate the apksigner executable on PATH."""
     try:
-        result = subprocess.run(
-            [str(apksigner), "verify", "--print-certs", str(apk)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        return get_command("apksigner")
     except FileNotFoundError as exc:
-        raise click.ClickException(f"apksigner is not executable: {apksigner}") from exc
-    if result.returncode != 0:
         raise click.ClickException(
-            f"apksigner verification failed for {apk}:\n{result.stderr.strip()}"
-        )
-    digest = _parse_apksigner_digest(result.stdout)
+            "apksigner not found on PATH: run inside the Nix dev shell "
+            "or install the Android SDK build-tools"
+        ) from exc
+
+
+def _verify_apk_signature(apksigner: str, apk: Path, expected: str) -> None:
+    """Verify one APK's signature and certificate digest against the expected value."""
+    output = runtime.execute(
+        [apksigner, "verify", "--print-certs", str(apk)],
+        "APKSIGNER VERIFY",
+        capture_stdout=True,
+    )
+    digest = _parse_apksigner_digest(output)
     if digest != expected:
         raise click.ClickException(
             f"{apk}: certificate SHA-256 mismatch\n  expected: {expected}\n  actual:   {digest}"

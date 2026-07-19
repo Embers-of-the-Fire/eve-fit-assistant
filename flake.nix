@@ -190,6 +190,7 @@
             ++ [
               androidSdk
               androidComposition.platform-tools
+              pkgs.apksigner
               pkgs.rustup
             ];
 
