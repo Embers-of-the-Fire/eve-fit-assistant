@@ -36,7 +36,6 @@ jobs:
     uses: ./.github/workflows/_release-data.yml
     secrets:
       CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
-      CI_STORAGE_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
       CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
       CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
     with:

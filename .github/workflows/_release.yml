@@ -15,6 +15,7 @@ jobs:
   release:
     name: Build and publish
     runs-on: ubuntu-latest
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
     outputs:
       tag: ${{ steps.verify.outputs.tag }}
     steps:
@@ -77,7 +78,7 @@ jobs:
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
@@ -103,7 +104,7 @@ jobs:
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
@@ -149,7 +150,7 @@ jobs:
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
@@ -168,7 +169,7 @@ jobs:
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
@@ -200,7 +201,7 @@ jobs:
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |

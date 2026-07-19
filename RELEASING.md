@@ -148,6 +148,42 @@ The `release.yml` workflow on the merge commit then:
 
 If the merged PR is missing `V-Tested Release`, the release aborts.
 
+## Secrets and environments
+
+Publishing credentials are scoped to GitHub Environments instead of repository
+secrets. A job can read them only when it declares the matching environment, and
+environment protection rules gate which refs may do so.
+
+| Environment | Protection | Contents | Consumed by |
+|-------------|------------|----------|-------------|
+| `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`. Variable: `REMOTE_STORAGE_BUCKET` | `_release.yml` (real app releases) |
+| `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish job (real data releases) |
+| `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `_update-raw-data.yml` upload job |
+
+Each environment holds a separately generated token/endpoint group scoped to the
+permissions that environment needs; endpoints therefore live in secrets alongside
+the keys, while bucket names are plain variables.
+
+Repository-level entries that remain:
+
+- Secrets `CI_STORAGE_ENDPOINT` / `CI_STORAGE_ACCESS_KEY` / `CI_STORAGE_SECRET_KEY`
+  — a **read-only** token for the CI bucket, used by PR-triggered build and test
+  jobs (PR runs cannot be gated by environments, so least-privilege is the
+  mitigation). Rotate this pair if it ever gains write access.
+- Variables `CI_STORAGE_BUCKET` and `REMOTE_STORAGE_BUCKET` — bucket names are not
+  sensitive; per-environment variables override them.
+
+Operational notes:
+
+- Test-mode runs (`V-Test`, `D-*` labels) declare no environment and publish to
+  the local MinIO mock; they see no production credentials by construction.
+- Real app releases pause for a required-reviewer approval before the job can
+  access `production-app` secrets. Data releases and raw-data uploads run
+  unattended (`dev`-branch restriction only).
+- Cleanup after the migration: once the PR test paths and a dispatched cron run
+  are green, delete the repository-level `REMOTE_STORAGE_*` secrets and the
+  `CI_STORAGE_BUCKET` secret. Do not re-create them.
+
 ## Quick reference
 
 | Step | Command / Action |

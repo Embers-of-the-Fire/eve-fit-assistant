@@ -123,6 +123,7 @@ jobs:
       needs.check.outputs.matrix != '' &&
       needs.check.outputs.matrix != '[]'
     runs-on: ubuntu-latest
+    environment: ci-write
     strategy:
       matrix:
         server: ${{ fromJSON(needs.check.outputs.matrix) }}
@@ -149,7 +150,7 @@ jobs:
         env:
           SERVER: ${{ matrix.server }}
           CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
-          CI_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
+          CI_BUCKET: ${{ vars.CI_STORAGE_BUCKET }}
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
