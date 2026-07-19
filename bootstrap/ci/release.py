@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
 import tomllib
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import click
 
@@ -14,11 +15,8 @@ from bootstrap.config import ProjectVersion
 from bootstrap.constant import PROJECT_ROOT
 
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-
 _VERSION_RE = re.compile(r"^version\s*:\s*(.+?)\s*$", re.MULTILINE)
+_APKSIGNER_DIGEST_RE = re.compile(r"certificate SHA-256 digest:\s*([0-9a-fA-F:]+)")
 
 
 def _version_key(version: ProjectVersion) -> tuple[object, ...]:
@@ -283,6 +281,76 @@ def _check_build() -> None:
     runtime.execute([flutter, "analyze"], "FLUTTER ANALYZE")
 
 
+def _normalize_sha256(value: str) -> str:
+    """Normalize a SHA-256 fingerprint for comparison (strip colons/spaces, lowercase)."""
+    return value.replace(":", "").replace(" ", "").strip().lower()
+
+
+def _parse_apksigner_digest(output: str) -> str:
+    """Extract the first signer certificate SHA-256 digest from apksigner output."""
+    match = _APKSIGNER_DIGEST_RE.search(output)
+    if not match:
+        raise click.ClickException("apksigner output has no certificate SHA-256 digest")
+    return _normalize_sha256(match.group(1))
+
+
+def _find_apksigner() -> Path:
+    """Locate the newest apksigner under the Android SDK build-tools directories."""
+    candidates: list[Path] = []
+    for env_name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        root = os.environ.get(env_name)
+        if root:
+            candidates.extend(Path(root).glob("build-tools/*/apksigner"))
+    if not candidates:
+        raise click.ClickException(
+            "apksigner not found: set ANDROID_HOME or ANDROID_SDK_ROOT to the Android SDK"
+        )
+
+    def sort_key(path: Path) -> tuple[int, ...]:
+        return tuple(int(part) if part.isdigit() else 0 for part in path.parent.name.split("."))
+
+    return sorted(candidates, key=sort_key)[-1]
+
+
+def _verify_apk_signature(apksigner: Path, apk: Path, expected: str) -> None:
+    """Verify one APK's signature and certificate digest against the expected value."""
+    try:
+        result = subprocess.run(
+            [str(apksigner), "verify", "--print-certs", str(apk)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise click.ClickException(f"apksigner is not executable: {apksigner}") from exc
+    if result.returncode != 0:
+        raise click.ClickException(
+            f"apksigner verification failed for {apk}:\n{result.stderr.strip()}"
+        )
+    digest = _parse_apksigner_digest(result.stdout)
+    if digest != expected:
+        raise click.ClickException(
+            f"{apk}: certificate SHA-256 mismatch\n  expected: {expected}\n  actual:   {digest}"
+        )
+    click.echo(f"  {apk} OK (SHA-256: {digest})")
+
+
+def _verify_signing(apk_dir: Path, expected_sha256: str | None) -> None:
+    """Verify every APK under apk_dir is signed with the expected release key."""
+    if not expected_sha256:
+        raise click.ClickException(
+            "Expected fingerprint missing: pass --expected-sha256 or set APP_KEY_SHA256"
+        )
+    expected = _normalize_sha256(expected_sha256)
+    apks = sorted(apk_dir.rglob("*.apk"))
+    if not apks:
+        raise click.ClickException(f"No APKs found under {apk_dir}")
+    apksigner = _find_apksigner()
+    for apk in apks:
+        _verify_apk_signature(apksigner, apk, expected)
+    click.echo(f"Signature check OK: {len(apks)} APK(s) verified")
+
+
 def register_ci_release_commands(ci_group: click.Group) -> None:
     @ci_group.group("release")
     def release_group():
@@ -435,3 +503,21 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
             click.echo("  Tests OK")
 
         click.echo(f"Expected tag: {tag}")
+
+    @release_group.command("verify-signing")
+    @click.option(
+        "--apk-dir",
+        type=click.Path(file_okay=False, path_type=Path),
+        default=str(PROJECT_ROOT / "cache" / "releases" / "apk"),
+        show_default=True,
+        help="Directory containing built APKs (searched recursively).",
+    )
+    @click.option(
+        "--expected-sha256",
+        envvar="APP_KEY_SHA256",
+        default=None,
+        help="Expected release-key certificate SHA-256 fingerprint.",
+    )
+    def release_verify_signing(apk_dir: Path, expected_sha256: str | None):
+        """Verify all built APKs are signed with the expected release key."""
+        _verify_signing(apk_dir, expected_sha256)
