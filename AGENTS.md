@@ -100,6 +100,7 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - The reusable app release workflow is `_release.yml`; the reusable data snapshot workflow is `_release-data.yml`.
 - In test mode both workflows exercise the full commit → publish → sync → verify cycle against a local MinIO mock (`./x remote mock launch --daemon`, stop with `./x remote mock stop`) instead of touching the real remote.
 - CI workflows share the tracked developer config `ci/config/efa.dev.toml` (non-secret values; secret fields are `.invalid` placeholders). The composite action `.github/actions/init-dev-env` copies it to `./efa.dev.toml` after checkout; jobs inject real secrets via `--dev-env` overrides on top.
+- Publishing credentials live in GitHub Environments, not repository secrets: `production-app` (reviewer-gated; app releases), `production-data` (`dev`-only; data publishes), and `ci-write` (`dev`-only; raw-data uploads). Endpoints/keys are environment secrets, bucket names are variables. PR-triggered builds use a read-only repo-level `CI_STORAGE_*` token. See `RELEASING.md` → "Secrets and environments" for the full map.
 
 ## Validation Expectations
 

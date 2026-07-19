@@ -15,9 +15,6 @@ on:
       CI_STORAGE_ENDPOINT:
         description: "CI storage S3 endpoint"
         required: true
-      CI_STORAGE_BUCKET:
-        description: "CI storage S3 bucket"
-        required: true
       CI_STORAGE_ACCESS_KEY:
         description: "CI storage access key"
         required: true
@@ -26,9 +23,6 @@ on:
         required: true
       REMOTE_STORAGE_ENDPOINT:
         description: "Remote S3 endpoint for publishing"
-        required: false
-      REMOTE_STORAGE_BUCKET:
-        description: "Remote S3 bucket for publishing"
         required: false
       REMOTE_STORAGE_ACCESS_KEY:
         description: "Remote S3 access key for publishing"
@@ -65,7 +59,7 @@ jobs:
         env:
           SERVERS_JSON: ${{ inputs.servers }}
           CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
-          CI_BUCKET: ${{ secrets.CI_STORAGE_BUCKET }}
+          CI_BUCKET: ${{ vars.CI_STORAGE_BUCKET }}
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
         run: |
@@ -103,6 +97,7 @@ jobs:
     name: Publish to testing channel
     needs: build
     runs-on: ubuntu-latest
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-data' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -135,7 +130,7 @@ jobs:
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
@@ -154,7 +149,7 @@ jobs:
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
-          REMOTE_BUCKET: ${{ secrets.REMOTE_STORAGE_BUCKET }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
         run: |
