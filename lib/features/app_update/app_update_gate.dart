@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
+import "package:eve_fit_assistant/features/app_update/download_link.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
@@ -28,11 +29,18 @@ class AppReleaseUpdateGate extends ConsumerStatefulWidget {
 class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   String? _shownReleaseId;
   bool _isShowing = false;
+  ProviderSubscription<AsyncValue<Option<RemoteAppRelease>>>? _subscription;
 
   @override
-  Widget build(BuildContext context) {
-    ref.listen<AsyncValue<Option<RemoteAppRelease>>>(
+  void initState() {
+    super.initState();
+    // Listen manually with fireImmediately so a release that resolved before
+    // this gate mounted still triggers the dialog, while later updates keep
+    // being delivered. Registered in initState because ref.listen is not
+    // available there.
+    _subscription = ref.listenManual(
       availableAppReleaseProvider,
+      fireImmediately: true,
       (_, next) => next.whenData((option) {
         final release = option.toNullable();
         if (release == null) return;
@@ -41,9 +49,16 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
         WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_showDialog(release)));
       }),
     );
-
-    return widget.child;
   }
+
+  @override
+  void dispose() {
+    _subscription?.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 
   Future<void> _showDialog(RemoteAppRelease release) async {
     if (!mounted || _isShowing) return;
@@ -142,6 +157,11 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
 
     return switch (status) {
       AppUpdateStatusIdle() => [
+        IconButton(
+          onPressed: () => unawaited(copyReleaseDownloadLink(context, ref, release)),
+          icon: const Icon(Icons.link),
+          tooltip: context.l10n.appReleaseUpdateCopyDownloadLink,
+        ),
         TextButton(
           onPressed: () {
             ref.read(appVersionStateServiceProvider.notifier).acknowledgeRelease(release.releaseId);
@@ -171,6 +191,11 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
         ),
       ],
       AppUpdateStatusFailed(:final canRetry) => [
+        IconButton(
+          onPressed: () => unawaited(copyReleaseDownloadLink(context, ref, release)),
+          icon: const Icon(Icons.link),
+          tooltip: context.l10n.appReleaseUpdateCopyDownloadLink,
+        ),
         TextButton(
           onPressed: () {
             ref.read(appVersionStateServiceProvider.notifier).acknowledgeRelease(release.releaseId);

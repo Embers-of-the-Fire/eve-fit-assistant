@@ -153,6 +153,24 @@ class AppUpdateService {
     );
   }
 
+  /// Resolves the content-addressed download URI for the best-matching
+  /// Android artifact variant of [artifacts].
+  ///
+  /// Intended for manual-download fallbacks: the returned URI can be opened in
+  /// a browser on any platform. Returns `null` when no suitable artifact
+  /// exists.
+  Future<Uri?> resolveDownloadUri(AndroidArtifacts artifacts) async {
+    final result = await resolveArtifact(artifacts);
+    return result
+        .map(
+          (artifact) => remoteCatalogService.blobUri(
+            RepoHash.hashIdent(artifact.identifier),
+            artifact.contentHash,
+          ),
+        )
+        .toNullable();
+  }
+
   /// Downloads and verifies the APK for [artifact] into the app cache.
   ///
   /// [onProgress] receives bytes received and total artifact size in bytes.

@@ -92,7 +92,7 @@ Future<void> _clearCache(BuildContext context) async {
 
 Future<void> _clearUpdateAcknowledgment(BuildContext context, WidgetRef ref) async {
   ref.read(appVersionStateServiceProvider.notifier).clearReleaseAcknowledgment();
-  ref.invalidate(availableAppReleaseProvider);
+  ref.invalidate(remoteAppReleaseProvider);
   if (!context.mounted) return;
   ScaffoldMessenger.of(
     context,
