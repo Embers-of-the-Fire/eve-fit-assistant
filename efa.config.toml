@@ -11,8 +11,8 @@ major = 0
 minor = 2
 patch = 0
 pre_label = "alpha"
-pre_num = 2
-build = 9
+pre_num = 3
+build = 10
 data_schema = 2
 
 [data_schema]
