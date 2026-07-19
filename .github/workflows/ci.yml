@@ -89,3 +89,9 @@ jobs:
         run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.lint_command }}'
       - name: Test ${{ matrix.suite }}
         run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.command }}'
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-ci-${{ matrix.suite }}

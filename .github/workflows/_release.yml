@@ -249,6 +249,15 @@ jobs:
           path: cache/releases/apk/**/*.apk
           retention-days: 1
 
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-app-release
+          redact-values: |
+            ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+            ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+
   tag:
     name: Create Git tag
     needs: release

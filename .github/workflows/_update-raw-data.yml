@@ -66,6 +66,12 @@ jobs:
             echo "has_updates=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-raw-check
+
   update:
     name: Update raw artifacts
     needs: check
@@ -102,6 +108,12 @@ jobs:
           name: raw-artifacts-${{ matrix.server }}
           path: cache/raw-artifacts/${{ matrix.server }}/
           retention-days: 1
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-raw-update-${{ matrix.server }}
 
   upload:
     name: Upload raw artifacts
@@ -149,3 +161,12 @@ jobs:
               --dev-env ci.storage.access_key="$CI_ACCESS_KEY" \
               --dev-env ci.storage.secret_key="$CI_SECRET_KEY" \
               ci raw-data upload --server "$SERVER" --from-dir raw-artifacts/"$SERVER"/'
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-raw-upload-${{ matrix.server }}
+          redact-values: |
+            ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+            ${{ secrets.CI_STORAGE_SECRET_KEY }}
