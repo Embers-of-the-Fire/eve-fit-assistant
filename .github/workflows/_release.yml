@@ -286,6 +286,7 @@ jobs:
             ${{ secrets.APP_KEYSTORE }}
             ${{ secrets.APP_KEYSTORE_PASSWORD }}
             ${{ secrets.APP_KEY_PASSWORD }}
+            ${{ secrets.APP_KEY_ALIAS }}
 
       - name: Clean up keystore
         if: always()
