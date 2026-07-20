@@ -18,7 +18,7 @@ def register_lint_commands(cli_group: click.Group) -> None:
     )
     @click.option(
         "--lang",
-        type=click.Choice(["all", "python", "dart", "rust", "site"]),
+        type=click.Choice(["all", "python", "dart", "rust", "site", "l10n"]),
         default="all",
         help="Limit linting to a specific language (default: all).",
     )

@@ -119,6 +119,11 @@ def run_lint(
         pnpm = get_command("pnpm")
         run_site_checks(pnpm, no_check=no_check, check_only=check_only, dry_run=dry_run)
 
+    if lang in ("all", "l10n") and (not no_check or check_only):
+        from bootstrap.ci.lint_l10n import run_l10n_lint
+
+        run_l10n_lint(dry_run=dry_run)
+
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Linting completed successfully."))
 
 
