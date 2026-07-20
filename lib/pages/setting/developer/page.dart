@@ -5,9 +5,12 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/info_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -15,6 +18,7 @@ import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
+import "package:package_info_plus/package_info_plus.dart";
 
 part "debug_log.dart";
 part "remote_content_entry.dart";
@@ -65,6 +69,12 @@ class DeveloperSettingsPage extends ConsumerWidget {
             onTap: () => unawaited(_clearUpdateAcknowledgment(context, ref)),
           ),
           ConfigListTile.item(
+            icon: const Icon(Icons.system_update_alt),
+            title: "Preview app update dialog",
+            subtitle: "Show the update dialog using the current app version",
+            onTap: () => unawaited(_previewUpdateDialog(context)),
+          ),
+          ConfigListTile.item(
             icon: const Icon(Icons.developer_mode),
             title: "Developer Tools",
             subtitle: "Channel overview, restart init, trigger feedback",
@@ -74,6 +84,21 @@ class DeveloperSettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _previewUpdateDialog(BuildContext context) async {
+  final info = await PackageInfo.fromPlatform();
+  if (!context.mounted) return;
+  final release = RemoteAppRelease(
+    releaseId: "dev-preview",
+    version: info.version,
+    snapshotHash: "",
+    index: ReleaseIndex(),
+  );
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AppReleaseUpdateDialog(release: release),
+  );
 }
 
 Future<void> _clearCache(BuildContext context) async {
