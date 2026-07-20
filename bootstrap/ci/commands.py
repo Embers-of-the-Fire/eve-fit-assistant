@@ -82,6 +82,16 @@ def register_ci_commands(cli_group: click.Group) -> None:
         run_codegen(lang)
         run_lint(lang, no_check=True, dry_run=False)
 
+    @ci.command("zizmor")
+    def ci_zizmor():
+        """Scan GitHub workflow files with zizmor (advisory, never fails)."""
+        zizmor = get_command("zizmor")
+        runtime.execute(
+            [zizmor, "--no-exit-codes", ".github/workflows", ".github/actions"],
+            "ZIZMOR SCAN",
+            live_stdout=True,
+        )
+
     @ci.command("pack-data")
     @click.option(
         "--output", "-o", default="cache/ci/ci-native-data.tar.gz", help="Output tarball path"

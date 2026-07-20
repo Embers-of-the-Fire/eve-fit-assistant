@@ -37,6 +37,19 @@ SUITE_DEFINITIONS = [
         "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
     },
     {
+        "suite": "workflows",
+        "shell": "ci",
+        "lint_command": "true",
+        "command": "uv run x.py ci zizmor",
+        "codegen_command": "true",
+        "patterns": [
+            ".github/workflows/**",
+            ".github/actions/**",
+            "flake.nix",
+            "flake.lock",
+        ],
+    },
+    {
         "suite": "ci",
         "shell": "python",
         "lint_command": "true",
