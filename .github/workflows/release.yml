@@ -52,6 +52,11 @@ jobs:
     if: needs.identify.outputs.skip == 'false'
     permissions:
       contents: write
+    # _release.yml declares `environment: production-app` and references those
+    # secrets directly, but without secrets:inherit the environment context fails
+    # to resolve inside the reusable workflow — causing EFA_* signing vars to be
+    # empty and the Android build to abort with an incomplete signing config.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: ./.github/workflows/_release.yml
     with:
       test_mode: false
