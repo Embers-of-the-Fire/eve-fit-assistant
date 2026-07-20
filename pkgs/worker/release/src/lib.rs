@@ -78,16 +78,9 @@ async fn read_bucket_proto<T: Message + Default>(
         .map_err(|e| Error::RustError(format!("protobuf decode error for {}: {}", path, e)))
 }
 
-fn origin_allowed(req: &Request) -> Option<String> {
-    let origin = req.headers().get("Origin").ok()??;
-    let is_localhost = origin.starts_with("http://localhost:")
-        || origin.starts_with("http://127.0.0.1:");
-    is_localhost.then_some(origin)
-}
-
-fn add_cors(res: &mut Response, origin: &str) -> Result<()> {
+fn add_cors(res: &mut Response) -> Result<()> {
     let headers = res.headers_mut();
-    headers.set("Access-Control-Allow-Origin", origin)?;
+    headers.set("Access-Control-Allow-Origin", "*")?;
     headers.set("Access-Control-Allow-Methods", "GET, OPTIONS")?;
     headers.set("Access-Control-Allow-Headers", "Content-Type")?;
     Ok(())
@@ -177,12 +170,9 @@ async fn fetch_channel_artifact(
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    let origin = origin_allowed(&req);
     if req.method() == Method::Options {
         let mut res = Response::empty()?;
-        if let Some(ref o) = origin {
-            add_cors(&mut res, o)?;
-        }
+        add_cors(&mut res)?;
         return Ok(res);
     }
     let mut res = Router::new()
@@ -191,9 +181,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         })
         .run(req, env)
         .await?;
-    if let Some(ref o) = origin {
-        add_cors(&mut res, o)?;
-    }
+    add_cors(&mut res)?;
     Ok(res)
 }
 
