@@ -5,16 +5,21 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val releaseKeystoreFile = System.getenv("EFA_KEYSTORE_FILE")
-val releaseKeystorePassword = System.getenv("EFA_KEYSTORE_PASSWORD")
-val releaseKeyAlias = System.getenv("EFA_KEY_ALIAS")
-val releaseKeyPassword = System.getenv("EFA_KEY_PASSWORD")
-val releaseSigningAvailable = listOf(
-    releaseKeystoreFile,
-    releaseKeystorePassword,
-    releaseKeyAlias,
-    releaseKeyPassword,
-).all { !it.isNullOrEmpty() }
+val releaseSigningVars = mapOf(
+    "EFA_KEYSTORE_FILE" to System.getenv("EFA_KEYSTORE_FILE"),
+    "EFA_KEYSTORE_PASSWORD" to System.getenv("EFA_KEYSTORE_PASSWORD"),
+    "EFA_KEY_ALIAS" to System.getenv("EFA_KEY_ALIAS"),
+    "EFA_KEY_PASSWORD" to System.getenv("EFA_KEY_PASSWORD"),
+)
+val releaseSigningConfigured = releaseSigningVars.values.count { !it.isNullOrEmpty() }
+val releaseSigningAvailable = releaseSigningConfigured == releaseSigningVars.size
+if (releaseSigningConfigured in 1 until releaseSigningVars.size) {
+    val missing = releaseSigningVars.filterValues { it.isNullOrEmpty() }.keys
+    throw GradleException(
+        "Incomplete release signing configuration: $missing not set or empty. " +
+            "Set all EFA_* variables or none (debug fallback)."
+    )
+}
 
 android {
     namespace = "net.efa_tech.eve_fit_assistant"
@@ -44,10 +49,10 @@ android {
     signingConfigs {
         if (releaseSigningAvailable) {
             create("release") {
-                storeFile = file(releaseKeystoreFile)
-                storePassword = releaseKeystorePassword
-                keyAlias = releaseKeyAlias
-                keyPassword = releaseKeyPassword
+                storeFile = file(releaseSigningVars.getValue("EFA_KEYSTORE_FILE"))
+                storePassword = releaseSigningVars.getValue("EFA_KEYSTORE_PASSWORD")
+                keyAlias = releaseSigningVars.getValue("EFA_KEY_ALIAS")
+                keyPassword = releaseSigningVars.getValue("EFA_KEY_PASSWORD")
             }
         }
     }
@@ -55,8 +60,9 @@ android {
     buildTypes {
         release {
             // Release builds are signed with the EFA release key when the EFA_* environment
-            // variables are provided (CI real releases); otherwise they fall back to the
-            // debug keys so `flutter run --release` and CI test-mode builds keep working.
+            // variables are provided (CI real releases); a partially provided set fails the
+            // build loudly, and a fully absent set falls back to the debug keys so
+            // `flutter run --release` and CI test-mode builds keep working.
             signingConfig = if (releaseSigningAvailable) {
                 signingConfigs.getByName("release")
             } else {
