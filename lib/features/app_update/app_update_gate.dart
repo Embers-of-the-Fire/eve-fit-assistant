@@ -1,16 +1,64 @@
 import "dart:async";
 
+import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
+import "package:eve_fit_assistant/constant/colors.dart";
+import "package:eve_fit_assistant/features/announcements/models/models.dart";
+import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
+import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
 import "package:eve_fit_assistant/features/app_update/download_link.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
+import "package:eve_fit_assistant/pages/announcements/detail_page.dart";
+import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
+import "package:markdown_widget/markdown_widget.dart";
+
+/// Resolves the best-matching Android artifact for a release, exposing the
+/// download size shown in the update dialog. `null` when the release has no
+/// usable artifact for this device.
+final appUpdateArtifactProvider = FutureProvider.family<AppUpdateArtifact?, RemoteAppRelease>((
+  ref,
+  release,
+) async {
+  if (!release.index.hasAndroid()) return null;
+  final artifacts = release.index.android;
+  if (!artifacts.hasGeneral()) return null;
+  final service = ref.watch(appUpdateServiceProvider);
+  final result = await service.resolveArtifact(artifacts);
+  return result.toNullable();
+});
+
+/// Finds the release-note announcement record whose `appVersion` matches the
+/// given release version. `null` when no matching note is published yet.
+final appReleaseNoteProvider = FutureProvider.family<AnnouncementRecord?, String>((
+  ref,
+  version,
+) async {
+  final records = await ref.watch(announcementVersionFeedProvider.future);
+  for (final record in records) {
+    final appVersion = record.appVersion;
+    if (appVersion != null && _isSameVersion(appVersion, version)) return record;
+  }
+  return null;
+});
+
+bool _isSameVersion(String a, String b) {
+  String normalize(String version) {
+    var value = stripBuildNumber(version).trim();
+    if (value.toLowerCase().startsWith("v")) value = value.substring(1);
+    return value;
+  }
+
+  return compareAppVersions(normalize(a), normalize(b)) == 0;
+}
 
 /// Displays a non-blocking dialog when a newer app release is available.
 ///
@@ -99,12 +147,12 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
 
   Widget _buildContent(BuildContext context, WidgetRef ref, AppUpdateStatus status) =>
       switch (status) {
-        AppUpdateStatusIdle() => Text(context.l10n.appReleaseUpdateDialogBody),
+        AppUpdateStatusIdle() => _UpdateIdleContent(release: release),
         AppUpdateStatusDownloading(:final receivedBytes, :final totalBytes) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(context.l10n.appReleaseUpdateDialogBody),
+            _UpdateVersionSummary(release: release),
             const SizedBox(height: 16),
             LinearProgressIndicator(value: totalBytes > 0 ? receivedBytes / totalBytes : null),
             const SizedBox(height: 8),
@@ -211,10 +259,186 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
       ],
     };
   }
+}
 
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) return "${bytes}B";
-    if (bytes < 1024 * 1024) return "${(bytes / 1024).toStringAsFixed(1)}KB";
-    return "${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB";
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return "${bytes}B";
+  if (bytes < 1024 * 1024) return "${(bytes / 1024).toStringAsFixed(1)}KB";
+  return "${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB";
+}
+
+/// Version + download-size summary shown in the update dialog.
+class _UpdateVersionSummary extends ConsumerWidget {
+  const _UpdateVersionSummary({required this.release});
+
+  final RemoteAppRelease release;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = context.theme;
+    final installedVersion = ref.watch(appVersionProvider).value;
+    final artifact = ref.watch(appUpdateArtifactProvider(release)).value;
+
+    Widget row(String label, String value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Text(value, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        row(
+          context.l10n.appReleaseUpdateCurrentVersion,
+          installedVersion == null ? "…" : "v$installedVersion",
+        ),
+        row(context.l10n.appReleaseUpdateNewVersion, "v${release.version}"),
+        if (artifact != null)
+          row(context.l10n.appReleaseUpdateDownloadSize, _formatBytes(artifact.size)),
+      ],
+    );
+  }
+}
+
+/// Idle-state content: version summary plus the inline "what's new" section.
+///
+/// The fixed width is required: [AlertDialog] measures the intrinsic width of
+/// its content, which would otherwise descend into the shrink-wrapping
+/// markdown viewport and throw. A tight width constraint short-circuits that
+/// measurement (same pattern as `AnnouncementDialog`).
+class _UpdateIdleContent extends ConsumerWidget {
+  const _UpdateIdleContent({required this.release});
+
+  final RemoteAppRelease release;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = context.theme;
+
+    return SizedBox(
+      width: 420,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(context.l10n.appReleaseUpdateDialogBody),
+          const SizedBox(height: 12),
+          _UpdateVersionSummary(release: release),
+          const SizedBox(height: 16),
+          Text(
+            context.l10n.appReleaseUpdateWhatsNew,
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Flexible(child: _UpdateReleaseNotes(release: release)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Renders the release note matching the new version, loading its markdown
+/// body on demand, with a shortcut to the full release-notes page.
+class _UpdateReleaseNotes extends ConsumerWidget {
+  const _UpdateReleaseNotes({required this.release});
+
+  final RemoteAppRelease release;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = context.theme;
+    final noteAsync = ref.watch(appReleaseNoteProvider(release.version));
+
+    final loading = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox(width: 8),
+          Text(context.l10n.appReleaseUpdateNotesLoading, style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+
+    final unavailable = Text(
+      context.l10n.appReleaseUpdateNotesUnavailable,
+      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+    );
+
+    return noteAsync.when(
+      loading: () => loading,
+      error: (_, _) => unavailable,
+      data: (record) {
+        if (record == null) return unavailable;
+
+        final fallbackText = record.summary.isNotEmpty ? record.summary : null;
+        final bodyAsync = record.bodyHash.isNotEmpty
+            ? ref.watch(announcementBodyProvider(record.bodyHash))
+            : null;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Flexible(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: bodyAsync == null
+                    ? (fallbackText != null
+                          ? SingleChildScrollView(
+                              child: Text(fallbackText, style: theme.textTheme.bodySmall),
+                            )
+                          : unavailable)
+                    : bodyAsync.when(
+                        loading: () => loading,
+                        error: (_, _) => fallbackText != null
+                            ? SingleChildScrollView(
+                                child: Text(fallbackText, style: theme.textTheme.bodySmall),
+                              )
+                            : unavailable,
+                        data: (body) {
+                          if (body == null || body.isEmpty) {
+                            return fallbackText != null
+                                ? SingleChildScrollView(
+                                    child: Text(fallbackText, style: theme.textTheme.bodySmall),
+                                  )
+                                : unavailable;
+                          }
+                          return SingleChildScrollView(
+                            child: MarkdownWidget(
+                              data: body,
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              config: markdownDarkConfig,
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  unawaited(context.router.push(AnnouncementFeedRoute(initialRecordId: record.id)));
+                },
+                child: Text(context.l10n.appReleaseUpdateViewFullNotes),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
