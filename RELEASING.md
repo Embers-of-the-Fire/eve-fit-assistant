@@ -187,8 +187,9 @@ Operational notes:
 - Android release signing: real app releases sign the APK with the EFA release
   key. `_release.yml` decodes `APP_KEYSTORE` (base64) into a runner-temp file
   and passes it plus the passwords/alias to Gradle as `EFA_*` environment
-  variables (`android/app/build.gradle.kts` falls back to debug signing when
-  they are absent, so test mode and local builds are unaffected). After the
+   variables (`android/app/build.gradle.kts` fails the build when only some of
+   them are set, and falls back to debug signing only when all are absent, so
+   test mode and local builds are unaffected). After the
   build the workflow runs `./x ci release verify-signing`, which checks every
   APK's certificate SHA-256 against the `APP_KEY_SHA256` variable and aborts
   before publish on mismatch. The
