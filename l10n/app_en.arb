@@ -675,48 +675,13 @@
   "checkoutHistoryButton": "View history",
   "checkoutHistoryPageTitle": "Checkout History",
   "checkoutHistoryPageTitleName": "{name} — History",
-  "@checkoutHistoryPageTitleName": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "checkoutHistoryNotFound": "Checkout not found.",
   "checkoutHistoryBack": "Back",
   "checkoutHistoryEmpty": "No history recorded for this checkout yet.",
   "checkoutHistoryHeaderServer": "Server: {serverId}",
-  "@checkoutHistoryHeaderServer": {
-    "placeholders": {
-      "serverId": {
-        "type": "String"
-      }
-    }
-  },
   "checkoutHistoryHeaderChannel": "Channel: {channel}",
-  "@checkoutHistoryHeaderChannel": {
-    "placeholders": {
-      "channel": {
-        "type": "String"
-      }
-    }
-  },
   "checkoutHistoryHeaderCurrentHash": "Current snapshot: {hash}",
-  "@checkoutHistoryHeaderCurrentHash": {
-    "placeholders": {
-      "hash": {
-        "type": "String"
-      }
-    }
-  },
   "checkoutHistoryHeaderTransitionCount": "{count} transitions",
-  "@checkoutHistoryHeaderTransitionCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "checkoutHistoryRegion": "Region",
   "checkoutHistorySync": "Sync",
   "checkoutHistoryBranch": "Branch",
@@ -727,13 +692,6 @@
   "checkoutHistoryAuthor": "Author",
   "checkoutHistoryDescription": "Description",
   "checkoutHistoryResourceCount": "{count} resources",
-  "@checkoutHistoryResourceCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "checkoutHistoryResourceCountLabel": "Resources",
   "checkoutHistoryCreatedAt": "Created",
   "checkoutHistoryMetaUnavailable": "Metadata unavailable",
@@ -741,41 +699,11 @@
   "checkoutHistoryInitialBadge": "initial",
   "checkoutHistoryInitialFrom": "creation",
   "checkoutHistoryRowSemantic": "Transition {ordinal}, from {fromHash} to {toHash}, recorded at {timestamp}",
-  "@checkoutHistoryRowSemantic": {
-    "placeholders": {
-      "ordinal": {
-        "type": "int"
-      },
-      "fromHash": {
-        "type": "String"
-      },
-      "toHash": {
-        "type": "String"
-      },
-      "timestamp": {
-        "type": "String"
-      }
-    }
-  },
   "checkoutHistoryRevertTooltip": "Revert to this snapshot",
   "checkoutHistoryRevertTitle": "Revert checkout?",
   "checkoutHistoryRevertConfirm": "Revert to snapshot {hash}? The checkout will switch to this previously downloaded version.",
-  "@checkoutHistoryRevertConfirm": {
-    "placeholders": {
-      "hash": {
-        "type": "String"
-      }
-    }
-  },
   "checkoutHistoryRevertSuccess": "Checkout reverted",
   "checkoutHistoryRevertFailed": "Revert failed: {message}",
-  "@checkoutHistoryRevertFailed": {
-    "placeholders": {
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "migrationFailedError": "Migration failed: {message}",
   "migrationRequiredTitle": "Data Migration Required",
   "migrationRequiredDescription": "This version uses a new data storage format. Your existing fits and characters will be migrated. Legacy data will be cleaned up.",
@@ -791,7 +719,6 @@
   "fallbackTypeName": "Type {typeId}",
   "fallbackAttributeName": "Attribute {attributeId}",
   "appSettingsPageRemoteContentUrlHint": "https://updates.example.com/",
-  "@@_WELCOME": {},
   "welcomeTitle": "Welcome to EFA",
   "welcomeInitializeButton": "Initialize",
   "welcomeSkipButton": "Skip",
@@ -832,75 +759,15 @@
   "versionPageUpdateAvailable": "v{version} Available",
   "versionPageNotApplicable": "N/A",
   "versionPageBuildLabel": "Build {buildNumber}",
-  "@versionPageBuildLabel": {
-    "placeholders": {
-      "buildNumber": {
-        "type": "String"
-      }
-    }
-  },
   "versionPageVersionWithBuild": "v{version} (Build {buildNumber})",
-  "@versionPageVersionWithBuild": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      },
-      "buildNumber": {
-        "type": "String"
-      }
-    }
-  },
   "dataUpdateTileUpdateAllTitle": "Game data",
   "dataUpdateTileUpdateAllSubtitle": "Tap to check all checkouts",
   "dataUpdateDialogConfirmAllTitle": "Update all checkouts?",
   "dataUpdateDialogConfirmAllBody": "Update all {count} checkouts? Only changed files will be downloaded.",
-  "@dataUpdateDialogConfirmAllBody": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "dataUpdateDialogOverallProgress": "{current}/{total} checkouts",
-  "@dataUpdateDialogOverallProgress": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "dataUpdateDialogCheckoutProgress": "{checkoutId}: {count}/{total} files",
-  "@dataUpdateDialogCheckoutProgress": {
-    "placeholders": {
-      "checkoutId": {
-        "type": "String"
-      },
-      "count": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "dataUpdateDialogSuccessAllTitle": "Update complete",
   "dataUpdateDialogSuccessAllBody": "{success} updated, {skipped} skipped, {failed} failed.",
-  "@dataUpdateDialogSuccessAllBody": {
-    "placeholders": {
-      "success": {
-        "type": "int"
-      },
-      "skipped": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  },
   "dataUpdateDialogFailureAllTitle": "Update failed",
   "dataUpdateDialogFailureAllBody": "Could not update all checkouts.",
   "checkoutUpdateButton": "Update",

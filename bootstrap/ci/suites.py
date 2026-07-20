@@ -50,6 +50,14 @@ SUITE_DEFINITIONS = [
         ],
     },
     {
+        "suite": "l10n",
+        "shell": "python",
+        "lint_command": "uv run x.py ci lint --lang l10n",
+        "command": "true",
+        "codegen_command": "true",
+        "patterns": ["l10n.yaml", "l10n/*.arb"],
+    },
+    {
         "suite": "ci",
         "shell": "python",
         "lint_command": "true",
