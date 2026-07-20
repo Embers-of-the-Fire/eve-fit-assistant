@@ -19,13 +19,13 @@ jobs:
     outputs:
       tag: ${{ steps.verify.outputs.tag }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           submodules: true
           persist-credentials: false
 
-      - uses: DeterminateSystems/nix-installer-action@v22
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
@@ -88,8 +88,10 @@ jobs:
             'uv run x.py ci release verify-signing'
 
       - name: Merge release registry
+        env:
+          VERSION: ${{ steps.verify.outputs.version }}
         run: |
-          VERSION="${{ steps.verify.outputs.version }}"
+          # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             "uv run x.py build release --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json"
 
@@ -155,8 +157,10 @@ jobs:
             'uv run x.py remote announce add-release-note'
 
       - name: Stage release snapshot
+        env:
+          VERSION: ${{ steps.verify.outputs.version }}
         run: |
-          VERSION="${{ steps.verify.outputs.version }}"
+          # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             "uv run x.py remote session init testing --schema-root cache/remote"
           nix develop .#python --command bash -c \
@@ -229,6 +233,7 @@ jobs:
           REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
           REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+          COMMITTED: ${{ steps.commit.outputs.committed_hash }}
         run: |
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
@@ -243,15 +248,16 @@ jobs:
               --schema-root cache/remote'
           synced_hash=$(nix develop .#python --command bash -c \
             'uv run python -c "from pathlib import Path; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(\"testing\").generation_hash)"')
-          committed="${{ steps.commit.outputs.committed_hash }}"
-          if [ "$synced_hash" != "$committed" ]; then
-            echo "Remote head verification failed: committed=$committed synced=$synced_hash"
+          if [ "$synced_hash" != "$COMMITTED" ]; then
+            echo "Remote head verification failed: committed=$COMMITTED synced=$synced_hash"
             exit 1
           fi
           echo "Remote head verified: $synced_hash"
 
       - name: Sync and verify remote head (MinIO mock)
         if: inputs.test_mode
+        env:
+          COMMITTED: ${{ steps.commit.outputs.committed_hash }}
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote sync \
@@ -260,16 +266,15 @@ jobs:
               --schema-root cache/remote'
           synced_hash=$(nix develop .#python --command bash -c \
             'uv run python -c "from pathlib import Path; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(\"testing\").generation_hash)"')
-          committed="${{ steps.commit.outputs.committed_hash }}"
-          if [ "$synced_hash" != "$committed" ]; then
-            echo "Remote head verification failed: committed=$committed synced=$synced_hash"
+          if [ "$synced_hash" != "$COMMITTED" ]; then
+            echo "Remote head verification failed: committed=$COMMITTED synced=$synced_hash"
             exit 1
           fi
           echo "Remote head verified: $synced_hash"
 
       - name: Upload APK artifacts
         if: inputs.test_mode
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: apk
           path: cache/releases/apk/**/*.apk
@@ -302,7 +307,7 @@ jobs:
     env:
       TAG: ${{ needs.release.outputs.tag }}
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const tag = process.env.TAG;

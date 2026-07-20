@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import tarfile
 
 from pathlib import Path
@@ -84,13 +85,13 @@ def register_ci_commands(cli_group: click.Group) -> None:
 
     @ci.command("zizmor")
     def ci_zizmor():
-        """Scan GitHub workflow files with zizmor (advisory, never fails)."""
+        """Scan GitHub workflow files with zizmor."""
         zizmor = get_command("zizmor")
-        runtime.execute(
-            [zizmor, "--no-exit-codes", ".github/workflows", ".github/actions"],
-            "ZIZMOR SCAN",
-            live_stdout=True,
-        )
+        cmd = [zizmor]
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            cmd += ["--format", "github"]
+        cmd += [".github/workflows", ".github/actions"]
+        runtime.execute(cmd, "ZIZMOR SCAN", live_stdout=True)
 
     @ci.command("pack-data")
     @click.option(

@@ -19,7 +19,7 @@ jobs:
     outputs:
       skip: ${{ steps.identify.outputs.skip }}
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         id: identify
         with:
           script: |
@@ -53,6 +53,5 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/_release.yml
-    secrets: inherit
     with:
       test_mode: false

@@ -20,7 +20,10 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.repository.fork == false
     uses: ./.github/workflows/_update-raw-data.yml
-    secrets: inherit
+    secrets:
+      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
     with:
       all: true
       no_upload: false
@@ -30,7 +33,10 @@ jobs:
     needs: update
     if: needs.update.outputs.has_updates == 'true'
     uses: ./.github/workflows/release-data-cron.yml
-    secrets: inherit
+    secrets:
+      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
     with:
       test_mode: false
       servers: ${{ needs.update.outputs.matrix }}

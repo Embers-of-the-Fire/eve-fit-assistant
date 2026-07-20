@@ -25,6 +25,5 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/_release.yml
-    secrets: inherit
     with:
       test_mode: true
