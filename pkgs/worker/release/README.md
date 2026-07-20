@@ -4,37 +4,35 @@ Exposes the latest release artifact for each EFA update channel.
 
 ## API
 
-### `GET /releases/artifact`
+### `GET /releases/artifacts`
 
-Returns the current release for a given channel.
+Returns the current release artifact for every channel in the registry.
 
-**Query parameters**
-
-| Param | Type | Description |
-|-------|------|-------------|
-| `channel` | `string` | Channel name (`testing`, `stable`, etc.). Defaults to the registry's `defaultChannel`. |
+No query parameters — the worker reads all channels from `efa/v2/channels/heads/channels.json` in the bound R2 bucket.
 
 **Response `200 OK`**
 
 ```json
 {
   "ok": true,
-  "release": {
-    "id": "efav2-…",
-    "version": "0.1.0",
-    "channel": "testing",
-    "android": {
-      "general": {
-        "identifier": "com.evefitassistant…",
-        "content_hash": "sha256…",
-        "size": 12345678,
-        "download_url": "https://…/efa/v2/assets/blobs/…"
-      },
-      "armv7":  { … },
-      "arm64":  { … },
-      "x64":    { … }
+  "artifacts": {
+    "testing": {
+      "id": "efav2-…",
+      "version": "0.1.0",
+      "android": {
+        "general": {
+          "identifier": "com.evefitassistant…",
+          "content_hash": "sha256…",
+          "size": 12345678,
+          "download_url": "https://…/efa/v2/assets/blobs/…"
+        },
+        "armv7":  { … },
+        "arm64":  { … },
+        "x64":    { … }
+      }
     }
-  }
+  },
+  "channels": ["testing"]
 }
 ```
 
@@ -43,7 +41,9 @@ Returns the current release for a given channel.
 ```json
 {
   "ok": false,
-  "error": "channel 'nonexistent' not found"
+  "artifacts": null,
+  "channels": [],
+  "error": "channel registry not found: …"
 }
 ```
 
