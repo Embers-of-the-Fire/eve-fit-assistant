@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import tarfile
 
 from pathlib import Path
@@ -81,6 +82,16 @@ def register_ci_commands(cli_group: click.Group) -> None:
         """Generate code and auto-format (CI-aware)."""
         run_codegen(lang)
         run_lint(lang, no_check=True, dry_run=False)
+
+    @ci.command("zizmor")
+    def ci_zizmor():
+        """Scan GitHub workflow files with zizmor."""
+        zizmor = get_command("zizmor")
+        cmd = [zizmor]
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            cmd += ["--format", "github"]
+        cmd += [".github/workflows", ".github/actions"]
+        runtime.execute(cmd, "ZIZMOR SCAN", live_stdout=True)
 
     @ci.command("pack-data")
     @click.option(

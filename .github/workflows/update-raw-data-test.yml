@@ -23,7 +23,6 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.repository.fork == false
     uses: ./.github/workflows/_update-raw-data.yml
-    secrets: inherit
     with:
       all: true
       no_upload: true

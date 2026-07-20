@@ -168,6 +168,10 @@
         wrangler
       ];
 
+      ciPackages = with pkgs; [
+        zizmor
+      ];
+
       # --- Shared environment variables ---
       localeEnv = {
         LANG = "C.UTF-8";
@@ -187,6 +191,7 @@
             ++ frbPackages
             ++ jsPackages
             ++ releasePackages
+            ++ ciPackages
             ++ [
               androidSdk
               androidComposition.platform-tools
@@ -306,6 +311,18 @@
         # Minimal JS/TS shell: linting, formatting, and type checks
         js = pkgs.mkShell {
           packages = pythonPackages ++ jsPackages;
+
+          inherit (localeEnv) LANG LC_ALL;
+          UV_PYTHON = "${python3}/bin/python3";
+          UV_PYTHON_DOWNLOADS = "never";
+
+          shellHook = ''
+            export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
+        };
+        # Minimal CI shell: GitHub workflow security scanning
+        ci = pkgs.mkShell {
+          packages = pythonPackages ++ ciPackages;
 
           inherit (localeEnv) LANG LC_ALL;
           UV_PYTHON = "${python3}/bin/python3";
