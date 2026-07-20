@@ -164,7 +164,7 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 			</div>
 		{:else if downloadState.state === "loaded"}
 			<div class="mb-10 flex items-center justify-center gap-2">
-				<span class="text-sm text-eve-text-muted">{t('download.channel')}</span>
+				<label for="channel-select" class="text-sm text-eve-text-muted">{t('download.channel')}</label>
 				<select
 					id="channel-select"
 					onchange={onChannelChange}
