@@ -8,7 +8,10 @@ bucket_name = "efa-test"
 remote = true
 
 [build]
-command = "(command -v worker-build >/dev/null 2>&1 || cargo install -q 'worker-build@^0.8') && worker-build --release"
+# Make sure you have configured the Git integration's build commands
+# to call install-build.sh.
+# Till 2026.07 cloudflare does not offer cargo environment barely.
+command = "worker-build --release"
 
 [vars]
 BLOB_ORIGIN = "https://test.storage.efa-tech.dev"
