@@ -3,6 +3,7 @@ export type TranslationKey = keyof typeof en;
 
 export const en = {
     "nav.features": "Features",
+    "nav.download": "Download",
     "nav.about": "About",
     "nav.report": "Report",
     "nav.get_started": "Get Started",
@@ -147,10 +148,42 @@ export const en = {
     "report.form.error.network": "Network error — please check your connection and try again.",
 
     "report.form.back": "Back to Reports",
+
+    "download.title": "EVE Fit Assistant — Download & Installation",
+    "download.meta_description":
+        "Download the latest EVE Fit Assistant APK for Android, view all releases on GitHub, or build from source.",
+    "download.heading": "Get EVE Fit Assistant",
+    "download.subtitle": "Choose the installation method that works best for you.",
+    "download.android.title": "Android APK",
+    "download.android.desc":
+        "Native Android app built with Flutter and a Rust fitting engine. Requires Android 8.0+ (API 26).",
+    "download.android.apk": "Download Latest APK",
+    "download.android.requirements": "Android 8.0+ required",
+    "download.all_releases": "View All Releases on GitHub →",
+    "download.source.title": "Build from Source",
+    "download.source.desc":
+        "Clone the repository and follow the build instructions. Requires Flutter, Rust, and Nix.",
+    "download.source.github": "View on GitHub",
+    "download.ios.title": "iOS Build",
+    "download.ios.desc":
+        "iOS is supported in the same Flutter codebase. Build from source with Xcode. A TestFlight release may be available in the future.",
+    "download.ios.build": "Build with Xcode",
+    "download.loading": "Checking for latest release...",
+    "download.no_release": "No releases available yet",
+    "download.no_release_desc":
+        "The first release hasn't been published yet. Watch the repository for updates.",
+    "download.error": "Unable to load release info",
+    "download.error_desc":
+        "The release server could not be reached. You can check for releases directly on GitHub.",
+    "download.error_github": "View Releases on GitHub",
+    "download.channel": "Channel:",
+    "download.recommended": "Recommended",
+    "download.detected": "Detected:",
 };
 
 export const zh: Record<TranslationKey, string> = {
     "nav.features": "功能特性",
+    "nav.download": "下载",
     "nav.about": "关于",
     "nav.report": "反馈",
     "nav.get_started": "开始使用",
@@ -288,4 +321,32 @@ export const zh: Record<TranslationKey, string> = {
     "report.form.error.network": "网络错误 — 请检查网络连接后重试。",
 
     "report.form.back": "返回反馈",
+
+    "download.title": "EVE Fit Assistant — 下载与安装",
+    "download.meta_description":
+        "下载最新的 EVE Fit Assistant APK（Android），在 GitHub 上查看所有版本，或从源码构建。",
+    "download.heading": "获取 EVE Fit Assistant",
+    "download.subtitle": "选择最适合你的安装方式。",
+    "download.android.title": "Android APK",
+    "download.android.desc":
+        "基于 Flutter 和 Rust 装配引擎的原生 Android 应用，需要 Android 8.0+（API 26）。",
+    "download.android.apk": "下载最新 APK",
+    "download.android.requirements": "需要 Android 8.0+",
+    "download.all_releases": "在 GitHub 上查看所有版本 →",
+    "download.source.title": "从源码构建",
+    "download.source.desc": "克隆仓库并按照构建说明操作。需要 Flutter、Rust 和 Nix。",
+    "download.source.github": "在 GitHub 上查看",
+    "download.ios.title": "iOS 构建",
+    "download.ios.desc":
+        "同一 Flutter 代码库支持 iOS。使用 Xcode 从源码构建。未来可能会提供 TestFlight 版本。",
+    "download.ios.build": "使用 Xcode 构建",
+    "download.loading": "正在检查最新版本...",
+    "download.no_release": "暂无可用版本",
+    "download.no_release_desc": "首个版本尚未发布。关注仓库以获取更新。",
+    "download.error": "无法加载版本信息",
+    "download.error_desc": "无法连接版本服务器。你可以直接在 GitHub 上查看版本。",
+    "download.error_github": "在 GitHub 上查看版本",
+    "download.channel": "频道：",
+    "download.recommended": "推荐",
+    "download.detected": "检测到：",
 };
