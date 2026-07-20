@@ -32,20 +32,14 @@ function variantLabel(key: string): string {
     return variantLabels[key] ?? key;
 }
 
-function recommendedVariant(
-    arch: string | undefined,
-    bitness: string | undefined,
-): string {
+function recommendedVariant(arch: string | undefined, bitness: string | undefined): string {
     if (arch === "arm" && bitness === "64") return "arm64";
     if (arch === "arm" && bitness === "32") return "armv7";
     if (arch === "x86" || arch === "x86_64") return "x64";
     return "general";
 }
 
-function archDisplay(
-    arch: string | undefined,
-    bitness: string | undefined,
-): string {
+function archDisplay(arch: string | undefined, bitness: string | undefined): string {
     if (arch === "arm" && bitness === "64") return "arm64-v8a";
     if (arch === "arm" && bitness === "32") return "armeabi-v7a";
     if (arch === "x86") return `x86 (${bitness ?? "?"}-bit)`;
@@ -58,8 +52,11 @@ let uaBitness = $state<string | undefined>();
 
 $effect(() => {
     if (typeof navigator === "undefined" || !("userAgentData" in navigator)) return;
-    const uad: { getHighEntropyValues: (hints: string[]) => Promise<{ architecture?: string; bitness?: string }> } =
-        (navigator as { userAgentData: unknown }).userAgentData as typeof uad;
+    const uad: {
+        getHighEntropyValues: (
+            hints: string[],
+        ) => Promise<{ architecture?: string; bitness?: string }>;
+    } = (navigator as { userAgentData: unknown }).userAgentData as typeof uad;
     uad.getHighEntropyValues(["architecture", "bitness"]).then((v) => {
         uaArch = v.architecture;
         uaBitness = v.bitness;
