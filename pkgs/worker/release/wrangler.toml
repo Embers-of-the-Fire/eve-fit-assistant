@@ -8,7 +8,7 @@ bucket_name = "efa-test"
 remote = true
 
 [build]
-command = "worker-build --release --no-opt"
+command = "(command -v worker-build >/dev/null 2>&1 || cargo install -q 'worker-build@^0.8') && worker-build --release"
 
 [vars]
 BLOB_ORIGIN = "https://test.storage.efa-tech.dev"
