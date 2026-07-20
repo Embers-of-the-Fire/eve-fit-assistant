@@ -1,0 +1,21 @@
+[package]
+name = "release"
+version = "0.1.0"
+edition = "2021"
+authors = ["Embers-of-the-Fire <stellarishs@163.com>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0.104"
+worker = { version = "0.8.5" }
+worker-macros = { version = "0.8.5" }
+prost = "0.14.4"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha2 = "0.11.0"
+
+[build-dependencies]
+anyhow = "1.0.104"
+prost-build = "0.14.4"

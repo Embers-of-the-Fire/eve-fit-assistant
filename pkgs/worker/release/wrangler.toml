@@ -1,0 +1,18 @@
+name = "efa-release-worker"
+main = "build/index.js"
+compatibility_date = "2026-05-20"
+
+[[r2_buckets]]
+binding = "RELEASE_BUCKET"
+bucket_name = "efa-test"
+remote = true
+
+[build]
+command = "worker-build --release --no-opt"
+
+[vars]
+BLOB_ORIGIN = "https://test.storage.efa-tech.dev"
+
+[[routes]]
+pattern = "api.efa-tech.dev/releases/*"
+zone_name = "efa-tech.dev"
