@@ -98,6 +98,7 @@ def register_github_release_command(ci_group: click.Group) -> None:
 
         with tempfile.NamedTemporaryFile(
             mode="w",
+            encoding="utf-8",
             suffix=".md",
             prefix=f"github_release_{tag}_",
             delete=False,
