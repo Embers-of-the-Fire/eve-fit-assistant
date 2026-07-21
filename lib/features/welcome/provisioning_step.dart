@@ -173,6 +173,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
 
     if (_cancelled) return;
 
+    final cachedCount = downloaded;
     final unionTotal = unionEntries.length;
 
     // Download blobs with sliding-window concurrency.
@@ -203,7 +204,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
           if (blobResult.isRight()) {
             try {
               await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
-              downloaded++;  
+              downloaded++;
               bytesDownloaded += blobSize;
             } on FileSystemException {
               failedBlobs.add(entry.resourceId);
@@ -216,7 +217,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now - lastEmitMs >= throttleMs || downloaded >= unionTotal) {
             final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
-            final fps = elapsed > 0 ? (downloaded + 0).toDouble() / elapsed : 0.0;
+            final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
             final bps = elapsed > 0 ? bytesDownloaded.toDouble() / elapsed : 0.0;
             _emit(
               MultiProvisionerDownloading(
@@ -242,7 +243,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     // Final emit after all workers finish.
     if (toDownload.isNotEmpty) {
       final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
-      final fps = elapsed > 0 ? downloaded.toDouble() / elapsed : 0.0;
+      final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
       final bps = elapsed > 0 ? bytesDownloaded.toDouble() / elapsed : 0.0;
       _emit(
         MultiProvisionerDownloading(
