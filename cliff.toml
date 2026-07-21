@@ -10,13 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 body = """\
 ## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
 {% for group, commits in commits | group_by(attribute="group") %}
-{%- if group != "<!-- skip -->" %}
 ### {{ group }}
 {% for commit in commits %}
 - {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message }}
-{%- endfor -%}
-{% endif %}
+{%- endfor %}
 {% endfor %}
+
 """
 footer = ""
 trim = true
@@ -28,14 +27,20 @@ tag_pattern = "v[0-9]*"
 skip_tags = "alpha-v.*"
 
 commit_parsers = [
+  { message = "^fixup", skip = true },
+  { message = "^revert", skip = true },
+  { message = "^test", skip = true },
+  { message = "^.+\\(ci\\)", skip = true },
+  { message = "^.+\\(cli\\)", skip = true },
+  { message = "^.+\\(test\\)", skip = true },
+  { message = "^ci", skip = true },
+  { message = "^style", skip = true },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "update codeart", skip = true },
   { message = "^feat", group = "Added" },
   { message = "^fix", group = "Fixed" },
   { message = "^perf", group = "Changed" },
-  { message = "^refactor", group = "Changed" },
   { message = "^docs", group = "Documentation" },
   { message = "^chore\\(deps\\)", group = "Dependencies" },
   { message = "^chore", group = "Chore" },
-  { message = "^test", group = "<!-- skip -->" },
-  { message = "^ci", group = "<!-- skip -->" },
-  { message = "^style", group = "<!-- skip -->" },
 ]
