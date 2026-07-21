@@ -11,7 +11,7 @@ remote = true
 # Make sure you have configured the Git integration's build commands
 # to call install-build.sh.
 # Till 2026.07 cloudflare does not offer cargo environment barely.
-command = "export PATH=\"$HOME/.cargo/bin:$PATH\" && worker-build --release"
+command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-build --release"
 
 [vars]
 BLOB_ORIGIN = "https://test.storage.efa-tech.dev"

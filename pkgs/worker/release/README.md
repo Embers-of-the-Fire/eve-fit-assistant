@@ -56,17 +56,3 @@ The worker does not use HTTP status codes for errors; always check the `ok` fiel
 3. Fetches the **`GenerationPointer`** protobuf at `efa/v2/channels/refs/{hash}/releases.pb2` to get the snapshot hash.
 4. Fetches the **`ReleaseIndex`** protobuf at `efa/v2/assets/releases/{snapshot}/releases.pb2`.
 5. Builds signed download URLs pointing to `{origin}/efa/v2/assets/blobs/{prefix}/{hash}/{blob}`.
-
-## Local dev
-
-```bash
-nix-shell shell.nix --run "wrangler dev"
-```
-
-Requires the R2 bucket and `BLOB_ORIGIN` variable to be configured in `wrangler.toml`.
-
-## Build
-
-```bash
-nix-shell shell.nix --run "worker-build --release --no-opt"
-```
