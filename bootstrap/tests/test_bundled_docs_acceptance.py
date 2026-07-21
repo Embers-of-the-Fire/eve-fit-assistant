@@ -19,9 +19,7 @@ if TYPE_CHECKING:
 
 
 _OLD_GENERAL_IDS: Set[str] = {
-    "announcement-welcome",
-    "information-alpha-test-scope",
-    "alpha-bug-report",
+    "open-preview-note",
 }
 
 _OLD_VERSION_IDS: Set[str] = {
