@@ -1,0 +1,21 @@
+name = "efa-release-worker"
+main = "build/index.js"
+compatibility_date = "2026-05-20"
+
+[[r2_buckets]]
+binding = "RELEASE_BUCKET"
+bucket_name = "efa-test"
+remote = true
+
+[build]
+# Make sure you have configured the Git integration's build commands
+# to call install-build.sh.
+# Till 2026.07 cloudflare does not offer cargo environment barely.
+command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-build --release"
+
+[vars]
+BLOB_ORIGIN = "https://test.storage.efa-tech.dev"
+
+[[routes]]
+pattern = "api.efa-tech.dev/releases/*"
+zone_name = "efa-tech.dev"
