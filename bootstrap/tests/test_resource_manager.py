@@ -236,7 +236,7 @@ class TestResourceManager:
         def fake_remote_exists(remote_path: str) -> bool:
             return remote_path in existing
 
-        def fake_upload_file(src: Path, remote_path: str) -> None:
+        def fake_upload_file(src: Path, remote_path: str, **kwargs: object) -> None:
             nonlocal put_count
             with put_lock:
                 put_count += 1
