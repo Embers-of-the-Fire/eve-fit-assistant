@@ -16,6 +16,7 @@ from bootstrap.ci.codegen import run_codegen
 from bootstrap.ci.diagnostics import register_ci_diagnostics_commands
 from bootstrap.ci.lint import run_lint
 from bootstrap.ci.release import register_ci_release_commands
+from bootstrap.ci.release_github import register_github_release_command
 from bootstrap.ci.suites import SUITE_DEFINITIONS
 from bootstrap.ci.suites import calculate_ci_matrix
 from bootstrap.cli import runtime
@@ -33,6 +34,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
         """CI/CD helper commands."""
 
     register_ci_release_commands(ci)
+    register_github_release_command(ci)
     register_ci_diagnostics_commands(ci)
 
     @ci.command("matrix")
