@@ -4,7 +4,7 @@ compatibility_date = "2026-05-20"
 
 [[r2_buckets]]
 binding = "RELEASE_BUCKET"
-bucket_name = "efa-test"
+bucket_name = "efa"
 remote = true
 
 [build]
@@ -14,7 +14,7 @@ remote = true
 command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-build --release"
 
 [vars]
-BLOB_ORIGIN = "https://test.storage.efa-tech.dev"
+BLOB_ORIGIN = "https://prod.storage.efa-tech.dev"
 
 [[routes]]
 pattern = "api.efa-tech.dev/releases/*"
