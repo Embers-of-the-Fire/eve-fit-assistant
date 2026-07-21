@@ -20,10 +20,6 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.repository.fork == false
     uses: ./.github/workflows/_update-raw-data.yml
-    secrets:
-      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
-      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
-      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
     with:
       all: true
       no_upload: false
@@ -33,10 +29,10 @@ jobs:
     needs: update
     if: needs.update.outputs.has_updates == 'true'
     uses: ./.github/workflows/release-data-cron.yml
-    secrets:
-      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
-      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
-      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+    # CI_STORAGE_* are repo-level read-only; _release-data.yml's build job
+    # needs them.  Remote/ write-scoped credentials come from per-job
+    # environments downstream and are not available here.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       test_mode: false
       servers: ${{ needs.update.outputs.matrix }}

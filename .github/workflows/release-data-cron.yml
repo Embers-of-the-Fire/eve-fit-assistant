@@ -14,16 +14,6 @@ on:
         description: "JSON array of server IDs to rebuild (default: all)"
         type: string
         default: "[]"
-    secrets:
-      CI_STORAGE_ENDPOINT:
-        description: "CI storage S3 endpoint"
-        required: false
-      CI_STORAGE_ACCESS_KEY:
-        description: "CI storage access key"
-        required: false
-      CI_STORAGE_SECRET_KEY:
-        description: "CI storage secret key"
-        required: false
   workflow_dispatch:
     inputs:
       test_mode:
@@ -43,10 +33,10 @@ jobs:
   release:
     name: Build and publish
     uses: ./.github/workflows/_release-data.yml
-    secrets:
-      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
-      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
-      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+    # Inherit repo-level CI_STORAGE_* for the build job (no environment).
+    # The publish job gets REMOTE_STORAGE_* from environment: production-data
+    # and does not need them via workflow_call.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       test_mode: ${{ inputs.test_mode }}
       servers: ${{ inputs.servers }}
