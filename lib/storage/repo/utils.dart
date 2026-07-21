@@ -67,3 +67,10 @@ String formatTimestamp(DateTime dt) {
   final s = dt.second.toString().padLeft(2, "0");
   return "$y-$mo-${d}T$h:$mi:${s}Z";
 }
+
+/// Human-readable bandwidth (B/s, KiB/s, MiB/s).
+String formatBytesPerSec(double bytesPerSec) {
+  if (bytesPerSec < 1024) return "${bytesPerSec.toStringAsFixed(0)} B/s";
+  if (bytesPerSec < 1024 * 1024) return "${(bytesPerSec / 1024).toStringAsFixed(1)} KiB/s";
+  return "${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MiB/s";
+}

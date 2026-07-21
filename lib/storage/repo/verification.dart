@@ -1,9 +1,12 @@
+import "dart:io";
+
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
+import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
@@ -153,15 +156,26 @@ class VerificationService {
     final issues = verify();
     final unresolved = <VerificationIssue>[];
 
+    final toRepair =
+        <
+          ({
+            String resourceId,
+            String contentHash,
+            String identHash,
+            String blobPath,
+            String snapshotHash,
+            String checkoutId,
+          })
+        >[];
+
     for (final issue in issues) {
       if (issue is VerificationMissingFiles) {
+        final ri = assetStore.readResourceIndexSync(issue.snapshotHash);
+        if (ri.isNone()) {
+          unresolved.add(issue);
+          continue;
+        }
         for (final resourceId in issue.missingIdents) {
-          // We need the content hash from the ResourceIndex to fetch
-          final ri = assetStore.readResourceIndexSync(issue.snapshotHash);
-          if (ri.isNone()) {
-            unresolved.add(issue);
-            continue;
-          }
           final entry = ri
               .toNullable()!
               .entries
@@ -172,18 +186,64 @@ class VerificationService {
             continue;
           }
           final ihash = RepoHash.hashIdent(resourceId);
-          final blobResult = await remoteCatalogService.fetchBlob(ihash, entry.contentHash);
-          if (blobResult.isRight()) {
-            assetStore.writeBlobSync(ihash, blobResult.getRight().toNullable()!);
-          } else {
-            unresolved.add(issue);
-          }
+          toRepair.add((
+            resourceId: resourceId,
+            contentHash: entry.contentHash,
+            identHash: ihash,
+            blobPath: RepoPaths.blobPath(ihash, entry.contentHash),
+            snapshotHash: issue.snapshotHash,
+            checkoutId: issue.checkoutId,
+          ));
         }
       } else if (issue is VerificationNoMeta) {
         unresolved.add(issue);
       } else if (issue is VerificationPartialDownload) {
         unresolved.add(issue);
       }
+    }
+
+    const blobConcurrency = 64;
+    var nextIdx = 0;
+
+    if (toRepair.isNotEmpty) {
+      assetStore.ensureBlobIdentDirs(toRepair.map((r) => r.identHash));
+
+      Future<void> repairNext() async {
+        int idx;
+        while ((idx = nextIdx++) < toRepair.length) {
+          final item = toRepair[idx];
+          final blobResult = await remoteCatalogService.fetchBlob(item.identHash, item.contentHash);
+          if (blobResult.isRight()) {
+            try {
+              await assetStore.writeBlobUncheckedAt(
+                item.blobPath,
+                blobResult.getRight().toNullable()!,
+              );
+            } on FileSystemException {
+              unresolved.add(
+                VerificationMissingFiles(
+                  checkoutId: item.checkoutId,
+                  snapshotHash: item.snapshotHash,
+                  missingIdents: [item.resourceId].toIList(),
+                ),
+              );
+            }
+          } else {
+            unresolved.add(
+              VerificationMissingFiles(
+                checkoutId: item.checkoutId,
+                snapshotHash: item.snapshotHash,
+                missingIdents: [item.resourceId].toIList(),
+              ),
+            );
+          }
+        }
+      }
+
+      final tasks = <Future<void>>[
+        for (var i = 0; i < blobConcurrency.clamp(1, toRepair.length); i++) repairNext(),
+      ];
+      await Future.wait(tasks);
     }
 
     return unresolved.toIList();
