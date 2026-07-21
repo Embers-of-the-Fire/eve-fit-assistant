@@ -22,7 +22,7 @@ if (releaseSigningConfigured in 1 until releaseSigningVars.size) {
 }
 
 android {
-    namespace = "net.efa_tech.eve_fit_assistant"
+    namespace = "dev.efa_tech.eve_fit_assistant"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -36,8 +36,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "net.efa_tech.eve_fit_assistant"
+        applicationId = "dev.efa_tech.eve_fit_assistant"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

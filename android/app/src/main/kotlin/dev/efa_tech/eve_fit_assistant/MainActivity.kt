@@ -1,4 +1,4 @@
-package net.efa_tech.eve_fit_assistant
+package dev.efa_tech.eve_fit_assistant
 
 import android.content.Intent
 import android.net.Uri
@@ -86,6 +86,6 @@ class MainActivity : FlutterActivity() {
     }
 
     companion object {
-        private const val CHANNEL_NAME = "net.efa_tech.eve_fit_assistant/installer"
+        private const val CHANNEL_NAME = "dev.efa_tech.eve_fit_assistant/installer"
     }
 }
