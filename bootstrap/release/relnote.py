@@ -76,17 +76,20 @@ def split_csv(value: str | None) -> list[str] | None:
     return [part.strip() for part in value.split(",") if part.strip()]
 
 
-def _run_cliff(tag: str) -> str:
+def _run_cliff(tag: str, from_ref: str | None = None) -> str:
     cmd = [
         get_command("git-cliff"),
         "--config",
         str(CLIFF_CONFIG),
-        "--unreleased",
         "--tag",
         tag,
         "--strip",
         "header",
     ]
+    if from_ref is not None:
+        cmd.append(f"{from_ref}..HEAD")
+    else:
+        cmd.append("--unreleased")
     # CWE-78 / S603 are false positives here: cmd is a list passed without
     # shell=True, and tag originates from a Pydantic-validated ProjectVersion,
     # so there is no shell-interpretation vector.
@@ -113,11 +116,12 @@ def _build_spec(
     published_at: str | None,
     channels: list[str] | None,
     platforms: list[str] | None,
+    from_ref: str | None = None,
 ) -> dict[str, object]:
     app_version = version.render_semver()
     entry_id = version_dir_to_entry_id(app_version)
     when = published_at or dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return {
+    spec: dict[str, object] = {
         "id": entry_id,
         "publishedAt": when,
         "tags": _DEFAULT_TAGS,
@@ -125,6 +129,9 @@ def _build_spec(
         "platforms": platforms if platforms is not None else _DEFAULT_PLATFORMS,
         "appVersion": app_version,
     }
+    if from_ref is not None:
+        spec["fromRef"] = from_ref
+    return spec
 
 
 def create_raw_release_note(
@@ -135,6 +142,7 @@ def create_raw_release_note(
     published_at: str | None = None,
     channels: list[str] | None = None,
     platforms: list[str] | None = None,
+    from_ref: str | None = None,
 ) -> tuple[Path, str]:
     """Create a raw release note directory under docs/changelog.
 
@@ -164,12 +172,13 @@ def create_raw_release_note(
         published_at=published_at,
         channels=channels,
         platforms=platforms,
+        from_ref=from_ref,
     )
     spec_path = directory / "spec.yaml"
     changelog_path = directory / "changelog.md"
 
     tag = version.render_tag()
-    changelog_body = _run_cliff(tag)
+    changelog_body = _run_cliff(tag, from_ref=from_ref)
 
     spec_path.write_text(
         yaml.safe_dump(spec, allow_unicode=True, sort_keys=False),

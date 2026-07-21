@@ -174,3 +174,66 @@ def test_create_raw_release_note_dry_run_force_preserves_existing(
 def test_version_dir_to_entry_id() -> None:
     assert relnote.version_dir_to_entry_id("0.2.0") == "version-0-2-0"
     assert relnote.version_dir_to_entry_id("0.2.0-beta.1") == "version-0-2-0-beta-1"
+
+
+def test_run_cliff_passes_from_ref_as_range() -> None:
+    captured_cmd: list[str] = []
+
+    def _mock_run(cmd, **_kw):
+        captured_cmd.extend(cmd)
+        import subprocess
+
+        result = subprocess.CompletedProcess(cmd, 0, "## [v0.3.0]\n", "")
+        return result
+
+    with (
+        patch("bootstrap.release.relnote.get_command", return_value="/usr/bin/git-cliff"),
+        patch("bootstrap.release.relnote.subprocess.run", side_effect=_mock_run),
+    ):
+        result = relnote._run_cliff("v0.3.0", from_ref="v0.2.0")
+
+    assert captured_cmd[-1] == "v0.2.0..HEAD"
+    assert "--unreleased" not in captured_cmd
+    assert result == "## [v0.3.0]\n"
+
+
+def test_create_raw_release_note_with_from_ref(
+    tmp_path: Path,
+    version: ProjectVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    stub = _write_cliff_stub(tmp_path)
+
+    with (
+        patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+        patch("bootstrap.release.relnote.get_command", return_value=str(stub)),
+    ):
+        directory, _ = relnote.create_raw_release_note(
+            version,
+            from_ref="v0.1.0",
+        )
+
+    spec = yaml.safe_load(
+        (directory / "spec.yaml").read_text(encoding="utf-8"),
+    )
+    assert spec["fromRef"] == "v0.1.0"
+    assert spec["appVersion"] == "0.2.0-beta.1"
+    assert directory.is_dir()
+
+
+def test_create_raw_release_note_with_from_ref_dry_run(
+    version: ProjectVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    directory = isolated_changelog_root / "0-2-0-beta-1"
+
+    with patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root):
+        returned_directory, entry_id = relnote.create_raw_release_note(
+            version,
+            dry_run=True,
+            from_ref="v0.1.0",
+        )
+
+    assert returned_directory == directory
+    assert entry_id == "version-0-2-0-beta-1"
+    assert not directory.exists()

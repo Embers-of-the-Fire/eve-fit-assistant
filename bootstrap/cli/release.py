@@ -55,6 +55,12 @@ def register_release_commands(cli_group: click.Group) -> None:
         default=False,
         help="Show the target directory without writing files.",
     )
+    @click.option(
+        "--from-ref",
+        default=None,
+        help="Base git ref (tag or commit hash) to compare against. "
+        "If omitted, uses the last tag matching version pattern.",
+    )
     def release_relnote(
         version_override: str | None,
         published_at: str | None,
@@ -62,6 +68,7 @@ def register_release_commands(cli_group: click.Group) -> None:
         platforms: str | None,
         force: bool,
         dry_run: bool,
+        from_ref: str | None,
     ):
         """Create a raw release note in docs/changelog.
 
@@ -84,6 +91,7 @@ def register_release_commands(cli_group: click.Group) -> None:
             published_at=published_at,
             channels=channels_list,
             platforms=platforms_list,
+            from_ref=from_ref,
         )
 
         if dry_run:
