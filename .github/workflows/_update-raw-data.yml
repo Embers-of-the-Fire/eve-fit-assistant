@@ -111,6 +111,7 @@ jobs:
         run: uv run x.py ci raw-data setup-py27
 
       - name: Update raw artifacts
+        shell: bash
         env:
           SERVER: ${{ matrix.server }}
         run: uv run x.py ci raw-data update --server "${SERVER}" --no-upload
