@@ -1,6 +1,7 @@
-import "dart:io" show Platform;
+import "dart:io" show HttpClient, Platform;
 
 import "package:dio/dio.dart";
+import "package:dio/io.dart";
 import "package:dio_cache_interceptor/dio_cache_interceptor.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:package_info_plus/package_info_plus.dart";
@@ -62,6 +63,47 @@ Dio createRemoteDio({
   );
 
   dio.interceptors.add(DioCacheInterceptor(options: RemoteCache.options));
+  _configureConnectionPool(dio);
 
   return dio;
+}
+
+/// Creates a [Dio] instance without the HTTP cache interceptor, tuned for
+/// high-throughput blob downloads. Blobs are content-addressed and immutable,
+/// so HTTP caching is unnecessary overhead. Uses aggressive timeouts and a
+/// large connection pool because each blob is a fresh HTTP/1.1 request.
+Dio createBlobDio({
+  Duration connectTimeout = const Duration(seconds: 15),
+  Duration sendTimeout = const Duration(seconds: 30),
+  Duration receiveTimeout = const Duration(seconds: 30),
+}) {
+  final headers = <String, String>{
+    "User-Agent": _efaUserAgent,
+    "Accept-Encoding": "gzip, deflate",
+    "Connection": "keep-alive",
+  };
+
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: connectTimeout,
+      sendTimeout: sendTimeout,
+      receiveTimeout: receiveTimeout,
+      headers: headers,
+    ),
+  );
+
+  _configureConnectionPool(dio);
+
+  return dio;
+}
+
+const _maxConnectionsPerHost = 64;
+const _idleTimeout = Duration(seconds: 60);
+
+void _configureConnectionPool(Dio dio) {
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    createHttpClient: () => HttpClient()
+      ..maxConnectionsPerHost = _maxConnectionsPerHost
+      ..idleTimeout = _idleTimeout,
+  );
 }

@@ -29,12 +29,18 @@ class ProvisionerDownloading extends ProvisionerState {
     required this.total,
     this.failedCount = 0,
     this.currentResourceId,
+    this.elapsedSeconds = 0,
+    this.filesPerSecond = 0,
+    this.bytesPerSecond = 0,
   });
 
   final int downloaded;
   final int total;
   final int failedCount;
   final String? currentResourceId;
+  final double elapsedSeconds;
+  final double filesPerSecond;
+  final double bytesPerSecond;
 
   double get progress => total > 0 ? downloaded / total : 0;
 }
@@ -170,15 +176,16 @@ class CheckoutProvisioner {
     final resourceIndex = ResourceIndex.fromBuffer(indexResult.getRight().toNullable()!);
     final totalEntries = resourceIndex.entries.length;
 
-    // 2. Partition cached vs. to-download
-    final toDownload = <ResourceIndex_Entry>[];
+    // 2. Partition cached vs. to-download — pre-build identHash and blob
+    // path once per entry so the hot loop has zero alloc overhead.
+    final toDownload = <(ResourceIndex_Entry, String, String)>[];
     var cachedCount = 0;
     for (final entry in resourceIndex.entries) {
       final identHash = RepoHash.hashIdent(entry.resourceId);
       if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
         cachedCount++;
       } else {
-        toDownload.add(entry);
+        toDownload.add((entry, identHash, RepoPaths.blobPath(identHash, entry.contentHash)));
       }
     }
 
@@ -186,8 +193,8 @@ class CheckoutProvisioner {
 
     _emit(ProvisionerPreparing(totalBlobs: totalEntries, cachedBlobs: cachedCount));
 
-    // 3. Download missing blobs with concurrency=4
-    const concurrency = 4;
+    // 3. Download missing blobs with sliding-window concurrency.
+    const blobConcurrency = 64;
     var downloaded = cachedCount;
     final failedBlobs = <String>[];
 
@@ -195,38 +202,74 @@ class CheckoutProvisioner {
       _emit(ProvisionerDownloading(downloaded: downloaded, total: totalEntries));
     }
 
-    for (var i = 0; i < toDownload.length; i += concurrency) {
-      if (_cancelled) return;
+    var nextIdx = 0;
+    var lastEmitMs = 0;
+    const throttleMs = 200;
+    final stopwatch = Stopwatch();
 
-      final chunk = toDownload.skip(i).take(concurrency).toList();
+    if (toDownload.isNotEmpty) {
+      assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
+      stopwatch.start();
 
-      final results = await Future.wait(
-        chunk.map((entry) async {
-          final identHash = RepoHash.hashIdent(entry.resourceId);
+      Future<void> downloadNext() async {
+        int idx;
+        while ((idx = nextIdx++) < toDownload.length) {
+          if (_cancelled) return;
+
+          final dl = toDownload[idx];
+          final entry = dl.$1;
+          final identHash = dl.$2;
+          final blobPath = dl.$3;
+
           final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
           if (blobResult.isRight()) {
             try {
-              assetStore.writeBlobSync(identHash, blobResult.getRight().toNullable()!);
-              return true;
+              await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
+              downloaded++;
             } on FileSystemException {
               failedBlobs.add(entry.resourceId);
-              return false;
             }
           } else {
             failedBlobs.add(entry.resourceId);
             warning("Failed to fetch blob: ${entry.resourceId}");
-            return false;
           }
-        }),
-      );
 
-      downloaded += results.where((ok) => ok).length;
+          final now = DateTime.now().millisecondsSinceEpoch;
+          if (now - lastEmitMs >= throttleMs || downloaded >= totalEntries) {
+            final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
+            final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
+            _emit(
+              ProvisionerDownloading(
+                downloaded: downloaded,
+                total: totalEntries,
+                failedCount: failedBlobs.length,
+                elapsedSeconds: elapsed,
+                filesPerSecond: fps,
+              ),
+            );
+            lastEmitMs = now;
+          }
+        }
+      }
 
+      final tasks = <Future<void>>[
+        for (var i = 0; i < blobConcurrency.clamp(1, toDownload.length); i++) downloadNext(),
+      ];
+      await Future.wait(tasks);
+      stopwatch.stop();
+    }
+
+    // Final emit after all workers finish (ensures 100% shown).
+    if (toDownload.isNotEmpty) {
+      final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
+      final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
       _emit(
         ProvisionerDownloading(
           downloaded: downloaded,
           total: totalEntries,
           failedCount: failedBlobs.length,
+          elapsedSeconds: elapsed,
+          filesPerSecond: fps,
         ),
       );
     }

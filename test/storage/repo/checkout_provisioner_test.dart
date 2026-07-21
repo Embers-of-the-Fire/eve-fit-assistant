@@ -101,6 +101,24 @@ class _FakeAssetStore implements AssetStore {
 
   @override
   void recoverSync() {}
+
+  @override
+  Future<void> writeBlobUnchecked(String identHash, String contentHash, Uint8List content) async {
+    _blobs[identHash] = content;
+  }
+
+  @override
+  Future<void> writeBlobUncheckedAt(String assetPath, Uint8List content) async {
+    // Extract identHash from the last path segment's parent directory.
+    // Path format: .../blobs/{2c}/{identHash}/{contentHash}
+    final parts = assetPath.split("/");
+    if (parts.length >= 2) {
+      _blobs[parts[parts.length - 2]] = content;
+    }
+  }
+
+  @override
+  void ensureBlobIdentDirs(Iterable<String> identHashes) {}
 }
 
 /// Builds a [ResourceIndex] protobuf from a list of (resourceId, contentHash,
@@ -158,6 +176,7 @@ void main() {
     registerFallbackValue(ResourceIndex());
     registerFallbackValue(Channel.testing);
     registerFallbackValue(IMap(const <String, String>{}));
+    registerFallbackValue(Uri.parse("http://localhost/"));
   });
 
   tearDownAll(() {
@@ -199,6 +218,18 @@ void main() {
     when(
       () => mockRemoteCatalog.fetchServerIndex(any()),
     ).thenAnswer((_) async => Left(CatalogNetworkError(message: "stubbed")));
+
+    // Default blob stub — individual tests override with specific content.
+    when(
+      () => mockRemoteCatalog.fetchBlob(any(), any()),
+    ).thenAnswer((_) async => Right(Uint8List.fromList([1, 2, 3, 4])));
+
+    // Stub blobUri so pre-built URI construction works in the hot loop.
+    when(() => mockRemoteCatalog.blobUri(any(), any())).thenAnswer(
+      (inv) => Uri.parse(
+        "http://test/efa/v2/assets/blobs/00/${inv.positionalArguments[0]}/${inv.positionalArguments[1]}",
+      ),
+    );
 
     provisioner = CheckoutProvisioner(
       remoteCatalog: mockRemoteCatalog,

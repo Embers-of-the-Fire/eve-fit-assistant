@@ -311,32 +311,77 @@ class CheckoutService {
     }
 
     // Entries whose blobs are already on disk count as downloaded immediately.
-    final actualToDownload = <({String resourceId, String contentHash})>[];
+    // Pre-build identHash and blob path once per entry.
+    final actualToDownload =
+        <({String resourceId, String contentHash, String identHash, String blobPath})>[];
     for (final dl in entriesToDownload) {
       final ihash = RepoHash.hashIdent(dl.resourceId);
       if (assetStore.blobExistsSync(ihash, dl.contentHash)) {
         downloadedCount++;
       } else {
-        actualToDownload.add(dl);
+        actualToDownload.add((
+          resourceId: dl.resourceId,
+          contentHash: dl.contentHash,
+          identHash: ihash,
+          blobPath: RepoPaths.blobPath(ihash, dl.contentHash),
+        ));
       }
     }
 
     final totalCount = newIndex.entries.length;
     onProgress?.call(downloadedCount, totalCount);
 
-    // 5. Download changed blobs.
-    for (final dl in actualToDownload) {
-      final ihash = RepoHash.hashIdent(dl.resourceId);
-      final blobResult = await remoteCatalogService.fetchBlob(ihash, dl.contentHash);
+    // 5. Download changed blobs with sliding-window concurrency.
+    const blobConcurrency = 64;
 
-      if (blobResult.isRight()) {
-        assetStore.writeBlobSync(ihash, blobResult.getRight().toNullable()!);
-      } else {
-        return const Left("Failed to download changed files");
+    var nextIdx = 0;
+    var completedFromDownload = 0;
+    var downloadFailed = false;
+    var lastProgressMs = 0;
+    const throttleMs = 200;
+
+    void maybeProgress() {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final current = downloadedCount + completedFromDownload;
+      if (now - lastProgressMs >= throttleMs || current >= totalCount) {
+        onProgress?.call(current, totalCount);
+        lastProgressMs = now;
+      }
+    }
+
+    if (actualToDownload.isNotEmpty) {
+      assetStore.ensureBlobIdentDirs(actualToDownload.map((d) => d.identHash));
+
+      Future<void> downloadNext() async {
+        int idx;
+        while ((idx = nextIdx++) < actualToDownload.length) {
+          final dl = actualToDownload[idx];
+          final blobResult = await remoteCatalogService.fetchBlob(dl.identHash, dl.contentHash);
+
+          if (blobResult.isRight()) {
+            await assetStore.writeBlobUncheckedAt(dl.blobPath, blobResult.getRight().toNullable()!);
+            completedFromDownload++;
+            maybeProgress();
+          } else {
+            downloadFailed = true;
+            return;
+          }
+        }
       }
 
-      downloadedCount++;
-      onProgress?.call(downloadedCount, totalCount);
+      final tasks = <Future<void>>[
+        for (var i = 0; i < blobConcurrency.clamp(1, actualToDownload.length); i++) downloadNext(),
+      ];
+      await Future.wait(tasks);
+    }
+
+    // Final progress emit after all workers finish.
+    if (actualToDownload.isNotEmpty) {
+      onProgress?.call(downloadedCount + completedFromDownload, totalCount);
+    }
+
+    if (downloadFailed) {
+      return const Left("Failed to download changed files");
     }
 
     // 6. Fetch the canonical resource snapshot metadata and write the snapshot.

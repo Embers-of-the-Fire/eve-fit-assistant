@@ -14,10 +14,19 @@ class MultiProvisionerFetching extends MultiProvisionerState {
 }
 
 class MultiProvisionerDownloading extends MultiProvisionerState {
-  const MultiProvisionerDownloading({required this.downloaded, required this.total});
+  const MultiProvisionerDownloading({
+    required this.downloaded,
+    required this.total,
+    this.elapsedSeconds = 0,
+    this.filesPerSecond = 0,
+    this.bytesPerSecond = 0,
+  });
 
   final int downloaded;
   final int total;
+  final double elapsedSeconds;
+  final double filesPerSecond;
+  final double bytesPerSecond;
 
   double get progress => total > 0 ? downloaded / total : 0;
 }

@@ -39,6 +39,47 @@ class AssetStore {
     return _writeBlobAtPath(assetPath, identHash, contentHash, content);
   }
 
+  /// Writes a blob without computing its content hash — the caller supplies
+  /// the known [contentHash] from the ResourceIndex.
+  ///
+  /// The canonical entry point for batch downloaders. Skips the redundant
+  /// SHA-256 and uses async I/O to avoid stalling concurrent HTTP workers.
+  Future<void> writeBlobUnchecked(String identHash, String contentHash, Uint8List content) =>
+      writeBlobUncheckedAt(RepoPaths.blobPath(identHash, contentHash), content);
+
+  /// Writes a blob directly to [assetPath] — no path resolution, no hash
+  /// computation, no idempotency guard. The path and content are trusted.
+  ///
+  /// Preferred over [writeBlobUnchecked] when the path has already been
+  /// pre-computed during the partition phase.
+  Future<void> writeBlobUncheckedAt(String assetPath, Uint8List content) async {
+    final tmp = _fileSystem.file("$assetPath.tmp");
+    try {
+      await tmp.writeAsBytes(content);
+      await tmp.rename(assetPath);
+    } on FileSystemException catch (e, stackTrace) {
+      warning("Blob write failed: $assetPath", stackTrace: stackTrace);
+      try {
+        if (await tmp.exists()) await tmp.delete();
+      } on FileSystemException {
+        // best-effort cleanup
+      }
+    }
+  }
+
+  /// Ensures blob parent directories exist for all given [identHashes].
+  ///
+  /// Call once before a batch of [writeBlobUnchecked] calls to avoid
+  /// redundant per-blob `parent.existsSync` + `parent.createSync` calls.
+  void ensureBlobIdentDirs(Iterable<String> identHashes) {
+    final seen = <String>{};
+    for (final ihash in identHashes) {
+      if (!seen.add(ihash)) continue;
+      final dir = _fileSystem.directory(RepoPaths.blobIdentDir(ihash));
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+    }
+  }
+
   /// Writes a blob identified by [ident] and [content] to the asset store.
   ({String identHash, String contentHash}) writeBlobByIdentSync(
     BlobIdent ident,
@@ -338,7 +379,7 @@ class AssetStore {
     final tmp = File("$assetPath.tmp");
     try {
       tmp
-        ..writeAsBytesSync(content, flush: true)
+        ..writeAsBytesSync(content)
         ..renameSync(assetPath);
     } on FileSystemException catch (e, stackTrace) {
       warning("Blob write failed: $assetPath", stackTrace: stackTrace);

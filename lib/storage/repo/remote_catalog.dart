@@ -3,6 +3,7 @@ import "dart:typed_data";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
+import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
@@ -39,10 +40,31 @@ class CatalogParseError extends CatalogError {
 /// resource indexes, blobs) are content-addressed and fetched with
 /// `CachePolicy.noCache` so they are not managed by the HTTP cache.
 class RemoteCatalogService {
-  RemoteCatalogService({required this.dio, required this.originUrl});
+  RemoteCatalogService({required this.dio, required this.originUrl, Dio? blobDio})
+    : _blobDio = blobDio;
 
   final Dio dio;
   final String originUrl;
+  Dio? _blobDio;
+
+  /// Lazily-created blob-specific Dio without the cache interceptor.
+  Dio get blobDio => _blobDio ??= createBlobDio();
+
+  /// Options for index/pointer protobuf fetches (server.pb2, resources.pb2,
+  /// releases.pb2). These go through the main [dio] whose cache interceptor
+  /// must be told to skip them via [nonManagedCachePolicy].
+  static final Options _indexOptions = nonManagedCachePolicy.toRequestOptions().copyWith(
+    responseType: ResponseType.bytes,
+  );
+
+  /// Options for blob fetches only. Blobs use [blobDio] which has no cache
+  /// interceptor, so no cache-control headers are injected. This prevents
+  /// CDN/origin servers from sending `Connection: close`, allowing TCP
+  /// connection reuse and avoiding a fresh TLS handshake per blob.
+  static final Options _blobOptions = Options(
+    responseType: ResponseType.bytes,
+    headers: {"Connection": "keep-alive"},
+  );
 
   Uri _buildUri(String relativePath) {
     final normalizedOrigin = originUrl.endsWith("/") ? originUrl : "$originUrl/";
@@ -122,7 +144,7 @@ class RemoteCatalogService {
   /// bypassed and the caller is responsible for writing to the asset store.
   Future<Either<CatalogError, Uint8List>> fetchBlob(String identHash, String contentHash) async {
     final uri = _blobUri(identHash, contentHash);
-    return _fetchBytes(uri);
+    return _fetchBytes(uri, dio: blobDio, options: _blobOptions);
   }
 
   /// The content-addressed URI for a blob or artifact.
@@ -162,14 +184,10 @@ class RemoteCatalogService {
     }
   }
 
-  Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri) async {
+  Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri, {Dio? dio, Options? options}) async {
+    final d = dio ?? this.dio;
     try {
-      final response = await dio.getUri<Uint8List>(
-        uri,
-        options: nonManagedCachePolicy.toRequestOptions().copyWith(
-          responseType: ResponseType.bytes,
-        ),
-      );
+      final response = await d.getUri<Uint8List>(uri, options: options ?? _indexOptions);
       final data = response.data;
       if (data == null) {
         return Left(CatalogParseError(message: "Empty byte response: $uri"));

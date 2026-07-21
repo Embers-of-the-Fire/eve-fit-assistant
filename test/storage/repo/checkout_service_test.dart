@@ -60,6 +60,11 @@ MockRemoteCatalogService _mockRemote({
   when(() => mock.fetchHeadMeta(_testChannelName)).thenAnswer(
     (_) async => Right(headMetaResult ?? _headMeta(generationHash: _testGenerationHashNew)),
   );
+  when(() => mock.blobUri(any(), any())).thenAnswer(
+    (inv) => Uri.parse(
+      "http://test/efa/v2/assets/blobs/00/${inv.positionalArguments[0]}/${inv.positionalArguments[1]}",
+    ),
+  );
   if (serverIndexResult != null) {
     when(
       () => mock.fetchServerIndex(_testGenerationHashNew),
@@ -105,6 +110,7 @@ void main() {
     registerFallbackValue(ResourceIndex());
     registerFallbackValue(Uint8List(0));
     registerFallbackValue(IMap(const <String, String>{}));
+    registerFallbackValue(Uri.parse("http://localhost/"));
   });
 
   setUp(() {

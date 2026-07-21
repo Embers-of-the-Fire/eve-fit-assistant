@@ -154,39 +154,57 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
       }
     }
 
-    // Separate cached from to-download
-    final toDownload = <ResourceIndex_Entry>[];
+    // Separate cached from to-download — pre-build identHash and blob path.
+    final toDownload = <(ResourceIndex_Entry, String, String, int)>[];
     var downloaded = 0;
     for (final entry in unionEntries) {
       final identHash = RepoHash.hashIdent(entry.resourceId);
       if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
         downloaded++;
       } else {
-        toDownload.add(entry);
+        toDownload.add((
+          entry,
+          identHash,
+          RepoPaths.blobPath(identHash, entry.contentHash),
+          entry.size.toInt(),
+        ));
       }
     }
 
     if (_cancelled) return;
 
     final unionTotal = unionEntries.length;
-    _emit(MultiProvisionerDownloading(downloaded: downloaded, total: unionTotal));
 
-    // Download blobs with concurrency = 4
-    const concurrency = 4;
+    // Download blobs with sliding-window concurrency.
+    const blobConcurrency = 64;
     final failedBlobs = <String>[];
+    var nextIdx = 0;
+    var lastEmitMs = 0;
+    const throttleMs = 200;
+    final stopwatch = Stopwatch();
+    var bytesDownloaded = 0;
 
-    for (var i = 0; i < toDownload.length; i += concurrency) {
-      if (_cancelled) return;
+    if (toDownload.isNotEmpty) {
+      assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
+      stopwatch.start();
 
-      final chunk = toDownload.skip(i).take(concurrency).toList();
+      Future<void> downloadNext() async {
+        int idx;
+        while ((idx = nextIdx++) < toDownload.length) {
+          if (_cancelled) return;
 
-      await Future.wait(
-        chunk.map((entry) async {
-          final identHash = RepoHash.hashIdent(entry.resourceId);
+          final dl = toDownload[idx];
+          final entry = dl.$1;
+          final identHash = dl.$2;
+          final blobPath = dl.$3;
+          final blobSize = dl.$4;
+
           final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
           if (blobResult.isRight()) {
             try {
-              assetStore.writeBlobSync(identHash, blobResult.getRight().toNullable()!);
+              await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
+              downloaded++;  
+              bytesDownloaded += blobSize;
             } on FileSystemException {
               failedBlobs.add(entry.resourceId);
             }
@@ -194,11 +212,48 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
             failedBlobs.add(entry.resourceId);
             warning("Failed to fetch blob: ${entry.resourceId}");
           }
-        }),
+
+          final now = DateTime.now().millisecondsSinceEpoch;
+          if (now - lastEmitMs >= throttleMs || downloaded >= unionTotal) {
+            final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
+            final fps = elapsed > 0 ? (downloaded + 0).toDouble() / elapsed : 0.0;
+            final bps = elapsed > 0 ? bytesDownloaded.toDouble() / elapsed : 0.0;
+            _emit(
+              MultiProvisionerDownloading(
+                downloaded: downloaded,
+                total: unionTotal,
+                elapsedSeconds: elapsed,
+                filesPerSecond: fps,
+                bytesPerSecond: bps,
+              ),
+            );
+            lastEmitMs = now;
+          }
+        }
+      }
+
+      final tasks = <Future<void>>[
+        for (var i = 0; i < blobConcurrency.clamp(1, toDownload.length); i++) downloadNext(),
+      ];
+      await Future.wait(tasks);
+      stopwatch.stop();
+    }
+
+    // Final emit after all workers finish.
+    if (toDownload.isNotEmpty) {
+      final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
+      final fps = elapsed > 0 ? downloaded.toDouble() / elapsed : 0.0;
+      final bps = elapsed > 0 ? bytesDownloaded.toDouble() / elapsed : 0.0;
+      _emit(
+        MultiProvisionerDownloading(
+          downloaded: downloaded,
+          total: unionTotal,
+          elapsedSeconds: elapsed,
+          filesPerSecond: fps,
+          bytesPerSecond: bps,
+        ),
       );
-
-      downloaded += chunk.length;
-
+    } else {
       _emit(MultiProvisionerDownloading(downloaded: downloaded, total: unionTotal));
     }
 
@@ -300,8 +355,15 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
 
     final statusText = switch (state) {
       MultiProvisionerFetching() => l10n.checkoutCreateProgressFetchingIndex,
-      MultiProvisionerDownloading(:final downloaded, :final total) =>
-        l10n.checkoutCreateProgressDownloading2(current: downloaded, total: total),
+      MultiProvisionerDownloading(
+        :final downloaded,
+        :final total,
+        :final filesPerSecond,
+        :final bytesPerSecond,
+      ) =>
+        "${l10n.checkoutCreateProgressDownloading2(current: downloaded, total: total)}  "
+            "${filesPerSecond > 0 ? "${filesPerSecond.toStringAsFixed(1)} files/s" : ""}"
+            "${bytesPerSecond > 0 ? "  ${formatBytesPerSec(bytesPerSecond)}" : ""}",
       MultiProvisionerCreating() => l10n.checkoutCreateProgressCreatingCheckout,
       MultiProvisionerComplete() => l10n.checkoutCreateProgressComplete,
       MultiProvisionerFatal(:final message) => message,
