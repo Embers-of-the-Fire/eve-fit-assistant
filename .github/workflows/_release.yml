@@ -18,6 +18,7 @@ jobs:
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
     outputs:
       tag: ${{ steps.verify.outputs.tag }}
+      version: ${{ steps.verify.outputs.version }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -306,7 +307,19 @@ jobs:
       contents: write
     env:
       TAG: ${{ needs.release.outputs.tag }}
+      VERSION: ${{ needs.release.outputs.version }}
     steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -332,3 +345,12 @@ jobs:
               sha: context.sha,
             });
             core.info(`Created tag ${tag}`)
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release github-release \
+              --version "$VERSION" \
+              --tag "$TAG"'
