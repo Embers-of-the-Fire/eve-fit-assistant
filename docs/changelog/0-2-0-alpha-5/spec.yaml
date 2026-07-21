@@ -1,0 +1,10 @@
+id: version-0-2-0-alpha-5
+publishedAt: '2026-07-21T06:10:07Z'
+tags:
+- release-note
+channels:
+- testing
+platforms:
+- android
+- ios
+appVersion: 0.2.0-alpha.5
