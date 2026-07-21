@@ -321,7 +321,7 @@ class AppUpdateService {
 
 class _DefaultPlatform extends AppUpdatePlatform {
   const _DefaultPlatform()
-    : _channel = const MethodChannel("net.efa_tech.eve_fit_assistant/installer");
+    : _channel = const MethodChannel("dev.efa_tech.eve_fit_assistant/installer");
 
   final MethodChannel _channel;
 
