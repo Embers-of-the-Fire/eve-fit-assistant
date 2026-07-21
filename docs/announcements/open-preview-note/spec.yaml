@@ -1,0 +1,10 @@
+id: open-preview-note
+publishedAt: '2026-07-21T00:00:00Z'
+tags:
+  - welcome
+startup: true
+channels:
+  - testing
+platforms:
+  - android
+  - ios
