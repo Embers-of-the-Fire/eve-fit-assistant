@@ -465,11 +465,13 @@ class Publisher:
 
         return len(unique)
 
-    def _upload_file(self, src: Path, remote_path: str) -> None:
+    def _upload_file(
+        self, src: Path, remote_path: str, *, attrs: dict[str, str] | None = None
+    ) -> None:
         if self.origin_dir is not None:
             self._upload_local(src, remote_path)
         else:
-            self._upload_s3(src, remote_path)
+            self._upload_s3(src, remote_path, attrs=attrs)
 
     def _remote_exists(self, remote_path: str) -> bool:
         """True if the blob already exists at the destination (spec §3.1)."""
@@ -526,7 +528,9 @@ class Publisher:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
 
-    def _upload_s3(self, src: Path, remote_path: str) -> None:
+    def _upload_s3(
+        self, src: Path, remote_path: str, *, attrs: dict[str, str] | None = None
+    ) -> None:
         if self.mc_bin is None:
             from bootstrap.utils import get_command
 
@@ -535,11 +539,12 @@ class Publisher:
         bucket_target = f"{self.alias_name}/{self.bucket}"
         s3_path = f"{bucket_target}/{remote_path}"
 
-        _run(
-            [self.mc_bin, "cp", str(src), s3_path],
-            [self.mc_bin, "cp", str(src), s3_path],
-            f"PUBLISH {remote_path}",
-        )
+        cmd: list[str] = [self.mc_bin, "cp"]
+        if attrs:
+            for k, v in attrs.items():
+                cmd.extend(["--attr", f"{k}={v}"])
+        cmd.extend([str(src), s3_path])
+        _run(cmd, cmd, f"PUBLISH {remote_path}")
 
 
 def _run(

@@ -97,7 +97,11 @@ class ResourceManager:
                 self._stats.existing += 1
                 self._stats.uploaded += 1
         else:
-            self._pub._upload_file(local_path, remote_path)
+            self._pub._upload_file(
+                local_path,
+                remote_path,
+                attrs={"Cache-Control": "immutable, max-age=31536000"},
+            )
             with self._lock:
                 self._stats.uploaded += 1
         self._tick()
