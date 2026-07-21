@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -212,9 +214,27 @@ class VerificationService {
           final item = toRepair[idx];
           final blobResult = await remoteCatalogService.fetchBlob(item.identHash, item.contentHash);
           if (blobResult.isRight()) {
-            await assetStore.writeBlobUncheckedAt(
-              item.blobPath,
-              blobResult.getRight().toNullable()!,
+            try {
+              await assetStore.writeBlobUncheckedAt(
+                item.blobPath,
+                blobResult.getRight().toNullable()!,
+              );
+            } on FileSystemException {
+              unresolved.add(
+                VerificationMissingFiles(
+                  checkoutId: item.checkoutId,
+                  snapshotHash: item.snapshotHash,
+                  missingIdents: [item.resourceId].toIList(),
+                ),
+              );
+            }
+          } else {
+            unresolved.add(
+              VerificationMissingFiles(
+                checkoutId: item.checkoutId,
+                snapshotHash: item.snapshotHash,
+                missingIdents: [item.resourceId].toIList(),
+              ),
             );
           }
         }

@@ -64,6 +64,7 @@ class AssetStore {
       } on FileSystemException {
         // best-effort cleanup
       }
+      rethrow;
     }
   }
 

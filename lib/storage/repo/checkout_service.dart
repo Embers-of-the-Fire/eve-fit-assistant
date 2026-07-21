@@ -359,7 +359,15 @@ class CheckoutService {
           final blobResult = await remoteCatalogService.fetchBlob(dl.identHash, dl.contentHash);
 
           if (blobResult.isRight()) {
-            await assetStore.writeBlobUncheckedAt(dl.blobPath, blobResult.getRight().toNullable()!);
+            try {
+              await assetStore.writeBlobUncheckedAt(
+                dl.blobPath,
+                blobResult.getRight().toNullable()!,
+              );
+            } on FileSystemException {
+              downloadFailed = true;
+              return;
+            }
             completedFromDownload++;
             maybeProgress();
           } else {
