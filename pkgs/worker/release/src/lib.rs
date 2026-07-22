@@ -86,27 +86,34 @@ fn sanitize_filename_part(part: &str) -> String {
         .collect()
 }
 
-async fn read_bucket_bytes(bucket: &Bucket, path: &str) -> Result<Vec<u8>> {
-    let object = bucket
-        .get(path)
-        .execute()
-        .await?
-        .ok_or_else(|| Error::RustError(format!("object not found: {}", path)))?;
+async fn read_bucket_bytes(bucket: &Bucket, path: &str) -> Result<Option<Vec<u8>>> {
+    let object = match bucket.get(path).execute().await? {
+        Some(o) => o,
+        None => return Ok(None),
+    };
     let body = object
         .body()
         .ok_or_else(|| Error::RustError(format!("object has no body: {}", path)))?;
-    body.bytes().await
+    body.bytes().await.map(Some)
 }
 
-async fn read_bucket_json(bucket: &Bucket, path: &str) -> Result<serde_json::Value> {
-    let bytes = read_bucket_bytes(bucket, path).await?;
+async fn read_bucket_json(bucket: &Bucket, path: &str) -> Result<Option<serde_json::Value>> {
+    let bytes = match read_bucket_bytes(bucket, path).await? {
+        Some(b) => b,
+        None => return Ok(None),
+    };
     serde_json::from_slice(&bytes)
+        .map(Some)
         .map_err(|e| Error::RustError(format!("JSON parse error for {}: {}", path, e)))
 }
 
-async fn read_bucket_proto<T: Message + Default>(bucket: &Bucket, path: &str) -> Result<T> {
-    let bytes = read_bucket_bytes(bucket, path).await?;
+async fn read_bucket_proto<T: Message + Default>(bucket: &Bucket, path: &str) -> Result<Option<T>> {
+    let bytes = match read_bucket_bytes(bucket, path).await? {
+        Some(b) => b,
+        None => return Ok(None),
+    };
     T::decode(&*bytes)
+        .map(Some)
         .map_err(|e| Error::RustError(format!("protobuf decode error for {}: {}", path, e)))
 }
 
@@ -123,41 +130,50 @@ async fn fetch_channel_artifact(bucket: &Bucket, channel: &str) -> Result<Option
         bucket,
         &format!("{}/channels/heads/{}/metadata.json", RESOURCE_ROOT, channel),
     )
-    .await
+    .await?
     {
-        Ok(v) => v,
-        Err(_) => return Ok(None),
-    };
-
-    let gen_hash = match head_meta["generationHash"].as_str() {
-        Some(h) => h.to_string(),
+        Some(v) => v,
         None => return Ok(None),
     };
 
-    let pointer: GenerationPointer = match read_bucket_proto(
+    let gen_hash = head_meta["generationHash"]
+        .as_str()
+        .ok_or_else(|| {
+            Error::RustError(format!(
+                "channel metadata missing generationHash: {}",
+                channel
+            ))
+        })?
+        .to_string();
+
+    let pointer: GenerationPointer = read_bucket_proto(
         bucket,
         &format!("{}/channels/refs/{}/releases.pb2", RESOURCE_ROOT, gen_hash),
     )
-    .await
-    {
-        Ok(p) => p,
-        Err(_) => return Ok(None),
-    };
+    .await?
+    .ok_or_else(|| {
+        Error::RustError(format!(
+            "release pointer not found for generation: {}",
+            gen_hash
+        ))
+    })?;
 
     let snapshot_hash = pointer.snapshot_hash;
 
-    let index: ReleaseIndex = match read_bucket_proto(
+    let index: ReleaseIndex = read_bucket_proto(
         bucket,
         &format!(
             "{}/assets/releases/{}/releases.pb2",
             RESOURCE_ROOT, snapshot_hash
         ),
     )
-    .await
-    {
-        Ok(idx) => idx,
-        Err(_) => return Ok(None),
-    };
+    .await?
+    .ok_or_else(|| {
+        Error::RustError(format!(
+            "release index not found for snapshot: {}",
+            snapshot_hash
+        ))
+    })?;
 
     let android = index.android.map(|arts| {
         let mut variants = HashMap::new();
@@ -232,13 +248,21 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
     )
     .await
     {
-        Ok(v) => v,
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return Response::from_json(&ArtifactResponse {
+                ok: false,
+                artifacts: None,
+                channels: vec![],
+                error: Some("channel registry not found".to_string()),
+            });
+        }
         Err(e) => {
             return Response::from_json(&ArtifactResponse {
                 ok: false,
                 artifacts: None,
                 channels: vec![],
-                error: Some(format!("channel registry not found: {}", e)),
+                error: Some(format!("failed to read channel registry: {}", e)),
             });
         }
     };
