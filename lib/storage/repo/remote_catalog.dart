@@ -142,9 +142,21 @@ class RemoteCatalogService {
   ///
   /// Blobs are content-addressed and non-managed: the HTTP cache interceptor is
   /// bypassed and the caller is responsible for writing to the asset store.
-  Future<Either<CatalogError, Uint8List>> fetchBlob(String identHash, String contentHash) async {
+  ///
+  /// [onReceiveProgress] reports cumulative received bytes for the response,
+  /// enabling byte-level progress for large blobs.
+  Future<Either<CatalogError, Uint8List>> fetchBlob(
+    String identHash,
+    String contentHash, {
+    ProgressCallback? onReceiveProgress,
+  }) async {
     final uri = _blobUri(identHash, contentHash);
-    return _fetchBytes(uri, dio: blobDio, options: _blobOptions);
+    return _fetchBytes(
+      uri,
+      dio: blobDio,
+      options: _blobOptions,
+      onReceiveProgress: onReceiveProgress,
+    );
   }
 
   /// The content-addressed URI for a blob or artifact.
@@ -184,10 +196,19 @@ class RemoteCatalogService {
     }
   }
 
-  Future<Either<CatalogError, Uint8List>> _fetchBytes(Uri uri, {Dio? dio, Options? options}) async {
+  Future<Either<CatalogError, Uint8List>> _fetchBytes(
+    Uri uri, {
+    Dio? dio,
+    Options? options,
+    ProgressCallback? onReceiveProgress,
+  }) async {
     final d = dio ?? this.dio;
     try {
-      final response = await d.getUri<Uint8List>(uri, options: options ?? _indexOptions);
+      final response = await d.getUri<Uint8List>(
+        uri,
+        options: options ?? _indexOptions,
+        onReceiveProgress: onReceiveProgress,
+      );
       final data = response.data;
       if (data == null) {
         return Left(CatalogParseError(message: "Empty byte response: $uri"));

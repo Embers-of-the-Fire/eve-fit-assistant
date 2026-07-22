@@ -221,7 +221,11 @@ void main() {
 
     // Default blob stub — individual tests override with specific content.
     when(
-      () => mockRemoteCatalog.fetchBlob(any(), any()),
+      () => mockRemoteCatalog.fetchBlob(
+        any(),
+        any(),
+        onReceiveProgress: any(named: "onReceiveProgress"),
+      ),
     ).thenAnswer((_) async => Right(Uint8List.fromList([1, 2, 3, 4])));
 
     // Stub blobUri so pre-built URI construction works in the hot loop.
@@ -288,7 +292,11 @@ void main() {
         () => mockRemoteCatalog.fetchServerIndex(any()),
       ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
       when(
-        () => mockRemoteCatalog.fetchBlob(identHash, contentHash),
+        () => mockRemoteCatalog.fetchBlob(
+          identHash,
+          contentHash,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
       ).thenAnswer((_) async => Right(blobBytes));
 
       configureProvisioner();
@@ -358,7 +366,13 @@ void main() {
       expect(downloadingStates.isNotEmpty, isTrue);
       expect(downloadingStates.last.progress, 1.0);
 
-      verifyNever(() => mockRemoteCatalog.fetchBlob(any(), any()));
+      verifyNever(
+        () => mockRemoteCatalog.fetchBlob(
+          any(),
+          any(),
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      );
     });
 
     test("tracks per-blob download failures in Complete", () async {
@@ -402,10 +416,18 @@ void main() {
         () => mockRemoteCatalog.fetchServerIndex(any()),
       ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
       when(
-        () => mockRemoteCatalog.fetchBlob(goodIH, goodCH),
+        () => mockRemoteCatalog.fetchBlob(
+          goodIH,
+          goodCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
       ).thenAnswer((_) async => Right(goodBytes));
       when(
-        () => mockRemoteCatalog.fetchBlob(badIH, badCH),
+        () => mockRemoteCatalog.fetchBlob(
+          badIH,
+          badCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
       ).thenAnswer((_) async => Left(CatalogNetworkError(message: "timeout")));
 
       configureProvisioner();
@@ -498,7 +520,11 @@ void main() {
         () => mockRemoteCatalog.fetchServerIndex(any()),
       ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
       when(
-        () => mockRemoteCatalog.fetchBlob(identHash, contentHash),
+        () => mockRemoteCatalog.fetchBlob(
+          identHash,
+          contentHash,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
       ).thenAnswer((_) async => Right(blobBytes));
 
       configureProvisioner();
@@ -563,7 +589,11 @@ void main() {
         () => mockRemoteCatalog.fetchServerIndex(any()),
       ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
       when(
-        () => mockRemoteCatalog.fetchBlob(identHash, contentHash),
+        () => mockRemoteCatalog.fetchBlob(
+          identHash,
+          contentHash,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
       ).thenAnswer((_) async => Right(blobBytes));
 
       configureProvisioner();
@@ -635,7 +665,11 @@ void main() {
       ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
       for (final entry in blobs.entries) {
         when(
-          () => mockRemoteCatalog.fetchBlob(entry.key, entry.value.contentHash),
+          () => mockRemoteCatalog.fetchBlob(
+            entry.key,
+            entry.value.contentHash,
+            onReceiveProgress: any(named: "onReceiveProgress"),
+          ),
         ).thenAnswer((_) async => Right(entry.value.bytes));
       }
 
@@ -681,7 +715,11 @@ void main() {
         () => mockRemoteCatalog.fetchServerIndex(any()),
       ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
       when(
-        () => mockRemoteCatalog.fetchBlob(identHash, contentHash),
+        () => mockRemoteCatalog.fetchBlob(
+          identHash,
+          contentHash,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
       ).thenAnswer((_) async => Right(blobBytes));
 
       configureProvisioner();

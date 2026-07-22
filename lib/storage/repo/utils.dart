@@ -77,3 +77,93 @@ String formatBytesPerSec(double bytesPerSec) {
   if (bytesPerSec < 1024 * 1024) return "${(bytesPerSec / 1024).toStringAsFixed(1)} KiB/s";
   return "${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MiB/s";
 }
+
+/// Tracks aggregate byte progress across many concurrent blob downloads and
+/// computes a sliding-window throughput rate.
+///
+/// Each worker reports cumulative per-response byte counts via [blobProgress]
+/// and folds a blob's full size into the completed total via [blobComplete].
+/// [bytesPerSecond] averages over the trailing [window] using wall-clock now
+/// as the window end, so the reported rate decays towards zero during stalls
+/// instead of sticking at a stale value.
+class BlobTransferTracker {
+  BlobTransferTracker({
+    required this.totalBytes,
+    int initialCompletedBytes = 0,
+    this.window = const Duration(seconds: 5),
+  }) : _completedBytes = initialCompletedBytes {
+    _stopwatch.start();
+  }
+
+  /// Total bytes expected across all blobs (cached + downloaded).
+  final int totalBytes;
+
+  /// Sliding window used for the throughput estimate.
+  final Duration window;
+
+  int _completedBytes;
+  final Map<int, int> _inflightBytes = {};
+  final List<(int, int)> _samples = [];
+  final Stopwatch _stopwatch = Stopwatch();
+  int _lastSampleMs = -1;
+
+  static const _minSampleIntervalMs = 100;
+
+  /// Records received bytes for an in-flight blob. [receivedBytes] is the
+  /// cumulative count for the current response; regressive values (e.g. after
+  /// a retry restarts the response) are ignored.
+  void blobProgress(int index, int receivedBytes) {
+    final previous = _inflightBytes[index] ?? 0;
+    if (receivedBytes <= previous) return;
+    _inflightBytes[index] = receivedBytes;
+    _sample();
+  }
+
+  /// Marks a blob as finished, folding its full [size] into the completed total.
+  void blobComplete(int index, int size) {
+    _inflightBytes.remove(index);
+    _completedBytes += size;
+    _sample(force: true);
+  }
+
+  /// Drops any in-flight bytes for a blob that failed or was aborted.
+  void blobAborted(int index) {
+    _inflightBytes.remove(index);
+  }
+
+  /// Bytes transferred so far, including partial in-flight blobs.
+  int get transferredBytes => _completedBytes + _inflightBytes.values.fold(0, (sum, v) => sum + v);
+
+  /// Byte-based completion fraction in [0, 1].
+  double get progress => totalBytes > 0 ? (transferredBytes / totalBytes).clamp(0.0, 1.0) : 0;
+
+  /// Throughput averaged over the trailing [window], in bytes per second.
+  double get bytesPerSecond {
+    if (_samples.isEmpty) return 0;
+    final nowMs = _stopwatch.elapsedMilliseconds;
+    final cutoff = nowMs - window.inMilliseconds;
+    var anchorMs = _samples.first.$1;
+    var anchorBytes = _samples.first.$2;
+    for (final (t, b) in _samples) {
+      if (t > cutoff) break;
+      anchorMs = t;
+      anchorBytes = b;
+    }
+    final dt = (nowMs - anchorMs) / 1000.0;
+    if (dt <= 0) return 0;
+    return (transferredBytes - anchorBytes) / dt;
+  }
+
+  void _sample({bool force = false}) {
+    final nowMs = _stopwatch.elapsedMilliseconds;
+    if (!force && _lastSampleMs >= 0 && nowMs - _lastSampleMs < _minSampleIntervalMs) {
+      return;
+    }
+    _lastSampleMs = nowMs;
+    _samples.add((nowMs, transferredBytes));
+    final cutoff = nowMs - window.inMilliseconds;
+    while (_samples.length > 2 && _samples[1].$1 <= cutoff) {
+      _samples.removeAt(0);
+    }
+  }
+}
