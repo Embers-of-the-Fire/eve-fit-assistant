@@ -958,6 +958,14 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
 
       maybeProgress();
 
+      if (failedBlobs.isNotEmpty) {
+        setState(() {
+          _failed = true;
+          _error = l10n.checkoutCreateProgressBlobsFailed(count: failedBlobs.length);
+        });
+        return;
+      }
+
       // Write snapshot metadata locally
       setState(() => _status = l10n.checkoutCreateProgressFinalizing);
       final metaResult = await remoteCatalog.fetchResourceSnapshotMeta(widget.snapshotHash);
