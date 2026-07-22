@@ -142,6 +142,8 @@ class _SlotRowDisplay extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final subtitleWidgets = <Widget>[];
 
+    final moduleItem = _resolveNativeModuleItem(fitContext, slotInfo);
+
     if (slotInfo.slot.charge.isSome()) {
       final chargeId = slotInfo.slot.charge.toNullable()!.typeId;
       final chargeType = ref.watch(repoCollectionProvider.select((c) => c?.getType(chargeId)));
@@ -154,6 +156,7 @@ class _SlotRowDisplay extends ConsumerWidget {
               ),
             ) ??
             "";
+        final chargeAmount = moduleItem?.getAttribute(EveConstExtendedAttrID.chargeAmount) ?? 0;
         subtitleWidgets.add(
           InkWell(
             onTap: interactionOptions.allowInspect
@@ -182,6 +185,10 @@ class _SlotRowDisplay extends ConsumerWidget {
                 : null,
             child: Row(
               children: [
+                if (chargeAmount > 0) ...[
+                  Text("${chargeAmount.round()}× ", style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 4),
+                ],
                 EveIcon(icon: chargeType.icon, size: 18),
                 const SizedBox(width: 4),
                 Text(chargeName, style: const TextStyle(fontSize: 14)),
@@ -189,6 +196,13 @@ class _SlotRowDisplay extends ConsumerWidget {
             ),
           ),
         );
+      }
+    }
+
+    if (moduleItem != null) {
+      final relatedValues = collectSlotRelatedValues(moduleItem);
+      if (relatedValues.isNotEmpty) {
+        subtitleWidgets.add(_SlotRelatedValuesRow(segments: relatedValues));
       }
     }
 
