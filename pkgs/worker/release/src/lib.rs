@@ -214,11 +214,12 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             handle_artifacts(req, ctx.env).await
         })
         .get_async(
-            "/releases/download/:channel/:variant",
+            "/releases/download/:channel/:variant/:hash",
             |req, ctx| async move {
                 let channel = ctx.param("channel").cloned().unwrap_or_default();
                 let variant = ctx.param("variant").cloned().unwrap_or_default();
-                handle_download(req, ctx.env, &channel, &variant).await
+                let hash = ctx.param("hash").cloned().unwrap_or_default();
+                handle_download(req, ctx.env, &channel, &variant, &hash).await
             },
         )
         .run(req, env)
@@ -279,11 +280,15 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
                 variants
                     .into_iter()
                     .map(|(name, v)| {
+                        let download_url = format!(
+                            "{}/releases/download/{}/{}/{}",
+                            origin, ch, name, v.content_hash
+                        );
                         let info = VariantInfo {
                             identifier: v.identifier,
                             content_hash: v.content_hash,
                             size: v.size,
-                            download_url: format!("{}/releases/download/{}/{}", origin, ch, name),
+                            download_url,
                         };
                         (name, info)
                     })
@@ -315,6 +320,7 @@ async fn handle_download(
     env: Env,
     channel: &str,
     variant: &str,
+    hash: &str,
 ) -> Result<Response> {
     let bucket = env
         .bucket("RELEASE_BUCKET")
@@ -333,6 +339,18 @@ async fn handle_download(
         Some(v) => v,
         None => return Response::error(format!("variant not found: {}/{}", channel, variant), 404),
     };
+
+    if info.content_hash != hash {
+        let mut res = Response::error(
+            format!(
+                "stale content hash for {}/{}: {} (current: {})",
+                channel, variant, hash, info.content_hash
+            ),
+            404,
+        )?;
+        res.headers_mut().set("Cache-Control", "no-cache")?;
+        return Ok(res);
+    }
 
     let path = blob_path(&info.identifier, &info.content_hash);
     let object = match bucket.get(&path).execute().await? {
