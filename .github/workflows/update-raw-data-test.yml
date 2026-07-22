@@ -23,6 +23,9 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.repository.fork == false
     uses: ./.github/workflows/_update-raw-data.yml
+    # Inherit repo-level CI_STORAGE_* so the upload job's environment secrets
+    # could resolve; currently unused since no_upload is true (upload skipped).
+    secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       all: true
       no_upload: true
