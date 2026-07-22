@@ -13,10 +13,7 @@ class Weapon extends StatelessWidget {
         leading: const Image(image: ImageAssets.attrDamageAlpha, height: 28),
         title: DefaultTextStyle(
           style: const TextStyle(fontSize: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: _getWeaponTextGroup(ship.hull),
-          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.end, children: _getWeaponTextGroup(ship)),
         ),
       ),
       ListTile(
@@ -45,7 +42,12 @@ class Weapon extends StatelessWidget {
   );
 }
 
-List<Text> _getWeaponTextGroup(native.Item hull) {
+double _fighterVolleySum(native.Ship ship) => ship.modules
+    .where((item) => item.slot.slotType is native.OutSlotType_Fighter)
+    .fold(0, (sum, item) => sum + _fighterVolley(item));
+
+List<Text> _getWeaponTextGroup(native.Ship ship) {
+  final hull = ship.hull;
   final List<Text> texts = [];
 
   final fighterDps = hull.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond);
@@ -55,7 +57,12 @@ List<Text> _getWeaponTextGroup(native.Item hull) {
     ..add(const Text(" | "));
 
   final dpsWithReload = hull.getAttribute(EveConstExtendedAttrID.damagePerSecondWithReload);
-  texts.add(Text("${dpsWithReload.toStringAsFixed(1)}/s"));
+  texts
+    ..add(Text("${(dpsWithReload + fighterDps).toStringAsFixed(1)}/s"))
+    ..add(const Text(" | "));
+
+  final alpha = hull.getAttribute(EveConstExtendedAttrID.damageAlpha) + _fighterVolleySum(ship);
+  texts.add(Text(alpha.toStringAsFixed(1)));
 
   return texts;
 }
@@ -72,7 +79,13 @@ List<Text> _getWeaponWithoutDroneTextGroup(native.Item hull) {
     ..add(const Text(" | "));
 
   final dpsWithReload = hull.getAttribute(EveConstExtendedAttrID.damagePerSecondWithReload);
-  texts.add(Text("${(dpsWithReload - drone).toStringAsFixed(1)}/s"));
+  texts
+    ..add(Text("${(dpsWithReload - drone).toStringAsFixed(1)}/s"))
+    ..add(const Text(" | "));
+
+  // damageAlpha only aggregates weapon modules; drones and fighters are excluded.
+  final alpha = hull.getAttribute(EveConstExtendedAttrID.damageAlpha);
+  texts.add(Text(alpha.toStringAsFixed(1)));
 
   return texts;
 }
