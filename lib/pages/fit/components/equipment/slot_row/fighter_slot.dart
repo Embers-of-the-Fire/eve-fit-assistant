@@ -158,7 +158,10 @@ class _FighterSlotRow extends ConsumerWidget {
     final dpsText = representative == null
         ? null
         : Text(
-            "${storedFighter.quantity} x ${representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond).toStringAsFixed(1)}/s = ${(representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond) * storedFighter.quantity).toStringAsFixed(1)}/s",
+            "${storedFighter.quantity} x "
+            "${representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond).toStringAsFixed(1)}/s = "
+            "${(representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond) * storedFighter.quantity).toStringAsFixed(1)}/s | "
+            "${_fighterVolley(representative).toStringAsFixed(1)}",
           );
 
     final content = ListTile(
@@ -249,6 +252,11 @@ class _FighterSlotRow extends ConsumerWidget {
     );
   }
 }
+
+double _fighterVolley(native.Item fighter) =>
+    fighter.getAttribute(EveConstExtendedAttrID.fighterDamageMissiles) +
+    fighter.getAttribute(EveConstExtendedAttrID.fighterDamageAttackTurret) +
+    fighter.getAttribute(EveConstExtendedAttrID.fighterDamageAttackMissile);
 
 class _FighterCountText extends StatelessWidget {
   const _FighterCountText({required this.count, required this.total});
