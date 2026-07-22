@@ -12,7 +12,7 @@ use proto::GenerationPointer;
 use proto::ReleaseIndex;
 
 const RESOURCE_ROOT: &str = "efa/v2";
-const DEFAULT_ORIGIN: &str = "https://prod.storage.efa-tech.dev";
+const APK_CONTENT_TYPE: &str = "application/vnd.android.package-archive";
 
 #[derive(Serialize)]
 struct ArtifactResponse {
@@ -40,6 +40,18 @@ struct VariantInfo {
     download_url: String,
 }
 
+struct RawVariantInfo {
+    identifier: String,
+    content_hash: String,
+    size: i64,
+}
+
+struct RawArtifactInfo {
+    id: String,
+    version: String,
+    android: Option<HashMap<String, RawVariantInfo>>,
+}
+
 fn sha256_hex(input: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(input.as_bytes());
@@ -49,6 +61,29 @@ fn sha256_hex(input: &str) -> String {
 
 fn hex_prefix_2(hash: &str) -> &str {
     &hash[..2]
+}
+
+fn blob_path(identifier: &str, content_hash: &str) -> String {
+    let ident_hash = sha256_hex(identifier);
+    format!(
+        "{}/assets/blobs/{}/{}/{}",
+        RESOURCE_ROOT,
+        hex_prefix_2(&ident_hash),
+        ident_hash,
+        content_hash
+    )
+}
+
+fn sanitize_filename_part(part: &str) -> String {
+    part.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_') {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect()
 }
 
 async fn read_bucket_bytes(bucket: &Bucket, path: &str) -> Result<Vec<u8>> {
@@ -69,10 +104,7 @@ async fn read_bucket_json(bucket: &Bucket, path: &str) -> Result<serde_json::Val
         .map_err(|e| Error::RustError(format!("JSON parse error for {}: {}", path, e)))
 }
 
-async fn read_bucket_proto<T: Message + Default>(
-    bucket: &Bucket,
-    path: &str,
-) -> Result<T> {
+async fn read_bucket_proto<T: Message + Default>(bucket: &Bucket, path: &str) -> Result<T> {
     let bytes = read_bucket_bytes(bucket, path).await?;
     T::decode(&*bytes)
         .map_err(|e| Error::RustError(format!("protobuf decode error for {}: {}", path, e)))
@@ -86,11 +118,7 @@ fn add_cors(res: &mut Response) -> Result<()> {
     Ok(())
 }
 
-async fn fetch_channel_artifact(
-    bucket: &Bucket,
-    origin: &str,
-    channel: &str,
-) -> Result<Option<ArtifactInfo>> {
+async fn fetch_channel_artifact(bucket: &Bucket, channel: &str) -> Result<Option<RawArtifactInfo>> {
     let head_meta: serde_json::Value = match read_bucket_json(
         bucket,
         &format!("{}/channels/heads/{}/metadata.json", RESOURCE_ROOT, channel),
@@ -138,22 +166,12 @@ async fn fetch_channel_artifact(
             [Some(arts.general), arts.armv7, arts.arm64, arts.x64];
         for (i, field) in fields.iter().enumerate() {
             if let Some(v) = field {
-                let ident_hash = sha256_hex(&v.identifier);
-                let download_url = format!(
-                    "{}/{}/assets/blobs/{}/{}/{}",
-                    origin,
-                    RESOURCE_ROOT,
-                    hex_prefix_2(&ident_hash),
-                    ident_hash,
-                    v.content_hash
-                );
                 variants.insert(
                     names[i].to_string(),
-                    VariantInfo {
+                    RawVariantInfo {
                         identifier: v.identifier.clone(),
                         content_hash: v.content_hash.clone(),
                         size: v.size,
-                        download_url,
                     },
                 );
             }
@@ -161,7 +179,7 @@ async fn fetch_channel_artifact(
         variants
     });
 
-    Ok(Some(ArtifactInfo {
+    Ok(Some(RawArtifactInfo {
         id: index.id,
         version: index.version,
         android,
@@ -179,21 +197,21 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .get_async("/releases/artifacts", |req, ctx| async move {
             handle_artifacts(req, ctx.env).await
         })
+        .get_async(
+            "/releases/download/:channel/:variant",
+            |req, ctx| async move {
+                let channel = ctx.param("channel").cloned().unwrap_or_default();
+                let variant = ctx.param("variant").cloned().unwrap_or_default();
+                handle_download(req, ctx.env, &channel, &variant).await
+            },
+        )
         .run(req, env)
         .await?;
     add_cors(&mut res)?;
     Ok(res)
 }
 
-fn origin_from_env(env: &Env) -> String {
-    env.var("BLOB_ORIGIN")
-        .ok()
-        .and_then(|v| v.to_string().into())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| DEFAULT_ORIGIN.to_string())
-}
-
-async fn handle_artifacts(_req: Request, env: Env) -> Result<Response> {
+async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
     let bucket = match env.bucket("RELEASE_BUCKET") {
         Ok(b) => b,
         Err(e) => {
@@ -206,21 +224,24 @@ async fn handle_artifacts(_req: Request, env: Env) -> Result<Response> {
         }
     };
 
-    let origin = origin_from_env(&env);
+    let origin = req.url()?.origin().ascii_serialization();
 
-    let registry: serde_json::Value =
-        match read_bucket_json(&bucket, &format!("{}/channels/heads/channels.json", RESOURCE_ROOT)).await
-        {
-            Ok(v) => v,
-            Err(e) => {
-                return Response::from_json(&ArtifactResponse {
-                    ok: false,
-                    artifacts: None,
-                    channels: vec![],
-                    error: Some(format!("channel registry not found: {}", e)),
-                });
-            }
-        };
+    let registry: serde_json::Value = match read_bucket_json(
+        &bucket,
+        &format!("{}/channels/heads/channels.json", RESOURCE_ROOT),
+    )
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return Response::from_json(&ArtifactResponse {
+                ok: false,
+                artifacts: None,
+                channels: vec![],
+                error: Some(format!("channel registry not found: {}", e)),
+            });
+        }
+    };
 
     let channels: Vec<String> = registry["channels"]
         .as_object()
@@ -229,8 +250,29 @@ async fn handle_artifacts(_req: Request, env: Env) -> Result<Response> {
 
     let mut artifacts = HashMap::new();
     for ch in &channels {
-        if let Ok(Some(artifact)) = fetch_channel_artifact(&bucket, &origin, ch).await {
-            artifacts.insert(ch.clone(), artifact);
+        if let Ok(Some(raw)) = fetch_channel_artifact(&bucket, ch).await {
+            let android = raw.android.map(|variants| {
+                variants
+                    .into_iter()
+                    .map(|(name, v)| {
+                        let info = VariantInfo {
+                            identifier: v.identifier,
+                            content_hash: v.content_hash,
+                            size: v.size,
+                            download_url: format!("{}/releases/download/{}/{}", origin, ch, name),
+                        };
+                        (name, info)
+                    })
+                    .collect()
+            });
+            artifacts.insert(
+                ch.clone(),
+                ArtifactInfo {
+                    id: raw.id,
+                    version: raw.version,
+                    android,
+                },
+            );
         }
     }
 
@@ -242,4 +284,57 @@ async fn handle_artifacts(_req: Request, env: Env) -> Result<Response> {
     })
     .map_err(|e| Error::RustError(format!("serialization error: {}", e)))?;
     Response::ok(body)
+}
+
+async fn handle_download(
+    _req: Request,
+    env: Env,
+    channel: &str,
+    variant: &str,
+) -> Result<Response> {
+    let bucket = env
+        .bucket("RELEASE_BUCKET")
+        .map_err(|e| Error::RustError(format!("RELEASE_BUCKET binding not configured: {}", e)))?;
+
+    let artifact = match fetch_channel_artifact(&bucket, channel).await? {
+        Some(a) => a,
+        None => return Response::error(format!("channel not found: {}", channel), 404),
+    };
+
+    let info = match artifact
+        .android
+        .as_ref()
+        .and_then(|variants| variants.get(variant))
+    {
+        Some(v) => v,
+        None => return Response::error(format!("variant not found: {}/{}", channel, variant), 404),
+    };
+
+    let path = blob_path(&info.identifier, &info.content_hash);
+    let object = match bucket.get(&path).execute().await? {
+        Some(o) => o,
+        None => return Response::error(format!("blob not found: {}", path), 404),
+    };
+
+    let size = object.size();
+    let body = object
+        .body()
+        .ok_or_else(|| Error::RustError(format!("object has no body: {}", path)))?;
+
+    let filename = format!(
+        "eve-fit-assistant-{}-{}.apk",
+        sanitize_filename_part(&artifact.version),
+        sanitize_filename_part(variant)
+    );
+
+    let mut res = Response::from_body(body.response_body()?)?;
+    let headers = res.headers_mut();
+    headers.set("Content-Type", APK_CONTENT_TYPE)?;
+    headers.set(
+        "Content-Disposition",
+        &format!("attachment; filename=\"{}\"", filename),
+    )?;
+    headers.set("Content-Length", &size.to_string())?;
+    headers.set("Cache-Control", "public, max-age=31536000, immutable")?;
+    Ok(res)
 }
