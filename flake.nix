@@ -57,6 +57,7 @@
         pkgs.zlib
         pkgs.openssl
         pkgs.curl
+        pkgs.libsecret
       ];
 
       nativeRustToolchainPath = pkgs.lib.makeBinPath [
@@ -152,6 +153,11 @@
               pkgs.worker-build
               developmentAndroidSdk
               developmentAndroidComposition.platform-tools
+              pkgs.apksigner
+
+              # linux platform support
+              pkgs.libsecret
+              pkgs.xdg-user-dirs
             ];
 
             LANG = "C.UTF-8";
@@ -299,7 +305,8 @@
               ++ nativeBuildPackages
               ++ dartPackages
               ++ protobufPackages
-              ++ frbPackages;
+              ++ frbPackages
+              ++ [ pkgs.libsecret ];
 
             inherit (localeEnv) LANG LC_ALL;
             JAVA_HOME = jdk17.home;
