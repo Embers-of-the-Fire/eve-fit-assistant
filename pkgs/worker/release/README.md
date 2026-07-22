@@ -55,7 +55,7 @@ Streams the APK blob for the given channel and variant (`general`, `armv7`,
 `arm64`, `x64`) directly from R2. The response carries a proper download name
 via `Content-Disposition`, e.g.:
 
-```
+```text
 Content-Type: application/vnd.android.package-archive
 Content-Disposition: attachment; filename="eve-fit-assistant-0.1.0-arm64.apk"
 Content-Length: 12345678
