@@ -343,7 +343,7 @@ class CheckoutService {
     onProgress?.call(downloadedCount, totalCount);
 
     // 5. Download changed blobs with sliding-window concurrency.
-    const blobConcurrency = 64;
+    const blobConcurrency = kBlobDownloadConcurrency;
 
     var nextIdx = 0;
     var completedFromDownload = 0;

@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
 /// Represents a single integrity issue found during verification.
@@ -202,7 +203,7 @@ class VerificationService {
       }
     }
 
-    const blobConcurrency = 64;
+    const blobConcurrency = kBlobDownloadConcurrency;
     var nextIdx = 0;
 
     if (toRepair.isNotEmpty) {
