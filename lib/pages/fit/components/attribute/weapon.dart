@@ -58,7 +58,7 @@ List<Text> _getWeaponTextGroup(native.Ship ship) {
 
   final dpsWithReload = hull.getAttribute(EveConstExtendedAttrID.damagePerSecondWithReload);
   texts
-    ..add(Text("${dpsWithReload.toStringAsFixed(1)}/s"))
+    ..add(Text("${(dpsWithReload + fighterDps).toStringAsFixed(1)}/s"))
     ..add(const Text(" | "));
 
   final alpha = hull.getAttribute(EveConstExtendedAttrID.damageAlpha) + _fighterVolleySum(ship);

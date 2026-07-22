@@ -155,13 +155,17 @@ class _FighterSlotRow extends ConsumerWidget {
         padding: .zero,
       ),
     ];
-    final dpsText = representative == null
+    final dps = representative?.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond);
+    final volley = representative == null ? null : _fighterVolley(representative);
+    final dpsText = dps == null || volley == null
         ? null
         : Text(
             "${storedFighter.quantity} x "
-            "${representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond).toStringAsFixed(1)}/s = "
-            "${(representative.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond) * storedFighter.quantity).toStringAsFixed(1)}/s | "
-            "${_fighterVolley(representative).toStringAsFixed(1)}",
+            "${dps.toStringAsFixed(1)}/s = "
+            "${(dps * storedFighter.quantity).toStringAsFixed(1)}/s\n"
+            "${storedFighter.quantity} x "
+            "${volley.toStringAsFixed(1)} = "
+            "${(volley * storedFighter.quantity).toStringAsFixed(1)}",
           );
 
     final content = ListTile(
