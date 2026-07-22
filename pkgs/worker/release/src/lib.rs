@@ -125,6 +125,16 @@ fn add_cors(res: &mut Response) -> Result<()> {
     Ok(())
 }
 
+fn artifact_error_response(msg: &str, status: u16) -> Result<Response> {
+    let res = Response::from_json(&ArtifactResponse {
+        ok: false,
+        artifacts: None,
+        channels: vec![],
+        error: Some(msg.to_string()),
+    })?;
+    Ok(res.with_status(status))
+}
+
 async fn fetch_channel_artifact(bucket: &Bucket, channel: &str) -> Result<Option<RawArtifactInfo>> {
     let head_meta: serde_json::Value = match read_bucket_json(
         bucket,
@@ -209,7 +219,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         add_cors(&mut res)?;
         return Ok(res);
     }
-    let mut res = Router::new()
+    let mut res = match Router::new()
         .get_async("/releases/artifacts", |req, ctx| async move {
             handle_artifacts(req, ctx.env).await
         })
@@ -223,7 +233,11 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             },
         )
         .run(req, env)
-        .await?;
+        .await
+    {
+        Ok(res) => res,
+        Err(e) => Response::error(e.to_string(), 500)?,
+    };
     add_cors(&mut res)?;
     Ok(res)
 }
@@ -232,12 +246,10 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
     let bucket = match env.bucket("RELEASE_BUCKET") {
         Ok(b) => b,
         Err(e) => {
-            return Response::from_json(&ArtifactResponse {
-                ok: false,
-                artifacts: None,
-                channels: vec![],
-                error: Some(format!("RELEASE_BUCKET binding not configured: {}", e)),
-            });
+            return artifact_error_response(
+                &format!("RELEASE_BUCKET binding not configured: {}", e),
+                500,
+            );
         }
     };
 
@@ -251,20 +263,13 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
     {
         Ok(Some(v)) => v,
         Ok(None) => {
-            return Response::from_json(&ArtifactResponse {
-                ok: false,
-                artifacts: None,
-                channels: vec![],
-                error: Some("channel registry not found".to_string()),
-            });
+            return artifact_error_response("channel registry not found", 404);
         }
         Err(e) => {
-            return Response::from_json(&ArtifactResponse {
-                ok: false,
-                artifacts: None,
-                channels: vec![],
-                error: Some(format!("failed to read channel registry: {}", e)),
-            });
+            return artifact_error_response(
+                &format!("failed to read channel registry: {}", e),
+                500,
+            );
         }
     };
 
@@ -275,34 +280,36 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
 
     let mut artifacts = HashMap::new();
     for ch in &channels {
-        if let Ok(Some(raw)) = fetch_channel_artifact(&bucket, ch).await {
-            let android = raw.android.map(|variants| {
-                variants
-                    .into_iter()
-                    .map(|(name, v)| {
-                        let download_url = format!(
-                            "{}/releases/download/{}/{}/{}",
-                            origin, ch, name, v.content_hash
-                        );
-                        let info = VariantInfo {
-                            identifier: v.identifier,
-                            content_hash: v.content_hash,
-                            size: v.size,
-                            download_url,
-                        };
-                        (name, info)
-                    })
-                    .collect()
-            });
-            artifacts.insert(
-                ch.clone(),
-                ArtifactInfo {
-                    id: raw.id,
-                    version: raw.version,
-                    android,
-                },
-            );
-        }
+        let raw = match fetch_channel_artifact(&bucket, ch).await? {
+            Some(raw) => raw,
+            None => continue,
+        };
+        let android = raw.android.map(|variants| {
+            variants
+                .into_iter()
+                .map(|(name, v)| {
+                    let download_url = format!(
+                        "{}/releases/download/{}/{}/{}",
+                        origin, ch, name, v.content_hash
+                    );
+                    let info = VariantInfo {
+                        identifier: v.identifier,
+                        content_hash: v.content_hash,
+                        size: v.size,
+                        download_url,
+                    };
+                    (name, info)
+                })
+                .collect()
+        });
+        artifacts.insert(
+            ch.clone(),
+            ArtifactInfo {
+                id: raw.id,
+                version: raw.version,
+                android,
+            },
+        );
     }
 
     let body = serde_json::to_string(&ArtifactResponse {
