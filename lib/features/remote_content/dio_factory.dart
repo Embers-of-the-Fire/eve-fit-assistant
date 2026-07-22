@@ -63,15 +63,16 @@ Dio createRemoteDio({
   );
 
   dio.interceptors.add(DioCacheInterceptor(options: RemoteCache.options));
-  _configureConnectionPool(dio);
+  _configureConnectionPool(dio, maxConnectionsPerHost: 8);
 
   return dio;
 }
 
 /// Creates a [Dio] instance without the HTTP cache interceptor, tuned for
 /// high-throughput blob downloads. Blobs are content-addressed and immutable,
-/// so HTTP caching is unnecessary overhead. Uses aggressive timeouts and a
-/// large connection pool because each blob is a fresh HTTP/1.1 request.
+/// so HTTP caching is unnecessary overhead. The pool is sized to the blob
+/// download worker concurrency — a larger pool only parks extra idle sockets
+/// (file descriptors), which can exhaust the fd limit on Linux desktops.
 Dio createBlobDio({
   Duration connectTimeout = const Duration(seconds: 15),
   Duration sendTimeout = const Duration(seconds: 30),
@@ -92,18 +93,17 @@ Dio createBlobDio({
     ),
   );
 
-  _configureConnectionPool(dio);
+  _configureConnectionPool(dio, maxConnectionsPerHost: 32);
 
   return dio;
 }
 
-const _maxConnectionsPerHost = 64;
-const _idleTimeout = Duration(seconds: 60);
+const _idleTimeout = Duration(seconds: 15);
 
-void _configureConnectionPool(Dio dio) {
+void _configureConnectionPool(Dio dio, {required int maxConnectionsPerHost}) {
   dio.httpClientAdapter = IOHttpClientAdapter(
     createHttpClient: () => HttpClient()
-      ..maxConnectionsPerHost = _maxConnectionsPerHost
+      ..maxConnectionsPerHost = maxConnectionsPerHost
       ..idleTimeout = _idleTimeout,
   );
 }
