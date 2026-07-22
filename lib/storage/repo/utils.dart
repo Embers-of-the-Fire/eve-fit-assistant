@@ -9,6 +9,9 @@ import "dart:io";
 
 import "package:protobuf/protobuf.dart";
 
+/// Default concurrency for parallel blob downloads across all fetch pipelines.
+const kBlobDownloadConcurrency = 32;
+
 /// Writes [json] to [target] atomically via a temporary file + rename.
 ///
 /// The payload is first serialized with [jsonEncode] and written to a `.tmp`

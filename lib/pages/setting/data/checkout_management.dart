@@ -16,6 +16,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -882,8 +883,7 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
         _progress = 0;
       });
 
-      // Download blobs in parallel with concurrency limit
-      const concurrency = 4;
+      // Download blobs in parallel with sliding-window concurrency
       var downloaded = 0;
       final failedBlobs = <String>[];
       final assetStore = ref.read(assetStoreProvider);
@@ -899,6 +899,8 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
         }
       }
 
+      toDownload.sort((a, b) => b.size.compareTo(a.size));
+
       if (mounted) {
         setState(() {
           _progress = totalEntries > 0 ? downloaded / totalEntries : null;
@@ -909,11 +911,31 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
         });
       }
 
-      for (var i = 0; i < toDownload.length; i += concurrency) {
-        final chunk = toDownload.skip(i).take(concurrency).toList();
+      var nextIdx = 0;
+      var lastProgressMs = 0;
+      const throttleMs = 200;
 
-        await Future.wait(
-          chunk.map((entry) async {
+      void maybeProgress() {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (now - lastProgressMs >= throttleMs || downloaded >= totalEntries) {
+          if (mounted) {
+            setState(() {
+              _progress = totalEntries > 0 ? downloaded / totalEntries : null;
+              _status = l10n.checkoutCreateProgressDownloading2(
+                current: downloaded,
+                total: totalEntries,
+              );
+            });
+          }
+          lastProgressMs = now;
+        }
+      }
+
+      if (toDownload.isNotEmpty) {
+        Future<void> downloadNext() async {
+          int idx;
+          while ((idx = nextIdx++) < toDownload.length) {
+            final entry = toDownload[idx];
             final identHash = RepoHash.hashIdent(entry.resourceId);
             final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
             if (blobResult.isRight()) {
@@ -921,20 +943,27 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
             } else {
               failedBlobs.add(entry.resourceId);
             }
-          }),
-        );
 
-        downloaded += chunk.length;
-
-        if (mounted) {
-          setState(() {
-            _progress = totalEntries > 0 ? downloaded / totalEntries : null;
-            _status = l10n.checkoutCreateProgressDownloading2(
-              current: downloaded,
-              total: totalEntries,
-            );
-          });
+            downloaded++;
+            maybeProgress();
+          }
         }
+
+        final tasks = <Future<void>>[
+          for (var i = 0; i < kBlobDownloadConcurrency.clamp(1, toDownload.length); i++)
+            downloadNext(),
+        ];
+        await Future.wait(tasks);
+      }
+
+      maybeProgress();
+
+      if (failedBlobs.isNotEmpty) {
+        setState(() {
+          _failed = true;
+          _error = l10n.checkoutCreateProgressBlobsFailed(count: failedBlobs.length);
+        });
+        return;
       }
 
       // Write snapshot metadata locally

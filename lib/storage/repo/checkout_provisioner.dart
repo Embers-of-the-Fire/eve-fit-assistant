@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 // ── State machine ────────────────────────────────────────────────────────────
 
@@ -196,7 +197,7 @@ class CheckoutProvisioner {
     _emit(ProvisionerPreparing(totalBlobs: totalEntries, cachedBlobs: cachedCount));
 
     // 3. Download missing blobs with sliding-window concurrency.
-    const blobConcurrency = 64;
+    const blobConcurrency = kBlobDownloadConcurrency;
     var downloaded = cachedCount;
     final failedBlobs = <String>[];
 

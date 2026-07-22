@@ -179,7 +179,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     final unionTotal = unionEntries.length;
 
     // Download blobs with sliding-window concurrency.
-    const blobConcurrency = 64;
+    const blobConcurrency = kBlobDownloadConcurrency;
     final failedBlobs = <String>[];
     var nextIdx = 0;
     var lastEmitMs = 0;

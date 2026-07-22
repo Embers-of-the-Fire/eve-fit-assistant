@@ -1497,6 +1497,10 @@
   "checkoutCreateProgressCreatingCheckout": "正在创建数据版本条目...",
   "checkoutCreateProgressComplete": "数据版本创建成功！",
   "checkoutCreateProgressIndexFailed": "资源索引获取失败",
+  "checkoutCreateProgressBlobsFailed": "{count} 个资产下载失败",
+  "@checkoutCreateProgressBlobsFailed": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "checkoutCreateProgressCheckoutFailed": "数据版本创建失败",
   "checkoutCreateSuccess": "数据版本创建完成并已激活",
   "checkoutHistoryButton": "查看历史",
