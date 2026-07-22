@@ -1,0 +1,10 @@
+id: version-0-2-0
+publishedAt: '2026-07-22T05:33:08Z'
+tags:
+- release-note
+channels:
+- testing
+platforms:
+- android
+- ios
+appVersion: 0.2.0
