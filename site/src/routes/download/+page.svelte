@@ -39,12 +39,10 @@ function recommendedVariant(arch: string | undefined, bitness: string | undefine
     return "general";
 }
 
-function archDisplay(arch: string | undefined, bitness: string | undefined): string {
-    if (arch === "arm" && bitness === "64") return "arm64-v8a";
-    if (arch === "arm" && bitness === "32") return "armeabi-v7a";
-    if (arch === "x86") return `x86 (${bitness ?? "?"}-bit)`;
-    if (arch === "x86_64") return "x86_64";
-    return "Unknown";
+function rawArchDisplay(arch: string | undefined, bitness: string | undefined): string {
+    if (!arch && !bitness) return "Unknown";
+    const bits = bitness ? `${bitness}-bit` : "unknown bitness";
+    return arch ? `${arch} (${bits})` : `unknown arch (${bits})`;
 }
 
 let uaArch = $state<string | undefined>();
@@ -63,7 +61,7 @@ $effect(() => {
     });
 });
 
-let detected = $derived(recommendedVariant(uaArch, uaBitness));
+const detected = $derived(recommendedVariant(uaArch, uaBitness));
 
 let cancelled = false;
 
@@ -93,7 +91,7 @@ $effect(() => {
     };
 });
 
-let artifact: ArtifactInfo | undefined = $derived(
+const artifact: ArtifactInfo | undefined = $derived(
     downloadState.artifacts[downloadState.activeChannel],
 );
 
@@ -199,7 +197,7 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 			{/if}
 
 			<div class="mb-10 text-center text-xs text-eve-text-muted">
-				<span class="text-eve-text-muted">{t('download.detected')}</span> {archDisplay(uaArch, uaBitness)} — {variantLabel(detected)}
+				<span class="text-eve-text-muted">{t('download.detected')}</span> {rawArchDisplay(uaArch, uaBitness)} — {variantLabel(detected)}
 			</div>
 
 			<div class="eve-divider-gold mb-10"></div>
