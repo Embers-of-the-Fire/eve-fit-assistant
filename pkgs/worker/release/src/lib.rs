@@ -365,7 +365,6 @@ async fn handle_download(
         None => return Response::error(format!("blob not found: {}", path), 404),
     };
 
-    let size = object.size();
     let body = object
         .body()
         .ok_or_else(|| Error::RustError(format!("object has no body: {}", path)))?;
@@ -383,7 +382,6 @@ async fn handle_download(
         "Content-Disposition",
         &format!("attachment; filename=\"{}\"", filename),
     )?;
-    headers.set("Content-Length", &size.to_string())?;
     headers.set("Cache-Control", "public, max-age=31536000, immutable")?;
     Ok(res)
 }
