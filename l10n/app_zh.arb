@@ -1488,6 +1488,12 @@
     }
   },
   "checkoutCreateProgressFinalizing": "正在完成...",
+  "downloadSpeedFilesPerSecond": "{value} 文件/秒",
+  "@downloadSpeedFilesPerSecond": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
   "checkoutCreateProgressCreatingCheckout": "正在创建数据版本条目...",
   "checkoutCreateProgressComplete": "数据版本创建成功！",
   "checkoutCreateProgressIndexFailed": "资源索引获取失败",

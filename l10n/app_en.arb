@@ -667,6 +667,7 @@
   "checkoutCreateProgressDownloading": "Downloading assets ({count} total)...",
   "checkoutCreateProgressDownloading2": "Downloading assets ({current}/{total})...",
   "checkoutCreateProgressFinalizing": "Finalizing...",
+  "downloadSpeedFilesPerSecond": "{value} files/s",
   "checkoutCreateProgressCreatingCheckout": "Creating checkout entry...",
   "checkoutCreateProgressComplete": "Checkout created successfully!",
   "checkoutCreateProgressIndexFailed": "Resource index fetch failed",

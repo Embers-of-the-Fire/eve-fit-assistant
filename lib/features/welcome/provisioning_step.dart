@@ -356,18 +356,20 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
 
     final statusText = switch (state) {
       MultiProvisionerFetching() => l10n.checkoutCreateProgressFetchingIndex,
-      MultiProvisionerDownloading(
-        :final downloaded,
-        :final total,
-        :final filesPerSecond,
-        :final bytesPerSecond,
-      ) =>
-        "${l10n.checkoutCreateProgressDownloading2(current: downloaded, total: total)}  "
-            "${filesPerSecond > 0 ? "${filesPerSecond.toStringAsFixed(1)} files/s" : ""}"
-            "${bytesPerSecond > 0 ? "  ${formatBytesPerSec(bytesPerSecond)}" : ""}",
+      MultiProvisionerDownloading(:final downloaded, :final total) =>
+        l10n.checkoutCreateProgressDownloading2(current: downloaded, total: total),
       MultiProvisionerCreating() => l10n.checkoutCreateProgressCreatingCheckout,
       MultiProvisionerComplete() => l10n.checkoutCreateProgressComplete,
       MultiProvisionerFatal(:final message) => message,
+    };
+
+    final speedText = switch (state) {
+      MultiProvisionerDownloading(:final filesPerSecond, :final bytesPerSecond) => [
+        if (filesPerSecond > 0)
+          l10n.downloadSpeedFilesPerSecond(value: filesPerSecond.toStringAsFixed(1)),
+        if (bytesPerSecond > 0) formatBytesPerSec(bytesPerSecond),
+      ].join("  "),
+      _ => "",
     };
 
     final showError = state is MultiProvisionerFatal;
@@ -431,6 +433,16 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
                       SizedBox(height: tokens.spacingMd),
                       if (progressValue case final p)
                         SizedBox(width: 256, child: LinearProgressIndicator(value: p)),
+                      if (speedText.isNotEmpty) ...[
+                        SizedBox(height: tokens.spacingSm),
+                        Text(
+                          speedText,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
