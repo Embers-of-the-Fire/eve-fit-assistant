@@ -171,6 +171,8 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
       }
     }
 
+    toDownload.sort((a, b) => b.$4.compareTo(a.$4));
+
     if (_cancelled) return;
 
     final cachedCount = downloaded;

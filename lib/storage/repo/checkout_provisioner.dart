@@ -189,6 +189,8 @@ class CheckoutProvisioner {
       }
     }
 
+    toDownload.sort((a, b) => b.$1.size.compareTo(a.$1.size));
+
     if (_cancelled) return;
 
     _emit(ProvisionerPreparing(totalBlobs: totalEntries, cachedBlobs: cachedCount));
