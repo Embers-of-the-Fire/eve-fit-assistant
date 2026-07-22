@@ -288,12 +288,16 @@ class CheckoutService {
     final newIndex = ResourceIndex.fromBuffer(indexBytes.getRight().toNullable()!);
 
     final previousIndex = assetStore.readResourceIndexSync(m.resourceSnapshotHash);
-    final entriesToDownload = <({String resourceId, String contentHash})>[];
+    final entriesToDownload = <({String resourceId, String contentHash, int size})>[];
     int downloadedCount = 0;
 
     if (previousIndex.isNone()) {
       for (final entry in newIndex.entries) {
-        entriesToDownload.add((resourceId: entry.resourceId, contentHash: entry.contentHash));
+        entriesToDownload.add((
+          resourceId: entry.resourceId,
+          contentHash: entry.contentHash,
+          size: entry.size.toInt(),
+        ));
       }
     } else {
       final prevMap = <String, String>{};
@@ -303,7 +307,11 @@ class CheckoutService {
       for (final e in newIndex.entries) {
         final prevHash = prevMap[e.resourceId];
         if (prevHash == null || prevHash != e.contentHash) {
-          entriesToDownload.add((resourceId: e.resourceId, contentHash: e.contentHash));
+          entriesToDownload.add((
+            resourceId: e.resourceId,
+            contentHash: e.contentHash,
+            size: e.size.toInt(),
+          ));
         } else {
           downloadedCount++;
         }
@@ -313,7 +321,7 @@ class CheckoutService {
     // Entries whose blobs are already on disk count as downloaded immediately.
     // Pre-build identHash and blob path once per entry.
     final actualToDownload =
-        <({String resourceId, String contentHash, String identHash, String blobPath})>[];
+        <({String resourceId, String contentHash, String identHash, String blobPath, int size})>[];
     for (final dl in entriesToDownload) {
       final ihash = RepoHash.hashIdent(dl.resourceId);
       if (assetStore.blobExistsSync(ihash, dl.contentHash)) {
@@ -324,9 +332,12 @@ class CheckoutService {
           contentHash: dl.contentHash,
           identHash: ihash,
           blobPath: RepoPaths.blobPath(ihash, dl.contentHash),
+          size: dl.size,
         ));
       }
     }
+
+    actualToDownload.sort((a, b) => b.size.compareTo(a.size));
 
     final totalCount = newIndex.entries.length;
     onProgress?.call(downloadedCount, totalCount);
