@@ -9,8 +9,14 @@ fn workspace_root() -> PathBuf {
 fn main() -> anyhow::Result<()> {
     let schema_dir = workspace_root().join("data/schema");
 
-    println!("cargo::rerun-if-changed={}", schema_dir.join("release_index.proto").display());
-    println!("cargo::rerun-if-changed={}", schema_dir.join("generation_pointer.proto").display());
+    println!(
+        "cargo::rerun-if-changed={}",
+        schema_dir.join("release_index.proto").display()
+    );
+    println!(
+        "cargo::rerun-if-changed={}",
+        schema_dir.join("generation_pointer.proto").display()
+    );
 
     prost_build::Config::new().compile_protos(
         &["release_index.proto", "generation_pointer.proto"],

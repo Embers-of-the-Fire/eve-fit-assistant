@@ -13,9 +13,6 @@ remote = true
 # Till 2026.07 cloudflare does not offer cargo environment barely.
 command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-build --release"
 
-[vars]
-BLOB_ORIGIN = "https://prod.storage.efa-tech.dev"
-
 [[routes]]
 pattern = "api.efa-tech.dev/releases/*"
 zone_name = "efa-tech.dev"
