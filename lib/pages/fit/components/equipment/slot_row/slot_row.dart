@@ -200,7 +200,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     }
 
     if (moduleItem != null) {
-      final relatedValues = _collectSlotRelatedValues(moduleItem);
+      final relatedValues = collectSlotRelatedValues(moduleItem);
       if (relatedValues.isNotEmpty) {
         subtitleWidgets.add(_SlotRelatedValuesRow(segments: relatedValues));
       }
