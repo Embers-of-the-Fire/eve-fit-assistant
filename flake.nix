@@ -122,6 +122,21 @@
         wrangler
       ];
 
+      # Not packaged in nixpkgs; wrap the upstream AppImage with appimage-run.
+      appimageBuilderAppImage = pkgs.fetchurl {
+        name = "appimage-builder-1.1.1.dev32+g2709a3b-x86_64.AppImage";
+        url = "https://github.com/AppImageCrafters/appimage-builder/releases/download/Continuous/appimage-builder-1.1.1.dev32%2Bg2709a3b-x86_64.AppImage";
+        hash = "sha256-dWm3ECYqQt4NV37Oi/0LkX6f29So0EN8KcY1sOrd178=";
+      };
+
+      appimageBuilder =
+        pkgs.runCommand "appimage-builder-1.1.1" { nativeBuildInputs = [ pkgs.makeWrapper ]; }
+          ''
+            install -Dm755 ${appimageBuilderAppImage} $out/share/appimage-builder.AppImage
+            makeWrapper ${pkgs.appimage-run}/bin/appimage-run $out/bin/appimage-builder \
+              --add-flags "$out/share/appimage-builder.AppImage"
+          '';
+
       ciPackages = with pkgs; [
         zizmor
       ];
@@ -149,6 +164,7 @@
           # Full development shell
           fullShell = pkgs.mkShell {
             packages = basePackages ++ [
+              appimageBuilder
               pkgs.rustup
               pkgs.worker-build
               developmentAndroidSdk
