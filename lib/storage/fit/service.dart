@@ -244,15 +244,17 @@ class Fit extends _$Fit {
 
     final active = ref.read(activeCheckoutProvider);
     final checkoutId = ref.read(activeCheckoutIdProvider);
-    final updatedMetadata = currentFit.metadata.copyWith(
-      lastModified: DateTime.now().millisecondsSinceEpoch,
-      checkoutRef: active.match(
-        () => currentFit.metadata.checkoutRef,
-        (a) =>
-            CheckoutRef(checkoutId: checkoutId.match(() => "", (id) => id), serverId: a.serverId),
+    final updated = pruneDynamicRegistry(updater(currentFit));
+    final fit = updated.copyWith(
+      metadata: updated.metadata.copyWith(
+        lastModified: DateTime.now().millisecondsSinceEpoch,
+        checkoutRef: active.match(
+          () => updated.metadata.checkoutRef,
+          (a) =>
+              CheckoutRef(checkoutId: checkoutId.match(() => "", (id) => id), serverId: a.serverId),
+        ),
       ),
     );
-    final fit = pruneDynamicRegistry(updater(currentFit)).copyWith(metadata: updatedMetadata);
     _mountedFit = fit;
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);
