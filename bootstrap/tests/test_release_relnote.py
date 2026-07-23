@@ -66,7 +66,7 @@ def test_create_raw_release_note_writes_spec_and_changelog(
     assert spec["appVersion"] == "0.2.0-beta.1"
     assert spec["tags"] == ["release-note"]
     assert spec["channels"] == ["testing"]
-    assert spec["platforms"] == ["android", "ios"]
+    assert "platforms" not in spec
     assert "publishedAt" in spec
 
     changelog = changelog_path.read_text(encoding="utf-8")

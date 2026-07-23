@@ -32,7 +32,7 @@ class TestBundledSourceMetadata:
         assert metadata.tags == []
         assert metadata.startup is False
         assert metadata.channels == ["testing"]
-        assert metadata.platforms == ["android", "ios"]
+        assert metadata.platforms == []
         assert metadata.min_app_version is None
         assert metadata.max_app_version is None
         assert metadata.app_version is None

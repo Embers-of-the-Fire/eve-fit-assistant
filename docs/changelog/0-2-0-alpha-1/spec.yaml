@@ -6,5 +6,4 @@ channels:
 - testing
 platforms:
 - android
-- ios
 appVersion: 0.2.0-alpha.1

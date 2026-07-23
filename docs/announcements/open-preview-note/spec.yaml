@@ -7,4 +7,3 @@ channels:
   - testing
 platforms:
   - android
-  - ios

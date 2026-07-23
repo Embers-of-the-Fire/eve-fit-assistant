@@ -27,7 +27,6 @@ CHANGELOG_ROOT = PROJECT_ROOT / "docs" / "changelog"
 CLIFF_CONFIG = PROJECT_ROOT / "cliff.toml"
 
 _DEFAULT_CHANNELS = ["testing"]
-_DEFAULT_PLATFORMS = ["android", "ios"]
 _DEFAULT_TAGS = ["release-note"]
 
 
@@ -127,9 +126,10 @@ def _build_spec(
         "publishedAt": when,
         "tags": _DEFAULT_TAGS,
         "channels": channels if channels is not None else _DEFAULT_CHANNELS,
-        "platforms": platforms if platforms is not None else _DEFAULT_PLATFORMS,
         "appVersion": app_version,
     }
+    if platforms is not None:
+        spec["platforms"] = platforms
     if from_ref is not None:
         spec["fromRef"] = from_ref
     return spec

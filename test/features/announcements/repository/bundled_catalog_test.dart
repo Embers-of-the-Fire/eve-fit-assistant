@@ -97,7 +97,10 @@ void main() {
       expect(welcome.appVersion, isNull);
       expect(welcome.tags, contains("welcome"));
       expect(welcome.channels, contains("testing"));
-      expect(welcome.platforms, containsAll(["android", "ios"]));
+      expect(
+        welcome.platforms,
+        containsAll([AnnouncementPlatform.android, AnnouncementPlatform.ios]),
+      );
       expect(welcome.localizations, contains("zh"));
       expect(welcome.localizations, contains("en"));
 

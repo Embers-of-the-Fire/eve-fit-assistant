@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:eve_fit_assistant/features/announcements/models/announcement_catalog.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_entry.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_page.dart";
+import "package:eve_fit_assistant/features/announcements/models/announcement_platform.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_record.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_state.dart";
 import "package:eve_fit_assistant/features/announcements/models/localization_meta.dart";
@@ -61,7 +62,7 @@ void main() {
         id: "test-entry",
         publishedAt: DateTime.utc(2026, 1, 1),
         channels: ["stable"],
-        platforms: ["android"],
+        platforms: [AnnouncementPlatform.android],
         localizations: {
           "en": LocalizationMeta(title: "Title", summary: "Summary", bodyHash: "hash"),
         },
@@ -85,7 +86,7 @@ void main() {
         minAppVersion: "1.5.0",
         maxAppVersion: "2.9.0",
         channels: ["stable", "beta"],
-        platforms: ["android", "ios"],
+        platforms: [AnnouncementPlatform.android, AnnouncementPlatform.ios],
         appVersion: "2.0.0",
         localizations: {
           "en": LocalizationMeta(title: "English", summary: "Summary", bodyHash: "en_hash"),
@@ -194,7 +195,7 @@ void main() {
         tags: ["news"],
         startup: true,
         channels: ["stable"],
-        platforms: ["android"],
+        platforms: [AnnouncementPlatform.android],
         appVersion: "2.0.0",
         localizations: {
           "en": LocalizationMeta(title: "Title", summary: "Summary", bodyHash: "hash"),
@@ -215,7 +216,7 @@ void main() {
       );
       expect(record.entry, entry);
       expect(record.entry!.channels, ["stable"]);
-      expect(record.entry!.platforms, ["android"]);
+      expect(record.entry!.platforms, [AnnouncementPlatform.android]);
       expect(record.entry!.localizations["en"]!.title, "Title");
     });
   });

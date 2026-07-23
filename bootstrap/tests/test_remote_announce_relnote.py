@@ -215,7 +215,7 @@ class TestAddReleaseNote:
         assert entry.app_version == "0.1.0-beta.7"
         assert entry.tags == ["release-note"]
         assert entry.channels == ["testing"]
-        assert entry.platforms == ["android", "ios"]
+        assert entry.platforms == []
 
         zh = entry.localizations["zh"]
         en = entry.localizations["en"]

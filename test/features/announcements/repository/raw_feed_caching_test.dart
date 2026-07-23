@@ -30,7 +30,7 @@ class _CountingRepository extends AnnouncementRepository {
   Future<AnnouncementRawFeed> sync({
     required String localeCode,
     required String currentChannel,
-    required String currentPlatform,
+    required AnnouncementPlatform? currentPlatform,
     required String installedVersion,
   }) async {
     syncCount += 1;
@@ -52,7 +52,7 @@ AnnouncementEntry _entry(String id) => AnnouncementEntry(
   id: id,
   publishedAt: DateTime(2026, 6, 15),
   channels: const ["stable"],
-  platforms: const ["android"],
+  platforms: const [AnnouncementPlatform.android],
   localizations: const {"en": LocalizationMeta(title: "Title", summary: "Summary", bodyHash: "")},
 );
 

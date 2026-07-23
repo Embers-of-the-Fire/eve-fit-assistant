@@ -283,9 +283,6 @@ def register_remote_announce(remote: click.Group) -> None:
             bootstrap.config.DeveloperConfiguration.ensure_loaded()
             channels_list = [bootstrap.config.DEV_CONFIGURATION.remote.channel.value]
 
-        if not platforms_list:
-            platforms_list = ["android", "ios"]
-
         new_entry = AnnouncementEntry(
             id=entry_id,
             published_at=published_at,
@@ -375,6 +372,7 @@ def register_remote_announce(remote: click.Group) -> None:
         archived entry.
         """
         from bootstrap.docs.announcements_remote import ACTIVE_KEY
+        from bootstrap.docs.announcements_remote import AnnouncementPlatform
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
         if all(
@@ -466,7 +464,9 @@ def register_remote_announce(remote: click.Group) -> None:
         if channels is not None:
             entry_to_edit.channels = [c.strip() for c in channels.split(",") if c.strip()]
         if platforms is not None:
-            entry_to_edit.platforms = [p.strip() for p in platforms.split(",") if p.strip()]
+            entry_to_edit.platforms = [
+                AnnouncementPlatform(p.strip()) for p in platforms.split(",") if p.strip()
+            ]
         if min_app_version is not None:
             entry_to_edit.min_app_version = min_app_version
         if max_app_version is not None:
@@ -785,7 +785,7 @@ def register_remote_announce(remote: click.Group) -> None:
     @click.option(
         "--platforms",
         default=None,
-        help="Comma-separated platform list (default: from spec.yaml or android,ios).",
+        help="Comma-separated platform list (default: from spec.yaml, or all platforms if unset).",
     )
     @click.option(
         "--published-at",
@@ -867,7 +867,7 @@ def register_remote_announce(remote: click.Group) -> None:
             or _datetime.now(UTC).isoformat().replace("+00:00", "Z")
         )
         effective_channels = split_csv(channels) or spec.get("channels") or ["testing"]
-        effective_platforms = split_csv(platforms) or spec.get("platforms") or ["android", "ios"]
+        effective_platforms = split_csv(platforms) or spec.get("platforms") or []
         effective_tags = split_csv(tags) or spec.get("tags") or ["release-note"]
 
         workspace_root = get_announce_workspace()

@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/features/announcements/models/announcement_entry.dart";
+import "package:eve_fit_assistant/features/announcements/models/announcement_platform.dart";
 import "package:eve_fit_assistant/features/announcements/models/localization_meta.dart";
 import "package:flutter_test/flutter_test.dart";
 
@@ -11,7 +12,7 @@ void main() {
         id: "test-entry",
         publishedAt: DateTime.utc(2026, 6, 15, 8),
         channels: ["stable"],
-        platforms: ["android"],
+        platforms: [AnnouncementPlatform.android],
         localizations: {
           "zh_CN": LocalizationMeta(title: "中文标题", summary: "中文摘要", bodyHash: "hash_zh_cn"),
           "zh": LocalizationMeta(title: "中文标题(语言)", summary: "中文摘要(语言)", bodyHash: "hash_zh"),
@@ -50,7 +51,7 @@ void main() {
         id: "test-entry",
         publishedAt: DateTime.utc(2026, 6, 15, 8),
         channels: ["stable"],
-        platforms: ["android"],
+        platforms: [AnnouncementPlatform.android],
         localizations: {
           "ja": LocalizationMeta(title: "日本語タイトル", summary: "日本語要約", bodyHash: "hash_ja"),
         },
@@ -66,7 +67,7 @@ void main() {
         id: "test-entry",
         publishedAt: DateTime.utc(2026, 6, 15, 8),
         channels: ["stable"],
-        platforms: ["android"],
+        platforms: [AnnouncementPlatform.android],
         localizations: {},
       );
       final result = entryEmpty.resolveLocalization("zh_CN");

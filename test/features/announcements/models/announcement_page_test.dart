@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:eve_fit_assistant/features/announcements/models/announcement_entry.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_page.dart";
+import "package:eve_fit_assistant/features/announcements/models/announcement_platform.dart";
 import "package:eve_fit_assistant/features/announcements/models/localization_meta.dart";
 import "package:flutter_test/flutter_test.dart";
 
@@ -26,7 +27,7 @@ void main() {
             id: "test-1",
             publishedAt: DateTime.utc(2026, 6, 15, 8),
             channels: ["stable"],
-            platforms: ["android"],
+            platforms: [AnnouncementPlatform.android],
             localizations: {
               "en": LocalizationMeta(
                 title: "Test Title",
@@ -106,7 +107,7 @@ void main() {
       expect(entry1.minAppVersion, "1.5.0");
       expect(entry1.maxAppVersion, isNull);
       expect(entry1.channels, ["stable", "beta"]);
-      expect(entry1.platforms, ["android", "ios"]);
+      expect(entry1.platforms, [AnnouncementPlatform.android, AnnouncementPlatform.ios]);
       expect(entry1.appVersion, isNull);
       expect(entry1.localizations, hasLength(2));
       expect(entry1.localizations["en"]!.title, "Scheduled Maintenance on June 20");
@@ -129,7 +130,7 @@ void main() {
             id: "entry-1",
             publishedAt: DateTime.utc(2026, 1, 1),
             channels: ["stable"],
-            platforms: ["android"],
+            platforms: [AnnouncementPlatform.android],
             localizations: {
               "en": LocalizationMeta(title: "Test", summary: "Summary", bodyHash: "hash"),
             },

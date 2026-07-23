@@ -62,7 +62,7 @@ def _make_entry(
         min_app_version=min_app_version,
         max_app_version=max_app_version,
         channels=channels if channels is not None else ["testing"],
-        platforms=platforms if platforms is not None else ["android", "ios"],
+        platforms=platforms if platforms is not None else [],
         app_version=app_version,
         localizations={
             "zh": AnnouncementLocalization(title=zh_title, summary=zh_summary, body_hash=zh_hash),
