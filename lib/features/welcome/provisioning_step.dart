@@ -58,6 +58,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
   MultiProvisionerState _currentState = const MultiProvisionerFetching();
   bool _cancelled = false;
   bool _started = false;
+  Timer? _progressTimer;
   late final AnimationController _enterAnimCtrl;
   late final AnimationController _titleAnimCtrl;
 
@@ -92,6 +93,8 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     _enterAnimCtrl.dispose();
     _titleAnimCtrl.dispose();
     _cancelled = true;
+    _progressTimer?.cancel();
+    _progressTimer = null;
     unawaited(_stateController.close());
     super.dispose();
   }
@@ -157,17 +160,17 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     // Separate cached from to-download — pre-build identHash and blob path.
     final toDownload = <(ResourceIndex_Entry, String, String, int)>[];
     var downloaded = 0;
+    var cachedBytes = 0;
+    var totalBytes = 0;
     for (final entry in unionEntries) {
+      final size = entry.size.toInt();
+      totalBytes += size;
       final identHash = RepoHash.hashIdent(entry.resourceId);
       if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
         downloaded++;
+        cachedBytes += size;
       } else {
-        toDownload.add((
-          entry,
-          identHash,
-          RepoPaths.blobPath(identHash, entry.contentHash),
-          entry.size.toInt(),
-        ));
+        toDownload.add((entry, identHash, RepoPaths.blobPath(identHash, entry.contentHash), size));
       }
     }
 
@@ -185,11 +188,37 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     var lastEmitMs = 0;
     const throttleMs = 200;
     final stopwatch = Stopwatch();
-    var bytesDownloaded = 0;
+    final tracker = BlobTransferTracker(totalBytes: totalBytes, initialCompletedBytes: cachedBytes);
+
+    void maybeEmit({bool force = false}) {
+      if (_cancelled) return;
+      final now = stopwatch.elapsedMilliseconds;
+      if (!force && now - lastEmitMs < throttleMs && downloaded < unionTotal) return;
+      lastEmitMs = now;
+      final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
+      final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
+      _emit(
+        MultiProvisionerDownloading(
+          downloaded: downloaded,
+          total: unionTotal,
+          downloadedBytes: tracker.transferredBytes,
+          totalBytes: tracker.totalBytes,
+          elapsedSeconds: elapsed,
+          filesPerSecond: fps,
+          bytesPerSecond: tracker.bytesPerSecond,
+        ),
+      );
+    }
 
     if (toDownload.isNotEmpty) {
       assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
       stopwatch.start();
+      // Periodic re-emit so the progress bar keeps moving and the reported
+      // speed decays honestly while all workers are busy on large blobs.
+      _progressTimer = Timer.periodic(
+        const Duration(milliseconds: 500),
+        (_) => maybeEmit(force: true),
+      );
 
       Future<void> downloadNext() async {
         int idx;
@@ -202,62 +231,57 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
           final blobPath = dl.$3;
           final blobSize = dl.$4;
 
-          final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
+          final blobResult = await remoteCatalog.fetchBlob(
+            identHash,
+            entry.contentHash,
+            onReceiveProgress: (received, _) {
+              tracker.blobProgress(idx, received);
+              maybeEmit();
+            },
+          );
           if (blobResult.isRight()) {
             try {
               await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
               downloaded++;
-              bytesDownloaded += blobSize;
+              tracker.blobComplete(idx, blobSize);
             } on FileSystemException {
+              tracker.blobAborted(idx);
               failedBlobs.add(entry.resourceId);
             }
           } else {
+            tracker.blobAborted(idx);
             failedBlobs.add(entry.resourceId);
             warning("Failed to fetch blob: ${entry.resourceId}");
           }
 
-          final now = DateTime.now().millisecondsSinceEpoch;
-          if (now - lastEmitMs >= throttleMs || downloaded >= unionTotal) {
-            final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
-            final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
-            final bps = elapsed > 0 ? bytesDownloaded.toDouble() / elapsed : 0.0;
-            _emit(
-              MultiProvisionerDownloading(
-                downloaded: downloaded,
-                total: unionTotal,
-                elapsedSeconds: elapsed,
-                filesPerSecond: fps,
-                bytesPerSecond: bps,
-              ),
-            );
-            lastEmitMs = now;
-          }
+          maybeEmit();
         }
       }
 
       final tasks = <Future<void>>[
         for (var i = 0; i < blobConcurrency.clamp(1, toDownload.length); i++) downloadNext(),
       ];
-      await Future.wait(tasks);
-      stopwatch.stop();
+      try {
+        await Future.wait(tasks);
+      } finally {
+        _progressTimer?.cancel();
+        _progressTimer = null;
+        stopwatch.stop();
+      }
     }
 
     // Final emit after all workers finish.
     if (toDownload.isNotEmpty) {
-      final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
-      final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
-      final bps = elapsed > 0 ? bytesDownloaded.toDouble() / elapsed : 0.0;
+      maybeEmit(force: true);
+    } else {
       _emit(
         MultiProvisionerDownloading(
           downloaded: downloaded,
           total: unionTotal,
-          elapsedSeconds: elapsed,
-          filesPerSecond: fps,
-          bytesPerSecond: bps,
+          downloadedBytes: totalBytes,
+          totalBytes: totalBytes,
         ),
       );
-    } else {
-      _emit(MultiProvisionerDownloading(downloaded: downloaded, total: unionTotal));
     }
 
     if (_cancelled) return;

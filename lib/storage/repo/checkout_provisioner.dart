@@ -30,6 +30,8 @@ class ProvisionerDownloading extends ProvisionerState {
     required this.total,
     this.failedCount = 0,
     this.currentResourceId,
+    this.downloadedBytes = 0,
+    this.totalBytes = 0,
     this.elapsedSeconds = 0,
     this.filesPerSecond = 0,
     this.bytesPerSecond = 0,
@@ -39,11 +41,16 @@ class ProvisionerDownloading extends ProvisionerState {
   final int total;
   final int failedCount;
   final String? currentResourceId;
+  final int downloadedBytes;
+  final int totalBytes;
   final double elapsedSeconds;
   final double filesPerSecond;
   final double bytesPerSecond;
 
-  double get progress => total > 0 ? downloaded / total : 0;
+  /// Byte-based completion fraction; falls back to file counts when byte
+  /// totals are unknown.
+  double get progress =>
+      totalBytes > 0 ? downloadedBytes / totalBytes : (total > 0 ? downloaded / total : 0);
 }
 
 class ProvisionerFinalizing extends ProvisionerState {
@@ -119,6 +126,7 @@ class CheckoutProvisioner {
   String? _generationHash;
   String? _resourceSnapshotHash;
   bool _cancelled = false;
+  Timer? _progressTimer;
 
   /// Sets the parameters for the next [execute] call.
   void configure({
@@ -181,10 +189,15 @@ class CheckoutProvisioner {
     // path once per entry so the hot loop has zero alloc overhead.
     final toDownload = <(ResourceIndex_Entry, String, String)>[];
     var cachedCount = 0;
+    var cachedBytes = 0;
+    var totalBytes = 0;
     for (final entry in resourceIndex.entries) {
+      final size = entry.size.toInt();
+      totalBytes += size;
       final identHash = RepoHash.hashIdent(entry.resourceId);
       if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
         cachedCount++;
+        cachedBytes += size;
       } else {
         toDownload.add((entry, identHash, RepoPaths.blobPath(identHash, entry.contentHash)));
       }
@@ -200,9 +213,17 @@ class CheckoutProvisioner {
     const blobConcurrency = kBlobDownloadConcurrency;
     var downloaded = cachedCount;
     final failedBlobs = <String>[];
+    final tracker = BlobTransferTracker(totalBytes: totalBytes, initialCompletedBytes: cachedBytes);
 
     if (toDownload.isEmpty) {
-      _emit(ProvisionerDownloading(downloaded: downloaded, total: totalEntries));
+      _emit(
+        ProvisionerDownloading(
+          downloaded: downloaded,
+          total: totalEntries,
+          downloadedBytes: totalBytes,
+          totalBytes: totalBytes,
+        ),
+      );
     }
 
     var nextIdx = 0;
@@ -210,9 +231,36 @@ class CheckoutProvisioner {
     const throttleMs = 200;
     final stopwatch = Stopwatch();
 
+    void maybeEmit({bool force = false}) {
+      if (_cancelled) return;
+      final now = stopwatch.elapsedMilliseconds;
+      if (!force && now - lastEmitMs < throttleMs && downloaded < totalEntries) return;
+      lastEmitMs = now;
+      final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
+      final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
+      _emit(
+        ProvisionerDownloading(
+          downloaded: downloaded,
+          total: totalEntries,
+          failedCount: failedBlobs.length,
+          downloadedBytes: tracker.transferredBytes,
+          totalBytes: tracker.totalBytes,
+          elapsedSeconds: elapsed,
+          filesPerSecond: fps,
+          bytesPerSecond: tracker.bytesPerSecond,
+        ),
+      );
+    }
+
     if (toDownload.isNotEmpty) {
       assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
       stopwatch.start();
+      // Periodic re-emit so the progress bar keeps moving and the reported
+      // speed decays honestly while all workers are busy on large blobs.
+      _progressTimer = Timer.periodic(
+        const Duration(milliseconds: 500),
+        (_) => maybeEmit(force: true),
+      );
 
       Future<void> downloadNext() async {
         int idx;
@@ -224,57 +272,48 @@ class CheckoutProvisioner {
           final identHash = dl.$2;
           final blobPath = dl.$3;
 
-          final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
+          final blobResult = await remoteCatalog.fetchBlob(
+            identHash,
+            entry.contentHash,
+            onReceiveProgress: (received, _) {
+              tracker.blobProgress(idx, received);
+              maybeEmit();
+            },
+          );
           if (blobResult.isRight()) {
             try {
               await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
               downloaded++;
+              tracker.blobComplete(idx, entry.size.toInt());
             } on FileSystemException {
+              tracker.blobAborted(idx);
               failedBlobs.add(entry.resourceId);
             }
           } else {
+            tracker.blobAborted(idx);
             failedBlobs.add(entry.resourceId);
             warning("Failed to fetch blob: ${entry.resourceId}");
           }
 
-          final now = DateTime.now().millisecondsSinceEpoch;
-          if (now - lastEmitMs >= throttleMs || downloaded >= totalEntries) {
-            final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
-            final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
-            _emit(
-              ProvisionerDownloading(
-                downloaded: downloaded,
-                total: totalEntries,
-                failedCount: failedBlobs.length,
-                elapsedSeconds: elapsed,
-                filesPerSecond: fps,
-              ),
-            );
-            lastEmitMs = now;
-          }
+          maybeEmit();
         }
       }
 
       final tasks = <Future<void>>[
         for (var i = 0; i < blobConcurrency.clamp(1, toDownload.length); i++) downloadNext(),
       ];
-      await Future.wait(tasks);
-      stopwatch.stop();
+      try {
+        await Future.wait(tasks);
+      } finally {
+        _progressTimer?.cancel();
+        _progressTimer = null;
+        stopwatch.stop();
+      }
     }
 
     // Final emit after all workers finish (ensures 100% shown).
     if (toDownload.isNotEmpty) {
-      final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
-      final fps = elapsed > 0 ? (downloaded - cachedCount).toDouble() / elapsed : 0.0;
-      _emit(
-        ProvisionerDownloading(
-          downloaded: downloaded,
-          total: totalEntries,
-          failedCount: failedBlobs.length,
-          elapsedSeconds: elapsed,
-          filesPerSecond: fps,
-        ),
-      );
+      maybeEmit(force: true);
     }
 
     if (_cancelled) return;
@@ -330,10 +369,14 @@ class CheckoutProvisioner {
   /// next phase boundary — no partial checkout is created.
   void cancel() {
     _cancelled = true;
+    _progressTimer?.cancel();
+    _progressTimer = null;
   }
 
   /// Disposes the underlying stream controller.
   void dispose() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
     unawaited(_stateController.close());
   }
 

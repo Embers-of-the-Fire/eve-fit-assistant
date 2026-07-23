@@ -17,6 +17,8 @@ class MultiProvisionerDownloading extends MultiProvisionerState {
   const MultiProvisionerDownloading({
     required this.downloaded,
     required this.total,
+    this.downloadedBytes = 0,
+    this.totalBytes = 0,
     this.elapsedSeconds = 0,
     this.filesPerSecond = 0,
     this.bytesPerSecond = 0,
@@ -24,11 +26,16 @@ class MultiProvisionerDownloading extends MultiProvisionerState {
 
   final int downloaded;
   final int total;
+  final int downloadedBytes;
+  final int totalBytes;
   final double elapsedSeconds;
   final double filesPerSecond;
   final double bytesPerSecond;
 
-  double get progress => total > 0 ? downloaded / total : 0;
+  /// Byte-based completion fraction; falls back to file counts when byte
+  /// totals are unknown.
+  double get progress =>
+      totalBytes > 0 ? downloadedBytes / totalBytes : (total > 0 ? downloaded / total : 0);
 }
 
 class MultiProvisionerCreating extends MultiProvisionerState {
