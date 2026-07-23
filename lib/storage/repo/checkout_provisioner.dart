@@ -126,6 +126,7 @@ class CheckoutProvisioner {
   String? _generationHash;
   String? _resourceSnapshotHash;
   bool _cancelled = false;
+  Timer? _progressTimer;
 
   /// Sets the parameters for the next [execute] call.
   void configure({
@@ -229,11 +230,10 @@ class CheckoutProvisioner {
     var lastEmitMs = 0;
     const throttleMs = 200;
     final stopwatch = Stopwatch();
-    Timer? progressTimer;
 
     void maybeEmit({bool force = false}) {
       if (_cancelled) return;
-      final now = DateTime.now().millisecondsSinceEpoch;
+      final now = stopwatch.elapsedMilliseconds;
       if (!force && now - lastEmitMs < throttleMs && downloaded < totalEntries) return;
       lastEmitMs = now;
       final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
@@ -257,7 +257,7 @@ class CheckoutProvisioner {
       stopwatch.start();
       // Periodic re-emit so the progress bar keeps moving and the reported
       // speed decays honestly while all workers are busy on large blobs.
-      progressTimer = Timer.periodic(
+      _progressTimer = Timer.periodic(
         const Duration(milliseconds: 500),
         (_) => maybeEmit(force: true),
       );
@@ -302,9 +302,13 @@ class CheckoutProvisioner {
       final tasks = <Future<void>>[
         for (var i = 0; i < blobConcurrency.clamp(1, toDownload.length); i++) downloadNext(),
       ];
-      await Future.wait(tasks);
-      progressTimer.cancel();
-      stopwatch.stop();
+      try {
+        await Future.wait(tasks);
+      } finally {
+        _progressTimer?.cancel();
+        _progressTimer = null;
+        stopwatch.stop();
+      }
     }
 
     // Final emit after all workers finish (ensures 100% shown).
@@ -365,10 +369,14 @@ class CheckoutProvisioner {
   /// next phase boundary — no partial checkout is created.
   void cancel() {
     _cancelled = true;
+    _progressTimer?.cancel();
+    _progressTimer = null;
   }
 
   /// Disposes the underlying stream controller.
   void dispose() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
     unawaited(_stateController.close());
   }
 

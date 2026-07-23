@@ -58,6 +58,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
   MultiProvisionerState _currentState = const MultiProvisionerFetching();
   bool _cancelled = false;
   bool _started = false;
+  Timer? _progressTimer;
   late final AnimationController _enterAnimCtrl;
   late final AnimationController _titleAnimCtrl;
 
@@ -92,6 +93,8 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     _enterAnimCtrl.dispose();
     _titleAnimCtrl.dispose();
     _cancelled = true;
+    _progressTimer?.cancel();
+    _progressTimer = null;
     unawaited(_stateController.close());
     super.dispose();
   }
@@ -185,12 +188,11 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     var lastEmitMs = 0;
     const throttleMs = 200;
     final stopwatch = Stopwatch();
-    Timer? progressTimer;
     final tracker = BlobTransferTracker(totalBytes: totalBytes, initialCompletedBytes: cachedBytes);
 
     void maybeEmit({bool force = false}) {
       if (_cancelled) return;
-      final now = DateTime.now().millisecondsSinceEpoch;
+      final now = stopwatch.elapsedMilliseconds;
       if (!force && now - lastEmitMs < throttleMs && downloaded < unionTotal) return;
       lastEmitMs = now;
       final elapsed = stopwatch.elapsedMilliseconds / 1000.0;
@@ -213,7 +215,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
       stopwatch.start();
       // Periodic re-emit so the progress bar keeps moving and the reported
       // speed decays honestly while all workers are busy on large blobs.
-      progressTimer = Timer.periodic(
+      _progressTimer = Timer.periodic(
         const Duration(milliseconds: 500),
         (_) => maybeEmit(force: true),
       );
@@ -259,9 +261,13 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
       final tasks = <Future<void>>[
         for (var i = 0; i < blobConcurrency.clamp(1, toDownload.length); i++) downloadNext(),
       ];
-      await Future.wait(tasks);
-      progressTimer.cancel();
-      stopwatch.stop();
+      try {
+        await Future.wait(tasks);
+      } finally {
+        _progressTimer?.cancel();
+        _progressTimer = null;
+        stopwatch.stop();
+      }
     }
 
     // Final emit after all workers finish.
