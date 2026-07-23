@@ -91,8 +91,10 @@ class BlobTransferTracker {
     required this.totalBytes,
     int initialCompletedBytes = 0,
     this.window = const Duration(seconds: 5),
+    Duration Function()? clock,
   }) : _completedBytes = initialCompletedBytes {
-    _stopwatch.start();
+    final stopwatch = Stopwatch()..start();
+    _clock = clock ?? () => stopwatch.elapsed;
   }
 
   /// Total bytes expected across all blobs (cached + downloaded).
@@ -104,7 +106,7 @@ class BlobTransferTracker {
   int _completedBytes;
   final Map<int, int> _inflightBytes = {};
   final List<(int, int)> _samples = [];
-  final Stopwatch _stopwatch = Stopwatch();
+  late final Duration Function() _clock;
   int _lastSampleMs = -1;
 
   static const _minSampleIntervalMs = 100;
@@ -140,7 +142,7 @@ class BlobTransferTracker {
   /// Throughput averaged over the trailing [window], in bytes per second.
   double get bytesPerSecond {
     if (_samples.isEmpty) return 0;
-    final nowMs = _stopwatch.elapsedMilliseconds;
+    final nowMs = _clock().inMilliseconds;
     final cutoff = nowMs - window.inMilliseconds;
     var anchorMs = _samples.first.$1;
     var anchorBytes = _samples.first.$2;
@@ -155,7 +157,7 @@ class BlobTransferTracker {
   }
 
   void _sample({bool force = false}) {
-    final nowMs = _stopwatch.elapsedMilliseconds;
+    final nowMs = _clock().inMilliseconds;
     if (!force && _lastSampleMs >= 0 && nowMs - _lastSampleMs < _minSampleIntervalMs) {
       return;
     }
