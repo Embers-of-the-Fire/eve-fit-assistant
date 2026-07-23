@@ -1,0 +1,30 @@
+# appimage-builder recipe see https://appimage-builder.readthedocs.io for details
+# NOTE: this appimage-builder version ignores AppDir.path; pass --appdir dist/AppDir explicitly:
+#   flutter build linux --release
+#   ./appimage-builder --recipe AppImageBuilder.yml --appdir dist/AppDir --skip-tests
+version: 1
+script:
+- rm -rf "$TARGET_APPDIR"
+- mkdir -p "$TARGET_APPDIR/usr/share/pixmaps"
+- cp -r "$SOURCE_DIR"/build/linux/x64/release/bundle/. "$TARGET_APPDIR/"
+- cp "$SOURCE_DIR/logo/logo.png" "$TARGET_APPDIR/usr/share/pixmaps/logo.png"
+AppDir:
+  path: dist/AppDir/
+  app_info:
+    id: dev.efa_tech.eve_fit_assistant
+    name: EFA
+    icon: logo
+    version: 0.2.0
+    exec: eve_fit_assistant
+    exec_args: $@
+  files:
+    include: []
+    exclude:
+    - usr/share/man
+    - usr/share/doc/*/README.*
+    - usr/share/doc/*/changelog.*
+    - usr/share/doc/*/NEWS.*
+    - usr/share/doc/*/TODO.*
+AppImage:
+  arch: x86_64
+  update-information: guess
