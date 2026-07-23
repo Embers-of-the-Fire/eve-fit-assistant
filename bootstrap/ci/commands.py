@@ -367,6 +367,12 @@ def register_ci_commands(cli_group: click.Group) -> None:
         default=True,
         help="Include unchanged server snapshots from the current channel head (default: true).",
     )
+    @click.option(
+        "--allow-missing-head",
+        is_flag=True,
+        default=False,
+        help="Allow publishing without a local channel head (first publish to a channel).",
+    )
     @click.pass_context
     def release_data_publish(
         ctx: click.Context,
@@ -383,6 +389,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
         workers: int,
         sync_depth: int,
         merge: bool,
+        allow_missing_head: bool,
     ):
         """Publish resource snapshots to a remote channel."""
         from bootstrap.remote import SessionManager
@@ -413,6 +420,14 @@ def register_ci_commands(cli_group: click.Group) -> None:
                             f"Carried forward {entry.server_id} snapshot: "
                             f"{entry.snapshot_hash[:16]}..."
                         )
+            elif not allow_missing_head:
+                raise click.ClickException(
+                    f"No local channel head found for '{resolved_channel}' under "
+                    f"{resolved_root}; refusing to publish a partial generation. "
+                    "Run `remote sync` for this channel into the same schema root first, "
+                    "or pass --allow-missing-head if this is the first publish "
+                    "to the channel."
+                )
 
         init_cmd = _lookup_command(ctx, "remote", "session", "init")
         add_cmd = _lookup_command(ctx, "remote", "session", "add")
