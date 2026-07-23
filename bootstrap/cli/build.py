@@ -383,6 +383,84 @@ def register_build_commands(cli_group: click.Group) -> None:
             root=root,
         )
 
+    @build.command("appimage")
+    @click.option(
+        "--clean", is_flag=True, default=False, help="Run `flutter clean` before building."
+    )
+    @click.option(
+        "--skip-flutter",
+        is_flag=True,
+        default=False,
+        help="Skip the Flutter Linux build and reuse the existing release bundle.",
+    )
+    @click.option(
+        "--root",
+        "-r",
+        type=click.Path(path_type=Path),
+        default=PROJECT_ROOT / "cache" / "releases",
+        help="Release root directory (default: cache/releases).",
+    )
+    def build_appimage_cmd(clean: bool, skip_flutter: bool, root: Path):
+        """Build the Linux AppImage with a versioned filename."""
+        ProjectConfiguration.ensure_loaded()
+        version = bootstrap.config.CONFIGURATION.version
+        ver = version.render_full()
+        output_dir = root / "appimage" / ver
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        from bootstrap.release.version_sync import sync_target
+        from bootstrap.utils import execute_command
+        from bootstrap.utils import get_command
+
+        flutter = get_command("flutter")
+        try:
+            appimage_builder = get_command("appimage-builder")
+        except FileNotFoundError:
+            raise click.ClickException(
+                "Command 'appimage-builder' not found in PATH. "
+                "Enter the Nix dev shell (`nix develop`) to get it."
+            ) from None
+
+        recipe = PROJECT_ROOT / "AppImageBuilder.yml"
+        sync_target(recipe, version, dry_run=runtime.is_dry_run())
+
+        if clean:
+            runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
+
+        if not skip_flutter:
+            runtime.execute([flutter, "build", "linux", "--release"], "BUILDING LINUX BUNDLE")
+
+        execute_command(
+            [
+                appimage_builder,
+                "--recipe",
+                str(recipe),
+                "--appdir",
+                str(PROJECT_ROOT / "dist" / "AppDir"),
+                "--skip-tests",
+            ],
+            "BUILDING APPIMAGE",
+            runtime.is_dry_run(),
+            cwd=PROJECT_ROOT,
+        )
+
+        semver = version.render_semver()
+        src_appimage = PROJECT_ROOT / f"EFA-{semver}-x86_64.AppImage"
+        if not src_appimage.exists():
+            raise click.ClickException(f"Expected AppImage not found: {src_appimage}")
+
+        dst_appimage = output_dir / f"{ver}-linux.AppImage"
+        shutil.move(src_appimage, dst_appimage)
+        src_zsync = src_appimage.with_name(src_appimage.name + ".zsync")
+        if src_zsync.exists():
+            shutil.move(src_zsync, output_dir / f"{ver}-linux.AppImage.zsync")
+
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
+        for f in sorted(output_dir.iterdir()):
+            if f.is_file():
+                size = get_bin_size(f.stat().st_size)
+                click.echo(f"  {f.name} ({size})")
+
     @build.command("release")
     @click.option(
         "--root",

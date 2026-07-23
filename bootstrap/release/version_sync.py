@@ -68,6 +68,13 @@ TARGETS = [
         pattern=re.compile(r'^(version\s*=\s*")[^"]+(")', re.MULTILINE),
         replacement=_toml_replacement,
     ),
+    VersionTarget(
+        path=PROJECT_ROOT / "AppImageBuilder.yml",
+        description="AppImageBuilder.yml",
+        render=_render_semver,
+        pattern=re.compile(r"^(    version:\s*).+$", re.MULTILINE),
+        replacement=_pubspec_replacement,
+    ),
 ]
 
 
@@ -109,3 +116,10 @@ def sync_versions(version: ProjectVersion, *, dry_run: bool = False) -> int:
         if _sync_target(target, version, dry_run):
             changed += 1
     return changed
+
+
+def sync_target(path: Path, version: ProjectVersion, *, dry_run: bool = False) -> bool:
+    for target in TARGETS:
+        if target.path == path:
+            return _sync_target(target, version, dry_run)
+    raise ValueError(f"No version sync target registered for {path}")
