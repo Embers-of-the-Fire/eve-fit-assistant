@@ -39,6 +39,11 @@ class PathProvider {
     cachesPath = (await getApplicationCacheDirectory()).path;
 
     if (Platform.isLinux) {
+      // xdg-user-dir may fail silently under AppImage runtimes (empty path);
+      // fall back to $HOME/Documents to avoid a relative path leaking into CWD.
+      if (documentsPath.isEmpty) {
+        documentsPath = p.join(Platform.environment["HOME"] ?? ".", "Documents");
+      }
       documentsPath = p.join(documentsPath, applicationId);
       appSupportPath = p.join(p.dirname(appSupportPath), applicationId);
       cachesPath = p.join(p.dirname(cachesPath), applicationId);
