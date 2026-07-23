@@ -670,7 +670,14 @@ void main() {
             entry.value.contentHash,
             onReceiveProgress: any(named: "onReceiveProgress"),
           ),
-        ).thenAnswer((_) async => Right(entry.value.bytes));
+        ).thenAnswer((inv) async {
+          final onProgress =
+              inv.namedArguments[const Symbol("onReceiveProgress")] as void Function(int, int)?;
+          final total = entry.value.bytes.length;
+          onProgress?.call(total ~/ 2, total);
+          onProgress?.call(total, total);
+          return Right(entry.value.bytes);
+        });
       }
 
       configureProvisioner();
