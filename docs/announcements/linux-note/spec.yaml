@@ -1,0 +1,6 @@
+id: linux-note
+publishedAt: '2026-07-23T00:00:00Z'
+channels:
+  - testing
+platforms:
+  - linux
