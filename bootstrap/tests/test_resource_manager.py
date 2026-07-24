@@ -10,6 +10,7 @@ local-fs operations in this mode.
 from __future__ import annotations
 
 import random
+import shutil
 import threading
 
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +33,7 @@ from bootstrap.remote.models import make_generation_resources
 from bootstrap.remote.models import make_release_index
 from bootstrap.remote.models import make_server_index
 from bootstrap.remote.paths import blob_path
+from bootstrap.remote.paths import release_snapshot_dir
 from bootstrap.remote.publish import Publisher
 from bootstrap.remote.resource_manager import ResourceManager
 from bootstrap.remote.snapshot import SnapshotStore
@@ -666,6 +668,52 @@ class TestPublisherIntegration:
         assert puts.count(info["apk_remote"]) == 1
         assert len(puts) == 1
         assert (origin / info["apk_remote"]).is_file()
+
+    def test_publish_fails_when_release_snapshot_missing_locally(self, tmp_path: Path) -> None:
+        root = tmp_path / "local"
+        root.mkdir(parents=True, exist_ok=True)
+        origin = make_origin(tmp_path)
+        info = _build_inherited_release_generation(root)
+        pub = Publisher(root, origin_dir=origin)
+
+        shutil.rmtree(release_snapshot_dir(root, info["release_snap"]))
+
+        with pytest.raises(FileNotFoundError, match="Release snapshot directory missing"):
+            pub.publish_all_for_head("stable")
+
+    def test_publish_reuploads_release_snapshot_missing_remotely(self, tmp_path: Path) -> None:
+        """An unchanged release pointer must not skip upload when the remote copy is gone."""
+        root = tmp_path / "local"
+        root.mkdir(parents=True, exist_ok=True)
+        origin = make_origin(tmp_path)
+        info = _build_inherited_release_generation(root)
+        pub = Publisher(root, origin_dir=origin)
+        head_store = ChannelHeadStore(root)
+        gen_store = GenerationStore(root)
+
+        pub.publish_all_for_head("stable")
+        remote_index = (
+            origin / "efa" / "v2" / "assets" / "releases" / info["release_snap"] / "releases.pb2"
+        )
+        assert remote_index.is_file()
+
+        child = gen_store.load(info["child_hash"])
+        grand_meta = GenerationMetadata(
+            channel="stable",
+            timestamp="2026-01-01T02:00:00Z",
+            parent=info["child_hash"],
+        )
+        grand_hash = gen_store.create(
+            grand_meta, child.server_index, child.resources, child.release_pointer
+        )
+        head_store.push("stable", grand_hash)
+
+        shutil.rmtree(remote_index.parent)
+        assert not remote_index.is_file()
+
+        pub.publish_all_for_head("stable")
+
+        assert remote_index.is_file()
 
 
 # ---------------------------------------------------------------------------

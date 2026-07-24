@@ -1695,7 +1695,13 @@ class TestSessionCommitJson:
 
         result = click.testing.CliRunner().invoke(
             session_group,
-            ["commit", "--json", "--schema-root", str(tmp_root)],
+            [
+                "commit",
+                "--json",
+                "--allow-empty-release-pointer",
+                "--schema-root",
+                str(tmp_root),
+            ],
         )
 
         assert result.exit_code == 0
@@ -1707,3 +1713,60 @@ class TestSessionCommitJson:
         assert data["reused"] is False
         assert data["head_advanced"] is True
         assert output == json.dumps(data)
+
+
+class TestCommitEmptyReleasePointerGuard:
+    def _session_group(self) -> click.Group:
+        remote_group = click.Group()
+        register_remote_session(remote_group)
+        return remote_group.commands["session"]
+
+    def test_root_commit_without_release_refused_by_default(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """Root commit with no staged release must fail loudly without the opt-in flag."""
+        _init_session(store)
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+
+        result = click.testing.CliRunner().invoke(
+            self._session_group(),
+            ["commit", "--schema-root", str(tmp_root)],
+        )
+
+        assert result.exit_code != 0
+        assert "empty release pointer" in result.output
+        assert "--allow-empty-release-pointer" in result.output
+
+    def test_root_commit_without_release_allowed_with_flag(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """The opt-in flag explicitly permits a root commit with an empty release pointer."""
+        _init_session(store)
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+
+        result = click.testing.CliRunner().invoke(
+            self._session_group(),
+            ["commit", "--allow-empty-release-pointer", "--schema-root", str(tmp_root)],
+        )
+
+        assert result.exit_code == 0, result.output
+
+    def test_commit_with_staged_release_not_refused(
+        self, store: SessionStore, mgr: SessionManager, tmp_root: Path
+    ) -> None:
+        """A root commit that stages a release needs no opt-in flag."""
+        _init_session(store)
+        mgr.ensure_channel("testing")
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+        rel_hash = _make_release_snapshot(tmp_root)
+        store.add_snapshot("release", rel_hash)
+
+        result = click.testing.CliRunner().invoke(
+            self._session_group(),
+            ["commit", "--schema-root", str(tmp_root)],
+        )
+
+        assert result.exit_code == 0, result.output

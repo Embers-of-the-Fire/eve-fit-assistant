@@ -36,6 +36,23 @@ No query parameters — the worker reads all channels from `efa/v2/channels/head
 }
 ```
 
+A channel whose head generation has an empty release pointer (no app release
+staged yet) is simply omitted from `artifacts`. If a channel's release chain
+is corrupt (e.g. a dangling non-empty snapshot pointer), that channel is
+omitted from `artifacts` and an `errors` object is included instead of
+failing the whole route:
+
+```json
+{
+  "ok": true,
+  "artifacts": { … },
+  "channels": ["testing", "stable"],
+  "errors": {
+    "stable": "release index not found for snapshot: …"
+  }
+}
+```
+
 **Error response `200 OK`** (with `ok: false`)
 
 ```json

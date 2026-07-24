@@ -461,6 +461,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
             commit_cmd,
             no_push=test_mode,
             force=False,
+            allow_empty_release_pointer=allow_missing_head,
             schema_root=resolved_root,
         )
 

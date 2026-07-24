@@ -336,6 +336,14 @@ def register_remote_lifecycle(remote: click.Group) -> None:
             click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Syncing channel {resolved_channel}..."))
             result = syncer.sync_channel(resolved_channel, max_depth=depth)
             _print_sync_result(result)
+            if not result.head_meta:
+                raise click.ClickException(
+                    f"Channel head not found on remote for '{resolved_channel}': "
+                    f"channels/heads/{resolved_channel}/metadata.json could not be "
+                    "downloaded. The channel may not exist remotely, or the "
+                    "download failed. Refusing to report success without a head, "
+                    "since downstream steps (e.g. release-data publish) rely on it."
+                )
         else:
             click.echo(styled([Style.BRIGHT, Fore.GREEN], "Syncing all channels..."))
             results = syncer.sync_all_channels(max_depth=depth)
@@ -346,5 +354,11 @@ def register_remote_lifecycle(remote: click.Group) -> None:
                 return
             for _ch, r in results.items():
                 _print_sync_result(r)
+            missing = [ch for ch, r in results.items() if not r.head_meta]
+            if missing:
+                raise click.ClickException(
+                    f"Channel head(s) not found on remote: {', '.join(sorted(missing))}. "
+                    "Refusing to report success without head metadata."
+                )
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Sync complete."))

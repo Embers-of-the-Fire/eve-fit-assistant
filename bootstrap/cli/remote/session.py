@@ -1154,8 +1154,21 @@ def register_remote_session(remote: click.Group) -> None:
         default=False,
         help="Emit machine-readable JSON with the generation hash.",
     )
+    @click.option(
+        "--allow-empty-release-pointer",
+        is_flag=True,
+        default=False,
+        help="Allow committing a root generation without a staged release "
+        "(first commit to a channel with no app release).",
+    )
     @_SCHEMA_ROOT_OPTION
-    def remote_session_commit(no_push: bool, force: bool, as_json: bool, schema_root: Path | None):
+    def remote_session_commit(
+        no_push: bool,
+        force: bool,
+        as_json: bool,
+        allow_empty_release_pointer: bool,
+        schema_root: Path | None,
+    ):
         """Assemble a generation from staged snapshots and advance the channel head."""
         from bootstrap.remote.generation import utc_timestamp
         from bootstrap.remote.models import GenerationMetadata
@@ -1211,6 +1224,17 @@ def register_remote_session(remote: click.Group) -> None:
         )
 
         parent_gen = mgr.gen_store.load(parent) if parent else None
+
+        if parent_gen is None and not session.staged.releases and not allow_empty_release_pointer:
+            raise click.ClickException(
+                "Refusing to commit a generation with an empty release pointer: "
+                "no parent generation to inherit from and no release staged. "
+                "Downstream consumers resolve release artifacts through the head "
+                "generation's release pointer; an empty pointer breaks them. "
+                "Run 'remote sync' for this channel into the same schema root first, "
+                "or pass --allow-empty-release-pointer if this is the first commit "
+                "to a channel with no app release."
+            )
 
         server_index, gen_resources, release_ptr = _build_generation_data(
             snap_store=snap_store,

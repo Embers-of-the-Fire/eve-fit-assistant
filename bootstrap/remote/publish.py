@@ -221,12 +221,22 @@ class Publisher:
         }
 
     def _changed_release(self, gen: Generation, parent_gen: Generation | None) -> bool:
-        """True when the release pointer differs from the parent generation."""
+        """True when the release pointer differs from the parent generation.
+
+        An unchanged pointer is still treated as changed when the referenced
+        release index is missing remotely, so a publish re-uploads it instead
+        of leaving the remote head pointing at a dangling snapshot.
+        """
         if not gen.release_pointer.snapshot_hash:
             return False
         if parent_gen is None:
             return True
-        return gen.release_pointer.snapshot_hash != parent_gen.release_pointer.snapshot_hash
+        if gen.release_pointer.snapshot_hash != parent_gen.release_pointer.snapshot_hash:
+            return True
+        remote_index = (
+            f"{self.remote_root}/assets/releases/{gen.release_pointer.snapshot_hash}/releases.pb2"
+        )
+        return not self._remote_exists(remote_index)
 
     def _ensure_alias(self) -> None:
         """Set the S3 alias once (thread-safe, idempotent)."""
@@ -360,7 +370,10 @@ class Publisher:
 
         snap_dir = release_snapshot_dir(self.local_root, snap_hash)
         if not snap_dir.is_dir():
-            return None
+            raise FileNotFoundError(
+                f"Release snapshot directory missing: {snap_dir} "
+                f"(referenced by generation release pointer)"
+            )
 
         dir_upload = (snap_dir, prefixes + f"assets/releases/{snap_hash}")
 

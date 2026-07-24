@@ -166,15 +166,6 @@ jobs:
               --schema-root cache/remote \
               --target s3'
 
-      - name: Sync remote channel head (MinIO mock)
-        if: inputs.test_mode
-        run: |
-          nix develop .#python --command bash -c \
-            'uv run x.py remote sync \
-              --target minio \
-              --channel testing \
-              --schema-root cache/remote'
-
       - name: Publish to testing channel (MinIO mock)
         if: inputs.test_mode
         run: |
