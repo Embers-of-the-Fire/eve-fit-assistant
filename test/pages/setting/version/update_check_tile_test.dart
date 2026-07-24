@@ -3,6 +3,12 @@ import "dart:async";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:eve_fit_assistant/features/announcements/repository/announcement_repository.dart"
+    show appVersionProvider;
+import "package:eve_fit_assistant/features/app_update/app_update_gate.dart"
+    show AppReleaseUpdateDialog, appReleaseNoteProvider, appUpdateArtifactProvider;
+import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
+import "package:eve_fit_assistant/features/app_update/providers.dart" show appUpdateServiceProvider;
 import "package:eve_fit_assistant/pages/setting/version/update_check_tile.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart"
@@ -19,6 +25,8 @@ import "package:mocktail/mocktail.dart";
 import "../../../test_helpers.dart";
 
 class MockRepoService extends Mock implements RepoService {}
+
+class MockAppUpdateService extends Mock implements AppUpdateService {}
 
 RemoteAppRelease _release({required String releaseId, required String version}) => RemoteAppRelease(
   releaseId: releaseId,
@@ -110,15 +118,49 @@ void main() {
   });
 
   group("interaction", () {
+    testWidgets("tapping the update card opens the release update dialog", (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appReleaseCheckStatusProvider.overrideWith(
+              (_) => ReleaseCheckUpdateAvailable(
+                release: _release(releaseId: "rel-2", version: "2.0.0"),
+              ),
+            ),
+            appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+            appUpdateServiceProvider.overrideWithValue(MockAppUpdateService()),
+            appVersionProvider.overrideWith((_) async => "1.0.0"),
+            appUpdateArtifactProvider.overrideWith((_, _) async => null),
+            appReleaseNoteProvider.overrideWith((_, _) async => null),
+          ],
+          child: testApp(const Material(child: AppUpdateCheckTile())),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text("v2.0.0 已发布"));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppReleaseUpdateDialog), findsOneWidget);
+    });
+
     testWidgets("tapping Check syncs the channel generation and re-checks", (tester) async {
       final mockRepoService = MockRepoService();
       when(
         () => mockRepoService.syncChannelGeneration(any()),
       ).thenAnswer((_) async => const Right(unit));
 
+      var statusChecks = 0;
+      ReleaseCheckStatus status() {
+        statusChecks += 1;
+        return statusChecks == 1
+            ? const ReleaseCheckUpToDate()
+            : const ReleaseCheckAheadOfRemote(remoteVersion: "0.9.0");
+      }
+
       await tester.pumpWidget(
         buildTile(
-          status: () => const ReleaseCheckUpToDate(),
+          status: status,
           settings: _testAppSetting(remoteEnabled: true),
           repoService: mockRepoService,
         ),
@@ -130,7 +172,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       verify(() => mockRepoService.syncChannelGeneration("testing")).called(1);
-      expect(find.text("已是最新版本"), findsOneWidget);
+      expect(statusChecks, 2);
+      expect(find.text("当前版本高于最新发布版本（v0.9.0）"), findsOneWidget);
     });
 
     testWidgets("failed channel sync surfaces the failure instead of checking", (tester) async {
