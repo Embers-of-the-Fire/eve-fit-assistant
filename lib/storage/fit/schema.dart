@@ -341,11 +341,7 @@ int? _resolveNativeTypeId(
   },
 );
 
-native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int> characterSkills}) {
-  final validDynamicIds = collectReferencedDynamicItemIds(
-    fitStorage,
-  ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
-
+List<native.Module> convertModulesToNative(FitStorage fitStorage) {
   final modules = <native.Module>[];
 
   for (final slotGroup in [
@@ -390,6 +386,16 @@ native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int>
       });
     }
   }
+
+  return modules;
+}
+
+native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int> characterSkills}) {
+  final validDynamicIds = collectReferencedDynamicItemIds(
+    fitStorage,
+  ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
+
+  final modules = convertModulesToNative(fitStorage);
 
   final drones = <native.Drone>[];
   for (final (index, drone) in fitStorage.body.drones.mapWithIndex(
