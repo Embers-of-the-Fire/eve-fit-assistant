@@ -555,6 +555,26 @@ def _check_duplicate_server_ids(root: Path, session: Session, issues: list) -> N
             seen[meta.server_id] = h
 
 
+def _head_resource_snapshot_hashes(root: Path, channel: str) -> set[str]:
+    """Resource snapshot hashes referenced by the channel head generation.
+
+    Staged snapshots unchanged from the head are already published on the
+    remote; the publisher skips re-uploading them, so their blobs are not
+    required locally (a metadata-only sync never downloads blobs).
+    """
+    from bootstrap.remote.generation import GenerationStore
+    from bootstrap.remote.head import ChannelHeadStore
+
+    try:
+        head = ChannelHeadStore(root)._safe_get_head(channel)
+        if not head or not head.generation_hash:
+            return set()
+        gen = GenerationStore(root).load(head.generation_hash)
+    except Exception:
+        return set()
+    return {entry.snapshot_hash for entry in gen.resources.entries if entry.snapshot_hash}
+
+
 def _verify_staged(root: Path, session: Session) -> list:
     """Validate staged snapshots across all four verification phases."""
     from bootstrap.remote.hash import verify_snapshot_hash as _verify_snapshot_hash
@@ -644,7 +664,10 @@ def _verify_staged(root: Path, session: Session) -> list:
                 )
 
         if snap_type == "resource":
+            head_hashes = _head_resource_snapshot_hashes(root, session.channel)
             for h in staged_hashes:
+                if h in head_hashes:
+                    continue
                 snap_dir = dir_for_type[snap_type](root, h)
                 if snap_dir.is_dir() and (snap_dir / proto_name).is_file():
                     _check_staged_resource_blobs(root, h, issues)
