@@ -364,6 +364,9 @@ native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int>
   ]) {
     for (final (index, slot) in slotGroup.$1.mapWithIndex((slot, index) => (index, slot))) {
       slot.match(() {}, (slot) {
+        if (slotGroup.$2 == native.SlotType.rig && slot.state == FitItemState.passive) {
+          return;
+        }
         if (!_hasValidDynamicReference(
           fitStorage,
           slot.itemId,
