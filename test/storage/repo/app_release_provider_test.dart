@@ -318,15 +318,13 @@ void main() {
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
     ).thenAnswer((_) async => Left(ReleaseSyncNetworkError(message: "network down")));
 
-    var sawExpectedError = false;
+    final errorObserved = Completer<void>();
     final sub = container.listen(appReleaseCheckStatusProvider, (previous, next) {
-      if (next.hasError && next.error is ReleaseSyncNetworkError) {
-        sawExpectedError = true;
+      if (next.hasError && next.error is ReleaseSyncNetworkError && !errorObserved.isCompleted) {
+        errorObserved.complete();
       }
     });
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-
-    expect(sawExpectedError, isTrue, reason: "Expected a ReleaseSyncNetworkError AsyncError");
+    await errorObserved.future;
     sub.close();
     container.dispose();
   });
