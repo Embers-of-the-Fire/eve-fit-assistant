@@ -24,6 +24,8 @@ from bootstrap.cli.remote.session import _add_snapshot_by_file
 from bootstrap.cli.remote.session import _build_generation_data
 from bootstrap.cli.remote.session import _check_duplicate_server_ids
 from bootstrap.cli.remote.session import _compute_diff
+from bootstrap.cli.remote.session import _head_resource_snapshot_hashes
+from bootstrap.cli.remote.session import _verify_staged
 from bootstrap.cli.remote.session import register_remote_session
 from bootstrap.remote import SessionManager
 from bootstrap.remote.generation import utc_timestamp
@@ -613,7 +615,10 @@ def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
                 )
 
         if snap_type == "resource":
+            head_hashes = _head_resource_snapshot_hashes(tmp_root, session.channel)
             for h in staged_map[snap_type]:
+                if h in head_hashes:
+                    continue
                 snap_dir = dir_for_type[snap_type](tmp_root, h)
                 if snap_dir.is_dir() and (snap_dir / proto_name).is_file():
                     proto_path = snap_dir / proto_name
@@ -794,6 +799,53 @@ class TestSessionVerify:
         issues = _verify_staged_style(tmp_root, store)
         errors = [i for i in issues if i.severity == "error"]
         assert len(errors) == 0
+
+    def test_verify_skips_blobs_for_head_unchanged_snapshot(
+        self, store: SessionStore, tmp_root: Path, mgr: SessionManager
+    ) -> None:
+        _, res_hash = _make_full_generation(mgr, tmp_root)
+
+        from bootstrap.remote.models import ResourceIndex
+        from bootstrap.remote.models import read_pb2 as _read_pb2
+        from bootstrap.remote.paths import resource_snapshot_dir as _rdir
+
+        snap_dir = _rdir(tmp_root, res_hash)
+        index = _read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+        assert index.entries
+        for entry in index.entries:
+            bpath = blob_path(tmp_root, ident_hash(entry.resource_id), entry.content_hash)
+            bpath.unlink()
+
+        _init_session(store)
+        store.add_snapshot("resource", res_hash)
+
+        issues = _verify_staged(tmp_root, store.load())
+        errors = [i for i in issues if i.severity == "error"]
+        assert len(errors) == 0, f"Unexpected errors: {errors}"
+
+    def test_verify_flags_missing_blobs_for_new_snapshot(
+        self, store: SessionStore, tmp_root: Path, mgr: SessionManager
+    ) -> None:
+        _make_full_generation(mgr, tmp_root)
+
+        new_hash = _make_resource_snapshot(tmp_root, server_id="serenity")
+
+        from bootstrap.remote.models import ResourceIndex
+        from bootstrap.remote.models import read_pb2 as _read_pb2
+        from bootstrap.remote.paths import resource_snapshot_dir as _rdir
+
+        snap_dir = _rdir(tmp_root, new_hash)
+        index = _read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+        assert index.entries
+        entry = index.entries[0]
+        blob_path(tmp_root, ident_hash(entry.resource_id), entry.content_hash).unlink()
+
+        _init_session(store)
+        store.add_snapshot("resource", new_hash)
+
+        issues = _verify_staged(tmp_root, store.load())
+        missing_blobs = [i for i in issues if "Missing blob" in i.message]
+        assert len(missing_blobs) >= 1
 
 
 # ===========================================================================
