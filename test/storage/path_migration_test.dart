@@ -166,6 +166,26 @@ void main() {
       expect(Directory(p.join(supportDir, ".resources.migrating")).existsSync(), isFalse);
     });
 
+    test("preserves directory symlinks instead of traversing them", () async {
+      await createLegacyFile("resources", "v2/schema_version.json", "schema-content");
+      final external = Directory(p.join(tempRoot.path, "external_blobs"));
+      await external.create();
+      await File(p.join(external.path, "hash")).writeAsString("blob-content");
+      final linked = Link(p.join(documentsDir, "resources", "v2", "blobs"));
+      await linked.parent.create(recursive: true);
+      await linked.create(external.path);
+
+      await StoragePathMigrator(rename: failingRename).migrateIfNeeded();
+
+      final migratedLink = Link(p.join(supportDir, "resources", "v2", "blobs"));
+      expect(
+        FileSystemEntity.typeSync(migratedLink.path, followLinks: false),
+        FileSystemEntityType.link,
+      );
+      expect(await migratedLink.target(), external.path);
+      expect(Directory(p.join(documentsDir, "resources")).existsSync(), isFalse);
+    });
+
     test("uses rename for directories before the failure point and copy after", () async {
       await createLegacyFile("settings", "settings.json", "settings-content");
       await createLegacyFile("resources", "v2/schema_version.json", "schema-content");

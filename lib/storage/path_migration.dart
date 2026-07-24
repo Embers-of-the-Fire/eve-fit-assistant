@@ -51,7 +51,7 @@ class StoragePathMigrator {
 
   Future<void> _copyRecursively(Directory source, Directory target) async {
     await target.create(recursive: true);
-    await for (final entity in source.list()) {
+    await for (final entity in source.list(followLinks: false)) {
       final targetPath = p.join(target.path, p.basename(entity.path));
       if (entity is Directory) {
         await _copyRecursively(entity, Directory(targetPath));
