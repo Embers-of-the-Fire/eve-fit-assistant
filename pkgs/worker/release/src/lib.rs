@@ -22,6 +22,8 @@ struct ArtifactResponse {
     channels: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    errors: Option<HashMap<String, String>>,
 }
 
 #[derive(Serialize)]
@@ -131,6 +133,7 @@ fn artifact_error_response(msg: &str, status: u16) -> Result<Response> {
         artifacts: None,
         channels: vec![],
         error: Some(msg.to_string()),
+        errors: None,
     })?;
     Ok(res.with_status(status))
 }
@@ -169,6 +172,9 @@ async fn fetch_channel_artifact(bucket: &Bucket, channel: &str) -> Result<Option
     })?;
 
     let snapshot_hash = pointer.snapshot_hash;
+    if snapshot_hash.is_empty() {
+        return Ok(None);
+    }
 
     let index: ReleaseIndex = read_bucket_proto(
         bucket,
@@ -279,10 +285,15 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
         .unwrap_or_default();
 
     let mut artifacts = HashMap::new();
+    let mut errors = HashMap::new();
     for ch in &channels {
-        let raw = match fetch_channel_artifact(&bucket, ch).await? {
-            Some(raw) => raw,
-            None => continue,
+        let raw = match fetch_channel_artifact(&bucket, ch).await {
+            Ok(Some(raw)) => raw,
+            Ok(None) => continue,
+            Err(e) => {
+                errors.insert(ch.clone(), e.to_string());
+                continue;
+            }
         };
         let android = raw.android.map(|variants| {
             variants
@@ -317,6 +328,11 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
         artifacts: Some(artifacts),
         channels,
         error: None,
+        errors: if errors.is_empty() {
+            None
+        } else {
+            Some(errors)
+        },
     })
     .map_err(|e| Error::RustError(format!("serialization error: {}", e)))?;
     Response::ok(body)
