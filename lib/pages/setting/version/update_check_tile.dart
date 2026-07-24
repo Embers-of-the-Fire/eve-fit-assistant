@@ -26,17 +26,27 @@ class AppUpdateCheckTile extends ConsumerStatefulWidget {
 
 class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
   bool _checking = false;
+  bool _syncFailed = false;
 
   Future<void> _check() async {
     if (_checking) return;
-    setState(() => _checking = true);
+    setState(() {
+      _checking = true;
+      _syncFailed = false;
+    });
     try {
       final settings = ref.read(appSettingServiceProvider);
       final channel = settings.remoteContent.channel;
       if (settings.remoteContent.enabled && channel.isNotEmpty) {
         // Sync the generation metadata first so the release pointer cache is
-        // refreshed before the status provider re-reads it.
-        await ref.read(repoServiceProvider).syncChannelGeneration(channel);
+        // refreshed before the status provider re-reads it. If the sync fails
+        // the cached pointer is stale, so surface the failure instead of
+        // reporting a status derived from outdated data.
+        final syncResult = await ref.read(repoServiceProvider).syncChannelGeneration(channel);
+        if (syncResult.isLeft()) {
+          if (mounted) setState(() => _syncFailed = true);
+          return;
+        }
       }
       ref.invalidate(appReleaseCheckStatusProvider);
       // Await the fresh check so the spinner reflects real progress; failures
@@ -57,6 +67,7 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
     final statusAsync = ref.watch(appReleaseCheckStatusProvider);
     final status = statusAsync.value;
     final busy = _checking || statusAsync.isLoading;
+    final hasError = statusAsync.hasError || _syncFailed;
 
     if (status is ReleaseCheckUpdateAvailable) {
       return _UpdateAvailableCard(
@@ -75,7 +86,7 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
 
     final subtitle = switch (status) {
       _ when busy => l10n.versionPageCheckUpdateChecking,
-      _ when statusAsync.hasError => l10n.versionPageCheckUpdateFailed,
+      _ when hasError => l10n.versionPageCheckUpdateFailed,
       ReleaseCheckUpToDate() => l10n.versionPageCheckUpdateUpToDate,
       ReleaseCheckAheadOfRemote(:final remoteVersion) => l10n.versionPageCheckUpdateAhead(
         version: remoteVersion,
@@ -89,7 +100,7 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
             height: 20,
             child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.primary),
           )
-        : statusAsync.hasError
+        : hasError
         ? Text(
             l10n.versionPageCheckUpdateActionRetry,
             style: TextStyle(color: theme.colorScheme.error),
@@ -127,7 +138,7 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: status is ReleaseCheckAheadOfRemote || statusAsync.hasError
+                        color: status is ReleaseCheckAheadOfRemote || hasError
                             ? theme.colorScheme.error
                             : theme.colorScheme.onSurfaceVariant,
                       ),
