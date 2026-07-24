@@ -119,6 +119,7 @@ void main() {
     setUp(() {
       tempDir = Directory.systemTemp.createTempSync("efa_mig_progress_test_").path;
       PathProvider.documentsPath = tempDir;
+      PathProvider.appSupportPath = tempDir;
     });
 
     tearDown(() {

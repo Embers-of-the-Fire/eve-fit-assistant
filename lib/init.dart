@@ -16,6 +16,7 @@ import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/path_migration.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
@@ -40,6 +41,7 @@ Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   await PathProvider.init();
+  await const StoragePathMigrator().migrateIfNeeded();
   AppSettingService.init();
 
   final announcementStateStore = AnnouncementStateStore(settingsPath: PathProvider.settingsPath);

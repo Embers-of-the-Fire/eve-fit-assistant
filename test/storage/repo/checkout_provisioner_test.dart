@@ -209,6 +209,7 @@ void main() {
     // dir so the Code doesn't crash even though no files are actually read.
     tempDir = Directory.systemTemp.createTempSync("efa_provisioner_test_").path;
     PathProvider.documentsPath = tempDir;
+    PathProvider.appSupportPath = tempDir;
 
     mockRemoteCatalog = MockRemoteCatalogService();
     fakeAssetStore = _FakeAssetStore();

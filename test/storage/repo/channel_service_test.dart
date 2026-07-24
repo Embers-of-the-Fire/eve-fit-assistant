@@ -73,6 +73,7 @@ void main() {
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync("efa_channel_service_test_").path;
     PathProvider.documentsPath = tempDir;
+    PathProvider.appSupportPath = tempDir;
     assetStore = const AssetStore();
   });
 

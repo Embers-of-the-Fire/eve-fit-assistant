@@ -80,6 +80,7 @@ void main() {
     setUp(() async {
       tempDir = Directory.systemTemp.createTempSync("efa_mig_service_test_").path;
       PathProvider.documentsPath = tempDir;
+      PathProvider.appSupportPath = tempDir;
       // Clean up any stale checkpoint from prior runs.
       final checkpoint = File(p.join(tempDir, "resources", "v2", ".migration_progress.json"));
       if (checkpoint.existsSync()) checkpoint.deleteSync();

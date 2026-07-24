@@ -87,6 +87,7 @@ void main() {
     setUp(() {
       tempDir = Directory.systemTemp.createTempSync("efa_mig_gate_test_").path;
       PathProvider.documentsPath = tempDir;
+      PathProvider.appSupportPath = tempDir;
     });
 
     tearDown(() {

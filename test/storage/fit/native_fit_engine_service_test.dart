@@ -180,6 +180,7 @@ void main() {
   setUp(() {
     _tempDir = Directory.systemTemp.createTempSync("efa_engine_test_").path;
     PathProvider.documentsPath = _tempDir;
+    PathProvider.appSupportPath = _tempDir;
     _snapshotHash = _writeTestResourceSnapshot();
   });
 
