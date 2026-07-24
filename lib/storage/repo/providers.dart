@@ -336,9 +336,9 @@ class RepoStateNotifier extends _$RepoStateNotifier {
 
       // After generation metadata is synced, check whether a newer app release
       // is available. This is best-effort and must not block normal operation.
-      // The base provider is invalidated (rather than the derived one) so the
+      // The base provider is invalidated (rather than the derived ones) so the
       // freshly cached release pointer is actually re-read.
-      ref.invalidate(remoteAppReleaseProvider);
+      ref.invalidate(appReleaseCheckStatusProvider);
       unawaited(
         ref.read(availableAppReleaseProvider.future).then((_) => null).catchError((
           Object e,
@@ -553,6 +553,47 @@ IList<String> installedCheckoutIds(Ref ref) {
 
 // ── App release update provider ───────────────────────────────────────────────
 
+/// Compares the installed app version against the remote release index for
+/// the configured channel, reporting the full tri-state outcome (update
+/// available, up to date, or ahead of the remote release).
+///
+/// Returns [ReleaseCheckUnavailable] when the check cannot run locally
+/// (remote content disabled, no configured channel, or no cached release
+/// pointer). Failures are surfaced as [AsyncError] so callers can decide how
+/// to handle them, but startup code should swallow them to avoid interfering
+/// with normal operations.
+///
+/// This provider is intentionally decoupled from the active checkout: a
+/// release is global to the origin/channel, so it can be advertised even
+/// before the user has created a checkout. It is the base provider for app
+/// release checks — invalidate it (after syncing the channel generation) to
+/// force a fresh check.
+@riverpod
+Future<ReleaseCheckStatus> appReleaseCheckStatus(Ref ref) async {
+  final settings = ref.watch(appSettingServiceProvider);
+  if (!settings.remoteContent.enabled) return const ReleaseCheckUnavailable();
+
+  final channelName = settings.remoteContent.channel;
+  if (channelName.isEmpty) return const ReleaseCheckUnavailable();
+
+  final pointer = ref.read(channelServiceProvider).readReleasePointer(channelName);
+  if (pointer.isNone()) return const ReleaseCheckUnavailable();
+
+  // A pointer without a snapshot hash means the channel has no app release
+  // published at all — there is nothing newer, so report up to date.
+  final snapshotHash = pointer.toNullable()!.snapshotHash;
+  if (snapshotHash.isEmpty) return const ReleaseCheckUpToDate();
+
+  final result = await ref
+      .read(releaseSyncServiceProvider)
+      .checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+  return result.fold(
+    (error) => Future<ReleaseCheckStatus>.error(error, StackTrace.current),
+    Future<ReleaseCheckStatus>.value,
+  );
+}
+
 /// Detects whether a newer app release is available from the remote release
 /// index for the configured channel.
 ///
@@ -566,26 +607,11 @@ IList<String> installedCheckoutIds(Ref ref) {
 /// user has created a checkout.
 @riverpod
 Future<Option<RemoteAppRelease>> remoteAppRelease(Ref ref) async {
-  final settings = ref.watch(appSettingServiceProvider);
-  if (!settings.remoteContent.enabled) return const None();
-
-  final channelName = settings.remoteContent.channel;
-  if (channelName.isEmpty) return const None();
-
-  final pointer = ref.read(channelServiceProvider).readReleasePointer(channelName);
-  if (pointer.isNone()) return const None();
-
-  final snapshotHash = pointer.toNullable()!.snapshotHash;
-  if (snapshotHash.isEmpty) return const None();
-
-  final result = await ref
-      .read(releaseSyncServiceProvider)
-      .checkFromSnapshotHash(snapshotHash: snapshotHash);
-
-  return result.fold(
-    (error) => Future<Option<RemoteAppRelease>>.error(error, StackTrace.current),
-    Future<Option<RemoteAppRelease>>.value,
-  );
+  final status = await ref.watch(appReleaseCheckStatusProvider.future);
+  return switch (status) {
+    ReleaseCheckUpdateAvailable(:final release) => Some(release),
+    _ => const None(),
+  };
 }
 
 /// Detects whether a newer app release is available and has not been dismissed.

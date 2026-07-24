@@ -112,8 +112,14 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer(
+      (_) async => Right(
+        ReleaseCheckUpdateAvailable(
+          release: _release(releaseId: "rel-2", version: "2.0.0"),
+        ),
+      ),
+    );
 
     final result = await container.read(availableAppReleaseProvider.future);
 
@@ -132,8 +138,14 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer(
+      (_) async => Right(
+        ReleaseCheckUpdateAvailable(
+          release: _release(releaseId: "rel-2", version: "2.0.0"),
+        ),
+      ),
+    );
 
     final result = await container.read(availableAppReleaseProvider.future);
 
@@ -147,8 +159,14 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer(
+      (_) async => Right(
+        ReleaseCheckUpdateAvailable(
+          release: _release(releaseId: "rel-2", version: "2.0.0"),
+        ),
+      ),
+    );
 
     await container.read(availableAppReleaseProvider.future);
     container.read(appVersionStateServiceProvider.notifier).acknowledgeRelease("rel-2");
@@ -179,10 +197,16 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer(
+      (_) async => Right(
+        ReleaseCheckUpdateAvailable(
+          release: _release(releaseId: "rel-2", version: "2.0.0"),
+        ),
+      ),
+    );
 
-    container.invalidate(remoteAppReleaseProvider);
+    container.invalidate(appReleaseCheckStatusProvider);
     final result = await container.read(availableAppReleaseProvider.future);
 
     final release = result.toNullable();
@@ -190,7 +214,7 @@ void main() {
     expect(release!.releaseId, "rel-2");
   });
 
-  test("re-detection requires invalidating the base remoteAppReleaseProvider", () async {
+  test("re-detection requires invalidating the base appReleaseCheckStatusProvider", () async {
     final container = _container(remoteEnabled: true);
     addTearDown(container.dispose);
 
@@ -205,19 +229,84 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
-    ).thenAnswer((_) async => Right(Some(_release(releaseId: "rel-2", version: "2.0.0"))));
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer(
+      (_) async => Right(
+        ReleaseCheckUpdateAvailable(
+          release: _release(releaseId: "rel-2", version: "2.0.0"),
+        ),
+      ),
+    );
 
     // Invalidating only the derived provider reuses the stale base value; the
-    // startup sync must invalidate remoteAppReleaseProvider instead (see
+    // startup sync must invalidate appReleaseCheckStatusProvider instead (see
     // RepoStateNotifier._startBackgroundSync).
     container.invalidate(availableAppReleaseProvider);
     final stale = await container.read(availableAppReleaseProvider.future);
     expect(stale, const None());
 
-    container.invalidate(remoteAppReleaseProvider);
+    container.invalidate(appReleaseCheckStatusProvider);
     final result = await container.read(availableAppReleaseProvider.future);
     expect(result.toNullable()?.releaseId, "rel-2");
+  });
+
+  test("status provider reports unavailable when no release pointer is cached", () async {
+    final container = _container(remoteEnabled: true);
+    addTearDown(container.dispose);
+
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(const None());
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUnavailable>());
+  });
+
+  test("status provider reports upToDate when the pointer has no snapshot hash", () async {
+    final container = _container(remoteEnabled: true);
+    addTearDown(container.dispose);
+
+    // Channels without any published app release have a generation pointer
+    // with an empty snapshot hash.
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUpToDate>());
+    expect(await container.read(remoteAppReleaseProvider.future), const None());
+  });
+
+  test("status provider reports upToDate when versions match", () async {
+    final container = _container(remoteEnabled: true);
+    addTearDown(container.dispose);
+
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer((_) async => const Right(ReleaseCheckUpToDate()));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUpToDate>());
+    expect(await container.read(remoteAppReleaseProvider.future), const None());
+  });
+
+  test("status provider reports aheadOfRemote without surfacing a release", () async {
+    final container = _container(remoteEnabled: true);
+    addTearDown(container.dispose);
+
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+    ).thenAnswer((_) async => const Right(ReleaseCheckAheadOfRemote(remoteVersion: "0.9.0")));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckAheadOfRemote>());
+    expect((status as ReleaseCheckAheadOfRemote).remoteVersion, "0.9.0");
+    expect(await container.read(remoteAppReleaseProvider.future), const None());
   });
 
   test("surfaces sync errors as AsyncError", () async {
@@ -226,18 +315,16 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
     ).thenAnswer((_) async => Left(ReleaseSyncNetworkError(message: "network down")));
 
-    var sawExpectedError = false;
-    final sub = container.listen(remoteAppReleaseProvider, (previous, next) {
-      if (next.hasError && next.error is ReleaseSyncNetworkError) {
-        sawExpectedError = true;
+    final errorObserved = Completer<void>();
+    final sub = container.listen(appReleaseCheckStatusProvider, (previous, next) {
+      if (next.hasError && next.error is ReleaseSyncNetworkError && !errorObserved.isCompleted) {
+        errorObserved.complete();
       }
     });
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-
-    expect(sawExpectedError, isTrue, reason: "Expected a ReleaseSyncNetworkError AsyncError");
+    await errorObserved.future;
     sub.close();
     container.dispose();
   });

@@ -5,14 +5,11 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show unreadAnnouncementCountProvider;
-import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
-import "package:eve_fit_assistant/features/app_update/download_link.dart";
 import "package:eve_fit_assistant/pages/router.dart"
     show AnnouncementFeedRoute, DeveloperSettingsRoute;
-import "package:eve_fit_assistant/storage/repo/models/models.dart"
-    show CheckoutRegistryEntry, RemoteAppRelease;
-import "package:eve_fit_assistant/storage/repo/providers.dart"
-    show activeCheckoutProvider, remoteAppReleaseProvider;
+import "package:eve_fit_assistant/pages/setting/version/update_check_tile.dart";
+import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
+import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
 import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
 import "package:eve_fit_assistant/storage/setting/setting.dart"
     show appSettingServiceProvider, developerModeProvider;
@@ -52,7 +49,6 @@ class _VersionPageState extends ConsumerState<VersionPage> {
     final appSetting = ref.watch(appSettingServiceProvider);
     final developerMode = ref.watch(developerModeProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
-    final appReleaseAsync = ref.watch(remoteAppReleaseProvider);
     final unreadCount = ref.watch(unreadAnnouncementCountProvider);
 
     return Layout(
@@ -83,28 +79,8 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     const SizedBox(height: 24),
                   ],
                 ),
-              appReleaseAsync.when(
-                data: (option) {
-                  final release = option.toNullable();
-                  if (release == null) return const SizedBox.shrink();
-                  return Column(
-                    children: [
-                      _UpdateCard(
-                        release: release,
-                        onTap: () async {
-                          await showDialog<void>(
-                            context: context,
-                            builder: (context) => AppReleaseUpdateDialog(release: release),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (_, _) => const SizedBox.shrink(),
-              ),
+              const AppUpdateCheckTile(),
+              const SizedBox(height: 24),
               if (isWide)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,63 +385,6 @@ class _ReleaseNotesCard extends StatelessWidget {
                 ),
               const SizedBox(width: 8),
               Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _UpdateCard extends ConsumerWidget {
-  const _UpdateCard({required this.release, required this.onTap});
-
-  final RemoteAppRelease release;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = context.theme;
-    return Card.filled(
-      color: theme.colorScheme.primaryContainer,
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(Icons.system_update_alt, color: theme.colorScheme.onPrimaryContainer),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.versionPageUpdateAvailable(version: release.version),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      context.l10n.versionPageUpdateManualDownloadHint,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () => unawaited(copyReleaseDownloadLink(context, ref, release)),
-                icon: const Icon(Icons.link),
-                tooltip: context.l10n.appReleaseUpdateCopyDownloadLink,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-              Icon(Icons.chevron_right, color: theme.colorScheme.onPrimaryContainer),
             ],
           ),
         ),

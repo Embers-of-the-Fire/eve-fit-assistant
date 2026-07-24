@@ -1668,6 +1668,21 @@
   "versionPageReleaseNotes": "发布说明",
   "versionPageUpdateAvailable": "v{version} 已发布",
   "versionPageNotApplicable": "无",
+  "versionPageCheckUpdateTitle": "检查更新",
+  "versionPageCheckUpdateChecking": "正在检查更新…",
+  "versionPageCheckUpdateUpToDate": "已是最新版本",
+  "versionPageCheckUpdateAhead": "当前版本高于最新发布版本（v{version}）",
+  "@versionPageCheckUpdateAhead": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "versionPageCheckUpdateFailed": "检查更新失败",
+  "versionPageCheckUpdateUnavailable": "无法检查更新",
+  "versionPageCheckUpdateActionCheck": "检查",
+  "versionPageCheckUpdateActionRetry": "重试",
   "versionPageBuildLabel": "构建号 {buildNumber}",
   "@versionPageBuildLabel": {
     "placeholders": {
