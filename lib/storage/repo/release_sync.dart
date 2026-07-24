@@ -152,7 +152,8 @@ class ReleaseSyncService {
   /// The comparison result follows the semantics of [_compareVersions] applied
   /// as `remote.compareTo(installed)`: positive when the remote is newer, zero
   /// when equal, negative when the installed version is newer, and `null` when
-  /// the remote version cannot be parsed.
+  /// the versions cannot be compared. An unparseable installed or remote
+  /// version instead yields a [ReleaseSyncVersionParseError].
   Future<Either<ReleaseSyncError, ({ReleaseIndex index, int? cmp})>> _compareWithRemote({
     required String snapshotHash,
   }) async {
@@ -176,6 +177,12 @@ class ReleaseSyncService {
     }
 
     final remoteVersion = _stripBuildMetadata(index.version);
+    if (!_isValidVersion(remoteVersion)) {
+      return Left(
+        ReleaseSyncVersionParseError(message: "Remote version is not valid semver: $remoteVersion"),
+      );
+    }
+
     final cmp = _compareVersions(remoteVersion, installedVersion);
     return Right((index: index, cmp: cmp));
   }
