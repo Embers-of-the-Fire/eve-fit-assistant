@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:archive/archive.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -28,9 +29,9 @@ class FitTextExporter {
   };
 
   String _exportNativeFit(FitStorage fit) {
-    final payload = jsonEncode({"version": 1, "fit": fit.toJson()});
+    final payload = jsonEncode(encodeNativeFitPayload(fit));
     final compressed = const GZipEncoder().encodeBytes(utf8.encode(payload), level: 9);
-    return "EFA:${base64Encode(compressed)}";
+    return "EFA2:${base64Encode(compressed)}";
   }
 
   Future<String> _exportEft(FitStorage fit) async {
