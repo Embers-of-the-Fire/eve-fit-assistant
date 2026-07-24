@@ -570,6 +570,8 @@ def _head_resource_snapshot_hashes(root: Path, channel: str) -> set[str]:
         if not head or not head.generation_hash:
             return set()
         gen = GenerationStore(root).load(head.generation_hash)
+    # Broad catch is intentional: any head/generation read failure (missing,
+    # corrupt, or incompatible data) must fall back to requiring all blobs.
     except Exception:
         return set()
     return {entry.snapshot_hash for entry in gen.resources.entries if entry.snapshot_hash}
