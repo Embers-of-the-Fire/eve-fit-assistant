@@ -40,6 +40,7 @@ class FitTextImporter {
 
   static final _nativePrefixPattern = RegExp(r"^EFA(?:(\d+))?:");
   static const _legacyNativePrefixVersion = 1;
+  static const _currentNativePrefixVersion = 2;
 
   final WidgetRef ref;
 
@@ -76,7 +77,12 @@ class FitTextImporter {
         throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
       }
       final explicitVersion = prefixMatch.group(1);
-      if (explicitVersion != null && int.tryParse(explicitVersion) != _legacyNativePrefixVersion) {
+      final prefixVersion = explicitVersion == null
+          ? _legacyNativePrefixVersion
+          : int.tryParse(explicitVersion);
+      if (prefixVersion == null ||
+          prefixVersion < _legacyNativePrefixVersion ||
+          prefixVersion > _currentNativePrefixVersion) {
         throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);
       }
 
@@ -85,7 +91,7 @@ class FitTextImporter {
       final jsonText = utf8.decode(const GZipDecoder().decodeBytes(compressed));
       final payload = jsonDecode(jsonText) as Map<String, dynamic>;
       try {
-        return decodeNativeFitPayload(payload);
+        return decodeNativeFitPayload(payload).fit;
       } on FitPersistenceException catch (error) {
         if (error.code == FitPersistenceErrorCode.unsupportedVersion) {
           throw const FitTextImportException(FitTextImportErrorCode.unsupportedNativeVersion);

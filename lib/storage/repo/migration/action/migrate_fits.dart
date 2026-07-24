@@ -1,5 +1,5 @@
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/storage/repo/migration/action/legacy_utils.dart";
+import "package:eve_fit_assistant/storage/fit/migrations.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/migrate_runner.dart";
 
 class MigrateFits {
@@ -29,25 +29,10 @@ class MigrateFits {
 
   Map<String, dynamic> _migrateFitRecord(Map<String, dynamic> json) {
     final payload = json["fit"] as Map<String, dynamic>;
-    final metadata = payload["metadata"] as Map<String, dynamic>;
-
-    final bundleSnapshot = metadata["bundleSnapshot"];
-    final checkoutId = bundleSnapshot is String ? bundleSnapshot : "";
-    final bundleId = metadata["bundleId"];
-    final serverId = bundleId is String ? serverIdFromBundleId(bundleId) : "";
-
-    final checkoutRefJson = <String, dynamic>{"checkoutId": checkoutId, "serverId": serverId};
-
-    final updatedMetadata = Map<String, dynamic>.from(metadata)
-      ..["checkoutRef"] = checkoutRefJson
-      ..remove("bundleId")
-      ..remove("bundleSnapshot");
-
-    final updatedPayload = Map<String, dynamic>.from(payload)..["metadata"] = updatedMetadata;
 
     return Map<String, dynamic>.from(json)
       ..["version"] = 2
-      ..["fit"] = updatedPayload;
+      ..["fit"] = upgradeLegacyFitStorageJson(payload);
   }
 }
 
