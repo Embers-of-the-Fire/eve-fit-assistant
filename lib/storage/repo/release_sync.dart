@@ -21,6 +21,38 @@ class ReleaseSyncVersionParseError extends ReleaseSyncError {
   final String message;
 }
 
+/// Tri-state outcome of comparing the installed app version against the
+/// remote release index.
+sealed class ReleaseCheckStatus {
+  const ReleaseCheckStatus();
+}
+
+/// The check could not be performed locally (remote content disabled, no
+/// configured channel, or no cached release pointer).
+class ReleaseCheckUnavailable extends ReleaseCheckStatus {
+  const ReleaseCheckUnavailable();
+}
+
+/// The installed version matches the latest remote release.
+class ReleaseCheckUpToDate extends ReleaseCheckStatus {
+  const ReleaseCheckUpToDate();
+}
+
+/// The installed version is newer than the latest remote release. This is
+/// unexpected (e.g. a dev build) but reported for transparency.
+class ReleaseCheckAheadOfRemote extends ReleaseCheckStatus {
+  const ReleaseCheckAheadOfRemote({required this.remoteVersion});
+
+  final String remoteVersion;
+}
+
+/// A newer release is available on the remote.
+class ReleaseCheckUpdateAvailable extends ReleaseCheckStatus {
+  const ReleaseCheckUpdateAvailable({required this.release});
+
+  final RemoteAppRelease release;
+}
+
 /// Detects whether a newer app release is available against the remote
 /// release index. Detection only — does not download or install artifacts.
 class ReleaseSyncService {
@@ -58,6 +90,72 @@ class ReleaseSyncService {
   Future<Either<ReleaseSyncError, Option<RemoteAppRelease>>> checkFromSnapshotHash({
     required String snapshotHash,
   }) async {
+    final compared = await _compareWithRemote(snapshotHash: snapshotHash);
+    return compared.map((result) {
+      if (result.cmp == null || result.cmp! <= 0) return const None();
+      return Some(
+        RemoteAppRelease(
+          releaseId: result.index.id,
+          version: result.index.version,
+          snapshotHash: snapshotHash,
+          index: result.index,
+        ),
+      );
+    });
+  }
+
+  /// Full tri-state check starting from a [generationHash].
+  ///
+  /// Unlike [check], this distinguishes "up to date" from "installed version
+  /// is newer than the remote release".
+  Future<Either<ReleaseSyncError, ReleaseCheckStatus>> checkStatus({
+    required String generationHash,
+  }) async {
+    final pointerResult = await remoteCatalogService.fetchGenerationPointer(generationHash);
+    if (pointerResult.isLeft()) {
+      final err = pointerResult.getLeft().toNullable()!;
+      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch generation pointer";
+      return Left(ReleaseSyncNetworkError(message: msg));
+    }
+    final pointer = GenerationPointer.fromBuffer(pointerResult.getRight().toNullable()!);
+    final snapshotHash = pointer.snapshotHash;
+    if (snapshotHash.isEmpty) {
+      return const Left(ReleaseSyncNetworkError(message: "Release pointer has no snapshot hash"));
+    }
+
+    return checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+  }
+
+  /// Full tri-state check given an already-resolved release snapshot hash.
+  Future<Either<ReleaseSyncError, ReleaseCheckStatus>> checkStatusFromSnapshotHash({
+    required String snapshotHash,
+  }) async {
+    final compared = await _compareWithRemote(snapshotHash: snapshotHash);
+    return compared.map((result) {
+      final cmp = result.cmp;
+      if (cmp == null || cmp == 0) return const ReleaseCheckUpToDate();
+      if (cmp < 0) return ReleaseCheckAheadOfRemote(remoteVersion: result.index.version);
+      return ReleaseCheckUpdateAvailable(
+        release: RemoteAppRelease(
+          releaseId: result.index.id,
+          version: result.index.version,
+          snapshotHash: snapshotHash,
+          index: result.index,
+        ),
+      );
+    });
+  }
+
+  /// Fetches the release index for [snapshotHash] and compares its version
+  /// against the installed version.
+  ///
+  /// The comparison result follows the semantics of [_compareVersions] applied
+  /// as `remote.compareTo(installed)`: positive when the remote is newer, zero
+  /// when equal, negative when the installed version is newer, and `null` when
+  /// the remote version cannot be parsed.
+  Future<Either<ReleaseSyncError, ({ReleaseIndex index, int? cmp})>> _compareWithRemote({
+    required String snapshotHash,
+  }) async {
     final indexResult = await remoteCatalogService.fetchReleaseIndex(snapshotHash);
     if (indexResult.isLeft()) {
       final err = indexResult.getLeft().toNullable()!;
@@ -79,18 +177,7 @@ class ReleaseSyncService {
 
     final remoteVersion = _stripBuildMetadata(index.version);
     final cmp = _compareVersions(remoteVersion, installedVersion);
-    if (cmp == null || cmp <= 0) return const Right(None());
-
-    return Right(
-      Some(
-        RemoteAppRelease(
-          releaseId: index.id,
-          version: index.version,
-          snapshotHash: snapshotHash,
-          index: index,
-        ),
-      ),
-    );
+    return Right((index: index, cmp: cmp));
   }
 }
 

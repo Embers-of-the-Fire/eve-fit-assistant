@@ -227,5 +227,65 @@ void main() {
         expect(result, const Right(None()));
       });
     });
+
+    group("checkStatusFromSnapshotHash", () {
+      test("returns updateAvailable when remote version is newer", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-2", version: "2.0.0")),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "1.0.0");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        final status = result.getRight().toNullable()!;
+        expect(status, isA<ReleaseCheckUpdateAvailable>());
+        expect((status as ReleaseCheckUpdateAvailable).release.releaseId, "rel-2");
+      });
+
+      test("returns upToDate when remote version equals installed", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-1", version: "1.0.0")),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "1.0.0");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        expect(result.getRight().toNullable(), isA<ReleaseCheckUpToDate>());
+      });
+
+      test("returns aheadOfRemote when installed version is newer", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-0", version: "0.9.0")),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "1.0.0");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        final status = result.getRight().toNullable()!;
+        expect(status, isA<ReleaseCheckAheadOfRemote>());
+        expect((status as ReleaseCheckAheadOfRemote).remoteVersion, "0.9.0");
+      });
+
+      test("propagates network errors", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Left(const CatalogNetworkError(message: "not found")),
+        );
+        final service = _makeService(remote: remote);
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isLeft(), isTrue);
+        expect(result.getLeft().toNullable(), isA<ReleaseSyncNetworkError>());
+      });
+    });
   });
 }
