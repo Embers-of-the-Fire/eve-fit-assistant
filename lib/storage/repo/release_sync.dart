@@ -71,19 +71,11 @@ class ReleaseSyncService {
   Future<Either<ReleaseSyncError, Option<RemoteAppRelease>>> check({
     required String generationHash,
   }) async {
-    final pointerResult = await remoteCatalogService.fetchGenerationPointer(generationHash);
-    if (pointerResult.isLeft()) {
-      final err = pointerResult.getLeft().toNullable()!;
-      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch generation pointer";
-      return Left(ReleaseSyncNetworkError(message: msg));
-    }
-    final pointer = GenerationPointer.fromBuffer(pointerResult.getRight().toNullable()!);
-    final snapshotHash = pointer.snapshotHash;
-    if (snapshotHash.isEmpty) {
-      return const Left(ReleaseSyncNetworkError(message: "Release pointer has no snapshot hash"));
-    }
-
-    return checkFromSnapshotHash(snapshotHash: snapshotHash);
+    final resolved = await _resolveSnapshotHash(generationHash);
+    return resolved.match(
+      Left.new,
+      (snapshotHash) => checkFromSnapshotHash(snapshotHash: snapshotHash),
+    );
   }
 
   /// Checks for a newer release given an already-resolved release snapshot hash.
@@ -111,19 +103,11 @@ class ReleaseSyncService {
   Future<Either<ReleaseSyncError, ReleaseCheckStatus>> checkStatus({
     required String generationHash,
   }) async {
-    final pointerResult = await remoteCatalogService.fetchGenerationPointer(generationHash);
-    if (pointerResult.isLeft()) {
-      final err = pointerResult.getLeft().toNullable()!;
-      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch generation pointer";
-      return Left(ReleaseSyncNetworkError(message: msg));
-    }
-    final pointer = GenerationPointer.fromBuffer(pointerResult.getRight().toNullable()!);
-    final snapshotHash = pointer.snapshotHash;
-    if (snapshotHash.isEmpty) {
-      return const Left(ReleaseSyncNetworkError(message: "Release pointer has no snapshot hash"));
-    }
-
-    return checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+    final resolved = await _resolveSnapshotHash(generationHash);
+    return resolved.match(
+      Left.new,
+      (snapshotHash) => checkStatusFromSnapshotHash(snapshotHash: snapshotHash),
+    );
   }
 
   /// Full tri-state check given an already-resolved release snapshot hash.
@@ -144,6 +128,23 @@ class ReleaseSyncService {
         ),
       );
     });
+  }
+
+  /// Resolves the release snapshot hash for [generationHash] by fetching its
+  /// generation pointer.
+  Future<Either<ReleaseSyncError, String>> _resolveSnapshotHash(String generationHash) async {
+    final pointerResult = await remoteCatalogService.fetchGenerationPointer(generationHash);
+    if (pointerResult.isLeft()) {
+      final err = pointerResult.getLeft().toNullable()!;
+      final msg = err is CatalogNetworkError ? err.message : "Failed to fetch generation pointer";
+      return Left(ReleaseSyncNetworkError(message: msg));
+    }
+    final pointer = GenerationPointer.fromBuffer(pointerResult.getRight().toNullable()!);
+    final snapshotHash = pointer.snapshotHash;
+    if (snapshotHash.isEmpty) {
+      return const Left(ReleaseSyncNetworkError(message: "Release pointer has no snapshot hash"));
+    }
+    return Right(snapshotHash);
   }
 
   /// Fetches the release index for [snapshotHash] and compares its version
