@@ -82,16 +82,21 @@ void main() {
   });
 
   group("MigrationGate fast-path", () {
-    late String tempDir;
+    late String legacyDir;
+    late String appSupportDir;
 
     setUp(() {
-      tempDir = Directory.systemTemp.createTempSync("efa_mig_gate_test_").path;
-      PathProvider.documentsPath = tempDir;
+      legacyDir = Directory.systemTemp.createTempSync("efa_mig_gate_legacy_").path;
+      appSupportDir = Directory.systemTemp.createTempSync("efa_mig_gate_support_").path;
+      PathProvider.documentsPath = legacyDir;
+      PathProvider.appSupportPath = appSupportDir;
     });
 
     tearDown(() {
-      final dir = Directory(tempDir);
-      if (dir.existsSync()) dir.deleteSync(recursive: true);
+      for (final path in [legacyDir, appSupportDir]) {
+        final dir = Directory(path);
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      }
     });
 
     testWidgets("skips scan and calls onMigrationComplete when schema_version.json exists", (
@@ -124,7 +129,7 @@ void main() {
     });
 
     testWidgets("shows migration prompt when legacy fits exist", (tester) async {
-      _writeLegacyFits(tempDir);
+      _writeLegacyFits(legacyDir);
       var completed = false;
 
       await tester.pumpWidget(
@@ -141,7 +146,7 @@ void main() {
     });
 
     testWidgets("shows migration prompt when legacy characters exist", (tester) async {
-      _writeLegacyCharacters(tempDir);
+      _writeLegacyCharacters(legacyDir);
       var completed = false;
 
       await tester.pumpWidget(
@@ -157,7 +162,7 @@ void main() {
 
     testWidgets("fast-path overrides legacy data detection — schema_version wins", (tester) async {
       _ensureSchemaVersion();
-      _writeLegacyFits(tempDir);
+      _writeLegacyFits(legacyDir);
       var completed = false;
 
       await tester.pumpWidget(

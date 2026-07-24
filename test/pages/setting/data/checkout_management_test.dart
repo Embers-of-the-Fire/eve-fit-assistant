@@ -64,6 +64,7 @@ void main() {
     registerFallbackValue("");
     tempDir = Directory.systemTemp.createTempSync("efa_checkout_mgmt_test_");
     PathProvider.documentsPath = tempDir.path;
+    PathProvider.appSupportPath = tempDir.path;
 
     mockAssetStore = MockAssetStore();
     when(() => mockAssetStore.readResourceIndexSync(any())).thenReturn(const None());

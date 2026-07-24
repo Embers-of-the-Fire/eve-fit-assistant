@@ -27,6 +27,10 @@ class ResetStorageService {
       // Legacy paths, cleaned up if present.
       PathProvider.oldFittingsPath,
       PathProvider.oldCharactersPath,
+      PathProvider.legacySettingsPath,
+      PathProvider.legacyResourcesPath,
+      PathProvider.legacyRuntimePath,
+      PathProvider.legacyLogsPath,
     ];
 
     for (final path in dirs) {

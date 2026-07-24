@@ -40,6 +40,7 @@ void main() {
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync("efa_verification_test_").path;
     PathProvider.documentsPath = tempDir;
+    PathProvider.appSupportPath = tempDir;
     checkoutId = "test-checkout-001";
   });
 

@@ -36,6 +36,10 @@ void main() {
       p.join(PathProvider.tempPath, "efa", "native", "foo"),
       p.join(PathProvider.oldFittingsPath, "fit.json"),
       p.join(PathProvider.oldCharactersPath, "char.json"),
+      p.join(PathProvider.legacySettingsPath, "settings.json"),
+      p.join(PathProvider.legacyResourcesPath, "v2", "schema_version.json"),
+      p.join(PathProvider.legacyRuntimePath, "v2", "fittings", "fit.json"),
+      p.join(PathProvider.legacyLogsPath, "app.log"),
     ];
 
     for (final filePath in files) {

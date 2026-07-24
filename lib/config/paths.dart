@@ -10,18 +10,23 @@ class PathProvider {
   static late String? downloadsPath;
   static late String cachesPath;
 
-  static String get resourcesPath => p.join(documentsPath, "resources");
-  static String get settingsPath => p.join(documentsPath, "settings");
+  static String get resourcesPath => p.join(appSupportPath, "resources");
+  static String get settingsPath => p.join(appSupportPath, "settings");
 
   static String get oldFittingsPath => p.join(documentsPath, "fittings");
   static String get oldCharactersPath => p.join(documentsPath, "characters");
 
-  static String get runtimePath => p.join(documentsPath, "runtime", "v2");
+  static String get runtimePath => p.join(appSupportPath, "runtime", "v2");
   static String get fittingsPath => p.join(runtimePath, "fittings");
   static String get charactersPath => p.join(runtimePath, "characters");
 
-  static String get logsPath => p.join(documentsPath, "logs");
+  static String get logsPath => p.join(appSupportPath, "logs");
   static String get cacheResourcesPath => p.join(cachesPath, "resources");
+
+  static String get legacyResourcesPath => p.join(documentsPath, "resources");
+  static String get legacySettingsPath => p.join(documentsPath, "settings");
+  static String get legacyRuntimePath => p.join(documentsPath, "runtime");
+  static String get legacyLogsPath => p.join(documentsPath, "logs");
   static Future<void> init() async {
     documentsPath = (await getApplicationDocumentsDirectory()).path;
     tempPath = (await getTemporaryDirectory()).path;

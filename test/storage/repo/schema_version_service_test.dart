@@ -20,6 +20,7 @@ void main() {
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync("efa_schema_version_test_").path;
     PathProvider.documentsPath = tempDir;
+    PathProvider.appSupportPath = tempDir;
     service = const SchemaVersionService();
   });
 

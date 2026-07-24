@@ -75,27 +75,34 @@ void main() {
   });
 
   group("MigrateService", () {
-    late String tempDir;
+    late String legacyDir;
+    late String appSupportDir;
 
     setUp(() async {
-      tempDir = Directory.systemTemp.createTempSync("efa_mig_service_test_").path;
-      PathProvider.documentsPath = tempDir;
+      legacyDir = Directory.systemTemp.createTempSync("efa_mig_service_legacy_").path;
+      appSupportDir = Directory.systemTemp.createTempSync("efa_mig_service_support_").path;
+      PathProvider.documentsPath = legacyDir;
+      PathProvider.appSupportPath = appSupportDir;
       // Clean up any stale checkpoint from prior runs.
-      final checkpoint = File(p.join(tempDir, "resources", "v2", ".migration_progress.json"));
+      final checkpoint = File(p.join(RepoPaths.schemaResourcesPath, ".migration_progress.json"));
       if (checkpoint.existsSync()) checkpoint.deleteSync();
-      final schemaFile = File(p.join(tempDir, "resources", "v2", "schema_version.json"));
+      final schemaFile = File(RepoPaths.schemaVersionPath);
       if (schemaFile.existsSync()) schemaFile.deleteSync();
     });
 
     tearDown(() {
-      final dir = Directory(tempDir);
-      if (dir.existsSync()) dir.deleteSync(recursive: true);
+      for (final path in [legacyDir, appSupportDir]) {
+        final dir = Directory(path);
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      }
     });
 
     test("fresh migration — migrates files to runtime/v2/, deletes old dirs", () async {
       // Create legacy data in old paths
       final oldFittingsPath = PathProvider.oldFittingsPath;
       final oldCharactersPath = PathProvider.oldCharactersPath;
+      expect(oldFittingsPath, startsWith(legacyDir));
+      expect(oldCharactersPath, startsWith(legacyDir));
       Directory(oldFittingsPath).createSync(recursive: true);
       Directory(oldCharactersPath).createSync(recursive: true);
 
@@ -121,6 +128,8 @@ void main() {
       // Files written to new runtime/v2/ paths
       final newFittingsPath = PathProvider.fittingsPath;
       final newCharactersPath = PathProvider.charactersPath;
+      expect(newFittingsPath, startsWith(appSupportDir));
+      expect(newCharactersPath, startsWith(appSupportDir));
       expect(File(p.join(newFittingsPath, "fit-1.json")).existsSync(), isTrue);
       expect(File(p.join(newCharactersPath, "char-1.json")).existsSync(), isTrue);
 
@@ -129,7 +138,7 @@ void main() {
       expect(Directory(oldCharactersPath).existsSync(), isFalse);
 
       // Schema version written
-      final schemaFile = File(p.join(tempDir, "resources", "v2", "schema_version.json"));
+      final schemaFile = File(RepoPaths.schemaVersionPath);
       expect(schemaFile.existsSync(), isTrue);
     });
 
@@ -243,7 +252,7 @@ void main() {
       expect(progress.fitsResult!.migrated, 1);
       expect(progress.charactersResult!.migrated, 2);
 
-      final schemaFile = File(p.join(tempDir, "resources", "v2", "schema_version.json"));
+      final schemaFile = File(RepoPaths.schemaVersionPath);
       expect(schemaFile.existsSync(), isTrue);
     });
 

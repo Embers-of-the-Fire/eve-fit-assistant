@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
@@ -114,16 +113,21 @@ void main() {
   });
 
   group("MigrateProgressStore", () {
-    late String tempDir;
+    late String documentsDir;
+    late String appSupportDir;
 
     setUp(() {
-      tempDir = Directory.systemTemp.createTempSync("efa_mig_progress_test_").path;
-      PathProvider.documentsPath = tempDir;
+      documentsDir = Directory.systemTemp.createTempSync("efa_mig_progress_docs_").path;
+      appSupportDir = Directory.systemTemp.createTempSync("efa_mig_progress_support_").path;
+      PathProvider.documentsPath = documentsDir;
+      PathProvider.appSupportPath = appSupportDir;
     });
 
     tearDown(() {
-      final dir = Directory(tempDir);
-      if (dir.existsSync()) dir.deleteSync(recursive: true);
+      for (final path in [documentsDir, appSupportDir]) {
+        final dir = Directory(path);
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      }
     });
 
     test("load returns default when checkpoint file does not exist", () async {
@@ -173,7 +177,7 @@ void main() {
 
     test("load returns default on corrupt JSON without throwing", () async {
       const store = MigrateProgressStore();
-      final v2Dir = p.join(PathProvider.documentsPath, "resources", "v2");
+      final v2Dir = RepoPaths.schemaResourcesPath;
       Directory(v2Dir).createSync(recursive: true);
       final checkpointFile = File(p.join(v2Dir, ".migration_progress.json"));
       checkpointFile.writeAsStringSync("not valid json");
@@ -185,7 +189,8 @@ void main() {
 
     test("save creates parent directories", () async {
       const store = MigrateProgressStore();
-      final v2Dir = p.join(PathProvider.documentsPath, "resources", "v2");
+      final v2Dir = RepoPaths.schemaResourcesPath;
+      expect(v2Dir, startsWith(appSupportDir));
       expect(Directory(v2Dir).existsSync(), isFalse);
 
       const progress = MigrateProgress();
@@ -193,13 +198,14 @@ void main() {
 
       expect(Directory(v2Dir).existsSync(), isTrue);
       expect(File(p.join(v2Dir, ".migration_progress.json")).existsSync(), isTrue);
+      expect(Directory(p.join(documentsDir, "resources")).existsSync(), isFalse);
     });
 
     test("atomic write does not leave tmp file", () async {
       const store = MigrateProgressStore();
       await store.save(const MigrateProgress());
 
-      final v2Dir = p.join(PathProvider.documentsPath, "resources", "v2");
+      final v2Dir = RepoPaths.schemaResourcesPath;
       final tmpFile = File(p.join(v2Dir, ".migration_progress.json.tmp"));
       expect(tmpFile.existsSync(), isFalse);
 
@@ -222,7 +228,7 @@ void main() {
 
     test("startedAt timestamp is set on fresh load", () async {
       const store = MigrateProgressStore();
-      final v2Dir = p.join(PathProvider.documentsPath, "resources", "v2");
+      final v2Dir = RepoPaths.schemaResourcesPath;
       final checkpointFile = File(p.join(v2Dir, ".migration_progress.json"));
       if (checkpointFile.existsSync()) checkpointFile.deleteSync();
 

@@ -21,6 +21,7 @@ void main() {
   setUp(() {
     fs = MemoryFileSystem();
     PathProvider.documentsPath = "/";
+    PathProvider.appSupportPath = "/";
   });
 
   test("recoverSync deletes orphaned .tmp files but keeps real blobs", () {
