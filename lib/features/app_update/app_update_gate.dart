@@ -166,7 +166,13 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   Future<void> _onSilentStatus(RemoteAppRelease release, AppUpdateStatus status) async {
     switch (status) {
       case AppUpdateStatusReadyToInstall():
-        await _promptSilentInstall(release);
+        // Only retire the subscription once the install prompt has actually
+        // been displayed. When the prompt was skipped (gate unmounted or
+        // another dialog is visible), keep listening: install() can drop
+        // back to readyToInstall, and without a listener the release would
+        // no longer be actionable from this gate.
+        final prompted = await _promptSilentInstall(release);
+        if (!prompted) return;
         _silentSubscription?.close();
         _silentSubscription = null;
       case AppUpdateStatusFailed():
@@ -178,8 +184,11 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
     }
   }
 
-  Future<void> _promptSilentInstall(RemoteAppRelease release) async {
-    if (!mounted || _isShowing) return;
+  /// Shows the silent install confirmation. Returns whether the dialog was
+  /// actually displayed; callers use this to decide if the controller
+  /// subscription is still needed.
+  Future<bool> _promptSilentInstall(RemoteAppRelease release) async {
+    if (!mounted || _isShowing) return false;
     _isShowing = true;
 
     final confirmed = await showConfirmDialog(
@@ -188,10 +197,10 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
       content: Text(context.l10n.appReleaseSilentUpdateReadyMessage(version: release.version)),
     );
 
-    if (!mounted) return;
+    if (!mounted) return true;
     if (confirmed) {
       await ref.read(appUpdateControllerProvider(release).notifier).install();
-      if (!mounted) return;
+      if (!mounted) return true;
       ref.read(appVersionStateServiceProvider.notifier).acknowledgeVersion(release.version);
     } else {
       // Postponed: acknowledge so the silent flow does not retrigger on the
@@ -199,6 +208,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
       ref.read(appVersionStateServiceProvider.notifier).acknowledgeRelease(release.releaseId);
     }
     _isShowing = false;
+    return true;
   }
 }
 

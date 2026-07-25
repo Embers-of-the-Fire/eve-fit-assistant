@@ -44,6 +44,11 @@ class _FakeAppUpdateController extends AppUpdateController {
   @override
   Future<void> install() async {
     installCalls += 1;
+    // Mirror the real controller: installing, then back to readyToInstall.
+    // The readyToInstall emission re-enters the silent status listener while
+    // the confirmation flow is still in flight.
+    state = const AppUpdateStatus.installing();
+    state = const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk");
   }
 }
 
@@ -143,6 +148,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.installCalls, 1);
+    // The readyToInstall emission during install() must not re-open the
+    // confirmation dialog.
     expect(find.byType(ConfirmDialog), findsNothing);
   });
 
