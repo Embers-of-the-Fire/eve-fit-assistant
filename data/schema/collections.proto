@@ -33,4 +33,7 @@ message Collection {
   map<uint32, dynamic.DynamicMutator> dynamic_mutators = 12;
   map<uint32, dynamic.DynamicTypeOptions> dynamic_type_options = 13;
   map<string, SkillProfile> skill_profiles = 14;
+
+  // Optional: absent in older bundles; feature-gate UI on emptiness.
+  map<uint32, fit.ImplantSet> implant_sets = 15;
 }

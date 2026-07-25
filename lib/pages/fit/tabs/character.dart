@@ -192,6 +192,9 @@ class _CharacterImplantTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fit = fitContext.fit;
     final implantAssignments = _buildImplantAssignments(fit, ref);
+    final hasImplantSets = ref.watch(
+      repoCollectionProvider.select((c) => (c?.getAllImplantSets().length ?? 0) > 0),
+    );
 
     return Column(
       children: [
@@ -199,6 +202,11 @@ class _CharacterImplantTab extends ConsumerWidget {
           title: context.l10n.implantSlot,
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.implant),
           actions: [
+            if (interactionOptions.allowMutations && hasImplantSets)
+              InkWell(
+                onTap: () => _handleApplyImplantSet(context, ref),
+                child: const Icon(Icons.auto_awesome),
+              ),
             if (interactionOptions.allowMutations)
               InkWell(onTap: () => _handleAddImplant(context, ref), child: const Icon(Icons.add)),
             if (interactionOptions.allowMutations)
@@ -248,6 +256,62 @@ class _CharacterImplantTab extends ConsumerWidget {
     final storageIndex = slotId == null ? null : slotId - 1;
     if (storageIndex == null || storageIndex < 0 || storageIndex >= _maxImplantSlots) return;
     await fitContext.fitWrapper.equipSlot(SlotIdentifier.implant(index: storageIndex), typeId, ref);
+  }
+
+  Future<void> _handleApplyImplantSet(BuildContext context, WidgetRef ref) async {
+    final collection = ref.read(repoCollectionProvider);
+    if (collection == null) return;
+    final sets = collection.getAllImplantSets();
+    if (sets.isEmpty) return;
+
+    final setId = await showDialog<int>(
+      context: context,
+      builder: (context) => _ImplantSetDialog(sets: sets),
+    );
+    if (setId == null) return;
+    final implantSet = collection.getImplantSet(setId);
+    if (implantSet == null) return;
+    await fitContext.fitWrapper.applyImplantSet(implantSet.memberTypeIds, ref);
+  }
+}
+
+class _ImplantSetDialog extends ConsumerWidget {
+  const _ImplantSetDialog({required this.sets});
+
+  final IList<ImplantSet> sets;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider).name;
+    final sorted = sets.toList()
+      ..sort((left, right) {
+        final family = left.effectId.compareTo(right.effectId);
+        return family != 0 ? family : left.setId.compareTo(right.setId);
+      });
+
+    String nameOf(ImplantSet set) {
+      final names = set.names;
+      final name = names[locale] ?? names["en"];
+      if (name != null && name.isNotEmpty) return name;
+      return names.values.isEmpty ? "${set.setId}" : names.values.first;
+    }
+
+    return AppDialog(
+      title: context.l10n.fitImplantSetDialogTitle,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final set in sorted)
+              ListTile(
+                title: Text(nameOf(set)),
+                trailing: Text("×${set.memberTypeIds.length}"),
+                onTap: () => Navigator.of(context).pop(set.setId),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

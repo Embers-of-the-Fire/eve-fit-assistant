@@ -77,6 +77,8 @@ class RepoCollectionService {
     required IMap<int, pb_materials.TypeMaterial> typeMaterials,
     required IMap<int, pb_dynamic.DynamicMutator> dynamicMutators,
     required IMap<int, pb_dynamic.DynamicTypeOptions> dynamicTypeOptions,
+    required IMap<int, ImplantSet> implantSets,
+    required IMap<int, int> implantTypeToSet,
   }) : _collection = collection,
        _localizedNames = localizedNames,
        _ships = ships,
@@ -92,7 +94,9 @@ class RepoCollectionService {
        _subsystems = subsystems,
        _typeMaterials = typeMaterials,
        _dynamicMutators = dynamicMutators,
-       _dynamicTypeOptions = dynamicTypeOptions;
+       _dynamicTypeOptions = dynamicTypeOptions,
+       _implantSets = implantSets,
+       _implantTypeToSet = implantTypeToSet;
 
   /// Builds a [RepoCollectionService] from a [Collection] protobuf for testing.
   ///
@@ -129,6 +133,8 @@ class RepoCollectionService {
       typeMaterials: const IMap.empty(),
       dynamicMutators: const IMap.empty(),
       dynamicTypeOptions: const IMap.empty(),
+      implantSets: const IMap.empty(),
+      implantTypeToSet: const IMap.empty(),
     );
   }
 
@@ -190,6 +196,13 @@ class RepoCollectionService {
     final dynamicTypeOptions = IMap.fromEntries(
       collection.dynamicTypeOptions.entries.map((e) => MapEntry(e.key, e.value)),
     );
+    final implantSets = IMap.fromEntries(
+      collection.implantSets.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    final implantTypeToSet = IMap.fromEntries([
+      for (final set in implantSets.values)
+        for (final typeId in set.memberTypeIds) MapEntry(typeId, set.setId),
+    ]);
 
     // Derive skill type IDs
     final skillGroupIds = collection.groups.values
@@ -243,6 +256,8 @@ class RepoCollectionService {
       typeMaterials: typeMaterials,
       dynamicMutators: dynamicMutators,
       dynamicTypeOptions: dynamicTypeOptions,
+      implantSets: implantSets,
+      implantTypeToSet: implantTypeToSet,
     );
   }
 
@@ -265,6 +280,8 @@ class RepoCollectionService {
   final IMap<int, pb_materials.TypeMaterial> _typeMaterials;
   final IMap<int, pb_dynamic.DynamicMutator> _dynamicMutators;
   final IMap<int, pb_dynamic.DynamicTypeOptions> _dynamicTypeOptions;
+  final IMap<int, ImplantSet> _implantSets;
+  final IMap<int, int> _implantTypeToSet;
 
   // ── Query surface ──
 
@@ -285,6 +302,19 @@ class RepoCollectionService {
   pb_materials.TypeMaterial? getTypeMaterial(int typeId) => _typeMaterials[typeId];
   pb_dynamic.DynamicMutator? getDynamicMutator(int mutatorId) => _dynamicMutators[mutatorId];
   pb_dynamic.DynamicTypeOptions? getDynamicTypeOptions(int typeId) => _dynamicTypeOptions[typeId];
+
+  /// Returns the implant set with the given [setId], or `null` when absent
+  /// (e.g. older bundles without implant set metadata).
+  ImplantSet? getImplantSet(int setId) => _implantSets[setId];
+
+  /// Returns the implant set containing the implant [typeId], or `null` when
+  /// the type belongs to no set or set metadata is unavailable.
+  ImplantSet? getImplantSetForType(int typeId) {
+    final setId = _implantTypeToSet[typeId];
+    return setId == null ? null : _implantSets[setId];
+  }
+
+  IList<ImplantSet> getAllImplantSets() => _implantSets.values.toIList();
 
   IList<pb_categories.Category> getAllCategories() => _categories.values.toIList();
   IList<pb_groups.Group> getAllGroups() => _groups.values.toIList();

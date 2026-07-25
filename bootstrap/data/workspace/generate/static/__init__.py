@@ -15,6 +15,7 @@ from . import dogma_units
 from . import dynamic
 from . import fit
 from . import groups
+from . import implant_sets
 from . import market_groups
 from . import meta_groups
 from . import type_materials
@@ -42,6 +43,7 @@ async def generate(data: GeneratorDatasource) -> collections_pb2.Collection:
             dogma_attributes,
             dynamic,
             fit,
+            implant_sets,
         ]
     )
     await asyncio.gather(*tasks)
