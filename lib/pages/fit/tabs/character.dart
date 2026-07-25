@@ -192,6 +192,9 @@ class _CharacterImplantTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fit = fitContext.fit;
     final implantAssignments = _buildImplantAssignments(fit, ref);
+    final hasImplantSets = ref.watch(
+      repoCollectionProvider.select((c) => (c?.getAllImplantSets().length ?? 0) > 0),
+    );
 
     return Column(
       children: [
@@ -199,6 +202,14 @@ class _CharacterImplantTab extends ConsumerWidget {
           title: context.l10n.implantSlot,
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.implant),
           actions: [
+            if (interactionOptions.allowMutations && hasImplantSets)
+              Tooltip(
+                message: context.l10n.fitImplantSetDialogTitle,
+                child: InkWell(
+                  onTap: () => _handleApplyImplantSet(context, ref),
+                  child: const Icon(Icons.dashboard_customize),
+                ),
+              ),
             if (interactionOptions.allowMutations)
               InkWell(onTap: () => _handleAddImplant(context, ref), child: const Icon(Icons.add)),
             if (interactionOptions.allowMutations)
@@ -249,6 +260,88 @@ class _CharacterImplantTab extends ConsumerWidget {
     if (storageIndex == null || storageIndex < 0 || storageIndex >= _maxImplantSlots) return;
     await fitContext.fitWrapper.equipSlot(SlotIdentifier.implant(index: storageIndex), typeId, ref);
   }
+
+  Future<void> _handleApplyImplantSet(BuildContext context, WidgetRef ref) async {
+    final collection = ref.read(repoCollectionProvider);
+    if (collection == null) return;
+    final sets = collection.getAllImplantSets();
+    if (sets.isEmpty) return;
+
+    final setId = await showDialog<int>(
+      context: context,
+      builder: (context) => _ImplantSetDialog(sets: sets),
+    );
+    if (setId == null) return;
+    final implantSet = collection.getImplantSet(setId);
+    if (implantSet == null) return;
+    await fitContext.fitWrapper.applyImplantSet(implantSet.memberTypeIds, ref);
+  }
+}
+
+class _ImplantSetDialog extends ConsumerWidget {
+  const _ImplantSetDialog({required this.sets});
+
+  final IList<ImplantSet> sets;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider).name;
+
+    String nameOf(ImplantSet set) => _localized(set.names, locale, "${set.setId}");
+    String familyOf(ImplantSet set) => _localized(set.familyNames, locale, nameOf(set));
+
+    // Sets of one family share setId ~/ 100; grade ranks ascend with strength.
+    final families = <int, List<ImplantSet>>{};
+    for (final set in sets) {
+      families.putIfAbsent(set.setId ~/ 100, () => []).add(set);
+    }
+    for (final members in families.values) {
+      members.sort((left, right) => left.setId.compareTo(right.setId));
+    }
+    final sortedFamilies = families.values.toList()
+      ..sort((left, right) => familyOf(left.first).compareTo(familyOf(right.first)));
+
+    return AppDialog(
+      title: context.l10n.fitImplantSetDialogTitle,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final members in sortedFamilies)
+              if (members.length == 1)
+                _ImplantSetTile(set: members.single, title: nameOf(members.single))
+              else
+                ExpansionTile(
+                  title: Text(familyOf(members.first)),
+                  children: [
+                    for (final set in members) _ImplantSetTile(set: set, title: nameOf(set)),
+                  ],
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _localized(Map<String, String> names, String locale, String fallback) {
+    final name = names[locale] ?? names["en"];
+    if (name != null && name.isNotEmpty) return name;
+    return names.values.isEmpty ? fallback : names.values.first;
+  }
+}
+
+class _ImplantSetTile extends StatelessWidget {
+  const _ImplantSetTile({required this.set, required this.title});
+
+  final ImplantSet set;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    title: Text(title),
+    trailing: Text("×${set.memberTypeIds.length}"),
+    onTap: () => Navigator.of(context).pop(set.setId),
+  );
 }
 
 class _CharacterBoosterTab extends ConsumerWidget {

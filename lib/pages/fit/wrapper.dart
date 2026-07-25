@@ -291,6 +291,39 @@ class FitWrapper {
     return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
   });
 
+  // Applies a whole implant set in a single update: set members replace any
+  // implant occupying one of the set's slots; implants in other slots are kept.
+  Future<void> applyImplantSet(Iterable<int> memberTypeIds, WidgetRef ref) => wrapped.update((fit) {
+    final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
+    if (slotsInfo == null) return fit;
+
+    final setSlots = <int>{};
+    final members = <FitImplantItem>[];
+    for (final typeId in memberTypeIds) {
+      final slotIndex = slotsInfo.implantSlots[typeId]?.slotIndex;
+      if (slotIndex == null || slotIndex < 1) continue;
+      setSlots.add(slotIndex);
+      members.add(
+        FitImplantItem(
+          itemId: FitStorageItemId.item(id: typeId),
+          state: FitItemState.online,
+        ),
+      );
+    }
+    if (members.isEmpty) return fit;
+
+    final kept = fit.body.implants.where((implant) {
+      final typeId = switch (implant.itemId) {
+        FitStorageItemIdItem(:final id) => id,
+        _ => null,
+      };
+      final slotIndex = typeId == null ? null : slotsInfo.implantSlots[typeId]?.slotIndex;
+      return slotIndex == null || !setSlots.contains(slotIndex);
+    });
+
+    return fit.copyWith(body: fit.body.copyWith(implants: IList([...kept, ...members])));
+  });
+
   Future<void> toggleImplantForSlot(int slotId, WidgetRef ref) => wrapped.update((fit) {
     final existingIndex = findImplantStorageIndex(fit, slotId, ref);
     if (existingIndex == null) return fit;

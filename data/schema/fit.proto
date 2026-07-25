@@ -57,6 +57,30 @@ message TacticalMode {
   required TacticalModeVariant variant = 3;
 }
 
+/// A named group of implants forming a set (e.g. "High-grade Crystal").
+///
+/// Membership is derived at data-build time from dogma: all members share the
+/// same setBonus effect and carry the corresponding implantSet attribute.
+/// Display names are baked per locale; the app never parses type names.
+message ImplantSet {
+  /// Deterministic ID: family_index * 100 + grade rank within the family.
+  /// Sets of one family (e.g. Low/Mid/High-grade Crystal) share set_id / 100;
+  /// grade ranks ascend with set strength.
+  required uint32 set_id = 1;
+
+  /// The shared setBonus dogma effect ID (mechanics key, stable across versions).
+  required uint32 effect_id = 2;
+
+  /// Display name per locale (e.g. "en" -> "High-grade Crystal").
+  map<string, string> names = 3;
+
+  /// Member implant type IDs, sorted by implant slot (dogma attribute 331).
+  repeated uint32 member_type_ids = 4;
+
+  /// Family display name per locale (e.g. "en" -> "Crystal", "zh" -> "水晶").
+  map<string, string> family_names = 5;
+}
+
 message Slots {
   enum SlotState {
     PASSIVE = 0;
