@@ -21,6 +21,14 @@ class NativeDirResolver {
 
   final AssetStore assetStore;
 
+  /// Suffix of the marker file recording the blob root a native directory was
+  /// materialized against. The marker is stored as a sibling of the native
+  /// directory (`<nativeRoot>.efa_blob_root`), never inside the materialized
+  /// tree, so it cannot collide with a resource index entry.
+  static const _markerFileSuffix = "efa_blob_root";
+
+  static String _markerPath(String nativeRoot) => "$nativeRoot.$_markerFileSuffix";
+
   /// Computes the expected native directory path for [snapshotHash]
   /// without I/O.
   ///
@@ -31,11 +39,19 @@ class NativeDirResolver {
 
   /// Creates a temporary native directory populated with all files referenced by
   /// [resourceIndex], and returns the root path of the native directory.
+  ///
+  /// A native directory is only reused when its marker file matches the current
+  /// blob root. Directories materialized before a storage relocation (e.g. the
+  /// documents → application support migration) contain absolute symlinks into
+  /// the old blob root and are rebuilt instead.
   Future<String> prepareNativeDir(String snapshotHash, ResourceIndex resourceIndex) async {
     final nativeRoot = resolvePathFromSnapshot(snapshotHash);
     final dir = Directory(nativeRoot);
 
-    if (dir.existsSync()) return nativeRoot;
+    if (dir.existsSync()) {
+      if (!_isStale(nativeRoot)) return nativeRoot;
+      dir.deleteSync(recursive: true);
+    }
 
     dir.createSync(recursive: true);
 
@@ -60,10 +76,23 @@ class NativeDirResolver {
         _linkOrCopy(blobPath, targetPath);
       }
 
+      File(_markerPath(nativeRoot)).writeAsStringSync(RepoPaths.assetsPath);
       return nativeRoot;
     } on FileSystemException {
       dir.deleteSync(recursive: true);
       rethrow;
+    }
+  }
+
+  /// Returns `true` when the native directory at [nativeRoot] was materialized
+  /// against a different blob root than the current one (or has no marker,
+  /// e.g. it predates the marker mechanism).
+  static bool _isStale(String nativeRoot) {
+    final marker = File(_markerPath(nativeRoot));
+    try {
+      return marker.readAsStringSync() != RepoPaths.assetsPath;
+    } on FileSystemException {
+      return true;
     }
   }
 
@@ -110,7 +139,8 @@ class NativeDirResolver {
     }
   }
 
-  /// Removes native directories for snapshots not in [activeSnapshotHashes].
+  /// Removes native directories for snapshots not in [activeSnapshotHashes],
+  /// along with their marker files.
   void cleanup(Iterable<String> activeSnapshotHashes) {
     final nativeBase = p.join(PathProvider.tempPath, "efa", "native");
     final baseDir = Directory(nativeBase);
@@ -118,16 +148,21 @@ class NativeDirResolver {
 
     final activeSet = activeSnapshotHashes.toSet();
 
-    for (final entity in baseDir.listSync().whereType<Directory>()) {
-      if (!activeSet.contains(p.basename(entity.path))) {
-        try {
-          entity.deleteSync(recursive: true);
-        } on FileSystemException catch (e, stackTrace) {
-          warning(
-            "Failed to remove stale native directory: ${entity.path}",
-            stackTrace: stackTrace,
-          );
-        }
+    for (final entity in baseDir.listSync()) {
+      final name = p.basename(entity.path);
+      final isOrphan =
+          entity is Directory && !activeSet.contains(name) ||
+          entity is File &&
+              name.endsWith(".$_markerFileSuffix") &&
+              !activeSet.contains(name.substring(0, name.length - _markerFileSuffix.length - 1));
+      if (!isOrphan) continue;
+      try {
+        entity.deleteSync(recursive: true);
+      } on FileSystemException catch (e, stackTrace) {
+        warning(
+          "Failed to remove stale native directory artifact: ${entity.path}",
+          stackTrace: stackTrace,
+        );
       }
     }
   }
