@@ -151,6 +151,9 @@ void main() {
     // The readyToInstall emission during install() must not re-open the
     // confirmation dialog.
     expect(find.byType(ConfirmDialog), findsNothing);
+    // Confirming also acknowledges the version, mirroring the update dialog.
+    expect(versionStore.lastSeenAppVersion, "2.0.0");
+    expect(versionStore.lastAcknowledgedReleaseId, isNull);
   });
 
   testWidgets("silent install prompt cancel acknowledges the release", (tester) async {
