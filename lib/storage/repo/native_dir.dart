@@ -21,9 +21,13 @@ class NativeDirResolver {
 
   final AssetStore assetStore;
 
-  /// Name of the marker file recording the blob root the native directory was
-  /// materialized against. Stored inside each native directory.
-  static const _markerFileName = ".efa_blob_root";
+  /// Suffix of the marker file recording the blob root a native directory was
+  /// materialized against. The marker is stored as a sibling of the native
+  /// directory (`<nativeRoot>.efa_blob_root`), never inside the materialized
+  /// tree, so it cannot collide with a resource index entry.
+  static const _markerFileSuffix = "efa_blob_root";
+
+  static String _markerPath(String nativeRoot) => "$nativeRoot.$_markerFileSuffix";
 
   /// Computes the expected native directory path for [snapshotHash]
   /// without I/O.
@@ -72,7 +76,7 @@ class NativeDirResolver {
         _linkOrCopy(blobPath, targetPath);
       }
 
-      File(p.join(nativeRoot, _markerFileName)).writeAsStringSync(RepoPaths.assetsPath);
+      File(_markerPath(nativeRoot)).writeAsStringSync(RepoPaths.assetsPath);
       return nativeRoot;
     } on FileSystemException {
       dir.deleteSync(recursive: true);
@@ -84,7 +88,7 @@ class NativeDirResolver {
   /// against a different blob root than the current one (or has no marker,
   /// e.g. it predates the marker mechanism).
   static bool _isStale(String nativeRoot) {
-    final marker = File(p.join(nativeRoot, _markerFileName));
+    final marker = File(_markerPath(nativeRoot));
     try {
       return marker.readAsStringSync() != RepoPaths.assetsPath;
     } on FileSystemException {
@@ -135,7 +139,8 @@ class NativeDirResolver {
     }
   }
 
-  /// Removes native directories for snapshots not in [activeSnapshotHashes].
+  /// Removes native directories for snapshots not in [activeSnapshotHashes],
+  /// along with their marker files.
   void cleanup(Iterable<String> activeSnapshotHashes) {
     final nativeBase = p.join(PathProvider.tempPath, "efa", "native");
     final baseDir = Directory(nativeBase);
@@ -143,16 +148,21 @@ class NativeDirResolver {
 
     final activeSet = activeSnapshotHashes.toSet();
 
-    for (final entity in baseDir.listSync().whereType<Directory>()) {
-      if (!activeSet.contains(p.basename(entity.path))) {
-        try {
-          entity.deleteSync(recursive: true);
-        } on FileSystemException catch (e, stackTrace) {
-          warning(
-            "Failed to remove stale native directory: ${entity.path}",
-            stackTrace: stackTrace,
-          );
-        }
+    for (final entity in baseDir.listSync()) {
+      final name = p.basename(entity.path);
+      final isOrphan =
+          entity is Directory && !activeSet.contains(name) ||
+          entity is File &&
+              name.endsWith(".$_markerFileSuffix") &&
+              !activeSet.contains(name.substring(0, name.length - _markerFileSuffix.length - 1));
+      if (!isOrphan) continue;
+      try {
+        entity.deleteSync(recursive: true);
+      } on FileSystemException catch (e, stackTrace) {
+        warning(
+          "Failed to remove stale native directory artifact: ${entity.path}",
+          stackTrace: stackTrace,
+        );
       }
     }
   }
