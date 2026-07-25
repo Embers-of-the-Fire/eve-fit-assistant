@@ -17,10 +17,12 @@ from typing import NamedTuple
 
 from pydantic import BaseModel
 from pydantic import Field
+from pydantic import ValidationError
 
 import bootstrap.config
 
 from bootstrap.constant import IMPLANT_SLOT_ATTR_ID
+from bootstrap.data.schema import collections_pb2
 from bootstrap.data.schema import fit_pb2
 from bootstrap.localization import to_native_localization
 from bootstrap.log import error
@@ -99,7 +101,7 @@ def find_set_effects(dogma_effects: dict, dogma_attributes: dict) -> dict[int, i
     for attribute_id, raw in dogma_attributes.items():
         try:
             attribute = AttributeDef.model_validate(raw)
-        except Exception as e:
+        except ValidationError as e:
             error(f"Failed to validate dogma attribute {attribute_id} for implant sets: {e}")
             continue
         if attribute.name.lower().startswith(_IMPLANT_SET_ATTR_PREFIXES):
@@ -109,7 +111,7 @@ def find_set_effects(dogma_effects: dict, dogma_attributes: dict) -> dict[int, i
     for effect_id, raw in dogma_effects.items():
         try:
             effect = EffectDef.model_validate(raw)
-        except Exception as e:
+        except ValidationError as e:
             error(f"Failed to validate dogma effect {effect_id} for implant sets: {e}")
             continue
         for modifier in effect.modifierInfo:
@@ -268,7 +270,7 @@ async def _load_localized_names(
     return {int(key): value[0] for key, value in loc.items()}
 
 
-async def generate(data: GeneratorDatasource, collection):
+async def generate(data: GeneratorDatasource, collection: collections_pb2.Collection):
     info("Generating implant sets...")
 
     type_dogma = await data.resources.fsd.get("typedogma")
@@ -286,7 +288,7 @@ async def generate(data: GeneratorDatasource, collection):
     for group_id, raw in groups.items():
         try:
             group = GroupDef.model_validate(raw)
-        except Exception as e:
+        except ValidationError as e:
             error(f"Failed to validate group {group_id} for implant sets: {e}")
             continue
         if group.categoryID == _IMPLANT_CATEGORY_ID:
@@ -296,7 +298,7 @@ async def generate(data: GeneratorDatasource, collection):
     for type_id, raw in types.items():
         try:
             type_def = TypeDef.model_validate(raw)
-        except Exception as e:
+        except ValidationError as e:
             error(f"Failed to validate type {type_id} for implant sets: {e}")
             continue
         if type_def.published and type_def.groupID in implant_group_ids:
@@ -309,7 +311,7 @@ async def generate(data: GeneratorDatasource, collection):
             continue
         try:
             dogma = TypeDogmaDef.model_validate(raw)
-        except Exception as e:
+        except ValidationError as e:
             error(f"Failed to validate type dogma {type_id} for implant sets: {e}")
             continue
 
