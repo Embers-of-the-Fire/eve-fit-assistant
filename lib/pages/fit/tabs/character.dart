@@ -205,7 +205,7 @@ class _CharacterImplantTab extends ConsumerWidget {
             if (interactionOptions.allowMutations && hasImplantSets)
               InkWell(
                 onTap: () => _handleApplyImplantSet(context, ref),
-                child: const Icon(Icons.auto_awesome),
+                child: const Icon(Icons.dashboard_customize),
               ),
             if (interactionOptions.allowMutations)
               InkWell(onTap: () => _handleAddImplant(context, ref), child: const Icon(Icons.add)),
