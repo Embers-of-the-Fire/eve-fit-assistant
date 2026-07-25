@@ -203,9 +203,12 @@ class _CharacterImplantTab extends ConsumerWidget {
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.implant),
           actions: [
             if (interactionOptions.allowMutations && hasImplantSets)
-              InkWell(
-                onTap: () => _handleApplyImplantSet(context, ref),
-                child: const Icon(Icons.dashboard_customize),
+              Tooltip(
+                message: context.l10n.fitImplantSetDialogTitle,
+                child: InkWell(
+                  onTap: () => _handleApplyImplantSet(context, ref),
+                  child: const Icon(Icons.dashboard_customize),
+                ),
               ),
             if (interactionOptions.allowMutations)
               InkWell(onTap: () => _handleAddImplant(context, ref), child: const Icon(Icons.add)),
