@@ -283,18 +283,20 @@ class _ImplantSetDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider).name;
-    final sorted = sets.toList()
-      ..sort((left, right) {
-        final family = left.effectId.compareTo(right.effectId);
-        return family != 0 ? family : left.setId.compareTo(right.setId);
-      });
 
-    String nameOf(ImplantSet set) {
-      final names = set.names;
-      final name = names[locale] ?? names["en"];
-      if (name != null && name.isNotEmpty) return name;
-      return names.values.isEmpty ? "${set.setId}" : names.values.first;
+    String nameOf(ImplantSet set) => _localized(set.names, locale, "${set.setId}");
+    String familyOf(ImplantSet set) => _localized(set.familyNames, locale, nameOf(set));
+
+    // Sets of one family share setId ~/ 100; grade ranks ascend with strength.
+    final families = <int, List<ImplantSet>>{};
+    for (final set in sets) {
+      families.putIfAbsent(set.setId ~/ 100, () => []).add(set);
     }
+    for (final members in families.values) {
+      members.sort((left, right) => left.setId.compareTo(right.setId));
+    }
+    final sortedFamilies = families.values.toList()
+      ..sort((left, right) => familyOf(left.first).compareTo(familyOf(right.first)));
 
     return AppDialog(
       title: context.l10n.fitImplantSetDialogTitle,
@@ -302,17 +304,41 @@ class _ImplantSetDialog extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final set in sorted)
-              ListTile(
-                title: Text(nameOf(set)),
-                trailing: Text("×${set.memberTypeIds.length}"),
-                onTap: () => Navigator.of(context).pop(set.setId),
-              ),
+            for (final members in sortedFamilies)
+              if (members.length == 1)
+                _ImplantSetTile(set: members.single, title: nameOf(members.single))
+              else
+                ExpansionTile(
+                  title: Text(familyOf(members.first)),
+                  children: [
+                    for (final set in members) _ImplantSetTile(set: set, title: nameOf(set)),
+                  ],
+                ),
           ],
         ),
       ),
     );
   }
+
+  static String _localized(Map<String, String> names, String locale, String fallback) {
+    final name = names[locale] ?? names["en"];
+    if (name != null && name.isNotEmpty) return name;
+    return names.values.isEmpty ? fallback : names.values.first;
+  }
+}
+
+class _ImplantSetTile extends StatelessWidget {
+  const _ImplantSetTile({required this.set, required this.title});
+
+  final ImplantSet set;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    title: Text(title),
+    trailing: Text("×${set.memberTypeIds.length}"),
+    onTap: () => Navigator.of(context).pop(set.setId),
+  );
 }
 
 class _CharacterBoosterTab extends ConsumerWidget {

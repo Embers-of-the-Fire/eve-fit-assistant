@@ -63,7 +63,9 @@ message TacticalMode {
 /// same setBonus effect and carry the corresponding implantSet attribute.
 /// Display names are baked per locale; the app never parses type names.
 message ImplantSet {
-  /// Deterministic ID: effect_id * 100 + grade rank within the effect family.
+  /// Deterministic ID: family_index * 100 + grade rank within the family.
+  /// Sets of one family (e.g. Low/Mid/High-grade Crystal) share set_id / 100;
+  /// grade ranks ascend with set strength.
   required uint32 set_id = 1;
 
   /// The shared setBonus dogma effect ID (mechanics key, stable across versions).
@@ -74,6 +76,9 @@ message ImplantSet {
 
   /// Member implant type IDs, sorted by implant slot (dogma attribute 331).
   repeated uint32 member_type_ids = 4;
+
+  /// Family display name per locale (e.g. "en" -> "Crystal", "zh" -> "水晶").
+  map<string, string> family_names = 5;
 }
 
 message Slots {

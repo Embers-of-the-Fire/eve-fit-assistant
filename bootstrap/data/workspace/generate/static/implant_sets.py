@@ -37,6 +37,9 @@ _IMPLANT_CATEGORY_ID = 20
 # FSD naming is inconsistent: "implantSetGuristas", "ImplantSetNirvana",
 # "setBonusMimesis", ...
 _IMPLANT_SET_ATTR_PREFIXES = ("implantset", "setbonus")
+# Separators between the set name and the slot discriminator in localized type
+# names ("High-grade Crystal Alpha", "高级水晶—阿尔法型", "低级辟邪 - 阿尔法型").
+_SEPARATOR_CHARS = " \t-\N{EN DASH}\N{EM DASH}"
 
 
 class DogmaAttributeItem(BaseModel):
@@ -129,7 +132,52 @@ def set_display_name(names: list[str]) -> str:
     prefix = os.path.commonprefix(names).strip()
     if prefix and not prefix[-1].isalnum() and " " in prefix:
         prefix = prefix[: prefix.rindex(" ")].strip()
-    return prefix
+    stripped = prefix.rstrip(_SEPARATOR_CHARS)
+    return stripped or prefix
+
+
+# Closed grade vocabulary used to derive family names from set display names.
+# Only affects display strings; membership/mechanics never depend on it.
+_GRADE_PREFIXES: dict[str, tuple[str, ...]] = {
+    "en": ("low-grade ", "mid-grade ", "high-grade "),
+    "zh": ("低级", "中级", "高级"),
+}
+
+
+def family_display_name(displays: list[str], lang: str) -> str:
+    """Family name from the per-grade display names of one family.
+
+    Strips the grade prefix from each display; requires all sets of the
+    family to agree on the remainder. Falls back to the longest common
+    suffix when the grade structure is not recognized.
+    """
+    if not displays:
+        return ""
+    if len(displays) == 1:
+        return displays[0]
+
+    grades = _GRADE_PREFIXES.get(lang, ())
+    families = set()
+    for display in displays:
+        lowered = display.lower()
+        for grade in grades:
+            if lowered.startswith(grade):
+                families.add(display[len(grade) :])
+                break
+    if len(families) == 1:
+        return families.pop()
+
+    # Fallback: longest common suffix, trimmed to a clean token boundary.
+    lcs = os.path.commonprefix([display[::-1] for display in displays])[::-1]
+    starts_mid_token = any(
+        len(display) > len(lcs) and display[-len(lcs) - 1] != " " for display in displays
+    )
+    if starts_mid_token:
+        _head, sep, tail = lcs.partition(" ")
+        if sep:
+            lcs = tail
+    stripped = lcs.strip(_SEPARATOR_CHARS)
+    return stripped or lcs.strip()
 
 
 def cluster_members(members: list[SetMember], name_of) -> list[list[SetMember]]:
@@ -140,15 +188,21 @@ def cluster_members(members: list[SetMember], name_of) -> list[list[SetMember]]:
     return list(clusters.values())
 
 
+class MergedSet(NamedTuple):
+    effect_id: int
+    display: str
+    members: list[SetMember]
+
+
 def merge_set_clusters(
     members_by_effect: dict[int, list[SetMember]], set_effects: dict[int, int], name_of
-) -> list[tuple[int, int, list[SetMember]]]:
+) -> list[MergedSet]:
     """Merge per-effect clusters into sets keyed by display name.
 
     A single set family can be spread over multiple setBonus effects (e.g.
     Talisman uses one effect for Alpha-Epsilon and another including Omega;
-    Genolution has one effect per bonus attribute). Returns a list of
-    (set_id, effect_id, members) with deterministic set IDs.
+    Genolution has one effect per bonus attribute). Returns one MergedSet per
+    (family, grade) with the cluster-locale display name.
     """
     merged: dict[str, dict] = {}
     for effect_id in sorted(set_effects):
@@ -164,22 +218,43 @@ def merge_set_clusters(
                 entry["effects"][effect_id] += 1
                 entry["slots"].setdefault(member.slot, member)
 
-    sets_by_effect: dict[int, list[dict]] = defaultdict(list)
-    for entry in merged.values():
+    sets: list[MergedSet] = []
+    for display, entry in merged.items():
         primary_effect = max(entry["effects"].items(), key=lambda kv: (kv[1], -kv[0]))[0]
-        sets_by_effect[primary_effect].append(entry)
-
-    sets: list[tuple[int, int, list[SetMember]]] = []
-    for effect_id, entries in sorted(sets_by_effect.items()):
-        entries.sort(
-            key=lambda entry: (
-                sum(m.set_value for m in entry["slots"].values()) / len(entry["slots"])
-            )
-        )
-        for rank, entry in enumerate(entries):
-            members = sorted(entry["slots"].values(), key=lambda m: (m.slot, m.type_id))
-            sets.append((effect_id * 100 + rank, effect_id, members))
+        members = sorted(entry["slots"].values(), key=lambda m: (m.slot, m.type_id))
+        sets.append(MergedSet(effect_id=primary_effect, display=display, members=members))
     return sets
+
+
+def family_key(display: str) -> str:
+    """Family key from a display name: drop a leading grade token if present."""
+    first, sep, rest = display.partition(" ")
+    if sep and rest and first.lower().endswith("-grade"):
+        return rest
+    return display
+
+
+def assign_set_ids(sets: list[MergedSet]) -> list[tuple[int, MergedSet]]:
+    """Group sets into families and assign deterministic set IDs.
+
+    set_id = family_index * 100 + grade_rank, so sets of one family share
+    set_id // 100 and grade ranks ascend with set strength (low < mid < high).
+    Families group grades across different effects (e.g. Low-grade and
+    High-grade Grail use different set effects).
+    """
+    families: dict[str, list[MergedSet]] = defaultdict(list)
+    for merged_set in sets:
+        families[family_key(merged_set.display)].append(merged_set)
+
+    assigned: list[tuple[int, MergedSet]] = []
+    for family_index, key in enumerate(sorted(families)):
+        entries = sorted(
+            families[key],
+            key=lambda s: sum(m.set_value for m in s.members) / len(s.members),
+        )
+        for rank, merged_set in enumerate(entries):
+            assigned.append((family_index * 100 + rank, merged_set))
+    return assigned
 
 
 async def _load_localized_names(
@@ -260,28 +335,68 @@ async def generate(data: GeneratorDatasource, collection):
             return str(type_id)
         return names_by_locale[lang].get(name_id, str(type_id))
 
-    count = 0
-    sets = merge_set_clusters(
+    merged = merge_set_clusters(
         members_by_effect, set_effects, lambda tid: name_of(cluster_lang, tid)
     )
-    for set_id, effect_id, members in sets:
+    assigned = assign_set_ids(merged)
+
+    # Family display name per locale from the family's per-grade display
+    # names ("低级水晶"/"高级水晶" -> "水晶").
+    family_sets: dict[int, list[MergedSet]] = defaultdict(list)
+    for set_id, merged_set in assigned:
+        family_sets[set_id // 100].append(merged_set)
+
+    family_names: dict[int, dict[str, str]] = {}
+    for family_id, sets_in_family in family_sets.items():
+        names: dict[str, str] = {}
+        for lang in locales:
+            displays = [
+                display
+                for s in sets_in_family
+                if (display := set_display_name([name_of(lang, m.type_id) for m in s.members]))
+            ]
+            family = family_display_name(displays, lang)
+            if not family and lang != cluster_lang:
+                family = family_display_name(
+                    [
+                        display
+                        for s in sets_in_family
+                        if (
+                            display := set_display_name(
+                                [name_of(cluster_lang, m.type_id) for m in s.members]
+                            )
+                        )
+                    ],
+                    cluster_lang,
+                )
+            if family:
+                names[lang] = family
+        family_names[family_id] = names
+
+    count = 0
+    for set_id, merged_set in assigned:
         pb = fit_pb2.ImplantSet()
         pb.set_id = set_id
-        pb.effect_id = effect_id
-        pb.member_type_ids.extend(member.type_id for member in members)
+        pb.effect_id = merged_set.effect_id
+        pb.member_type_ids.extend(member.type_id for member in merged_set.members)
 
         for lang in locales:
-            display = set_display_name([name_of(lang, m.type_id) for m in members])
+            display = set_display_name([name_of(lang, m.type_id) for m in merged_set.members])
             if not display and lang != cluster_lang:
-                display = set_display_name([name_of(cluster_lang, m.type_id) for m in members])
+                display = set_display_name(
+                    [name_of(cluster_lang, m.type_id) for m in merged_set.members]
+                )
             if display:
                 pb.names[lang] = display
 
+        for lang, family in family_names.get(set_id // 100, {}).items():
+            pb.family_names[lang] = family
+
         if not pb.names:
-            warning(f"Implant set for effect {effect_id} has no display name, skipped")
+            warning(f"Implant set for effect {merged_set.effect_id} has no display name, skipped")
             continue
 
         collection.implant_sets[pb.set_id].CopyFrom(pb)
         count += 1
 
-    info(f"Generated {count} implant sets")
+    info(f"Generated {count} implant sets in {len(family_sets)} families")

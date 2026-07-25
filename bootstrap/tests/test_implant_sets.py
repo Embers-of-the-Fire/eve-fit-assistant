@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from bootstrap.data.workspace.generate.static.implant_sets import MergedSet
 from bootstrap.data.workspace.generate.static.implant_sets import SetMember
+from bootstrap.data.workspace.generate.static.implant_sets import assign_set_ids
 from bootstrap.data.workspace.generate.static.implant_sets import base_name
 from bootstrap.data.workspace.generate.static.implant_sets import cluster_members
+from bootstrap.data.workspace.generate.static.implant_sets import family_display_name
+from bootstrap.data.workspace.generate.static.implant_sets import family_key
 from bootstrap.data.workspace.generate.static.implant_sets import find_set_effects
 from bootstrap.data.workspace.generate.static.implant_sets import merge_set_clusters
 from bootstrap.data.workspace.generate.static.implant_sets import set_display_name
@@ -89,8 +93,38 @@ def test_set_display_name_keeps_cjk_prefix():
     assert set_display_name(names) == "高级水晶体"
 
 
+def test_set_display_name_strips_trailing_cjk_separator():
+    # Real zh names: "高级水晶—阿尔法型", "低级辟邪 - 阿尔法型"
+    assert set_display_name(["高级水晶—阿尔法型", "高级水晶—欧米伽型"]) == "高级水晶"
+    assert set_display_name(["低级辟邪 - 阿尔法型", "低级辟邪 - 欧米伽型"]) == "低级辟邪"
+
+
 def test_set_display_name_empty():
     assert set_display_name([]) == ""
+
+
+def test_family_display_name():
+    assert (
+        family_display_name(["Low-grade Crystal", "Mid-grade Crystal", "High-grade Crystal"], "en")
+        == "Crystal"
+    )
+    assert family_display_name(["低级水晶", "中级水晶", "高级水晶"], "zh") == "水晶"
+    assert family_display_name(["低级辟邪", "高级辟邪"], "zh") == "辟邪"
+    assert family_display_name(["Genolution Core Augmentation"], "en") == (
+        "Genolution Core Augmentation"
+    )
+    assert family_display_name([], "en") == ""
+
+
+def test_family_display_name_fallback_for_unknown_language():
+    # No grade table: falls back to the longest common suffix at a token boundary.
+    assert family_display_name(["Low-grade Crystal", "High-grade Crystal"], "fr") == "Crystal"
+
+
+def test_family_key_strips_grade_token():
+    assert family_key("High-grade Crystal") == "Crystal"
+    assert family_key("Low-grade Grail") == "Grail"
+    assert family_key("Genolution Core Augmentation") == "Genolution Core Augmentation"
 
 
 def test_cluster_members_splits_grades():
@@ -134,16 +168,53 @@ def test_merge_set_clusters_merges_effects_of_same_family():
     sets = merge_set_clusters(members_by_effect, {100: 800, 200: 801}, names.get)
 
     assert len(sets) == 3
-    for _set_id, effect_id, members in sets:
-        assert effect_id == 100
-        assert len(members) == 6
-        assert [m.slot for m in members] == [1, 2, 3, 4, 5, 6]
-    # deterministic grade order: low < mid < high by ascending set value
-    assert [s[0] for s in sets] == [10000, 10001, 10002]
-    assert sets[0][2][0].set_value == 1.025
-    assert sets[2][2][0].set_value == 1.15
+    for merged_set in sets:
+        assert merged_set.effect_id == 100
+        assert len(merged_set.members) == 6
+        assert [m.slot for m in merged_set.members] == [1, 2, 3, 4, 5, 6]
+    assert {s.display for s in sets} == {
+        "Low-grade Talisman",
+        "Mid-grade Talisman",
+        "High-grade Talisman",
+    }
 
 
 def test_merge_set_clusters_drops_singletons():
     members_by_effect = {100: [SetMember(1, 1, 1.15)]}
     assert merge_set_clusters(members_by_effect, {100: 800}, lambda _: "Solo Implant") == []
+
+
+def test_assign_set_ids_groups_families_and_ranks_grades():
+    def make_set(effect_id, display, value):
+        return MergedSet(
+            effect_id=effect_id,
+            display=display,
+            members=[SetMember(type_id=1, slot=1, set_value=value)],
+        )
+
+    sets = [
+        # Crystal family: one effect, three grades (given out of order).
+        make_set(1397, "High-grade Crystal", 1.15),
+        make_set(1397, "Low-grade Crystal", 1.025),
+        make_set(1397, "Mid-grade Crystal", 1.1),
+        # Navy family: grades spread over two different effects.
+        make_set(4457, "High-grade Grail", 1.15),
+        make_set(4460, "Low-grade Grail", 1.025),
+        # Single-set family without a grade token.
+        make_set(4867, "Genolution Core Augmentation", 1.5),
+    ]
+
+    assigned = assign_set_ids(sets)
+    by_display = {s.display: set_id for set_id, s in assigned}
+
+    crystal_ids = {by_display[d] // 100 for d in by_display if "Crystal" in d}
+    assert len(crystal_ids) == 1
+    grail_ids = {by_display[d] // 100 for d in by_display if "Grail" in d}
+    assert len(grail_ids) == 1
+
+    # Grade ranks ascend with set strength within each family.
+    assert by_display["Low-grade Crystal"] % 100 == 0
+    assert by_display["Mid-grade Crystal"] % 100 == 1
+    assert by_display["High-grade Crystal"] % 100 == 2
+    assert by_display["Low-grade Grail"] % 100 == 0
+    assert by_display["High-grade Grail"] % 100 == 1
