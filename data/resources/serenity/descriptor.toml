@@ -2,6 +2,7 @@
 start_cfg = "start.ini"
 name = {en = "Serenity", zh = "晨曦"}
 identifier = "serenity"
+market_server = "serenity"
 server = true
 
 [resources]

@@ -48,6 +48,7 @@ abstract class AppSetting with _$AppSetting {
     @Default(false) bool silentUpdate,
     @Default(false) bool welcomeCompleted,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
+    @Default("") String marketServerFallback,
     @Default(1.0) double fontScale,
   }) = _AppSetting;
 

@@ -34,6 +34,7 @@ class ResourceSnapshotMetadata(BaseModel):
     game_region: str = Field(default="", alias="gameRegion")
     game_sync: str = Field(default="", alias="gameSync")
     game_branch: str = Field(default="", alias="gameBranch")
+    market_server: str = Field(default="", alias="marketServer")
     author: str = Field(default="")
     description: str = Field(default="")
     resource_count: int = Field(alias="resourceCount")
