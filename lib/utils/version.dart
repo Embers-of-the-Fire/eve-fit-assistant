@@ -23,6 +23,40 @@ bool isAppVersionBelow(String current, String required) {
   return compareVersions(current, required) < 0;
 }
 
+/// Returns true when upgrading from [installed] to [remote] only changes the
+/// "bugfix" component of the version: the patch component for 0.x versions,
+/// or the minor/patch components for versions >= 1.0 (only major bumps are
+/// considered feature updates there). Any prerelease change, downgrade, or
+/// unparseable version is never bugfix-only.
+bool isBugfixOnlyUpgrade({required String installed, required String remote}) {
+  final installedVersion = _parseVersionComponents(installed);
+  final remoteVersion = _parseVersionComponents(remote);
+  if (installedVersion == null || remoteVersion == null) return false;
+  if (installedVersion.pre != remoteVersion.pre) return false;
+  if (remoteVersion.major != installedVersion.major) return false;
+  if (installedVersion.major == 0) {
+    return remoteVersion.minor == installedVersion.minor &&
+        remoteVersion.patch > installedVersion.patch;
+  }
+  if (remoteVersion.minor != installedVersion.minor) {
+    return remoteVersion.minor > installedVersion.minor;
+  }
+  return remoteVersion.patch > installedVersion.patch;
+}
+
+({int major, int minor, int patch, String? pre})? _parseVersionComponents(String version) {
+  var value = stripBuildNumber(version).trim();
+  if (value.toLowerCase().startsWith("v")) value = value.substring(1);
+  final parts = _splitSemver(value);
+  final segments = parts.core.split(".");
+  int? segmentAt(int index) => index < segments.length ? int.tryParse(segments[index]) : 0;
+  final major = segmentAt(0);
+  final minor = segmentAt(1);
+  final patch = segmentAt(2);
+  if (major == null || minor == null || patch == null) return null;
+  return (major: major, minor: minor, patch: patch, pre: parts.pre);
+}
+
 String stripBuildNumber(String version) {
   final plusIndex = version.indexOf("+");
   if (plusIndex == -1) return version;

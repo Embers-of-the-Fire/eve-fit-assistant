@@ -586,7 +586,10 @@ Future<ReleaseCheckStatus> appReleaseCheckStatus(Ref ref) async {
 
   final result = await ref
       .read(releaseSyncServiceProvider)
-      .checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+      .checkStatusFromSnapshotHash(
+        snapshotHash: snapshotHash,
+        ignoreBugfix: settings.ignoreBugfixUpdates,
+      );
 
   return result.fold(
     (error) => Future<ReleaseCheckStatus>.error(error, StackTrace.current),

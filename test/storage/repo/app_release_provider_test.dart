@@ -56,25 +56,29 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  ProviderContainer _container({required bool remoteEnabled, String channel = "testing"}) =>
-      ProviderContainer(
-        overrides: [
-          appSettingServiceProvider.overrideWithValue(
-            AppSetting(
-              locale: Locale.en,
-              enableDebugLog: false,
-              shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
-              showCheckoutImpactWarnings: true,
-              typeListReturnBehavior: TypeListReturnBehavior.previousPage,
-              developerMode: false,
-              remoteContent: RemoteContentSetting(enabled: remoteEnabled, channel: channel),
-            ),
-          ),
-          appVersionStateStoreProvider.overrideWithValue(versionStore),
-          channelServiceProvider.overrideWith((_) => mockChannelService),
-          releaseSyncServiceProvider.overrideWith((_) => mockReleaseSyncService),
-        ],
-      );
+  ProviderContainer _container({
+    required bool remoteEnabled,
+    String channel = "testing",
+    bool ignoreBugfixUpdates = false,
+  }) => ProviderContainer(
+    overrides: [
+      appSettingServiceProvider.overrideWithValue(
+        AppSetting(
+          locale: Locale.en,
+          enableDebugLog: false,
+          shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
+          showCheckoutImpactWarnings: true,
+          typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+          developerMode: false,
+          ignoreBugfixUpdates: ignoreBugfixUpdates,
+          remoteContent: RemoteContentSetting(enabled: remoteEnabled, channel: channel),
+        ),
+      ),
+      appVersionStateStoreProvider.overrideWithValue(versionStore),
+      channelServiceProvider.overrideWith((_) => mockChannelService),
+      releaseSyncServiceProvider.overrideWith((_) => mockReleaseSyncService),
+    ],
+  );
 
   test("returns None when remote content is disabled", () async {
     final container = _container(remoteEnabled: false);
@@ -112,7 +116,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer(
       (_) async => Right(
         ReleaseCheckUpdateAvailable(
@@ -138,7 +145,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer(
       (_) async => Right(
         ReleaseCheckUpdateAvailable(
@@ -159,7 +169,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer(
       (_) async => Right(
         ReleaseCheckUpdateAvailable(
@@ -197,7 +210,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer(
       (_) async => Right(
         ReleaseCheckUpdateAvailable(
@@ -229,7 +245,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer(
       (_) async => Right(
         ReleaseCheckUpdateAvailable(
@@ -283,7 +302,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer((_) async => const Right(ReleaseCheckUpToDate()));
 
     final status = await container.read(appReleaseCheckStatusProvider.future);
@@ -299,7 +321,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer((_) async => const Right(ReleaseCheckAheadOfRemote(remoteVersion: "0.9.0")));
 
     final status = await container.read(appReleaseCheckStatusProvider.future);
@@ -315,7 +340,10 @@ void main() {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
     when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
     when(
-      () => mockReleaseSyncService.checkStatusFromSnapshotHash(snapshotHash: "release_snapshot"),
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
     ).thenAnswer((_) async => Left(ReleaseSyncNetworkError(message: "network down")));
 
     final errorObserved = Completer<void>();
@@ -327,5 +355,53 @@ void main() {
     await errorObserved.future;
     sub.close();
     container.dispose();
+  });
+
+  test("forwards the ignoreBugfixUpdates setting to the sync service", () async {
+    final container = _container(remoteEnabled: true, ignoreBugfixUpdates: true);
+    addTearDown(container.dispose);
+
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: true,
+      ),
+    ).thenAnswer((_) async => const Right(ReleaseCheckUpToDate()));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUpToDate>());
+    verify(
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: true,
+      ),
+    ).called(1);
+  });
+
+  test("defaults to forwarding ignoreBugfix as false", () async {
+    final container = _container(remoteEnabled: true);
+    addTearDown(container.dispose);
+
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: false,
+      ),
+    ).thenAnswer((_) async => const Right(ReleaseCheckUpToDate()));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUpToDate>());
+    verify(
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: false,
+      ),
+    ).called(1);
   });
 }

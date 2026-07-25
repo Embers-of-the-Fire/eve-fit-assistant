@@ -15,6 +15,7 @@ part "font_scale.dart";
 part "impact_warning.dart";
 part "locale.dart";
 part "select_list.dart";
+part "update_strategy.dart";
 
 @RoutePage()
 class AppSettingsPage extends ConsumerWidget {
@@ -33,6 +34,9 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(ListReturnBehaviorTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
+        ConfigListTile.title(context.l10n.appSettingsPageSectionUpdate),
+        const ConfigListTile.custom(UpdateIgnoreBugfixTile()),
+        const ConfigListTile.custom(UpdateSilentTile()),
       ],
     ),
   );

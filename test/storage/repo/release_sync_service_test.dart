@@ -286,6 +286,78 @@ void main() {
         expect(result.isLeft(), isTrue);
         expect(result.getLeft().toNullable(), isA<ReleaseSyncNetworkError>());
       });
+
+      group("ignoreBugfix", () {
+        Future<ReleaseCheckStatus> _check({
+          required String installed,
+          required String remoteVersion,
+          bool ignoreBugfix = true,
+        }) async {
+          final remote = _FakeRemoteCatalogService(
+            releaseIndexResult: Right(
+              _encodeReleaseIndex(_makeReleaseIndex(id: "rel-new", version: remoteVersion)),
+            ),
+          );
+          final service = _makeService(remote: remote, currentVersion: installed);
+          final result = await service.checkStatusFromSnapshotHash(
+            snapshotHash: snapshotHash,
+            ignoreBugfix: ignoreBugfix,
+          );
+          return result.getRight().toNullable()!;
+        }
+
+        test("suppresses a patch-only bump for 0.x", () async {
+          final status = await _check(installed: "0.9.1", remoteVersion: "0.9.2");
+
+          expect(status, isA<ReleaseCheckUpToDate>());
+        });
+
+        test("keeps a minor bump for 0.x visible", () async {
+          final status = await _check(installed: "0.9.1", remoteVersion: "0.10.0");
+
+          expect(status, isA<ReleaseCheckUpdateAvailable>());
+        });
+
+        test("suppresses a minor bump from 1.0 onward", () async {
+          final status = await _check(installed: "1.2.3", remoteVersion: "1.3.0");
+
+          expect(status, isA<ReleaseCheckUpToDate>());
+        });
+
+        test("suppresses a patch bump from 1.0 onward", () async {
+          final status = await _check(installed: "1.2.3", remoteVersion: "1.2.4");
+
+          expect(status, isA<ReleaseCheckUpToDate>());
+        });
+
+        test("keeps a major bump visible", () async {
+          final status = await _check(installed: "1.2.3", remoteVersion: "2.0.0");
+
+          expect(status, isA<ReleaseCheckUpdateAvailable>());
+        });
+
+        test("keeps prerelease changes visible", () async {
+          final status = await _check(installed: "1.2.3", remoteVersion: "1.2.4-rc1");
+
+          expect(status, isA<ReleaseCheckUpdateAvailable>());
+        });
+
+        test("disabled flag keeps bugfix bumps visible", () async {
+          final status = await _check(
+            installed: "1.2.3",
+            remoteVersion: "1.2.4",
+            ignoreBugfix: false,
+          );
+
+          expect(status, isA<ReleaseCheckUpdateAvailable>());
+        });
+
+        test("does not mask aheadOfRemote", () async {
+          final status = await _check(installed: "1.2.3", remoteVersion: "1.2.2");
+
+          expect(status, isA<ReleaseCheckAheadOfRemote>());
+        });
+      });
     });
   });
 }
