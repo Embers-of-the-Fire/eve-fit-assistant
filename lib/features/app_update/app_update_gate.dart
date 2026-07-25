@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
@@ -14,6 +15,7 @@ import "package:eve_fit_assistant/pages/announcements/detail_page.dart";
 import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/material.dart";
@@ -78,6 +80,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   String? _shownReleaseId;
   bool _isShowing = false;
   ProviderSubscription<AsyncValue<Option<RemoteAppRelease>>>? _subscription;
+  ProviderSubscription<AppUpdateStatus>? _silentSubscription;
 
   @override
   void initState() {
@@ -94,6 +97,16 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
         if (release == null) return;
         if (_shownReleaseId == release.releaseId || _isShowing) return;
 
+        if (ref.read(appSettingServiceProvider).silentUpdate) {
+          // Silent strategy: no update dialog. Download in the background and
+          // only surface a confirmation once the artifact is ready. Mark the
+          // release as handled immediately so provider re-emissions during
+          // the download never retrigger the flow.
+          _shownReleaseId = release.releaseId;
+          WidgetsBinding.instance.addPostFrameCallback((_) => _startSilentUpdate(release));
+          return;
+        }
+
         WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_showDialog(release)));
       }),
     );
@@ -102,6 +115,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   @override
   void dispose() {
     _subscription?.close();
+    _silentSubscription?.close();
     super.dispose();
   }
 
@@ -126,6 +140,65 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
       _shownReleaseId = release.releaseId;
       _isShowing = false;
     }
+  }
+
+  void _startSilentUpdate(RemoteAppRelease release) {
+    if (!mounted) return;
+
+    // The subscription must stay open for the whole silent flow: it is the
+    // only listener keeping the auto-dispose controller (and its
+    // readyToInstall state) alive while the confirmation dialog is shown.
+    _silentSubscription?.close();
+    _silentSubscription = ref.listenManual(
+      appUpdateControllerProvider(release),
+      fireImmediately: true,
+      (_, next) => unawaited(_onSilentStatus(release, next)),
+    );
+
+    final current = ref.read(appUpdateControllerProvider(release));
+    if (current is AppUpdateStatusIdle || current is AppUpdateStatusFailed) {
+      unawaited(ref.read(appUpdateControllerProvider(release).notifier).download());
+    }
+    // A readyToInstall state is already handled by the fireImmediately
+    // dispatch above; in-progress states are left to finish.
+  }
+
+  Future<void> _onSilentStatus(RemoteAppRelease release, AppUpdateStatus status) async {
+    switch (status) {
+      case AppUpdateStatusReadyToInstall():
+        await _promptSilentInstall(release);
+        _silentSubscription?.close();
+        _silentSubscription = null;
+      case AppUpdateStatusFailed():
+        // Silent strategy never surfaces download errors; the update stays
+        // reachable from the version page check tile.
+        _silentSubscription?.close();
+        _silentSubscription = null;
+      default:
+    }
+  }
+
+  Future<void> _promptSilentInstall(RemoteAppRelease release) async {
+    if (!mounted || _isShowing) return;
+    _isShowing = true;
+
+    final confirmed = await showConfirmDialog(
+      context,
+      title: context.l10n.appReleaseSilentUpdateReadyTitle,
+      content: Text(context.l10n.appReleaseSilentUpdateReadyMessage(version: release.version)),
+    );
+
+    if (!mounted) return;
+    if (confirmed) {
+      await ref.read(appUpdateControllerProvider(release).notifier).install();
+      if (!mounted) return;
+      ref.read(appVersionStateServiceProvider.notifier).acknowledgeVersion(release.version);
+    } else {
+      // Postponed: acknowledge so the silent flow does not retrigger on the
+      // next launch; the version page check tile still offers the update.
+      ref.read(appVersionStateServiceProvider.notifier).acknowledgeRelease(release.releaseId);
+    }
+    _isShowing = false;
   }
 }
 

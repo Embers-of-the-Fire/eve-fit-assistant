@@ -44,6 +44,8 @@ abstract class AppSetting with _$AppSetting {
     )
     required TypeListReturnBehavior typeListReturnBehavior,
     @JsonKey(defaultValue: false) required bool developerMode,
+    @Default(false) bool ignoreBugfixUpdates,
+    @Default(false) bool silentUpdate,
     @Default(false) bool welcomeCompleted,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default(1.0) double fontScale,

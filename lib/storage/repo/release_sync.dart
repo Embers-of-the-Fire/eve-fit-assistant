@@ -3,6 +3,7 @@ import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/utils/version.dart";
 import "package:fpdart/fpdart.dart";
 
 sealed class ReleaseSyncError implements Exception {
@@ -99,26 +100,35 @@ class ReleaseSyncService {
   /// Full tri-state check starting from a [generationHash].
   ///
   /// Unlike [check], this distinguishes "up to date" from "installed version
-  /// is newer than the remote release".
+  /// is newer than the remote release". When [ignoreBugfix] is true, a newer
+  /// remote release that only changes the bugfix component (patch for 0.x,
+  /// minor/patch from 1.0 onward) is reported as up to date.
   Future<Either<ReleaseSyncError, ReleaseCheckStatus>> checkStatus({
     required String generationHash,
+    bool ignoreBugfix = false,
   }) async {
     final resolved = await _resolveSnapshotHash(generationHash);
     return resolved.match(
       Left.new,
-      (snapshotHash) => checkStatusFromSnapshotHash(snapshotHash: snapshotHash),
+      (snapshotHash) =>
+          checkStatusFromSnapshotHash(snapshotHash: snapshotHash, ignoreBugfix: ignoreBugfix),
     );
   }
 
   /// Full tri-state check given an already-resolved release snapshot hash.
   Future<Either<ReleaseSyncError, ReleaseCheckStatus>> checkStatusFromSnapshotHash({
     required String snapshotHash,
+    bool ignoreBugfix = false,
   }) async {
     final compared = await _compareWithRemote(snapshotHash: snapshotHash);
     return compared.map((result) {
       final cmp = result.cmp;
       if (cmp == null || cmp == 0) return const ReleaseCheckUpToDate();
       if (cmp < 0) return ReleaseCheckAheadOfRemote(remoteVersion: result.index.version);
+      if (ignoreBugfix &&
+          isBugfixOnlyUpgrade(installed: result.installedVersion, remote: result.index.version)) {
+        return const ReleaseCheckUpToDate();
+      }
       return ReleaseCheckUpdateAvailable(
         release: RemoteAppRelease(
           releaseId: result.index.id,
@@ -155,9 +165,8 @@ class ReleaseSyncService {
   /// when equal, negative when the installed version is newer, and `null` when
   /// the versions cannot be compared. An unparseable installed or remote
   /// version instead yields a [ReleaseSyncVersionParseError].
-  Future<Either<ReleaseSyncError, ({ReleaseIndex index, int? cmp})>> _compareWithRemote({
-    required String snapshotHash,
-  }) async {
+  Future<Either<ReleaseSyncError, ({ReleaseIndex index, int? cmp, String installedVersion})>>
+  _compareWithRemote({required String snapshotHash}) async {
     final indexResult = await remoteCatalogService.fetchReleaseIndex(snapshotHash);
     if (indexResult.isLeft()) {
       final err = indexResult.getLeft().toNullable()!;
@@ -185,7 +194,7 @@ class ReleaseSyncService {
     }
 
     final cmp = _compareVersions(remoteVersion, installedVersion);
-    return Right((index: index, cmp: cmp));
+    return Right((index: index, cmp: cmp, installedVersion: installedVersion));
   }
 }
 

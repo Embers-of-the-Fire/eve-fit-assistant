@@ -154,6 +154,11 @@
   "appSettingsPageSectionCheckout": "数据集检查",
   "appSettingsPageCheckoutImpactWarningTitle": "数据集影响警告",
   "appSettingsPageCheckoutImpactWarningDescription": "当切换数据集或导入增量补丁可能影响已保存的配置或角色时显示警告。",
+  "appSettingsPageSectionUpdate": "应用更新",
+  "appSettingsPageIgnoreBugfixUpdatesTitle": "忽略修复性更新",
+  "appSettingsPageIgnoreBugfixUpdatesDescription": "跳过仅包含问题修复的版本更新：1.0 之前忽略补丁号变化，1.0 及之后仅提示主版本更新。",
+  "appSettingsPageSilentUpdateTitle": "静默下载并更新",
+  "appSettingsPageSilentUpdateDescription": "自动在后台下载新版本，下载完成后仅弹出安装确认。",
   "checkoutImpactDisableConfirmTitle": "关闭数据集影响警告？",
   "checkoutImpactDisableConfirmDescription": "在重新启用此设置之前，数据集切换和增量补丁导入将不再显示影响警告。",
   "workspaceTabAnnouncementTitle": "更新动态",
@@ -251,6 +256,15 @@
   "appReleaseUpdateNoArtifact": "该版本没有可用的 Android APK。",
   "appReleaseUpdateCopyDownloadLink": "复制下载链接",
   "appReleaseUpdateDownloadLinkCopied": "下载链接已复制到剪贴板",
+  "appReleaseSilentUpdateReadyTitle": "更新已就绪",
+  "appReleaseSilentUpdateReadyMessage": "新版本 v{version} 已下载完成，是否立即安装？",
+  "@appReleaseSilentUpdateReadyMessage": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "versionPageUpdateManualDownloadHint": "您也可以手动下载此更新。",
   "@@@_FIT_CREATION_PAGE": {},
   "fitCreationPageTitle": "创建新配置",
