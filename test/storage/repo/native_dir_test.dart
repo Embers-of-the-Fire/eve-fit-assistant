@@ -104,6 +104,8 @@ void main() {
   test("rebuilds when the blob root moved (documents -> support migration)", () async {
     final index = writeIconBlob();
     final nativeRoot = await resolver.prepareNativeDir("snapshot_a", index);
+    final sentinel = File(p.join(nativeRoot, "sentinel"));
+    await sentinel.writeAsString("stale");
 
     // Simulate StoragePathMigrator: resources are renamed to the new root.
     await Directory(
@@ -111,15 +113,10 @@ void main() {
     ).rename(p.join(newStorageRoot, "resources"));
     PathProvider.appSupportPath = newStorageRoot;
 
-    expect(
-      File(iconPath(nativeRoot)).existsSync(),
-      isFalse,
-      reason: "precondition: migration leaves dangling symlinks behind",
-    );
-
     final rebuilt = await resolver.prepareNativeDir("snapshot_a", index);
 
     expect(rebuilt, nativeRoot);
+    expect(sentinel.existsSync(), isFalse, reason: "stale native dir must be rebuilt recursively");
     expect(await File(iconPath(rebuilt)).readAsBytes(), iconContent);
     expect(File(markerPath(rebuilt)).readAsStringSync(), RepoPaths.assetsPath);
   });
@@ -127,15 +124,15 @@ void main() {
   test("rebuilds when the marker is missing (install predating the fix)", () async {
     final index = writeIconBlob();
     final nativeRoot = await resolver.prepareNativeDir("snapshot_a", index);
+    final sentinel = File(p.join(nativeRoot, "sentinel"));
+    await sentinel.writeAsString("stale");
 
-    await Directory(
-      p.join(oldStorageRoot, "resources"),
-    ).rename(p.join(newStorageRoot, "resources"));
-    PathProvider.appSupportPath = newStorageRoot;
     await File(markerPath(nativeRoot)).delete();
 
     final rebuilt = await resolver.prepareNativeDir("snapshot_a", index);
 
+    expect(rebuilt, nativeRoot);
+    expect(sentinel.existsSync(), isFalse, reason: "unmarked native dir must be rebuilt");
     expect(await File(iconPath(rebuilt)).readAsBytes(), iconContent);
   });
 
