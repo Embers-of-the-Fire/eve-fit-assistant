@@ -62,6 +62,7 @@ class WorkspaceMetadata(BaseModel):
     start_cfg: Path
     name: dict[Literal["en", "zh"], str]
     identifier: str
+    market_server: Literal["", "serenity", "tranquility"] = ""
 
     def resolve(self, descriptor_root: Path, no_check: bool = False):
         if not self.start_cfg.is_absolute():

@@ -48,6 +48,7 @@ class _AttributeTabState extends ConsumerState<_AttributeTab> with AutomaticKeep
             ),
             Miscellaneous(ship: emulated),
             Cargo(ship: emulated),
+            FitPriceTile(fitId: widget.fitContext.fitId),
           ],
         ),
       ),

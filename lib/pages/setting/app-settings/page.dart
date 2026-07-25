@@ -14,6 +14,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 part "font_scale.dart";
 part "impact_warning.dart";
 part "locale.dart";
+part "market_price.dart";
 part "select_list.dart";
 part "update_strategy.dart";
 
@@ -34,6 +35,8 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(ListReturnBehaviorTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
+        ConfigListTile.title(context.l10n.appSettingsPageSectionMarket),
+        const ConfigListTile.custom(MarketServerFallbackTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionUpdate),
         const ConfigListTile.custom(UpdateIgnoreBugfixTile()),
         const ConfigListTile.custom(UpdateSilentTile()),

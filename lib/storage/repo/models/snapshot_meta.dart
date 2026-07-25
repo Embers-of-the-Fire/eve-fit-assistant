@@ -20,6 +20,7 @@ abstract class ResourceSnapshotMeta with _$ResourceSnapshotMeta {
     @Default("") String gameRegion,
     @Default("") String gameSync,
     @Default("") String gameBranch,
+    @Default("") String marketServer,
     @Default("") String author,
     @Default("") String description,
   }) = _ResourceSnapshotMeta;

@@ -2,6 +2,7 @@
 start_cfg = "start.ini"
 name = {en = "Tranquility", zh = "宁静"}
 identifier = "tranquility"
+market_server = "tranquility"
 server = true
 
 [resources]
