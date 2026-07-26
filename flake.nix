@@ -169,7 +169,7 @@
             CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "${pkgs.lld}/bin/wasm-ld";
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
               export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
               export PATH="${nativeRustToolchainPath}:$PATH"
               . scripts/setup-ld-library-path.sh
@@ -203,7 +203,7 @@
             CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "${pkgs.lld}/bin/wasm-ld";
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
               export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
               export PATH="${nativeRustToolchainPath}:$PATH"
               . scripts/setup-ld-library-path.sh
@@ -229,7 +229,7 @@
             UV_PYTHON_DOWNLOADS = "never";
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
             '';
           };
 
@@ -243,7 +243,7 @@
             JAVA_HOME = jdk17.home;
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
             '';
           };
 
@@ -256,7 +256,7 @@
             UV_PYTHON_DOWNLOADS = "never";
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
             '';
           };
 
@@ -269,7 +269,7 @@
             UV_PYTHON_DOWNLOADS = "never";
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
             '';
           };
 
@@ -282,7 +282,7 @@
             UV_PYTHON_DOWNLOADS = "never";
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
             '';
           };
 
@@ -303,7 +303,7 @@
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
               export PATH="${nativeRustToolchainPath}:$PATH"
             '';
           };
