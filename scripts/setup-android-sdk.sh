@@ -62,7 +62,7 @@ generate_local_properties() {
   local props="android/local.properties"
 
   if [ ! -f "$props" ] \
-    || grep -Fqx "$marker" "$props" \
+    || ! grep -Fqx "$marker" "$props" \
     || ! grep -Fqx "sdk.dir=$ANDROID_SDK_ROOT" "$props"; then
     {
       printf '%s\n' \
