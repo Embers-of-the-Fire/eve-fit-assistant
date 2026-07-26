@@ -157,6 +157,7 @@
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
+            flutter = "${pkgs.flutter}";
             NIX_ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_HOME = developmentAndroidSdkRoot;
@@ -190,6 +191,7 @@
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
+            flutter = "${pkgs.flutter}";
             NIX_ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_HOME = androidSdkRoot;
