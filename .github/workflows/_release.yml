@@ -55,10 +55,10 @@ jobs:
           ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
 
       - name: Install Flutter dependencies
-        run: nix develop .#full --command bash -c 'flutter pub get'
+        run: nix develop .#android --command bash -c 'flutter pub get'
 
       - name: Generate all
-        run: nix develop .#full --command bash -c 'uv run x.py generate -f all'
+        run: nix develop .#android --command bash -c 'uv run x.py generate -f all'
 
       - name: Prepare release signing
         if: inputs.test_mode == false
@@ -78,14 +78,14 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Build APK
-        run: nix develop .#full --command bash -c 'uv run x.py build apk'
+        run: nix develop .#android --command bash -c 'uv run x.py build apk'
 
       - name: Verify APK signature
         if: inputs.test_mode == false
         env:
           APP_KEY_SHA256: ${{ vars.APP_KEY_SHA256 }}
         run: |
-          nix develop .#full --command bash -c \
+          nix develop .#android --command bash -c \
             'uv run x.py ci release verify-signing'
 
       - name: Merge release registry

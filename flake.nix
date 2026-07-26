@@ -17,88 +17,40 @@
         };
       };
 
+      androidVersions = [
+        31
+        33
+        34
+        35
+        36
+      ];
+      androidPlatformVersions = map toString androidVersions;
+      androidBuildToolsVersions = map (v: "${v}.0.0") androidPlatformVersions;
+
       androidComposition = pkgs.androidenv.composeAndroidPackages {
         includeCmake = true;
-        includeEmulator = true;
         includeNDK = true;
-        includeSystemImages = true;
-        systemImageTypes = [ "google_apis" ];
-        abiVersions = [ "x86_64" ];
-        platformVersions = [
-          "31"
-          "33"
-          "34"
-          "35"
-          "36"
-        ];
-        buildToolsVersions = [ "35.0.0" ];
+        platformVersions = androidPlatformVersions;
+        buildToolsVersions = androidBuildToolsVersions;
         cmakeVersions = [ "latest" ];
         ndkVersions = [ "28.2.13676358" ];
       };
 
-      androidEmulatorFhs = pkgs.buildFHSEnv {
-        name = "android-emulator-fhs";
-        targetPkgs = pkgs: [
-          pkgs.alsa-lib
-          pkgs.dbus
-          pkgs.expat
-          pkgs.fontconfig
-          pkgs.freetype
-          pkgs.glib
-          pkgs.gperftools
-          pkgs.libbsd
-          pkgs.libdrm
-          pkgs.libGL
-          pkgs.libpng
-          pkgs.libpulseaudio
-          pkgs.libuuid
-          pkgs.libxkbcommon
-          pkgs.nspr
-          pkgs.nss
-          pkgs.stdenv.cc.cc
-          pkgs.vulkan-loader
-          pkgs.libx11
-          pkgs.libxcomposite
-          pkgs.libxcursor
-          pkgs.libxdamage
-          pkgs.libxext
-          pkgs.libxfixes
-          pkgs.libxi
-          pkgs.libxrandr
-          pkgs.libxrender
-          pkgs.libice
-          pkgs.libsm
-          pkgs.libxtst
-          pkgs.libxcb
-          pkgs.xcb-util-cursor
-          pkgs.xcbutilimage
-          pkgs.xcbutilkeysyms
-          pkgs.xcbutilrenderutil
-          pkgs.xcbutilwm
-          pkgs.libxkbfile
-          pkgs.zlib
-        ];
-        runScript = "bash";
+      developmentAndroidComposition = pkgs.androidenv.composeAndroidPackages {
+        includeCmake = true;
+        includeNDK = true;
+        includeEmulator = true;
+        platformVersions = androidPlatformVersions;
+        buildToolsVersions = androidBuildToolsVersions;
+        cmakeVersions = [ "latest" ];
+        ndkVersions = [ "28.2.13676358" ];
       };
-
-      androidEmulatorWrapper = pkgs.writeShellScript "android-emulator" ''
-        export EFA_HOST_ANDROID_EMULATOR="$HOME/Android/Sdk/emulator"
-        fhs_command='export LD_LIBRARY_PATH="$EFA_HOST_ANDROID_EMULATOR/lib64:$EFA_HOST_ANDROID_EMULATOR/lib64/qt/lib:$EFA_HOST_ANDROID_EMULATOR/lib64/gles_swiftshader:$LD_LIBRARY_PATH"; exec "$@"'
-
-        case " $* " in
-          *" -list-avds "* | *" -accel-check "* | *" -version "*)
-            exec ${androidEmulatorFhs}/bin/android-emulator-fhs -c "$fhs_command" android-emulator "$EFA_HOST_ANDROID_EMULATOR/emulator" "$@"
-            ;;
-          *)
-            mkdir -p "$HOME/.cache/eve-fit-assistant"
-            setsid ${androidEmulatorFhs}/bin/android-emulator-fhs -c "$fhs_command" android-emulator "$EFA_HOST_ANDROID_EMULATOR/emulator" "$@" \
-              > "$HOME/.cache/eve-fit-assistant/android-emulator.log" 2>&1 < /dev/null &
-            ;;
-        esac
-      '';
 
       androidSdk = androidComposition.androidsdk;
       androidSdkRoot = "${androidSdk}/libexec/android-sdk";
+
+      developmentAndroidSdk = developmentAndroidComposition.androidsdk;
+      developmentAndroidSdkRoot = "${developmentAndroidSdk}/libexec/android-sdk";
 
       runtimeLibraryPath = pkgs.lib.makeLibraryPath [
         pkgs.stdenv.cc.cc
@@ -173,6 +125,17 @@
         zizmor
       ];
 
+      basePackages =
+        pythonPackages
+        ++ rustPackages
+        ++ nativeBuildPackages
+        ++ dartPackages
+        ++ protobufPackages
+        ++ frbPackages
+        ++ jsPackages
+        ++ releasePackages
+        ++ ciPackages;
+
       # --- Shared environment variables ---
       localeEnv = {
         LANG = "C.UTF-8";
@@ -184,23 +147,45 @@
         let
           # Full development shell
           fullShell = pkgs.mkShell {
-            packages =
-              pythonPackages
-              ++ rustPackages
-              ++ nativeBuildPackages
-              ++ dartPackages
-              ++ protobufPackages
-              ++ frbPackages
-              ++ jsPackages
-              ++ releasePackages
-              ++ ciPackages
-              ++ [
-                androidSdk
-                androidComposition.platform-tools
-                pkgs.apksigner
-                pkgs.rustup
-                pkgs.worker-build
-              ];
+            packages = basePackages ++ [
+              pkgs.rustup
+              pkgs.worker-build
+              developmentAndroidSdk
+              developmentAndroidComposition.platform-tools
+            ];
+
+            LANG = "C.UTF-8";
+            LC_ALL = "C.UTF-8";
+            JAVA_HOME = jdk17.home;
+            NIX_ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
+            ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
+            ANDROID_HOME = developmentAndroidSdkRoot;
+            ANDROID_NDK_ROOT = "${developmentAndroidSdkRoot}/ndk-bundle";
+            NDK_HOME = "${developmentAndroidSdkRoot}/ndk-bundle";
+            UV_PYTHON = "${python3}/bin/python3";
+            UV_PYTHON_DOWNLOADS = "never";
+            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+            CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "${pkgs.lld}/bin/wasm-ld";
+
+            shellHook = ''
+              export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
+              export PATH="${nativeRustToolchainPath}:$PATH"
+              . scripts/setup-ld-library-path.sh
+              . scripts/setup-rust-toolchain.sh
+              . scripts/setup-android-sdk.sh
+            '';
+          };
+
+          # Android build shell
+          androidShell = pkgs.mkShell {
+            packages = basePackages ++ [
+              pkgs.rustup
+              pkgs.worker-build
+              androidSdk
+              androidComposition.platform-tools
+              pkgs.apksigner
+            ];
 
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
@@ -217,61 +202,18 @@
 
             shellHook = ''
               export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-              # Prefer the Nix-wrapped Rust toolchain for local builds and codegen.
-              # rustup remains available later in PATH for target management via cargokit.
+              export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
               export PATH="${nativeRustToolchainPath}:$PATH"
-
-              host_android_sdk="$HOME/Android/Sdk"
-              if [ -x "$host_android_sdk/emulator/emulator" ]; then
-                sdk_shim="$PWD/.direnv/android-sdk"
-                mkdir -p "$sdk_shim/emulator"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/build-tools" "$sdk_shim/build-tools"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/cmake" "$sdk_shim/cmake"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/cmdline-tools" "$sdk_shim/cmdline-tools"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/licenses" "$sdk_shim/licenses"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/ndk" "$sdk_shim/ndk"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/ndk-bundle" "$sdk_shim/ndk-bundle"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/platform-tools" "$sdk_shim/platform-tools"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/platforms" "$sdk_shim/platforms"
-                ln -sfn "$NIX_ANDROID_SDK_ROOT/tools" "$sdk_shim/tools"
-                ln -sfn "$host_android_sdk/system-images" "$sdk_shim/system-images"
-                ln -sfn "${androidEmulatorWrapper}" "$sdk_shim/emulator/emulator"
-
-              export ANDROID_SDK_ROOT="$sdk_shim"
-                                export ANDROID_HOME="$sdk_shim"
-                              fi
-
-                              aapt2_path="$(echo "$NIX_ANDROID_SDK_ROOT/build-tools/"*"/aapt2")"
-                              export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$aapt2_path''${GRADLE_OPTS:+ $GRADLE_OPTS}"
-
-              cmake_root="$(echo "$NIX_ANDROID_SDK_ROOT/cmake/"*/)"
-              export PATH="$cmake_root/bin:$PATH"
-
-              if ! rustup target list --installed 2>/dev/null | grep -q wasm32-unknown-unknown; then
-                rustup target add wasm32-unknown-unknown --toolchain stable 2>/dev/null || true
-              fi
-
-              local_properties="android/local.properties"
-              marker="# Generated by nix develop from flake.nix"
-
-              if [ ! -f "$local_properties" ] \
-                || grep -Fqx "$marker" "$local_properties" \
-                || ! grep -Fqx "sdk.dir=$ANDROID_SDK_ROOT" "$local_properties"; then
-                {
-                  printf '%s\n' \
-                    "$marker" \
-                    "flutter.sdk=${flutter}" \
-                    "sdk.dir=$ANDROID_SDK_ROOT" \
-                    "ndk.dir=$ANDROID_SDK_ROOT/ndk-bundle" \
-                    "cmake.dir=$ANDROID_SDK_ROOT/cmake/$(basename "$cmake_root")"
-                } > "$local_properties"
-              fi
+              . scripts/setup-ld-library-path.sh
+              . scripts/setup-rust-toolchain.sh
+              . scripts/setup-android-sdk.sh
             '';
           };
         in
         {
           default = fullShell;
           full = fullShell;
+          android = androidShell;
 
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
           python = pkgs.mkShell {
@@ -328,6 +270,7 @@
               export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             '';
           };
+
           # Minimal CI shell: GitHub workflow security scanning
           ci = pkgs.mkShell {
             packages = pythonPackages ++ ciPackages;
@@ -340,6 +283,7 @@
               export LD_LIBRARY_PATH="${runtimeLibraryPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             '';
           };
+
           # Code generation shell: protobuf, FRB, dart build_runner, l10n
           codegen = pkgs.mkShell {
             packages =
