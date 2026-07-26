@@ -230,6 +230,7 @@
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              . scripts/setup-ld-library-path.sh
             '';
           };
 
@@ -244,6 +245,7 @@
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              . scripts/setup-ld-library-path.sh
             '';
           };
 
@@ -257,6 +259,7 @@
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              . scripts/setup-ld-library-path.sh
             '';
           };
 
@@ -270,6 +273,7 @@
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              . scripts/setup-ld-library-path.sh
             '';
           };
 
@@ -283,6 +287,7 @@
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              . scripts/setup-ld-library-path.sh
             '';
           };
 
@@ -305,6 +310,7 @@
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
               export PATH="${nativeRustToolchainPath}:$PATH"
+              . scripts/setup-ld-library-path.sh
             '';
           };
         };
