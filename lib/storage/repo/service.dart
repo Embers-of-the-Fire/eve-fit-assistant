@@ -167,13 +167,16 @@ class RepoService {
   IList<VerificationIssue> verify() => verificationService.verify();
 
   /// Verifies all checkouts' integrity in a background isolate.
-  Future<IList<VerificationIssue>> verifyAsync() => verificationService.verifyAsync();
+  Future<IList<VerificationIssue>> verifyAsync({
+    void Function(int current, int total)? onProgress,
+  }) => verificationService.verifyAsync(onProgress: onProgress);
 
   /// Prunes unreferenced data.
   int prune() => verificationService.prune();
 
   /// Prunes unreferenced data in a background isolate.
-  Future<int> pruneAsync() => verificationService.pruneAsync();
+  Future<int> pruneAsync({void Function(int current, int total)? onProgress}) =>
+      verificationService.pruneAsync(onProgress: onProgress);
 
   /// Recovers from interrupted writes by deleting orphaned temp files and
   /// directories left behind by atomic-write patterns that crashed mid-rename.

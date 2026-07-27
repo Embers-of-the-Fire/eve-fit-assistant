@@ -16,6 +16,7 @@ import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:path/path.dart" as p;
 
 /// Represents a single integrity issue found during verification.
 sealed class VerificationIssue {
@@ -95,13 +96,31 @@ class VerificationService {
   /// Async variant of [verify] that runs the heavy I/O in a background isolate,
   /// keeping the UI thread responsive.
   ///
+  /// [onProgress] receives (checked, total) blob counts as verification proceeds.
+  ///
   /// Throws [StateError] if another verification operation is already running.
-  Future<IList<VerificationIssue>> verifyAsync() async {
+  Future<IList<VerificationIssue>> verifyAsync({
+    void Function(int current, int total)? onProgress,
+  }) async {
     _acquire();
     try {
       final appSupport = PathProvider.appSupportPath;
       final logs = PathProvider.logsPath;
-      return await Isolate.run(() => _isolateVerify(appSupport, logs));
+      if (onProgress == null) {
+        return await _spawnVerify(appSupport, logs, null);
+      }
+      final receivePort = ReceivePort()
+        ..listen((message) {
+          if (message is List && message.length == 2 && message[0] is int) {
+            onProgress(message[0] as int, message[1] as int);
+          }
+        });
+      final sendPort = receivePort.sendPort;
+      try {
+        return await _spawnVerify(appSupport, logs, sendPort);
+      } finally {
+        receivePort.close();
+      }
     } finally {
       _release();
     }
@@ -110,13 +129,29 @@ class VerificationService {
   /// Async variant of [prune] that runs the heavy I/O in a background isolate,
   /// keeping the UI thread responsive.
   ///
+  /// [onProgress] receives (deleted, total-scanned) item counts as pruning proceeds.
+  ///
   /// Throws [StateError] if another verification operation is already running.
-  Future<int> pruneAsync() async {
+  Future<int> pruneAsync({void Function(int current, int total)? onProgress}) async {
     _acquire();
     try {
       final appSupport = PathProvider.appSupportPath;
       final logs = PathProvider.logsPath;
-      return await Isolate.run(() => _isolatePrune(appSupport, logs));
+      if (onProgress == null) {
+        return await _spawnPrune(appSupport, logs, null);
+      }
+      final receivePort = ReceivePort()
+        ..listen((message) {
+          if (message is List && message.length == 2 && message[0] is int) {
+            onProgress(message[0] as int, message[1] as int);
+          }
+        });
+      final sendPort = receivePort.sendPort;
+      try {
+        return await _spawnPrune(appSupport, logs, sendPort);
+      } finally {
+        receivePort.close();
+      }
     } finally {
       _release();
     }
@@ -344,11 +379,27 @@ extension _WhereFirstOrNull<T> on Iterable<T> {
   }
 }
 
+// ── Isolate spawn helpers ──────────────────────────────────────────────────────
+// Separate top-level functions so the Isolate.run() closure is created in a
+// scope that does NOT share a Context with the onProgress listener (which
+// captures the widget State). Without this separation, Dart's closure context
+// sharing drags the entire widget tree into the isolate message.
+
+Future<IList<VerificationIssue>> _spawnVerify(String appSupport, String logs, SendPort? sendPort) =>
+    Isolate.run(() => _isolateVerify(appSupport, logs, sendPort));
+
+Future<int> _spawnPrune(String appSupport, String logs, SendPort? sendPort) =>
+    Isolate.run(() => _isolatePrune(appSupport, logs, sendPort));
+
 // ── Isolate entry points ───────────────────────────────────────────────────────
 // Top-level functions so they can be sent to Isolate.run(). They reconstruct
 // the minimal stateless services from the passed paths.
 
-IList<VerificationIssue> _isolateVerify(String appSupportPath, String logsPath) {
+IList<VerificationIssue> _isolateVerify(
+  String appSupportPath,
+  String logsPath,
+  SendPort? progress,
+) {
   PathProvider.appSupportPath = appSupportPath;
   GlobalLogger.init(logsPath, enableDebugLog: false);
 
@@ -358,9 +409,22 @@ IList<VerificationIssue> _isolateVerify(String appSupportPath, String logsPath) 
   final registry = registryService.readRegistry();
   if (registry.isNone()) return const IList.empty();
 
-  final issues = <VerificationIssue>[];
+  final checkouts = registry.toNullable()!.checkouts.entries.toList();
 
-  for (final entry in registry.toNullable()!.checkouts.entries) {
+  var totalBlobs = 0;
+  final resourceIndexes = <String, ResourceIndex>{};
+  for (final entry in checkouts) {
+    final ri = assetStore.readResourceIndexSync(entry.value.resourceSnapshotHash);
+    if (ri.isSome()) {
+      resourceIndexes[entry.key] = ri.toNullable()!;
+      totalBlobs += ri.toNullable()!.entries.length;
+    }
+  }
+
+  final issues = <VerificationIssue>[];
+  var checkedBlobs = 0;
+
+  for (final entry in checkouts) {
     final checkoutId = entry.key;
     final checkoutEntry = entry.value;
 
@@ -371,8 +435,8 @@ IList<VerificationIssue> _isolateVerify(String appSupportPath, String logsPath) 
     }
 
     final snapshotHash = checkoutEntry.resourceSnapshotHash;
-    final ri = assetStore.readResourceIndexSync(snapshotHash);
-    if (ri.isNone()) {
+    final ri = resourceIndexes[checkoutId];
+    if (ri == null) {
       issues.add(
         VerificationMissingFiles(
           checkoutId: checkoutId,
@@ -383,13 +447,31 @@ IList<VerificationIssue> _isolateVerify(String appSupportPath, String logsPath) 
       continue;
     }
 
-    final missing = assetStore.verifyResourceIndexSync(ri.toNullable()!);
-    if (missing.isNotEmpty) {
+    final failures = <String>[];
+    for (final re in ri.entries) {
+      final ihash = RepoHash.hashIdent(re.resourceId);
+      final assetPath = RepoPaths.blobPath(ihash, re.contentHash);
+      final file = File(assetPath);
+      if (!file.existsSync()) {
+        failures.add(re.resourceId);
+      } else {
+        try {
+          final diskHash = RepoHash.hashContent(file.readAsBytesSync());
+          if (diskHash != re.contentHash) failures.add(re.resourceId);
+        } on FileSystemException {
+          failures.add(re.resourceId);
+        }
+      }
+      checkedBlobs++;
+      progress?.send([checkedBlobs, totalBlobs]);
+    }
+
+    if (failures.isNotEmpty) {
       issues.add(
         VerificationMissingFiles(
           checkoutId: checkoutId,
           snapshotHash: snapshotHash,
-          missingIdents: missing,
+          missingIdents: failures.toIList(),
         ),
       );
     }
@@ -398,7 +480,7 @@ IList<VerificationIssue> _isolateVerify(String appSupportPath, String logsPath) 
   return issues.toIList();
 }
 
-int _isolatePrune(String appSupportPath, String logsPath) {
+int _isolatePrune(String appSupportPath, String logsPath, SendPort? progress) {
   PathProvider.appSupportPath = appSupportPath;
   GlobalLogger.init(logsPath, enableDebugLog: false);
 
@@ -433,10 +515,100 @@ int _isolatePrune(String appSupportPath, String logsPath) {
     }
   }
 
-  return assetStore.pruneSync(
-    activeSnapshotHashes: activeSnapshotHashes,
-    activeResourceIndexes: activeResourceIndexes,
-  );
+  final referencedBlobs = <String>{};
+  for (final ri in activeResourceIndexes) {
+    for (final entry in ri.entries) {
+      final ihash = RepoHash.hashIdent(entry.resourceId);
+      referencedBlobs.add(RepoPaths.blobPath(ihash, entry.contentHash));
+    }
+  }
+
+  final assetsDir = Directory(RepoPaths.assetsPath);
+  if (!assetsDir.existsSync()) return 0;
+
+  final snapshotDirs = <Directory>[];
+  final resourcesDir = Directory("${RepoPaths.assetsPath}/resources");
+  if (resourcesDir.existsSync()) {
+    snapshotDirs.addAll(resourcesDir.listSync().whereType<Directory>());
+  }
+
+  final blobFiles = <File>[];
+  final blobsDir = Directory("${RepoPaths.assetsPath}/blobs");
+  if (blobsDir.existsSync()) {
+    for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
+      for (final entity in prefixDir.listSync().whereType<Directory>()) {
+        blobFiles.addAll(entity.listSync().whereType<File>());
+      }
+    }
+  }
+
+  final totalItems = snapshotDirs.length + blobFiles.length;
+  var scanned = 0;
+  var deleted = 0;
+
+  for (final dir in snapshotDirs) {
+    final name = p.basename(dir.path);
+    if (!activeSnapshotHashes.contains(name)) {
+      try {
+        dir.deleteSync(recursive: true);
+        deleted++;
+      } on FileSystemException {
+        // best-effort
+      }
+    }
+    scanned++;
+    progress?.send([scanned, totalItems]);
+  }
+
+  for (final blob in blobFiles) {
+    if (!referencedBlobs.contains(blob.path)) {
+      try {
+        blob.deleteSync();
+        deleted++;
+      } on FileSystemException {
+        // best-effort
+      }
+    }
+    scanned++;
+    progress?.send([scanned, totalItems]);
+  }
+
+  // Clean empty ident dirs and prefix dirs
+  if (blobsDir.existsSync()) {
+    for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
+      for (final entity in prefixDir.listSync().whereType<Directory>()) {
+        if (entity.listSync().isEmpty) {
+          try {
+            entity.deleteSync();
+          } on FileSystemException {
+            // best-effort
+          }
+        }
+      }
+      if (prefixDir.listSync().isEmpty) {
+        try {
+          prefixDir.deleteSync();
+        } on FileSystemException {
+          // best-effort
+        }
+      }
+    }
+  }
+
+  // Prune temporary directories
+  for (final dir in assetsDir.listSync().whereType<Directory>()) {
+    final name = p.basename(dir.path);
+    if (name.startsWith("tmp_") || name.endsWith("_temp")) {
+      try {
+        dir.deleteSync(recursive: true);
+        deleted++;
+      } on FileSystemException {
+        // best-effort
+      }
+    }
+  }
+
+  return deleted;
 }
 
 Set<String> _collectReflogHashes(String checkoutId) {

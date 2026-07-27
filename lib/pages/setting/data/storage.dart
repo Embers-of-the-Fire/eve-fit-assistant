@@ -68,6 +68,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
   String? _forceSyncResult;
   bool _clearLoading = false;
   bool _isOperationRunning = false;
+  double? _operationProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +122,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
                   : null,
               onTap: _isOperationRunning ? null : _runVerify,
             ),
+            ConfigListTile.custom(_buildOperationProgress()),
             ConfigListTile.custom(_buildVerifyResults()),
             ConfigListTile.item(
               icon: Icon(
@@ -228,6 +230,14 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     ),
   );
 
+  Widget _buildOperationProgress() {
+    if (!_isOperationRunning) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: LinearProgressIndicator(value: _operationProgress),
+    );
+  }
+
   Widget _buildVerifyResults() {
     final issues = _verifyResult;
     if (issues == null || issues.isEmpty) return const SizedBox.shrink();
@@ -308,9 +318,18 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       _isOperationRunning = true;
       _verifyLoading = true;
       _verifyResult = null;
+      _operationProgress = null;
     });
     try {
-      final issues = await ref.read(repoServiceProvider).verifyAsync();
+      final issues = await ref
+          .read(repoServiceProvider)
+          .verifyAsync(
+            onProgress: (current, total) {
+              if (mounted && total > 0) {
+                setState(() => _operationProgress = current / total);
+              }
+            },
+          );
       if (mounted) setState(() => _verifyResult = issues);
     } on StateError {
       // Another operation was already in progress at the service level.
@@ -319,6 +338,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         setState(() {
           _verifyLoading = false;
           _isOperationRunning = false;
+          _operationProgress = null;
         });
       }
     }
@@ -371,10 +391,19 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       _isOperationRunning = true;
       _pruneLoading = true;
       _pruneCount = null;
+      _operationProgress = null;
     });
 
     try {
-      final count = await ref.read(repoServiceProvider).pruneAsync();
+      final count = await ref
+          .read(repoServiceProvider)
+          .pruneAsync(
+            onProgress: (current, total) {
+              if (mounted && total > 0) {
+                setState(() => _operationProgress = current / total);
+              }
+            },
+          );
       if (mounted) setState(() => _pruneCount = count);
     } on StateError {
       // Another operation was already in progress at the service level.
@@ -383,6 +412,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         setState(() {
           _pruneLoading = false;
           _isOperationRunning = false;
+          _operationProgress = null;
         });
       }
     }
