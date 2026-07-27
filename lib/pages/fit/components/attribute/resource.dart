@@ -60,7 +60,7 @@ class _ResourceRow extends StatelessWidget {
     this.warning = true,
   });
 
-  final ImageProvider icon;
+  final ImageProvider<Object> icon;
   final double used;
   final double all;
   final String? unit;
