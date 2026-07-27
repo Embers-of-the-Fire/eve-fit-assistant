@@ -479,10 +479,19 @@ void main() {
     });
 
     test("repairAll() rejects concurrent invocation", () async {
-      setupCheckout();
+      final snapshotHash = setupCheckout();
+      const assetStore = AssetStore();
+
+      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      expect(riOpt.isSome(), isTrue);
+      final ri = riOpt.toNullable()!;
+      final entryA = ri.entries.first;
+      final ihashA = RepoHash.hashIdent(entryA.resourceId);
+      final blobPathA = RepoPaths.blobPath(ihashA, entryA.contentHash);
+      File(blobPathA).deleteSync();
+
       final completer = Completer<void>();
       final fakeRemote = _SlowFakeRemoteCatalogService(completer: completer);
-      const assetStore = AssetStore();
       final registryService = CheckoutRegistryService();
       const diffEngine = DiffEngine();
       final checkoutService = CheckoutService(
@@ -506,17 +515,27 @@ void main() {
       expect(() => service.prune(), throwsA(isA<StateError>()));
 
       completer.complete();
-      await first;
+      final unresolved = await first;
 
       expect(service.isRunning, isFalse);
-      expect(service.verify(), isEmpty);
+      expect(unresolved.length, 1);
+      expect(unresolved.first, isA<VerificationMissingFiles>());
     });
 
     test("guard releases after repairAll() failure", () async {
-      setupCheckout();
+      final snapshotHash = setupCheckout();
+      const assetStore = AssetStore();
+
+      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      expect(riOpt.isSome(), isTrue);
+      final ri = riOpt.toNullable()!;
+      final entryA = ri.entries.first;
+      final ihashA = RepoHash.hashIdent(entryA.resourceId);
+      final blobPathA = RepoPaths.blobPath(ihashA, entryA.contentHash);
+      File(blobPathA).deleteSync();
+
       final completer = Completer<void>();
       final fakeRemote = _SlowFakeRemoteCatalogService(completer: completer);
-      const assetStore = AssetStore();
       final registryService = CheckoutRegistryService();
       const diffEngine = DiffEngine();
       final checkoutService = CheckoutService(
@@ -534,11 +553,14 @@ void main() {
 
       final first = service.repairAll(channel: Channel.testing);
       completer.complete();
-      await first;
+      final unresolved = await first;
 
       expect(service.isRunning, isFalse);
+      expect(unresolved.length, 1);
+      expect(unresolved.first, isA<VerificationMissingFiles>());
       final result = service.verify();
-      expect(result, isEmpty);
+      expect(result.length, 1);
+      expect(result.first, isA<VerificationMissingFiles>());
     });
   });
 
