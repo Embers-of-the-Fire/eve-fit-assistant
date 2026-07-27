@@ -476,7 +476,9 @@ IList<VerificationIssue> _isolateVerify(
         }
       }
       checkedBlobs++;
-      progress?.send([checkedBlobs, totalBlobs]);
+      if (checkedBlobs % 16 == 0 || checkedBlobs == totalBlobs) {
+        progress?.send([checkedBlobs, totalBlobs]);
+      }
     }
 
     if (failures.isNotEmpty) {
@@ -570,7 +572,9 @@ int _isolatePrune(String appSupportPath, String logsPath, SendPort? progress) {
       }
     }
     scanned++;
-    progress?.send([scanned, totalItems]);
+    if (scanned % 16 == 0 || scanned == totalItems) {
+      progress?.send([scanned, totalItems]);
+    }
   }
 
   for (final blob in blobFiles) {
@@ -583,7 +587,9 @@ int _isolatePrune(String appSupportPath, String logsPath, SendPort? progress) {
       }
     }
     scanned++;
-    progress?.send([scanned, totalItems]);
+    if (scanned % 16 == 0 || scanned == totalItems) {
+      progress?.send([scanned, totalItems]);
+    }
   }
 
   // Clean empty ident dirs and prefix dirs
