@@ -260,19 +260,27 @@ class VerificationService {
 
   /// Repairs missing files by re-downloading from remote.
   ///
+  /// [onProgress] receives (downloaded, total) blob counts as downloads proceed.
+  ///
   /// Returns unresolved issues (partial downloads or network failures).
   ///
   /// Throws [StateError] if another verification operation is already running.
-  Future<IList<VerificationIssue>> repairAll({required Channel channel}) async {
+  Future<IList<VerificationIssue>> repairAll({
+    required Channel channel,
+    void Function(int current, int total)? onProgress,
+  }) async {
     _acquire();
     try {
-      return await _repairAllInternal(channel: channel);
+      return await _repairAllInternal(channel: channel, onProgress: onProgress);
     } finally {
       _release();
     }
   }
 
-  Future<IList<VerificationIssue>> _repairAllInternal({required Channel channel}) async {
+  Future<IList<VerificationIssue>> _repairAllInternal({
+    required Channel channel,
+    void Function(int current, int total)? onProgress,
+  }) async {
     final issues = _verifyInternal();
     final unresolved = <VerificationIssue>[];
 
@@ -324,8 +332,11 @@ class VerificationService {
 
     const blobConcurrency = kBlobDownloadConcurrency;
     var nextIdx = 0;
+    var completed = 0;
+    final totalToRepair = toRepair.length;
 
     if (toRepair.isNotEmpty) {
+      onProgress?.call(0, totalToRepair);
       assetStore.ensureBlobIdentDirs(toRepair.map((r) => r.identHash));
 
       Future<void> repairNext() async {
@@ -357,6 +368,8 @@ class VerificationService {
               ),
             );
           }
+          completed++;
+          onProgress?.call(completed, totalToRepair);
         }
       }
 

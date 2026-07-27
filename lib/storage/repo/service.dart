@@ -188,8 +188,10 @@ class RepoService {
   void recoverPartialDownloads() => assetStore.recoverSync();
 
   /// Verifies and repairs by re-downloading missing files.
-  Future<IList<VerificationIssue>> verifyAndRepair({required Channel channel}) =>
-      verificationService.repairAll(channel: channel);
+  Future<IList<VerificationIssue>> verifyAndRepair({
+    required Channel channel,
+    void Function(int current, int total)? onProgress,
+  }) => verificationService.repairAll(channel: channel, onProgress: onProgress);
 
   /// Wipes all downloaded storage: the content-addressed asset store (blobs and
   /// resource snapshots), channel metadata, and the checkout registry.

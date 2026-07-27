@@ -349,13 +349,23 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     setState(() {
       _isOperationRunning = true;
       _repairLoading = true;
+      _operationProgress = 0.0;
     });
     try {
       final active = ref.read(currentActiveProvider);
       final channelName =
           active?.channel ?? ref.read(appSettingServiceProvider).remoteContent.channel;
       final channel = Channel.tryParse(channelName) ?? Channel.defaultChannel;
-      final unresolved = await ref.read(repoServiceProvider).verifyAndRepair(channel: channel);
+      final unresolved = await ref
+          .read(repoServiceProvider)
+          .verifyAndRepair(
+            channel: channel,
+            onProgress: (current, total) {
+              if (mounted && total > 0) {
+                setState(() => _operationProgress = current / total);
+              }
+            },
+          );
       if (mounted) {
         setState(() => _verifyResult = unresolved);
         final l10n = context.l10n;
@@ -373,6 +383,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         setState(() {
           _repairLoading = false;
           _isOperationRunning = false;
+          _operationProgress = null;
         });
       }
     }
