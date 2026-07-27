@@ -41,6 +41,7 @@ Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   await PathProvider.init();
+  await const StoragePathMigrator().migrateIfNeeded();
   AppSettingService.init();
   GlobalLogger.init(
     PathProvider.logsPath,
@@ -66,8 +67,6 @@ Future<void> _deferredInit(
   AppVersionStateStore appVersionStateStore,
 ) async {
   try {
-    await const StoragePathMigrator().migrateIfNeeded();
-
     final migration = await announcementStateStore.init();
     await appVersionStateStore.init();
 
@@ -86,8 +85,8 @@ Future<void> _deferredInit(
     FeedbackStateStore.init();
     await AnnouncementBodyCache.init();
     await repairStartupPersistence();
-  } catch (_) {
-    // Deferred init failures are non-fatal; individual features degrade gracefully.
+  } catch (e, st) {
+    error("Deferred initialization failed", stackTrace: st, error: e);
   }
 }
 
