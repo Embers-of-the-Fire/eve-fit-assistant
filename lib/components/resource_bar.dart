@@ -1,11 +1,24 @@
-import "package:eve_fit_assistant/components/color.dart";
 import "package:flutter/material.dart";
+
+/// The shared green/orange/red steps used by resource usage displays.
+///
+/// Returns [Colors.red] when [used] exceeds [all], [Colors.orange] when
+/// [warning] is set and usage passes 90%, and [Colors.green] otherwise.
+Color resourceUsageColor(double used, double all, {bool warning = true}) {
+  if (used > all) {
+    return Colors.red;
+  }
+  if (warning && used > all * 0.9) {
+    return Colors.orange;
+  }
+  return Colors.green;
+}
 
 /// A thin usage bar visualizing the ratio of [used] to [all].
 ///
-/// The fill slides from green to red as usage grows by default and turns
-/// solid red when [used] exceeds [all]. Colors can be overridden via
-/// [usedColor] and [trackColor].
+/// The fill follows the same green/orange/red steps as [resourceUsageColor],
+/// but unlike the text it is clamped to the bar width when [used] exceeds
+/// [all]. Colors can be overridden via [usedColor] and [trackColor].
 class ResourceBar extends StatelessWidget {
   const ResourceBar({
     required this.used,
@@ -23,12 +36,12 @@ class ResourceBar extends StatelessWidget {
   /// The thickness of the bar.
   final double height;
 
-  /// Whether the fill warms up towards red as it approaches [all].
+  /// Whether the fill turns [Colors.orange] as usage approaches [all].
   ///
   /// When false, the fill stays green until [used] exceeds [all].
   final bool warning;
 
-  /// Overrides the default green~red fill color.
+  /// Overrides the default green/orange/red fill color.
   final Color? usedColor;
 
   /// Overrides the default neutral track color.
@@ -37,7 +50,7 @@ class ResourceBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = all <= 0 ? 0.0 : (used / all).clamp(0.0, 1.0);
-    final fill = usedColor ?? _defaultFill(fraction, used > all);
+    final fill = usedColor ?? resourceUsageColor(used, all, warning: warning);
     final track = trackColor ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15);
 
     return LayoutBuilder(
@@ -63,15 +76,5 @@ class ResourceBar extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _defaultFill(double fraction, bool overloaded) {
-    if (overloaded) {
-      return Colors.red;
-    }
-    if (!warning) {
-      return colorGreen;
-    }
-    return Color.lerp(colorGreen, Colors.red, fraction)!;
   }
 }

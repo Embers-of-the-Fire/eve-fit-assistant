@@ -34,7 +34,7 @@ class ResourceCompare extends StatelessWidget {
   /// The thickness of the usage bar.
   final double barHeight;
 
-  /// Overrides the default green~red fill color of the usage bar.
+  /// Overrides the default green/orange/red fill color of the usage bar.
   final Color? barUsedColor;
 
   /// Overrides the default neutral track color of the usage bar.
@@ -51,7 +51,7 @@ class ResourceCompare extends StatelessWidget {
         children: [
           TextSpan(
             text: used,
-            style: TextStyle(color: _getColorFromValue(this.used, this.all, warning)),
+            style: TextStyle(color: resourceUsageColor(this.used, this.all, warning: warning)),
           ),
           TextSpan(text: "/$all$unit"),
         ],
@@ -79,15 +79,5 @@ class ResourceCompare extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-Color _getColorFromValue(double value, double max, bool warning) {
-  if (value > max) {
-    return Colors.red;
-  } else if (warning && value > max * 0.9) {
-    return Colors.orange;
-  } else {
-    return Colors.green;
   }
 }
