@@ -542,13 +542,13 @@ int _isolatePrune(String appSupportPath, String logsPath, SendPort? progress) {
   if (!assetsDir.existsSync()) return 0;
 
   final snapshotDirs = <Directory>[];
-  final resourcesDir = Directory("${RepoPaths.assetsPath}/resources");
+  final resourcesDir = Directory(RepoPaths.resourcesDirPath);
   if (resourcesDir.existsSync()) {
     snapshotDirs.addAll(resourcesDir.listSync().whereType<Directory>());
   }
 
   final blobFiles = <File>[];
-  final blobsDir = Directory("${RepoPaths.assetsPath}/blobs");
+  final blobsDir = Directory(RepoPaths.blobsDirPath);
   if (blobsDir.existsSync()) {
     for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
       for (final entity in prefixDir.listSync().whereType<Directory>()) {

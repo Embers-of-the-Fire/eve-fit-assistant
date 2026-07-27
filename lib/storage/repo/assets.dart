@@ -254,7 +254,7 @@ class AssetStore {
     if (!assetsDir.existsSync()) return 0;
 
     // Prune resource snapshots
-    final resourcesDir = Directory("${RepoPaths.assetsPath}/resources");
+    final resourcesDir = Directory(RepoPaths.resourcesDirPath);
     if (resourcesDir.existsSync()) {
       for (final dir in resourcesDir.listSync().whereType<Directory>()) {
         final name = p.basename(dir.path);
@@ -270,7 +270,7 @@ class AssetStore {
     }
 
     // Prune blobs
-    final blobsDir = Directory("${RepoPaths.assetsPath}/blobs");
+    final blobsDir = Directory(RepoPaths.blobsDirPath);
     if (blobsDir.existsSync()) {
       for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
         for (final entity in prefixDir.listSync().whereType<Directory>()) {
@@ -399,5 +399,5 @@ class AssetStore {
     File(path).writeAsBytesSync(canonicalJsonEncode(meta.toJson()), flush: true);
   }
 
-  String _resourceTempPath() => "${RepoPaths.assetsPath}/tmp_resource_snapshot";
+  String _resourceTempPath() => p.join(RepoPaths.assetsPath, "tmp_resource_snapshot");
 }
