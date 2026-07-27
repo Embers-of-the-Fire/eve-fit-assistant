@@ -56,8 +56,10 @@ class RepoService {
   /// Fetches and persists all generation-level files for [channelName].
   ///
   /// Best-effort: individual file failures are logged but do not abort the sync.
-  Future<Either<String, Unit>> syncChannelGeneration(String channelName) =>
-      channelService.syncChannelGeneration(channelName);
+  Future<Either<String, Unit>> syncChannelGeneration(
+    String channelName, {
+    void Function(int current, int total)? onProgress,
+  }) => channelService.syncChannelGeneration(channelName, onProgress: onProgress);
 
   // ── Checkout lifecycle ─────────────────────────────────────────────────────
 

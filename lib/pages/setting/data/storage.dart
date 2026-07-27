@@ -110,6 +110,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
 
             // ── Storage Operations ────────────────────────────────────────────
             ConfigListTile.title(l10n.storageOperationsTitle),
+            ConfigListTile.custom(_buildOperationProgress()),
             ConfigListTile.item(
               icon: Icon(Icons.verified_outlined, color: context.theme.colorScheme.primary),
               title: l10n.storageVerifyButton,
@@ -122,7 +123,6 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
                   : null,
               onTap: _isOperationRunning ? null : _runVerify,
             ),
-            ConfigListTile.custom(_buildOperationProgress()),
             ConfigListTile.custom(_buildVerifyResults()),
             ConfigListTile.item(
               icon: Icon(
@@ -318,7 +318,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       _isOperationRunning = true;
       _verifyLoading = true;
       _verifyResult = null;
-      _operationProgress = null;
+      _operationProgress = 0.0;
     });
     try {
       final issues = await ref
@@ -391,7 +391,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       _isOperationRunning = true;
       _pruneLoading = true;
       _pruneCount = null;
-      _operationProgress = null;
+      _operationProgress = 0.0;
     });
 
     try {
@@ -424,9 +424,19 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       _isOperationRunning = true;
       _forceSyncLoading = true;
       _forceSyncResult = null;
+      _operationProgress = 0.0;
     });
     try {
-      final result = await ref.read(repoServiceProvider).syncChannelGeneration(channelName);
+      final result = await ref
+          .read(repoServiceProvider)
+          .syncChannelGeneration(
+            channelName,
+            onProgress: (current, total) {
+              if (mounted && total > 0) {
+                setState(() => _operationProgress = current / total);
+              }
+            },
+          );
       if (!mounted) return;
       final l10n = context.l10n;
       final msg = result.match(
@@ -442,6 +452,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         setState(() {
           _forceSyncLoading = false;
           _isOperationRunning = false;
+          _operationProgress = null;
         });
       }
     }
