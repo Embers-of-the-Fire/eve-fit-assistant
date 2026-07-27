@@ -50,12 +50,21 @@ enum DataReadinessLevel {
 class DataReadinessNotifier extends _$DataReadinessNotifier {
   int _generation = 0;
   RepoCollectionService? _decodedCollection;
+  ResourceBlobProxy? _activeProxy;
+  bool _decodeInFlight = false;
 
   @override
   DataReadinessState build() {
     final proxy = ref.watch(resourceBlobProxyProvider);
-    if (proxy == null) {
+
+    if (!identical(proxy, _activeProxy)) {
+      _activeProxy = proxy;
       _decodedCollection = null;
+      _decodeInFlight = false;
+      _generation++;
+    }
+
+    if (proxy == null) {
       return const DataReadinessState.idle();
     }
 
@@ -65,7 +74,10 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
       return const DataReadinessState.ready();
     }
 
-    unawaited(_dispatchDecode(proxy));
+    if (!_decodeInFlight) {
+      _decodeInFlight = true;
+      unawaited(_dispatchDecode(proxy));
+    }
     return const DataReadinessState.loading();
   }
 
@@ -94,9 +106,11 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
       if (generation != _generation || !ref.mounted) return;
 
       _decodedCollection = collection;
+      _decodeInFlight = false;
       state = const DataReadinessState.ready();
     } on Object catch (e, st) {
       if (generation != _generation || !ref.mounted) return;
+      _decodeInFlight = false;
       debug("DataReadiness: collection decode failed: $e", stackTrace: st);
       state = DataReadinessState.error(message: e.toString());
     }
@@ -130,6 +144,7 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     final proxy = ref.read(resourceBlobProxyProvider);
     if (proxy == null) return;
     _decodedCollection = null;
+    _decodeInFlight = true;
     unawaited(_dispatchDecode(proxy));
   }
 }
