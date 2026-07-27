@@ -1,22 +1,18 @@
-import "dart:convert";
 import "dart:io";
 import "dart:isolate";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/data/proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
-import "package:eve_fit_assistant/storage/repo/models/checkout_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
-import "package:path/path.dart" as p;
 
 /// Represents a single integrity issue found during verification.
 sealed class VerificationIssue {
@@ -104,10 +100,9 @@ class VerificationService {
   }) async {
     _acquire();
     try {
-      final appSupport = PathProvider.appSupportPath;
-      final logs = PathProvider.logsPath;
+      final paths = _capturePaths();
       if (onProgress == null) {
-        return await _spawnVerify(appSupport, logs, null);
+        return await _spawnVerify(paths, null);
       }
       final receivePort = ReceivePort()
         ..listen((message) {
@@ -117,7 +112,7 @@ class VerificationService {
         });
       final sendPort = receivePort.sendPort;
       try {
-        return await _spawnVerify(appSupport, logs, sendPort);
+        return await _spawnVerify(paths, sendPort);
       } finally {
         receivePort.close();
       }
@@ -135,10 +130,9 @@ class VerificationService {
   Future<int> pruneAsync({void Function(int current, int total)? onProgress}) async {
     _acquire();
     try {
-      final appSupport = PathProvider.appSupportPath;
-      final logs = PathProvider.logsPath;
+      final paths = _capturePaths();
       if (onProgress == null) {
-        return await _spawnPrune(appSupport, logs, null);
+        return await _spawnPrune(paths, null);
       }
       final receivePort = ReceivePort()
         ..listen((message) {
@@ -148,7 +142,7 @@ class VerificationService {
         });
       final sendPort = receivePort.sendPort;
       try {
-        return await _spawnPrune(appSupport, logs, sendPort);
+        return await _spawnPrune(paths, sendPort);
       } finally {
         receivePort.close();
       }
@@ -234,7 +228,7 @@ class VerificationService {
       activeSnapshotHashes.add(checkoutEntry.resourceSnapshotHash);
 
       // From reflog
-      final reflogHashes = checkoutService.collectReflogSnapshotHashes(entry.key);
+      final reflogHashes = CheckoutService.collectReflogSnapshotHashes(entry.key);
       activeSnapshotHashes.addAll(reflogHashes);
 
       // Load ResourceIndex for current snapshot
@@ -398,23 +392,45 @@ extension _WhereFirstOrNull<T> on Iterable<T> {
 // captures the widget State). Without this separation, Dart's closure context
 // sharing drags the entire widget tree into the isolate message.
 
-Future<IList<VerificationIssue>> _spawnVerify(String appSupport, String logs, SendPort? sendPort) =>
-    Isolate.run(() => _isolateVerify(appSupport, logs, sendPort));
+typedef _IsolatePaths = ({
+  String appSupport,
+  String logs,
+  String documents,
+  String temp,
+  String caches,
+  String? downloads,
+});
 
-Future<int> _spawnPrune(String appSupport, String logs, SendPort? sendPort) =>
-    Isolate.run(() => _isolatePrune(appSupport, logs, sendPort));
+void _seedPaths(_IsolatePaths paths) {
+  PathProvider.appSupportPath = paths.appSupport;
+  PathProvider.documentsPath = paths.documents;
+  PathProvider.tempPath = paths.temp;
+  PathProvider.cachesPath = paths.caches;
+  PathProvider.downloadsPath = paths.downloads;
+}
+
+_IsolatePaths _capturePaths() => (
+  appSupport: PathProvider.appSupportPath,
+  logs: PathProvider.logsPath,
+  documents: PathProvider.documentsPath,
+  temp: PathProvider.tempPath,
+  caches: PathProvider.cachesPath,
+  downloads: PathProvider.downloadsPath,
+);
+
+Future<IList<VerificationIssue>> _spawnVerify(_IsolatePaths paths, SendPort? sendPort) =>
+    Isolate.run(() => _isolateVerify(paths, sendPort));
+
+Future<int> _spawnPrune(_IsolatePaths paths, SendPort? sendPort) =>
+    Isolate.run(() => _isolatePrune(paths, sendPort));
 
 // ── Isolate entry points ───────────────────────────────────────────────────────
 // Top-level functions so they can be sent to Isolate.run(). They reconstruct
 // the minimal stateless services from the passed paths.
 
-IList<VerificationIssue> _isolateVerify(
-  String appSupportPath,
-  String logsPath,
-  SendPort? progress,
-) {
-  PathProvider.appSupportPath = appSupportPath;
-  GlobalLogger.init(logsPath, enableDebugLog: false);
+IList<VerificationIssue> _isolateVerify(_IsolatePaths paths, SendPort? progress) {
+  _seedPaths(paths);
+  GlobalLogger.init(paths.logs, enableDebugLog: false);
 
   const assetStore = AssetStore();
   final registryService = CheckoutRegistryService();
@@ -435,7 +451,7 @@ IList<VerificationIssue> _isolateVerify(
   }
 
   final issues = <VerificationIssue>[];
-  var checkedBlobs = 0;
+  var checkedOffset = 0;
 
   for (final entry in checkouts) {
     final checkoutId = entry.key;
@@ -460,33 +476,26 @@ IList<VerificationIssue> _isolateVerify(
       continue;
     }
 
-    final failures = <String>[];
-    for (final re in ri.entries) {
-      final ihash = RepoHash.hashIdent(re.resourceId);
-      final assetPath = RepoPaths.blobPath(ihash, re.contentHash);
-      final file = File(assetPath);
-      if (!file.existsSync()) {
-        failures.add(re.resourceId);
-      } else {
-        try {
-          final diskHash = RepoHash.hashContent(file.readAsBytesSync());
-          if (diskHash != re.contentHash) failures.add(re.resourceId);
-        } on FileSystemException {
-          failures.add(re.resourceId);
-        }
-      }
-      checkedBlobs++;
-      if (checkedBlobs % 16 == 0 || checkedBlobs == totalBlobs) {
-        progress?.send([checkedBlobs, totalBlobs]);
-      }
-    }
+    final offset = checkedOffset;
+    final missing = assetStore.verifyResourceIndexSync(
+      ri,
+      onProgress: progress == null
+          ? null
+          : (checked, _) {
+              final global = offset + checked;
+              if (global % 16 == 0 || global == totalBlobs) {
+                progress.send([global, totalBlobs]);
+              }
+            },
+    );
+    checkedOffset += ri.entries.length;
 
-    if (failures.isNotEmpty) {
+    if (missing.isNotEmpty) {
       issues.add(
         VerificationMissingFiles(
           checkoutId: checkoutId,
           snapshotHash: snapshotHash,
-          missingIdents: failures.toIList(),
+          missingIdents: missing,
         ),
       );
     }
@@ -495,9 +504,9 @@ IList<VerificationIssue> _isolateVerify(
   return issues.toIList();
 }
 
-int _isolatePrune(String appSupportPath, String logsPath, SendPort? progress) {
-  PathProvider.appSupportPath = appSupportPath;
-  GlobalLogger.init(logsPath, enableDebugLog: false);
+int _isolatePrune(_IsolatePaths paths, SendPort? progress) {
+  _seedPaths(paths);
+  GlobalLogger.init(paths.logs, enableDebugLog: false);
 
   const assetStore = AssetStore();
   final registryService = CheckoutRegistryService();
@@ -514,7 +523,7 @@ int _isolatePrune(String appSupportPath, String logsPath, SendPort? progress) {
 
     activeSnapshotHashes.add(checkoutEntry.resourceSnapshotHash);
 
-    final reflogHashes = _collectReflogHashes(checkoutId);
+    final reflogHashes = CheckoutService.collectReflogSnapshotHashes(checkoutId);
     activeSnapshotHashes.addAll(reflogHashes);
 
     final ri = assetStore.readResourceIndexSync(checkoutEntry.resourceSnapshotHash);
@@ -530,132 +539,9 @@ int _isolatePrune(String appSupportPath, String logsPath, SendPort? progress) {
     }
   }
 
-  final referencedBlobs = <String>{};
-  for (final ri in activeResourceIndexes) {
-    for (final entry in ri.entries) {
-      final ihash = RepoHash.hashIdent(entry.resourceId);
-      referencedBlobs.add(RepoPaths.blobPath(ihash, entry.contentHash));
-    }
-  }
-
-  final assetsDir = Directory(RepoPaths.assetsPath);
-  if (!assetsDir.existsSync()) return 0;
-
-  final snapshotDirs = <Directory>[];
-  final resourcesDir = Directory(RepoPaths.resourcesDirPath);
-  if (resourcesDir.existsSync()) {
-    snapshotDirs.addAll(resourcesDir.listSync().whereType<Directory>());
-  }
-
-  final blobFiles = <File>[];
-  final blobsDir = Directory(RepoPaths.blobsDirPath);
-  if (blobsDir.existsSync()) {
-    for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
-      for (final entity in prefixDir.listSync().whereType<Directory>()) {
-        blobFiles.addAll(entity.listSync().whereType<File>());
-      }
-    }
-  }
-
-  final totalItems = snapshotDirs.length + blobFiles.length;
-  var scanned = 0;
-  var deleted = 0;
-
-  for (final dir in snapshotDirs) {
-    final name = p.basename(dir.path);
-    if (!activeSnapshotHashes.contains(name)) {
-      try {
-        dir.deleteSync(recursive: true);
-        deleted++;
-      } on FileSystemException {
-        // best-effort
-      }
-    }
-    scanned++;
-    if (scanned % 16 == 0 || scanned == totalItems) {
-      progress?.send([scanned, totalItems]);
-    }
-  }
-
-  for (final blob in blobFiles) {
-    if (!referencedBlobs.contains(blob.path)) {
-      try {
-        blob.deleteSync();
-        deleted++;
-      } on FileSystemException {
-        // best-effort
-      }
-    }
-    scanned++;
-    if (scanned % 16 == 0 || scanned == totalItems) {
-      progress?.send([scanned, totalItems]);
-    }
-  }
-
-  // Clean empty ident dirs and prefix dirs
-  if (blobsDir.existsSync()) {
-    for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
-      for (final entity in prefixDir.listSync().whereType<Directory>()) {
-        if (entity.listSync().isEmpty) {
-          try {
-            entity.deleteSync();
-          } on FileSystemException {
-            // best-effort
-          }
-        }
-      }
-      if (prefixDir.listSync().isEmpty) {
-        try {
-          prefixDir.deleteSync();
-        } on FileSystemException {
-          // best-effort
-        }
-      }
-    }
-  }
-
-  // Prune temporary directories
-  for (final dir in assetsDir.listSync().whereType<Directory>()) {
-    final name = p.basename(dir.path);
-    if (name.startsWith("tmp_") || name.endsWith("_temp")) {
-      try {
-        dir.deleteSync(recursive: true);
-        deleted++;
-      } on FileSystemException {
-        // best-effort
-      }
-    }
-  }
-
-  return deleted;
-}
-
-Set<String> _collectReflogHashes(String checkoutId) {
-  final hashes = <String>{};
-
-  final metaFile = File(RepoPaths.checkoutMetaPath(checkoutId));
-  if (metaFile.existsSync()) {
-    try {
-      final json = jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>;
-      final meta = CheckoutMeta.fromJson(json);
-      hashes.add(meta.resourceSnapshotHash);
-    } on Exception {
-      // best-effort
-    }
-  }
-
-  final reflogFile = File(RepoPaths.checkoutReflogPath(checkoutId));
-  if (reflogFile.existsSync()) {
-    try {
-      final reflog = CheckoutReflog.fromBuffer(reflogFile.readAsBytesSync());
-      for (final entry in reflog.entries) {
-        if (entry.from.isNotEmpty) hashes.add(entry.from);
-        if (entry.to.isNotEmpty) hashes.add(entry.to);
-      }
-    } on Exception {
-      // best-effort
-    }
-  }
-
-  return hashes;
+  return assetStore.pruneSync(
+    activeSnapshotHashes: activeSnapshotHashes,
+    activeResourceIndexes: activeResourceIndexes,
+    onProgress: progress == null ? null : (scanned, total) => progress.send([scanned, total]),
+  );
 }

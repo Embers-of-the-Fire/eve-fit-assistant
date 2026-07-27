@@ -81,6 +81,9 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync("efa_verification_test_").path;
     PathProvider.documentsPath = tempDir;
     PathProvider.appSupportPath = tempDir;
+    PathProvider.tempPath = tempDir;
+    PathProvider.cachesPath = tempDir;
+    PathProvider.downloadsPath = null;
     checkoutId = "test-checkout-001";
   });
 

@@ -157,19 +157,35 @@ class CheckoutService {
 
   /// Returns all resource snapshot hashes referenced by this checkout's reflog
   /// (historical and current).
-  Set<String> collectReflogSnapshotHashes(String checkoutId) {
+  ///
+  /// Static so it can be called from isolates without constructing the full
+  /// service graph.
+  static Set<String> collectReflogSnapshotHashes(String checkoutId) {
     final hashes = <String>{};
-    final meta = readCheckoutMeta(checkoutId);
-    if (meta.isSome()) {
-      hashes.add(meta.toNullable()!.resourceSnapshotHash);
-    }
-    final reflog = readCheckoutReflog(checkoutId);
-    if (reflog.isSome()) {
-      for (final entry in reflog.toNullable()!.entries) {
-        if (entry.from.isNotEmpty) hashes.add(entry.from);
-        if (entry.to.isNotEmpty) hashes.add(entry.to);
+
+    final metaFile = File(RepoPaths.checkoutMetaPath(checkoutId));
+    if (metaFile.existsSync()) {
+      try {
+        final json = jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>;
+        hashes.add(CheckoutMeta.fromJson(json).resourceSnapshotHash);
+      } on Exception {
+        // best-effort
       }
     }
+
+    final reflogFile = File(RepoPaths.checkoutReflogPath(checkoutId));
+    if (reflogFile.existsSync()) {
+      try {
+        final reflog = CheckoutReflog.fromBuffer(reflogFile.readAsBytesSync());
+        for (final entry in reflog.entries) {
+          if (entry.from.isNotEmpty) hashes.add(entry.from);
+          if (entry.to.isNotEmpty) hashes.add(entry.to);
+        }
+      } on Exception {
+        // best-effort
+      }
+    }
+
     return hashes;
   }
 

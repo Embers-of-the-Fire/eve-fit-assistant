@@ -205,25 +205,35 @@ class AssetStore {
   /// Verifies every blob referenced by [resourceIndex] exists on disk with
   /// correct content hash.
   ///
+  /// [onProgress] receives (checked, total) blob counts as verification
+  /// proceeds.
+  ///
   /// Returns a list of missing or mismatched resource_id values.
-  IList<String> verifyResourceIndexSync(ResourceIndex resourceIndex) {
+  IList<String> verifyResourceIndexSync(
+    ResourceIndex resourceIndex, {
+    void Function(int checked, int total)? onProgress,
+  }) {
     final failures = <String>[];
+    final total = resourceIndex.entries.length;
+    var checked = 0;
     for (final entry in resourceIndex.entries) {
       final ihash = RepoHash.hashIdent(entry.resourceId);
       final assetPath = RepoPaths.blobPath(ihash, entry.contentHash);
       final file = File(assetPath);
       if (!file.existsSync()) {
         failures.add(entry.resourceId);
-        continue;
-      }
-      try {
-        final diskHash = RepoHash.hashContent(file.readAsBytesSync());
-        if (diskHash != entry.contentHash) {
+      } else {
+        try {
+          final diskHash = RepoHash.hashContent(file.readAsBytesSync());
+          if (diskHash != entry.contentHash) {
+            failures.add(entry.resourceId);
+          }
+        } on FileSystemException {
           failures.add(entry.resourceId);
         }
-      } on FileSystemException {
-        failures.add(entry.resourceId);
       }
+      checked++;
+      onProgress?.call(checked, total);
     }
     return failures.toIList();
   }
@@ -234,14 +244,16 @@ class AssetStore {
   /// [activeSnapshotHashes]. Deletes blobs not referenced by any
   /// [activeResourceIndexes]. Removes empty directories.
   ///
+  /// [onProgress] receives (scanned, total) item counts as pruning proceeds.
+  ///
   /// Returns the count of files deleted.
   int pruneSync({
     required Set<String> activeSnapshotHashes,
     required List<ResourceIndex> activeResourceIndexes,
+    void Function(int scanned, int total)? onProgress,
   }) {
     var deleted = 0;
 
-    // Collect referenced blobs
     final referencedBlobs = <String>{};
     for (final ri in activeResourceIndexes) {
       for (final entry in ri.entries) {
@@ -253,37 +265,55 @@ class AssetStore {
     final assetsDir = Directory(RepoPaths.assetsPath);
     if (!assetsDir.existsSync()) return 0;
 
-    // Prune resource snapshots
+    final snapshotDirs = <Directory>[];
     final resourcesDir = Directory(RepoPaths.resourcesDirPath);
     if (resourcesDir.existsSync()) {
-      for (final dir in resourcesDir.listSync().whereType<Directory>()) {
-        final name = p.basename(dir.path);
-        if (!activeSnapshotHashes.contains(name)) {
-          try {
-            dir.deleteSync(recursive: true);
-            deleted++;
-          } on FileSystemException {
-            // best-effort
-          }
-        }
-      }
+      snapshotDirs.addAll(resourcesDir.listSync().whereType<Directory>());
     }
 
-    // Prune blobs
+    final blobFiles = <File>[];
     final blobsDir = Directory(RepoPaths.blobsDirPath);
     if (blobsDir.existsSync()) {
       for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
         for (final entity in prefixDir.listSync().whereType<Directory>()) {
-          for (final blob in entity.listSync().whereType<File>()) {
-            if (!referencedBlobs.contains(blob.path)) {
-              try {
-                blob.deleteSync();
-                deleted++;
-              } on FileSystemException {
-                // best-effort
-              }
-            }
-          }
+          blobFiles.addAll(entity.listSync().whereType<File>());
+        }
+      }
+    }
+
+    final totalItems = snapshotDirs.length + blobFiles.length;
+    var scanned = 0;
+
+    for (final dir in snapshotDirs) {
+      final name = p.basename(dir.path);
+      if (!activeSnapshotHashes.contains(name)) {
+        try {
+          dir.deleteSync(recursive: true);
+          deleted++;
+        } on FileSystemException {
+          // best-effort
+        }
+      }
+      scanned++;
+      onProgress?.call(scanned, totalItems);
+    }
+
+    for (final blob in blobFiles) {
+      if (!referencedBlobs.contains(blob.path)) {
+        try {
+          blob.deleteSync();
+          deleted++;
+        } on FileSystemException {
+          // best-effort
+        }
+      }
+      scanned++;
+      onProgress?.call(scanned, totalItems);
+    }
+
+    if (blobsDir.existsSync()) {
+      for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
+        for (final entity in prefixDir.listSync().whereType<Directory>()) {
           if (entity.listSync().isEmpty) {
             try {
               entity.deleteSync();
@@ -302,7 +332,6 @@ class AssetStore {
       }
     }
 
-    // Prune temporary directories
     for (final dir in assetsDir.listSync().whereType<Directory>()) {
       final name = p.basename(dir.path);
       if (name.startsWith("tmp_") || name.endsWith("_temp")) {
