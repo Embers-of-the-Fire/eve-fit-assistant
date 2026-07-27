@@ -1,9 +1,6 @@
-import "dart:io";
-
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/data/proto/utils.pb.dart" as pb;
-import "package:eve_fit_assistant/storage/repo/providers.dart" show assetStaticRootProvider;
-import "package:eve_fit_assistant/utils/fp.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart" show imageAssetServiceProvider;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -29,36 +26,24 @@ class EveIcon extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nativeRoot = ref.watch(assetStaticRootProvider);
-    File? imagePath;
-    if (acceptGraphic && nativeRoot != null) {
-      imagePath = icon.graphicId.pbOptional
-          .andThen((t) {
-            final f = File("$nativeRoot/static/images/graphics/$t.png");
-            return f.existsSync() ? f : null;
-          })
-          .tryOrElse(() => null);
-    }
-    if (imagePath == null && acceptIcon && nativeRoot != null) {
-      imagePath = icon.iconId.pbOptional
-          .andThen((ic) {
-            final f = File("$nativeRoot/static/images/icons/$ic.png");
-            return f.existsSync() ? f : null;
-          })
-          .tryOrElse(() => null);
-    }
-    if (imagePath == null) {
+    final imageService = ref.watch(imageAssetServiceProvider);
+    final provider = imageService?.resolve(
+      icon,
+      acceptGraphic: acceptGraphic,
+      acceptIcon: acceptIcon,
+    );
+    if (provider == null) {
       return fallbackIcon ?? Image(image: ImageAssets.unknownIcon, width: size, height: size);
     }
     if (overlayIcon == null) {
-      return Image.file(imagePath, width: size, height: size);
+      return Image(image: provider, width: size, height: size);
     }
     return SizedBox(
       height: size,
       width: size,
       child: Stack(
         children: [
-          Image.file(imagePath, width: size),
+          Image(image: provider, width: size),
           Positioned(
             top: 0,
             left: 0,

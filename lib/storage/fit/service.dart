@@ -14,8 +14,8 @@ import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
-import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fpdart/fpdart.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -482,11 +482,14 @@ class NativeFitEngineService extends _$NativeFitEngineService {
   }
 
   /// Resolves the five engine `.pb2` files directly from the content-addressed
-  /// blob store using the resource index, bypassing the native directory tree.
-  static native_server.FitEnginePath _enginePathFromIndex(ResourceIndex ri) {
+  /// blob store using a [ResourceBlobProxy], bypassing any filesystem tree.
+  static native_server.FitEnginePath _enginePathFromProxy(ResourceBlobProxy proxy) {
     String resolve(String resourceId) {
-      final entry = ri.entries.firstWhere((e) => e.resourceId == resourceId);
-      return NativeDirResolver.resolveBlobPath(entry);
+      final path = proxy.resolvePath(resourceId);
+      if (path == null) {
+        throw StateError("Engine resource not found in index: $resourceId");
+      }
+      return path;
     }
 
     return native_server.FitEnginePath(
@@ -551,7 +554,8 @@ class NativeFitEngineService extends _$NativeFitEngineService {
 
     state = const NativeFitEngineState.initializing();
     try {
-      final path = _enginePathFromIndex(resourceIndex);
+      final proxy = ResourceBlobProxy(ref.read(assetStoreProvider), resourceIndex);
+      final path = _enginePathFromProxy(proxy);
       if (!ref.mounted) return;
       final engine = native_server.FitEngine(
         data: await native_server.FitEngineData.init(path: path),

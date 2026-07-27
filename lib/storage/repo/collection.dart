@@ -9,13 +9,10 @@ import "package:eve_fit_assistant/data/proto/groups.pb.dart" as pb_groups;
 import "package:eve_fit_assistant/data/proto/localizations.pb.dart";
 import "package:eve_fit_assistant/data/proto/market_groups.pb.dart" as pb_market;
 import "package:eve_fit_assistant/data/proto/meta_groups.pb.dart" as pb_meta;
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/type_materials.pb.dart" as pb_materials;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
-import "package:eve_fit_assistant/storage/repo/assets.dart";
-import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
-import "package:eve_fit_assistant/storage/repo/providers.dart"
-    show activeCheckoutProvider, assetStoreProvider;
+import "package:eve_fit_assistant/storage/repo/providers.dart" show resourceBlobProxyProvider;
+import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/foundation.dart" show visibleForTesting;
@@ -33,21 +30,11 @@ part "collection.g.dart";
 /// re-builds on activation.
 @riverpodSingleton
 RepoCollectionService? repoCollection(Ref ref) {
-  final activeOpt = ref.watch(activeCheckoutProvider);
-  if (activeOpt.isNone()) return null;
-  final active = activeOpt.toNullable()!;
-  if (active.resourceSnapshotHash.isEmpty) return null;
-
-  final snapshotHash = active.resourceSnapshotHash;
-
-  final riOpt = ref.watch(assetStoreProvider).readResourceIndexSync(snapshotHash);
-  if (riOpt.isNone()) return null;
-  final ri = riOpt.toNullable()!;
-
-  final assetStore = ref.read(assetStoreProvider);
+  final proxy = ref.watch(resourceBlobProxyProvider);
+  if (proxy == null) return null;
 
   try {
-    return RepoCollectionService._fromResourceIndex(ri, assetStore);
+    return RepoCollectionService._fromProxy(proxy);
   } on StateError {
     return null;
   }
@@ -139,27 +126,9 @@ class RepoCollectionService {
   }
 
   /// Builds a [RepoCollectionService] by reading protobuf files from the
-  /// blob store using [resourceIndex] and [assetStore].
-  factory RepoCollectionService._fromResourceIndex(
-    ResourceIndex resourceIndex,
-    AssetStore assetStore,
-  ) {
-    // Build a lookup map from resource_id → content_hash
-    final lookup = <String, String>{};
-    for (final entry in resourceIndex.entries) {
-      lookup[entry.resourceId] = entry.contentHash;
-    }
-
-    // Read collection.pb2
-    final collectionIdent = BlobIdent.resource("static/collection.pb2");
-    final collectionContentHash = lookup[collectionIdent.uri];
-    if (collectionContentHash == null) {
-      throw StateError("No collection.pb2 entry in ResourceIndex");
-    }
-    final collectionBytes = assetStore.readBlobSync(
-      collectionIdent.identHash,
-      collectionContentHash,
-    );
+  /// blob store via [proxy].
+  factory RepoCollectionService._fromProxy(ResourceBlobProxy proxy) {
+    final collectionBytes = proxy.read("resource://static/collection.pb2");
     if (collectionBytes.isNone()) {
       throw StateError("collection.pb2 not found in blob store");
     }
@@ -226,11 +195,7 @@ class RepoCollectionService {
     // Build localization maps
     final localizedNames = <String, IMap<int, String>>{};
     for (final locale in ["en", "zh"]) {
-      final locIdent = BlobIdent.resource("localization/localization_$locale.pb2");
-      final locContentHash = lookup[locIdent.uri];
-      if (locContentHash == null) continue;
-
-      final locBytes = assetStore.readBlobSync(locIdent.identHash, locContentHash);
+      final locBytes = proxy.read("resource://localization/localization_$locale.pb2");
       if (locBytes.isSome()) {
         final localization = Localization.fromBuffer(locBytes.toNullable()!);
         localizedNames[locale] = IMap.fromEntries(
@@ -326,11 +291,11 @@ class RepoCollectionService {
   /// locale or key is absent.
   String getLocalizedName(int id, String locale) => _localizedNames[locale]?[id] ?? "";
 
-  /// Returns the asset store identifier for the icon of [typeId] at the given
-  /// [size] (e.g. 32, 64, 128, 256), in `"identHash:contentHash"` format.
+  /// Returns the logical resource path for the icon of [typeId] at the given
+  /// [size] (e.g. 32, 64, 128, 256).
   ///
-  /// Consumers should resolve the returned value through an [AssetStore] or the
-  /// `NativeDirResolver` to obtain a displayable file path or widget.
+  /// Consumers should resolve the returned value through an `ImageAssetService`
+  /// to obtain a displayable image provider.
   String getIconPath(int typeId, int size) {
     final type = _types[typeId];
     if (type == null) return "";

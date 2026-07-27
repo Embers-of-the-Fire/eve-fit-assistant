@@ -16,14 +16,15 @@ import "package:eve_fit_assistant/storage/repo/data_update_service.dart";
 import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
+import "package:eve_fit_assistant/storage/repo/image_asset.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
-import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/release_sync.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/repo_error.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
+import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:eve_fit_assistant/storage/repo/service.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
@@ -53,8 +54,23 @@ SchemaVersionService schemaVersionService(Ref ref) => const SchemaVersionService
 AssetStore assetStore(Ref ref) => const AssetStore();
 
 @riverpodSingleton
-NativeDirResolver nativeDirResolver(Ref ref) =>
-    NativeDirResolver(assetStore: ref.watch(assetStoreProvider));
+ResourceBlobProxy? resourceBlobProxy(Ref ref) {
+  final activeOpt = ref.watch(activeCheckoutProvider);
+  if (activeOpt.isNone()) return null;
+  final active = activeOpt.toNullable()!;
+  if (active.resourceSnapshotHash.isEmpty) return null;
+
+  final riOpt = ref.watch(assetStoreProvider).readResourceIndexSync(active.resourceSnapshotHash);
+  if (riOpt.isNone()) return null;
+  return ResourceBlobProxy(ref.watch(assetStoreProvider), riOpt.toNullable()!);
+}
+
+@riverpodSingleton
+ImageAssetService? imageAssetService(Ref ref) {
+  final proxy = ref.watch(resourceBlobProxyProvider);
+  if (proxy == null) return null;
+  return ImageAssetService(proxy, ref.watch(assetStoreProvider));
+}
 
 @riverpodSingleton
 DiffEngine diffEngine(Ref ref) => const DiffEngine();
@@ -156,7 +172,6 @@ DataUpdateService dataUpdateService(Ref ref) => DataUpdateService(
   channelService: ref.watch(channelServiceProvider),
   checkoutService: ref.watch(checkoutServiceProvider),
   assetStore: ref.watch(assetStoreProvider),
-  nativeDirResolver: ref.watch(nativeDirResolverProvider),
   remoteCatalogService: ref.watch(remoteCatalogServiceProvider),
 );
 
@@ -244,14 +259,6 @@ class RepoStateNotifier extends _$RepoStateNotifier {
         if (activeId != null) {
           final entry = registry.checkouts[activeId];
           if (entry != null) {
-            // Prepare native dir if resource index is available
-            final snapshotHash = entry.resourceSnapshotHash;
-            final ri = ref.read(assetStoreProvider).readResourceIndexSync(snapshotHash);
-            if (ri.isSome()) {
-              await ref
-                  .read(nativeDirResolverProvider)
-                  .prepareNativeDir(snapshotHash, ri.toNullable()!);
-            }
             state = RepoState.active(entry: entry);
           } else {
             state = RepoState.error(
@@ -525,20 +532,6 @@ class CheckoutUpdateController extends _$CheckoutUpdateController {
 }
 
 // ── Checkout-derived providers ─────────────────────────────────────────────────
-
-/// The absolute path to the resolved `native/` directory for the Rust engine,
-/// or `null` if no active checkout is installed.
-///
-/// When the active checkout changes, this provider invalidates so that the
-/// engine can re-initialize against the new resolved directory.
-@riverpodSingleton
-String? assetStaticRoot(Ref ref) {
-  final activeOpt = ref.watch(activeCheckoutProvider);
-  if (activeOpt.isNone()) return null;
-  final active = activeOpt.toNullable()!;
-  if (active.resourceSnapshotHash.isEmpty) return null;
-  return ref.read(nativeDirResolverProvider).resolvePathFromSnapshot(active.resourceSnapshotHash);
-}
 
 /// All installed (active) checkout IDs from the checkout registry.
 ///
