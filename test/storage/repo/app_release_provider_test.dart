@@ -51,7 +51,8 @@ void main() {
     mockReleaseSyncService = MockReleaseSyncService();
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await versionStore.ensureSynced;
     final dir = Directory(tempDir);
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
