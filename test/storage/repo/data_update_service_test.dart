@@ -14,7 +14,6 @@ import "package:eve_fit_assistant/storage/repo/data_update_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
-import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/service.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -31,8 +30,6 @@ class MockCheckoutService extends Mock implements CheckoutService {}
 
 class MockAssetStore extends Mock implements AssetStore {}
 
-class MockNativeDirResolver extends Mock implements NativeDirResolver {}
-
 class MockRemoteCatalogService extends Mock implements RemoteCatalogService {}
 
 class MockCheckoutRegistryService extends Mock implements CheckoutRegistryService {}
@@ -43,7 +40,6 @@ void main() {
   late MockChannelService mockChannelService;
   late MockCheckoutService mockCheckoutService;
   late MockAssetStore mockAssetStore;
-  late MockNativeDirResolver mockNativeDirResolver;
   late MockRemoteCatalogService mockRemoteCatalogService;
   late MockCheckoutRegistryService mockRegistryService;
 
@@ -83,7 +79,6 @@ void main() {
     mockChannelService = MockChannelService();
     mockCheckoutService = MockCheckoutService();
     mockAssetStore = MockAssetStore();
-    mockNativeDirResolver = MockNativeDirResolver();
     mockRemoteCatalogService = MockRemoteCatalogService();
     mockRegistryService = MockCheckoutRegistryService();
 
@@ -105,7 +100,6 @@ void main() {
     channelService: mockChannelService,
     checkoutService: mockCheckoutService,
     assetStore: mockAssetStore,
-    nativeDirResolver: mockNativeDirResolver,
     remoteCatalogService: mockRemoteCatalogService,
   );
 
@@ -382,16 +376,12 @@ void main() {
             ..size = Int64(5),
         );
       when(() => mockAssetStore.readResourceIndexSync("new_snapshot_hash")).thenReturn(Some(ri));
-      when(
-        () => mockNativeDirResolver.prepareNativeDir(any(), any()),
-      ).thenAnswer((_) async => "/tmp/native/new_snapshot_hash");
 
       final service = makeService();
       final result = await service.applyCheckoutUpdate("checkout-1", onProgress: (_, _) {});
 
       expect(result.isRight(), isTrue);
       expect(result.getRight().toNullable(), "new_snapshot_hash");
-      verify(() => mockNativeDirResolver.prepareNativeDir("new_snapshot_hash", ri)).called(1);
     });
 
     test("returns Left when resource index is missing after update", () async {
@@ -645,10 +635,6 @@ void main() {
             ..size = Int64(5),
         );
       when(() => mockAssetStore.readResourceIndexSync("new_snapshot_hash")).thenReturn(Some(ri));
-      when(
-        () => mockNativeDirResolver.prepareNativeDir(any(), any()),
-      ).thenAnswer((_) async => "/tmp/native/new_snapshot_hash");
-      when(() => mockNativeDirResolver.cleanup(any())).thenReturn(null);
       when(() => mockRepoService.prune()).thenReturn(0);
 
       final service = makeService();
@@ -660,7 +646,6 @@ void main() {
       expect(result.skipped, isEmpty);
       expect(progressCalls, isNotEmpty);
       verify(() => mockRepoService.prune()).called(1);
-      verify(() => mockNativeDirResolver.cleanup(any())).called(1);
     });
 
     test("continues on failure and reports summary", () async {
@@ -714,10 +699,6 @@ void main() {
             ..size = Int64(5),
         );
       when(() => mockAssetStore.readResourceIndexSync("new_snapshot_hash")).thenReturn(Some(ri));
-      when(
-        () => mockNativeDirResolver.prepareNativeDir(any(), any()),
-      ).thenAnswer((_) async => "/tmp/native/new_snapshot_hash");
-      when(() => mockNativeDirResolver.cleanup(any())).thenReturn(null);
       when(() => mockRepoService.prune()).thenReturn(0);
 
       final service = makeService();
@@ -754,7 +735,6 @@ void main() {
           ),
         ),
       );
-      when(() => mockNativeDirResolver.cleanup(any())).thenReturn(null);
       when(() => mockRepoService.prune()).thenReturn(0);
 
       final service = makeService();

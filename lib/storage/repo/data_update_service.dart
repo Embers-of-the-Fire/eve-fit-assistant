@@ -4,7 +4,6 @@ import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
-import "package:eve_fit_assistant/storage/repo/native_dir.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/service.dart";
 import "package:fpdart/fpdart.dart";
@@ -52,7 +51,6 @@ class DataUpdateService {
     required this.channelService,
     required this.checkoutService,
     required this.assetStore,
-    required this.nativeDirResolver,
     required this.remoteCatalogService,
   });
 
@@ -60,7 +58,6 @@ class DataUpdateService {
   final ChannelService channelService;
   final CheckoutService checkoutService;
   final AssetStore assetStore;
-  final NativeDirResolver nativeDirResolver;
   final RemoteCatalogService remoteCatalogService;
 
   Future<DataUpdateCheckResult> checkForCheckout(String checkoutId) async {
@@ -224,8 +221,6 @@ class DataUpdateService {
       return const Left("Updated snapshot is missing its resource index");
     }
 
-    await nativeDirResolver.prepareNativeDir(newSnapshotHash, resourceIndex.toNullable()!);
-
     return Right(newSnapshotHash);
   }
 
@@ -318,23 +313,9 @@ class DataUpdateService {
       }
     }
 
-    final activeSnapshotHashes = _allSnapshotHashes();
-    nativeDirResolver.cleanup(activeSnapshotHashes);
     repoService.prune();
 
     return BatchUpdateResult(successes: successes, failures: failures, skipped: skipped);
-  }
-
-  Set<String> _allSnapshotHashes() {
-    final hashes = <String>{};
-    repoService.checkoutRegistry.readRegistry().fold(() {}, (r) {
-      for (final entry in r.checkouts.values) {
-        if (entry.resourceSnapshotHash.isNotEmpty) {
-          hashes.add(entry.resourceSnapshotHash);
-        }
-      }
-    });
-    return hashes;
   }
 }
 
