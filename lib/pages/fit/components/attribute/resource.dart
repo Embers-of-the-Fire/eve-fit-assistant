@@ -22,36 +22,25 @@ class Resource extends StatelessWidget {
           children: [
             _ResourceRow(icon: ImageAssets.attrCpu, used: cpuUse, all: cpuCap, unit: "tf"),
             _ResourceRow(icon: ImageAssets.attrPower, used: powerUse, all: powerCap, unit: "MW"),
-            Table(
-              columnWidths: const {
-                0: FixedColumnWidth(28),
-                1: FlexColumnWidth(),
-                2: FixedColumnWidth(10),
-                3: FixedColumnWidth(28),
-                4: FlexColumnWidth(),
-              },
-              children: <TableRow>[
-                TableRow(
-                  children: [
-                    const Image(image: ImageAssets.attrRig, height: 28),
-                    ResourceCompare(
-                      align: .end,
-                      warning: false,
-                      bar: true,
-                      used: ship.hull.getAttribute(EveConstExtendedAttrID.upgradeUsed),
-                      all: ship.hull.getAttribute(EveConstAttrID.upgradeCapacity),
-                    ),
-                    const SizedBox.shrink(),
-                    const Image(image: ImageAssets.attrWeaponDrone, height: 28),
-                    ResourceCompare(
-                      align: .end,
-                      warning: false,
-                      bar: true,
-                      used: ship.hull.getAttribute(EveConstAttrID.droneBandwidthLoad),
-                      all: ship.hull.getAttribute(EveConstAttrID.droneBandwidth),
-                      unit: "MB/s",
-                    ),
-                  ],
+            Row(
+              spacing: 10,
+              children: [
+                Expanded(
+                  child: _ResourceRow(
+                    icon: ImageAssets.attrRig,
+                    warning: false,
+                    used: ship.hull.getAttribute(EveConstExtendedAttrID.upgradeUsed),
+                    all: ship.hull.getAttribute(EveConstAttrID.upgradeCapacity),
+                  ),
+                ),
+                Expanded(
+                  child: _ResourceRow(
+                    icon: ImageAssets.attrWeaponDrone,
+                    warning: false,
+                    used: ship.hull.getAttribute(EveConstAttrID.droneBandwidthLoad),
+                    all: ship.hull.getAttribute(EveConstAttrID.droneBandwidth),
+                    unit: "MB/s",
+                  ),
                 ),
               ],
             ),
@@ -63,12 +52,19 @@ class Resource extends StatelessWidget {
 }
 
 class _ResourceRow extends StatelessWidget {
-  const _ResourceRow({required this.icon, required this.used, required this.all, this.unit});
+  const _ResourceRow({
+    required this.icon,
+    required this.used,
+    required this.all,
+    this.unit,
+    this.warning = true,
+  });
 
   final ImageProvider icon;
   final double used;
   final double all;
   final String? unit;
+  final bool warning;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -77,7 +73,14 @@ class _ResourceRow extends StatelessWidget {
       Image(image: icon, height: 28),
       const SizedBox(width: 12),
       Expanded(
-        child: ResourceCompare(used: used, all: all, unit: unit, align: .end, bar: true),
+        child: ResourceCompare(
+          used: used,
+          all: all,
+          unit: unit,
+          align: .end,
+          warning: warning,
+          bar: true,
+        ),
       ),
     ],
   );
