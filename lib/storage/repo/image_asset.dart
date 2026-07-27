@@ -69,22 +69,29 @@ class BlobImageProvider extends ImageProvider<BlobImageKey> {
 /// Resolves EVE image assets (icons and graphics) from the content-addressed
 /// blob store via a [ResourceBlobProxy].
 ///
-/// Returns [ImageProvider] instances backed by [BlobImageProvider], or `null`
-/// when the requested image does not exist in the active resource index.
+/// Returns [ImageProvider<BlobImageKey>] instances backed by
+/// [BlobImageProvider], or `null` when the requested image does not exist in
+/// the active resource index.
 class ImageAssetService {
   const ImageAssetService(this._proxy, this._assetStore);
 
   final ResourceBlobProxy _proxy;
   final AssetStore _assetStore;
 
-  ImageProvider? resolveIcon(int iconId) => _resolve("resource://static/images/icons/$iconId.png");
+  ImageProvider<BlobImageKey>? resolveIcon(int iconId) =>
+      _resolve("resource://static/images/icons/$iconId.png");
 
-  ImageProvider? resolveGraphic(int graphicId) =>
+  ImageProvider<BlobImageKey>? resolveGraphic(int graphicId) =>
       _resolve("resource://static/images/graphics/$graphicId.png");
 
-  ImageProvider? resolveByPath(String resourcePath) => _resolve("resource://$resourcePath");
+  ImageProvider<BlobImageKey>? resolveByPath(String resourcePath) =>
+      _resolve("resource://$resourcePath");
 
-  ImageProvider? resolve(pb.Icon icon, {bool acceptGraphic = true, bool acceptIcon = true}) {
+  ImageProvider<BlobImageKey>? resolve(
+    pb.Icon icon, {
+    bool acceptGraphic = true,
+    bool acceptIcon = true,
+  }) {
     if (acceptGraphic) {
       final graphicId = icon.graphicId.pbOptional;
       if (graphicId != null) {
@@ -101,7 +108,7 @@ class ImageAssetService {
     return null;
   }
 
-  ImageProvider? _resolve(String resourceId) {
+  ImageProvider<BlobImageKey>? _resolve(String resourceId) {
     final ident = _proxy.ident(resourceId);
     if (ident == null) return null;
     if (!_assetStore.blobExistsSync(ident.identHash, ident.contentHash)) return null;
