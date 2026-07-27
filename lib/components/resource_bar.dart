@@ -49,7 +49,7 @@ class ResourceBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fraction = all <= 0 ? 0.0 : (used / all).clamp(0.0, 1.0);
+    final fraction = all <= 0 ? (used > all ? 1.0 : 0.0) : (used / all).clamp(0.0, 1.0);
     final fill = usedColor ?? resourceUsageColor(used, all, warning: warning);
     final track = trackColor ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15);
 
