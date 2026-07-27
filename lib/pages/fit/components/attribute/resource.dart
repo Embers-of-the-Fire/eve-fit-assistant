@@ -20,20 +20,8 @@ class Resource extends StatelessWidget {
         child: Column(
           spacing: 10,
           children: [
-            Row(
-              mainAxisAlignment: .spaceBetween,
-              children: [
-                const Image(image: ImageAssets.attrCpu, height: 28),
-                ResourceCompare(used: cpuUse, all: cpuCap, unit: "tf"),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: .spaceBetween,
-              children: [
-                const Image(image: ImageAssets.attrPower, height: 28),
-                ResourceCompare(used: powerUse, all: powerCap, unit: "MW"),
-              ],
-            ),
+            _ResourceRow(icon: ImageAssets.attrCpu, used: cpuUse, all: cpuCap, unit: "tf"),
+            _ResourceRow(icon: ImageAssets.attrPower, used: powerUse, all: powerCap, unit: "MW"),
             Table(
               columnWidths: const {
                 0: FixedColumnWidth(28),
@@ -42,7 +30,6 @@ class Resource extends StatelessWidget {
                 3: FixedColumnWidth(28),
                 4: FlexColumnWidth(),
               },
-              defaultVerticalAlignment: .middle,
               children: <TableRow>[
                 TableRow(
                   children: [
@@ -50,6 +37,7 @@ class Resource extends StatelessWidget {
                     ResourceCompare(
                       align: .end,
                       warning: false,
+                      bar: true,
                       used: ship.hull.getAttribute(EveConstExtendedAttrID.upgradeUsed),
                       all: ship.hull.getAttribute(EveConstAttrID.upgradeCapacity),
                     ),
@@ -58,6 +46,7 @@ class Resource extends StatelessWidget {
                     ResourceCompare(
                       align: .end,
                       warning: false,
+                      bar: true,
                       used: ship.hull.getAttribute(EveConstAttrID.droneBandwidthLoad),
                       all: ship.hull.getAttribute(EveConstAttrID.droneBandwidth),
                       unit: "MB/s",
@@ -71,4 +60,25 @@ class Resource extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ResourceRow extends StatelessWidget {
+  const _ResourceRow({required this.icon, required this.used, required this.all, this.unit});
+
+  final ImageProvider icon;
+  final double used;
+  final double all;
+  final String? unit;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: .start,
+    children: [
+      Image(image: icon, height: 28),
+      const SizedBox(width: 12),
+      Expanded(
+        child: ResourceCompare(used: used, all: all, unit: unit, align: .end, bar: true),
+      ),
+    ],
+  );
 }
