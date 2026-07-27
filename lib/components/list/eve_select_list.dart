@@ -1,8 +1,10 @@
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/select_list.dart";
+import "package:eve_fit_assistant/components/skeleton.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/data_readiness.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -45,6 +47,13 @@ class EveSelectList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final collectionLoading = ref.watch(
+      dataReadinessProvider.select((DataReadinessState s) => s is DataReadinessLoading),
+    );
+    if (ref.read(repoCollectionProvider) == null && collectionLoading) {
+      return const SelectListSkeleton();
+    }
+
     List<EveSelectListRoot> fetchChildren(EveSelectListRoot root, WidgetRef ref) {
       final List<EveSelectListRoot> children = root.when(
         category: (categoryId) {

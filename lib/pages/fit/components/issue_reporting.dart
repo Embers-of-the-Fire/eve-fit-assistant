@@ -30,6 +30,8 @@ List<_FitIssue> _collectFitIssuesForSection(
   FitContext fitContext,
   _FitIssueSection section,
 ) {
+  if (ref.read(repoCollectionProvider) == null) return const [];
+
   final fit = fitContext.fit;
   final issues = <_FitIssue>[];
 
