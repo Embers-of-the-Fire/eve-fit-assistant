@@ -86,12 +86,19 @@ class ChannelService {
   /// - channels/{channel}/server.pb2      — ServerIndex
   /// - channels/{channel}/resources.pb2   — GenerationResources
   /// - channels/{channel}/releases.pb2    — GenerationPointer (releases)
-  Future<Either<String, Unit>> syncChannelGeneration(String channelName) async {
+  Future<Either<String, Unit>> syncChannelGeneration(
+    String channelName, {
+    void Function(int current, int total)? onProgress,
+  }) async {
+    const totalSteps = 4;
+    onProgress?.call(0, totalSteps);
+
     // Fetch head metadata to get the generation hash
     final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) {
       final err = headResult.getLeft().toNullable()!;
       if (err is CatalogNotFoundError) {
+        onProgress?.call(totalSteps, totalSteps);
         return const Right(unit); // Channel not yet initialized on remote
       }
       return Left(switch (err) {
@@ -105,6 +112,7 @@ class ChannelService {
 
     // Write local channel head metadata
     _writeLocalHeadMeta(channelName, head);
+    onProgress?.call(1, totalSteps);
 
     // Fetch and persist all generation-level files independently.
     // Failure of one does not abort the others.
@@ -113,18 +121,21 @@ class ChannelService {
       channelName: channelName,
       path: RepoPaths.channelServerIndexPath(channelName),
     );
+    onProgress?.call(2, totalSteps);
 
     await _fetchAndPersistBytes(
       fetcher: () => remoteCatalogService.fetchGenerationResources(generationHash),
       channelName: channelName,
       path: RepoPaths.channelResourcesPath(channelName),
     );
+    onProgress?.call(3, totalSteps);
 
     await _fetchAndPersistBytes(
       fetcher: () => remoteCatalogService.fetchGenerationPointer(generationHash),
       channelName: channelName,
       path: RepoPaths.channelReleasesPath(channelName),
     );
+    onProgress?.call(totalSteps, totalSteps);
 
     return const Right(unit);
   }

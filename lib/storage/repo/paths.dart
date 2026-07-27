@@ -26,7 +26,7 @@ class RepoPaths {
     if (identHash.length < 2) {
       throw ArgumentError.value(identHash, "identHash", "Must be at least 2 characters");
     }
-    return p.join(assetsPath, "blobs", identHash.substring(0, 2), identHash, contentHash);
+    return p.join(blobsDirPath, identHash.substring(0, 2), identHash, contentHash);
   }
 
   /// Directory containing all content versions for a single ident_hash.
@@ -34,14 +34,19 @@ class RepoPaths {
     if (identHash.length < 2) {
       throw ArgumentError.value(identHash, "identHash", "Must be at least 2 characters");
     }
-    return p.join(assetsPath, "blobs", identHash.substring(0, 2), identHash);
+    return p.join(blobsDirPath, identHash.substring(0, 2), identHash);
   }
+
+  /// Root directory for the shared blob store (`assets/blobs/`).
+  static String get blobsDirPath => p.join(assetsPath, "blobs");
+
+  /// Root directory for resource snapshots (`assets/resources/`).
+  static String get resourcesDirPath => p.join(assetsPath, "resources");
 
   // ── assets/resources/ ───────────────────────────────────────────────────────
 
   /// Directory for a single resource snapshot.
-  static String resourceSnapshotPath(String snapshotHash) =>
-      p.join(assetsPath, "resources", snapshotHash);
+  static String resourceSnapshotPath(String snapshotHash) => p.join(resourcesDirPath, snapshotHash);
 
   /// metadata.json for a resource snapshot.
   static String resourceSnapshotMetaPath(String snapshotHash) =>

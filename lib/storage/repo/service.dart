@@ -56,8 +56,10 @@ class RepoService {
   /// Fetches and persists all generation-level files for [channelName].
   ///
   /// Best-effort: individual file failures are logged but do not abort the sync.
-  Future<Either<String, Unit>> syncChannelGeneration(String channelName) =>
-      channelService.syncChannelGeneration(channelName);
+  Future<Either<String, Unit>> syncChannelGeneration(
+    String channelName, {
+    void Function(int current, int total)? onProgress,
+  }) => channelService.syncChannelGeneration(channelName, onProgress: onProgress);
 
   // ── Checkout lifecycle ─────────────────────────────────────────────────────
 
@@ -163,11 +165,33 @@ class RepoService {
 
   // ── Verification & GC ──────────────────────────────────────────────────────
 
+  /// Whether a verification or prune operation is currently in flight.
+  ///
+  /// UI code can watch this to disable actions instead of catching [StateError].
+  bool get isVerificationRunning => verificationService.isRunning;
+
   /// Verifies all checkouts' integrity.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
   IList<VerificationIssue> verify() => verificationService.verify();
 
+  /// Verifies all checkouts' integrity in a background isolate.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
+  Future<IList<VerificationIssue>> verifyAsync({
+    void Function(int current, int total)? onProgress,
+  }) => verificationService.verifyAsync(onProgress: onProgress);
+
   /// Prunes unreferenced data.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
   int prune() => verificationService.prune();
+
+  /// Prunes unreferenced data in a background isolate.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
+  Future<int> pruneAsync({void Function(int current, int total)? onProgress}) =>
+      verificationService.pruneAsync(onProgress: onProgress);
 
   /// Recovers from interrupted writes by deleting orphaned temp files and
   /// directories left behind by atomic-write patterns that crashed mid-rename.
@@ -177,8 +201,12 @@ class RepoService {
   void recoverPartialDownloads() => assetStore.recoverSync();
 
   /// Verifies and repairs by re-downloading missing files.
-  Future<IList<VerificationIssue>> verifyAndRepair({required Channel channel}) =>
-      verificationService.repairAll(channel: channel);
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
+  Future<IList<VerificationIssue>> verifyAndRepair({
+    required Channel channel,
+    void Function(int current, int total)? onProgress,
+  }) => verificationService.repairAll(channel: channel, onProgress: onProgress);
 
   /// Wipes all downloaded storage: the content-addressed asset store (blobs and
   /// resource snapshots), channel metadata, and the checkout registry.
