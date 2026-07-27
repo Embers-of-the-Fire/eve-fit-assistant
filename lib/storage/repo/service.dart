@@ -165,18 +165,31 @@ class RepoService {
 
   // ── Verification & GC ──────────────────────────────────────────────────────
 
+  /// Whether a verification or prune operation is currently in flight.
+  ///
+  /// UI code can watch this to disable actions instead of catching [StateError].
+  bool get isVerificationRunning => verificationService.isRunning;
+
   /// Verifies all checkouts' integrity.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
   IList<VerificationIssue> verify() => verificationService.verify();
 
   /// Verifies all checkouts' integrity in a background isolate.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
   Future<IList<VerificationIssue>> verifyAsync({
     void Function(int current, int total)? onProgress,
   }) => verificationService.verifyAsync(onProgress: onProgress);
 
   /// Prunes unreferenced data.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
   int prune() => verificationService.prune();
 
   /// Prunes unreferenced data in a background isolate.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
   Future<int> pruneAsync({void Function(int current, int total)? onProgress}) =>
       verificationService.pruneAsync(onProgress: onProgress);
 
@@ -188,6 +201,8 @@ class RepoService {
   void recoverPartialDownloads() => assetStore.recoverSync();
 
   /// Verifies and repairs by re-downloading missing files.
+  ///
+  /// Throws [StateError] if another storage operation is already in flight.
   Future<IList<VerificationIssue>> verifyAndRepair({
     required Channel channel,
     void Function(int current, int total)? onProgress,
