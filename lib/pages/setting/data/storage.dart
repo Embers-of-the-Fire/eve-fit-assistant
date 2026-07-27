@@ -68,7 +68,14 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
   String? _forceSyncResult;
   bool _clearLoading = false;
   bool _isOperationRunning = false;
-  double? _operationProgress;
+  final _operationProgress = ValueNotifier<double?>(null);
+  int _lastProgressPercent = -1;
+
+  @override
+  void dispose() {
+    _operationProgress.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -234,8 +241,19 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     if (!_isOperationRunning) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: LinearProgressIndicator(value: _operationProgress),
+      child: ValueListenableBuilder<double?>(
+        valueListenable: _operationProgress,
+        builder: (context, value, _) => LinearProgressIndicator(value: value),
+      ),
     );
+  }
+
+  void _updateProgress(int current, int total) {
+    if (total <= 0) return;
+    final percent = (current * 100) ~/ total;
+    if (percent == _lastProgressPercent) return;
+    _lastProgressPercent = percent;
+    _operationProgress.value = current / total;
   }
 
   Widget _buildVerifyResults() {
@@ -251,46 +269,23 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         children: [
           ...issues.map((issue) {
             final hash = _truncateHash(issue.checkoutId);
-            if (issue is VerificationMissingFiles) {
-              final missingCount = issue.missingIdents.length;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text("$hash: ${l10n.storageMissingFiles(count: missingCount)}"),
-                    ),
-                  ],
-                ),
-              );
-            }
-            if (issue is VerificationNoMeta) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text("$hash: ${l10n.storageNoManifest}")),
-                  ],
-                ),
-              );
-            }
-            if (issue is VerificationPartialDownload) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.downloading_outlined, color: Colors.orange, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text("$hash: ${issue.reason}")),
-                  ],
-                ),
-              );
-            }
-            return const SizedBox.shrink();
+            return switch (issue) {
+              VerificationMissingFiles(:final missingIdents) => _issueRow(
+                Icons.warning_amber,
+                Colors.orange,
+                "$hash: ${l10n.storageMissingFiles(count: missingIdents.length)}",
+              ),
+              VerificationNoMeta() => _issueRow(
+                Icons.error_outline,
+                Colors.red,
+                "$hash: ${l10n.storageNoManifest}",
+              ),
+              VerificationPartialDownload(:final reason) => _issueRow(
+                Icons.downloading_outlined,
+                Colors.orange,
+                "$hash: $reason",
+              ),
+            };
           }),
           const SizedBox(height: 8),
           SizedBox(
@@ -312,45 +307,58 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     );
   }
 
+  void _showOperationError(Object error) {
+    if (!mounted) return;
+    final msg = context.l10n.storageOperationError(message: error.toString());
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 3)));
+  }
+
+  Widget _issueRow(IconData icon, Color color, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text)),
+      ],
+    ),
+  );
+
   Future<void> _runVerify() async {
-    if (_isOperationRunning) return;
+    if (_isOperationRunning || ref.read(verificationServiceProvider).isRunning) return;
     setState(() {
       _isOperationRunning = true;
       _verifyLoading = true;
       _verifyResult = null;
-      _operationProgress = 0.0;
     });
+    _lastProgressPercent = -1;
+    _operationProgress.value = 0.0;
     try {
-      final issues = await ref
-          .read(repoServiceProvider)
-          .verifyAsync(
-            onProgress: (current, total) {
-              if (mounted && total > 0) {
-                setState(() => _operationProgress = current / total);
-              }
-            },
-          );
+      final issues = await ref.read(repoServiceProvider).verifyAsync(onProgress: _updateProgress);
       if (mounted) setState(() => _verifyResult = issues);
-    } on StateError {
-      // Another operation was already in progress at the service level.
+    } catch (e) {
+      _showOperationError(e);
     } finally {
+      _operationProgress.value = null;
       if (mounted) {
         setState(() {
           _verifyLoading = false;
           _isOperationRunning = false;
-          _operationProgress = null;
         });
       }
     }
   }
 
   Future<void> _runRepair() async {
-    if (_isOperationRunning) return;
+    if (_isOperationRunning || ref.read(verificationServiceProvider).isRunning) return;
     setState(() {
       _isOperationRunning = true;
       _repairLoading = true;
-      _operationProgress = 0.0;
     });
+    _lastProgressPercent = -1;
+    _operationProgress.value = 0.0;
     try {
       final active = ref.read(currentActiveProvider);
       final channelName =
@@ -358,14 +366,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       final channel = Channel.tryParse(channelName) ?? Channel.defaultChannel;
       final unresolved = await ref
           .read(repoServiceProvider)
-          .verifyAndRepair(
-            channel: channel,
-            onProgress: (current, total) {
-              if (mounted && total > 0) {
-                setState(() => _operationProgress = current / total);
-              }
-            },
-          );
+          .verifyAndRepair(channel: channel, onProgress: _updateProgress);
       if (mounted) {
         setState(() => _verifyResult = unresolved);
         final l10n = context.l10n;
@@ -376,21 +377,21 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
           context,
         ).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
       }
-    } on StateError {
-      // Another operation was already in progress at the service level.
+    } catch (e) {
+      _showOperationError(e);
     } finally {
+      _operationProgress.value = null;
       if (mounted) {
         setState(() {
           _repairLoading = false;
           _isOperationRunning = false;
-          _operationProgress = null;
         });
       }
     }
   }
 
   Future<void> _runPrune() async {
-    if (_isOperationRunning) return;
+    if (_isOperationRunning || ref.read(verificationServiceProvider).isRunning) return;
     final confirmed = await showConfirmDialog(
       context,
       title: context.l10n.storagePruneButton,
@@ -402,28 +403,21 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       _isOperationRunning = true;
       _pruneLoading = true;
       _pruneCount = null;
-      _operationProgress = 0.0;
     });
+    _lastProgressPercent = -1;
+    _operationProgress.value = 0.0;
 
     try {
-      final count = await ref
-          .read(repoServiceProvider)
-          .pruneAsync(
-            onProgress: (current, total) {
-              if (mounted && total > 0) {
-                setState(() => _operationProgress = current / total);
-              }
-            },
-          );
+      final count = await ref.read(repoServiceProvider).pruneAsync(onProgress: _updateProgress);
       if (mounted) setState(() => _pruneCount = count);
-    } on StateError {
-      // Another operation was already in progress at the service level.
+    } catch (e) {
+      _showOperationError(e);
     } finally {
+      _operationProgress.value = null;
       if (mounted) {
         setState(() {
           _pruneLoading = false;
           _isOperationRunning = false;
-          _operationProgress = null;
         });
       }
     }
@@ -435,19 +429,13 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       _isOperationRunning = true;
       _forceSyncLoading = true;
       _forceSyncResult = null;
-      _operationProgress = 0.0;
     });
+    _lastProgressPercent = -1;
+    _operationProgress.value = 0.0;
     try {
       final result = await ref
           .read(repoServiceProvider)
-          .syncChannelGeneration(
-            channelName,
-            onProgress: (current, total) {
-              if (mounted && total > 0) {
-                setState(() => _operationProgress = current / total);
-              }
-            },
-          );
+          .syncChannelGeneration(channelName, onProgress: _updateProgress);
       if (!mounted) return;
       final l10n = context.l10n;
       final msg = result.match(
@@ -459,11 +447,11 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
     } finally {
+      _operationProgress.value = null;
       if (mounted) {
         setState(() {
           _forceSyncLoading = false;
           _isOperationRunning = false;
-          _operationProgress = null;
         });
       }
     }

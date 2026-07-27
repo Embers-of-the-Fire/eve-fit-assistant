@@ -1342,6 +1342,14 @@
       }
     }
   },
+  "storageOperationError": "操作失败：{message}",
+  "@storageOperationError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "branchSettingsTitle": "数据源设置",
   "branchRenameTitle": "重命名",
   "branchRenameHint": "输入新名称",

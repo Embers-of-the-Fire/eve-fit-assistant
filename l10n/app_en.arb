@@ -591,6 +591,7 @@
   "storageRepairRunning": "Repairing...",
   "storageRepairDone": "Repair complete",
   "storageRepairFailed": "{count} issues remain unresolved",
+  "storageOperationError": "Operation failed: {message}",
   "branchSettingsTitle": "Data Source Settings",
   "branchRenameTitle": "Rename",
   "branchRenameHint": "Enter a new name",
