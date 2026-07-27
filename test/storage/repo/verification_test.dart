@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
@@ -7,6 +8,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/data/proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
@@ -22,10 +24,48 @@ import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:fpdart/fpdart.dart";
 import "package:path/path.dart" as p;
 
 class _FakeRemoteCatalogService extends RemoteCatalogService {
   _FakeRemoteCatalogService() : super(dio: Dio(), originUrl: "https://test.local");
+}
+
+class _SlowFakeRemoteCatalogService extends RemoteCatalogService {
+  _SlowFakeRemoteCatalogService({required this.completer})
+    : super(dio: Dio(), originUrl: "https://test.local");
+
+  final Completer<void> completer;
+
+  @override
+  Future<Either<CatalogError, Uint8List>> fetchBlob(
+    String identHash,
+    String contentHash, {
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    await completer.future;
+    return const Left(CatalogNetworkError(message: "test"));
+  }
+}
+
+class _ServingFakeRemoteCatalogService extends RemoteCatalogService {
+  _ServingFakeRemoteCatalogService({required this.blobs})
+    : super(dio: Dio(), originUrl: "https://test.local");
+
+  final Map<String, Uint8List> blobs;
+
+  @override
+  Future<Either<CatalogError, Uint8List>> fetchBlob(
+    String identHash,
+    String contentHash, {
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final data = blobs[contentHash];
+    if (data == null) {
+      return const Left(CatalogNotFoundError(message: "not found"));
+    }
+    return Right(data);
+  }
 }
 
 void main() {
@@ -348,6 +388,242 @@ void main() {
       final nameFromBasename = p.basename(dirs.first.path);
       expect(nameFromBasename.isNotEmpty, isTrue);
       expect(nameFromBasename, isNot(isEmpty));
+    });
+  });
+
+  group("concurrency guard", () {
+    test("verify() can be called sequentially after completion", () {
+      setupCheckout();
+      final service = makeService();
+
+      final result1 = service.verify();
+      expect(result1, isEmpty);
+
+      final result2 = service.verify();
+      expect(result2, isEmpty);
+
+      expect(service.isRunning, isFalse);
+    });
+
+    test("prune() can be called sequentially after completion", () {
+      setupCheckout();
+      final service = makeService();
+
+      final count1 = service.prune();
+      expect(count1, 0);
+
+      final count2 = service.prune();
+      expect(count2, 0);
+
+      expect(service.isRunning, isFalse);
+    });
+
+    test("verifyAsync() can be called sequentially after completion", () async {
+      setupCheckout();
+      final service = makeService();
+
+      final result1 = await service.verifyAsync();
+      expect(result1, isEmpty);
+
+      final result2 = await service.verifyAsync();
+      expect(result2, isEmpty);
+
+      expect(service.isRunning, isFalse);
+    });
+
+    test("pruneAsync() can be called sequentially after completion", () async {
+      setupCheckout();
+      final service = makeService();
+
+      final count1 = await service.pruneAsync();
+      expect(count1, 0);
+
+      final count2 = await service.pruneAsync();
+      expect(count2, 0);
+
+      expect(service.isRunning, isFalse);
+    });
+
+    test("verifyAsync() rejects concurrent invocation", () async {
+      setupCheckout();
+      final service = makeService();
+
+      final first = service.verifyAsync();
+      expect(service.isRunning, isTrue);
+      expect(() => service.verify(), throwsA(isA<StateError>()));
+      expect(() => service.prune(), throwsA(isA<StateError>()));
+      expect(service.verifyAsync, throwsA(isA<StateError>()));
+
+      await first;
+      expect(service.isRunning, isFalse);
+    });
+
+    test("verifyAsync() detects missing blobs", () async {
+      final snapshotHash = setupCheckout();
+      const assetStore = AssetStore();
+
+      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      expect(riOpt.isSome(), isTrue);
+      final ri = riOpt.toNullable()!;
+
+      final entryA = ri.entries.first;
+      final ihashA = RepoHash.hashIdent(entryA.resourceId);
+      final blobPathA = RepoPaths.blobPath(ihashA, entryA.contentHash);
+      File(blobPathA).deleteSync();
+
+      final service = makeService();
+      final issues = await service.verifyAsync();
+      expect(issues.length, 1);
+      expect(issues.first, isA<VerificationMissingFiles>());
+      expect(service.isRunning, isFalse);
+    });
+
+    test("repairAll() rejects concurrent invocation", () async {
+      setupCheckout();
+      final completer = Completer<void>();
+      final fakeRemote = _SlowFakeRemoteCatalogService(completer: completer);
+      const assetStore = AssetStore();
+      final registryService = CheckoutRegistryService();
+      const diffEngine = DiffEngine();
+      final checkoutService = CheckoutService(
+        assetStore: assetStore,
+        remoteCatalogService: fakeRemote,
+        diffEngine: diffEngine,
+        checkoutRegistry: registryService,
+      );
+      final service = VerificationService(
+        checkoutService: checkoutService,
+        assetStore: assetStore,
+        checkoutRegistry: registryService,
+        remoteCatalogService: fakeRemote,
+      );
+
+      final first = service.repairAll(channel: Channel.testing);
+
+      expect(service.isRunning, isTrue);
+      expect(() => service.repairAll(channel: Channel.testing), throwsA(isA<StateError>()));
+      expect(() => service.verify(), throwsA(isA<StateError>()));
+      expect(() => service.prune(), throwsA(isA<StateError>()));
+
+      completer.complete();
+      await first;
+
+      expect(service.isRunning, isFalse);
+      expect(service.verify(), isEmpty);
+    });
+
+    test("guard releases after repairAll() failure", () async {
+      setupCheckout();
+      final completer = Completer<void>();
+      final fakeRemote = _SlowFakeRemoteCatalogService(completer: completer);
+      const assetStore = AssetStore();
+      final registryService = CheckoutRegistryService();
+      const diffEngine = DiffEngine();
+      final checkoutService = CheckoutService(
+        assetStore: assetStore,
+        remoteCatalogService: fakeRemote,
+        diffEngine: diffEngine,
+        checkoutRegistry: registryService,
+      );
+      final service = VerificationService(
+        checkoutService: checkoutService,
+        assetStore: assetStore,
+        checkoutRegistry: registryService,
+        remoteCatalogService: fakeRemote,
+      );
+
+      final first = service.repairAll(channel: Channel.testing);
+      completer.complete();
+      await first;
+
+      expect(service.isRunning, isFalse);
+      final result = service.verify();
+      expect(result, isEmpty);
+    });
+  });
+
+  group("repairAll downloads missing blobs", () {
+    test("re-downloads a deleted blob and verify passes afterward", () async {
+      final snapshotHash = setupCheckout();
+      const assetStore = AssetStore();
+
+      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      expect(riOpt.isSome(), isTrue);
+      final ri = riOpt.toNullable()!;
+      expect(ri.entries.length, 2);
+
+      final entryA = ri.entries.first;
+      final ihashA = RepoHash.hashIdent(entryA.resourceId);
+      final blobPathA = RepoPaths.blobPath(ihashA, entryA.contentHash);
+
+      final originalData = File(blobPathA).readAsBytesSync();
+      File(blobPathA).deleteSync();
+
+      final service = makeService();
+      final issuesBefore = service.verify();
+      expect(issuesBefore.length, 1);
+      expect(issuesBefore.first, isA<VerificationMissingFiles>());
+
+      final servingRemote = _ServingFakeRemoteCatalogService(
+        blobs: {entryA.contentHash: Uint8List.fromList(originalData)},
+      );
+      final registryService = CheckoutRegistryService();
+      const diffEngine = DiffEngine();
+      final checkoutService = CheckoutService(
+        assetStore: assetStore,
+        remoteCatalogService: servingRemote,
+        diffEngine: diffEngine,
+        checkoutRegistry: registryService,
+      );
+      final repairService = VerificationService(
+        checkoutService: checkoutService,
+        assetStore: assetStore,
+        checkoutRegistry: registryService,
+        remoteCatalogService: servingRemote,
+      );
+
+      final unresolved = await repairService.repairAll(channel: Channel.testing);
+      expect(unresolved, isEmpty);
+
+      expect(File(blobPathA).existsSync(), isTrue);
+      expect(File(blobPathA).readAsBytesSync(), originalData);
+
+      final issuesAfter = repairService.verify();
+      expect(issuesAfter, isEmpty);
+    });
+
+    test("reports unresolved when remote does not have the blob", () async {
+      final snapshotHash = setupCheckout();
+      const assetStore = AssetStore();
+
+      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      expect(riOpt.isSome(), isTrue);
+      final ri = riOpt.toNullable()!;
+
+      final entryA = ri.entries.first;
+      final ihashA = RepoHash.hashIdent(entryA.resourceId);
+      final blobPathA = RepoPaths.blobPath(ihashA, entryA.contentHash);
+      File(blobPathA).deleteSync();
+
+      final servingRemote = _ServingFakeRemoteCatalogService(blobs: {});
+      final registryService = CheckoutRegistryService();
+      const diffEngine = DiffEngine();
+      final checkoutService = CheckoutService(
+        assetStore: assetStore,
+        remoteCatalogService: servingRemote,
+        diffEngine: diffEngine,
+        checkoutRegistry: registryService,
+      );
+      final repairService = VerificationService(
+        checkoutService: checkoutService,
+        assetStore: assetStore,
+        checkoutRegistry: registryService,
+        remoteCatalogService: servingRemote,
+      );
+
+      final unresolved = await repairService.repairAll(channel: Channel.testing);
+      expect(unresolved.length, 1);
+      expect(unresolved.first, isA<VerificationMissingFiles>());
     });
   });
 }

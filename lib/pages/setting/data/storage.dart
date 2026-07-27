@@ -4,6 +4,7 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/data/data_update_tile.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -62,6 +63,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
   bool _verifyLoading = false;
   bool _pruneLoading = false;
   int? _pruneCount;
+  bool _repairLoading = false;
   bool _forceSyncLoading = false;
   String? _forceSyncResult;
   bool _clearLoading = false;
@@ -117,7 +119,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
                         ? l10n.storageVerifiedOk
                         : l10n.storageMissingFiles(count: _verifyResult!.length)
                   : null,
-              onTap: _verifyLoading ? null : _runVerify,
+              onTap: _isOperationRunning ? null : _runVerify,
             ),
             ConfigListTile.custom(_buildVerifyResults()),
             ConfigListTile.item(
@@ -131,7 +133,7 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
                   : _pruneCount != null
                   ? l10n.storagePrunedCount(count: _pruneCount!)
                   : l10n.storageCacheInfoHint,
-              onTap: _pruneLoading ? null : _runPrune,
+              onTap: _isOperationRunning ? null : _runPrune,
             ),
             ConfigListTile.item(
               icon: Icon(Icons.cloud_sync_outlined, color: context.theme.colorScheme.primary),
@@ -236,65 +238,128 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: issues.map((issue) {
-          final hash = _truncateHash(issue.checkoutId);
-          if (issue is VerificationMissingFiles) {
-            final missingCount = issue.missingIdents.length;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text("$hash: ${l10n.storageMissingFiles(count: missingCount)}")),
-                ],
-              ),
-            );
-          }
-          if (issue is VerificationNoMeta) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text("$hash: ${l10n.storageNoManifest}")),
-                ],
-              ),
-            );
-          }
-          if (issue is VerificationPartialDownload) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.downloading_outlined, color: Colors.orange, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text("$hash: ${issue.reason}")),
-                ],
-              ),
-            );
-          }
-          return const SizedBox.shrink();
-        }).toList(),
+        children: [
+          ...issues.map((issue) {
+            final hash = _truncateHash(issue.checkoutId);
+            if (issue is VerificationMissingFiles) {
+              final missingCount = issue.missingIdents.length;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text("$hash: ${l10n.storageMissingFiles(count: missingCount)}"),
+                    ),
+                  ],
+                ),
+              );
+            }
+            if (issue is VerificationNoMeta) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text("$hash: ${l10n.storageNoManifest}")),
+                  ],
+                ),
+              );
+            }
+            if (issue is VerificationPartialDownload) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.downloading_outlined, color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text("$hash: ${issue.reason}")),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: _isOperationRunning ? null : _runRepair,
+              icon: _repairLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.build_outlined, size: 18),
+              label: Text(_repairLoading ? l10n.storageRepairRunning : l10n.storageRepairButton),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _runVerify() async {
+    if (_isOperationRunning) return;
     setState(() {
+      _isOperationRunning = true;
       _verifyLoading = true;
       _verifyResult = null;
     });
     try {
-      final issues = ref.read(repoServiceProvider).verify();
+      final issues = await ref.read(repoServiceProvider).verifyAsync();
       if (mounted) setState(() => _verifyResult = issues);
+    } on StateError {
+      // Another operation was already in progress at the service level.
     } finally {
-      if (mounted) setState(() => _verifyLoading = false);
+      if (mounted) {
+        setState(() {
+          _verifyLoading = false;
+          _isOperationRunning = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _runRepair() async {
+    if (_isOperationRunning) return;
+    setState(() {
+      _isOperationRunning = true;
+      _repairLoading = true;
+    });
+    try {
+      final active = ref.read(currentActiveProvider);
+      final channelName =
+          active?.channel ?? ref.read(appSettingServiceProvider).remoteContent.channel;
+      final channel = Channel.tryParse(channelName) ?? Channel.defaultChannel;
+      final unresolved = await ref.read(repoServiceProvider).verifyAndRepair(channel: channel);
+      if (mounted) {
+        setState(() => _verifyResult = unresolved);
+        final l10n = context.l10n;
+        final msg = unresolved.isEmpty
+            ? l10n.storageRepairDone
+            : l10n.storageRepairFailed(count: unresolved.length);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+      }
+    } on StateError {
+      // Another operation was already in progress at the service level.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _repairLoading = false;
+          _isOperationRunning = false;
+        });
+      }
     }
   }
 
   Future<void> _runPrune() async {
+    if (_isOperationRunning) return;
     final confirmed = await showConfirmDialog(
       context,
       title: context.l10n.storagePruneButton,
@@ -303,15 +368,23 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     if (!confirmed || !mounted) return;
 
     setState(() {
+      _isOperationRunning = true;
       _pruneLoading = true;
       _pruneCount = null;
     });
 
     try {
-      final count = ref.read(repoServiceProvider).prune();
+      final count = await ref.read(repoServiceProvider).pruneAsync();
       if (mounted) setState(() => _pruneCount = count);
+    } on StateError {
+      // Another operation was already in progress at the service level.
     } finally {
-      if (mounted) setState(() => _pruneLoading = false);
+      if (mounted) {
+        setState(() {
+          _pruneLoading = false;
+          _isOperationRunning = false;
+        });
+      }
     }
   }
 

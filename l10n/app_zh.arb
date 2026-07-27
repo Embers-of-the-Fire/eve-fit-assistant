@@ -1331,6 +1331,17 @@
   "storageClearAllRunning": "清除中...",
   "storageClearAllDone": "存储已清除",
   "storageClearAllFailed": "清除全部失败",
+  "storageRepairButton": "修复缺失文件",
+  "storageRepairRunning": "修复中...",
+  "storageRepairDone": "修复完成",
+  "storageRepairFailed": "仍有 {count} 个问题未解决",
+  "@storageRepairFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "branchSettingsTitle": "数据源设置",
   "branchRenameTitle": "重命名",
   "branchRenameHint": "输入新名称",
