@@ -1,3 +1,6 @@
+import "dart:io";
+import "dart:typed_data";
+
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/categories.pb.dart" as pb_categories;
 import "package:eve_fit_assistant/data/proto/collections.pb.dart";
@@ -11,8 +14,7 @@ import "package:eve_fit_assistant/data/proto/market_groups.pb.dart" as pb_market
 import "package:eve_fit_assistant/data/proto/meta_groups.pb.dart" as pb_meta;
 import "package:eve_fit_assistant/data/proto/type_materials.pb.dart" as pb_materials;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
-import "package:eve_fit_assistant/storage/repo/providers.dart" show resourceBlobProxyProvider;
-import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
+import "package:eve_fit_assistant/storage/repo/data_readiness.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/foundation.dart" show visibleForTesting;
@@ -22,22 +24,15 @@ part "collection.g.dart";
 
 /// Pre-loaded type data from the active checkout's resource snapshot.
 ///
-/// Built on checkout activation. Provides ship, skill, item, localization,
-/// and icon path queries from the content-addressed blob store via the
-/// active checkout's ResourceIndex.
-///
-/// Returns `null` when no checkout is active. Clears on deactivation,
-/// re-builds on activation.
+/// Built on checkout activation via [DataReadinessNotifier] which decodes
+/// off the main isolate. Returns `null` while loading or when no checkout
+/// is active. Consumers should show skeletons when this is null and the
+/// readiness state is [DataReadinessLoading].
 @riverpodSingleton
 RepoCollectionService? repoCollection(Ref ref) {
-  final proxy = ref.watch(resourceBlobProxyProvider);
-  if (proxy == null) return null;
-
-  try {
-    return RepoCollectionService._fromProxy(proxy);
-  } on StateError {
-    return null;
-  }
+  final readiness = ref.watch(dataReadinessProvider.notifier);
+  ref.watch(dataReadinessProvider);
+  return readiness.decodedCollection;
 }
 
 /// Pre-loaded type data proxy backed by the content-addressed blob store.
@@ -125,16 +120,30 @@ class RepoCollectionService {
     );
   }
 
-  /// Builds a [RepoCollectionService] by reading protobuf files from the
-  /// blob store via [proxy].
-  factory RepoCollectionService._fromProxy(ResourceBlobProxy proxy) {
-    final collectionBytes = proxy.read("resource://static/collection.pb2");
-    if (collectionBytes.isNone()) {
-      throw StateError("collection.pb2 not found in blob store");
-    }
-    final collection = Collection.fromBuffer(collectionBytes.toNullable()!);
+  /// Builds a [RepoCollectionService] by reading protobuf files directly from
+  /// filesystem paths. Suitable for use inside an isolate since it performs
+  /// no provider lookups or shared-state access.
+  factory RepoCollectionService.decodeFromPaths({
+    required String collectionPath,
+    required Map<String, String> localizationPaths,
+  }) {
+    final collectionBytes = Uint8List.fromList(File(collectionPath).readAsBytesSync());
 
-    // Build type indexes (same as before)
+    final localizationBytes = <String, Uint8List>{};
+    for (final entry in localizationPaths.entries) {
+      localizationBytes[entry.key] = Uint8List.fromList(File(entry.value).readAsBytesSync());
+    }
+
+    return _decode(collectionBytes, localizationBytes);
+  }
+
+  // ignore: prefer_constructors_over_static_methods
+  static RepoCollectionService _decode(
+    Uint8List collectionRaw,
+    Map<String, Uint8List> localizationRaw,
+  ) {
+    final collection = Collection.fromBuffer(collectionRaw);
+
     final ships = IMap.fromEntries(collection.ships.entries.map((e) => MapEntry(e.key, e.value)));
     final types = IMap.fromEntries(collection.types.entries.map((e) => MapEntry(e.key, e.value)));
     final categories = IMap.fromEntries(
@@ -173,7 +182,6 @@ class RepoCollectionService {
         for (final typeId in set.memberTypeIds) MapEntry(typeId, set.setId),
     ]);
 
-    // Derive skill type IDs
     final skillGroupIds = collection.groups.values
         .where((group) => group.categoryId == EveConstCategoryId.skill)
         .map((group) => group.groupId)
@@ -184,7 +192,6 @@ class RepoCollectionService {
         .map((type) => type.typeId)
         .toIList();
 
-    // Build skill profiles
     final skillProfiles = <String, IMap<int, int>>{};
     for (final entry in collection.skillProfiles.entries) {
       skillProfiles[entry.key] = IMap.fromEntries(
@@ -192,16 +199,12 @@ class RepoCollectionService {
       );
     }
 
-    // Build localization maps
     final localizedNames = <String, IMap<int, String>>{};
-    for (final locale in ["en", "zh"]) {
-      final locBytes = proxy.read("resource://localization/localization_$locale.pb2");
-      if (locBytes.isSome()) {
-        final localization = Localization.fromBuffer(locBytes.toNullable()!);
-        localizedNames[locale] = IMap.fromEntries(
-          localization.localizedStrings.entries.map((e) => MapEntry(e.key, e.value)),
-        );
-      }
+    for (final entry in localizationRaw.entries) {
+      final localization = Localization.fromBuffer(entry.value);
+      localizedNames[entry.key] = IMap.fromEntries(
+        localization.localizedStrings.entries.map((e) => MapEntry(e.key, e.value)),
+      );
     }
 
     return RepoCollectionService._(

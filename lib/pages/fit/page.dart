@@ -15,6 +15,7 @@ import "package:eve_fit_assistant/components/list/eve_select_list.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/components/resonance_box.dart";
 import "package:eve_fit_assistant/components/resource_compare.dart";
+import "package:eve_fit_assistant/components/skeleton.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
@@ -142,15 +143,7 @@ class _FitPage extends ConsumerWidget {
     );
     if (ship == null) {
       if (isCheckoutSwitching) {
-        return Layout(
-          title: fitMetadata.name,
-          child: const Center(
-            child: SizedBox(
-              height: 40,
-              child: LoadingIndicator(indicatorType: Indicator.lineScale),
-            ),
-          ),
-        );
+        return Layout(title: fitMetadata.name, child: const FitPageSkeleton());
       }
 
       if (compatibilityNotice == null) {
@@ -222,12 +215,7 @@ class _FitPage extends ConsumerWidget {
       if (isCheckoutSwitching) {
         return Layout(
           title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
-          child: const Center(
-            child: SizedBox(
-              height: 40,
-              child: LoadingIndicator(indicatorType: Indicator.lineScale),
-            ),
-          ),
+          child: const FitPageSkeleton(),
         );
       }
 

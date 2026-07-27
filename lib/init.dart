@@ -41,40 +41,54 @@ Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   await PathProvider.init();
-  await const StoragePathMigrator().migrateIfNeeded();
   AppSettingService.init();
-
-  final announcementStateStore = AnnouncementStateStore(settingsPath: PathProvider.settingsPath);
-  final migration = await announcementStateStore.init();
-
-  final appVersionStateStore = AppVersionStateStore(settingsPath: PathProvider.settingsPath);
-  await appVersionStateStore.init();
-  if (migration != null) {
-    final lastSeen = migration.lastSeenAppVersion;
-    if (lastSeen != null && appVersionStateStore.lastSeenAppVersion == null) {
-      appVersionStateStore.setLastSeenAppVersion(lastSeen);
-    }
-    final lastAck = migration.lastAcknowledgedReleaseId;
-    if (lastAck != null && appVersionStateStore.lastAcknowledgedReleaseId == null) {
-      appVersionStateStore.acknowledgeRelease(lastAck);
-    }
-    await appVersionStateStore.ensureSynced;
-  }
-
-  FeedbackStateStore.init();
-  await AnnouncementBodyCache.init();
-  await RemoteCache.init();
   GlobalLogger.init(
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,
   );
+  await RemoteCache.init();
   initErrorBoundary();
-  await repairStartupPersistence();
   GlobalLoading.init();
+
+  final announcementStateStore = AnnouncementStateStore(settingsPath: PathProvider.settingsPath);
+  final appVersionStateStore = AppVersionStateStore(settingsPath: PathProvider.settingsPath);
+
+  unawaited(_deferredInit(announcementStateStore, appVersionStateStore));
+
   return InitializedStores(
     announcementStateStore: announcementStateStore,
     appVersionStateStore: appVersionStateStore,
   );
+}
+
+Future<void> _deferredInit(
+  AnnouncementStateStore announcementStateStore,
+  AppVersionStateStore appVersionStateStore,
+) async {
+  try {
+    await const StoragePathMigrator().migrateIfNeeded();
+
+    final migration = await announcementStateStore.init();
+    await appVersionStateStore.init();
+
+    if (migration != null) {
+      final lastSeen = migration.lastSeenAppVersion;
+      if (lastSeen != null && appVersionStateStore.lastSeenAppVersion == null) {
+        appVersionStateStore.setLastSeenAppVersion(lastSeen);
+      }
+      final lastAck = migration.lastAcknowledgedReleaseId;
+      if (lastAck != null && appVersionStateStore.lastAcknowledgedReleaseId == null) {
+        appVersionStateStore.acknowledgeRelease(lastAck);
+      }
+      await appVersionStateStore.ensureSynced;
+    }
+
+    FeedbackStateStore.init();
+    await AnnouncementBodyCache.init();
+    await repairStartupPersistence();
+  } catch (_) {
+    // Deferred init failures are non-fatal; individual features degrade gracefully.
+  }
 }
 
 Widget initBuilder(BuildContext context, Widget? child) =>

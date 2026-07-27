@@ -3,6 +3,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/components/data_status_indicator.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
 import "package:eve_fit_assistant/features/fit_io/import_dialog.dart";
 import "package:eve_fit_assistant/pages/character/page.dart";
@@ -52,7 +53,7 @@ class _FrontPageState extends State<FrontPage> {
     return AppReleaseUpdateGate(
       child: Scaffold(
         appBar: AppBar(
-          leading: const Icon(Icons.link),
+          leading: const DataStatusIndicator(),
           title: Text(pageTitles[_currentIndex]),
           titleTextStyle: context.theme.appBarTheme.titleTextStyle?.copyWith(letterSpacing: 5),
         ),
