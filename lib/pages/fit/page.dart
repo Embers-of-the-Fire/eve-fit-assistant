@@ -33,6 +33,7 @@ import "package:eve_fit_assistant/native/api/validation.dart" as native_validati
 import "package:eve_fit_assistant/pages/fit/components/add_item_dialog.dart";
 import "package:eve_fit_assistant/pages/fit/components/attribute/damage_profile_dialog.dart";
 import "package:eve_fit_assistant/pages/fit/components/equipment/slot_row/related_values_logic.dart";
+import "package:eve_fit_assistant/pages/fit/components/slidable_edge_zone.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";

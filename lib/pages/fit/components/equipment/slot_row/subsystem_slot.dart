@@ -53,23 +53,25 @@ class _SubsystemSlotRow extends ConsumerWidget {
       return content;
     }
 
-    return Slidable(
-      startActionPane: _buildReplaceActionPane(context, ref),
-      endActionPane: ActionPane(
-        extentRatio: 0.15,
-        motion: const StretchMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (_) => _handleRemoveSubsystem(ref),
-            backgroundColor: colorActionDelete,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: context.l10n.delete,
-            padding: .zero,
-          ),
-        ],
+    return SlidableEdgeZone(
+      child: Slidable(
+        startActionPane: _buildReplaceActionPane(context, ref),
+        endActionPane: ActionPane(
+          extentRatio: 0.15,
+          motion: const StretchMotion(),
+          children: [
+            SlidableAction(
+              onPressed: (_) => _handleRemoveSubsystem(ref),
+              backgroundColor: colorActionDelete,
+              foregroundColor: Colors.white,
+              icon: Icons.delete,
+              label: context.l10n.delete,
+              padding: .zero,
+            ),
+          ],
+        ),
+        child: content,
       ),
-      child: content,
     );
   }
 
@@ -148,23 +150,25 @@ class _SubsystemSlotRow extends ConsumerWidget {
       return content;
     }
 
-    return Slidable(
-      startActionPane: _buildReplaceActionPane(context, ref),
-      endActionPane: ActionPane(
-        extentRatio: 0.15,
-        motion: const StretchMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (_) => _handleRemoveSubsystem(ref),
-            backgroundColor: colorActionDelete,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: context.l10n.delete,
-            padding: .zero,
-          ),
-        ],
+    return SlidableEdgeZone(
+      child: Slidable(
+        startActionPane: _buildReplaceActionPane(context, ref),
+        endActionPane: ActionPane(
+          extentRatio: 0.15,
+          motion: const StretchMotion(),
+          children: [
+            SlidableAction(
+              onPressed: (_) => _handleRemoveSubsystem(ref),
+              backgroundColor: colorActionDelete,
+              foregroundColor: Colors.white,
+              icon: Icons.delete,
+              label: context.l10n.delete,
+              padding: .zero,
+            ),
+          ],
+        ),
+        child: content,
       ),
-      child: content,
     );
   }
 }
