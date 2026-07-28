@@ -9,7 +9,6 @@ import shutil
 from pathlib import Path
 
 import click
-import requests
 
 import bootstrap.config
 
@@ -170,6 +169,8 @@ def register_raw_data_commands(ci: click.Group) -> None:
     )
     def raw_data_setup_py27(output: Path, url: str):
         """Download portable Python 2.7 for the FSD dumper."""
+        import requests
+
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         ci = bootstrap.config.DEV_CONFIGURATION.ci
         public_url: str | None = None
