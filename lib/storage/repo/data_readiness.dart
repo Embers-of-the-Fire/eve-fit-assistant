@@ -56,6 +56,7 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
   @override
   DataReadinessState build() {
     final proxy = ref.watch(resourceBlobProxyProvider);
+    ref.watch(nativeFitEngineServiceProvider);
 
     if (!identical(proxy, _activeProxy)) {
       _activeProxy = proxy;
@@ -67,8 +68,6 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     if (proxy == null) {
       return const DataReadinessState.idle();
     }
-
-    ref.watch(nativeFitEngineServiceProvider);
 
     if (_decodedCollection != null) {
       return const DataReadinessState.ready();
