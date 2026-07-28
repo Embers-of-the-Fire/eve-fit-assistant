@@ -22,12 +22,15 @@ class SlidableEdgeScope extends InheritedWidget {
   bool updateShouldNotify(covariant SlidableEdgeScope oldWidget) => tracker != oldWidget.tracker;
 }
 
-/// Wraps a slidable tile and splits its touch area into gesture zones.
+/// Wraps a slidable tile's content and splits its touch area into gesture
+/// zones.
 ///
-/// Horizontal drags starting in the left or right [_edgeRatio] of the tile
-/// are left to the wrapped slidable; drags starting in the center are claimed
-/// by an overlay so the enclosing tab scaffold can use them to switch tabs.
-/// Taps, long-presses and vertical scrolls are unaffected.
+/// Place this widget as the Slidable's child so the zones travel with the
+/// visible content when actions are revealed. Horizontal drags starting in
+/// the left or right [_edgeRatio] of the content are left to the enclosing
+/// slidable; drags starting in the center are claimed by an overlay so the
+/// tab scaffold can use them to switch tabs. Taps, long-presses and vertical
+/// scrolls are unaffected.
 class SlidableEdgeZone extends StatelessWidget {
   const SlidableEdgeZone({required this.child, super.key});
 

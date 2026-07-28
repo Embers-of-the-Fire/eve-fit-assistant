@@ -91,13 +91,13 @@ class _DroneSlotRow extends ConsumerWidget {
 
     if (!interactionOptions.allowMutations) return content;
 
-    return SlidableEdgeZone(
-      child: Slidable(
-        endActionPane: ActionPane(
-          extentRatio: 0.15 * recoveryActions.length,
-          motion: const StretchMotion(),
-          children: recoveryActions,
-        ),
+    return Slidable(
+      endActionPane: ActionPane(
+        extentRatio: 0.15 * recoveryActions.length,
+        motion: const StretchMotion(),
+        children: recoveryActions,
+      ),
+      child: SlidableEdgeZone(
         child: ListTile(title: Text(title), trailing: Text("x $quantity")),
       ),
     );
@@ -169,20 +169,18 @@ class _DroneSlotRow extends ConsumerWidget {
 
     if (!interactionOptions.allowMutations) return content;
 
-    return SlidableEdgeZone(
-      child: Slidable(
-        startActionPane: ActionPane(
-          extentRatio: 0.15 * startActions.length,
-          motion: const StretchMotion(),
-          children: startActions,
-        ),
-        endActionPane: ActionPane(
-          extentRatio: 0.15 * endActions.length,
-          motion: const StretchMotion(),
-          children: endActions,
-        ),
-        child: content,
+    return Slidable(
+      startActionPane: ActionPane(
+        extentRatio: 0.15 * startActions.length,
+        motion: const StretchMotion(),
+        children: startActions,
       ),
+      endActionPane: ActionPane(
+        extentRatio: 0.15 * endActions.length,
+        motion: const StretchMotion(),
+        children: endActions,
+      ),
+      child: SlidableEdgeZone(child: content),
     );
   }
 }

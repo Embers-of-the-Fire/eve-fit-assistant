@@ -253,24 +253,22 @@ class _SlotRowDisplay extends ConsumerWidget {
       return content;
     }
 
-    return SlidableEdgeZone(
-      child: Slidable(
-        startActionPane: startActions.isEmpty
-            ? null
-            : ActionPane(
-                extentRatio: 0.15 * startActions.length,
-                motion: const StretchMotion(),
-                children: startActions,
-              ),
-        endActionPane: endActions.isEmpty
-            ? null
-            : ActionPane(
-                extentRatio: 0.15 * endActions.length,
-                motion: const StretchMotion(),
-                children: endActions,
-              ),
-        child: content,
-      ),
+    return Slidable(
+      startActionPane: startActions.isEmpty
+          ? null
+          : ActionPane(
+              extentRatio: 0.15 * startActions.length,
+              motion: const StretchMotion(),
+              children: startActions,
+            ),
+      endActionPane: endActions.isEmpty
+          ? null
+          : ActionPane(
+              extentRatio: 0.15 * endActions.length,
+              motion: const StretchMotion(),
+              children: endActions,
+            ),
+      child: SlidableEdgeZone(child: content),
     );
   }
 

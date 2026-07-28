@@ -473,39 +473,37 @@ class _ImplantRow extends ConsumerWidget {
 
     if (!interactionOptions.allowMutations) return content;
 
-    return SlidableEdgeZone(
-      child: Slidable(
-        startActionPane: ActionPane(
-          extentRatio: 0.15,
-          motion: const StretchMotion(),
-          children: [
-            SlidableAction(
-              // Replace the implant in the same slot.
-              onPressed: (_) => _handleReplace(context, ref),
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              icon: Icons.change_circle,
-              label: context.l10n.fitActionSet,
-              padding: .zero,
-            ),
-          ],
-        ),
-        endActionPane: ActionPane(
-          extentRatio: 0.15,
-          motion: const StretchMotion(),
-          children: [
-            SlidableAction(
-              onPressed: (_) => fitContext.fitWrapper.removeImplantForSlot(slotId, ref),
-              backgroundColor: colorActionDelete,
-              foregroundColor: Colors.white,
-              icon: Icons.delete,
-              label: context.l10n.delete,
-              padding: .zero,
-            ),
-          ],
-        ),
-        child: content,
+    return Slidable(
+      startActionPane: ActionPane(
+        extentRatio: 0.15,
+        motion: const StretchMotion(),
+        children: [
+          SlidableAction(
+            // Replace the implant in the same slot.
+            onPressed: (_) => _handleReplace(context, ref),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            icon: Icons.change_circle,
+            label: context.l10n.fitActionSet,
+            padding: .zero,
+          ),
+        ],
       ),
+      endActionPane: ActionPane(
+        extentRatio: 0.15,
+        motion: const StretchMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (_) => fitContext.fitWrapper.removeImplantForSlot(slotId, ref),
+            backgroundColor: colorActionDelete,
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: context.l10n.delete,
+            padding: .zero,
+          ),
+        ],
+      ),
+      child: SlidableEdgeZone(child: content),
     );
   }
 
@@ -606,38 +604,36 @@ class _BoosterRow extends ConsumerWidget {
 
     if (!interactionOptions.allowMutations) return content;
 
-    return SlidableEdgeZone(
-      child: Slidable(
-        startActionPane: ActionPane(
-          extentRatio: 0.15,
-          motion: const StretchMotion(),
-          children: [
-            SlidableAction(
-              onPressed: (_) => _handleReplace(context, ref),
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              icon: Icons.change_circle,
-              label: context.l10n.fitActionSet,
-              padding: .zero,
-            ),
-          ],
-        ),
-        endActionPane: ActionPane(
-          extentRatio: 0.15,
-          motion: const StretchMotion(),
-          children: [
-            SlidableAction(
-              onPressed: (_) => fitContext.fitWrapper.removeBooster(slotId),
-              backgroundColor: colorActionDelete,
-              foregroundColor: Colors.white,
-              icon: Icons.delete,
-              label: context.l10n.delete,
-              padding: .zero,
-            ),
-          ],
-        ),
-        child: content,
+    return Slidable(
+      startActionPane: ActionPane(
+        extentRatio: 0.15,
+        motion: const StretchMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (_) => _handleReplace(context, ref),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            icon: Icons.change_circle,
+            label: context.l10n.fitActionSet,
+            padding: .zero,
+          ),
+        ],
       ),
+      endActionPane: ActionPane(
+        extentRatio: 0.15,
+        motion: const StretchMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (_) => fitContext.fitWrapper.removeBooster(slotId),
+            backgroundColor: colorActionDelete,
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: context.l10n.delete,
+            padding: .zero,
+          ),
+        ],
+      ),
+      child: SlidableEdgeZone(child: content),
     );
   }
 
