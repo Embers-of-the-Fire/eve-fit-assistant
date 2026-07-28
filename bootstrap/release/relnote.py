@@ -102,6 +102,7 @@ def _run_cliff(tag: str, from_ref: str | None = None) -> str:
             errors="replace",
             cwd=PROJECT_ROOT,
             timeout=60,
+            check=False,
         )
     except subprocess.TimeoutExpired as e:
         raise click.ClickException(f"git-cliff timed out after {e.timeout} seconds") from e

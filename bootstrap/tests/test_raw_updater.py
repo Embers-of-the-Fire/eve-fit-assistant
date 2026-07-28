@@ -6,6 +6,7 @@ import asyncio
 import tomllib
 
 from typing import TYPE_CHECKING
+from typing import Self
 from unittest.mock import patch
 
 import pytest
@@ -67,7 +68,7 @@ class _MockResponse:
         self.status = status
         self.content = _MockContent(body)
 
-    async def __aenter__(self) -> _MockResponse:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *args) -> None:
@@ -92,7 +93,7 @@ class _MockSession:
     def __init__(self, response: _MockResponse) -> None:
         self._response = response
 
-    async def __aenter__(self) -> _MockSession:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *args) -> None:
@@ -108,7 +109,7 @@ class _MockSessionPerUrl:
     def __init__(self, responses: dict[str, _MockResponse]) -> None:
         self._responses = responses
 
-    async def __aenter__(self) -> _MockSessionPerUrl:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *args) -> None:

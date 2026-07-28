@@ -443,7 +443,7 @@ class Publisher:
                 continue
             try:
                 index = read_pb2(snap_dir / "resources.pb2", ResourceIndex)
-            except Exception:
+            except Exception:  # noqa: BLE001, S112
                 continue
             for ri_entry in index.entries:
                 ihash = ident_hash(ri_entry.resource_id)
@@ -574,6 +574,7 @@ def _run(
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         raise OSError(f"{title} timed out after {timeout}s: {' '.join(redacted_cmd)}") from None
@@ -594,6 +595,7 @@ def _stat_ok(cmd: list[str], timeout: float = 60) -> bool:
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            check=False,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False

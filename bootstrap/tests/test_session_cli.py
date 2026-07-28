@@ -604,7 +604,7 @@ def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
                             message=f"Hash mismatch: {h[:12]}... does not verify (v4/v3)",
                         )
                     )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 issues.append(
                     Issue(
                         entity=h[:12] + "...",
@@ -651,7 +651,7 @@ def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
                                         ),
                                     )
                                 )
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001
                         issues.append(
                             Issue(
                                 entity=h[:12] + "...",
@@ -672,7 +672,7 @@ def _verify_staged_style(tmp_root: Path, store: SessionStore) -> list[Issue]:
                     message=f"Channel {session.channel!r} not in registry",
                 )
             )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         issues.append(
             Issue(
                 entity=session.channel,

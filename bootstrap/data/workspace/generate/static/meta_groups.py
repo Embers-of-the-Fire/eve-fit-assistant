@@ -38,7 +38,7 @@ async def generate(data: GeneratorDatasource, collection):
     for meta_group_id, meta_group_def in meta_groups.items():
         try:
             validated = MetaGroupDef.model_validate(meta_group_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate meta group {meta_group_id}: {e}")
             continue
 

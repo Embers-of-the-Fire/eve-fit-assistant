@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import tomllib
 
 from pathlib import Path
@@ -41,21 +42,21 @@ class WorkspacePaths(BaseModel):
             self.cache.mkdir(parents=True, exist_ok=True)
         if not self.cache.is_dir():
             error(f"Cache path is not a directory: {self.cache}")
-            exit(1)
+            sys.exit(1)
 
         if not self.generated.exists():
             warning(f"Generate output path does not exist, creating: {self.generated}")
             self.generated.mkdir(parents=True, exist_ok=True)
         if not self.generated.is_dir():
             error(f"Generate output path is not a directory: {self.generated}")
-            exit(1)
+            sys.exit(1)
 
         if not self.output.exists():
             warning(f"Output path does not exist, creating: {self.output}")
             self.output.mkdir(parents=True, exist_ok=True)
         if not self.output.is_dir():
             error(f"Output path is not a directory: {self.output}")
-            exit(1)
+            sys.exit(1)
 
 
 class WorkspaceMetadata(BaseModel):
@@ -73,16 +74,16 @@ class WorkspaceMetadata(BaseModel):
 
         if not self.start_cfg.exists():
             error(f"Start configuration file does not exist: {self.start_cfg}")
-            exit(1)
+            sys.exit(1)
         if not self.start_cfg.is_file():
             error(f"Start configuration path is not a file: {self.start_cfg}")
-            exit(1)
+            sys.exit(1)
 
         en_name = self.name.get("en")
         zh_name = self.name.get("zh")
         if not en_name and not zh_name:
             error("At least one of the workspace names (en or zh) must be provided.")
-            exit(1)
+            sys.exit(1)
         if en_name and not zh_name:
             warning("Chinese name (zh) is missing; defaulting to English name.")
         if zh_name and not en_name:
@@ -110,31 +111,31 @@ class WorkspaceResources(BaseModel):
 
         if not self.resource_index.exists():
             error(f"Resource index file does not exist: {self.resource_index}")
-            exit(1)
+            sys.exit(1)
         if not self.resource_index.is_file():
             error(f"Resource index path is not a file: {self.resource_index}")
-            exit(1)
+            sys.exit(1)
 
         if not self.application_index.exists():
             error(f"Application index file does not exist: {self.application_index}")
-            exit(1)
+            sys.exit(1)
         if not self.application_index.is_file():
             error(f"Application index path is not a file: {self.application_index}")
-            exit(1)
+            sys.exit(1)
 
         if not self.fsd.exists():
             error(f"FSD resource path does not exist: {self.fsd}")
-            exit(1)
+            sys.exit(1)
         if not self.fsd.is_dir():
             error(f"FSD resource path is not a directory: {self.fsd}")
-            exit(1)
+            sys.exit(1)
 
         if not self.patches.exists():
             error(f"Patches path does not exist: {self.patches}")
-            exit(1)
+            sys.exit(1)
         if not self.patches.is_dir():
             error(f"Patches path is not a directory: {self.patches}")
-            exit(1)
+            sys.exit(1)
 
 
 class WorkspaceServices(BaseModel):
@@ -154,23 +155,23 @@ class WorkspaceConfig(BaseModel):
     def load_from_descriptor(descriptor_path: Path, no_check: bool = False) -> WorkspaceConfig:
         if not descriptor_path.exists():
             error(f"Descriptor file does not exist: {descriptor_path}")
-            exit(1)
+            sys.exit(1)
         if not descriptor_path.is_file():
             error(f"Descriptor path is not a file: {descriptor_path}")
-            exit(1)
+            sys.exit(1)
 
         try:
             with open(descriptor_path, "rb") as f:
                 cfg = tomllib.load(f)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to read or parse descriptor file: {e!r}")
-            exit(1)
+            sys.exit(1)
 
         try:
             workspace_config = WorkspaceConfig.model_validate(cfg)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate workspace configuration: {e!r}")
-            exit(1)
+            sys.exit(1)
 
         workspace_config.resolve(descriptor_path.parent, no_check)
         return workspace_config

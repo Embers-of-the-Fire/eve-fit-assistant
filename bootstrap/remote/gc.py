@@ -142,7 +142,7 @@ class GarbageCollector:
             return
         try:
             index = read_pb2(proto_path, ResourceIndex)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return
         for entry in index.entries:
             reachable.blobs.add((ident_hash(entry.resource_id), entry.content_hash))

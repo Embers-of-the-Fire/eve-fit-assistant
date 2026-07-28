@@ -68,7 +68,7 @@ def _check_snapshot_metadata(snap_type: str, snap_dir: Path) -> None:
     try:
         model_for_type[snap_type].model_validate(meta_raw)
         return
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     for other_type, other_model in model_for_type.items():
@@ -79,7 +79,7 @@ def _check_snapshot_metadata(snap_type: str, snap_dir: Path) -> None:
             raise click.ClickException(
                 f"Snapshot metadata at {snap_dir} declares type '{other_type}', not '{snap_type}'."
             ) from None
-        except Exception:
+        except Exception:  # noqa: BLE001, S112
             continue
 
     raise click.ClickException(
@@ -216,7 +216,7 @@ def _add_snapshot_by_file(
                 f"Invalid resource catalog in {source_file}: "
                 f"missing key {e} (expected 'metadata' and 'entries')"
             ) from None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             raise click.ClickException(
                 f"Cannot parse resource metadata in {source_file}: {e}"
             ) from None
@@ -251,7 +251,7 @@ def _add_snapshot_by_file(
                 f"Invalid release registry in {source_file}: "
                 f"missing key {e} (expected 'metadata' and 'release')"
             ) from None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             raise click.ClickException(
                 f"Cannot parse release metadata in {source_file}: {e}"
             ) from None
@@ -341,7 +341,7 @@ def _staged_server_ids(root: Path, session: Session) -> dict[str, str]:
         try:
             meta, _ = snap_store.load_resource_snapshot(h)
             result[meta.server_id] = h
-        except Exception:
+        except Exception:  # noqa: BLE001
             warning("Failed to load staged resource snapshot %s; omitted from server-id map", h)
     return result
 
@@ -360,7 +360,7 @@ def _get_snapshot_summary(root: Path, snap_type: str, hash_value: str) -> str:
             vmin = meta.version_min or "?"
             vmax = meta.version_max or "?"
             return f"version_min={vmin}  version_max={vmax}"
-    except Exception:
+    except Exception:  # noqa: BLE001
         return "(metadata unavailable)"
     return ""
 
@@ -395,7 +395,7 @@ def _compute_diff(root: Path, session: Session) -> dict:
                 head_resources[entry.server_id] = entry.snapshot_hash
             if generation.release_pointer.snapshot_hash:
                 head_release = generation.release_pointer.snapshot_hash
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     staged_resources: dict[str, str] = {}
@@ -410,7 +410,7 @@ def _compute_diff(root: Path, session: Session) -> dict:
                 dupes.append(h)
             else:
                 staged_resources[meta.server_id] = h
-        except Exception:
+        except Exception:  # noqa: BLE001
             warning("Failed to load staged resource snapshot %s; omitted from diff", h)
 
     added: list[str] = []
@@ -470,7 +470,7 @@ def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> N
     proto_path = resource_snapshot_dir(root, hash_value) / "resources.pb2"
     try:
         index = read_pb2(proto_path, ResourceIndex)
-    except Exception:
+    except Exception:  # noqa: BLE001
         issues.append(
             Issue(
                 entity=hash_value[:12] + "...",
@@ -510,7 +510,7 @@ def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> N
                         ),
                     )
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             issues.append(
                 Issue(
                     entity=entry.resource_id,
@@ -535,7 +535,7 @@ def _check_duplicate_server_ids(root: Path, session: Session, issues: list) -> N
     for h in session.staged.resources:
         try:
             meta, _ = snap_store.load_resource_snapshot(h)
-        except Exception:
+        except Exception:  # noqa: BLE001
             warning("Failed to load staged resource snapshot %s; omitted from duplicate check", h)
             continue
         if meta.server_id in seen:
@@ -572,7 +572,7 @@ def _head_resource_snapshot_hashes(root: Path, channel: str) -> set[str]:
         gen = GenerationStore(root).load(head.generation_hash)
     # Broad catch is intentional: any head/generation read failure (missing,
     # corrupt, or incompatible data) must fall back to requiring all blobs.
-    except Exception:
+    except Exception:  # noqa: BLE001
         return set()
     return {entry.snapshot_hash for entry in gen.resources.entries if entry.snapshot_hash}
 
@@ -655,7 +655,7 @@ def _verify_staged(root: Path, session: Session) -> list:
                             message=f"Hash mismatch: {h[:12]}... does not verify (v4/v3)",
                         )
                     )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 issues.append(
                     Issue(
                         entity=h[:12] + "...",
@@ -693,7 +693,7 @@ def _verify_staged(root: Path, session: Session) -> list:
                     ),
                 )
             )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         issues.append(
             Issue(
                 entity=session.channel,
@@ -895,7 +895,7 @@ def register_remote_session(remote: click.Group) -> None:
                 try:
                     head = mgr.get_head(session.channel)
                     gen_hash = head.generation_hash if head.generation_hash else None
-                except Exception:
+                except Exception:  # noqa: BLE001
                     gen_hash = None
                 if gen_hash:
                     click.echo(styled(Style.DIM, f"  Head:        {gen_hash[:16]}..."))

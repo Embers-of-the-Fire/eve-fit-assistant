@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 
 import click
 
@@ -30,14 +31,14 @@ def _env_add(argv: list[str], python: bool, rust: bool, dart: bool, dry_run: boo
             styled([Style.BRIGHT, Fore.RED], "Invalid usage: ")
             + "Only one of --python, --dart/--flutter, --rust can be specified."
         )
-        exit(1)
+        sys.exit(1)
 
     if python:
         if len(argv) == 0:
             click.echo(
                 styled([Style.BRIGHT, Fore.RED], "Invalid usage: ") + "No package specified to add."
             )
-            exit(1)
+            sys.exit(1)
         uv = get_command("uv")
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + f"uv add {' '.join(argv)}"
@@ -50,7 +51,7 @@ def _env_add(argv: list[str], python: bool, rust: bool, dart: bool, dry_run: boo
             click.echo(
                 styled([Style.BRIGHT, Fore.RED], "Invalid usage: ") + "No package specified to add."
             )
-            exit(1)
+            sys.exit(1)
         flutter = get_command("flutter")
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
@@ -64,7 +65,7 @@ def _env_add(argv: list[str], python: bool, rust: bool, dart: bool, dry_run: boo
             click.echo(
                 styled([Style.BRIGHT, Fore.RED], "Invalid usage: ") + "No package specified to add."
             )
-            exit(1)
+            sys.exit(1)
         cargo = get_command("cargo")
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")

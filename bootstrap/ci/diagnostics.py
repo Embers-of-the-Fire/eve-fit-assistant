@@ -81,7 +81,7 @@ def _collect_minio_logs(stage: Path) -> list[Path]:
 
 def _run_snapshot_command(cmd: list[str]) -> str:
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
     except (OSError, subprocess.SubprocessError) as exc:
         return f"(unavailable: {exc})"
     return (out.stdout + out.stderr).strip() or "(no output)"
@@ -147,7 +147,7 @@ def collect_diagnostics(root: Path, stage: Path) -> list[Path]:
     for collector in collectors:
         try:
             staged.extend(collector())
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             warning(f"Diagnostics collector failed: {exc}")
     _drop_crash_byproducts(stage)
     return staged
@@ -215,7 +215,7 @@ def register_ci_diagnostics_commands(ci: click.Group) -> None:
         if values:
             try:
                 scanned, redacted = redact_staged_files(resolved, values)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 error(f"Redaction failed unexpectedly: {exc}")
                 error("Purging staging directory to avoid uploading unredacted data.")
                 shutil.rmtree(resolved, ignore_errors=True)

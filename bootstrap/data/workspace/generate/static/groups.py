@@ -46,7 +46,7 @@ async def generate(data: GeneratorDatasource, collection):
     for group_id, group_def in groups.items():
         try:
             validated = GroupDef.model_validate(group_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate group {group_id}: {e}")
             continue
 

@@ -38,7 +38,7 @@ async def generate(data: GeneratorDatasource, collection):
     for dogma_unit_id, dogma_unit_def in dogma_units.items():
         try:
             validated = DogmaUnitDef.model_validate(dogma_unit_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate dogma unit {dogma_unit_id}: {e}")
             continue
 

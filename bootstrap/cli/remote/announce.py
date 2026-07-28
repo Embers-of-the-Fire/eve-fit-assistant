@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import sys
 
 from pathlib import Path
 
@@ -104,7 +105,7 @@ def register_remote_announce(remote: click.Group) -> None:
             sync.sync(full=full)
         except RuntimeError as e:
             click.echo(styled([Fore.RED], f"Error: {e}"))
-            exit(2)
+            sys.exit(2)
         click.echo(styled([Fore.GREEN], "  Downloaded catalog and pages"))
         if full:
             click.echo(styled([Fore.GREEN], "  Downloaded all document bodies"))
@@ -165,7 +166,7 @@ def register_remote_announce(remote: click.Group) -> None:
             sync.init_remote(force=force)
         except RuntimeError as e:
             click.echo(styled([Fore.RED], f"Error: {e}"))
-            exit(2)
+            sys.exit(2)
         click.echo(styled([Fore.GREEN], "  Created catalog.json and active.json"))
         click.echo(styled([Fore.GREEN], "  Uploaded to remote"))
         click.echo(styled([Fore.GREEN], f"  Local mirror at: {workspace.remote_dir}"))
@@ -517,13 +518,13 @@ def register_remote_announce(remote: click.Group) -> None:
 
         if not (workspace.remote_dir / "catalog.json").exists():
             click.echo(styled([Fore.YELLOW], "No remote state — run 'sync' first."))
-            exit(1)
+            sys.exit(1)
 
         overlay = workspace.read_overlay()
         has_changes = any(v for v in overlay.pages.values())
         if not has_changes:
             click.echo(styled([Fore.GREEN], "No pending changes — overlay is empty."))
-            exit(0)
+            sys.exit(0)
 
         temp_dir = Path(tempfile.mkdtemp(prefix="efa-anno-status-"))
         try:
@@ -537,7 +538,7 @@ def register_remote_announce(remote: click.Group) -> None:
             summary = diff["summary"]
             if summary["added"] == 0 and summary["removed"] == 0 and summary["modified"] == 0:
                 click.echo(styled([Fore.GREEN], "No differences — staging is clean."))
-                exit(0)
+                sys.exit(0)
 
             pages = diff.get("pages", {})
             for page_uuid, page_diff in pages.items():
@@ -594,7 +595,7 @@ def register_remote_announce(remote: click.Group) -> None:
                     f"Effective: {summary['totalStaging']} entries",
                 )
             )
-            exit(1)
+            sys.exit(1)
         finally:
             import shutil as _shutil
 
@@ -681,9 +682,9 @@ def register_remote_announce(remote: click.Group) -> None:
                 click.echo(styled([Style.BRIGHT, Fore.CYAN], "Syncing latest remote state..."))
                 sync.sync(full=False)
                 click.echo(styled([Fore.GREEN], "  Remote state synced"))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 click.echo(styled([Fore.RED], f"  Sync failed: {e}"))
-                exit(1)
+                sys.exit(1)
 
             old_active = None
             for page_key in overlay.pages:
@@ -728,7 +729,7 @@ def register_remote_announce(remote: click.Group) -> None:
                     click.echo(styled([Fore.RED], "Preflight validation failed:"))
                     for error in errors:
                         click.echo(styled([Fore.RED], f"  - {error}"))
-                    exit(1)
+                    sys.exit(1)
                 click.echo(styled([Fore.GREEN], "  Preflight validation passed"))
 
             if dry_run:

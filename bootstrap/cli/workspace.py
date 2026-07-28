@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import click
 
 from colorama import Fore
@@ -26,7 +28,7 @@ def register_workspace_commands(cli_group: click.Group) -> None:
                 styled([Style.BRIGHT + Fore.RED], "Error: ")
                 + styled(Fore.RED, "No workspace configured.")
             )
-            exit(1)
+            sys.exit(1)
 
         click.echo(
             styled(Fore.GREEN, "Found ")
@@ -128,7 +130,7 @@ def register_workspace_commands(cli_group: click.Group) -> None:
             )
 
         if has_error or has_not_found:
-            exit(1)
+            sys.exit(1)
 
     @workspace.command()
     @click.argument("name")

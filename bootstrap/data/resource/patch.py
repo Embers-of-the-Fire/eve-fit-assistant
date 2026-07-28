@@ -7,6 +7,7 @@ This module contains support for patches management.
 from __future__ import annotations
 
 import json
+import sys
 
 from typing import TYPE_CHECKING
 from typing import Any
@@ -30,11 +31,11 @@ class PatchesManager:
         self.__cache = {}
         if not self.__patches_root_dir.exists():
             error(f"Patches root directory does not exist: {self.__patches_root_dir}")
-            exit(1)
+            sys.exit(1)
 
         if not self.__patches_root_dir.is_dir():
             error(f"Patches root path is not a directory: {self.__patches_root_dir}")
-            exit(1)
+            sys.exit(1)
 
     def get(self, patch_key: str, variant: Literal["yaml", "json"] = "yaml") -> Any:
         """Get patch data by patch key.
@@ -50,11 +51,11 @@ class PatchesManager:
         patch_path = self.__patches_root_dir / f"{patch_key}.{variant}"
         if not patch_path.exists():
             error(f"Patch file does not exist: {patch_path}")
-            exit(1)
+            sys.exit(1)
 
         if not patch_path.is_file():
             error(f"Patch path is not a file: {patch_path}")
-            exit(1)
+            sys.exit(1)
 
         with open(patch_path, "r", encoding="utf-8") as f:
             if variant == "yaml":
@@ -63,7 +64,7 @@ class PatchesManager:
                 data = json.load(f)
             else:
                 error(f"Unsupported patch variant: {variant}")
-                exit(1)
+                sys.exit(1)
 
         self.__cache[patch_key] = data
         return data

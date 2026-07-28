@@ -52,13 +52,13 @@ async def generate(data: GeneratorDatasource, collection):
     market_groups = await data.resources.fsd.get("marketGroups")
 
     tree: defaultdict[
-        int, dict[Literal["def", "groups", "types"], list[int] | None | MarketGroupDef]
+        int, dict[Literal["def", "groups", "types"], list[int] | MarketGroupDef | None]
     ] = defaultdict(lambda: {"def": None, "groups": [], "types": []})
     cnt = 0
     for market_group_id, market_group_def in market_groups.items():
         try:
             validated = MarketGroupDef.model_validate(market_group_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate market group {market_group_id}: {e}")
             continue
 
@@ -73,23 +73,23 @@ async def generate(data: GeneratorDatasource, collection):
     for type_id, type_def in types.items():
         try:
             validated = TypeDef.model_validate(type_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate type {type_id}: {e}")
             continue
 
         if validated.marketGroupID is not None:
             tree[validated.marketGroupID]["types"].append(type_id)
 
-    for market_group_id, data in tree.items():
-        if data["def"] is None:
+    for market_group_id, entry in tree.items():
+        if entry["def"] is None:
             error(f"Market group {market_group_id} has no definition")
             continue
 
         collection.market_groups[market_group_id].CopyFrom(
-            data["def"].to_pb(
+            entry["def"].to_pb(
                 self_id=market_group_id,
-                groups=data["groups"],
-                types=data["types"],
+                groups=entry["groups"],
+                types=entry["types"],
             )
         )
 

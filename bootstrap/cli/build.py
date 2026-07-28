@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import shutil
+import sys
 
 from pathlib import Path
 
@@ -232,7 +233,7 @@ def register_build_commands(cli_group: click.Group) -> None:
                 styled([Style.BRIGHT, Fore.RED], "Invalid generator type to skip: ") + ", ".join(x)
             )
             click.echo("Valid types are: " + ", ".join(_GENERATOR_TYPES))
-            exit(1)
+            sys.exit(1)
 
         snapshot_hash = asyncio.run(
             run_generator(
@@ -582,7 +583,7 @@ def register_build_commands(cli_group: click.Group) -> None:
                                     f"  {meta.game_version:11s}  {meta.resource_count!s:>10s}"
                                     f"  {meta.created_at}"
                                 )
-                            except Exception:
+                            except Exception:  # noqa: BLE001
                                 click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
 
             if releases:
@@ -618,7 +619,7 @@ def register_build_commands(cli_group: click.Group) -> None:
                                     f"  {h[:9]:9s}  {v_range:21s}"
                                     f"  {meta.release_count!s:>10s}  {meta.created_at}"
                                 )
-                            except Exception:
+                            except Exception:  # noqa: BLE001
                                 click.echo(f"  {h[:9]:9s}  {styled(Fore.RED, '[ERR]')}")
 
             if generations:

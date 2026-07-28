@@ -75,7 +75,7 @@ def _ensure_handlers() -> None:
 
         LOGGER.addHandler(file_handler)
         LOGGER.addHandler(console_handler)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Config or filesystem setup failed. Install a minimal stderr fallback
         # so the message being logged (often from an ``except`` block) is not
         # swallowed by this secondary failure.

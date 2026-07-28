@@ -5,9 +5,9 @@ import click
 from colorama import Fore
 from colorama import Style
 
-import bootstrap.cli.runtime as runtime
 import bootstrap.config
 
+from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.config import ProjectVersion
 from bootstrap.release.relnote import create_raw_release_note

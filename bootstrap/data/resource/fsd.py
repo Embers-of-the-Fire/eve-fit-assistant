@@ -6,6 +6,8 @@ This module provides functionality to manage and access files stored in the FSD.
 
 from __future__ import annotations
 
+import sys
+
 from typing import TYPE_CHECKING
 
 import aiofiles
@@ -28,11 +30,11 @@ class FsdManager:
         self.__cache = {}
         if not self.__fsd_root_dir.exists():
             error(f"FSD root directory does not exist: {self.__fsd_root_dir}")
-            exit(1)
+            sys.exit(1)
 
         if not self.__fsd_root_dir.is_dir():
             error(f"FSD root path is not a directory: {self.__fsd_root_dir}")
-            exit(1)
+            sys.exit(1)
 
     async def get(self, fsd_key: str) -> dict:
         fsd_key = fsd_key.lower()
@@ -43,11 +45,11 @@ class FsdManager:
         fsd_path = self.__fsd_root_dir / f"{fsd_key}.msgpack"
         if not fsd_path.exists():
             error(f"FSD file does not exist: {fsd_path}")
-            exit(1)
+            sys.exit(1)
 
         if not fsd_path.is_file():
             error(f"FSD path is not a file: {fsd_path}")
-            exit(1)
+            sys.exit(1)
 
         async with aiofiles.open(fsd_path, "rb") as f:
             debug(f"Loading FSD file: {fsd_path}")
