@@ -36,13 +36,23 @@ MarketServer? marketPriceServer(Ref ref) {
 /// Shared worker pool for price fetches, or `null` when the feature is
 /// disabled for the active checkout.
 @riverpodSingleton
-PriceWorkerPool? marketPriceWorkerPool(Ref ref) {
+PriceWorkerPool<double>? marketPriceWorkerPool(Ref ref) {
   final server = ref.watch(marketPriceServerProvider);
   if (server == null) return null;
 
   final client = MarketPriceClient(server: server);
   ref.onDispose(client.dispose);
-  return PriceWorkerPool(fetcher: client.fetchPrice);
+  return PriceWorkerPool<double>(fetcher: client.fetchPrice);
+}
+
+@riverpodSingleton
+PriceWorkerPool<TypePriceEstimate>? marketPriceBreakdownPool(Ref ref) {
+  final server = ref.watch(marketPriceServerProvider);
+  if (server == null) return null;
+
+  final client = MarketPriceClient(server: server);
+  ref.onDispose(client.dispose);
+  return PriceWorkerPool<TypePriceEstimate>(fetcher: client.fetchPriceBreakdown);
 }
 
 /// Enumerates the distinct typeIDs of a fit with their total quantities.
@@ -137,4 +147,40 @@ Future<FitPriceSummary?> fitEstimatedPrice(Ref ref, String fitId) async {
     pricedTypeCount: pricedCount,
     unpricedTypeCount: unpricedCount,
   );
+}
+
+@riverpod
+Future<FitPriceBreakdown?> fitPriceBreakdown(Ref ref, String fitId) async {
+  final pool = ref.watch(marketPriceBreakdownPoolProvider);
+  if (pool == null) return null;
+
+  final fitState = ref.watch(fitProvider(fitId));
+  if (!fitState.isInitialized) return null;
+
+  final quantities = collectFitTypeQuantities(fitState.fit);
+  if (quantities.isEmpty) return null;
+
+  final entries = quantities.entries.toList();
+  final estimates = await Future.wait(entries.map((entry) => pool.request(typeId: entry.key)));
+
+  final items = <FitPriceLineItem>[];
+  double? totalSell;
+  double? totalBuy;
+  for (final (index, estimate) in estimates.indexed) {
+    if (estimate == null) continue;
+    final quantity = entries[index].value;
+    items.add(
+      FitPriceLineItem(
+        typeId: entries[index].key,
+        quantity: quantity,
+        unitSell: estimate.sell,
+        unitBuy: estimate.buy,
+      ),
+    );
+    if (estimate.sell != null) totalSell = (totalSell ?? 0) + estimate.sell! * quantity;
+    if (estimate.buy != null) totalBuy = (totalBuy ?? 0) + estimate.buy! * quantity;
+  }
+  if (items.isEmpty) return null;
+
+  return FitPriceBreakdown(items: items, totalSell: totalSell, totalBuy: totalBuy);
 }

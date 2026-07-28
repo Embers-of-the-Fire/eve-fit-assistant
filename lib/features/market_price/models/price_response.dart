@@ -14,6 +14,27 @@ double? extractEstimatedPrice(Map<String, dynamic> payload) {
   return _firstPositiveNumber(payload, const ["avg", "average", "median", "price"]);
 }
 
+double? extractSellPrice(Map<String, dynamic> payload) {
+  final sell = payload["sell"];
+  if (sell is Map<String, dynamic>) {
+    final price = _firstPositiveNumber(sell, const ["min", "avg", "average", "median", "max"]);
+    if (price != null) return price;
+  }
+  final all = payload["all"];
+  if (all is Map<String, dynamic>) {
+    return _firstPositiveNumber(all, const ["avg", "average", "median"]);
+  }
+  return null;
+}
+
+double? extractBuyPrice(Map<String, dynamic> payload) {
+  final buy = payload["buy"];
+  if (buy is Map<String, dynamic>) {
+    return _firstPositiveNumber(buy, const ["max", "avg", "average", "median", "min"]);
+  }
+  return null;
+}
+
 double? _firstPositiveNumber(Map<String, dynamic> map, List<String> keys) {
   for (final key in keys) {
     final raw = map[key];

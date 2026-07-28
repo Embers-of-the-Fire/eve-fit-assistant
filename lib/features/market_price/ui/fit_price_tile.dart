@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/features/market_price/state/state.dart";
+import "package:eve_fit_assistant/features/market_price/ui/price_detail_page.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/num.dart";
 import "package:flutter/material.dart";
@@ -40,6 +41,7 @@ class FitPriceTile extends ConsumerWidget {
                 ),
               ),
       ),
+      onLongPress: () => showPriceDetailPage(context, fitId: fitId),
     );
   }
 }

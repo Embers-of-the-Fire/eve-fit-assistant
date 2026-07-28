@@ -65,6 +65,30 @@ class MarketPriceClient {
     }
   }
 
+  Future<TypePriceEstimate?> fetchPriceBreakdown(int typeId) async {
+    final uri = priceUriFor(typeId);
+    try {
+      final fresh = await _readFreshCacheRaw(uri);
+      if (fresh != null) return fresh;
+
+      final response = await _dio.getUri<String>(
+        uri,
+        options: _cacheOptions
+            .copyWith(policy: CachePolicy.refreshForceCache, hitCacheOnNetworkFailure: true)
+            .toOptions()
+            .copyWith(responseType: ResponseType.plain),
+      );
+      final data = response.data;
+      if (data == null) return null;
+      return _parseBodyBreakdown(data);
+    } on FormatException {
+      return null;
+    } on Object catch (e, stackTrace) {
+      debug("Market price breakdown fetch failed for type $typeId: $e", stackTrace: stackTrace);
+      return null;
+    }
+  }
+
   /// Returns the cached price for [uri] when the entry is younger than
   /// [marketPriceMaxStale], or `null` when missing, stale, or unreadable.
   ///
@@ -94,6 +118,30 @@ class MarketPriceClient {
     }
   }
 
+  Future<TypePriceEstimate?> _readFreshCacheRaw(Uri uri) async {
+    final store = _cacheOptions.store;
+    if (store == null) return null;
+    try {
+      final key = _cacheOptions.keyBuilder(url: uri);
+      final cached = await store.get(key);
+      if (cached == null) return null;
+      final age = DateTime.now().toUtc().difference(cached.responseDate);
+      if (age >= marketPriceMaxStale) return null;
+      final content = (await cached.readContent(
+        _cacheOptions,
+        readHeaders: false,
+        readBody: true,
+      )).content;
+      if (content == null) return null;
+      return _parseBodyBreakdown(utf8.decode(content));
+    } on FormatException {
+      return null;
+    } on Object catch (e, stackTrace) {
+      debug("Market price cache read failed for $uri: $e", stackTrace: stackTrace);
+      return null;
+    }
+  }
+
   /// Parses a response body. The upstream API serves HTML error pages (e.g.
   /// for unknown types) with a 200 status; those are simply "no price", not
   /// failures.
@@ -102,6 +150,16 @@ class MarketPriceClient {
     final decoded = jsonDecode(data);
     if (decoded is! Map<String, dynamic>) return null;
     return extractEstimatedPrice(decoded);
+  }
+
+  TypePriceEstimate? _parseBodyBreakdown(String data) {
+    if (!data.trimLeft().startsWith("{")) return null;
+    final decoded = jsonDecode(data);
+    if (decoded is! Map<String, dynamic>) return null;
+    final sell = extractSellPrice(decoded);
+    final buy = extractBuyPrice(decoded);
+    if (sell == null && buy == null) return null;
+    return TypePriceEstimate(sell: sell, buy: buy);
   }
 
   void dispose() => _dio.close();

@@ -830,5 +830,11 @@
   "dataUpdateDialogDone": "Done",
   "dataUpdateDialogCancel": "Cancel",
   "dataUpdateDialogClose": "Close",
-  "dataUpdateBannerText": "New game data available"
+  "dataUpdateBannerText": "New game data available",
+  "priceDetailTitle": "[{shipName}] - {fitName}",
+  "priceDetailSell": "Sell",
+  "priceDetailBuy": "Buy",
+  "priceDetailUnavailable": "N/A",
+  "priceDetailLoadFailed": "Failed to load prices",
+  "priceDetailNoData": "No price data available"
 }
