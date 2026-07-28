@@ -268,7 +268,7 @@ class _SlotRowDisplay extends ConsumerWidget {
               motion: const StretchMotion(),
               children: endActions,
             ),
-      child: content,
+      child: SlidableEdgeZone(child: content),
     );
   }
 

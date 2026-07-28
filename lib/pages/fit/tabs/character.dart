@@ -503,7 +503,7 @@ class _ImplantRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: content,
+      child: SlidableEdgeZone(child: content),
     );
   }
 
@@ -633,7 +633,7 @@ class _BoosterRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: content,
+      child: SlidableEdgeZone(child: content),
     );
   }
 

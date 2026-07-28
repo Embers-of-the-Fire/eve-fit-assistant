@@ -252,7 +252,7 @@ class _FighterSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: endActions,
       ),
-      child: content,
+      child: SlidableEdgeZone(child: content),
     );
   }
 }

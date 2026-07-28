@@ -69,7 +69,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: content,
+      child: SlidableEdgeZone(child: content),
     );
   }
 
@@ -164,7 +164,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: content,
+      child: SlidableEdgeZone(child: content),
     );
   }
 }

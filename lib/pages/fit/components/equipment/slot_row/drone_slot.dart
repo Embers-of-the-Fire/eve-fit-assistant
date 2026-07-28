@@ -97,7 +97,9 @@ class _DroneSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: recoveryActions,
       ),
-      child: ListTile(title: Text(title), trailing: Text("x $quantity")),
+      child: SlidableEdgeZone(
+        child: ListTile(title: Text(title), trailing: Text("x $quantity")),
+      ),
     );
   }
 
@@ -178,7 +180,7 @@ class _DroneSlotRow extends ConsumerWidget {
         motion: const StretchMotion(),
         children: endActions,
       ),
-      child: content,
+      child: SlidableEdgeZone(child: content),
     );
   }
 }

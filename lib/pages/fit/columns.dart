@@ -140,12 +140,27 @@ class _FitDisplayTab extends StatefulWidget {
 class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late final FitInteractionOptions _interactionOptions;
+  final _edgeTracker = SlidableEdgeTracker();
+  final Map<int, double> _pointerDownX = {};
+
+  static const _tabCount = 5;
+  static const _swipeThreshold = 50.0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(initialIndex: widget.initialIndex, length: 5, vsync: this);
+    _tabController = TabController(
+      initialIndex: widget.initialIndex,
+      length: _tabCount,
+      vsync: this,
+    );
     _interactionOptions = const FitInteractionOptions();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -167,20 +182,60 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
         ],
       ),
       Expanded(
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _CharacterTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
-            _EquipmentTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
-            _AttributeTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
-            if (widget.fitContext.ship.fighterTubes > 0)
-              _FighterTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions)
-            else
-              _DroneTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
-            _UtilsTab(fitContext: widget.fitContext),
-          ],
+        child: SlidableEdgeScope(
+          tracker: _edgeTracker,
+          child: Listener(
+            onPointerDown: (event) => _pointerDownX[event.pointer] = event.position.dx,
+            onPointerUp: _handlePointerUp,
+            onPointerCancel: (event) {
+              _pointerDownX.remove(event.pointer);
+              _edgeTracker.clear(event.pointer);
+            },
+            child: TabBarView(
+              controller: _tabController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _CharacterTab(
+                  fitContext: widget.fitContext,
+                  interactionOptions: _interactionOptions,
+                ),
+                _EquipmentTab(
+                  fitContext: widget.fitContext,
+                  interactionOptions: _interactionOptions,
+                ),
+                _AttributeTab(
+                  fitContext: widget.fitContext,
+                  interactionOptions: _interactionOptions,
+                ),
+                if (widget.fitContext.ship.fighterTubes > 0)
+                  _FighterTab(
+                    fitContext: widget.fitContext,
+                    interactionOptions: _interactionOptions,
+                  )
+                else
+                  _DroneTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
+                _UtilsTab(fitContext: widget.fitContext),
+              ],
+            ),
+          ),
         ),
       ),
     ],
   );
+
+  void _handlePointerUp(PointerUpEvent event) {
+    final startX = _pointerDownX.remove(event.pointer);
+    final onEdge = _edgeTracker.consumeOnEdge(event.pointer);
+    if (startX == null || onEdge) return;
+
+    final delta = event.position.dx - startX;
+    if (delta.abs() < _swipeThreshold) return;
+
+    final next = delta < 0
+        ? (_tabController.index + 1).clamp(0, _tabCount - 1)
+        : (_tabController.index - 1).clamp(0, _tabCount - 1);
+    if (next != _tabController.index) {
+      _tabController.animateTo(next);
+    }
+  }
 }
