@@ -19,7 +19,7 @@ def test_styled_list_of_styles():
 
 
 def test_styled_invalid_type_raises():
-    with pytest.raises(ValueError, match="Invalid style type"):
+    with pytest.raises(TypeError, match="Invalid style type"):
         styled(42, "text")
 
 
