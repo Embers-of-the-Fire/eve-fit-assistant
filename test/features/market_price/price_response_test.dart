@@ -15,13 +15,13 @@ void main() {
     test("falls back through sections and keys in order", () {
       expect(
         extractEstimatedPrice({
-          "sell": {"avg": 42.0},
+          "sell": {"max": 42.0},
         }),
         42.0,
       );
       expect(
         extractEstimatedPrice({
-          "all": {"median": 7.0},
+          "all": {"min": 7.0},
         }),
         7.0,
       );
@@ -31,8 +31,20 @@ void main() {
         }),
         3.0,
       );
-      expect(extractEstimatedPrice({"avg": 11.0}), 11.0);
-      expect(extractEstimatedPrice({"price": 5}), 5.0);
+      expect(
+        extractEstimatedPrice({
+          "sell": {"volume": 100},
+          "all": {"max": 11.0},
+        }),
+        11.0,
+      );
+      expect(
+        extractEstimatedPrice({
+          "sell": {"volume": 100},
+          "buy": {"min": 5.0},
+        }),
+        5.0,
+      );
     });
 
     test("accepts integer values", () {
