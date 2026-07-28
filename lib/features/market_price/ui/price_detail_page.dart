@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
+import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/features/market_price/models/models.dart";
 import "package:eve_fit_assistant/features/market_price/state/state.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
@@ -10,6 +11,20 @@ import "package:eve_fit_assistant/utils/num.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+
+(pb_types.Type?, String) _resolveShip(BuildContext context, WidgetRef ref, int shipTypeId) {
+  final shipType = ref.watch(repoCollectionProvider.select((c) => c?.getType(shipTypeId)));
+  final locale = context.locale.languageCode;
+  final shipName = shipType != null
+      ? ref.watch(
+              repoCollectionProvider.select(
+                (c) => c?.getLocalizedName(shipType.typeName.id, locale),
+              ),
+            ) ??
+            ""
+      : "";
+  return (shipType, shipName);
+}
 
 Future<void> showPriceDetailPage(BuildContext context, {required String fitId}) => Navigator.of(
   context,
@@ -32,16 +47,7 @@ class PriceDetailPage extends ConsumerWidget {
 
     final fit = fitState.fit;
     final shipTypeId = fit.body.shipTypeId;
-    final shipType = ref.watch(repoCollectionProvider.select((c) => c?.getType(shipTypeId)));
-    final locale = context.locale.languageCode;
-    final shipName = shipType != null
-        ? ref.watch(
-                repoCollectionProvider.select(
-                  (c) => c?.getLocalizedName(shipType.typeName.id, locale),
-                ),
-              ) ??
-              ""
-        : "";
+    final (_, shipName) = _resolveShip(context, ref, shipTypeId);
     final title = context.l10n.priceDetailTitle(shipName: shipName, fitName: fit.metadata.name);
 
     return Scaffold(
@@ -121,16 +127,7 @@ class _HeaderTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final shipType = ref.watch(repoCollectionProvider.select((c) => c?.getType(shipTypeId)));
-    final locale = context.locale.languageCode;
-    final shipName = shipType != null
-        ? ref.watch(
-                repoCollectionProvider.select(
-                  (c) => c?.getLocalizedName(shipType.typeName.id, locale),
-                ),
-              ) ??
-              ""
-        : "";
+    final (shipType, shipName) = _resolveShip(context, ref, shipTypeId);
 
     return ListTile(
       minTileHeight: 0,
