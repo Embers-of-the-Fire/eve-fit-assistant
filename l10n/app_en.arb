@@ -834,6 +834,8 @@
   "priceDetailTitle": "[{shipName}] - {fitName}",
   "priceDetailSell": "Sell",
   "priceDetailBuy": "Buy",
+  "priceDetailUnit": "Unit",
+  "priceDetailTotal": "Total",
   "priceDetailUnavailable": "N/A",
   "priceDetailLoadFailed": "Failed to load prices",
   "priceDetailNoData": "No price data available"

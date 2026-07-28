@@ -359,10 +359,40 @@ class _PriceItemTable extends ConsumerWidget {
           5: IntrinsicColumnWidth(),
         },
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        children: [for (final item in items) _buildRow(context, ref, item)],
+        children: [
+          _buildHeaderRow(context),
+          for (final item in items) _buildRow(context, ref, item),
+        ],
       ),
     ),
   );
+
+  TableRow _buildHeaderRow(BuildContext context) {
+    final l10n = context.l10n;
+    final sellColor = Colors.red.shade700;
+    final buyColor = Colors.green.shade700;
+    final style = context.theme.textTheme.labelSmall;
+
+    Widget headerCell(String text, Color color) => Padding(
+      padding: const EdgeInsets.only(left: 16, bottom: 4),
+      child: Text(
+        text,
+        textAlign: TextAlign.end,
+        style: style?.copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+
+    return TableRow(
+      children: [
+        const SizedBox.shrink(),
+        const SizedBox.shrink(),
+        headerCell("${_PriceSide.buy.label(context)} ${l10n.priceDetailUnit}", sellColor),
+        headerCell("${_PriceSide.buy.label(context)} ${l10n.priceDetailTotal}", sellColor),
+        headerCell("${_PriceSide.sell.label(context)} ${l10n.priceDetailUnit}", buyColor),
+        headerCell("${_PriceSide.sell.label(context)} ${l10n.priceDetailTotal}", buyColor),
+      ],
+    );
+  }
 
   TableRow _buildRow(BuildContext context, WidgetRef ref, FitPriceLineItem item) {
     final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(item.typeId)));

@@ -1824,6 +1824,8 @@
   },
   "priceDetailSell": "卖出",
   "priceDetailBuy": "买入",
+  "priceDetailUnit": "单价",
+  "priceDetailTotal": "总价",
   "priceDetailUnavailable": "暂无",
   "priceDetailLoadFailed": "价格加载失败",
   "priceDetailNoData": "暂无价格数据"
