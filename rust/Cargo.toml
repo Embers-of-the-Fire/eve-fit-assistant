@@ -1,6 +1,6 @@
 [package]
 name = "rust_lib_eve_fit_assistant"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021" # not 2024 because of flutter_rust_bridge
 
 [lib]
