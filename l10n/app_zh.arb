@@ -1828,5 +1828,11 @@
   "priceDetailTotal": "总价",
   "priceDetailUnavailable": "暂无",
   "priceDetailLoadFailed": "价格加载失败",
-  "priceDetailNoData": "暂无价格数据"
+  "priceDetailNoData": "暂无价格数据",
+  "priceDetailPartial": "{count} 项价格获取失败，总价不完整",
+  "@priceDetailPartial": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

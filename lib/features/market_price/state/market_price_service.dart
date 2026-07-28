@@ -173,8 +173,12 @@ Future<FitPriceBreakdown?> fitPriceBreakdown(Ref ref, String fitId) async {
   final items = <FitPriceLineItem>[];
   double? totalSell;
   double? totalBuy;
+  var missingTypeCount = 0;
   for (final (index, estimate) in estimates.indexed) {
-    if (estimate == null) continue;
+    if (estimate == null) {
+      missingTypeCount++;
+      continue;
+    }
     final quantity = entries[index].value;
     items.add(
       FitPriceLineItem(
@@ -189,5 +193,10 @@ Future<FitPriceBreakdown?> fitPriceBreakdown(Ref ref, String fitId) async {
   }
   if (items.isEmpty) return null;
 
-  return FitPriceBreakdown(items: items, totalSell: totalSell, totalBuy: totalBuy);
+  return FitPriceBreakdown(
+    items: items,
+    totalSell: totalSell,
+    totalBuy: totalBuy,
+    missingTypeCount: missingTypeCount,
+  );
 }

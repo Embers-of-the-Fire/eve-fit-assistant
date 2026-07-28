@@ -838,5 +838,6 @@
   "priceDetailTotal": "Total",
   "priceDetailUnavailable": "N/A",
   "priceDetailLoadFailed": "Failed to load prices",
-  "priceDetailNoData": "No price data available"
+  "priceDetailNoData": "No price data available",
+  "priceDetailPartial": "{count} price(s) failed to load; totals are incomplete"
 }

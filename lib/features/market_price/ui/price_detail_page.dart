@@ -108,6 +108,7 @@ class _PriceBreakdownList extends ConsumerWidget {
         children: [
           _HeaderTile(shipTypeId: shipTypeId, fitName: fitName),
           const SizedBox(height: 4),
+          if (breakdown.isPartial) _PartialBanner(missingTypeCount: breakdown.missingTypeCount),
           _SummarySection(breakdown: breakdown, columns: columns),
           const Divider(height: 16, indent: 16, endIndent: 16),
           _PriceItemTable(items: breakdown.items),
@@ -172,6 +173,29 @@ class _SummarySection extends StatelessWidget {
     }
     return Column(children: [buy, sell]);
   }
+}
+
+class _PartialBanner extends StatelessWidget {
+  const _PartialBanner({required this.missingTypeCount});
+
+  final int missingTypeCount;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    child: Row(
+      children: [
+        Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange.shade700),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            context.l10n.priceDetailPartial(count: missingTypeCount),
+            style: context.theme.textTheme.bodySmall?.copyWith(color: Colors.orange.shade700),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SummaryTile extends StatelessWidget {
@@ -262,6 +286,8 @@ class _SingleColumnTabsState extends ConsumerState<_SingleColumnTabs>
   Widget build(BuildContext context) => Column(
     children: [
       _HeaderTile(shipTypeId: widget.shipTypeId, fitName: widget.fitName),
+      if (widget.breakdown.isPartial)
+        _PartialBanner(missingTypeCount: widget.breakdown.missingTypeCount),
       _SummarySection(breakdown: widget.breakdown, columns: 1),
       TabBar(
         controller: _tabController,

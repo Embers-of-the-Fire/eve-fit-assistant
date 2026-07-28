@@ -50,9 +50,21 @@ class FitPriceLineItem {
 /// Conversely, the `totalBuy` refers to the sum of the buy prices of all the items,
 /// which means if you want to *sell* the fit, you will receive this amount.
 class FitPriceBreakdown {
-  const FitPriceBreakdown({required this.items, required this.totalSell, required this.totalBuy});
+  const FitPriceBreakdown({
+    required this.items,
+    required this.totalSell,
+    required this.totalBuy,
+    this.missingTypeCount = 0,
+  });
 
   final List<FitPriceLineItem> items;
   final double? totalSell;
   final double? totalBuy;
+
+  /// Number of requested types whose price lookup failed entirely.
+  ///
+  /// When non-zero the totals are incomplete and the UI should indicate this.
+  final int missingTypeCount;
+
+  bool get isPartial => missingTypeCount > 0;
 }
