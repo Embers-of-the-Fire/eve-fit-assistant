@@ -31,7 +31,7 @@ def wait_for_http(url: str, timeout_seconds: float = 20.0) -> None:
         try:
             with urlopen(url, timeout=1.0):
                 return
-        except Exception as exception:
+        except Exception as exception:  # noqa: BLE001
             last_error = exception
             time.sleep(0.25)
 

@@ -52,7 +52,7 @@ def _discover_server_ids(resources_root: Path | None = None) -> frozenset[str]:
         try:
             with open(descriptor_path, "rb") as f:
                 data = tomllib.load(f)
-        except Exception:
+        except Exception:  # noqa: BLE001, S112
             continue
         if data.get("ignore", False):
             continue

@@ -140,7 +140,7 @@ class Verifier:
                                     ),
                                 )
                             )
-                except Exception:
+                except Exception:  # noqa: BLE001, S110
                     pass
 
         return issues
@@ -181,7 +181,7 @@ class Verifier:
                             ),
                         )
                     )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 issues.append(
                     Issue(
                         entity=expected[:12] + "...",
@@ -239,7 +239,7 @@ class Verifier:
                             message=f"Hash mismatch: {expected[:12]}... does not verify (v4/v3)",
                         )
                     )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 issues.append(
                     Issue(
                         entity=expected[:12] + "...",
@@ -271,7 +271,7 @@ class Verifier:
                 from bootstrap.remote.models import ResourceIndex
 
                 index = _models_read_pb2(proto_path, ResourceIndex)
-            except Exception:
+            except Exception:  # noqa: BLE001, S112
                 continue
 
             for entry in index.entries:
@@ -303,7 +303,7 @@ class Verifier:
                                 ),
                             )
                         )
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     issues.append(
                         Issue(
                             entity=f"{entry.resource_id}",
@@ -379,7 +379,7 @@ class Verifier:
                                 ),
                             )
                         )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 issues.append(
                     Issue(
                         entity=gen_hash[:12] + "...",
@@ -437,7 +437,7 @@ class Verifier:
 
             try:
                 history = _models_read_pb2(history_path, ServerHistory)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 issues.append(
                     Issue(
                         entity=head.generation_hash[:12] + "...",
@@ -495,8 +495,7 @@ class Verifier:
         for issue in all_issues.get("blobs", []):
             if issue.severity == "error" and "Missing blob" in issue.message:
                 path_suffix = issue.message.split(": ", 1)[-1]
-                if path_suffix.startswith("Missing blob: "):
-                    path_suffix = path_suffix[len("Missing blob: ") :]
+                path_suffix = path_suffix.removeprefix("Missing blob: ")
                 src = self.workspace_root / Path(path_suffix).relative_to(self.root)
                 dst = Path(path_suffix)
                 if src.is_file() and not dst.is_file():

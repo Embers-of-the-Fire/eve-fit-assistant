@@ -8,6 +8,8 @@ to live at module scope in ``x.py``.
 
 from __future__ import annotations
 
+import sys
+
 from typing import TYPE_CHECKING
 
 import click
@@ -52,7 +54,9 @@ def execute_redacted(cmd: list[str], redacted_cmd: list[str], title: str) -> Non
         info(f"[Dry-Run] {title}: " + " ".join(redacted_cmd))
         return
 
-    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    out = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+    )
     if out.returncode != 0:
         message = f"Failed to execute command [{out.returncode}]: " + " ".join(redacted_cmd)
         stderr = (out.stderr or "").strip()
@@ -84,7 +88,7 @@ def get_workspace(name) -> Path:
 
     if len(name) == 0:
         click.echo(styled([Style.BRIGHT, Fore.RED], "Invalid name: ") + "empty")
-        exit(1)
+        sys.exit(1)
 
     workspaces = bootstrap.config.CONFIGURATION.resources
     ws = workspaces.get(name)
@@ -92,7 +96,7 @@ def get_workspace(name) -> Path:
     if ws is None:
         click.echo(styled([Style.BRIGHT, Fore.RED], "Unknown workspace identifier: ") + name)
         click.echo("Please check if the workspace is registered in the configuration.")
-        exit(1)
+        sys.exit(1)
 
     if not ws.descriptor.exists():
         click.echo(
@@ -107,7 +111,7 @@ def current_workspace_descriptor() -> WorkspaceConfig:
     if not name:
         click.echo(styled([Style.BRIGHT, Fore.RED], "No workspace selected."))
         click.echo("Please select a workspace using `x workspace list` and `x workspace default`.")
-        exit(1)
+        sys.exit(1)
 
     ws = get_workspace(name)
     info(f"Resolving workspace: {name} ({ws})")

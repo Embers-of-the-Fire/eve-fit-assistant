@@ -99,7 +99,7 @@ def _load_spec(path: Path) -> BundledSourceMetadata:
     if raw is None:
         raw = {}
     if not isinstance(raw, dict):
-        raise ValueError(f"Spec file must contain a YAML mapping: {path}")
+        raise TypeError(f"Spec file must contain a YAML mapping: {path}")
 
     source_type = _detect_source_type(path)
     directory_name = path.parent.name

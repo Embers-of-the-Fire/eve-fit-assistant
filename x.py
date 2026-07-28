@@ -20,7 +20,6 @@ root Click group, and delegates every command group to a `register_*` function
 under `bootstrap.cli`. Add or modify commands there, not here.
 """
 
-# ruff: noqa: E402
 # Allow monkey patch to global PYTHON PATH for schema imports
 
 from __future__ import annotations
@@ -64,7 +63,7 @@ if __name__ != "__main__":
         styled([Style.BRIGHT, Fore.RED], "Invalid Usage: ")
         + "`x.py` must be used as a script, not a module!"
     )
-    exit(0)
+    sys.exit(0)
 
 
 def _parse_env_option(

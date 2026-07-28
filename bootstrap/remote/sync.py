@@ -238,7 +238,7 @@ class Syncer:
         try:
             meta = ChannelHeadMetadata.model_validate(read_json(meta_path))
             return meta.generation_hash or None
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _read_gen_parent(self, gen_hash: str) -> str | None:
@@ -251,7 +251,7 @@ class Syncer:
         try:
             meta = GenerationMetadata.model_validate(read_json(meta_path))
             return meta.parent or None
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _collect_snapshot_hashes(self, gen_hash: str, snapshot_hashes: dict[str, set[str]]) -> None:
@@ -267,7 +267,7 @@ class Syncer:
                 for entry in resources.entries:
                     if entry.snapshot_hash:
                         snapshot_hashes["resources"].add(entry.snapshot_hash)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
 
         release_path = gen_dir / "releases.pb2"
@@ -276,7 +276,7 @@ class Syncer:
                 ptr = read_pb2(release_path, GenerationPointer)
                 if ptr.snapshot_hash:
                     snapshot_hashes["releases"].add(ptr.snapshot_hash)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
 
     def _download_snapshots(self, snap_type: str, hashes: set[str]) -> int:
@@ -315,6 +315,7 @@ def _run(
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         raise OSError(f"{title} timed out after {timeout}s: {' '.join(redacted_cmd)}") from None
@@ -335,6 +336,7 @@ def _run_optional(cmd: list[str], label: str, timeout: float = 300) -> bool:
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            check=False,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False

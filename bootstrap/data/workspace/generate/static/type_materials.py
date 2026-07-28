@@ -40,7 +40,7 @@ async def generate(data: GeneratorDatasource, collection):
     for type_material_id, type_material_def in type_materials.items():
         try:
             validated = TypeMaterialDef.model_validate(type_material_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate type material {type_material_id}: {e}")
             continue
 

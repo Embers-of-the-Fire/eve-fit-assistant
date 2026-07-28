@@ -352,7 +352,7 @@ def register_remote_lifecycle(remote: click.Group) -> None:
                     styled([Style.BRIGHT, Fore.YELLOW], "No channels found in remote registry.")
                 )
                 return
-            for _ch, r in results.items():
+            for r in results.values():
                 _print_sync_result(r)
             missing = [ch for ch, r in results.items() if not r.head_meta]
             if missing:

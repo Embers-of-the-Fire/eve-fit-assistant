@@ -94,7 +94,7 @@ async def generate(data: GeneratorDatasource, collection):
     for type_id, dogma_def in type_dogma.items():
         try:
             validated = TypeDogmaDef.model_validate(dogma_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate category {type_id}: {e}")
             continue
 

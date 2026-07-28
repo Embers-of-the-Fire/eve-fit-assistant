@@ -43,7 +43,7 @@ async def generate(data: GeneratorDatasource, collection):
     for category_id, category_def in categories.items():
         try:
             validated = CategoryDef.model_validate(category_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate category {category_id}: {e}")
             continue
 

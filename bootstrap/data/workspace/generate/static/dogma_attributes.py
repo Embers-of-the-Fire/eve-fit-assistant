@@ -73,7 +73,7 @@ async def generate(data: GeneratorDatasource, collection):
     for dogma_attribute_id, dogma_attribute_def in dogma_attributes.items():
         try:
             validated = DogmaAttributeDef.model_validate(dogma_attribute_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate dogma attribute {dogma_attribute_id}: {e}")
             continue
 

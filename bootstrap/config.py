@@ -203,7 +203,6 @@ class ProjectConfiguration(BaseModel):
 
     @staticmethod
     def ensure_loaded():
-        global CONFIGURATION
         if CONFIGURATION is None:
             ProjectConfiguration.load_from_global()
 
@@ -400,7 +399,6 @@ class DeveloperConfiguration(BaseModel):
 
     @staticmethod
     def ensure_loaded():
-        global DEV_CONFIGURATION
         if DEV_CONFIGURATION is None:
             DeveloperConfiguration.load_from_global()
 
@@ -436,7 +434,6 @@ class WorkspaceCache(BaseModel):
 
     @staticmethod
     def select_workspace(name: str):
-        global WORKSPACE_CACHE
         assert WORKSPACE_CACHE is not None
         WORKSPACE_CACHE.current_workspace = name
 

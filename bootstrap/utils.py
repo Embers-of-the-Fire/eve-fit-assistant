@@ -88,12 +88,19 @@ def execute_command(
         return_code = process.wait()
         if return_code != 0:
             error(f"Failed to execute command [{return_code}]")
-            exit(return_code)
+            sys.exit(return_code)
         debug("-" * line_width)
         return ""
 
     out = subprocess.run(
-        cmd, *args, capture_output=True, text=True, encoding="utf-8", errors="replace", **kwargs
+        cmd,
+        *args,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        **kwargs,
     )
     stdout = out.stdout or ""
     stderr = out.stderr or ""
@@ -103,7 +110,7 @@ def execute_command(
         error(f"Failed to execute command [{out.returncode}]:")
         for line in stderr.splitlines():
             error(line)
-        exit(out.returncode)
+        sys.exit(out.returncode)
     else:
         for line in stdout.splitlines():
             debug(line)

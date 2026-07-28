@@ -11,7 +11,7 @@ def styled(styles: str | list[str], text: str) -> str:
     elif isinstance(styles, str):
         out += styles
     else:
-        raise ValueError(f"Invalid style type: {type(styles)}")
+        raise TypeError(f"Invalid style type: {type(styles)}")
 
     out += text
     out += Style.RESET_ALL

@@ -575,7 +575,7 @@ def run_preflight_validation(
         page_uuid = page_meta.uuid
         try:
             page = ws._read_any_page(workspace_dir, page_uuid)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             errors.append(f"Failed to load page {page_uuid}: {e}")
             continue
 
@@ -705,7 +705,7 @@ def _run_remote_compatibility_check(
     try:
         remote_catalog_data = json.loads(remote_catalog_path.read_text(encoding="utf-8"))
         remote_catalog = AnnouncementCatalog.model_validate(remote_catalog_data)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         errors.append(f"failed to load remote catalog: {e}")
         return errors
 
@@ -778,7 +778,7 @@ class AnnouncementRemoteSync:
         mc_bin, alias_target = self._ensure_alias()
         target_url = f"{alias_target}/{self.resource_root}/{key.lstrip('/')}"
         result = subprocess.run(
-            [mc_bin, "cat", target_url], capture_output=True, text=False, timeout=30
+            [mc_bin, "cat", target_url], capture_output=True, text=False, timeout=30, check=False
         )
         if result.returncode != 0:
             stderr = result.stderr.decode("utf-8", errors="replace").strip()
@@ -852,7 +852,7 @@ class AnnouncementRemoteSync:
 
     def _run_mc(self, cmd: list[str], redacted_cmd: list[str], title: str) -> None:
         """Run an ``mc`` command, logging only the redacted version."""
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
         if result.returncode != 0:
             raise RuntimeError(
                 f"Failed to execute [{title}] ({' '.join(redacted_cmd)}): {result.stderr}"
@@ -906,7 +906,7 @@ class AnnouncementRemoteSync:
         if not force:
             try:
                 self._download_json("announcements/catalog.json")
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass  # download failed (404, etc.) → remote is empty, proceed
             else:
                 raise RuntimeError(
@@ -951,7 +951,9 @@ class AnnouncementRemoteSync:
         for local_path, remote_path in uploads:
             target_url = f"{alias_target}/{self.resource_root}/{remote_path}"
             cmd = [mc_bin, "cp", str(local_path), target_url]
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, encoding="utf-8", check=False
+            )
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to upload {local_path}: {result.stderr}")
 
@@ -1000,7 +1002,9 @@ class AnnouncementRemoteSync:
             seen.add(key)
             target_url = f"{alias_target}/{self.resource_root}/{remote_path}"
             cmd = [mc_bin, "cp", str(local_path), target_url]
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, encoding="utf-8", check=False
+            )
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to upload {local_path}: {result.stderr}")
 

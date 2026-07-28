@@ -175,7 +175,7 @@ async def _load_skill_group_ids(data: GeneratorDatasource) -> set[int]:
     for group_id, group_def in groups.items():
         try:
             validated = GroupCategoryDef.model_validate(group_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate group {group_id} for skill alpha levels: {e}")
             continue
         if validated.categoryID == _SKILL_CATEGORY_ID:
@@ -228,7 +228,7 @@ async def generate(data: GeneratorDatasource, collection):
     for type_id, type_def in types.items():
         try:
             validated = TypeDef.model_validate(type_def)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error(f"Failed to validate type {type_id}: {e}")
             continue
 
@@ -241,7 +241,7 @@ async def generate(data: GeneratorDatasource, collection):
         if dogma_def is not None:
             try:
                 validated_dogma = TypeDogmaDef.model_validate(dogma_def)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 error(f"Failed to validate type dogma {type_id}: {e}")
             else:
                 for skill_type_id, level in _extract_required_skills(

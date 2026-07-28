@@ -15,14 +15,14 @@ from bootstrap.docs.bundled_docs import build_bundled_docs
 
 
 if TYPE_CHECKING:
-    from collections.abc import Set
+    from collections.abc import Set as AbstractSet
 
 
-_OLD_GENERAL_IDS: Set[str] = {
+_OLD_GENERAL_IDS: AbstractSet[str] = {
     "open-preview-note",
 }
 
-_OLD_VERSION_IDS: Set[str] = {
+_OLD_VERSION_IDS: AbstractSet[str] = {
     "version-alpha-0-0-0",
     "version-alpha-0-0-1",
     "version-0-1-0-beta-1",
