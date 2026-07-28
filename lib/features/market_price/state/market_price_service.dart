@@ -33,25 +33,32 @@ MarketServer? marketPriceServer(Ref ref) {
   return MarketServer.parse(ref.watch(appSettingServiceProvider).marketServerFallback);
 }
 
-/// Shared worker pool for price fetches, or `null` when the feature is
-/// disabled for the active checkout.
+/// Shared [MarketPriceClient] for the active market server, or `null` when the
+/// feature is disabled. Both worker pools reuse this single client (and its
+/// underlying Dio connection pool + Hive-backed HTTP cache).
 @riverpodSingleton
-PriceWorkerPool<double>? marketPriceWorkerPool(Ref ref) {
+MarketPriceClient? marketPriceClient(Ref ref) {
   final server = ref.watch(marketPriceServerProvider);
   if (server == null) return null;
 
   final client = MarketPriceClient(server: server);
   ref.onDispose(client.dispose);
+  return client;
+}
+
+/// Shared worker pool for price fetches, or `null` when the feature is
+/// disabled for the active checkout.
+@riverpodSingleton
+PriceWorkerPool<double>? marketPriceWorkerPool(Ref ref) {
+  final client = ref.watch(marketPriceClientProvider);
+  if (client == null) return null;
   return PriceWorkerPool<double>(fetcher: client.fetchPrice);
 }
 
 @riverpodSingleton
 PriceWorkerPool<TypePriceEstimate>? marketPriceBreakdownPool(Ref ref) {
-  final server = ref.watch(marketPriceServerProvider);
-  if (server == null) return null;
-
-  final client = MarketPriceClient(server: server);
-  ref.onDispose(client.dispose);
+  final client = ref.watch(marketPriceClientProvider);
+  if (client == null) return null;
   return PriceWorkerPool<TypePriceEstimate>(fetcher: client.fetchPriceBreakdown);
 }
 
