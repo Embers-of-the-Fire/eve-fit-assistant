@@ -41,10 +41,14 @@ class MarketPriceClient {
   /// entry is used as a fallback. Returns `null` on any network, HTTP, or
   /// parse failure — price data is best-effort and individual failures must
   /// never propagate.
-  Future<double?> fetchPrice(int typeId) async {
+  Future<double?> fetchPrice(int typeId) => _fetch(typeId, _parsePrice);
+
+  Future<TypePriceEstimate?> fetchPriceBreakdown(int typeId) => _fetch(typeId, _parseBreakdown);
+
+  Future<T?> _fetch<T>(int typeId, T? Function(Map<String, dynamic>) parse) async {
     final uri = priceUriFor(typeId);
     try {
-      final fresh = await _readFreshCache(uri);
+      final fresh = await _readFreshCache(uri, parse);
       if (fresh != null) return fresh;
 
       final response = await _dio.getUri<String>(
@@ -56,7 +60,7 @@ class MarketPriceClient {
       );
       final data = response.data;
       if (data == null) return null;
-      return _parseBody(data);
+      return _decodeBody(data, parse);
     } on FormatException {
       return null;
     } on Object catch (e, stackTrace) {
@@ -65,12 +69,12 @@ class MarketPriceClient {
     }
   }
 
-  /// Returns the cached price for [uri] when the entry is younger than
+  /// Returns the cached value for [uri] when the entry is younger than
   /// [marketPriceMaxStale], or `null` when missing, stale, or unreadable.
   ///
   /// The age is anchored to the entry's fetch time (`responseDate`), so
   /// repeated reads can never extend the freshness window.
-  Future<double?> _readFreshCache(Uri uri) async {
+  Future<T?> _readFreshCache<T>(Uri uri, T? Function(Map<String, dynamic>) parse) async {
     final store = _cacheOptions.store;
     if (store == null) return null;
     try {
@@ -85,7 +89,7 @@ class MarketPriceClient {
         readBody: true,
       )).content;
       if (content == null) return null;
-      return _parseBody(utf8.decode(content));
+      return _decodeBody(utf8.decode(content), parse);
     } on FormatException {
       return null;
     } on Object catch (e, stackTrace) {
@@ -94,14 +98,23 @@ class MarketPriceClient {
     }
   }
 
-  /// Parses a response body. The upstream API serves HTML error pages (e.g.
-  /// for unknown types) with a 200 status; those are simply "no price", not
-  /// failures.
-  double? _parseBody(String data) {
+  /// Decodes a JSON response body and applies [parse]. The upstream API
+  /// serves HTML error pages (e.g. for unknown types) with a 200 status;
+  /// those are simply "no data", not failures.
+  T? _decodeBody<T>(String data, T? Function(Map<String, dynamic>) parse) {
     if (!data.trimLeft().startsWith("{")) return null;
     final decoded = jsonDecode(data);
     if (decoded is! Map<String, dynamic>) return null;
-    return extractEstimatedPrice(decoded);
+    return parse(decoded);
+  }
+
+  static double? _parsePrice(Map<String, dynamic> payload) => extractEstimatedPrice(payload);
+
+  static TypePriceEstimate? _parseBreakdown(Map<String, dynamic> payload) {
+    final sell = extractSellPrice(payload);
+    final buy = extractBuyPrice(payload);
+    if (sell == null && buy == null) return null;
+    return TypePriceEstimate(sell: sell, buy: buy);
   }
 
   void dispose() => _dio.close();

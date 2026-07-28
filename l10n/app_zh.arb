@@ -1813,5 +1813,26 @@
   "dataUpdateDialogDone": "完成",
   "dataUpdateDialogCancel": "取消",
   "dataUpdateDialogClose": "关闭",
-  "dataUpdateBannerText": "有新的游戏数据可用"
+  "dataUpdateBannerText": "有新的游戏数据可用",
+  "@@@_PRICE_DETAIL": {},
+  "priceDetailTitle": "[{shipName}] - {fitName}",
+  "@priceDetailTitle": {
+    "placeholders": {
+      "shipName": { "type": "String" },
+      "fitName": { "type": "String" }
+    }
+  },
+  "priceDetailSell": "卖出",
+  "priceDetailBuy": "买入",
+  "priceDetailUnit": "单价",
+  "priceDetailTotal": "总价",
+  "priceDetailUnavailable": "暂无",
+  "priceDetailLoadFailed": "价格加载失败",
+  "priceDetailNoData": "暂无价格数据",
+  "priceDetailPartial": "{count} 项价格获取失败，总价不完整",
+  "@priceDetailPartial": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

@@ -33,16 +33,33 @@ MarketServer? marketPriceServer(Ref ref) {
   return MarketServer.parse(ref.watch(appSettingServiceProvider).marketServerFallback);
 }
 
-/// Shared worker pool for price fetches, or `null` when the feature is
-/// disabled for the active checkout.
+/// Shared [MarketPriceClient] for the active market server, or `null` when the
+/// feature is disabled. Both worker pools reuse this single client (and its
+/// underlying Dio connection pool + Hive-backed HTTP cache).
 @riverpodSingleton
-PriceWorkerPool? marketPriceWorkerPool(Ref ref) {
+MarketPriceClient? marketPriceClient(Ref ref) {
   final server = ref.watch(marketPriceServerProvider);
   if (server == null) return null;
 
   final client = MarketPriceClient(server: server);
   ref.onDispose(client.dispose);
-  return PriceWorkerPool(fetcher: client.fetchPrice);
+  return client;
+}
+
+/// Shared worker pool for price fetches, or `null` when the feature is
+/// disabled for the active checkout.
+@riverpodSingleton
+PriceWorkerPool<double>? marketPriceWorkerPool(Ref ref) {
+  final client = ref.watch(marketPriceClientProvider);
+  if (client == null) return null;
+  return PriceWorkerPool<double>(fetcher: client.fetchPrice);
+}
+
+@riverpodSingleton
+PriceWorkerPool<TypePriceEstimate>? marketPriceBreakdownPool(Ref ref) {
+  final client = ref.watch(marketPriceClientProvider);
+  if (client == null) return null;
+  return PriceWorkerPool<TypePriceEstimate>(fetcher: client.fetchPriceBreakdown);
 }
 
 /// Enumerates the distinct typeIDs of a fit with their total quantities.
@@ -136,5 +153,50 @@ Future<FitPriceSummary?> fitEstimatedPrice(Ref ref, String fitId) async {
     total: total,
     pricedTypeCount: pricedCount,
     unpricedTypeCount: unpricedCount,
+  );
+}
+
+@riverpod
+Future<FitPriceBreakdown?> fitPriceBreakdown(Ref ref, String fitId) async {
+  final pool = ref.watch(marketPriceBreakdownPoolProvider);
+  if (pool == null) return null;
+
+  final fitState = ref.watch(fitProvider(fitId));
+  if (!fitState.isInitialized) return null;
+
+  final quantities = collectFitTypeQuantities(fitState.fit);
+  if (quantities.isEmpty) return null;
+
+  final entries = quantities.entries.toList();
+  final estimates = await Future.wait(entries.map((entry) => pool.request(typeId: entry.key)));
+
+  final items = <FitPriceLineItem>[];
+  double? totalSell;
+  double? totalBuy;
+  var missingTypeCount = 0;
+  for (final (index, estimate) in estimates.indexed) {
+    if (estimate == null) {
+      missingTypeCount++;
+      continue;
+    }
+    final quantity = entries[index].value;
+    items.add(
+      FitPriceLineItem(
+        typeId: entries[index].key,
+        quantity: quantity,
+        unitSell: estimate.sell,
+        unitBuy: estimate.buy,
+      ),
+    );
+    if (estimate.sell != null) totalSell = (totalSell ?? 0) + estimate.sell! * quantity;
+    if (estimate.buy != null) totalBuy = (totalBuy ?? 0) + estimate.buy! * quantity;
+  }
+  if (items.isEmpty) return null;
+
+  return FitPriceBreakdown(
+    items: items,
+    totalSell: totalSell,
+    totalBuy: totalBuy,
+    missingTypeCount: missingTypeCount,
   );
 }
