@@ -141,7 +141,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
   late TabController _tabController;
   late final FitInteractionOptions _interactionOptions;
   final _edgeTracker = SlidableEdgeTracker();
-  double? _pointerDownX;
+  final Map<int, double> _pointerDownX = {};
 
   static const _tabCount = 5;
   static const _swipeThreshold = 50.0;
@@ -185,11 +185,11 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
         child: SlidableEdgeScope(
           tracker: _edgeTracker,
           child: Listener(
-            onPointerDown: (event) => _pointerDownX = event.position.dx,
+            onPointerDown: (event) => _pointerDownX[event.pointer] = event.position.dx,
             onPointerUp: _handlePointerUp,
             onPointerCancel: (event) {
-              _pointerDownX = null;
-              _edgeTracker.pointerStartedOnEdge = false;
+              _pointerDownX.remove(event.pointer);
+              _edgeTracker.clear(event.pointer);
             },
             child: TabBarView(
               controller: _tabController,
@@ -224,10 +224,8 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
   );
 
   void _handlePointerUp(PointerUpEvent event) {
-    final startX = _pointerDownX;
-    _pointerDownX = null;
-    final onEdge = _edgeTracker.pointerStartedOnEdge;
-    _edgeTracker.pointerStartedOnEdge = false;
+    final startX = _pointerDownX.remove(event.pointer);
+    final onEdge = _edgeTracker.consumeOnEdge(event.pointer);
     if (startX == null || onEdge) return;
 
     final delta = event.position.dx - startX;

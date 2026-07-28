@@ -2,11 +2,22 @@ import "package:flutter/widgets.dart";
 
 /// Mutable holder shared between the tab scaffold and slidable wrappers.
 ///
-/// The tab scaffold reads [pointerStartedOnEdge] on pointer-up to decide
-/// whether a horizontal swipe should switch tabs; slidable edge zones write
-/// it on pointer-down.
+/// The tab scaffold calls [consumeOnEdge] on pointer-up to decide whether a
+/// horizontal swipe should switch tabs; slidable edge zones call [setOnEdge]
+/// on pointer-down. State is keyed by pointer ID so concurrent touches do not
+/// interfere.
 class SlidableEdgeTracker {
-  bool pointerStartedOnEdge = false;
+  final Map<int, bool> _onEdge = {};
+
+  void setOnEdge(int pointer, {required bool value}) {
+    _onEdge[pointer] = value;
+  }
+
+  bool consumeOnEdge(int pointer) => _onEdge.remove(pointer) ?? false;
+
+  void clear(int pointer) {
+    _onEdge.remove(pointer);
+  }
 }
 
 /// Provides a [SlidableEdgeTracker] to descendant [SlidableEdgeZone]s.
@@ -52,7 +63,7 @@ class SlidableEdgeZone extends StatelessWidget {
             if (box is! RenderBox || !box.hasSize) return;
             final localX = box.globalToLocal(event.position).dx;
             final ratio = localX / box.size.width;
-            tracker.pointerStartedOnEdge = ratio < _edgeRatio || ratio > 1.0 - _edgeRatio;
+            tracker.setOnEdge(event.pointer, value: ratio < _edgeRatio || ratio > 1.0 - _edgeRatio);
           },
           child: Stack(
             children: [
