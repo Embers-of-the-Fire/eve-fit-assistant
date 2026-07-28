@@ -5,6 +5,8 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/info_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/components/list/dropdown_list_tile.dart";
+import "package:eve_fit_assistant/config/force_column.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
@@ -21,6 +23,7 @@ import "package:font_awesome_flutter/font_awesome_flutter.dart";
 import "package:package_info_plus/package_info_plus.dart";
 
 part "debug_log.dart";
+part "force_column.dart";
 part "remote_content_entry.dart";
 
 @RoutePage()
@@ -43,6 +46,7 @@ class DeveloperSettingsPage extends ConsumerWidget {
           ConfigListTile.title(context.l10n.developerSettingsPageSectionToggles),
           const ConfigListTile.custom(DebugLogTile()),
           const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
+          const ConfigListTile.custom(ForceColumnTile()),
           ConfigListTile.title(context.l10n.developerSettingsPageSectionActions),
           ConfigListTile.item(
             icon: const Icon(Icons.cloud_sync_outlined),

@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 import "dart:ui" as ui;
 
+import "package:eve_fit_assistant/config/force_column.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
@@ -50,6 +51,12 @@ abstract class AppSetting with _$AppSetting {
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default("") String marketServerFallback,
     @Default(1.0) double fontScale,
+    @JsonKey(
+      unknownEnumValue: ForceColumnSelection.disabled,
+      defaultValue: ForceColumnSelection.disabled,
+    )
+    @Default(ForceColumnSelection.disabled)
+    ForceColumnSelection forceColumn,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);
