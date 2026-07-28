@@ -11,7 +11,7 @@ class FeedbackStateStore {
 
   static const int _currentVersion = 1;
   static const String _fileName = "feedback_state.json";
-  static late FeedbackState _state;
+  static FeedbackState _state = FeedbackState.initial();
   static Future<void> _pendingSync = Future<void>.value();
 
   static File get _file => File(p.join(PathProvider.settingsPath, _fileName));

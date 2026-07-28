@@ -30,9 +30,8 @@ part "collection.g.dart";
 /// readiness state is [DataReadinessLoading].
 @riverpodSingleton
 RepoCollectionService? repoCollection(Ref ref) {
-  final readiness = ref.watch(dataReadinessProvider.notifier);
   ref.watch(dataReadinessProvider);
-  return readiness.decodedCollection;
+  return ref.read(dataReadinessProvider.notifier).decodedCollection;
 }
 
 /// Pre-loaded type data proxy backed by the content-addressed blob store.
