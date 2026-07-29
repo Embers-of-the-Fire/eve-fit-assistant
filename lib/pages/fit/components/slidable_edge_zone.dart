@@ -1,4 +1,6 @@
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/widgets.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 /// Mutable holder shared between the tab scaffold and slidable wrappers.
 ///
@@ -38,24 +40,29 @@ class SlidableEdgeScope extends InheritedWidget {
 ///
 /// Place this widget as the Slidable's child so the zones travel with the
 /// visible content when actions are revealed. Horizontal drags starting in
-/// the left or right [_edgeRatio] of the content are left to the enclosing
-/// slidable; drags starting in the center are claimed by an overlay so the
-/// tab scaffold can use them to switch tabs. Taps, long-presses and vertical
-/// scrolls are unaffected.
-class SlidableEdgeZone extends StatelessWidget {
+/// the left or right edge zones of the content are left to the enclosing
+/// slidable; drags starting in the center zone are claimed by an overlay so
+/// the tab scaffold can use them to switch tabs. Taps, long-presses and
+/// vertical scrolls are unaffected. The width of the center zone is
+/// configured by the [AppSetting.listTileAntiScrollLevel] setting.
+class SlidableEdgeZone extends ConsumerWidget {
   const SlidableEdgeZone({required this.child, super.key});
 
   final Widget child;
 
-  static const double _edgeRatio = 1.0 / 3.0;
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tracker = SlidableEdgeScope.of(context);
+    final edgeRatio =
+        (1.0 -
+            ref.watch(
+              appSettingServiceProvider.select((s) => s.listTileAntiScrollLevel.centerRatio),
+            )) /
+        2.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final edgeWidth = constraints.maxWidth * _edgeRatio;
+        final edgeWidth = constraints.maxWidth * edgeRatio;
 
         return Listener(
           onPointerDown: (event) {
@@ -63,7 +70,7 @@ class SlidableEdgeZone extends StatelessWidget {
             if (box is! RenderBox || !box.hasSize) return;
             final localX = box.globalToLocal(event.position).dx;
             final ratio = localX / box.size.width;
-            tracker.setOnEdge(event.pointer, value: ratio < _edgeRatio || ratio > 1.0 - _edgeRatio);
+            tracker.setOnEdge(event.pointer, value: ratio < edgeRatio || ratio > 1.0 - edgeRatio);
           },
           child: Stack(
             children: [

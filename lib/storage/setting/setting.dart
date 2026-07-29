@@ -3,6 +3,7 @@ import "dart:io";
 import "dart:ui" as ui;
 
 import "package:eve_fit_assistant/config/force_column.dart";
+import "package:eve_fit_assistant/config/list_tile_anti_scroll.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
@@ -58,6 +59,12 @@ abstract class AppSetting with _$AppSetting {
     )
     @Default(ForceColumnSelection.disabled)
     ForceColumnSelection forceColumn,
+    @JsonKey(
+      unknownEnumValue: ListTileAntiScrollLevel.strong,
+      defaultValue: ListTileAntiScrollLevel.strong,
+    )
+    @Default(ListTileAntiScrollLevel.strong)
+    ListTileAntiScrollLevel listTileAntiScrollLevel,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);
