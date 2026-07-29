@@ -184,6 +184,7 @@ _PB2_ALIAS_MAP: dict[str, tuple[str, str]] = {
     "HeadReflog": ("head_reflog_pb2", "HeadReflog"),
     "CheckoutReflog": ("checkout_reflog_pb2", "CheckoutReflog"),
     "ServerHistory": ("server_history_pb2", "ServerHistory"),
+    "ManualRegistry": ("manual_pb2", "ManualRegistry"),
 }
 
 

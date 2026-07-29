@@ -1,0 +1,6 @@
+id: fitting
+name:
+  zh: 配装
+  en: Fitting
+children:
+  - modules

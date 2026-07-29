@@ -1,0 +1,31 @@
+syntax = "proto2";
+package efa.v2;
+
+/// Bundled user-manual registry shipped as a Flutter asset.
+///
+/// Describes the folder/doc tree of docs/manual; localized Markdown bodies
+/// live in content/{sha256("{doc_id}:{locale}")}.md next to the registry.
+message ManualRegistry {
+  required int32 schema_version = 1;
+  repeated ManualFolder folders = 2; // top-level folders, ordered
+}
+
+message ManualFolder {
+  required string id = 1;    // path-joined id, e.g. "fitting/rigs"
+  required int32 order = 2;  // sort order within the parent folder
+  map<string, string> name = 3; // locale -> display name
+  repeated ManualFolder folders = 4;
+  repeated ManualDoc docs = 5;
+}
+
+message ManualDoc {
+  required string id = 1;    // path-joined id, e.g. "fitting/rigs/overview"
+  required int32 order = 2;  // sort order within the parent folder
+  map<string, ManualDocLocalization> localizations = 3; // locale -> localization
+}
+
+message ManualDocLocalization {
+  required string title = 1;
+  required string summary = 2;
+  required string content_file = 3; // "{sha256(doc-id:locale)}.md"
+}

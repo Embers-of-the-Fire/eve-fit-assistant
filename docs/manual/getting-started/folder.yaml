@@ -1,0 +1,7 @@
+id: getting-started
+name:
+  zh: 新手上路
+  en: Getting Started
+children:
+  - create-first-fit
+  - browse-ships

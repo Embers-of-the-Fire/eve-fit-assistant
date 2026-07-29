@@ -113,6 +113,8 @@ flutter:
     - assets/images/icons/
     - assets/content/announcements/generated/catalog.json
     - assets/content/announcements/generated/documents/
+    - assets/content/manual/generated/manual.pb
+    - assets/content/manual/generated/content/
     - logo/
   # To add assets to your application, add an assets section, like this:
   # assets:
