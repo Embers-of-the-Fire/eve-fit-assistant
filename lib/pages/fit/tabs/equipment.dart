@@ -1,6 +1,6 @@
 part of "../page.dart";
 
-class _EquipmentTab extends ConsumerWidget {
+class _EquipmentTab extends ConsumerStatefulWidget {
   const _EquipmentTab({
     required this.fitContext,
     this.interactionOptions = const FitInteractionOptions(),
@@ -10,7 +10,19 @@ class _EquipmentTab extends ConsumerWidget {
   final FitInteractionOptions interactionOptions;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_EquipmentTab> createState() => _EquipmentTabState();
+}
+
+class _EquipmentTabState extends ConsumerState<_EquipmentTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    final fitContext = widget.fitContext;
+    final interactionOptions = widget.interactionOptions;
     final fit = fitContext.fit;
     final subsystemSlotCount = fitContext.ship.subsystemSlots.clamp(
       0,
