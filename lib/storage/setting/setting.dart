@@ -45,6 +45,7 @@ abstract class AppSetting with _$AppSetting {
     )
     required TypeListReturnBehavior typeListReturnBehavior,
     @JsonKey(defaultValue: false) required bool developerMode,
+    @Default(false) bool attributeDebugView,
     @Default(false) bool ignoreBugfixUpdates,
     @Default(false) bool silentUpdate,
     @Default(false) bool welcomeCompleted,
@@ -70,6 +71,9 @@ double fontScale(Ref ref) => ref.watch(appSettingServiceProvider).fontScale;
 
 @riverpodSingleton
 bool developerMode(Ref ref) => ref.watch(appSettingServiceProvider).developerMode;
+
+@riverpodSingleton
+bool attributeDebugView(Ref ref) => ref.watch(appSettingServiceProvider).attributeDebugView;
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {
