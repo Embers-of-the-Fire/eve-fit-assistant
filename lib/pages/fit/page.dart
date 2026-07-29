@@ -14,6 +14,7 @@ import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/eve_select_list.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/components/resonance_box.dart";
+import "package:eve_fit_assistant/components/resource_bar.dart";
 import "package:eve_fit_assistant/components/resource_compare.dart";
 import "package:eve_fit_assistant/components/skeleton.dart";
 import "package:eve_fit_assistant/config/logger.dart";
