@@ -179,7 +179,7 @@ String _characterDisplayName(
   _ => metadata?.name ?? characterId,
 };
 
-class _CharacterImplantTab extends ConsumerWidget {
+class _CharacterImplantTab extends ConsumerStatefulWidget {
   const _CharacterImplantTab({
     required this.fitContext,
     this.interactionOptions = const FitInteractionOptions(),
@@ -189,7 +189,20 @@ class _CharacterImplantTab extends ConsumerWidget {
   final FitInteractionOptions interactionOptions;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CharacterImplantTab> createState() => _CharacterImplantTabState();
+}
+
+class _CharacterImplantTabState extends ConsumerState<_CharacterImplantTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    final fitContext = widget.fitContext;
+    final interactionOptions = widget.interactionOptions;
     final fit = fitContext.fit;
     final implantAssignments = _buildImplantAssignments(fit, ref);
     final hasImplantSets = ref.watch(
@@ -241,7 +254,7 @@ class _CharacterImplantTab extends ConsumerWidget {
   }
 
   Future<void> _handleAddImplant(BuildContext context, WidgetRef ref) async {
-    if (fitContext.fit.body.implants.length >= _maxImplantSlots) return;
+    if (widget.fitContext.fit.body.implants.length >= _maxImplantSlots) return;
 
     final typeId = await showAddItemDialog(
       context: context,
@@ -258,7 +271,11 @@ class _CharacterImplantTab extends ConsumerWidget {
     final slotId = ref.read(repoCollectionProvider)?.slots.implantSlots[typeId]?.slotIndex;
     final storageIndex = slotId == null ? null : slotId - 1;
     if (storageIndex == null || storageIndex < 0 || storageIndex >= _maxImplantSlots) return;
-    await fitContext.fitWrapper.equipSlot(SlotIdentifier.implant(index: storageIndex), typeId, ref);
+    await widget.fitContext.fitWrapper.equipSlot(
+      SlotIdentifier.implant(index: storageIndex),
+      typeId,
+      ref,
+    );
   }
 
   Future<void> _handleApplyImplantSet(BuildContext context, WidgetRef ref) async {
@@ -274,7 +291,7 @@ class _CharacterImplantTab extends ConsumerWidget {
     if (setId == null) return;
     final implantSet = collection.getImplantSet(setId);
     if (implantSet == null) return;
-    await fitContext.fitWrapper.applyImplantSet(implantSet.memberTypeIds, ref);
+    await widget.fitContext.fitWrapper.applyImplantSet(implantSet.memberTypeIds, ref);
   }
 }
 
@@ -344,7 +361,7 @@ class _ImplantSetTile extends StatelessWidget {
   );
 }
 
-class _CharacterBoosterTab extends ConsumerWidget {
+class _CharacterBoosterTab extends ConsumerStatefulWidget {
   const _CharacterBoosterTab({
     required this.fitContext,
     this.interactionOptions = const FitInteractionOptions(),
@@ -354,7 +371,20 @@ class _CharacterBoosterTab extends ConsumerWidget {
   final FitInteractionOptions interactionOptions;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CharacterBoosterTab> createState() => _CharacterBoosterTabState();
+}
+
+class _CharacterBoosterTabState extends ConsumerState<_CharacterBoosterTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    final fitContext = widget.fitContext;
+    final interactionOptions = widget.interactionOptions;
     final boosters = fitContext.fit.body.boosters;
 
     return Column(
@@ -403,7 +433,7 @@ class _CharacterBoosterTab extends ConsumerWidget {
     // add flows can infer the destination slot directly from the chosen type.
     final slotId = ref.read(repoCollectionProvider)?.slots.boosterSlots[typeId]?.slotIndex;
     if (slotId == null) return;
-    await fitContext.fitWrapper.setBooster(slotId, typeId);
+    await widget.fitContext.fitWrapper.setBooster(slotId, typeId);
   }
 }
 
