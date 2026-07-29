@@ -168,4 +168,60 @@ void main() {
       expect(root.findDoc("nope"), isNull);
     });
   });
+
+  group("resolveManualPath", () {
+    final root = ManualRepository.convertRegistry(_buildRegistry());
+
+    test("empty path resolves to the root folder", () {
+      final resolution = resolveManualPath(root, "");
+      expect(resolution, isA<ManualFolderResolution>());
+      final folder = (resolution as ManualFolderResolution).folder;
+      expect(folder.id, isEmpty);
+      expect(folder.folders, hasLength(2));
+    });
+
+    test("top-level folder path", () {
+      final resolution = resolveManualPath(root, "fitting");
+      expect(resolution, isA<ManualFolderResolution>());
+      final folder = (resolution as ManualFolderResolution);
+      expect(folder.folder.id, "fitting");
+      expect(folder.ancestors, isEmpty);
+    });
+
+    test("nested folder path collects ancestors", () {
+      final resolution = resolveManualPath(root, "fitting/advanced");
+      expect(resolution, isA<ManualFolderResolution>());
+      final folder = (resolution as ManualFolderResolution);
+      expect(folder.folder.id, "fitting/advanced");
+      expect(folder.ancestors.map((f) => f.id), ["fitting"]);
+    });
+
+    test("doc path resolves to the doc with its folder chain", () {
+      final resolution = resolveManualPath(root, "fitting/advanced/modules");
+      expect(resolution, isA<ManualDocResolution>());
+      final doc = (resolution as ManualDocResolution);
+      expect(doc.doc.id, "fitting/advanced/modules");
+      expect(doc.ancestors.map((f) => f.id), ["fitting", "fitting/advanced"]);
+    });
+
+    test("doc id under a top-level folder", () {
+      final resolution = resolveManualPath(root, "getting-started/browse-ships");
+      expect(resolution, isA<ManualDocResolution>());
+      final doc = (resolution as ManualDocResolution);
+      expect(doc.ancestors.map((f) => f.id), ["getting-started"]);
+    });
+
+    test("unknown paths do not resolve", () {
+      expect(resolveManualPath(root, "nope"), isA<ManualPathNotFound>());
+      expect(resolveManualPath(root, "fitting/nope"), isA<ManualPathNotFound>());
+      expect(resolveManualPath(root, "fitting/advanced/modules/extra"), isA<ManualPathNotFound>());
+    });
+
+    test("doc path used as an intermediate segment does not resolve", () {
+      expect(
+        resolveManualPath(root, "getting-started/browse-ships/nested"),
+        isA<ManualPathNotFound>(),
+      );
+    });
+  });
 }

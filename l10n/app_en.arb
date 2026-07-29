@@ -113,7 +113,7 @@
   "manualPageTitle": "User Manual",
   "manualEmpty": "No manual entries",
   "manualDocNotFound": "Document not found",
-  "manualFolderNotFound": "Folder not found",
+  "manualNodeNotFound": "Page not found",
   "manualContentLoadError": "Failed to load content",
   "manualContentLoadRetry": "Retry",
   "versionBumpCardTitle": "What's new in v{version}",
