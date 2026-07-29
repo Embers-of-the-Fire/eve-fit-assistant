@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
@@ -53,23 +54,49 @@ class ManualFolderView extends StatelessWidget {
                     ),
                   ),
                 )
-              : ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  children: [
-                    if (folder.resolveDescription(localeCode) case final description?)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6, bottom: 14),
-                        child: Text(
-                          description,
-                          style: context.theme.textTheme.bodyMedium?.copyWith(
-                            color: context.theme.colorScheme.onSurfaceVariant,
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    const minTileWidth = 320.0;
+                    const maxColumnCount = 3;
+                    const spacing = 12.0;
+                    final columnCount = math.max(
+                      1,
+                      math.min(maxColumnCount, constraints.maxWidth ~/ minTileWidth),
+                    );
+                    final tileWidth =
+                        (constraints.maxWidth - spacing * (columnCount - 1)) / columnCount;
+                    return ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      children: [
+                        if (folder.resolveDescription(localeCode) case final description?)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6, bottom: 14),
+                            child: Text(
+                              description,
+                              style: context.theme.textTheme.bodyMedium?.copyWith(
+                                color: context.theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ),
+                        Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: [
+                            for (final subfolder in folders)
+                              SizedBox(
+                                width: tileWidth,
+                                child: _ManualFolderCard(folder: subfolder, localeCode: localeCode),
+                              ),
+                            for (final doc in docs)
+                              SizedBox(
+                                width: tileWidth,
+                                child: _ManualDocCard(doc: doc, localeCode: localeCode),
+                              ),
+                          ],
                         ),
-                      ),
-                    for (final subfolder in folders)
-                      _ManualFolderCard(folder: subfolder, localeCode: localeCode),
-                    for (final doc in docs) _ManualDocCard(doc: doc, localeCode: localeCode),
-                  ],
+                      ],
+                    );
+                  },
                 ),
         ),
       ],
@@ -95,7 +122,7 @@ class _ManualFolderCard extends StatelessWidget {
     final description = folder.resolveDescription(localeCode);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       color: context.theme.colorScheme.surfaceContainer,
       child: InkWell(
         onTap: () => unawaited(context.router.pushPath("/manual/${folder.id}")),
@@ -146,7 +173,7 @@ class _ManualDocCard extends StatelessWidget {
     final summary = localization?.summary ?? "";
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       color: context.theme.colorScheme.surfaceContainer,
       child: InkWell(
         onTap: () => unawaited(context.router.pushPath("/manual/${doc.id}")),
