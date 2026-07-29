@@ -6,17 +6,45 @@ class Capacitor extends StatelessWidget {
   final native.Ship ship;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    minTileHeight: 0,
-    leading: const Image(image: ImageAssets.attrCapacitorCharge, height: 28),
-    title: DefaultTextStyle(
-      style: const TextStyle(fontSize: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: _getCapacitorTextGroup(context.l10n, ship.hull),
+  Widget build(BuildContext context) {
+    final hull = ship.hull;
+    final stable = hull.getAttribute(EveConstExtendedAttrID.capacitorDepletesIn) <= 0;
+
+    final double percent;
+    if (stable) {
+      percent = capacitorStableAt(
+        capacity: hull.getAttribute(EveConstAttrID.capacitorCapacity),
+        targetRechargeRage: hull.getAttribute(EveConstExtendedAttrID.capacitorPeakLoad),
+        rechargeTime: hull.getAttribute(EveConstAttrID.rechargeRate),
+      ).max(0).min(100);
+    } else {
+      percent = 0;
+    }
+
+    return ListTile(
+      minTileHeight: 0,
+      leading: const Image(image: ImageAssets.attrCapacitorCharge, height: 28),
+      title: DefaultTextStyle(
+        style: const TextStyle(fontSize: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: _getCapacitorTextGroup(context.l10n, hull),
+            ),
+            const SizedBox(height: 4),
+            ResourceBar(
+              used: percent,
+              all: 100,
+              warning: false,
+              trackColor: stable ? null : Colors.red.withValues(alpha: 0.3),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 List<Text> _getCapacitorTextGroup(AppLocalizations l10n, native.Item hull) {
