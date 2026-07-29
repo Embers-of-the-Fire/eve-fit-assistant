@@ -16,6 +16,7 @@ message ManualFolder {
   map<string, string> name = 3; // locale -> display name
   repeated ManualFolder folders = 4;
   repeated ManualDoc docs = 5;
+  map<string, string> description = 6; // locale -> optional short description
 }
 
 message ManualDoc {

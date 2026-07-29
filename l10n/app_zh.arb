@@ -193,6 +193,13 @@
   "announcementBodyLoadRetry": "重试",
   "announcementSourceBundled": "内置",
   "announcementSourceRemote": "远程",
+  "workspaceTabManualTitle": "使用手册",
+  "manualPageTitle": "使用手册",
+  "manualEmpty": "暂无手册内容",
+  "manualDocNotFound": "未找到该文档",
+  "manualFolderNotFound": "未找到该目录",
+  "manualContentLoadError": "内容加载失败",
+  "manualContentLoadRetry": "重试",
   "@documentVersionBadge": {
     "placeholders": {
       "version": {

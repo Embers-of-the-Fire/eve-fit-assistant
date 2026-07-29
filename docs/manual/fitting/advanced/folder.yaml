@@ -1,0 +1,9 @@
+id: advanced
+name:
+  zh: 进阶
+  en: Advanced
+description:
+  zh: 面向有经验飞行员的进阶操作。
+  en: Advanced techniques for experienced pilots.
+children:
+  - overloading

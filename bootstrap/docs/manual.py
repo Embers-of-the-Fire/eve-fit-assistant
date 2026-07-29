@@ -5,7 +5,7 @@ Source layout::
     docs/manual/
       folder.yaml              # optional root metadata (children order only)
       {folder-id}/
-        folder.yaml            # id, name (zh/en), children order
+        folder.yaml            # id, name (zh/en), optional description (zh/en), children order
         {doc-id}/
           zh.md                # frontmatter: optional title/summary overrides
           en.md
@@ -60,6 +60,7 @@ class ManualFolderMetadata(BaseModel):
 
     id: str
     name: dict[str, str] = Field(default_factory=dict)
+    description: dict[str, str] = Field(default_factory=dict)
     children: list[str] = Field(default_factory=list)
 
 
@@ -94,6 +95,7 @@ class ManualFolderNode:
     id: str
     order: int
     name: dict[str, str] = field(default_factory=dict)
+    description: dict[str, str] = field(default_factory=dict)
     folders: list[ManualFolderNode] = field(default_factory=list)
     docs: list[ManualDocNode] = field(default_factory=list)
 
@@ -226,7 +228,9 @@ def _load_folder(
         raise ValueError(f"Duplicate manual folder id: {folder_id!r}")
     seen_ids.add(folder_id)
 
-    node = ManualFolderNode(id=folder_id, order=order, name=dict(metadata.name))
+    node = ManualFolderNode(
+        id=folder_id, order=order, name=dict(metadata.name), description=dict(metadata.description)
+    )
     _load_children(directory, folder_id, seen_ids, node, metadata.children)
     return node
 
@@ -306,6 +310,8 @@ def _fill_folder(node: ManualFolderNode, message) -> None:
         child.order = folder.order
         for locale, name in sorted(folder.name.items()):
             child.name[locale] = name
+        for locale, description in sorted(folder.description.items()):
+            child.description[locale] = description
         _fill_folder(folder, child)
     for doc in node.docs:
         entry = message.docs.add()

@@ -2,5 +2,9 @@ id: fitting
 name:
   zh: 配装
   en: Fitting
+description:
+  zh: 了解装备槽位与进阶配装技巧。
+  en: Learn about module slots and advanced fitting techniques.
 children:
   - modules
+  - advanced

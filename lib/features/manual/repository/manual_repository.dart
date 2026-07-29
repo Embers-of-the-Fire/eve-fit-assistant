@@ -20,7 +20,14 @@ class ManualRepository {
       final registry = pb.ManualRegistry.fromBuffer(data.buffer.asUint8List());
       return convertRegistry(registry);
     } on Object {
-      return const ManualFolderEntry(id: "", order: 0, names: {}, folders: [], docs: []);
+      return const ManualFolderEntry(
+        id: "",
+        order: 0,
+        names: {},
+        descriptions: {},
+        folders: [],
+        docs: [],
+      );
     }
   }
 
@@ -39,6 +46,7 @@ class ManualRepository {
     id: "",
     order: 0,
     names: const {},
+    descriptions: const {},
     folders: registry.folders.map(_convertFolder).toList(growable: false),
     docs: const [],
   );
@@ -47,6 +55,7 @@ class ManualRepository {
     id: folder.id,
     order: folder.order,
     names: Map<String, String>.unmodifiable(folder.name),
+    descriptions: Map<String, String>.unmodifiable(folder.description),
     folders: folder.folders.map(_convertFolder).toList(growable: false),
     docs: folder.docs.map(_convertDoc).toList(growable: false),
   );

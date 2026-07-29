@@ -38,6 +38,7 @@ class ManualFolderEntry {
     required this.id,
     required this.order,
     required this.names,
+    required this.descriptions,
     required this.folders,
     required this.docs,
   });
@@ -46,6 +47,7 @@ class ManualFolderEntry {
   final String id;
   final int order;
   final Map<String, String> names;
+  final Map<String, String> descriptions;
   final List<ManualFolderEntry> folders;
   final List<ManualDocEntry> docs;
 
@@ -54,6 +56,13 @@ class ManualFolderEntry {
   String? resolveName(String localeCode) {
     final key = resolveLocalizedKey(names, localeCode);
     return key == null ? null : names[key];
+  }
+
+  /// Resolve the optional description for [localeCode], following the same
+  /// fallback chain as [resolveName].
+  String? resolveDescription(String localeCode) {
+    final key = resolveLocalizedKey(descriptions, localeCode);
+    return key == null ? null : descriptions[key];
   }
 
   /// Depth-first traversal of every doc in this folder subtree, in tree order.
@@ -68,6 +77,17 @@ class ManualFolderEntry {
   ManualDocEntry? findDoc(String id) {
     for (final doc in allDocs) {
       if (doc.id == id) return doc;
+    }
+    return null;
+  }
+
+  /// Find a folder by its path-joined id within this folder subtree.
+  /// Returns this folder when [id] matches its own id.
+  ManualFolderEntry? findFolder(String id) {
+    if (this.id == id) return this;
+    for (final folder in folders) {
+      final found = folder.findFolder(id);
+      if (found != null) return found;
     }
     return null;
   }

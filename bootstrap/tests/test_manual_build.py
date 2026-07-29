@@ -114,6 +114,26 @@ class TestLoadManualTree:
         ]
         assert [d.id for d in root.folders[1].docs] == ["fitting/modules"]
 
+    def test_folder_description_loaded_and_optional(self, manual_paths) -> None:
+        source_root, _ = manual_paths
+        _write(
+            source_root / "f" / "folder.yaml",
+            "id: f\n"
+            "name:\n"
+            "  zh: f 名称\n"
+            "  en: f Name\n"
+            "description:\n"
+            "  zh: f 的描述\n"
+            "  en: f Description\n",
+        )
+        _make_folder(source_root / "g")
+        _make_doc(source_root / "g" / "a-doc")
+
+        root = load_manual_tree()
+
+        assert root.folders[0].description == {"zh": "f 的描述", "en": "f Description"}
+        assert root.folders[1].description == {}
+
     def test_children_order_from_parent_folder_yaml(self, manual_paths) -> None:
         source_root, _ = manual_paths
         _make_folder(source_root / "f", children=["b-doc", "z-doc", "a-doc"])
@@ -307,6 +327,33 @@ class TestBuildManual:
         registry = manual_pb2.ManualRegistry()
         registry.ParseFromString((generated_root / "manual.pb").read_bytes())
         assert [f.id for f in registry.folders] == ["getting-started", "fitting"]
+
+    def test_build_writes_folder_descriptions(self, manual_paths) -> None:
+        source_root, generated_root = manual_paths
+        _write(
+            source_root / "f" / "folder.yaml",
+            "id: f\n"
+            "name:\n"
+            "  zh: f 名称\n"
+            "  en: f Name\n"
+            "description:\n"
+            "  zh: f 的描述\n"
+            "  en: f Description\n"
+            "children:\n"
+            "  - sub\n",
+        )
+        _make_folder(source_root / "f" / "sub")
+        _make_doc(source_root / "f" / "sub" / "a-doc")
+
+        build_manual()
+
+        registry = manual_pb2.ManualRegistry()
+        registry.ParseFromString((generated_root / "manual.pb").read_bytes())
+        assert dict(registry.folders[0].description) == {
+            "zh": "f 的描述",
+            "en": "f Description",
+        }
+        assert dict(registry.folders[0].folders[0].description) == {}
 
     def test_build_empty_source_produces_empty_registry(self, manual_paths) -> None:
         _, generated_root = manual_paths
