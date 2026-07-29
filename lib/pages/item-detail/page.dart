@@ -20,7 +20,8 @@ import "package:eve_fit_assistant/pages/item-detail/dogma_unit_display.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
-import "package:eve_fit_assistant/storage/setting/setting.dart" show localeProvider;
+import "package:eve_fit_assistant/storage/setting/setting.dart"
+    show attributeDebugViewProvider, localeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:eve_fit_assistant/utils/skill.dart";
@@ -414,6 +415,7 @@ class AttributeDetailPage extends ConsumerWidget {
       child: columns <= 1
           ? _AttributeDetailTabPane(
               typeId: typeId,
+              attributeId: attributeId,
               attribute: attribute,
               unit: unit,
               staticValue: staticValue,
@@ -428,6 +430,7 @@ class AttributeDetailPage extends ConsumerWidget {
                   Expanded(
                     child: _AttributeOverviewContent(
                       typeId: typeId,
+                      attributeId: attributeId,
                       attribute: attribute,
                       unit: unit,
                       staticValue: staticValue,
@@ -879,6 +882,7 @@ class _DynamicAttributeRatioBar extends StatelessWidget {
 class _AttributeDetailTabPane extends StatefulWidget {
   const _AttributeDetailTabPane({
     required this.typeId,
+    required this.attributeId,
     required this.attribute,
     required this.unit,
     required this.staticValue,
@@ -888,6 +892,7 @@ class _AttributeDetailTabPane extends StatefulWidget {
   });
 
   final int typeId;
+  final int attributeId;
   final DogmaAttribute? attribute;
   final DogmaUnit? unit;
   final double? staticValue;
@@ -932,6 +937,7 @@ class _AttributeDetailTabPaneState extends State<_AttributeDetailTabPane>
           children: [
             _AttributeOverviewContent(
               typeId: widget.typeId,
+              attributeId: widget.attributeId,
               attribute: widget.attribute,
               unit: widget.unit,
               staticValue: widget.staticValue,
@@ -953,6 +959,7 @@ class _AttributeDetailTabPaneState extends State<_AttributeDetailTabPane>
 class _AttributeOverviewContent extends ConsumerWidget {
   const _AttributeOverviewContent({
     required this.typeId,
+    required this.attributeId,
     required this.attribute,
     required this.unit,
     required this.staticValue,
@@ -960,6 +967,7 @@ class _AttributeOverviewContent extends ConsumerWidget {
   });
 
   final int typeId;
+  final int attributeId;
   final DogmaAttribute? attribute;
   final DogmaUnit? unit;
   final double? staticValue;
@@ -977,6 +985,15 @@ class _AttributeOverviewContent extends ConsumerWidget {
             Text(context.l10n.itemDetailAttributeType, style: context.theme.textTheme.labelMedium),
             const SizedBox(height: 4),
             TypeNameText(typeId: typeId),
+            if (ref.watch(attributeDebugViewProvider)) ...[
+              const SizedBox(height: 12),
+              Text("Identifier", style: context.theme.textTheme.labelMedium),
+              const SizedBox(height: 4),
+              SelectableText(
+                _attributeDebugIdentifier(attributeId, attribute),
+                style: const TextStyle(fontFamily: "monospace", fontSize: 12),
+              ),
+            ],
           ],
         ),
       ),
@@ -1394,6 +1411,12 @@ class _AttributesList extends ConsumerWidget {
                     ),
                   ),
             title: Text(attribute.displayName),
+            subtitle: attribute.debugSubtitle == null
+                ? null
+                : Text(
+                    attribute.debugSubtitle!,
+                    style: const TextStyle(fontFamily: "monospace", fontSize: 11),
+                  ),
             trailing: Text(
               _formatItemDetailDogmaValue(
                 context,
@@ -1844,6 +1867,7 @@ class _InspectableAttribute {
     required this.staticValue,
     required this.unit,
     this.currentValue,
+    this.debugSubtitle,
   });
 
   final int attributeId;
@@ -1852,6 +1876,7 @@ class _InspectableAttribute {
   final double staticValue;
   final double? currentValue;
   final DogmaUnit? unit;
+  final String? debugSubtitle;
 }
 
 class _DynamicEditorContext {
@@ -1960,14 +1985,24 @@ String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) {
   );
 }
 
+String? _attributeLocalizedName(WidgetRef ref, DogmaAttribute? attribute) {
+  if (attribute == null || !attribute.hasDisplayName()) return null;
+  final localized = _resolveLocalization(ref, attribute.displayName);
+  if (localized?.trim().isNotEmpty ?? false) return localized;
+  return null;
+}
+
 String? _attributeDisplayName(WidgetRef ref, DogmaAttribute? attribute) {
+  final localized = _attributeLocalizedName(ref, attribute);
+  if (localized != null) return localized;
   if (attribute == null) return null;
-  if (attribute.hasDisplayName()) {
-    final localized = _resolveLocalization(ref, attribute.displayName);
-    if (localized?.trim().isNotEmpty ?? false) return localized;
-  }
   if (attribute.name.isNotEmpty) return attribute.name;
   return null;
+}
+
+String _attributeDebugIdentifier(int attributeId, DogmaAttribute? attribute) {
+  final name = attribute?.name.trim() ?? "";
+  return name.isEmpty ? "∷[$attributeId]" : "∷$name[$attributeId]";
 }
 
 String _formatItemDetailDogmaValue(
@@ -2107,16 +2142,20 @@ List<_InspectableAttribute> _collectInspectableAttributes(
           ...currentAttributeIds,
         }
         ..removeAll(_requiredSkillAttributeIds)
-        ..removeAll(_requiredSkillLevelAttributeIds);
+        ..removeAll(_requiredSkillLevelAttributeIds)
+        ..removeWhere((attributeId) => attributeId < 0);
 
+  final debugView = ref.watch(attributeDebugViewProvider);
   final attributes = <_InspectableAttribute>[];
   for (final attributeId in allIds) {
     final metadata = ref.watch(
       repoCollectionProvider.select((c) => c?.getDogmaAttribute(attributeId)),
     );
+    if (!debugView && (metadata == null || !metadata.published)) continue;
     final staticValue = _staticAttributeValue(type, attributeId) ?? metadata?.defaultValue ?? 0;
     final currentValue = item?.attributes[attributeId]?.value;
     final shouldDisplay =
+        debugView ||
         metadata == null ||
         metadata.displayWhenZero ||
         staticValue != 0 ||
@@ -2126,16 +2165,31 @@ List<_InspectableAttribute> _collectInspectableAttributes(
     final unit = metadata?.hasUnitId() ?? false
         ? ref.watch(repoCollectionProvider.select((c) => c?.getDogmaUnit(metadata!.unitId)))
         : null;
+    final localizedName = _attributeLocalizedName(ref, metadata);
+    final String displayName;
+    String? debugSubtitle;
+    if (debugView) {
+      final identifier = _attributeDebugIdentifier(attributeId, metadata);
+      if (localizedName != null) {
+        displayName = localizedName;
+        debugSubtitle = identifier;
+      } else {
+        displayName = identifier;
+      }
+    } else {
+      displayName =
+          _attributeDisplayName(ref, metadata) ??
+          l10n.fallbackAttributeName(attributeId: attributeId);
+    }
     attributes.add(
       _InspectableAttribute(
         attributeId: attributeId,
         attribute: metadata,
-        displayName:
-            _attributeDisplayName(ref, metadata) ??
-            l10n.fallbackAttributeName(attributeId: attributeId),
+        displayName: displayName,
         staticValue: staticValue,
         currentValue: currentValue,
         unit: unit,
+        debugSubtitle: debugSubtitle,
       ),
     );
   }

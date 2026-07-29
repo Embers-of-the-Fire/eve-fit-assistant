@@ -22,6 +22,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 import "package:package_info_plus/package_info_plus.dart";
 
+part "attribute_debug_view.dart";
 part "debug_log.dart";
 part "force_column.dart";
 part "remote_content_entry.dart";
@@ -45,6 +46,7 @@ class DeveloperSettingsPage extends ConsumerWidget {
         children: [
           ConfigListTile.title(context.l10n.developerSettingsPageSectionToggles),
           const ConfigListTile.custom(DebugLogTile()),
+          const ConfigListTile.custom(AttributeDebugViewTile()),
           const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
           const ConfigListTile.custom(ForceColumnTile()),
           ConfigListTile.title(context.l10n.developerSettingsPageSectionActions),
