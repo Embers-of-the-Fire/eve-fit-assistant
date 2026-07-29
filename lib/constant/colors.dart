@@ -21,10 +21,13 @@ const Color colorSkillAlphaLimited = Color(0xFFFBC02D);
 
 const Color colorActionDelete = Color(0xFFFE4A49);
 
-final MarkdownConfig markdownDarkConfig = MarkdownConfig(
-  configs: const [
-    CodeConfig(
-      style: TextStyle(backgroundColor: Color(0xCCeff1f3), color: Color(0xFF424242)),
-    ),
-  ],
+const CodeConfig _markdownCodeConfig = CodeConfig(
+  style: TextStyle(backgroundColor: Color(0xCCeff1f3), color: Color(0xFF424242)),
 );
+
+/// Build the shared markdown config, optionally with a link-tap handler
+/// (see `LinkConfig.onTap`; without one links open externally by default).
+MarkdownConfig buildMarkdownDarkConfig({LinkConfig? linkConfig}) =>
+    MarkdownConfig(configs: [_markdownCodeConfig, ?linkConfig]);
+
+final MarkdownConfig markdownDarkConfig = buildMarkdownDarkConfig();

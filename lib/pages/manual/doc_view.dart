@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:eve_fit_assistant/constant/colors.dart";
+import "package:eve_fit_assistant/features/deeplink/deeplink.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
 import "package:eve_fit_assistant/pages/manual/breadcrumb.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -83,7 +86,15 @@ class ManualDocView extends ConsumerWidget {
                       child: MarkdownWidget(
                         data: content,
                         padding: EdgeInsets.zero,
-                        config: markdownDarkConfig,
+                        config: buildMarkdownDarkConfig(
+                          linkConfig: LinkConfig(
+                            onTap: (url) => unawaited(
+                              ref
+                                  .read(appLinkHandlerProvider)
+                                  .open(context, url, basePath: _docBasePath(doc)),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -99,6 +110,13 @@ class ManualDocView extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// The route path of the folder containing [doc]; relative links inside the
+/// document resolve against it.
+String _docBasePath(ManualDocEntry doc) {
+  final segments = doc.id.split("/")..removeLast();
+  return segments.isEmpty ? "/manual" : "/manual/${segments.join("/")}";
 }
 
 class _ManualDocError extends StatelessWidget {
