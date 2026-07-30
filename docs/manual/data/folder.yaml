@@ -1,0 +1,13 @@
+id: data
+name:
+  zh: 数据与内容
+  en: Data & Content
+description:
+  zh: 管理游戏数据版本、更新、回滚与远程内容。
+  en: Manage game data versions, updates, rollbacks, and remote content.
+children:
+  - channels-servers-checkouts
+  - updating-data
+  - checkout-history-rollback
+  - storage-management
+  - remote-content-announcements

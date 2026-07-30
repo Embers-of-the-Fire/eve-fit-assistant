@@ -7,3 +7,6 @@ description:
   en: Advanced techniques for experienced pilots.
 children:
   - overloading
+  - mutaplasmids-dynamic-items
+  - implants-boosters
+  - fit-states
