@@ -97,6 +97,7 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
                       context.l10n.reportFieldContact,
                       _contactCtrl,
                       hint: context.l10n.reportFieldContactHint,
+                      helperText: context.l10n.reportFieldContactPrivacy,
                     ),
                   ]),
                   const SizedBox(height: 32),
@@ -144,6 +145,7 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
     TextEditingController ctrl, {
     int minLines = 1,
     String? hint,
+    String? helperText,
     String? required,
   }) {
     final effectiveMaxLines = minLines;
@@ -154,6 +156,7 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        helperText: helperText,
         border: const OutlineInputBorder(),
       ),
       validator: (value) {
@@ -190,7 +193,10 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
                     color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 )
-              : Text(context.l10n.reportSubmit),
+              : Text(switch (widget.kind) {
+                  ManualFeedbackKind.report => context.l10n.reportSubmit,
+                  ManualFeedbackKind.question => context.l10n.questionSubmit,
+                }),
         ),
       ),
     ),
@@ -243,14 +249,24 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
       showDialog<void>(
         context: context,
         builder: (ctx) => AppDialog(
-          title: context.l10n.reportSuccessTitle,
+          title: switch (widget.kind) {
+            ManualFeedbackKind.report => context.l10n.reportSuccessTitle,
+            ManualFeedbackKind.question => context.l10n.questionSuccessTitle,
+          },
           content: SizedBox(
             width: 400,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(context.l10n.reportSuccessBody(issueUrl: result.issueUrl)),
+                Text(switch (widget.kind) {
+                  ManualFeedbackKind.report => context.l10n.reportSuccessBody(
+                    issueUrl: result.issueUrl,
+                  ),
+                  ManualFeedbackKind.question => context.l10n.questionSuccessBody(
+                    issueUrl: result.issueUrl,
+                  ),
+                }),
                 const SizedBox(height: 16),
                 Align(
                   alignment: Alignment.centerRight,

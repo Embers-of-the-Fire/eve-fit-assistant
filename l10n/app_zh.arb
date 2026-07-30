@@ -1189,11 +1189,22 @@
   "reportFieldIncludeMetadataHint": "自动附带操作系统版本和应用版本，帮助更快定位问题",
   "reportFieldContact": "联系方式（可选）",
   "reportFieldContactHint": "可选：邮箱或其他联系方式，方便我们跟进",
+  "reportFieldContactPrivacy": "注意：此内容将公开发布到 GitHub Issue 中",
   "reportSubmit": "提交报告",
   "reportSubmitting": "正在提交...",
   "reportSuccessTitle": "提交成功",
   "reportSuccessBody": "感谢你的反馈！你的报告已创建为 GitHub Issue。\n\n{issueUrl}",
+  "questionSubmit": "提交问题",
+  "questionSuccessTitle": "提交成功",
+  "questionSuccessBody": "感谢你的提问！你的问题已创建为 GitHub Issue。\n\n{issueUrl}",
   "@reportSuccessBody": {
+    "placeholders": {
+      "issueUrl": {
+        "type": "String"
+      }
+    }
+  },
+  "@questionSuccessBody": {
     "placeholders": {
       "issueUrl": {
         "type": "String"
