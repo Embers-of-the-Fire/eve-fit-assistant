@@ -3,14 +3,13 @@ import { cors } from "hono/cors";
 import type { z } from "zod";
 import { formatIssueBody, resolveLabels, resolveTitle } from "./format.js";
 import { createIssue, validateConfig } from "./github.js";
-import { BugReportSchema, FeatureRequestSchema } from "./schema.js";
-import type {
-    BugReport,
-    ErrorResponse,
-    FeatureRequest,
-    IssueResult,
-    TemplateType,
-} from "./types.js";
+import {
+    BugReportSchema,
+    DocsFlagSchema,
+    DocsQuestionSchema,
+    FeatureRequestSchema,
+} from "./schema.js";
+import type { ErrorResponse, IssueRequest, IssueResult, TemplateType } from "./types.js";
 
 interface Env {
     GITHUB_APP_ID?: string;
@@ -47,7 +46,7 @@ async function handleCreateIssue(
         return c.json(err, 400);
     }
 
-    const req = parsed.data as BugReport | FeatureRequest;
+    const req = parsed.data as IssueRequest;
 
     const configResult = validateConfig(c.env as unknown as Record<string, string | undefined>);
     if (!configResult.valid) {
@@ -84,6 +83,10 @@ async function handleCreateIssue(
 app.post("/bug-report", (c) => handleCreateIssue(c, "bug_report", BugReportSchema));
 
 app.post("/feature-request", (c) => handleCreateIssue(c, "feature_request", FeatureRequestSchema));
+
+app.post("/docs-flag", (c) => handleCreateIssue(c, "docs_flag", DocsFlagSchema));
+
+app.post("/docs-question", (c) => handleCreateIssue(c, "docs_question", DocsQuestionSchema));
 
 app.onError((err, c) => {
     const message = err instanceof Error ? err.message : String(err);

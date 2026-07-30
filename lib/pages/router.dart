@@ -1,7 +1,9 @@
 import "package:auto_route/auto_route.dart";
+import "package:eve_fit_assistant/features/manual/repository/manual_feedback_api.dart";
 import "package:eve_fit_assistant/pages/announcements/feed_page.dart";
 import "package:eve_fit_assistant/pages/fit/page.dart";
 import "package:eve_fit_assistant/pages/manual/browser_page.dart";
+import "package:eve_fit_assistant/pages/manual/feedback_page.dart";
 import "package:eve_fit_assistant/pages/manual/node_page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
@@ -46,6 +48,7 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/report-feedback/external", page: ReportExternalLinksRoute.page),
     AutoRoute(path: "/announcements", page: AnnouncementFeedRoute.page),
     AutoRoute(path: "/manual", page: ManualBrowserRoute.page),
+    AutoRoute(path: "/manual/feedback", page: ManualFeedbackRoute.page),
     AutoRoute(path: "/manual/*", page: ManualNodeRoute.page, usesPathAsKey: true),
     AutoRoute(path: "/fitting/current", page: FitRoute.page),
   ];

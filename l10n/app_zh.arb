@@ -205,6 +205,15 @@
   "manualSearchUnavailable": "搜索不可用",
   "manualSearchAction": "搜索",
   "manualSearchClear": "清除搜索",
+  "manualActionReportTooltip": "反馈本页问题",
+  "manualActionViewSourceTooltip": "在 GitHub 上查看源码",
+  "manualActionQuestionTooltip": "提问",
+  "manualReportPageTitle": "反馈文档问题",
+  "manualQuestionPageTitle": "提问",
+  "manualFeedbackReportedPage": "反馈的页面",
+  "manualFeedbackFieldDescription": "详细描述",
+  "manualFeedbackFieldDescriptionHint": "请描述您遇到的问题或疑问",
+  "manualFeedbackFieldDescriptionRequired": "请填写详细描述",
   "@documentVersionBadge": {
     "placeholders": {
       "version": {
@@ -1177,14 +1186,25 @@
   "reportFieldExtra": "原型 / 参考 / 其他补充",
   "reportFieldExtraHint": "可附上截图、参考链接或其他说明",
   "reportFieldIncludeMetadata": "包含设备信息",
-  "reportFieldIncludeMetadataHint": "自动附带操作系统版本和应用版本，帮助更快定位问题",
-  "reportFieldContact": "联系方式",
+  "reportFieldIncludeMetadataHint": "自动附带操作系统版本和应用版本，帮助更快定位问题；这些信息将公开显示在 GitHub Issue 中",
+  "reportFieldContact": "联系方式（可选）",
   "reportFieldContactHint": "可选：邮箱或其他联系方式，方便我们跟进",
+  "reportFieldContactPrivacy": "注意：此内容将公开发布到 GitHub Issue 中",
   "reportSubmit": "提交报告",
   "reportSubmitting": "正在提交...",
   "reportSuccessTitle": "提交成功",
   "reportSuccessBody": "感谢你的反馈！你的报告已创建为 GitHub Issue。\n\n{issueUrl}",
+  "questionSubmit": "提交问题",
+  "questionSuccessTitle": "提交成功",
+  "questionSuccessBody": "感谢你的提问！你的问题已创建为 GitHub Issue。\n\n{issueUrl}",
   "@reportSuccessBody": {
+    "placeholders": {
+      "issueUrl": {
+        "type": "String"
+      }
+    }
+  },
+  "@questionSuccessBody": {
     "placeholders": {
       "issueUrl": {
         "type": "String"
