@@ -1186,7 +1186,7 @@
   "reportFieldExtra": "原型 / 参考 / 其他补充",
   "reportFieldExtraHint": "可附上截图、参考链接或其他说明",
   "reportFieldIncludeMetadata": "包含设备信息",
-  "reportFieldIncludeMetadataHint": "自动附带操作系统版本和应用版本，帮助更快定位问题",
+  "reportFieldIncludeMetadataHint": "自动附带操作系统版本和应用版本，帮助更快定位问题；这些信息将公开显示在 GitHub Issue 中",
   "reportFieldContact": "联系方式（可选）",
   "reportFieldContactHint": "可选：邮箱或其他联系方式，方便我们跟进",
   "reportFieldContactPrivacy": "注意：此内容将公开发布到 GitHub Issue 中",
