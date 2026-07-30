@@ -120,8 +120,25 @@ class ManualNodePage extends ConsumerWidget {
       IconButton(
         icon: const Icon(Icons.code),
         tooltip: context.l10n.manualActionViewSourceTooltip,
-        onPressed: () => unawaited(launchUrl(sourceUrl, mode: LaunchMode.externalApplication)),
+        onPressed: () => unawaited(_openUrl(context, sourceUrl)),
       ),
     ];
+  }
+
+  Future<void> _openUrl(BuildContext context, Uri uri) async {
+    try {
+      final didLaunch = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!didLaunch && context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.reportOpenError)));
+      }
+    } on Object {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.reportOpenError)));
+      }
+    }
   }
 }
