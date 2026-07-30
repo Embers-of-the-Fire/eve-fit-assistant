@@ -1,0 +1,11 @@
+id: reference
+name:
+  zh: 参考
+  en: Reference
+description:
+  zh: 术语表、已知限制与常见问题。
+  en: Glossary, known limitations, and frequently asked questions.
+children:
+  - glossary
+  - known-limitations
+  - faq

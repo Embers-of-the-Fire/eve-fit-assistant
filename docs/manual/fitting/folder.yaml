@@ -1,0 +1,15 @@
+id: fitting
+name:
+  zh: 配装
+  en: Fitting
+description:
+  zh: 了解装备槽位、无人机、属性面板与进阶配装技巧。
+  en: Learn about module slots, drones, fit statistics, and advanced fitting techniques.
+children:
+  - modules
+  - tactical-modes
+  - drones-fighters
+  - attributes-stats
+  - damage-profiles
+  - validation
+  - advanced

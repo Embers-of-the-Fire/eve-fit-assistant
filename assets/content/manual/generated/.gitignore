@@ -1,0 +1,5 @@
+*
+!.gitignore
+!content/
+content/*
+!content/.gitkeep

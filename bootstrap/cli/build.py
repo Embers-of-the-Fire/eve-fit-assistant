@@ -265,6 +265,16 @@ def register_build_commands(cli_group: click.Group) -> None:
         except ValueError as exception:
             raise click.ClickException(str(exception)) from exception
 
+    @build.command("manual")
+    def build_manual_cmd():
+        """Build the bundled user-manual registry and content assets."""
+        from bootstrap.docs import build_manual
+
+        try:
+            build_manual()
+        except (ValueError, FileNotFoundError, TypeError) as exception:
+            raise click.ClickException(str(exception)) from exception
+
     @build.command("apk")
     @click.option(
         "--clean", is_flag=True, default=False, help="Run `flutter clean` before building."

@@ -1,0 +1,12 @@
+id: settings
+name:
+  zh: 设置与维护
+  en: Settings & Maintenance
+description:
+  zh: 应用设置、应用更新、反馈与日志，以及开发者选项。
+  en: App settings, updates, feedback and logs, and developer options.
+children:
+  - app-settings
+  - app-updates
+  - feedback-and-logs
+  - developer-mode

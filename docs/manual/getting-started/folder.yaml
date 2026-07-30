@@ -1,0 +1,12 @@
+id: getting-started
+name:
+  zh: 新手上路
+  en: Getting Started
+description:
+  zh: 从浏览舰船到创建你的第一份配装。
+  en: From browsing ships to creating your first fit.
+children:
+  - first-run-setup
+  - browse-ships
+  - create-first-fit
+  - workspace

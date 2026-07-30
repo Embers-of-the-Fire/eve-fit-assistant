@@ -1,0 +1,11 @@
+id: characters
+name:
+  zh: 角色与技能
+  en: Characters & Skills
+description:
+  zh: 管理角色技能档案，并把角色指派给配装。
+  en: Manage character skill profiles and assign them to fits.
+children:
+  - managing-characters
+  - skill-levels
+  - assign-character-to-fit

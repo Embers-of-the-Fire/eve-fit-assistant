@@ -30,6 +30,11 @@ def parse_locale_document(path: Path, locale: str) -> ParsedDocument:
     and any remaining content) becomes ``body_markdown``.
     """
     raw = path.read_text(encoding="utf-8")
+    return parse_markdown_text(raw, locale, path)
+
+
+def parse_markdown_text(raw: str, locale: str, source_path: Path) -> ParsedDocument:
+    """Parse Markdown text with the same rules as [parse_locale_document]."""
     lines = raw.splitlines()
 
     title_index = next(
@@ -37,7 +42,7 @@ def parse_locale_document(path: Path, locale: str) -> ParsedDocument:
         None,
     )
     if title_index is None:
-        raise ValueError(f"Locale file is missing a level-1 heading: {path}")
+        raise ValueError(f"Locale file is missing a level-1 heading: {source_path}")
 
     title = lines[title_index].strip()[2:].strip()
     body_lines = lines[title_index + 1 :]
@@ -46,16 +51,16 @@ def parse_locale_document(path: Path, locale: str) -> ParsedDocument:
 
     body_text = "\n".join(body_lines).strip()
     if not body_text:
-        raise ValueError(f"Locale file has no body after removing the title: {path}")
+        raise ValueError(f"Locale file has no body after removing the title: {source_path}")
 
     summary = extract_summary(body_text)
     if summary is None:
-        raise ValueError(f"Locale file has no usable summary paragraph: {path}")
+        raise ValueError(f"Locale file has no usable summary paragraph: {source_path}")
 
     body_markdown = body_text + "\n"
     return ParsedDocument(
         locale=locale,
-        source_path=path,
+        source_path=source_path,
         title=title,
         summary=summary,
         body_markdown=body_markdown,

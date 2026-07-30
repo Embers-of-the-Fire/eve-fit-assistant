@@ -1,5 +1,8 @@
+import "dart:async";
+
 import "package:flutter/widgets.dart";
-import "package:markdown_widget/markdown_widget.dart";
+import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:url_launcher/url_launcher.dart";
 
 const Color primaryBlue = Color(0xFF30B2E6);
 const Color deepBlue = Color(0xFF0C1213);
@@ -21,10 +24,16 @@ const Color colorSkillAlphaLimited = Color(0xFFFBC02D);
 
 const Color colorActionDelete = Color(0xFFFE4A49);
 
-final MarkdownConfig markdownDarkConfig = MarkdownConfig(
-  configs: const [
-    CodeConfig(
-      style: TextStyle(backgroundColor: Color(0xCCeff1f3), color: Color(0xFF424242)),
-    ),
-  ],
+const TextStyle _markdownCodeStyle = TextStyle(
+  backgroundColor: Color(0xCCeff1f3),
+  color: Color(0xFF424242),
 );
+
+final MarkdownStyleSheet markdownDarkStyleSheet = MarkdownStyleSheet(code: _markdownCodeStyle);
+
+void openMarkdownLinkExternally(String text, String? href, String title) {
+  if (href == null) return;
+  final uri = Uri.tryParse(href);
+  if (uri == null) return;
+  unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
+}

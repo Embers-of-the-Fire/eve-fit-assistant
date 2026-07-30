@@ -42,6 +42,11 @@ class WorkspacePage extends ConsumerWidget {
         onTap: () => context.router.push(AnnouncementFeedRoute()),
       ),
       _WorkspaceShortcutItem(
+        title: context.l10n.workspaceTabManualTitle,
+        icon: Icons.menu_book_outlined,
+        onTap: () => context.router.push(const ManualBrowserRoute()),
+      ),
+      _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabReportTitle,
         icon: Icons.feedback_outlined,
         onTap: () => context.router.push(ReportFeedbackRoute()),

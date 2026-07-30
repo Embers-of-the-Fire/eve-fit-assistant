@@ -1,0 +1,13 @@
+id: sharing
+name:
+  zh: 分享与导入导出
+  en: Sharing & Import/Export
+description:
+  zh: 在应用与其他玩家之间分享配装：文本导入导出、截图、链接与估价。
+  en: Share fits between the app and other players — text import/export, screenshots, links, and price estimates.
+children:
+  - importing-fits
+  - exporting-fits
+  - fit-screenshots
+  - deep-links
+  - fit-cost

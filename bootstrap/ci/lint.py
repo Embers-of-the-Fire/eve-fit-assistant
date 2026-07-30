@@ -47,6 +47,7 @@ def run_lint(
 
     if lang in ("all", "dart"):
         from bootstrap.docs import build_bundled_docs
+        from bootstrap.docs import build_manual
 
         _echo("build bundled docs")
         if dry_run:
@@ -54,7 +55,8 @@ def run_lint(
         else:
             try:
                 build_bundled_docs()
-            except ValueError as exception:
+                build_manual()
+            except (ValueError, TypeError, FileNotFoundError) as exception:
                 raise click.ClickException(str(exception)) from exception
 
         dart = get_command("dart")
