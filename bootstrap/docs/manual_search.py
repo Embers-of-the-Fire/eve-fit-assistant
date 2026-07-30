@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 
 SEARCH_DB_FILE_NAME = "manual_search.db"
-SEARCH_SCHEMA_VERSION = "1"
+SEARCH_SCHEMA_VERSION = "2"
 
 FTS_TABLES = {
     "zh": "manual_fts_zh",
@@ -39,11 +39,11 @@ _CREATE_META_SQL = "CREATE TABLE manual_search_meta(key TEXT PRIMARY KEY, value 
 _CREATE_FTS_SQL = {
     "zh": (
         "CREATE VIRTUAL TABLE manual_fts_zh USING fts5("
-        "doc_id UNINDEXED, title, body, tokenize='trigram')"
+        "doc_id UNINDEXED, title, body, id_tokens, tokenize='trigram')"
     ),
     "en": (
         "CREATE VIRTUAL TABLE manual_fts_en USING fts5("
-        "doc_id UNINDEXED, title, body, tokenize='porter unicode61')"
+        "doc_id UNINDEXED, title, body, id_tokens, tokenize='porter unicode61')"
     ),
 }
 
@@ -105,8 +105,8 @@ def build_manual_search(root: ManualFolderNode, db_path: Path) -> int:
                 title = normalize_search_text(localization.title)
                 body = normalize_search_text(strip_markdown(localization.body_markdown))
                 connection.execute(
-                    f"INSERT INTO {table}(doc_id, title, body) VALUES (?, ?, ?)",
-                    (doc.id, title, f"{body} {id_tokens}"),
+                    f"INSERT INTO {table}(doc_id, title, body, id_tokens) VALUES (?, ?, ?, ?)",
+                    (doc.id, title, body, id_tokens),
                 )
 
         connection.execute(

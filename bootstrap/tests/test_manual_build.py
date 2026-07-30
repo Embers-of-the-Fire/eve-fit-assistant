@@ -430,7 +430,7 @@ class TestBuildManualSearch:
             (version,) = connection.execute(
                 "SELECT value FROM manual_search_meta WHERE key = 'schema_version'"
             ).fetchone()
-            assert version == "1"
+            assert version == "2"
         finally:
             connection.close()
 

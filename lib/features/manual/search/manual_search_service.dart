@@ -93,7 +93,7 @@ class ManualSearchService {
       return _db.getAll(
         "SELECT doc_id, title, body FROM manual_fts_zh"
         " WHERE manual_fts_zh MATCH ?"
-        " ORDER BY bm25(manual_fts_zh, 0.0, 10.0, 1.0)"
+        " ORDER BY bm25(manual_fts_zh, 0.0, 10.0, 1.0, 0.5)"
         " LIMIT ?",
         [buildTrigramMatchQuery(normalized), _maxResults],
       );
@@ -115,7 +115,7 @@ class ManualSearchService {
     return _db.getAll(
       "SELECT doc_id, title, body FROM manual_fts_en"
       " WHERE manual_fts_en MATCH ?"
-      " ORDER BY bm25(manual_fts_en, 0.0, 10.0, 1.0)"
+      " ORDER BY bm25(manual_fts_en, 0.0, 10.0, 1.0, 0.5)"
       " LIMIT ?",
       [match, _maxResults],
     );
