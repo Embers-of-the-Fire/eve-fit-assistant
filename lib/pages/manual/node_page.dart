@@ -4,8 +4,9 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
 import "package:eve_fit_assistant/features/manual/repository/manual_feedback_api.dart";
 import "package:eve_fit_assistant/pages/manual/doc_view.dart";
-import "package:eve_fit_assistant/pages/manual/feedback_dialog.dart";
+import "package:eve_fit_assistant/pages/manual/feedback_page.dart";
 import "package:eve_fit_assistant/pages/manual/folder_view.dart";
+import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -98,7 +99,6 @@ class ManualNodePage extends ConsumerWidget {
 
   List<Widget> _buildDocActions(BuildContext context, ManualDocEntry doc, String localeCode) {
     final localization = doc.resolveLocalization(localeCode);
-    final docTitle = localization?.data.title;
     final sourceUrl = Uri.parse(
       "$_githubSourceBaseUrl/${doc.id}/${localization?.localeCode ?? "en"}.md",
     );
@@ -108,11 +108,12 @@ class ManualNodePage extends ConsumerWidget {
         icon: const Icon(Icons.flag_outlined),
         tooltip: context.l10n.manualActionReportTooltip,
         onPressed: () => unawaited(
-          showManualFeedbackDialog(
-            context,
-            kind: ManualFeedbackKind.report,
-            docId: doc.id,
-            docTitle: docTitle,
+          context.router.push(
+            ManualFeedbackRoute(
+              kind: ManualFeedbackKind.report,
+              docId: doc.id,
+              docTitle: doc.resolveLocalization(localeCode)?.data.title,
+            ),
           ),
         ),
       ),
