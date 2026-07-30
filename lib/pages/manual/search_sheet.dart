@@ -143,6 +143,9 @@ class _SearchResultList extends ConsumerWidget {
     return FutureBuilder<List<ManualSearchResult>>(
       future: future,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _SearchMessage(message: context.l10n.manualSearchUnavailable);
+        }
         final data = snapshot.data;
         if (data == null) {
           return const Center(child: CircularProgressIndicator());
