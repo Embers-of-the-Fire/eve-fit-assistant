@@ -1,6 +1,7 @@
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
 import "package:eve_fit_assistant/pages/manual/folder_view.dart";
+import "package:eve_fit_assistant/pages/manual/search_sheet.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -14,7 +15,17 @@ class ManualBrowserPage extends ConsumerWidget {
     final treeAsync = ref.watch(manualTreeProvider);
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: Text(context.l10n.manualPageTitle)),
+      appBar: AppBar(
+        centerTitle: false,
+        title: Text(context.l10n.manualPageTitle),
+        actions: [
+          IconButton(
+            tooltip: context.l10n.manualSearchAction,
+            icon: const Icon(Icons.search),
+            onPressed: () => showManualSearchSheet(context),
+          ),
+        ],
+      ),
       body: treeAsync.when(
         data: (root) => ManualFolderView(folder: root, ancestors: const []),
         loading: () => const Center(child: CircularProgressIndicator()),

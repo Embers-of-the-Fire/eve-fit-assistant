@@ -200,6 +200,11 @@
   "manualNodeNotFound": "未找到该页面",
   "manualContentLoadError": "内容加载失败",
   "manualContentLoadRetry": "重试",
+  "manualSearchHint": "搜索手册",
+  "manualSearchNoResults": "没有匹配的内容",
+  "manualSearchUnavailable": "搜索不可用",
+  "manualSearchAction": "搜索",
+  "manualSearchClear": "清除搜索",
   "@documentVersionBadge": {
     "placeholders": {
       "version": {
