@@ -39,18 +39,29 @@ class _ManualSearchSheetState extends ConsumerState<ManualSearchSheet> {
   void _onQueryChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(_debounceDelay, () {
-      final serviceAsync = ref.read(manualSearchServiceProvider);
-      final service = serviceAsync.value;
       setState(() {
         _query = value;
-        _results = service?.search(value, context.locale.toString());
+        _results = _executeSearch(value);
       });
     });
+  }
+
+  Future<List<ManualSearchResult>>? _executeSearch(String value) {
+    final service = ref.read(manualSearchServiceProvider).value;
+    return service?.search(value, context.locale.toString());
   }
 
   @override
   Widget build(BuildContext context) {
     final serviceAsync = ref.watch(manualSearchServiceProvider);
+
+    ref.listen(manualSearchServiceProvider, (prev, next) {
+      if (next.hasValue && _query.isNotEmpty && _results == null) {
+        setState(() {
+          _results = _executeSearch(_query);
+        });
+      }
+    });
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
