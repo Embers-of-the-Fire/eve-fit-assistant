@@ -9,8 +9,8 @@ The **Attributes** tab shows the computed statistics of the current fit:
 
 - **Offense** — total DPS and volley (alpha) damage, broken down by turrets,
   launchers, and drones or fighters.
-- **Defense (HP)** — shield, armor, and hull hitpoints with per-type
-  resistances, effective hitpoints (EHP), and active repair rates.
+- **Defense (HP)** — shield, armor, and hull hit points with per-type
+  resistances, effective hit points (EHP), and active repair rates.
 - **Capacitor** — capacity, recharge, and whether the fit is capacitor stable
   or how long it takes to drain with everything running.
 - **Resources** — CPU, powergrid, and calibration usage for the fit.

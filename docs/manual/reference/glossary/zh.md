@@ -17,7 +17,7 @@ summary: 应用与本手册中常用的术语说明。
 
 ## 装备与模式
 
-- **战术模式** — T3 驱逐舰等舰船可切换的作战形态。见[战术模式](efa://manual/fitting/tactical-modes)。
+- **战术模式** — T3 驱逐舰可切换的作战形态。见[战术模式](efa://manual/fitting/tactical-modes)。
 - **上线 / 激活 / 超载** — 装备的三种状态：已供电运行、正在循环工作、超出额定性能运转。见[超载装备](efa://manual/fitting/advanced/overloading)。
 - **被动装备** — 无需激活即可提供加成的装备。
 - **伤害构成** — 计算中使用的电磁、热能、动能、爆炸伤害的配比。见[伤害构成](efa://manual/fitting/damage-profiles)。

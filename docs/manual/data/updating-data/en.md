@@ -15,4 +15,4 @@ After the download finishes, the updated checkout becomes your active data versi
 
 - Update banner on the workspace → tap Update to start.
 - Settings → Data → Checkouts → update an individual checkout.
-- Interrupted downloads recover automatically on the next app launch.
+- Interrupted downloads: partial files are cleaned up on the next launch, then you can retry the update.
