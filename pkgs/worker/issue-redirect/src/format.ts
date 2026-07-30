@@ -1,4 +1,11 @@
-import type { BugReport, FeatureRequest, TemplateType } from "./types.js";
+import type {
+    BugReport,
+    DocsFlag,
+    DocsQuestion,
+    FeatureRequest,
+    IssueRequest,
+    TemplateType,
+} from "./types.js";
 
 function formatBugReportEn(req: BugReport): string {
     const lines: string[] = [];
@@ -104,7 +111,43 @@ function formatFeatureRequestZh(req: FeatureRequest): string {
     return lines.join("\n");
 }
 
-function formatFooter(req: BugReport | FeatureRequest): string {
+function formatDocsFlagEn(req: DocsFlag): string {
+    const lines: string[] = [];
+    lines.push("## Page");
+    lines.push(`Path: ${req.pagePath}`);
+    lines.push(`ID: ${req.pageId}`);
+    lines.push("");
+    lines.push("## Report");
+    lines.push(req.content);
+    return lines.join("\n");
+}
+
+function formatDocsFlagZh(req: DocsFlag): string {
+    const lines: string[] = [];
+    lines.push("## 页面");
+    lines.push(`路径：${req.pagePath}`);
+    lines.push(`ID：${req.pageId}`);
+    lines.push("");
+    lines.push("## 问题反馈");
+    lines.push(req.content);
+    return lines.join("\n");
+}
+
+function formatDocsQuestionEn(req: DocsQuestion): string {
+    const lines: string[] = [];
+    lines.push("## Question");
+    lines.push(req.content);
+    return lines.join("\n");
+}
+
+function formatDocsQuestionZh(req: DocsQuestion): string {
+    const lines: string[] = [];
+    lines.push("## 问题描述");
+    lines.push(req.content);
+    return lines.join("\n");
+}
+
+function formatFooter(req: IssueRequest): string {
     const parts: string[] = [];
     if (req.metadata) {
         const entries = Object.entries(req.metadata);
@@ -121,18 +164,28 @@ function formatFooter(req: BugReport | FeatureRequest): string {
     return `\n\n---\n*${parts.join("  \n")}*`;
 }
 
-export function formatIssueBody(type: TemplateType, req: BugReport | FeatureRequest): string {
+export function formatIssueBody(type: TemplateType, req: IssueRequest): string {
     let body: string;
     if (type === "bug_report") {
         body =
             req.language === "zh"
                 ? formatBugReportZh(req as BugReport)
                 : formatBugReportEn(req as BugReport);
-    } else {
+    } else if (type === "feature_request") {
         body =
             req.language === "zh"
                 ? formatFeatureRequestZh(req as FeatureRequest)
                 : formatFeatureRequestEn(req as FeatureRequest);
+    } else if (type === "docs_flag") {
+        body =
+            req.language === "zh"
+                ? formatDocsFlagZh(req as DocsFlag)
+                : formatDocsFlagEn(req as DocsFlag);
+    } else {
+        body =
+            req.language === "zh"
+                ? formatDocsQuestionZh(req as DocsQuestion)
+                : formatDocsQuestionEn(req as DocsQuestion);
     }
     const footer = formatFooter(req);
     return footer ? body + footer : body;
@@ -141,13 +194,18 @@ export function formatIssueBody(type: TemplateType, req: BugReport | FeatureRequ
 const DefaultLabels: Record<string, string[]> = {
     bug_report: ["T-Bug", "V-Needs Triage"],
     feature_request: ["T-Feature", "V-Needs Triage"],
+    docs_flag: ["F-App", "T-Docs", "T-Bug", "V-Needs Triage"],
+    docs_question: ["F-App", "T-Docs", "T-Question", "V-Needs Triage"],
 };
 
-export function resolveTitle(_type: TemplateType, req: BugReport | FeatureRequest): string {
+export function resolveTitle(type: TemplateType, req: IssueRequest): string {
+    if ("topic" in req) {
+        return `[Docs] ${req.topic}`;
+    }
     return req.title;
 }
 
-export function resolveLabels(type: TemplateType, req: BugReport | FeatureRequest): string[] {
+export function resolveLabels(type: TemplateType, req: IssueRequest): string[] {
     if (req.labels && req.labels.length > 0) {
         return req.labels;
     }

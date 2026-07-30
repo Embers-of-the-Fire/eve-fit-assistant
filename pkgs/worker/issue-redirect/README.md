@@ -45,6 +45,36 @@ Create a feature request issue.
 }
 ```
 
+### `POST /docs-flag`
+
+Flag a docs page (outdated/wrong content). The issue title is derived server-side as
+`[Docs] <topic>`; flag vs. question is distinguished via labels.
+Default labels: `F-App`, `T-Docs`, `T-Bug`, `V-Needs Triage`.
+
+```json
+{
+    "topic": "Outdated capacitor description",
+    "language": "en",
+    "pagePath": "/docs/fitting/capacitor",
+    "pageId": "fitting-capacitor",
+    "content": "The recharge rate section describes pre-patch behavior",
+    "contact": "user@example.com"
+}
+```
+
+### `POST /docs-question`
+
+Ask a question about the docs. The issue title is derived server-side as
+`[Docs] <topic>`. Default labels: `F-App`, `T-Docs`, `T-Question`, `V-Needs Triage`.
+
+```json
+{
+    "topic": "How is falloff calculated?",
+    "language": "en",
+    "content": "The turret page does not explain how falloff affects hit chance"
+}
+```
+
 ### Response
 
 #### Success (201)

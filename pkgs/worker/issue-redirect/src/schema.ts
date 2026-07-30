@@ -31,3 +31,23 @@ export const FeatureRequestSchema = z.object({
     impact: z.string().min(1, "impact is required"),
     extra: z.string().optional(),
 });
+
+const DocsCommonFields = {
+    language: LanguageEnum.default("en"),
+    topic: z.string().min(1, "topic is required"),
+    labels: z.array(z.string()).optional(),
+    contact: z.string().optional(),
+    metadata: z.record(z.unknown()).optional(),
+};
+
+export const DocsFlagSchema = z.object({
+    ...DocsCommonFields,
+    pagePath: z.string().min(1, "pagePath is required"),
+    pageId: z.string().min(1, "pageId is required"),
+    content: z.string().min(1, "content is required"),
+});
+
+export const DocsQuestionSchema = z.object({
+    ...DocsCommonFields,
+    content: z.string().min(1, "content is required"),
+});
