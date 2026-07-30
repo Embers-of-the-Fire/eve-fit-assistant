@@ -70,6 +70,7 @@ class _ManualSearchSheetState extends ConsumerState<ManualSearchSheet> {
                   suffixIcon: _query.isEmpty
                       ? null
                       : IconButton(
+                          tooltip: context.l10n.manualSearchClear,
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             _controller.clear();

@@ -20,6 +20,7 @@ class ManualBrowserPage extends ConsumerWidget {
         title: Text(context.l10n.manualPageTitle),
         actions: [
           IconButton(
+            tooltip: context.l10n.manualSearchAction,
             icon: const Icon(Icons.search),
             onPressed: () => showManualSearchSheet(context),
           ),

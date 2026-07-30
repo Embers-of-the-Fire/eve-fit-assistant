@@ -119,6 +119,8 @@
   "manualSearchHint": "Search the manual",
   "manualSearchNoResults": "No matching content",
   "manualSearchUnavailable": "Search unavailable",
+  "manualSearchAction": "Search",
+  "manualSearchClear": "Clear search",
   "versionBumpCardTitle": "What's new in v{version}",
   "versionBumpCardSubtitle": "{count} new updates",
   "versionBumpCardCloseTooltip": "Close",
