@@ -242,6 +242,14 @@ class TestLoadManualTree:
         with pytest.raises(ValueError, match="Invalid manual entry id"):
             load_manual_tree()
 
+    def test_nested_doc_invalid_id_pattern_raises(self, manual_paths) -> None:
+        source_root, _ = manual_paths
+        _make_folder(source_root / "f", children=["Bad_Doc"])
+        _make_doc(source_root / "f" / "Bad_Doc")
+
+        with pytest.raises(ValueError, match="Invalid manual entry id"):
+            load_manual_tree()
+
 
 class TestFrontmatter:
     def test_title_summary_override(self, manual_paths) -> None:
