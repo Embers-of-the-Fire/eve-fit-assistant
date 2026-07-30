@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
@@ -69,7 +70,7 @@ class ManualFolderView extends StatelessWidget {
                       ),
                     GridView.count(
                       crossAxisCount: columnCount(context),
-                      mainAxisExtent: 112,
+                      mainAxisExtent: _cardExtent(context),
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       shrinkWrap: true,
@@ -86,6 +87,18 @@ class ManualFolderView extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Computes the grid tile extent from the active text styles and text scaler
+/// so cards can fit the title plus two body lines at larger font sizes.
+double _cardExtent(BuildContext context) {
+  final textTheme = context.theme.textTheme;
+  final textScaler = MediaQuery.textScalerOf(context);
+  double lineHeight(TextStyle? style, double fallbackSize) =>
+      textScaler.scale((style?.fontSize ?? fallbackSize) * (style?.height ?? 1.2));
+  final contentHeight =
+      lineHeight(textTheme.titleMedium, 16) + 8 + 2 * lineHeight(textTheme.bodyMedium, 14);
+  return math.max(112, contentHeight + 32);
 }
 
 List<ManualFolderEntry> _sortedFolders(ManualFolderEntry folder) =>
