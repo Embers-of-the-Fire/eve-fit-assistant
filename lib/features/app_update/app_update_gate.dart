@@ -19,9 +19,9 @@ import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/material.dart";
+import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
-import "package:markdown_widget/markdown_widget.dart";
 
 /// Resolves the best-matching Android artifact for a release, exposing the
 /// download size shown in the update dialog. `null` when the release has no
@@ -498,11 +498,11 @@ class _UpdateReleaseNotes extends ConsumerWidget {
                                 : unavailable;
                           }
                           return SingleChildScrollView(
-                            child: MarkdownWidget(
+                            child: MarkdownBody(
                               data: body,
-                              padding: EdgeInsets.zero,
-                              shrinkWrap: true,
-                              config: markdownDarkConfig,
+                              softLineBreak: true,
+                              styleSheet: markdownDarkStyleSheet,
+                              onTapLink: openMarkdownLinkExternally,
                             ),
                           );
                         },

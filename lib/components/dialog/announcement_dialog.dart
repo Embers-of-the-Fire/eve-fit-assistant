@@ -4,7 +4,7 @@ import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
-import "package:markdown_widget/markdown_widget.dart";
+import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 
 typedef AnnouncementDialogDetailCallback = FutureOr<void> Function();
 typedef AnnouncementDialogPersistenceCallback =
@@ -73,11 +73,11 @@ class _AnnouncementDialogState extends State<AnnouncementDialog> {
           Flexible(
             child: SingleChildScrollView(
               child: widget.bodyMarkdown != null
-                  ? MarkdownWidget(
+                  ? MarkdownBody(
                       data: widget.bodyMarkdown!,
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      config: markdownDarkConfig,
+                      softLineBreak: true,
+                      styleSheet: markdownDarkStyleSheet,
+                      onTapLink: openMarkdownLinkExternally,
                     )
                   : Text(widget.informationText ?? "", style: context.theme.textTheme.bodyMedium),
             ),

@@ -6,8 +6,8 @@ import "package:eve_fit_assistant/features/manual/manual.dart";
 import "package:eve_fit_assistant/pages/manual/breadcrumb.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
+import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:markdown_widget/markdown_widget.dart";
 
 /// Renders a manual document: breadcrumb bar, localized title/summary
 /// header, and the Markdown body.
@@ -83,18 +83,19 @@ class ManualDocView extends ConsumerWidget {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(right: 20, bottom: 10, left: 20),
-                      child: MarkdownWidget(
+                      child: Markdown(
                         data: content,
                         padding: EdgeInsets.zero,
-                        config: buildMarkdownDarkConfig(
-                          linkConfig: LinkConfig(
-                            onTap: (url) => unawaited(
-                              ref
-                                  .read(appLinkHandlerProvider)
-                                  .open(context, url, basePath: _docBasePath(doc)),
-                            ),
-                          ),
-                        ),
+                        softLineBreak: true,
+                        styleSheet: markdownDarkStyleSheet,
+                        onTapLink: (text, href, title) {
+                          if (href == null) return;
+                          unawaited(
+                            ref
+                                .read(appLinkHandlerProvider)
+                                .open(context, href, basePath: _docBasePath(doc)),
+                          );
+                        },
                       ),
                     ),
                   ),

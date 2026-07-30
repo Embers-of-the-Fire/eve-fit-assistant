@@ -5,9 +5,9 @@ import "package:eve_fit_assistant/features/announcements/repository/repository.d
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/material.dart";
+import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:intl/intl.dart";
-import "package:markdown_widget/markdown_widget.dart";
 
 final announcementBodyProvider = FutureProvider.family<String?, String>((
   Ref ref,
@@ -146,10 +146,12 @@ class AnnouncementDetailContent extends ConsumerWidget {
                     }
                     return Padding(
                       padding: const EdgeInsets.only(top: 4, right: 20, bottom: 10, left: 20),
-                      child: MarkdownWidget(
+                      child: Markdown(
                         data: body,
                         padding: EdgeInsets.zero,
-                        config: markdownDarkConfig,
+                        softLineBreak: true,
+                        styleSheet: markdownDarkStyleSheet,
+                        onTapLink: openMarkdownLinkExternally,
                       ),
                     );
                   },
