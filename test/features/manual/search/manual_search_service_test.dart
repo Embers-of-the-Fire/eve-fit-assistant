@@ -99,6 +99,12 @@ void main() {
       expect(results.first.docId, "fitting/modules");
     });
 
+    test("short query matches doc-id tokens via LIKE fallback", () async {
+      final results = await service.search("wa", "zh");
+
+      expect(results.map((r) => r.docId), contains("advanced/capacitor-warfare"));
+    });
+
     test("no match yields an empty result", () async {
       final results = await service.search("不存在的内容xyz", "zh");
 

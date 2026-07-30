@@ -111,10 +111,10 @@ class ManualSearchService {
     final pattern = "%${normalized.replaceAll("%", "").replaceAll("_", "")}%";
     return _db.getAll(
       "SELECT doc_id, title, body FROM manual_fts_zh"
-      " WHERE title LIKE ? OR body LIKE ?"
+      " WHERE title LIKE ? OR body LIKE ? OR id_tokens LIKE ?"
       " ORDER BY (title LIKE ?) DESC"
       " LIMIT ?",
-      [pattern, pattern, pattern, _maxResults],
+      [pattern, pattern, pattern, pattern, _maxResults],
     );
   }
 
