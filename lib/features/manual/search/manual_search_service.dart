@@ -56,9 +56,19 @@ class ManualSearchService {
     final file = File(p.join(supportDir.path, "manual_search_$hash.db"));
     if (!file.existsSync()) {
       await file.writeAsBytes(bytes, flush: true);
+      await _removeStaleCopies(supportDir, file.path);
     }
 
     return ManualSearchService._(SqliteDatabase(path: file.path));
+  }
+
+  static Future<void> _removeStaleCopies(Directory dir, String currentPath) async {
+    await for (final entity in dir.list()) {
+      final name = p.basename(entity.path);
+      if (entity.path != currentPath && name.startsWith("manual_search_") && name.endsWith(".db")) {
+        await entity.delete();
+      }
+    }
   }
 
   Future<void> close() => _db.close();
