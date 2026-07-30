@@ -56,7 +56,7 @@ def run_lint(
             try:
                 build_bundled_docs()
                 build_manual()
-            except ValueError as exception:
+            except (ValueError, TypeError, FileNotFoundError) as exception:
                 raise click.ClickException(str(exception)) from exception
 
         dart = get_command("dart")
