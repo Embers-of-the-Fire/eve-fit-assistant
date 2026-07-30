@@ -1,10 +1,10 @@
 import "dart:async";
-import "dart:math" as math;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
 import "package:eve_fit_assistant/pages/manual/breadcrumb.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
 
 /// Renders a manual folder: breadcrumb bar, optional localized description,
@@ -54,49 +54,33 @@ class ManualFolderView extends StatelessWidget {
                     ),
                   ),
                 )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    const minTileWidth = 320.0;
-                    const maxColumnCount = 3;
-                    const spacing = 12.0;
-                    final columnCount = math.max(
-                      1,
-                      math.min(maxColumnCount, constraints.maxWidth ~/ minTileWidth),
-                    );
-                    final tileWidth =
-                        (constraints.maxWidth - spacing * (columnCount - 1)) / columnCount;
-                    return ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      children: [
-                        if (folder.resolveDescription(localeCode) case final description?)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6, bottom: 14),
-                            child: Text(
-                              description,
-                              style: context.theme.textTheme.bodyMedium?.copyWith(
-                                color: context.theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
+              : ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  children: [
+                    if (folder.resolveDescription(localeCode) case final description?)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, bottom: 14),
+                        child: Text(
+                          description,
+                          style: context.theme.textTheme.bodyMedium?.copyWith(
+                            color: context.theme.colorScheme.onSurfaceVariant,
                           ),
-                        Wrap(
-                          spacing: spacing,
-                          runSpacing: spacing,
-                          children: [
-                            for (final subfolder in folders)
-                              SizedBox(
-                                width: tileWidth,
-                                child: _ManualFolderCard(folder: subfolder, localeCode: localeCode),
-                              ),
-                            for (final doc in docs)
-                              SizedBox(
-                                width: tileWidth,
-                                child: _ManualDocCard(doc: doc, localeCode: localeCode),
-                              ),
-                          ],
                         ),
+                      ),
+                    GridView.count(
+                      crossAxisCount: columnCount(context),
+                      mainAxisExtent: 112,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        for (final subfolder in folders)
+                          _ManualFolderCard(folder: subfolder, localeCode: localeCode),
+                        for (final doc in docs) _ManualDocCard(doc: doc, localeCode: localeCode),
                       ],
-                    );
-                  },
+                    ),
+                  ],
                 ),
         ),
       ],
@@ -137,11 +121,18 @@ class _ManualFolderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: context.theme.textTheme.titleMedium),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.theme.textTheme.titleMedium,
+                    ),
                     if (description != null) ...[
                       const SizedBox(height: 8),
                       Text(
                         description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: context.theme.textTheme.bodyMedium?.copyWith(
                           color: context.theme.colorScheme.onSurfaceVariant,
                         ),
@@ -186,11 +177,18 @@ class _ManualDocCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: context.theme.textTheme.titleMedium),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.theme.textTheme.titleMedium,
+                    ),
                     if (summary.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
                         summary,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: context.theme.textTheme.bodyMedium?.copyWith(
                           color: context.theme.colorScheme.onSurfaceVariant,
                         ),
