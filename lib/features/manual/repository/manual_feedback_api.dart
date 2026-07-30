@@ -54,7 +54,9 @@ class ManualFeedbackApi {
 
   Future<IssueResult> _submitDocsFlag(ManualFeedback feedback, bool includeMetadata) async {
     final docId = feedback.docId;
-    assert(docId != null, "docId is required for doc issue reports");
+    if (docId == null || docId.isEmpty) {
+      throw const ReportApiException("Cannot submit a doc issue report without a document id.");
+    }
     final data = <String, dynamic>{
       "language": feedback.locale,
       "topic": feedback.title,
