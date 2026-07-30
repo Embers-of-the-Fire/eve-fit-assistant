@@ -1,6 +1,5 @@
 packages:
-  - "site"
-  - "pkg/*"
+  - "site/*"
   - "pkgs/worker/*"
 
 allowBuilds:
