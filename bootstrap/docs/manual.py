@@ -178,6 +178,7 @@ def _resolve_children_order(directory: Path, declared: list[str]) -> list[str]:
 
 
 def _load_doc(directory: Path, parent_id: str, order: int, seen_ids: set[str]) -> ManualDocNode:
+    _validate_entry_id(directory.name, directory, directory)
     doc_id = f"{parent_id}/{directory.name}" if parent_id else directory.name
     if doc_id in seen_ids:
         raise ValueError(f"Duplicate manual doc id: {doc_id!r}")
