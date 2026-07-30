@@ -227,6 +227,13 @@ class TestLoadManualTree:
         with pytest.raises(ValueError, match="locale"):
             load_manual_tree()
 
+    def test_top_level_doc_raises(self, manual_paths) -> None:
+        source_root, _ = manual_paths
+        _make_doc(source_root / "stray-doc")
+
+        with pytest.raises(ValueError, match="Top-level doc not allowed"):
+            load_manual_tree()
+
     def test_invalid_id_pattern_raises(self, manual_paths) -> None:
         source_root, _ = manual_paths
         (source_root / "Bad_Id").mkdir(parents=True)

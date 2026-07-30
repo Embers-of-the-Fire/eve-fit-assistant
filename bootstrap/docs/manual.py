@@ -248,6 +248,8 @@ def _load_children(
         if (child / "folder.yaml").exists():
             parent.folders.append(_load_folder(child, parent_id, order, seen_ids))
         elif (child / "zh.md").exists() or (child / "en.md").exists():
+            if not parent_id:
+                raise ValueError(f"Top-level doc not allowed; wrap it in a folder: {child}")
             parent.docs.append(_load_doc(child, parent_id, order, seen_ids))
         else:
             raise ValueError(
