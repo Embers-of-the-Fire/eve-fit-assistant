@@ -1,10 +1,18 @@
+import "dart:async";
+
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
+import "package:eve_fit_assistant/features/manual/repository/manual_feedback_api.dart";
 import "package:eve_fit_assistant/pages/manual/doc_view.dart";
+import "package:eve_fit_assistant/pages/manual/feedback_dialog.dart";
 import "package:eve_fit_assistant/pages/manual/folder_view.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:url_launcher/url_launcher.dart";
+
+const String _githubSourceBaseUrl =
+    "https://github.com/Embers-of-the-Fire/eve-fit-assistant/blob/dev/docs/manual";
 
 @RoutePage()
 class ManualNodePage extends ConsumerWidget {
@@ -32,8 +40,16 @@ class ManualNodePage extends ConsumerWidget {
       _ => context.l10n.manualPageTitle,
     };
 
+    final actions = <Widget>[
+      ...?switch (resolution) {
+        ManualDocResolution(doc: final doc) => _buildDocActions(context, doc, localeCode),
+        _ => null,
+      },
+      const ManualQuestionAction(),
+    ];
+
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: Text(title)),
+      appBar: AppBar(centerTitle: false, title: Text(title), actions: actions),
       body: treeAsync.when(
         data: (_) => switch (resolution) {
           ManualFolderResolution(ancestors: final ancestors, folder: final folder) =>
@@ -78,5 +94,33 @@ class ManualNodePage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildDocActions(BuildContext context, ManualDocEntry doc, String localeCode) {
+    final localization = doc.resolveLocalization(localeCode);
+    final docTitle = localization?.data.title;
+    final sourceUrl = Uri.parse(
+      "$_githubSourceBaseUrl/${doc.id}/${localization?.localeCode ?? "en"}.md",
+    );
+
+    return [
+      IconButton(
+        icon: const Icon(Icons.flag_outlined),
+        tooltip: context.l10n.manualActionReportTooltip,
+        onPressed: () => unawaited(
+          showManualFeedbackDialog(
+            context,
+            kind: ManualFeedbackKind.report,
+            docId: doc.id,
+            docTitle: docTitle,
+          ),
+        ),
+      ),
+      IconButton(
+        icon: const Icon(Icons.code),
+        tooltip: context.l10n.manualActionViewSourceTooltip,
+        onPressed: () => unawaited(launchUrl(sourceUrl, mode: LaunchMode.externalApplication)),
+      ),
+    ];
   }
 }

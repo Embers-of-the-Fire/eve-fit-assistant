@@ -205,6 +205,16 @@
   "manualSearchUnavailable": "搜索不可用",
   "manualSearchAction": "搜索",
   "manualSearchClear": "清除搜索",
+  "manualActionReportTooltip": "反馈本页问题",
+  "manualActionViewSourceTooltip": "在 GitHub 上查看源码",
+  "manualActionQuestionTooltip": "提问",
+  "manualReportDialogTitle": "反馈文档问题",
+  "manualQuestionDialogTitle": "提问",
+  "manualFeedbackFieldDescription": "详细描述",
+  "manualFeedbackFieldDescriptionHint": "请描述您遇到的问题或疑问",
+  "manualFeedbackFieldDescriptionRequired": "请填写详细描述",
+  "manualFeedbackSuccessTitle": "提交成功",
+  "manualFeedbackSuccessBody": "感谢您的反馈！我们会尽快处理。",
   "@documentVersionBadge": {
     "placeholders": {
       "version": {

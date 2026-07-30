@@ -1,5 +1,6 @@
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/manual.dart";
+import "package:eve_fit_assistant/pages/manual/feedback_dialog.dart";
 import "package:eve_fit_assistant/pages/manual/folder_view.dart";
 import "package:eve_fit_assistant/pages/manual/search_sheet.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -24,6 +25,7 @@ class ManualBrowserPage extends ConsumerWidget {
             icon: const Icon(Icons.search),
             onPressed: () => showManualSearchSheet(context),
           ),
+          const ManualQuestionAction(),
         ],
       ),
       body: treeAsync.when(
