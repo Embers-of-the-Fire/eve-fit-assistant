@@ -9,42 +9,47 @@ Future<SqliteDatabase> _createFixtureDb(String path) async {
   final db = SqliteDatabase(path: path);
   await db.execute(
     "CREATE VIRTUAL TABLE manual_fts_zh USING fts5("
-    "doc_id UNINDEXED, title, body, tokenize='trigram')",
+    "doc_id UNINDEXED, title, body, id_tokens, tokenize='trigram')",
   );
   await db.execute(
     "CREATE VIRTUAL TABLE manual_fts_en USING fts5("
-    "doc_id UNINDEXED, title, body, tokenize='porter unicode61')",
+    "doc_id UNINDEXED, title, body, id_tokens, tokenize='porter unicode61')",
   );
 
   await db.execute(
-    "INSERT INTO manual_fts_zh(doc_id, title, body) VALUES (?, ?, ?)",
-    ["fitting/modules", "装配模块", "本章节介绍如何给舰船装配模块。 fitting modules"],
+    "INSERT INTO manual_fts_zh(doc_id, title, body, id_tokens) VALUES (?, ?, ?, ?)",
+    ["fitting/modules", "装配模块", "本章节介绍如何给舰船装配模块。", "fitting modules"],
   );
   await db.execute(
-    "INSERT INTO manual_fts_zh(doc_id, title, body) VALUES (?, ?, ?)",
-    [
-      "getting-started/browse-ships",
-      "浏览舰船",
-      "了解如何在舰船浏览器中查找和筛选舰船。 getting started browse ships",
-    ],
+    "INSERT INTO manual_fts_zh(doc_id, title, body, id_tokens) VALUES (?, ?, ?, ?)",
+    ["getting-started/browse-ships", "浏览舰船", "了解如何在舰船浏览器中查找和筛选舰船。", "getting started browse ships"],
+  );
+  await db.execute(
+    "INSERT INTO manual_fts_zh(doc_id, title, body, id_tokens) VALUES (?, ?, ?, ?)",
+    ["advanced/capacitor-warfare", "电容战术", "学习电容管理与充放电策略。", "advanced capacitor warfare"],
   );
 
-  await db.execute(
-    "INSERT INTO manual_fts_en(doc_id, title, body) VALUES (?, ?, ?)",
-    [
-      "fitting/modules",
-      "fitting modules",
-      "learn how the fitted modules are fitted on your ship. fitting modules",
-    ],
-  );
-  await db.execute(
-    "INSERT INTO manual_fts_en(doc_id, title, body) VALUES (?, ?, ?)",
-    [
-      "getting-started/browse-ships",
-      "browsing ships",
-      "find and filter ships in the ship browser. getting started browse ships",
-    ],
-  );
+  await db
+      .execute("INSERT INTO manual_fts_en(doc_id, title, body, id_tokens) VALUES (?, ?, ?, ?)", [
+        "fitting/modules",
+        "fitting modules",
+        "learn how the fitted modules are fitted on your ship.",
+        "fitting modules",
+      ]);
+  await db
+      .execute("INSERT INTO manual_fts_en(doc_id, title, body, id_tokens) VALUES (?, ?, ?, ?)", [
+        "getting-started/browse-ships",
+        "browsing ships",
+        "find and filter ships in the ship browser.",
+        "getting started browse ships",
+      ]);
+  await db
+      .execute("INSERT INTO manual_fts_en(doc_id, title, body, id_tokens) VALUES (?, ?, ?, ?)", [
+        "gameplay/market-guide",
+        "market guide",
+        "browse the market to buy modules and sell your loot.",
+        "gameplay market guide",
+      ]);
   return db;
 }
 
@@ -73,16 +78,13 @@ void main() {
       expect(results.first.titleRanges, isNotEmpty);
       expect(results.first.snippet.text, contains("装配模块"));
       final range = results.first.snippet.ranges.first;
-      expect(
-        results.first.snippet.text.substring(range.start, range.end),
-        "装配模块",
-      );
+      expect(results.first.snippet.text.substring(range.start, range.end), "装配模块");
     });
 
     test("doc-id tokens are searchable", () async {
-      final results = await service.search("browse ships", "zh");
+      final results = await service.search("capacitor warfare", "zh");
 
-      expect(results.map((r) => r.docId), contains("getting-started/browse-ships"));
+      expect(results.map((r) => r.docId), contains("advanced/capacitor-warfare"));
     });
 
     test("short query falls back to LIKE", () async {
