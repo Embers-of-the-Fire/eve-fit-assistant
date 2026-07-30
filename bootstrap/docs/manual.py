@@ -330,6 +330,8 @@ def _fill_folder(node: ManualFolderNode, message) -> None:
 def build_manual() -> None:
     """Build the bundled manual registry and content files from docs/manual."""
     from bootstrap.data.schema import manual_pb2
+    from bootstrap.docs.manual_search import SEARCH_DB_FILE_NAME
+    from bootstrap.docs.manual_search import build_manual_search
 
     info("Building bundled manual...")
     root = load_manual_tree()
@@ -347,3 +349,5 @@ def build_manual() -> None:
 
     GENERATED_REGISTRY_PATH.write_bytes(registry.SerializeToString())
     info(f"Generated bundled manual registry ({doc_count} docs): {GENERATED_REGISTRY_PATH}")
+
+    build_manual_search(root, GENERATED_ROOT / SEARCH_DB_FILE_NAME)

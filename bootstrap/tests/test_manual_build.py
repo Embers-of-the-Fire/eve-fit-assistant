@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -12,6 +13,9 @@ from bootstrap.docs import manual as manual_builder
 from bootstrap.docs.manual import build_manual
 from bootstrap.docs.manual import content_file_hash
 from bootstrap.docs.manual import load_manual_tree
+from bootstrap.docs.manual_search import doc_id_tokens
+from bootstrap.docs.manual_search import normalize_search_text
+from bootstrap.docs.manual_search import strip_markdown
 
 
 if TYPE_CHECKING:
@@ -378,3 +382,141 @@ class TestBuildManual:
         registry = manual_pb2.ManualRegistry()
         registry.ParseFromString((generated_root / "manual.pb").read_bytes())
         assert len(registry.folders) == 0
+
+
+def _open_search_db(generated_root: Path) -> sqlite3.Connection:
+    return sqlite3.connect(generated_root / "manual_search.db")
+
+
+class TestSearchTextHelpers:
+    def test_normalize_collapses_whitespace_and_lowercases(self) -> None:
+        assert normalize_search_text("  Fitting\n\tModules  Here ") == "fitting modules here"
+
+    def test_strip_markdown_removes_syntax(self) -> None:
+        markdown = (
+            "## 标题\n\n> 引用\n\n- 列表项\n\n```\ncode fence\n```\n\n"
+            "**加粗** 和 [链接](https://example.com) 以及 `行内代码`。\n"
+        )
+        text = normalize_search_text(strip_markdown(markdown))
+        assert text == "标题 引用 列表项 code fence 加粗 和 链接 以及 行内代码。"
+
+    def test_doc_id_tokens(self) -> None:
+        assert doc_id_tokens("getting-started/browse-ships") == "getting started browse ships"
+
+
+class TestBuildManualSearch:
+    def test_tables_and_row_counts(self, manual_paths) -> None:
+        source_root, generated_root = manual_paths
+        _make_sample_tree(source_root)
+
+        build_manual()
+
+        connection = _open_search_db(generated_root)
+        try:
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE name LIKE 'manual\\_%' ESCAPE '\\'"
+                )
+            }
+            assert "manual_fts_zh" in tables
+            assert "manual_fts_en" in tables
+            assert "manual_search_meta" in tables
+
+            for table in ("manual_fts_zh", "manual_fts_en"):
+                (count,) = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                assert count == 3
+
+            (version,) = connection.execute(
+                "SELECT value FROM manual_search_meta WHERE key = 'schema_version'"
+            ).fetchone()
+            assert version == "1"
+        finally:
+            connection.close()
+
+    def test_zh_trigram_substring_query(self, manual_paths) -> None:
+        source_root, generated_root = manual_paths
+        _make_sample_tree(source_root)
+
+        build_manual()
+
+        connection = _open_search_db(generated_root)
+        try:
+            rows = connection.execute(
+                "SELECT doc_id FROM manual_fts_zh WHERE manual_fts_zh MATCH ?",
+                ('"摘要段落"',),
+            ).fetchall()
+            assert {row[0] for row in rows} == {
+                "getting-started/create-first-fit",
+                "getting-started/browse-ships",
+                "fitting/modules",
+            }
+
+            rows = connection.execute(
+                "SELECT doc_id FROM manual_fts_zh WHERE manual_fts_zh MATCH ?",
+                ('"modules 的摘要"',),
+            ).fetchall()
+            assert [row[0] for row in rows] == ["fitting/modules"]
+        finally:
+            connection.close()
+
+    def test_en_porter_stemmed_query(self, manual_paths) -> None:
+        source_root, generated_root = manual_paths
+        _make_sample_tree(source_root)
+
+        build_manual()
+
+        connection = _open_search_db(generated_root)
+        try:
+            rows = connection.execute(
+                "SELECT doc_id FROM manual_fts_en WHERE manual_fts_en MATCH ?",
+                ('"summary"',),
+            ).fetchall()
+            assert len(rows) == 3
+        finally:
+            connection.close()
+
+    def test_doc_id_query_matches(self, manual_paths) -> None:
+        source_root, generated_root = manual_paths
+        _make_sample_tree(source_root)
+
+        build_manual()
+
+        connection = _open_search_db(generated_root)
+        try:
+            rows = connection.execute(
+                "SELECT doc_id FROM manual_fts_zh WHERE manual_fts_zh MATCH ?",
+                ('"browse ships"',),
+            ).fetchall()
+            assert [row[0] for row in rows] == ["getting-started/browse-ships"]
+        finally:
+            connection.close()
+
+    def test_zh_short_query_like_fallback(self, manual_paths) -> None:
+        source_root, generated_root = manual_paths
+        _make_sample_tree(source_root)
+
+        build_manual()
+
+        connection = _open_search_db(generated_root)
+        try:
+            rows = connection.execute(
+                "SELECT doc_id FROM manual_fts_zh WHERE title LIKE ? OR body LIKE ?",
+                ("%摘要%", "%摘要%"),
+            ).fetchall()
+            assert len(rows) == 3
+        finally:
+            connection.close()
+
+    def test_empty_source_produces_empty_index(self, manual_paths) -> None:
+        _, generated_root = manual_paths
+
+        build_manual()
+
+        connection = _open_search_db(generated_root)
+        try:
+            for table in ("manual_fts_zh", "manual_fts_en"):
+                (count,) = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                assert count == 0
+        finally:
+            connection.close()
