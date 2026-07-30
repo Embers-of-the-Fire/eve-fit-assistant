@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/data/proto/manual.pb.dart" as pb;
 import "package:eve_fit_assistant/features/manual/models/manual_entry.dart";
+import "package:flutter/foundation.dart" show FlutterError;
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -13,30 +14,24 @@ final manualRepositoryProvider = Provider<ManualRepository>((Ref ref) => ManualR
 class ManualRepository {
   /// Load and decode the bundled registry into the manual tree.
   ///
-  /// Returns an empty root node if the asset is missing or undecodable.
+  /// Throws if the asset is missing or undecodable, surfacing the failure
+  /// through [manualTreeProvider] as an error state.
   Future<ManualFolderEntry> loadRegistry() async {
-    try {
-      final data = await rootBundle.load(_registryAssetPath);
-      final registry = pb.ManualRegistry.fromBuffer(data.buffer.asUint8List());
-      return convertRegistry(registry);
-    } on Object {
-      return const ManualFolderEntry(
-        id: "",
-        order: 0,
-        names: {},
-        descriptions: {},
-        folders: [],
-        docs: [],
-      );
-    }
+    final data = await rootBundle.load(_registryAssetPath);
+    final registry = pb.ManualRegistry.fromBuffer(
+      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+    );
+    return convertRegistry(registry);
   }
 
   /// Load a localized Markdown body by its content file name
-  /// (see [ManualDocLocalization.contentFile]). Returns `null` if missing.
+  /// (see [ManualDocLocalization.contentFile]). Returns `null` only when the
+  /// asset is genuinely missing; unexpected I/O or decode failures propagate
+  /// to [manualContentProvider] as errors.
   Future<String?> loadContent(String contentFile) async {
     try {
       return await rootBundle.loadString("$_contentAssetRoot/$contentFile");
-    } on Object {
+    } on FlutterError {
       return null;
     }
   }
