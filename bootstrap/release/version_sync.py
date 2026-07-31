@@ -86,6 +86,12 @@ TARGETS = [
 ]
 
 
+def _validate_target(target: VersionTarget) -> None:
+    content = target.path.read_text(encoding="utf-8")
+    if not target.pattern.search(content):
+        raise VersionTargetMissingError(target)
+
+
 def _sync_target(target: VersionTarget, version: ProjectVersion, dry_run: bool) -> bool:
     content = target.path.read_text(encoding="utf-8")
     match = target.pattern.search(content)
@@ -115,6 +121,9 @@ def _sync_target(target: VersionTarget, version: ProjectVersion, dry_run: bool) 
 
 
 def sync_versions(version: ProjectVersion, *, dry_run: bool = False) -> int:
+    for target in TARGETS:
+        _validate_target(target)
+
     changed = 0
     for target in TARGETS:
         if _sync_target(target, version, dry_run):

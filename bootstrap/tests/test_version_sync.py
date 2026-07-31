@@ -132,3 +132,22 @@ def test_sync_target_raises_when_version_line_missing(
         version_sync.sync_target(pubspec, version, dry_run=False)
 
     assert "pubspec.yaml" in str(exc_info.value)
+
+
+def test_sync_versions_earlier_files_unchanged_when_later_target_missing(
+    version: ProjectVersion,
+    isolated_targets: tuple[list[version_sync.VersionTarget], Path, Path, Path],
+) -> None:
+    targets, pubspec, cargo, pyproject = isolated_targets
+
+    pyproject.write_text("[project]\nname = 'no-version-here'\n", encoding="utf-8")
+
+    with (
+        patch.object(version_sync, "TARGETS", targets),
+        pytest.raises(version_sync.VersionTargetMissingError),
+    ):
+        version_sync.sync_versions(version, dry_run=False)
+
+    assert pubspec.read_text(encoding="utf-8") == "version: 0.0.0+0\n"
+    assert cargo.read_text(encoding="utf-8") == '[package]\nversion = "0.0.0"\n'
+    assert pyproject.read_text(encoding="utf-8") == "[project]\nname = 'no-version-here'\n"
