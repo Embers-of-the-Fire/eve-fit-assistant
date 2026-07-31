@@ -63,7 +63,7 @@ def register_github_release_command(ci_group: click.Group) -> None:
         Reads the human release body from content.en.md and the
         auto-generated changelog from changelog.md, composes them,
         then uploads the APK and SHA1 artifacts as release assets
-        via \b\bgh release create. AppImage artifacts are attached
+        via gh release create. AppImage artifacts are attached
         additionally when a matching versioned directory exists.
         """
         semver = version_str.split("+")[0]
