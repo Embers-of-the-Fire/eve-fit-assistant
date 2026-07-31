@@ -37,7 +37,7 @@ permissions:
 jobs:
   check:
     name: Check for updates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       has_updates: ${{ steps.matrix.outputs.has_updates }}
@@ -135,7 +135,7 @@ jobs:
       inputs.no_upload == false &&
       needs.check.outputs.matrix != '' &&
       needs.check.outputs.matrix != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     environment: ci-write
     strategy:
       matrix:
