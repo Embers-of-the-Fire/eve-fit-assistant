@@ -1060,7 +1060,7 @@ dependencies = [
 
 [[package]]
 name = "rust_lib_eve_fit_assistant"
-version = "0.5.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "eve-fit-os",
