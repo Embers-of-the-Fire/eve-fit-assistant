@@ -49,6 +49,16 @@ def _make_apks(root: Path, version_str: str) -> Path:
     return apk_dir
 
 
+def _make_appimages(root: Path, version_str: str) -> Path:
+    appimage_dir = root / "cache" / "releases" / "appimage" / version_str
+    appimage_dir.mkdir(parents=True, exist_ok=True)
+    (appimage_dir / f"{version_str}-linux.AppImage").write_text("fake appimage", encoding="utf-8")
+    (appimage_dir / f"{version_str}-linux.AppImage.zsync").write_text(
+        "fake zsync", encoding="utf-8"
+    )
+    return appimage_dir
+
+
 def _invoke(root: Path, version_str: str, tag: str) -> click.testing.Result:
     @click.group()
     def cli() -> None:
@@ -68,6 +78,8 @@ def _invoke(root: Path, version_str: str, tag: str) -> click.testing.Result:
             tag,
             "--apk-dir",
             str(root / "cache" / "releases" / "apk"),
+            "--appimage-dir",
+            str(root / "cache" / "releases" / "appimage"),
             "--dry-run",
         ],
     )
@@ -94,6 +106,24 @@ class TestGithubReleaseCommand:
         assert "0.3.0-alpha.1+42-android.apk" in result.output
         assert "0.3.0-alpha.1+42-android-arm64.apk" in result.output
         assert "0.3.0-alpha.1+42-android.apk.sha1" in result.output
+        assert "No AppImage artifacts found" in result.output
+
+    def test_dry_run_includes_appimage_assets(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        version = "0.3.0-alpha.1+42"
+        tag = "releases/v0.3.0-alpha.1"
+        monkeypatch.setattr("bootstrap.ci.release_github.PROJECT_ROOT", tmp_path)
+        _make_notes(tmp_path, version)
+        _make_apks(tmp_path, version)
+        _make_appimages(tmp_path, version)
+
+        result = _invoke(tmp_path, version, tag)
+
+        assert result.exit_code == 0, result.output
+        assert "Including 2 AppImage asset(s)" in result.output
+        assert "0.3.0-alpha.1+42-linux.AppImage" in result.output
+        assert "0.3.0-alpha.1+42-linux.AppImage.zsync" in result.output
 
     def test_dry_run_stable_release(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         version = "1.0.0"

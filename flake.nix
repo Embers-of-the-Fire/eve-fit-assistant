@@ -209,7 +209,6 @@
               androidComposition.platform-tools
               pkgs.apksigner
             ];
-
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
@@ -233,11 +232,38 @@
               . scripts/setup-android-sdk.sh
             '';
           };
+
+          # Linux desktop build shell (AppImage packaging; no Android SDK)
+          linuxShell = pkgs.mkShell {
+            packages = basePackages ++ [
+              appimageBuilder
+              pkgs.rustup
+              pkgs.libsecret
+              pkgs.xdg-user-dirs
+            ];
+
+            LANG = "C.UTF-8";
+            LC_ALL = "C.UTF-8";
+            JAVA_HOME = jdk17.home;
+            flutter = "${pkgs.flutter}";
+            UV_PYTHON = "${python3}/bin/python3";
+            UV_PYTHON_DOWNLOADS = "never";
+            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+            shellHook = ''
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
+              export PATH="${nativeRustToolchainPath}:$PATH"
+              . scripts/setup-ld-library-path.sh
+              . scripts/setup-rust-toolchain.sh
+            '';
+          };
         in
         {
           default = fullShell;
           full = fullShell;
           android = androidShell;
+          linux = linuxShell;
 
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
           python = pkgs.mkShell {

@@ -427,6 +427,8 @@ def register_build_commands(cli_group: click.Group) -> None:
         if clean:
             runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
 
+        runtime.execute([flutter, "config", "--enable-linux-desktop"], "ENABLE LINUX DESKTOP")
+
         if not skip_flutter:
             runtime.execute([flutter, "build", "linux", "--release"], "BUILDING LINUX BUNDLE")
 

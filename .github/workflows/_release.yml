@@ -299,11 +299,74 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/efa-release.keystore"
 
+  appimage:
+    name: Build Linux AppImage
+    runs-on: ubuntu-latest
+    # The AppImage is distributed via GitHub Releases only and is still
+    # experimental; never let its failure block the Android release, the
+    # remote channel publish, or the surrounding check run.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
+      - name: Setup CI developer config
+        run: nix develop .#python --command bash -c 'uv run x.py dev env write-backend'
+
+      - name: Fetch native CI data
+        run: |
+          curl -sfLo /tmp/ci-native-data.tar.gz \
+            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+          mkdir -p "$GITHUB_WORKSPACE/ci-native"
+          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
+          mkdir -p rust/lib/eve-fit-os/data/out
+          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+
+      - name: Install Flutter dependencies
+        run: nix develop .#linux --command bash -c 'flutter pub get'
+
+      - name: Generate all
+        run: nix develop .#linux --command bash -c 'uv run x.py generate -f all'
+
+      - name: Build AppImage
+        run: nix develop .#linux --command bash -c 'uv run x.py build appimage'
+
+      - name: Upload AppImage artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: appimage
+          path: |
+            cache/releases/appimage/**/*.AppImage
+            cache/releases/appimage/**/*.AppImage.zsync
+          retention-days: 1
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-appimage-release
+
   tag:
     name: Create Git tag
-    needs: release
+    needs: [release, appimage]
     runs-on: ubuntu-slim
-    if: inputs.test_mode == false
+    # Wait for the AppImage job so its artifact can be attached to the GitHub
+    # Release, but do not let its (masked) failure block tagging.
+    if: |
+      always() &&
+      needs.release.result == 'success' &&
+      inputs.test_mode == false
     permissions:
       contents: write
     env:
@@ -325,6 +388,13 @@ jobs:
         with:
           name: apk
           path: cache/releases/apk
+
+      # Optional: only present when the (non-blocking) appimage job succeeded.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          name: appimage
+          path: cache/releases/appimage
 
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
