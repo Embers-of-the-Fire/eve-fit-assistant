@@ -194,15 +194,24 @@ const stagger4 = "animate-[fade-in-up_0.7s_ease-out_0.45s_forwards] opacity-0";
 					{t('cta.github')}
 					<span class="text-lg transition-transform duration-300 group-hover:translate-x-1 inline-block">&rarr;</span>
 				</a>
-				<a
-					href="https://qm.qq.com/q/bLyF0dNYTm"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="eve-angle-cut inline-flex items-center gap-2 bg-eve-surface px-10 py-3.5 text-sm font-medium text-eve-text hover:bg-eve-surface-alt transition-all duration-300 group"
-				>
-					{t('cta.qq_group')}
-					<span class="text-lg transition-transform duration-300 group-hover:translate-x-1 inline-block">&rarr;</span>
-				</a>
+			<a
+				href="https://qm.qq.com/q/bLyF0dNYTm"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="eve-angle-cut inline-flex items-center gap-2 bg-eve-surface px-10 py-3.5 text-sm font-medium text-eve-text hover:bg-eve-surface-alt transition-all duration-300 group"
+			>
+				{t('cta.qq_group')}
+				<span class="text-lg transition-transform duration-300 group-hover:translate-x-1 inline-block">&rarr;</span>
+			</a>
+			<a
+				href="https://docs.efa-tech.dev"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="eve-angle-cut inline-flex items-center gap-2 bg-eve-surface px-10 py-3.5 text-sm font-medium text-eve-text hover:bg-eve-surface-alt transition-all duration-300 group"
+			>
+				{t('cta.manual')}
+				<span class="text-lg transition-transform duration-300 group-hover:translate-x-1 inline-block">&rarr;</span>
+			</a>
 			</div>
 		</div>
 	</div>
