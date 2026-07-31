@@ -1,0 +1,17 @@
+#!/bin/sh
+# The bundle's own lib/ directory is searched first so the app always prefers
+# the libraries shipped with the Flutter bundle. Graphics drivers are NOT
+# bundled; they are resolved from the host at runtime. On NixOS the host
+# drivers live in /run/opengl-driver, which is preferred over any inherited
+# LD_LIBRARY_PATH (e.g. the generic mesa libs appimage-run injects).
+HERE="$(dirname "$(readlink -f "$0")")"
+LIB_PATH="$HERE/usr/bin/lib:$HERE/usr/lib"
+for d in /run/opengl-driver/lib /run/opengl-driver-32/lib; do
+  if [ -d "$d" ]; then
+    LIB_PATH="$LIB_PATH:$d"
+  fi
+done
+LIB_PATH="$LIB_PATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$LIB_PATH"
+exec "$HERE/usr/lib/ld-linux-x86-64.so.2" --library-path "$LIB_PATH" \
+    "$HERE/usr/bin/eve_fit_assistant" "$@"

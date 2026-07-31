@@ -43,42 +43,13 @@ BINARY_NAME = "eve_fit_assistant"
 
 _GITHUB_REPO = "Embers-of-the-Fire/eve-fit-assistant"
 
+_PACKAGING_DIR = PROJECT_ROOT / "distro" / "linux" / "appimage"
+
 # dlopen'd graphics-driver stack: always provided by the host, never bundled,
 # so the AppImage stays portable and uses the host's GPU drivers.
 _DRIVER_LIB_PATTERN = re.compile(
     r"^lib(GL|EGL|GLESv2|OpenGL|GLX|GLdispatch|vulkan|drm|gbm|va|va-drm|va-x11|nvidia|cuda)[.-]"
 )
-
-_DESKTOP_ENTRY = """\
-[Desktop Entry]
-Type=Application
-Name=EFA
-Comment=EVE Fit Assistant
-Exec=eve_fit_assistant
-Icon=logo
-Categories=Utility;
-"""
-
-# The bundle's own lib/ directory is searched first so the app always prefers
-# the libraries shipped with the Flutter bundle. Graphics drivers are NOT
-# bundled; the bundled GLVND dispatchers load them from the host at runtime.
-# On NixOS the host drivers live in /run/opengl-driver, which is preferred
-# over any inherited LD_LIBRARY_PATH (e.g. the generic mesa libs appimage-run
-# injects).
-_APP_RUN = """\
-#!/bin/sh
-HERE="$(dirname "$(readlink -f "$0")")"
-LIB_PATH="$HERE/usr/bin/lib:$HERE/usr/lib"
-for d in /run/opengl-driver/lib /run/opengl-driver-32/lib; do
-  if [ -d "$d" ]; then
-    LIB_PATH="$LIB_PATH:$d"
-  fi
-done
-LIB_PATH="$LIB_PATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="$LIB_PATH"
-exec "$HERE/usr/lib/ld-linux-x86-64.so.2" --library-path "$LIB_PATH" \\
-    "$HERE/usr/bin/eve_fit_assistant" "$@"
-"""
 
 
 def _run_capture(cmd: list[str], *, env: dict[str, str] | None = None) -> str:
@@ -199,13 +170,16 @@ def build_appimage(
     shutil.copytree(bundle_dir / "lib", appdir / "usr" / "bin" / "lib")
     shutil.copytree(bundle_dir / "data", appdir / "usr" / "bin" / "data")
 
-    desktop_file = support_dir / f"{APP_NAME.lower()}.desktop"
-    desktop_file.write_text(_DESKTOP_ENTRY, encoding="utf-8")
+    # Static packaging assets: desktop entry, AppRun, and a standard-sized
+    # icon (linuxdeploy requires the icon basename to match the desktop
+    # entry's Icon field).
+    desktop_file = _PACKAGING_DIR / f"{APP_NAME.lower()}.desktop"
+    app_run = _PACKAGING_DIR / "AppRun"
     icon_file = support_dir / "logo.png"
+    for f in (desktop_file, app_run):
+        if not f.exists():
+            raise click.ClickException(f"Packaging asset not found: {f}")
     shutil.copy2(icon_src, icon_file)
-    app_run = support_dir / "AppRun"
-    app_run.write_text(_APP_RUN, encoding="utf-8")
-    app_run.chmod(0o755)
 
     # Seed LD_LIBRARY_PATH with every dir ldd resolves for the bundle, so
     # linuxdeploy can find every NEEDED lib even after it rewrites rpaths.
