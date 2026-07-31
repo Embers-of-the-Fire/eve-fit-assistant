@@ -30,6 +30,14 @@ class VersionTarget:
     replacement: Callable[[re.Match[str], str], str]
 
 
+class VersionTargetMissingError(Exception):
+    """Raised when a version sync target has no matching version line."""
+
+    def __init__(self, target: VersionTarget) -> None:
+        self.target = target
+        super().__init__(f"{target.description}: no version line found in {target.path}")
+
+
 def _render_pubspec(version: ProjectVersion) -> str:
     return version.render_full()
 
@@ -82,11 +90,7 @@ def _sync_target(target: VersionTarget, version: ProjectVersion, dry_run: bool) 
     content = target.path.read_text(encoding="utf-8")
     match = target.pattern.search(content)
     if not match:
-        click.echo(
-            f"  {styled([Style.BRIGHT, Fore.YELLOW], 'MISSING')} {target.description}: "
-            "no version line found"
-        )
-        return False
+        raise VersionTargetMissingError(target)
 
     new_value = target.render(version)
     new_content = target.pattern.sub(lambda m: target.replacement(m, new_value), content, count=1)

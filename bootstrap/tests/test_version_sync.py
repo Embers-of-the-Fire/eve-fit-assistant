@@ -98,3 +98,37 @@ def test_sync_versions_no_change_when_up_to_date(
         changed = version_sync.sync_versions(version, dry_run=False)
 
     assert changed == 0
+
+
+def test_sync_versions_raises_when_version_line_missing(
+    version: ProjectVersion,
+    isolated_targets: tuple[list[version_sync.VersionTarget], Path, Path, Path],
+) -> None:
+    targets, pubspec, _, _ = isolated_targets
+
+    pubspec.write_text("description: no version field here\n", encoding="utf-8")
+
+    with (
+        patch.object(version_sync, "TARGETS", targets),
+        pytest.raises(version_sync.VersionTargetMissingError) as exc_info,
+    ):
+        version_sync.sync_versions(version, dry_run=False)
+
+    assert "pubspec.yaml" in str(exc_info.value)
+
+
+def test_sync_target_raises_when_version_line_missing(
+    version: ProjectVersion,
+    isolated_targets: tuple[list[version_sync.VersionTarget], Path, Path, Path],
+) -> None:
+    targets, pubspec, _, _ = isolated_targets
+
+    pubspec.write_text("description: no version field here\n", encoding="utf-8")
+
+    with (
+        patch.object(version_sync, "TARGETS", targets),
+        pytest.raises(version_sync.VersionTargetMissingError) as exc_info,
+    ):
+        version_sync.sync_target(pubspec, version, dry_run=False)
+
+    assert "pubspec.yaml" in str(exc_info.value)
