@@ -402,6 +402,11 @@ def register_build_commands(cli_group: click.Group) -> None:
     )
     def build_appimage_cmd(clean: bool, skip_flutter: bool, root: Path):
         """Build the Linux AppImage with a versioned filename."""
+        if clean and skip_flutter:
+            raise click.ClickException(
+                "--clean and --skip-flutter cannot be combined: "
+                "`flutter clean` removes the release bundle that --skip-flutter relies on."
+            )
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
         ver = version.render_full()
