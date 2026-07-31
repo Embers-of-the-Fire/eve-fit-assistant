@@ -78,7 +78,7 @@ class TestGithubReleaseCommand:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         version = "0.3.0-alpha.1+42"
-        tag = "v0.3.0-alpha.1"
+        tag = "releases/v0.3.0-alpha.1"
         monkeypatch.setattr("bootstrap.ci.release_github.PROJECT_ROOT", tmp_path)
         _make_notes(tmp_path, version)
         _make_apks(tmp_path, version)
@@ -89,6 +89,7 @@ class TestGithubReleaseCommand:
         assert "[DRY-RUN]" in result.output
         assert "gh release create" in result.output
         assert tag in result.output
+        assert "--title v0.3.0-alpha.1" in result.output
         assert "--prerelease" in result.output
         assert "0.3.0-alpha.1+42-android.apk" in result.output
         assert "0.3.0-alpha.1+42-android-arm64.apk" in result.output
@@ -96,7 +97,7 @@ class TestGithubReleaseCommand:
 
     def test_dry_run_stable_release(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         version = "1.0.0"
-        tag = "v1.0.0"
+        tag = "releases/v1.0.0"
         monkeypatch.setattr("bootstrap.ci.release_github.PROJECT_ROOT", tmp_path)
         semver = version.split("+")[0]
         notes_dir = tmp_path / "docs" / "changelog" / semver.replace(".", "-")
@@ -124,7 +125,7 @@ class TestGithubReleaseCommand:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         version = "0.3.0-alpha.1"
-        tag = "v0.3.0-alpha.1"
+        tag = "releases/v0.3.0-alpha.1"
         monkeypatch.setattr("bootstrap.ci.release_github.PROJECT_ROOT", tmp_path)
         semver = version.split("+")[0]
         notes_dir = tmp_path / "docs" / "changelog" / semver.replace(".", "-")
@@ -142,7 +143,7 @@ class TestGithubReleaseCommand:
 
     def test_fails_missing_apk_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         version = "0.3.0-alpha.1+42"
-        tag = "v0.3.0-alpha.1"
+        tag = "releases/v0.3.0-alpha.1"
         monkeypatch.setattr("bootstrap.ci.release_github.PROJECT_ROOT", tmp_path)
         _make_notes(tmp_path, version)
 
@@ -155,7 +156,7 @@ class TestGithubReleaseCommand:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         version = "0.3.0-alpha.1+42"
-        tag = "v0.3.0-alpha.1"
+        tag = "releases/v0.3.0-alpha.1"
         monkeypatch.setattr("bootstrap.ci.release_github.PROJECT_ROOT", tmp_path)
 
         result = _invoke(tmp_path, version, tag)

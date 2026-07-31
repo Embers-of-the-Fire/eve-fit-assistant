@@ -228,7 +228,7 @@ class TestReleaseVerifyIntegration:
         runner = click.testing.CliRunner()
         result = runner.invoke(cli, ["ci", "release", "verify", "--check-notes"])
         assert result.exit_code == 0, result.output
-        assert "Expected tag: v0.1.0-beta.2" in result.output
+        assert "Expected tag: releases/v0.1.0-beta.2" in result.output
 
     def test_pubspec_mismatch(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         version = {"major": 0, "minor": 1, "patch": 0, "pre_label": "beta", "pre_num": 2}

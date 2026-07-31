@@ -159,7 +159,7 @@ class ProjectVersion(BaseModel):
         return base
 
     def render_tag(self) -> str:
-        return f"v{self.render_semver()}"
+        return f"releases/v{self.render_semver()}"
 
 
 class SchemaConfig(BaseModel):

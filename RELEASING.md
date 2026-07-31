@@ -144,7 +144,7 @@ The `release.yml` workflow on the merge commit then:
 4. Publishes the release to the remote `testing` channel.
 5. Publishes the release note as a remote announcement entry so users are notified
    of the new version.
-6. Creates a lightweight Git tag (`v<version>`) pointing at the merge commit.
+6. Creates a lightweight Git tag (`releases/v<version>`) pointing at the merge commit.
 
 If the merged PR is missing `V-Tested Release`, the release aborts.
 

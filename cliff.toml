@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 """
 body = """\
-## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+## [{{ version | trim_start_matches(pat="releases/") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group }}
 {% for commit in commits %}
@@ -23,7 +23,7 @@ trim = true
 [git]
 conventional_commits = true
 filter_unconventional = false
-tag_pattern = "v[0-9]*"
+tag_pattern = "^(releases/)?v[0-9]+"
 skip_tags = "alpha-v.*"
 
 commit_parsers = [
