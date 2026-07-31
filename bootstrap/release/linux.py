@@ -124,6 +124,11 @@ def _bundle_missing_libs(appdir: Path, ld_so: Path, search_path: str) -> None:
                 errors="replace",
                 check=False,
             )
+            if out.returncode != 0:
+                raise click.ClickException(
+                    f"ELF loader failed to resolve dependencies of {f} "
+                    f"[{out.returncode}]:\n{out.stdout.strip()}"
+                )
             for line in out.stdout.splitlines():
                 parts = line.split()
                 if (
