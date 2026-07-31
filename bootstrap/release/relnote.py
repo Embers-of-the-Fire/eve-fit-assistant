@@ -12,6 +12,7 @@ import click
 import yaml
 
 from bootstrap.constant import PROJECT_ROOT
+from bootstrap.docs.announcements_remote import AnnouncementPlatform
 from bootstrap.utils import get_command
 from bootstrap.utils import normalize_version_dir
 from bootstrap.utils import version_dir_to_entry_id
@@ -110,6 +111,18 @@ def _run_cliff(tag: str, from_ref: str | None = None) -> str:
     return result.stdout.strip() + "\n"
 
 
+def _normalize_platforms(platforms: list[str]) -> list[str]:
+    allowed = {platform.value for platform in AnnouncementPlatform}
+    unknown = [platform for platform in platforms if platform not in allowed]
+    if unknown:
+        raise click.ClickException(
+            "Invalid platform value(s): "
+            + ", ".join(repr(platform) for platform in unknown)
+            + f" (allowed: {', '.join(sorted(allowed))})"
+        )
+    return platforms
+
+
 def _build_spec(
     *,
     version: ProjectVersion,
@@ -129,7 +142,7 @@ def _build_spec(
         "appVersion": app_version,
     }
     if platforms is not None:
-        spec["platforms"] = platforms
+        spec["platforms"] = _normalize_platforms(platforms)
     if from_ref is not None:
         spec["fromRef"] = from_ref
     return spec
@@ -166,8 +179,6 @@ def create_raw_release_note(
     if dry_run:
         return directory, entry_id
 
-    directory.mkdir(parents=True, exist_ok=True)
-
     spec = _build_spec(
         version=version,
         published_at=published_at,
@@ -175,11 +186,12 @@ def create_raw_release_note(
         platforms=platforms,
         from_ref=from_ref,
     )
-    spec_path = directory / "spec.yaml"
-    changelog_path = directory / "changelog.md"
-
     tag = version.render_tag()
     changelog_body = _run_cliff(tag, from_ref=from_ref)
+
+    directory.mkdir(parents=True, exist_ok=True)
+    spec_path = directory / "spec.yaml"
+    changelog_path = directory / "changelog.md"
 
     spec_path.write_text(
         yaml.safe_dump(spec, allow_unicode=True, sort_keys=False),

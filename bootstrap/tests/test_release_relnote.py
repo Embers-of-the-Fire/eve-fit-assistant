@@ -95,6 +95,23 @@ def test_create_raw_release_note_custom_channels_and_platforms(
     assert spec["platforms"] == ["ios"]
 
 
+def test_create_raw_release_note_rejects_invalid_platforms(
+    tmp_path: Path,
+    version: ProjectVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    stub = _write_cliff_stub(tmp_path)
+
+    with (
+        pytest.raises(click.ClickException, match="Invalid platform"),
+        patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+        patch("bootstrap.release.relnote.get_command", return_value=str(stub)),
+    ):
+        relnote.create_raw_release_note(version, platforms=["ios", "fuchsiaos"])
+
+    assert not (isolated_changelog_root / "0-2-0-beta-1").exists()
+
+
 def test_create_raw_release_note_refuses_overwrite(
     tmp_path: Path,
     version: ProjectVersion,
