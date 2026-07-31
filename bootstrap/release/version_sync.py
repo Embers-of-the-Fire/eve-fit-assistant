@@ -30,7 +30,7 @@ class VersionTarget:
     replacement: Callable[[re.Match[str], str], str]
 
 
-class VersionTargetMissingError(Exception):
+class VersionTargetMissingError(click.ClickException):
     """Raised when a version sync target has no matching version line."""
 
     def __init__(self, target: VersionTarget) -> None:
