@@ -60,10 +60,10 @@ abstract class AppSetting with _$AppSetting {
     @Default(ForceColumnSelection.disabled)
     ForceColumnSelection forceColumn,
     @JsonKey(
-      unknownEnumValue: ListTileAntiScrollLevel.strong,
-      defaultValue: ListTileAntiScrollLevel.strong,
+      unknownEnumValue: ListTileAntiScrollLevel.closed,
+      defaultValue: ListTileAntiScrollLevel.closed,
     )
-    @Default(ListTileAntiScrollLevel.strong)
+    @Default(ListTileAntiScrollLevel.closed)
     ListTileAntiScrollLevel listTileAntiScrollLevel,
   }) = _AppSetting;
 
