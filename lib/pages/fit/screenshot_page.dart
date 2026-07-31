@@ -362,6 +362,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
         _EquipmentHeader(
           title: context.l10n.highSlot,
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.high),
+          rightInfo: [_HighSlotHardpointInfo(fitContext: fitContext)],
           interactiveIssueIndicator: false,
         ),
         ...fit.body.slots.high.mapWithIndex(

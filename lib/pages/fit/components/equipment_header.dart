@@ -56,12 +56,14 @@ class _EquipmentHeader extends StatelessWidget {
   const _EquipmentHeader({
     required this.title,
     this.actions,
+    this.rightInfo = const <Widget>[],
     this.issues = const <_FitIssue>[],
     this.interactiveIssueIndicator = true,
   });
 
   final String title;
   final List<Widget>? actions;
+  final List<Widget> rightInfo;
   final List<_FitIssue> issues;
   final bool interactiveIssueIndicator;
 
@@ -74,9 +76,17 @@ class _EquipmentHeader extends StatelessWidget {
         minTileHeight: 0,
         contentPadding: const .only(top: 10, left: 16, right: 16, bottom: 4),
         title: Text(title),
-        trailing: issues.isEmpty
+        trailing: rightInfo.isEmpty && issues.isEmpty
             ? null
-            : _FitIssueTrigger(issues: issues, interactive: interactiveIssueIndicator),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 12,
+                children: [
+                  ...rightInfo,
+                  if (issues.isNotEmpty)
+                    _FitIssueTrigger(issues: issues, interactive: interactiveIssueIndicator),
+                ],
+              ),
       ),
       if (actions?.isNotEmpty ?? false) ...[
         const Divider(height: 8),
@@ -88,4 +98,95 @@ class _EquipmentHeader extends StatelessWidget {
       const Divider(height: 4),
     ],
   );
+}
+
+class _EquipmentHeaderCounter extends StatelessWidget {
+  const _EquipmentHeaderCounter({required this.icon, required this.count, required this.total});
+
+  final ImageProvider icon;
+  final int count;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = count > total ? Colors.red : null;
+    final textStyle = DefaultTextStyle.of(context).style;
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Image(image: icon, height: 16),
+          ),
+          TextSpan(
+            text: " $count",
+            style: textStyle.copyWith(color: color),
+          ),
+          TextSpan(text: " / $total"),
+        ],
+      ),
+      softWrap: false,
+      overflow: TextOverflow.fade,
+    );
+  }
+}
+
+class _HighSlotHardpointInfo extends ConsumerWidget {
+  const _HighSlotHardpointInfo({required this.fitContext});
+
+  final FitContext fitContext;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collection = ref.watch(repoCollectionProvider);
+    if (collection == null) return const SizedBox.shrink();
+
+    final fit = fitContext.fit;
+
+    var usedTurret = 0;
+    var usedLauncher = 0;
+    for (final slot in fit.body.slots.high) {
+      final item = slot.toNullable();
+      if (item == null) continue;
+      final typeId = fitContext.resolveOriginTypeId(item.itemId);
+      if (typeId == null) continue;
+      final info = collection.slots.highSlots[typeId];
+      if (info == null) continue;
+      if (info.isTurret) usedTurret += 1;
+      if (info.isLauncher) usedLauncher += 1;
+    }
+
+    var totalTurret = fitContext.ship.turretSlots;
+    var totalLauncher = fitContext.ship.launcherSlots;
+    for (final slot in fit.body.slots.subsystem) {
+      final item = slot.toNullable();
+      if (item == null) continue;
+      final typeId = fitContext.resolveOriginTypeId(item.itemId);
+      if (typeId == null) continue;
+      final def = collection.getSubsystem(typeId);
+      if (def == null) continue;
+      totalTurret += def.turretSlots;
+      totalLauncher += def.launcherSlots;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 10,
+      children: [
+        if (totalTurret > 0 || usedTurret > 0)
+          _EquipmentHeaderCounter(
+            icon: ImageAssets.weaponTurretNum,
+            count: usedTurret,
+            total: totalTurret,
+          ),
+        if (totalLauncher > 0 || usedLauncher > 0)
+          _EquipmentHeaderCounter(
+            icon: ImageAssets.weaponLauncherNum,
+            count: usedLauncher,
+            total: totalLauncher,
+          ),
+      ],
+    );
+  }
 }

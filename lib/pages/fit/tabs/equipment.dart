@@ -65,6 +65,7 @@ class _EquipmentTabState extends ConsumerState<_EquipmentTab> with AutomaticKeep
           _EquipmentHeader(
             title: context.l10n.highSlot,
             issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.high),
+            rightInfo: [_HighSlotHardpointInfo(fitContext: fitContext)],
             actions: interactionOptions.allowMutations
                 ? [
                     _ActionClearAll(
