@@ -34,7 +34,6 @@ abstract class BugReport with _$BugReport {
     required ReportPlatform platform,
     String? version,
     String? logs,
-    String? contact,
   }) = _BugReport;
 
   factory BugReport.fromJson(Map<String, dynamic> json) => _$BugReportFromJson(json);
@@ -49,7 +48,6 @@ abstract class FeatureRequest with _$FeatureRequest {
     required String impact,
     String? alternatives,
     String? extra,
-    String? contact,
   }) = _FeatureRequest;
 
   factory FeatureRequest.fromJson(Map<String, dynamic> json) => _$FeatureRequestFromJson(json);

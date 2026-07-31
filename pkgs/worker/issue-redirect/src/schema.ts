@@ -8,7 +8,6 @@ const CommonFields = {
     language: LanguageEnum.default("en"),
     title: z.string().min(1, "title is required"),
     labels: z.array(z.string()).optional(),
-    contact: z.string().optional(),
     metadata: z.record(z.unknown()).optional(),
 };
 
@@ -36,7 +35,6 @@ const DocsCommonFields = {
     language: LanguageEnum.default("en"),
     topic: z.string().min(1, "topic is required"),
     labels: z.array(z.string()).optional(),
-    contact: z.string().optional(),
     metadata: z.record(z.unknown()).optional(),
 };
 

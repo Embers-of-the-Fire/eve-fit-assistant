@@ -28,7 +28,6 @@ let platform: string = $state("Android");
 
 let attachExtras = $state(false);
 let version = $state("");
-let contact = $state("");
 let metadata = $state<{ id: number; key: string; value: string }[]>([]);
 let metadataNextId = $state(0);
 
@@ -50,10 +49,9 @@ $effect(() => {
         if (platforms.some((p) => p.value === raw)) platform = raw;
     }
 
-    const extrasKeys = ["version", "contact", "metadata"];
+    const extrasKeys = ["version", "metadata"];
     if (extrasKeys.some((k) => params.has(k))) attachExtras = true;
     if (params.has("version")) version = params.get("version") ?? "";
-    if (params.has("contact")) contact = params.get("contact") ?? "";
     if (params.has("metadata")) {
         try {
             const obj = JSON.parse(params.get("metadata") ?? "");
@@ -131,7 +129,6 @@ async function handleSubmit(e: Event) {
 
         if (attachExtras) {
             if (version.trim()) payload.version = version.trim();
-            if (contact.trim()) payload.contact = contact.trim();
             const meta: Record<string, unknown> = {};
             let hasMeta = false;
             for (const m of metadata) {
@@ -310,16 +307,6 @@ async function handleSubmit(e: Event) {
                                     type="text"
                                     bind:value={version}
                                     placeholder={t("report.form.bug.version.placeholder")}
-                                    class="w-full rounded border border-eve-border bg-eve-bg px-3.5 py-2.5 text-sm text-eve-text placeholder:text-eve-text-muted/50 focus:border-eve-gold focus:outline-none transition-colors"
-                                />
-                            </label>
-
-                            <label class="block">
-                                <span class="block text-xs font-medium text-eve-text-muted mb-1.5">{t("report.form.contact")}</span>
-                                <input
-                                    type="text"
-                                    bind:value={contact}
-                                    placeholder={t("report.form.contact.placeholder")}
                                     class="w-full rounded border border-eve-border bg-eve-bg px-3.5 py-2.5 text-sm text-eve-text placeholder:text-eve-text-muted/50 focus:border-eve-gold focus:outline-none transition-colors"
                                 />
                             </label>

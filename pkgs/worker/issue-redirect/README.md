@@ -21,7 +21,6 @@ Create a bug report issue.
     "platform": "Android",
     "version": "0.1.0",
     "logs": "Error: null pointer exception",
-    "contact": "user@example.com",
     "metadata": {
         "os_version": "Android 14",
         "device": "Pixel 8"
@@ -57,8 +56,7 @@ Default labels: `F-App`, `T-Docs`, `T-Bug`, `V-Needs Triage`.
     "language": "en",
     "pagePath": "/docs/fitting/capacitor",
     "pageId": "fitting-capacitor",
-    "content": "The recharge rate section describes pre-patch behavior",
-    "contact": "user@example.com"
+    "content": "The recharge rate section describes pre-patch behavior"
 }
 ```
 
