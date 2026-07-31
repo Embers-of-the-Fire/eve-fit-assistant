@@ -275,6 +275,16 @@ def register_build_commands(cli_group: click.Group) -> None:
         except (ValueError, FileNotFoundError, TypeError) as exception:
             raise click.ClickException(str(exception)) from exception
 
+    @build.command("site-manual")
+    def build_site_manual_cmd():
+        """Generate Starlight site content from docs/manual, changelog, and announcements."""
+        from bootstrap.docs import build_site_manual
+
+        try:
+            build_site_manual()
+        except (ValueError, FileNotFoundError, TypeError) as exception:
+            raise click.ClickException(str(exception)) from exception
+
     @build.command("apk")
     @click.option(
         "--clean", is_flag=True, default=False, help="Run `flutter clean` before building."
