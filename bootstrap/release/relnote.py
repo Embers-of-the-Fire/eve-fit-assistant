@@ -140,9 +140,8 @@ def _build_spec(
         "tags": _DEFAULT_TAGS,
         "channels": channels if channels is not None else _DEFAULT_CHANNELS,
         "appVersion": app_version,
+        "platforms": _normalize_platforms(platforms) if platforms is not None else [],
     }
-    if platforms is not None:
-        spec["platforms"] = _normalize_platforms(platforms)
     if from_ref is not None:
         spec["fromRef"] = from_ref
     return spec
