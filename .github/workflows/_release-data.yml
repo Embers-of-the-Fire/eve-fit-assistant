@@ -96,7 +96,8 @@ jobs:
   publish:
     name: Publish to testing channel
     needs: build
-    runs-on: ubuntu-slim
+    # MinIO mock runs in test mode; keep on the full runner image.
+    runs-on: ubuntu-latest
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-data' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
