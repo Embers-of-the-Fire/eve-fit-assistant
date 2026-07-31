@@ -309,7 +309,7 @@
   "appSettingsPageFontScaleL": "L",
   "appSettingsPageFontScaleXL": "XL",
   "appSettingsPageAntiScrollTitle": "List Tile Swipe Protection",
-  "appSettingsPageAntiScrollDescription": "Adjusts how horizontal swipes on list tiles are handled. The left and right edge zones of a tile reveal its swipe actions, while the center zone switches pages. Higher levels shrink the center page-switch zone, making it harder to switch pages accidentally while interacting with tiles. When closed, the entire tile area switches pages.\nWeak: 50%, Medium: 33%, Strong: 20%.",
+  "appSettingsPageAntiScrollDescription": "Adjusts how horizontal swipes on list tiles are handled. The left and right edge zones of a tile reveal its swipe actions, while the center zone switches pages. Higher levels shrink the center page-switch zone, making it harder to switch pages accidentally while interacting with tiles. When closed, tiles keep their default behavior: swiping reveals swipe actions and never switches pages.\nWeak: 50%, Medium: 33%, Strong: 20%.",
   "appSettingsPageAntiScrollClosed": "Close",
   "appSettingsPageAntiScrollWeak": "Weak",
   "appSettingsPageAntiScrollMedium": "Medium",

@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/config/list_tile_anti_scroll.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/widgets.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -45,6 +46,10 @@ class SlidableEdgeScope extends InheritedWidget {
 /// the tab scaffold can use them to switch tabs. Taps, long-presses and
 /// vertical scrolls are unaffected. The width of the center zone is
 /// configured by the [AppSetting.listTileAntiScrollLevel] setting.
+///
+/// When the level is [ListTileAntiScrollLevel.closed], the protection is
+/// disabled: no zones are installed, the slidable keeps its raw behavior, and
+/// drags starting on the tile never switch tabs.
 class SlidableEdgeZone extends ConsumerWidget {
   const SlidableEdgeZone({required this.child, super.key});
 
@@ -53,12 +58,16 @@ class SlidableEdgeZone extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tracker = SlidableEdgeScope.of(context);
-    final edgeRatio =
-        (1.0 -
-            ref.watch(
-              appSettingServiceProvider.select((s) => s.listTileAntiScrollLevel.centerRatio),
-            )) /
-        2.0;
+    final level = ref.watch(appSettingServiceProvider.select((s) => s.listTileAntiScrollLevel));
+
+    if (level == ListTileAntiScrollLevel.closed) {
+      return Listener(
+        onPointerDown: (event) => tracker.setOnEdge(event.pointer, value: true),
+        child: child,
+      );
+    }
+
+    final edgeRatio = (1.0 - level.centerRatio) / 2.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {

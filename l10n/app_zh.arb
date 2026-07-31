@@ -764,7 +764,7 @@
   "appSettingsPageFontScaleL": "大",
   "appSettingsPageFontScaleXL": "特大",
   "appSettingsPageAntiScrollTitle": "列表项防误滑",
-  "appSettingsPageAntiScrollDescription": "调整列表项上横向滑动手势的响应区域。列表项左右两侧的边缘区域用于呼出侧滑操作，中央区域用于滑动切换页面。等级越高，中央可切换页面的区域越小，越不容易误触页面切换。关闭后，整个列表项区域都可用于滑动切换页面。\n弱：50%；中：33%；强：20%。",
+  "appSettingsPageAntiScrollDescription": "调整列表项上横向滑动手势的响应区域。列表项左右两侧的边缘区域用于呼出侧滑操作，中央区域用于滑动切换页面。等级越高，中央可切换页面的区域越小，越不容易误触页面切换。关闭后，列表项保持默认行为：滑动仅呼出侧滑操作，不会切换页面。\n弱：50%；中：33%；强：20%。",
   "appSettingsPageAntiScrollClosed": "关闭",
   "appSettingsPageAntiScrollWeak": "弱",
   "appSettingsPageAntiScrollMedium": "中",
