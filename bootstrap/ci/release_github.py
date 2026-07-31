@@ -100,7 +100,7 @@ def register_github_release_command(ci_group: click.Group) -> None:
             mode="w",
             encoding="utf-8",
             suffix=".md",
-            prefix=f"github_release_{tag}_",
+            prefix=f"github_release_{tag.replace('/', '_')}_",
             delete=False,
         ) as f:
             body_path = Path(f.name)
@@ -109,7 +109,7 @@ def register_github_release_command(ci_group: click.Group) -> None:
         is_prerelease = "-" in semver
 
         cmd = ["gh", "release", "create", tag]
-        cmd.extend(["--title", tag])
+        cmd.extend(["--title", f"v{semver}"])
         if is_prerelease:
             cmd.append("--prerelease")
         cmd.extend(["--notes-file", str(body_path)])
