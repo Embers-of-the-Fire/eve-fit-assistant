@@ -62,7 +62,7 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Generate all code and then format: `./x generate -f all`.
 - Focused generators: `./x generate protobuf`, `./x generate rust`, `./x generate dart`, `./x generate l10n`, `./x generate values dogma-units`.
 - Android build: `flutter build apk` (or `./x build apk` from the workspace CLI).
-- Linux AppImage build: `./x build appimage` (requires `appimage-builder` from the Nix dev shell; output in `cache/releases/appimage/<ver>/`).
+- Linux AppImage build: `./x build appimage` (requires `linuxdeploy` and `appimagetool` from the Nix dev shell; output in `cache/releases/appimage/<ver>/`). linuxdeploy resolves and bundles dependent libs; a fixpoint pass additionally bundles glibc (the AppRun launches through the bundled loader) and every resolvable lib except the host-provided graphics-driver family; the Flutter bundle `lib/` dir is searched first via `LD_LIBRARY_PATH`.
 - Release preflight checks: `./x ci release verify --check-all`.
 - Create raw release note: `./x release relnote` (emits `spec.yaml` and `changelog.md`; author `content.zh.md` and `content.en.md` separately).
 - Sync canonical version to manifests: `./x release version sync`.

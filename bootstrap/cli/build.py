@@ -413,21 +413,20 @@ def register_build_commands(cli_group: click.Group) -> None:
         output_dir = root / "appimage" / ver
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        from bootstrap.release.version_sync import sync_target
-        from bootstrap.utils import execute_command
+        from bootstrap.release.appimage import build_appimage
         from bootstrap.utils import get_command
 
         flutter = get_command("flutter")
-        try:
-            appimage_builder = get_command("appimage-builder")
-        except FileNotFoundError:
+        missing = [
+            name
+            for name in ("linuxdeploy", "appimagetool", "ldd", "readelf")
+            if not shutil.which(name)
+        ]
+        if missing:
             raise click.ClickException(
-                "Command 'appimage-builder' not found in PATH. "
-                "Enter the Nix dev shell (`nix develop`) to get it."
-            ) from None
-
-        recipe = PROJECT_ROOT / "AppImageBuilder.yml"
-        sync_target(recipe, version, dry_run=runtime.is_dry_run())
+                f"Command(s) not found in PATH: {', '.join(missing)}. "
+                "Enter the Nix dev shell (`nix develop .#linux`) to get them."
+            )
 
         if clean:
             runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
@@ -437,30 +436,17 @@ def register_build_commands(cli_group: click.Group) -> None:
         if not skip_flutter:
             runtime.execute([flutter, "build", "linux", "--release"], "BUILDING LINUX BUNDLE")
 
-        execute_command(
-            [
-                appimage_builder,
-                "--recipe",
-                str(recipe),
-                "--appdir",
-                str(PROJECT_ROOT / "dist" / "AppDir"),
-                "--skip-tests",
-            ],
-            "BUILDING APPIMAGE",
-            runtime.is_dry_run(),
-            cwd=PROJECT_ROOT,
+        build_appimage(
+            bundle_dir=PROJECT_ROOT / "build" / "linux" / "x64" / "release" / "bundle",
+            work_dir=PROJECT_ROOT / "dist",
+            output_dir=output_dir,
+            version=version,
+            linuxdeploy=get_command("linuxdeploy"),
+            appimagetool=get_command("appimagetool"),
+            ldd=get_command("ldd"),
+            readelf=get_command("readelf"),
+            dry_run=runtime.is_dry_run(),
         )
-
-        semver = version.render_semver()
-        src_appimage = PROJECT_ROOT / f"EFA-{semver}-x86_64.AppImage"
-        if not src_appimage.exists():
-            raise click.ClickException(f"Expected AppImage not found: {src_appimage}")
-
-        dst_appimage = output_dir / f"{ver}-linux.AppImage"
-        shutil.move(src_appimage, dst_appimage)
-        src_zsync = src_appimage.with_name(src_appimage.name + ".zsync")
-        if src_zsync.exists():
-            shutil.move(src_zsync, output_dir / f"{ver}-linux.AppImage.zsync")
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
         for f in sorted(output_dir.iterdir()):

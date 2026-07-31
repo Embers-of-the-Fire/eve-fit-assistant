@@ -315,18 +315,6 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      # appimage-builder runs via appimage-run (bubblewrap), which needs
-      # unprivileged user namespaces; Ubuntu 24.04 runners restrict them
-      # via AppArmor by default.
-      - name: Enable unprivileged user namespaces
-        run: |
-          if sysctl kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          fi
-          if sysctl kernel.unprivileged_userns_clone >/dev/null 2>&1; then
-            sudo sysctl -w kernel.unprivileged_userns_clone=1
-          fi
-
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
 

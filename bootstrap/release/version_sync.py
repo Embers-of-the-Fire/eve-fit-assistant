@@ -76,13 +76,6 @@ TARGETS = [
         pattern=re.compile(r'^(version\s*=\s*")[^"]+(")', re.MULTILINE),
         replacement=_toml_replacement,
     ),
-    VersionTarget(
-        path=PROJECT_ROOT / "AppImageBuilder.yml",
-        description="AppImageBuilder.yml",
-        render=_render_semver,
-        pattern=re.compile(r"^(    version:\s*).+$", re.MULTILINE),
-        replacement=_pubspec_replacement,
-    ),
 ]
 
 

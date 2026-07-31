@@ -123,19 +123,35 @@
       ];
 
       # Not packaged in nixpkgs; wrap the upstream AppImage with appimage-run.
-      appimageBuilderAppImage = pkgs.fetchurl {
-        name = "appimage-builder-1.1.1.dev32+g2709a3b-x86_64.AppImage";
-        url = "https://github.com/AppImageCrafters/appimage-builder/releases/download/Continuous/appimage-builder-1.1.1.dev32%2Bg2709a3b-x86_64.AppImage";
-        hash = "sha256-dWm3ECYqQt4NV37Oi/0LkX6f29So0EN8KcY1sOrd178=";
+      # Not packaged in nixpkgs. The upstream AppImage's payload binaries
+      # (appimagetool, mksquashfs, zsyncmake, desktop-file-validate) are
+      # statically linked and run natively; the type-2 runtime used for the
+      # AppImages it creates is embedded, so no wrapper or network is needed.
+      appimagetoolAppImage = pkgs.fetchurl {
+        name = "appimagetool-x86_64.AppImage";
+        url = "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage";
+        hash = "sha256-ptceK2zWb46NFsN60WRliYXgz1/KqVDJCkgokMudE+A=";
       };
 
-      appimageBuilder =
-        pkgs.runCommand "appimage-builder-1.1.1" { nativeBuildInputs = [ pkgs.makeWrapper ]; }
+      appimagetool =
+        pkgs.runCommand "appimagetool" { nativeBuildInputs = [ pkgs.squashfsTools ]; }
           ''
-            install -Dm755 ${appimageBuilderAppImage} $out/share/appimage-builder.AppImage
-            makeWrapper ${pkgs.appimage-run}/bin/appimage-run $out/bin/appimage-builder \
-              --add-flags "$out/share/appimage-builder.AppImage"
+            # The payload is a squashfs image appended to the static runtime.
+            # Locate it via the 'hsqs' magic; the runtime contains a false
+            # positive, so try every offset until extraction succeeds.
+            for off in $(grep -abo hsqs ${appimagetoolAppImage} | cut -d: -f1); do
+              if unsquashfs -o "$off" -d payload ${appimagetoolAppImage} >/dev/null 2>&1; then
+                break
+              fi
+            done
+            test -d payload || { echo "failed to extract appimagetool payload"; exit 1; }
+            install -Dm755 payload/usr/bin/* -t $out/bin
           '';
+
+      appimageTools = [
+        appimagetool
+        pkgs.linuxdeploy
+      ];
 
       ciPackages = with pkgs; [
         zizmor
@@ -163,8 +179,7 @@
         let
           # Full development shell
           fullShell = pkgs.mkShell {
-            packages = basePackages ++ [
-              appimageBuilder
+            packages = basePackages ++ appimageTools ++ [
               pkgs.rustup
               pkgs.worker-build
               developmentAndroidSdk
@@ -235,8 +250,7 @@
 
           # Linux desktop build shell (AppImage packaging; no Android SDK)
           linuxShell = pkgs.mkShell {
-            packages = basePackages ++ [
-              appimageBuilder
+            packages = basePackages ++ appimageTools ++ [
               pkgs.rustup
               pkgs.libsecret
               pkgs.xdg-user-dirs
