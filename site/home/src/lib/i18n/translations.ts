@@ -6,6 +6,7 @@ export const en = {
     "nav.download": "Download",
     "nav.about": "About",
     "nav.report": "Report",
+    "nav.manual": "Manual",
     "nav.get_started": "Get Started",
 
     "brand.name": "EVE Fit Assistant",
@@ -64,6 +65,7 @@ export const en = {
         "EVE Fit Assistant is open-source and under active development. Follow the project on GitHub or build it yourself.",
     "cta.github": "View on GitHub",
     "cta.qq_group": "Join QQ Group",
+    "cta.manual": "Read the Manual",
 
     "footer.trademark_1":
         "EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide.",
@@ -186,6 +188,7 @@ export const zh: Record<TranslationKey, string> = {
     "nav.download": "下载",
     "nav.about": "关于",
     "nav.report": "反馈",
+    "nav.manual": "使用手册",
     "nav.get_started": "开始使用",
 
     "brand.name": "EVE Fit Assistant",
@@ -244,6 +247,7 @@ export const zh: Record<TranslationKey, string> = {
         "EVE Fit Assistant 完全开源，正在积极开发中。在 GitHub 上关注项目或自行构建。",
     "cta.github": "在 GitHub 上查看",
     "cta.qq_group": "加入 QQ 群",
+    "cta.manual": "阅读使用手册",
 
     "footer.trademark_1": "EVE Online 和 EVE 标志是 CCP hf 的注册商标。保留所有权利。",
     "footer.trademark_2":

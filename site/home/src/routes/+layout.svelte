@@ -45,6 +45,11 @@ $effect(() => {
 				<a href="/download" class="nav-link pb-0.5 hover:text-eve-gold transition-colors">{t('nav.download')}</a>
 				<a href="/#about" class="nav-link pb-0.5 hover:text-eve-gold transition-colors">{t('nav.about')}</a>
 				<a href="/report" class="nav-link pb-0.5 hover:text-eve-gold transition-colors">{t('nav.report')}</a>
+			<a
+				href="https://docs.efa-tech.dev"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="nav-link pb-0.5 hover:text-eve-gold transition-colors">{t('nav.manual')}</a>
 				<a
 						href="/download"
 					class="rounded border border-eve-gold/40 px-4 py-1.5 text-eve-gold hover:bg-eve-gold/10 transition-all duration-300 text-sm hover:border-eve-gold/60 hover:shadow-[0_0_20px_rgba(200,169,81,0.1)]"
@@ -81,6 +86,12 @@ $effect(() => {
 					<a href="/download" onclick={closeMenu} class="rounded px-2 py-2.5 hover:text-eve-gold hover:bg-eve-surface-alt transition-colors">{t('nav.download')}</a>
 					<a href="/#about" onclick={closeMenu} class="rounded px-2 py-2.5 hover:text-eve-gold hover:bg-eve-surface-alt transition-colors">{t('nav.about')}</a>
 					<a href="/report" onclick={closeMenu} class="rounded px-2 py-2.5 hover:text-eve-gold hover:bg-eve-surface-alt transition-colors">{t('nav.report')}</a>
+				<a
+					href="https://docs.efa-tech.dev"
+					target="_blank"
+					rel="noopener noreferrer"
+					onclick={closeMenu}
+					class="rounded px-2 py-2.5 hover:text-eve-gold hover:bg-eve-surface-alt transition-colors">{t('nav.manual')}</a>
 					<a
 					href="/download"
 						onclick={closeMenu}
