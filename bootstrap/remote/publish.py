@@ -30,7 +30,21 @@ from bootstrap.remote.resource_manager import ResourceManager
 from bootstrap.remote.snapshot import SnapshotStore
 
 
-_RELEASE_VARIANT_NAMES = ("general", "armv7", "arm64", "x64")
+_RELEASE_PLATFORM_VARIANTS = {
+    "android": ("general", "armv7", "arm64", "x64"),
+    "linux": ("appimage", "native"),
+}
+
+
+def _iter_release_variants(index):
+    """Yield (platform, variant_name, variant_msg) for every populated artifact."""
+    for platform, variant_names in _RELEASE_PLATFORM_VARIANTS.items():
+        if not index.HasField(platform):
+            continue
+        artifacts = getattr(index, platform)
+        for variant_name in variant_names:
+            if artifacts.HasField(variant_name):
+                yield platform, variant_name, getattr(artifacts, variant_name)
 
 
 if TYPE_CHECKING:
@@ -386,14 +400,7 @@ class Publisher:
 
         index = read_pb2(pb2_file, ReleaseIndex)
 
-        if not index.HasField("android"):
-            return dir_upload
-
-        android = index.android
-        for variant_name in _RELEASE_VARIANT_NAMES:
-            if not android.HasField(variant_name):
-                continue
-            v = getattr(android, variant_name)
+        for platform, variant_name, v in _iter_release_variants(index):
             ihash = ident_hash(v.identifier)
             bpath = blob_path(self.local_root, ihash, v.content_hash)
             remote = prefixes + f"assets/blobs/{ihash[:2]}/{ihash}/{v.content_hash}"
@@ -403,7 +410,7 @@ class Publisher:
                     local_bpath: Path = bpath,
                     remote_path: str = remote,
                     snap: str = snap_hash,
-                    variant: str = variant_name,
+                    variant: str = f"{platform}/{variant_name}",
                 ) -> None:
                     if self._remote_exists(remote_path):
                         return
@@ -463,12 +470,8 @@ class Publisher:
                         rel_index = read_pb2(pb2_file, ReleaseIndex)
                     except (OSError, DecodeError):
                         rel_index = None
-                    if rel_index is not None and rel_index.HasField("android"):
-                        android = rel_index.android
-                        for variant_name in _RELEASE_VARIANT_NAMES:
-                            if not android.HasField(variant_name):
-                                continue
-                            v = getattr(android, variant_name)
+                    if rel_index is not None:
+                        for _, _, v in _iter_release_variants(rel_index):
                             ihash = ident_hash(v.identifier)
                             bpath = blob_path(self.local_root, ihash, v.content_hash)
                             if bpath.is_file():

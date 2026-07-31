@@ -299,11 +299,11 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/efa-release.keystore"
 
-  appimage:
-    name: Build Linux AppImage
+  linux:
+    name: Build Linux Variants
     runs-on: ubuntu-latest
-    # The AppImage is distributed via GitHub Releases only and is still
-    # experimental; never let its failure block the Android release, the
+    # The Linux artifacts are distributed via GitHub Releases only and are
+    # still experimental; never let its failure block the Android release, the
     # remote channel publish, or the surrounding check run.
     continue-on-error: true
     steps:
@@ -339,29 +339,30 @@ jobs:
       - name: Generate all
         run: nix develop .#linux --command bash -c 'uv run x.py generate -f all'
 
-      - name: Build AppImage
-        run: nix develop .#linux --command bash -c 'uv run x.py build appimage'
+      - name: Build Linux variants
+        run: nix develop .#linux --command bash -c 'uv run x.py build linux'
 
-      - name: Upload AppImage artifacts
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: appimage
+          name: linux
           path: |
-            cache/releases/appimage/**/*.AppImage
-            cache/releases/appimage/**/*.AppImage.zsync
+            cache/releases/linux/**/*.AppImage
+            cache/releases/linux/**/*.AppImage.zsync
+            cache/releases/linux/**/*.zip
           retention-days: 1
 
       - name: Upload diagnostics
         if: failure()
         uses: ./.github/actions/upload-diagnostics
         with:
-          name: diagnostics-appimage-release
+          name: diagnostics-linux-release
 
   tag:
     name: Create Git tag
-    needs: [release, appimage]
+    needs: [release, linux]
     runs-on: ubuntu-slim
-    # Wait for the AppImage job so its artifact can be attached to the GitHub
+    # Wait for the Linux job so its artifacts can be attached to the GitHub
     # Release, but do not let its (masked) failure block tagging.
     if: |
       always() &&
@@ -389,12 +390,12 @@ jobs:
           name: apk
           path: cache/releases/apk
 
-      # Optional: only present when the (non-blocking) appimage job succeeded.
+      # Optional: only present when the (non-blocking) linux job succeeded.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         continue-on-error: true
         with:
-          name: appimage
-          path: cache/releases/appimage
+          name: linux
+          path: cache/releases/linux
 
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:

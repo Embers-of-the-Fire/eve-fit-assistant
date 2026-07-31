@@ -33,11 +33,19 @@ _ABI_FLUTTER_TO_APK = {
 
 _PLATFORM_DIR = {
     "android": "apk",
+    "linux": "linux",
 }
 
 _PLATFORM_SUFFIX = {
     "android": ".apk",
 }
+
+
+def _linux_variant_files(ver: str) -> dict[str, str]:
+    return {
+        "appimage": f"{ver}-linux.AppImage",
+        "native": f"{ver}-linux-native.zip",
+    }
 
 
 def _build_apk_copy_and_verify(src_apk: Path, src_sha1: Path, dst_apk: Path, dst_sha1: Path):
@@ -83,24 +91,32 @@ def _build_release_platform(
     root: Path,
 ) -> None:
     dir_name = _PLATFORM_DIR[platform]
-    suffix = _PLATFORM_SUFFIX[platform]
     src_dir = root / dir_name / ver
     if not src_dir.is_dir():
         raise click.ClickException(f"Build directory not found: {src_dir}")
 
     artifacts: dict[str, str] = {}
-    for f in sorted(src_dir.iterdir()):
-        if f.is_file() and f.suffix == suffix:
-            name = f.name
-            prefix = f"{ver}-{platform}-"
-            if name.startswith(prefix):
-                variant = name[len(prefix) : -len(suffix)]
+    if platform == "linux":
+        for variant, name in _linux_variant_files(ver).items():
+            f = src_dir / name
+            if f.is_file():
                 artifacts[variant] = str(f.relative_to(root))
-            elif name == f"{ver}-{platform}{suffix}":
-                artifacts["general"] = str(f.relative_to(root))
+        if not artifacts:
+            raise click.ClickException(f"No linux variant files found in {src_dir}")
+    else:
+        suffix = _PLATFORM_SUFFIX[platform]
+        for f in sorted(src_dir.iterdir()):
+            if f.is_file() and f.suffix == suffix:
+                name = f.name
+                prefix = f"{ver}-{platform}-"
+                if name.startswith(prefix):
+                    variant = name[len(prefix) : -len(suffix)]
+                    artifacts[variant] = str(f.relative_to(root))
+                elif name == f"{ver}-{platform}{suffix}":
+                    artifacts["general"] = str(f.relative_to(root))
 
-    if not artifacts:
-        raise click.ClickException(f"No {suffix} files found in {src_dir}")
+        if not artifacts:
+            raise click.ClickException(f"No {suffix} files found in {src_dir}")
 
     rel_id = release_id or f"rel-{ver}"
     vmin = version_min or ver_semver
@@ -383,7 +399,7 @@ def register_build_commands(cli_group: click.Group) -> None:
             root=root,
         )
 
-    @build.command("appimage")
+    @build.command("linux")
     @click.option(
         "--clean", is_flag=True, default=False, help="Run `flutter clean` before building."
     )
@@ -394,39 +410,71 @@ def register_build_commands(cli_group: click.Group) -> None:
         help="Skip the Flutter Linux build and reuse the existing release bundle.",
     )
     @click.option(
+        "--variant",
+        "variants",
+        multiple=True,
+        type=click.Choice(["appimage", "native"]),
+        help="Linux variant to build (repeatable; default: all variants).",
+    )
+    @click.option(
         "--root",
         "-r",
         type=click.Path(path_type=Path),
         default=PROJECT_ROOT / "cache" / "releases",
         help="Release root directory (default: cache/releases).",
     )
-    def build_appimage_cmd(clean: bool, skip_flutter: bool, root: Path):
-        """Build the Linux AppImage with a versioned filename."""
+    @click.option(
+        "--output",
+        "-o",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Release fragment output path (default: <root>/linux/<ver>/<ver>-linux.json).",
+    )
+    @click.option(
+        "--release-id", default=None, help="Override release.id (default: rel-{version})."
+    )
+    @click.option("--version-min", default=None, help="Override minimum version string.")
+    @click.option("--version-max", default=None, help="Override maximum version string.")
+    def build_linux_cmd(
+        clean: bool,
+        skip_flutter: bool,
+        variants: tuple[str, ...],
+        root: Path,
+        output: Path | None,
+        release_id: str | None,
+        version_min: str | None,
+        version_max: str | None,
+    ):
+        """Build the Linux release variants (AppImage and/or native zip)."""
         if clean and skip_flutter:
             raise click.ClickException(
                 "--clean and --skip-flutter cannot be combined: "
                 "`flutter clean` removes the release bundle that --skip-flutter relies on."
             )
+        selected = set(variants) if variants else {"appimage", "native"}
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
         ver = version.render_full()
-        output_dir = root / "appimage" / ver
+        output_dir = root / "linux" / ver
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        from bootstrap.release.appimage import build_appimage
+        from bootstrap.release.linux import assemble_appdir
+        from bootstrap.release.linux import pack_appimage
+        from bootstrap.release.linux import pack_native_zip
         from bootstrap.utils import get_command
 
         flutter = get_command("flutter")
-        missing = [
-            name
-            for name in ("linuxdeploy", "appimagetool", "ldd", "readelf")
-            if not shutil.which(name)
-        ]
-        if missing:
-            raise click.ClickException(
-                f"Command(s) not found in PATH: {', '.join(missing)}. "
-                "Enter the Nix dev shell (`nix develop .#linux`) to get them."
-            )
+        if "appimage" in selected:
+            missing = [
+                name
+                for name in ("linuxdeploy", "appimagetool", "ldd", "readelf")
+                if not shutil.which(name)
+            ]
+            if missing:
+                raise click.ClickException(
+                    f"Command(s) not found in PATH: {', '.join(missing)}. "
+                    "Enter the Nix dev shell (`nix develop .#linux`) to get them."
+                )
 
         if clean:
             runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
@@ -436,23 +484,48 @@ def register_build_commands(cli_group: click.Group) -> None:
         if not skip_flutter:
             runtime.execute([flutter, "build", "linux", "--release"], "BUILDING LINUX BUNDLE")
 
-        build_appimage(
-            bundle_dir=PROJECT_ROOT / "build" / "linux" / "x64" / "release" / "bundle",
-            work_dir=PROJECT_ROOT / "dist",
-            output_dir=output_dir,
-            version=version,
-            linuxdeploy=get_command("linuxdeploy"),
-            appimagetool=get_command("appimagetool"),
-            ldd=get_command("ldd"),
-            readelf=get_command("readelf"),
-            dry_run=runtime.is_dry_run(),
-        )
+        bundle_dir = PROJECT_ROOT / "build" / "linux" / "x64" / "release" / "bundle"
+        if "appimage" in selected:
+            appdir = assemble_appdir(
+                bundle_dir=bundle_dir,
+                work_dir=PROJECT_ROOT / "dist",
+                linuxdeploy=get_command("linuxdeploy"),
+                ldd=get_command("ldd"),
+                readelf=get_command("readelf"),
+                dry_run=runtime.is_dry_run(),
+            )
+            pack_appimage(
+                appdir=appdir,
+                output_dir=output_dir,
+                version=version,
+                appimagetool=get_command("appimagetool"),
+                dry_run=runtime.is_dry_run(),
+            )
+        if "native" in selected:
+            pack_native_zip(
+                bundle_dir=bundle_dir,
+                output_dir=output_dir,
+                version=version,
+                dry_run=runtime.is_dry_run(),
+            )
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
         for f in sorted(output_dir.iterdir()):
             if f.is_file():
                 size = get_bin_size(f.stat().st_size)
                 click.echo(f"  {f.name} ({size})")
+
+        if not runtime.is_dry_run():
+            _build_release_platform(
+                platform="linux",
+                ver=ver,
+                ver_semver=version.render_semver(),
+                output=output,
+                release_id=release_id,
+                version_min=version_min,
+                version_max=version_max,
+                root=root,
+            )
 
     @build.command("release")
     @click.option(

@@ -1,10 +1,12 @@
-"""Linux AppImage packaging via linuxdeploy + appimagetool.
+"""Linux release packaging: AppImage and native (raw bundle) variants.
 
-Replaces the old appimage-builder recipe. linuxdeploy resolves and bundles the
-shared-library dependencies of the Flutter Linux bundle; appimagetool packs the
-resulting AppDir into an AppImage.
+AppImage variant (replaces the old appimage-builder recipe): linuxdeploy
+resolves and bundles the shared-library dependencies of the Flutter Linux
+bundle; the resulting AppDir is packed into an AppImage with appimagetool.
 
-Two nix-specific concerns are handled explicitly:
+Native variant: the raw Flutter Linux release bundle zipped as-is.
+
+Two nix-specific concerns are handled explicitly for the AppImage variant:
 
 - The bundle binary's PT_INTERP points into the nix store, so the glibc loader
   (and its NSS modules) is bundled and the custom AppRun launches the app
@@ -21,7 +23,9 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import stat
 import subprocess
+import zipfile
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -139,19 +143,21 @@ def _bundle_missing_libs(appdir: Path, ld_so: Path, search_path: str) -> None:
             break
 
 
-def build_appimage(
+def assemble_appdir(
     *,
     bundle_dir: Path,
     work_dir: Path,
-    output_dir: Path,
-    version: ProjectVersion,
     linuxdeploy: str,
-    appimagetool: str,
     ldd: str,
     readelf: str,
     dry_run: bool,
-) -> None:
-    """Assemble the AppDir with linuxdeploy and pack it with appimagetool."""
+) -> Path:
+    """Assemble the portable AppDir with linuxdeploy and bundled libraries.
+
+    The resulting AppDir is self-contained (glibc loader, NSS modules, and
+    every resolvable non-driver library) and can be launched via its AppRun;
+    it is the payload of the AppImage variant.
+    """
     exe = bundle_dir / BINARY_NAME
     if not exe.exists():
         raise click.ClickException(f"Flutter Linux bundle binary not found: {exe}")
@@ -209,7 +215,7 @@ def build_appimage(
     )
 
     if dry_run:
-        return
+        return appdir
 
     ld_so = _bundle_glibc_loader(appdir, readelf)
     _bundle_missing_libs(appdir, ld_so, ":".join(search_dirs))
@@ -223,10 +229,21 @@ def build_appimage(
     # itself (usr/lib), so bridge it back to the real bundle layout.
     (appdir / "usr" / "lib" / "lib").symlink_to("../bin/lib")
     (appdir / "usr" / "lib" / "data").symlink_to("../bin/data")
+    return appdir
 
+
+def pack_appimage(
+    *,
+    appdir: Path,
+    output_dir: Path,
+    version: ProjectVersion,
+    appimagetool: str,
+    dry_run: bool,
+) -> Path:
+    """Pack an assembled AppDir into an AppImage with appimagetool."""
     ver = version.render_full()
     dst = output_dir / f"{ver}-linux.AppImage"
-    pack_env = dict(env)
+    pack_env = dict(os.environ)
     pack_env["VERSION"] = version.render_semver()
     pack_env["ARCH"] = "x86_64"
     execute_command(
@@ -243,3 +260,44 @@ def build_appimage(
         env=pack_env,
     )
     info(f"Packed AppImage: {dst}")
+    return dst
+
+
+def _zip_tree(src_dir: Path, root_name: str, dst: Path) -> None:
+    """Zip the contents of src_dir under a top-level root_name folder.
+
+    File permission bits and symlinks are preserved so the archive stays
+    directly runnable after extraction.
+    """
+    with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in sorted(src_dir.rglob("*")):
+            arcname = str(Path(root_name) / path.relative_to(src_dir))
+            if path.is_symlink():
+                entry = zipfile.ZipInfo(arcname)
+                entry.create_system = 3
+                entry.external_attr = (stat.S_IFLNK | 0o777) << 16
+                zf.writestr(entry, os.readlink(path))
+            elif path.is_dir():
+                entry = zipfile.ZipInfo(arcname + "/")
+                entry.create_system = 3
+                entry.external_attr = (stat.S_IFDIR | path.stat().st_mode & 0xFFFF) << 16
+                zf.writestr(entry, b"")
+            else:
+                zf.write(path, arcname)
+
+
+def pack_native_zip(
+    *, bundle_dir: Path, output_dir: Path, version: ProjectVersion, dry_run: bool
+) -> Path:
+    """Pack the raw Flutter Linux release bundle into a zip archive as-is."""
+    exe = bundle_dir / BINARY_NAME
+    if not exe.exists():
+        raise click.ClickException(f"Flutter Linux bundle binary not found: {exe}")
+    ver = version.render_full()
+    dst = output_dir / f"{ver}-linux-native.zip"
+    if dry_run:
+        info(f"[DRY-RUN] Would pack native zip archive: {dst}")
+        return dst
+    _zip_tree(bundle_dir, "eve-fit-assistant", dst)
+    info(f"Packed native zip archive: {dst}")
+    return dst

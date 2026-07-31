@@ -38,12 +38,12 @@ def register_github_release_command(ci_group: click.Group) -> None:
         help="Base directory containing versioned APK output directories.",
     )
     @click.option(
-        "--appimage-dir",
+        "--linux-dir",
         type=click.Path(file_okay=False, path_type=Path),
-        default=PROJECT_ROOT / "cache" / "releases" / "appimage",
+        default=PROJECT_ROOT / "cache" / "releases" / "linux",
         show_default=True,
-        help="Base directory containing versioned AppImage output directories "
-        "(optional; attached only when present).",
+        help="Base directory containing versioned Linux (AppImage/zip) output "
+        "directories (optional; attached only when present).",
     )
     @click.option(
         "--dry-run",
@@ -55,7 +55,7 @@ def register_github_release_command(ci_group: click.Group) -> None:
         version_str: str,
         tag: str,
         apk_dir: Path,
-        appimage_dir: Path,
+        linux_dir: Path,
         dry_run: bool,
     ) -> None:
         """Create a GitHub Release with APK assets and changelog body.
@@ -63,8 +63,9 @@ def register_github_release_command(ci_group: click.Group) -> None:
         Reads the human release body from content.en.md and the
         auto-generated changelog from changelog.md, composes them,
         then uploads the APK and SHA1 artifacts as release assets
-        via gh release create. AppImage artifacts are attached
-        additionally when a matching versioned directory exists.
+        via gh release create. Linux artifacts (AppImage, zsync, and
+        raw zip) are attached additionally when a matching versioned
+        directory exists.
         """
         semver = version_str.split("+")[0]
         notes_dir_name = semver.replace(".", "-")
@@ -106,16 +107,18 @@ def register_github_release_command(ci_group: click.Group) -> None:
         if not apk_files:
             raise click.ClickException(f"No APK files found in {version_apk_dir}")
 
-        appimage_files: list[Path] = []
-        version_appimage_dir = appimage_dir / version_str
-        if version_appimage_dir.is_dir():
-            appimage_files = sorted(version_appimage_dir.glob("*.AppImage")) + sorted(
-                version_appimage_dir.glob("*.AppImage.zsync")
+        linux_files: list[Path] = []
+        version_linux_dir = linux_dir / version_str
+        if version_linux_dir.is_dir():
+            linux_files = (
+                sorted(version_linux_dir.glob("*.AppImage"))
+                + sorted(version_linux_dir.glob("*.AppImage.zsync"))
+                + sorted(version_linux_dir.glob("*.zip"))
             )
-        if appimage_files:
-            click.echo(f"Including {len(appimage_files)} AppImage asset(s)")
+        if linux_files:
+            click.echo(f"Including {len(linux_files)} Linux asset(s)")
         else:
-            click.echo("No AppImage artifacts found; releasing Android assets only")
+            click.echo("No Linux artifacts found; releasing Android assets only")
 
         with tempfile.NamedTemporaryFile(
             mode="w",
@@ -136,7 +139,7 @@ def register_github_release_command(ci_group: click.Group) -> None:
         cmd.extend(["--notes-file", str(body_path)])
         cmd.extend(str(f) for f in apk_files)
         cmd.extend(str(f) for f in sha1_files)
-        cmd.extend(str(f) for f in appimage_files)
+        cmd.extend(str(f) for f in linux_files)
 
         if dry_run:
             click.echo(f"[DRY-RUN] Would run: {' '.join(cmd)}")

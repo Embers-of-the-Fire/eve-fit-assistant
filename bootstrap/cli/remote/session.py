@@ -289,10 +289,19 @@ def _add_snapshot_by_file(
                     for key in ("general", "armv7", "arm64", "x64")
                     if android.get(key) is not None
                 }
+            linux = release.get("linux")
+            linux_dict = None
+            if linux is not None:
+                linux_dict = {
+                    key: linux.get(key)
+                    for key in ("appimage", "native")
+                    if linux.get(key) is not None
+                }
             index = make_release_index(
                 release_id=release["id"],
                 version=version,
                 android=android_dict,
+                linux=linux_dict,
             )
         except KeyError as e:
             raise click.ClickException(
