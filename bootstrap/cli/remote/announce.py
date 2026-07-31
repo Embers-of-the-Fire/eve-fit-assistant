@@ -880,7 +880,10 @@ def register_remote_announce(remote: click.Group) -> None:
             or _datetime.now(UTC).isoformat().replace("+00:00", "Z")
         )
         effective_channels = split_csv(channels) or spec.get("channels") or ["testing"]
-        effective_platforms = split_csv(platforms) or spec.get("platforms") or []
+        platforms_parsed = split_csv(platforms)
+        effective_platforms = (
+            platforms_parsed if platforms_parsed is not None else spec.get("platforms") or []
+        )
         effective_tags = split_csv(tags) or spec.get("tags") or ["release-note"]
 
         _valid_platforms = {p.value for p in AnnouncementPlatform}
