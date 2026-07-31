@@ -15,7 +15,7 @@ concurrency:
 jobs:
   identify:
     name: Identify release PR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       skip: ${{ steps.identify.outputs.skip }}
     steps:

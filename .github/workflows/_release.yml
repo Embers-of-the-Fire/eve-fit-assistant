@@ -302,7 +302,7 @@ jobs:
   tag:
     name: Create Git tag
     needs: release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     if: inputs.test_mode == false
     permissions:
       contents: write

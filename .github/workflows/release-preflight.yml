@@ -49,7 +49,7 @@ jobs:
     name: Drop test labels on update
     permissions:
       pull-requests: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     # Drop stale testing labels only when a release branch is updated. This
     # keeps the bypass protection intact (any commit to a release/ PR clears
     # V-Test/V-Tested Release) while avoiding noise on unrelated PRs.

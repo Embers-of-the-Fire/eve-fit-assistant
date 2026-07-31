@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   calculate_matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       jobs: ${{ steps.matrix.outputs.jobs }}
     steps:
