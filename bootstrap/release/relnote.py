@@ -173,7 +173,6 @@ def create_raw_release_note(
             )
         if dry_run:
             return directory, entry_id
-        shutil.rmtree(directory)
 
     if dry_run:
         return directory, entry_id
@@ -188,6 +187,8 @@ def create_raw_release_note(
     tag = version.render_tag()
     changelog_body = _run_cliff(tag, from_ref=from_ref)
 
+    if directory.exists():
+        shutil.rmtree(directory)
     directory.mkdir(parents=True, exist_ok=True)
     spec_path = directory / "spec.yaml"
     changelog_path = directory / "changelog.md"
