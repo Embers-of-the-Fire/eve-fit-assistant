@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/announcements/repository/announcement_repository.dart"
     show appVersionProvider;
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
+import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
 import "package:eve_fit_assistant/features/app_update/platform/manual_download_dialog.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
@@ -86,6 +87,13 @@ RemoteAppRelease _release({String releaseId = "rel-2", String version = "2.0.0"}
       ),
     );
 
+const _androidArtifact = AppUpdateArtifact(
+  variant: "general",
+  identifier: "ident/general",
+  contentHash: "hash",
+  size: 100,
+);
+
 AppSetting _setting({required bool silentUpdate}) => AppSetting(
   locale: Locale.zh,
   enableDebugLog: false,
@@ -124,6 +132,7 @@ void main() {
     required RemoteAppRelease release,
     required _FakeAppUpdateController controller,
     AppUpdatePlatformAdapter platformAdapter = const AndroidAppUpdateAdapter(),
+    AppUpdateArtifact? artifact,
   }) => ProviderScope(
     overrides: [
       appSettingServiceProvider.overrideWithValue(setting),
@@ -131,7 +140,7 @@ void main() {
       appUpdateControllerProvider(release).overrideWith(() => controller),
       appVersionStateStoreProvider.overrideWithValue(versionStore),
       appVersionProvider.overrideWith((_) async => "1.0.0"),
-      appUpdateArtifactProvider.overrideWith((_, _) async => null),
+      appUpdateArtifactProvider.overrideWith((_, _) async => artifact),
       appReleaseNoteProvider.overrideWith((_, _) async => null),
       appUpdatePlatformAdapterProvider.overrideWithValue(platformAdapter),
     ],
@@ -234,6 +243,7 @@ void main() {
         release: release,
         controller: controller,
         platformAdapter: const LinuxAppUpdateAdapter(),
+        artifact: _androidArtifact,
       ),
     );
     await tester.pumpAndSettle();
@@ -244,6 +254,9 @@ void main() {
     // Both Linux artifacts are listed as manual download targets.
     expect(find.text("AppImage"), findsOneWidget);
     expect(find.text("便携压缩包 (.zip)"), findsOneWidget);
+    // The Android APK size must not leak into the summary on Linux, even
+    // though the release carries a resolvable Android artifact.
+    expect(find.text("100B"), findsNothing);
   });
 
   testWidgets("silent strategy falls back to the manual dialog without self-update", (
@@ -260,6 +273,7 @@ void main() {
         release: release,
         controller: controller,
         platformAdapter: const LinuxAppUpdateAdapter(),
+        artifact: _androidArtifact,
       ),
     );
     await tester.pumpAndSettle();
@@ -269,5 +283,7 @@ void main() {
     expect(controller.downloadCalls, 0);
     expect(find.byType(ManualReleaseDownloadDialog), findsOneWidget);
     expect(find.byType(ConfirmDialog), findsNothing);
+    // The resolved Android artifact size stays hidden on Linux.
+    expect(find.text("100B"), findsNothing);
   });
 }
