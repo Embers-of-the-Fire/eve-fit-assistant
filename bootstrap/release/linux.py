@@ -6,16 +6,13 @@ bundle; the resulting AppDir is packed into an AppImage with appimagetool.
 
 Native variant: the raw Flutter Linux release bundle zipped as-is.
 
-Two nix-specific concerns are handled explicitly for the AppImage variant:
-
-- The bundle binary's PT_INTERP points into the nix store, so the glibc loader
-  (and its NSS modules) is bundled and the custom AppRun launches the app
-  through it. This also makes host graphics drivers work: their symbols are
-  satisfied by the bundled (newer) glibc.
-- linuxdeploy's excludelist skips libs that are still NEEDED by the binary
-  (harfbuzz, fontconfig, X11 client libs, ...), so a fixpoint pass bundles
-  every ldd-resolvable lib not yet in the AppDir, except the dlopen'd
-  graphics-driver family, which must always come from the host.
+The bundle binary's PT_INTERP points into the nix store, so the glibc loader
+(and its NSS modules) is bundled and the custom AppRun launches the app
+through it. This also makes host graphics drivers work: their symbols are
+satisfied by the bundled (newer) glibc. Every other library (fontconfig,
+harfbuzz, X11 client libs, libstdc++, ...) is intentionally left to the
+host per linuxdeploy's excludelist; graphics drivers are always resolved
+from the host so the AppImage stays portable.
 """
 
 from __future__ import annotations
@@ -48,12 +45,6 @@ BINARY_NAME = "eve_fit_assistant"
 _GITHUB_REPO = "Embers-of-the-Fire/eve-fit-assistant"
 
 _PACKAGING_DIR = PROJECT_ROOT / "distro" / "linux" / "appimage"
-
-# dlopen'd graphics-driver stack: always provided by the host, never bundled,
-# so the AppImage stays portable and uses the host's GPU drivers.
-_DRIVER_LIB_PATTERN = re.compile(
-    r"^lib(GL|EGL|GLESv2|OpenGL|GLX|GLdispatch|vulkan|drm|gbm|va|va-drm|va-x11|nvidia|cuda)[.-]"
-)
 
 
 def _run_capture(cmd: list[str], *, env: dict[str, str] | None = None) -> str:
@@ -91,7 +82,7 @@ def _resolved_lib_dirs(ldd: str, files: list[Path]) -> list[str]:
     return sorted(dirs)
 
 
-def _bundle_glibc_loader(appdir: Path, readelf: str) -> Path:
+def _bundle_glibc_loader(appdir: Path, readelf: str) -> None:
     """Copy the ELF interpreter (ld-linux) and glibc NSS modules into the AppDir."""
     interp = _elf_interpreter(appdir / "usr" / "bin" / BINARY_NAME, readelf)
     ld_so = appdir / "usr" / "lib" / interp.name
@@ -101,51 +92,6 @@ def _bundle_glibc_loader(appdir: Path, readelf: str) -> Path:
             shutil.copy2(src.resolve(), appdir / "usr" / "lib" / name)
     if not ld_so.exists():
         raise click.ClickException(f"Failed to bundle ELF interpreter: {interp}")
-    return ld_so
-
-
-def _bundle_missing_libs(appdir: Path, ld_so: Path, search_path: str) -> None:
-    """Fixpoint: bundle every resolvable lib not yet in the AppDir.
-
-    Skips the dlopen'd graphics-driver family, which must come from the host.
-    """
-    usr_lib = appdir / "usr" / "lib"
-    targets = [appdir / "usr" / "bin" / BINARY_NAME]
-    targets.extend(sorted((appdir / "usr" / "bin" / "lib").glob("*.so*")))
-    lib_path = f"{appdir}/usr/bin/lib:{usr_lib}:{search_path}"
-    while True:
-        missing: dict[str, Path] = {}
-        for f in targets + sorted(usr_lib.glob("*.so*")):
-            out = subprocess.run(
-                [str(ld_so), "--library-path", lib_path, "--list", str(f)],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
-            )
-            if out.returncode != 0:
-                raise click.ClickException(
-                    f"ELF loader failed to resolve dependencies of {f} "
-                    f"[{out.returncode}]:\n{out.stdout.strip()}"
-                )
-            for line in out.stdout.splitlines():
-                parts = line.split()
-                if (
-                    len(parts) >= 3
-                    and parts[2].startswith("/")
-                    and not parts[2].startswith(str(appdir))
-                ):
-                    missing.setdefault(parts[0], Path(parts[2]))
-        added = False
-        for name, src in missing.items():
-            if _DRIVER_LIB_PATTERN.match(name) or (usr_lib / name).exists():
-                continue
-            debug(f"Bundling additional library: {src}")
-            shutil.copy2(src.resolve(), usr_lib / name)
-            added = True
-        if not added:
-            break
 
 
 def assemble_appdir(
@@ -157,11 +103,11 @@ def assemble_appdir(
     readelf: str,
     dry_run: bool,
 ) -> Path:
-    """Assemble the portable AppDir with linuxdeploy and bundled libraries.
+    """Assemble the portable AppDir with linuxdeploy and the bundled loader.
 
-    The resulting AppDir is self-contained (glibc loader, NSS modules, and
-    every resolvable non-driver library) and can be launched via its AppRun;
-    it is the payload of the AppImage variant.
+    The resulting AppDir bundles the glibc loader and NSS modules and can be
+    launched via its AppRun; all other libraries are resolved from the host
+    at runtime. It is the payload of the AppImage variant.
     """
     exe = bundle_dir / BINARY_NAME
     if not exe.exists():
@@ -222,8 +168,7 @@ def assemble_appdir(
     if dry_run:
         return appdir
 
-    ld_so = _bundle_glibc_loader(appdir, readelf)
-    _bundle_missing_libs(appdir, ld_so, ":".join(search_dirs))
+    _bundle_glibc_loader(appdir, readelf)
 
     # Drop duplicates of bundle libs that linuxdeploy redeployed into usr/lib.
     for f in (appdir / "usr" / "bin" / "lib").glob("*.so*"):
