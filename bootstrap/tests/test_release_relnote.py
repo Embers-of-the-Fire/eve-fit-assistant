@@ -66,7 +66,7 @@ def test_create_raw_release_note_writes_spec_and_changelog(
     assert spec["appVersion"] == "0.2.0-beta.1"
     assert spec["tags"] == ["release-note"]
     assert spec["channels"] == ["testing"]
-    assert spec["platforms"] == ["android", "ios"]
+    assert spec["platforms"] == []
     assert "publishedAt" in spec
 
     changelog = changelog_path.read_text(encoding="utf-8")
@@ -93,6 +93,23 @@ def test_create_raw_release_note_custom_channels_and_platforms(
     spec = yaml.safe_load((isolated_changelog_root / "0-2-0-beta-1" / "spec.yaml").read_text())
     assert spec["channels"] == ["stable"]
     assert spec["platforms"] == ["ios"]
+
+
+def test_create_raw_release_note_rejects_invalid_platforms(
+    tmp_path: Path,
+    version: ProjectVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    stub = _write_cliff_stub(tmp_path)
+
+    with (
+        pytest.raises(click.ClickException, match="Invalid platform"),
+        patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+        patch("bootstrap.release.relnote.get_command", return_value=str(stub)),
+    ):
+        relnote.create_raw_release_note(version, platforms=["ios", "fuchsiaos"])
+
+    assert not (isolated_changelog_root / "0-2-0-beta-1").exists()
 
 
 def test_create_raw_release_note_refuses_overwrite(
@@ -219,6 +236,54 @@ def test_create_raw_release_note_with_from_ref(
     assert spec["fromRef"] == "v0.1.0"
     assert spec["appVersion"] == "0.2.0-beta.1"
     assert directory.is_dir()
+
+
+def test_create_raw_release_note_force_invalid_platform_preserves_existing(
+    tmp_path: Path,
+    version: ProjectVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    directory = isolated_changelog_root / "0-2-0-beta-1"
+    directory.mkdir()
+    existing = directory / "spec.yaml"
+    existing.write_text("id: old", encoding="utf-8")
+
+    stub = _write_cliff_stub(tmp_path)
+
+    with (
+        pytest.raises(click.ClickException, match="Invalid platform"),
+        patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+        patch("bootstrap.release.relnote.get_command", return_value=str(stub)),
+    ):
+        relnote.create_raw_release_note(version, force=True, platforms=["fuchsiaos"])
+
+    assert directory.is_dir()
+    assert existing.read_text(encoding="utf-8") == "id: old"
+
+
+def test_create_raw_release_note_force_cliff_failure_preserves_existing(
+    tmp_path: Path,
+    version: ProjectVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    directory = isolated_changelog_root / "0-2-0-beta-1"
+    directory.mkdir()
+    existing = directory / "changelog.md"
+    existing.write_text("# old changelog", encoding="utf-8")
+
+    with (
+        pytest.raises(click.ClickException, match="git-cliff failed"),
+        patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+        patch("bootstrap.release.relnote.get_command", return_value="/usr/bin/git-cliff"),
+        patch(
+            "bootstrap.release.relnote.subprocess.run",
+            return_value=__import__("subprocess").CompletedProcess([], 1, "", "boom"),
+        ),
+    ):
+        relnote.create_raw_release_note(version, force=True)
+
+    assert directory.is_dir()
+    assert existing.read_text(encoding="utf-8") == "# old changelog"
 
 
 def test_create_raw_release_note_with_from_ref_dry_run(

@@ -57,6 +57,7 @@
         pkgs.zlib
         pkgs.openssl
         pkgs.curl
+        pkgs.libsecret
       ];
 
       nativeRustToolchainPath = pkgs.lib.makeBinPath [
@@ -121,6 +122,37 @@
         wrangler
       ];
 
+      # Not packaged in nixpkgs; wrap the upstream AppImage with appimage-run.
+      # Not packaged in nixpkgs. The upstream AppImage's payload binaries
+      # (appimagetool, mksquashfs, zsyncmake, desktop-file-validate) are
+      # statically linked and run natively; the type-2 runtime used for the
+      # AppImages it creates is embedded, so no wrapper or network is needed.
+      appimagetoolAppImage = pkgs.fetchurl {
+        name = "appimagetool-x86_64.AppImage";
+        url = "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage";
+        hash = "sha256-ptceK2zWb46NFsN60WRliYXgz1/KqVDJCkgokMudE+A=";
+      };
+
+      appimagetool =
+        pkgs.runCommand "appimagetool" { nativeBuildInputs = [ pkgs.squashfsTools ]; }
+          ''
+            # The payload is a squashfs image appended to the static runtime.
+            # Locate it via the 'hsqs' magic; the runtime contains a false
+            # positive, so try every offset until extraction succeeds.
+            for off in $(grep -abo hsqs ${appimagetoolAppImage} | cut -d: -f1); do
+              if unsquashfs -o "$off" -d payload ${appimagetoolAppImage} >/dev/null 2>&1; then
+                break
+              fi
+            done
+            test -d payload || { echo "failed to extract appimagetool payload"; exit 1; }
+            install -Dm755 payload/usr/bin/* -t $out/bin
+          '';
+
+      appimageTools = [
+        appimagetool
+        pkgs.linuxdeploy
+      ];
+
       ciPackages = with pkgs; [
         zizmor
       ];
@@ -147,11 +179,16 @@
         let
           # Full development shell
           fullShell = pkgs.mkShell {
-            packages = basePackages ++ [
+            packages = basePackages ++ appimageTools ++ [
               pkgs.rustup
               pkgs.worker-build
               developmentAndroidSdk
               developmentAndroidComposition.platform-tools
+              pkgs.apksigner
+
+              # linux platform support
+              pkgs.libsecret
+              pkgs.xdg-user-dirs
             ];
 
             LANG = "C.UTF-8";
@@ -187,7 +224,6 @@
               androidComposition.platform-tools
               pkgs.apksigner
             ];
-
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
@@ -211,11 +247,37 @@
               . scripts/setup-android-sdk.sh
             '';
           };
+
+          # Linux desktop build shell (AppImage packaging; no Android SDK)
+          linuxShell = pkgs.mkShell {
+            packages = basePackages ++ appimageTools ++ [
+              pkgs.rustup
+              pkgs.libsecret
+              pkgs.xdg-user-dirs
+            ];
+
+            LANG = "C.UTF-8";
+            LC_ALL = "C.UTF-8";
+            JAVA_HOME = jdk17.home;
+            flutter = "${pkgs.flutter}";
+            UV_PYTHON = "${python3}/bin/python3";
+            UV_PYTHON_DOWNLOADS = "never";
+            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+            shellHook = ''
+              export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
+              export PATH="${nativeRustToolchainPath}:$PATH"
+              . scripts/setup-ld-library-path.sh
+              . scripts/setup-rust-toolchain.sh
+            '';
+          };
         in
         {
           default = fullShell;
           full = fullShell;
           android = androidShell;
+          linux = linuxShell;
 
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
           python = pkgs.mkShell {
@@ -299,7 +361,8 @@
               ++ nativeBuildPackages
               ++ dartPackages
               ++ protobufPackages
-              ++ frbPackages;
+              ++ frbPackages
+              ++ [ pkgs.libsecret ];
 
             inherit (localeEnv) LANG LC_ALL;
             JAVA_HOME = jdk17.home;

@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/components/list/dropdown_list_tile.dart";
 import "package:eve_fit_assistant/config/list_tile_anti_scroll.dart";
 import "package:eve_fit_assistant/config/locale.dart" show Locale;
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -42,7 +43,8 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(MarketServerFallbackTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionUpdate),
         const ConfigListTile.custom(UpdateIgnoreBugfixTile()),
-        const ConfigListTile.custom(UpdateSilentTile()),
+        if (ref.watch(appUpdatePlatformAdapterProvider).supportsSelfUpdate)
+          const ConfigListTile.custom(UpdateSilentTile()),
       ],
     ),
   );

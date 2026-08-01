@@ -7,6 +7,7 @@ message ReleaseIndex {
   required string id = 2;
   required string version = 3;
   optional AndroidArtifacts android = 4;
+  optional LinuxArtifacts linux = 5;
 }
 
 message AndroidArtifactVariant {
@@ -20,4 +21,15 @@ message AndroidArtifacts {
   optional AndroidArtifactVariant armv7 = 2;
   optional AndroidArtifactVariant arm64 = 3;
   optional AndroidArtifactVariant x64 = 4;
+}
+
+message LinuxArtifactVariant {
+  required string identifier = 1;
+  required string content_hash = 2;
+  required int64 size = 3;
+}
+
+message LinuxArtifacts {
+  optional LinuxArtifactVariant appimage = 1;
+  optional LinuxArtifactVariant native = 2;
 }

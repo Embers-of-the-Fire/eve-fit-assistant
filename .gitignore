@@ -85,3 +85,7 @@ pkg/*/.wrangler/
 # Python artifact
 *.egg-info/
 
+# External build artifact, e.g. AppImage
+dist/
+appimage-build/
+

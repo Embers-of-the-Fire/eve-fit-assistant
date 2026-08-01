@@ -41,7 +41,7 @@ def register_release_commands(cli_group: click.Group) -> None:
     @click.option(
         "--platforms",
         default=None,
-        help="Comma-separated platform list (default: android,ios).",
+        help="Comma-separated platform list (default: all platforms).",
     )
     @click.option(
         "--force",

@@ -1,0 +1,50 @@
+name: Setup build env
+
+description: >-
+  Shared platform build preamble: Nix, Python dependencies, dev config,
+  backend env, native CI data, Flutter dependencies, and code generation.
+  The `shell` input selects the platform dev shell (android, linux) used for
+  Flutter and codegen steps.
+
+inputs:
+  shell:
+    description: "Platform dev shell to use for Flutter/codegen steps (e.g. android, linux)."
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+    - name: Install Python dependencies
+      shell: bash
+      run: nix develop .#python --command bash -c 'uv sync'
+
+    - name: Init dev env
+      uses: ./.github/actions/init-dev-env
+
+    - name: Setup CI developer config
+      shell: bash
+      run: nix develop .#python --command bash -c 'uv run x.py dev env write-backend'
+
+    - name: Fetch native CI data
+      shell: bash
+      run: |
+        curl -sfLo /tmp/ci-native-data.tar.gz \
+          https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+        mkdir -p "$GITHUB_WORKSPACE/ci-native"
+        tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
+        mkdir -p rust/lib/eve-fit-os/data/out
+        ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+
+    - name: Install Flutter dependencies
+      shell: bash
+      env:
+        BUILD_SHELL: ${{ inputs.shell }}
+      run: nix develop ".#${BUILD_SHELL}" --command bash -c 'flutter pub get'
+
+    - name: Generate all
+      shell: bash
+      env:
+        BUILD_SHELL: ${{ inputs.shell }}
+      run: nix develop ".#${BUILD_SHELL}" --command bash -c 'uv run x.py generate -f all'

@@ -196,6 +196,17 @@ class RemoteCatalogService {
     }
   }
 
+  static const _maxFetchAttempts = 3;
+
+  static bool _isRetryable(DioException e) => switch (e.type) {
+    DioExceptionType.connectionTimeout ||
+    DioExceptionType.sendTimeout ||
+    DioExceptionType.receiveTimeout ||
+    DioExceptionType.connectionError => true,
+    DioExceptionType.badResponse => (e.response?.statusCode ?? 0) >= 500,
+    _ => false,
+  };
+
   Future<Either<CatalogError, Uint8List>> _fetchBytes(
     Uri uri, {
     Dio? dio,
@@ -203,21 +214,27 @@ class RemoteCatalogService {
     ProgressCallback? onReceiveProgress,
   }) async {
     final d = dio ?? this.dio;
-    try {
-      final response = await d.getUri<Uint8List>(
-        uri,
-        options: options ?? _indexOptions,
-        onReceiveProgress: onReceiveProgress,
-      );
-      final data = response.data;
-      if (data == null) {
-        return Left(CatalogParseError(message: "Empty byte response: $uri"));
+    for (var attempt = 1; ; attempt++) {
+      try {
+        final response = await d.getUri<Uint8List>(
+          uri,
+          options: options ?? _indexOptions,
+          onReceiveProgress: onReceiveProgress,
+        );
+        final data = response.data;
+        if (data == null) {
+          return Left(CatalogParseError(message: "Empty byte response: $uri"));
+        }
+        return Right(data);
+      } on DioException catch (e) {
+        if (attempt < _maxFetchAttempts && _isRetryable(e)) {
+          await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
+          continue;
+        }
+        return Left(_mapDioException(e, uri));
+      } catch (e) {
+        return Left(CatalogNetworkError(message: e.toString()));
       }
-      return Right(data);
-    } on DioException catch (e) {
-      return Left(_mapDioException(e, uri));
-    } catch (e) {
-      return Left(CatalogNetworkError(message: e.toString()));
     }
   }
 

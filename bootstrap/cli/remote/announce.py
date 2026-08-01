@@ -21,6 +21,7 @@ from bootstrap.docs.announcements_remote import ACTIVE_KEY
 from bootstrap.docs.announcements_remote import DOCUMENT_ID_PATTERN
 from bootstrap.docs.announcements_remote import AnnouncementEntry
 from bootstrap.docs.announcements_remote import AnnouncementLocalization
+from bootstrap.docs.announcements_remote import AnnouncementPlatform
 from bootstrap.docs.announcements_remote import AnnouncementRemoteSync
 from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 from bootstrap.docs.announcements_remote import run_preflight_validation
@@ -266,6 +267,17 @@ def register_remote_announce(remote: click.Group) -> None:
                 "English body is required (provide --en-body or --en-body-file)"
             )
 
+        tags_list = [t.strip() for t in tags.split(",") if t.strip()]
+        channels_list = [c.strip() for c in channels.split(",") if c.strip()]
+        platforms_list = [p.strip() for p in platforms.split(",") if p.strip()]
+
+        _valid_platforms = {p.value for p in AnnouncementPlatform}
+        for p in platforms_list:
+            if p not in _valid_platforms:
+                raise click.ClickException(
+                    f"Unsupported platform {p!r}. Valid: {', '.join(sorted(_valid_platforms))}"
+                )
+
         zh_hash = workspace.store_document(zh_body_text)
         en_hash = workspace.store_document(en_body_text)
 
@@ -275,16 +287,9 @@ def register_remote_announce(remote: click.Group) -> None:
 
             published_at = _datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
-        tags_list = [t.strip() for t in tags.split(",") if t.strip()]
-        channels_list = [c.strip() for c in channels.split(",") if c.strip()]
-        platforms_list = [p.strip() for p in platforms.split(",") if p.strip()]
-
         if not channels_list:
             bootstrap.config.DeveloperConfiguration.ensure_loaded()
             channels_list = [bootstrap.config.DEV_CONFIGURATION.remote.channel.value]
-
-        if not platforms_list:
-            platforms_list = ["android", "ios"]
 
         new_entry = AnnouncementEntry(
             id=entry_id,
@@ -433,6 +438,16 @@ def register_remote_announce(remote: click.Group) -> None:
         if entry_to_edit is None:
             raise click.ClickException(f"Entry {entry_id!r} not found. Use 'add' first.")
 
+        if platforms is not None:
+            _valid_platforms = {p.value for p in AnnouncementPlatform}
+            parsed_platforms = [p.strip() for p in platforms.split(",") if p.strip()]
+            for p in parsed_platforms:
+                if p not in _valid_platforms:
+                    raise click.ClickException(
+                        f"Unsupported platform {p!r}. Valid: {', '.join(sorted(_valid_platforms))}"
+                    )
+            entry_to_edit.platforms = [AnnouncementPlatform(p) for p in parsed_platforms]
+
         if zh_body:
             zh_hash = workspace.store_document(zh_body)
             entry_to_edit.localizations["zh"].body_hash = zh_hash
@@ -465,8 +480,6 @@ def register_remote_announce(remote: click.Group) -> None:
             entry_to_edit.startup = startup
         if channels is not None:
             entry_to_edit.channels = [c.strip() for c in channels.split(",") if c.strip()]
-        if platforms is not None:
-            entry_to_edit.platforms = [p.strip() for p in platforms.split(",") if p.strip()]
         if min_app_version is not None:
             entry_to_edit.min_app_version = min_app_version
         if max_app_version is not None:
@@ -785,7 +798,7 @@ def register_remote_announce(remote: click.Group) -> None:
     @click.option(
         "--platforms",
         default=None,
-        help="Comma-separated platform list (default: from spec.yaml or android,ios).",
+        help="Comma-separated platform list (default: from spec.yaml, or all platforms if unset).",
     )
     @click.option(
         "--published-at",
@@ -867,8 +880,18 @@ def register_remote_announce(remote: click.Group) -> None:
             or _datetime.now(UTC).isoformat().replace("+00:00", "Z")
         )
         effective_channels = split_csv(channels) or spec.get("channels") or ["testing"]
-        effective_platforms = split_csv(platforms) or spec.get("platforms") or ["android", "ios"]
+        platforms_parsed = split_csv(platforms)
+        effective_platforms = (
+            platforms_parsed if platforms_parsed is not None else spec.get("platforms") or []
+        )
         effective_tags = split_csv(tags) or spec.get("tags") or ["release-note"]
+
+        _valid_platforms = {p.value for p in AnnouncementPlatform}
+        for p in effective_platforms:
+            if p not in _valid_platforms:
+                raise click.ClickException(
+                    f"Unsupported platform {p!r}. Valid: {', '.join(sorted(_valid_platforms))}"
+                )
 
         workspace_root = get_announce_workspace()
         workspace = AnnouncementWorkspace(workspace_root)

@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
@@ -15,6 +16,7 @@ import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/release_sync.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
 import "package:mocktail/mocktail.dart";
@@ -23,11 +25,30 @@ class MockChannelService extends Mock implements ChannelService {}
 
 class MockReleaseSyncService extends Mock implements ReleaseSyncService {}
 
-RemoteAppRelease _release({required String releaseId, required String version}) => RemoteAppRelease(
+AndroidArtifacts _androidArtifacts() => AndroidArtifacts(
+  general: AndroidArtifactVariant(identifier: "ident/general", contentHash: "hash", size: Int64(1)),
+);
+
+LinuxArtifacts _linuxArtifacts() => LinuxArtifacts(
+  appimage: LinuxArtifactVariant(identifier: "ident/appimage", contentHash: "hash", size: Int64(1)),
+);
+
+RemoteAppRelease _release({
+  required String releaseId,
+  required String version,
+  bool withAndroid = true,
+  bool withLinux = true,
+}) => RemoteAppRelease(
   releaseId: releaseId,
   version: version,
   snapshotHash: "release_snapshot",
-  index: ReleaseIndex(schemaVersion: 1, id: releaseId, version: version),
+  index: ReleaseIndex(
+    schemaVersion: 1,
+    id: releaseId,
+    version: version,
+    android: withAndroid ? _androidArtifacts() : null,
+    linux: withLinux ? _linuxArtifacts() : null,
+  ),
 );
 
 void main() {
@@ -61,6 +82,7 @@ void main() {
     required bool remoteEnabled,
     String channel = "testing",
     bool ignoreBugfixUpdates = false,
+    AppUpdatePlatformAdapter platformAdapter = const AndroidAppUpdateAdapter(),
   }) => ProviderContainer(
     overrides: [
       appSettingServiceProvider.overrideWithValue(
@@ -78,6 +100,7 @@ void main() {
       appVersionStateStoreProvider.overrideWithValue(versionStore),
       channelServiceProvider.overrideWith((_) => mockChannelService),
       releaseSyncServiceProvider.overrideWith((_) => mockReleaseSyncService),
+      appUpdatePlatformAdapterProvider.overrideWithValue(platformAdapter),
     ],
   );
 
@@ -404,5 +427,63 @@ void main() {
         ignoreBugfix: false,
       ),
     ).called(1);
+  });
+
+  void stubUpdateAvailable(RemoteAppRelease release) {
+    final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
+    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(
+      () => mockReleaseSyncService.checkStatusFromSnapshotHash(
+        snapshotHash: "release_snapshot",
+        ignoreBugfix: any(named: "ignoreBugfix"),
+      ),
+    ).thenAnswer((_) async => Right(ReleaseCheckUpdateAvailable(release: release)));
+  }
+
+  test("filters out a release without artifacts for the current platform", () async {
+    final container = _container(
+      remoteEnabled: true,
+      platformAdapter: const LinuxAppUpdateAdapter(),
+    );
+    addTearDown(container.dispose);
+
+    stubUpdateAvailable(_release(releaseId: "rel-2", version: "2.0.0", withLinux: false));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUpToDate>());
+    expect(await container.read(remoteAppReleaseProvider.future), const None());
+    expect(await container.read(availableAppReleaseProvider.future), const None());
+  });
+
+  test("surfaces a release with artifacts for the current platform", () async {
+    final container = _container(
+      remoteEnabled: true,
+      platformAdapter: const LinuxAppUpdateAdapter(),
+    );
+    addTearDown(container.dispose);
+
+    stubUpdateAvailable(_release(releaseId: "rel-2", version: "2.0.0", withAndroid: false));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUpdateAvailable>());
+    final release = await container.read(availableAppReleaseProvider.future);
+    expect(release.toNullable()?.releaseId, "rel-2");
+  });
+
+  test("filters out every release on an unsupported platform", () async {
+    final container = _container(
+      remoteEnabled: true,
+      platformAdapter: const UnsupportedAppUpdateAdapter(),
+    );
+    addTearDown(container.dispose);
+
+    stubUpdateAvailable(_release(releaseId: "rel-2", version: "2.0.0"));
+
+    final status = await container.read(appReleaseCheckStatusProvider.future);
+
+    expect(status, isA<ReleaseCheckUpToDate>());
+    expect(await container.read(availableAppReleaseProvider.future), const None());
   });
 }

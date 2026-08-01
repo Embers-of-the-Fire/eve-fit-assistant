@@ -178,6 +178,8 @@ _PB2_ALIAS_MAP: dict[str, tuple[str, str]] = {
     "ReleaseIndex": ("release_index_pb2", "ReleaseIndex"),
     "AndroidArtifactVariant": ("release_index_pb2", "AndroidArtifactVariant"),
     "AndroidArtifacts": ("release_index_pb2", "AndroidArtifacts"),
+    "LinuxArtifactVariant": ("release_index_pb2", "LinuxArtifactVariant"),
+    "LinuxArtifacts": ("release_index_pb2", "LinuxArtifacts"),
     "ServerIndex": ("server_index_pb2", "ServerIndex"),
     "GenerationResources": ("generation_resources_pb2", "GenerationResources"),
     "GenerationPointer": ("generation_pointer_pb2", "GenerationPointer"),
@@ -339,8 +341,8 @@ def make_generation_pointer(snapshot_hash: str) -> GenerationPointer:
     return msg
 
 
-def _make_artifact_variant(data: dict[str, object]) -> AndroidArtifactVariant:
-    v = _load_pb2_type("AndroidArtifactVariant")()
+def _make_artifact_variant(kind: str, data: dict[str, object]):
+    v = _load_pb2_type(kind)()
     v.identifier = data["identifier"]
     v.content_hash = data["content_hash"]
     v.size = data["size"]
@@ -351,10 +353,12 @@ def make_release_index(
     release_id: str,
     version: str,
     android: dict[str, dict[str, object]] | None = None,
+    linux: dict[str, dict[str, object]] | None = None,
 ) -> ReleaseIndex:
-    """Build a ReleaseIndex with optional AndroidArtifacts.
+    """Build a ReleaseIndex with optional AndroidArtifacts and LinuxArtifacts.
 
     android keys: general (required), armv7, arm64, x64 (optional).
+    linux keys: appimage, native (both optional).
     Each value is a dict with {"identifier": str, "content_hash": str, "size": int}.
     identifier is the literal release URI (e.g. "release://1.0.0/android/general").
     content_hash is the SHA-256 of the artifact file bytes.
@@ -366,14 +370,21 @@ def make_release_index(
     msg.version = version
     if android:
         aa = _load_pb2_type("AndroidArtifacts")()
-        aa.general.CopyFrom(_make_artifact_variant(android["general"]))
+        aa.general.CopyFrom(_make_artifact_variant("AndroidArtifactVariant", android["general"]))
         if "armv7" in android:
-            aa.armv7.CopyFrom(_make_artifact_variant(android["armv7"]))
+            aa.armv7.CopyFrom(_make_artifact_variant("AndroidArtifactVariant", android["armv7"]))
         if "arm64" in android:
-            aa.arm64.CopyFrom(_make_artifact_variant(android["arm64"]))
+            aa.arm64.CopyFrom(_make_artifact_variant("AndroidArtifactVariant", android["arm64"]))
         if "x64" in android:
-            aa.x64.CopyFrom(_make_artifact_variant(android["x64"]))
+            aa.x64.CopyFrom(_make_artifact_variant("AndroidArtifactVariant", android["x64"]))
         msg.android.CopyFrom(aa)
+    if linux:
+        la = _load_pb2_type("LinuxArtifacts")()
+        if "appimage" in linux:
+            la.appimage.CopyFrom(_make_artifact_variant("LinuxArtifactVariant", linux["appimage"]))
+        if "native" in linux:
+            la.native.CopyFrom(_make_artifact_variant("LinuxArtifactVariant", linux["native"]))
+        msg.linux.CopyFrom(la)
     return msg
 
 

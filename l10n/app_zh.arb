@@ -287,6 +287,11 @@
   "appReleaseUpdateNoArtifact": "该版本没有可用的 Android APK。",
   "appReleaseUpdateCopyDownloadLink": "复制下载链接",
   "appReleaseUpdateDownloadLinkCopied": "下载链接已复制到剪贴板",
+  "appReleaseUpdateManualDownloadBody": "当前平台不支持在应用内下载更新，请从下方链接手动下载并安装新版本。",
+  "appReleaseUpdateDownloadTargetsTitle": "下载",
+  "appReleaseUpdateDownloadTargetAppImage": "AppImage",
+  "appReleaseUpdateDownloadTargetNative": "便携压缩包 (.zip)",
+  "appReleaseUpdateOpenDownloadLink": "在浏览器中打开",
   "appReleaseSilentUpdateReadyTitle": "更新已就绪",
   "appReleaseSilentUpdateReadyMessage": "新版本 v{version} 已下载完成，是否立即安装？",
   "@appReleaseSilentUpdateReadyMessage": {

@@ -32,6 +32,7 @@ import uuid as _uuid
 
 from datetime import UTC
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -49,6 +50,21 @@ if TYPE_CHECKING:
 
 DOCUMENT_ID_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
 ACTIVE_KEY = "active"
+
+
+class AnnouncementPlatform(StrEnum):
+    """Target platforms for announcement entries.
+
+    Values must match Dart's `Platform.operatingSystem` strings and the
+    `AnnouncementPlatform` enum in `lib/features/announcements/models/announcement_platform.dart`.
+    """
+
+    ANDROID = "android"
+    IOS = "ios"
+    LINUX = "linux"
+    MACOS = "macos"
+    WINDOWS = "windows"
+    FUCHSIA = "fuchsia"
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +109,7 @@ class AnnouncementEntry(BaseModel):
     min_app_version: str | None = Field(alias="minAppVersion", default=None)
     max_app_version: str | None = Field(alias="maxAppVersion", default=None)
     channels: list[str] = Field(default_factory=list)
-    platforms: list[str] = Field(default_factory=list)
+    platforms: list[AnnouncementPlatform] = Field(default_factory=list)
     app_version: str | None = Field(alias="appVersion", default=None)
     localizations: dict[str, AnnouncementLocalization]
 

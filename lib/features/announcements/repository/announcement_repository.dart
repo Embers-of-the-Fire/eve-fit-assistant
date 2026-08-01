@@ -1,6 +1,5 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io" show Platform;
 
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
@@ -44,7 +43,7 @@ class AnnouncementRepository {
   Future<AnnouncementRawFeed> sync({
     required String localeCode,
     required String currentChannel,
-    required String currentPlatform,
+    required AnnouncementPlatform? currentPlatform,
     required String installedVersion,
   }) async {
     // 1. Load bundled entries.
@@ -121,14 +120,14 @@ class AnnouncementRepository {
     AnnouncementEntry entry,
     String localeCode,
     String currentChannel,
-    String currentPlatform,
+    AnnouncementPlatform? currentPlatform,
     String installedVersion,
   ) {
     // Step 1: Channel
     if (!entry.channels.contains(currentChannel)) return false;
 
-    // Step 2: Platform
-    if (!entry.platforms.contains(currentPlatform)) return false;
+    // Step 2: Platform (empty list = all platforms)
+    if (entry.platforms.isNotEmpty && !entry.platforms.contains(currentPlatform)) return false;
 
     // Step 3: Min version
     if (entry.minAppVersion != null &&
@@ -217,7 +216,7 @@ final announcementRawFeedProvider = FutureProvider<AnnouncementRawFeed>((Ref ref
   final raw = await repo.sync(
     localeCode: locale.name,
     currentChannel: setting.remoteContent.channel,
-    currentPlatform: Platform.operatingSystem,
+    currentPlatform: AnnouncementPlatform.current,
     installedVersion: version,
   );
 

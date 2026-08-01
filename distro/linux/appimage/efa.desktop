@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=EFA
+Comment=EVE Fit Assistant
+Exec=eve_fit_assistant
+Icon=logo
+Categories=Utility;

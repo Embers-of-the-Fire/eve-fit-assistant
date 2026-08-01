@@ -30,6 +30,14 @@ class VersionTarget:
     replacement: Callable[[re.Match[str], str], str]
 
 
+class VersionTargetMissingError(click.ClickException):
+    """Raised when a version sync target has no matching version line."""
+
+    def __init__(self, target: VersionTarget) -> None:
+        self.target = target
+        super().__init__(f"{target.description}: no version line found in {target.path}")
+
+
 def _render_pubspec(version: ProjectVersion) -> str:
     return version.render_full()
 
@@ -71,15 +79,17 @@ TARGETS = [
 ]
 
 
+def _validate_target(target: VersionTarget) -> None:
+    content = target.path.read_text(encoding="utf-8")
+    if not target.pattern.search(content):
+        raise VersionTargetMissingError(target)
+
+
 def _sync_target(target: VersionTarget, version: ProjectVersion, dry_run: bool) -> bool:
     content = target.path.read_text(encoding="utf-8")
     match = target.pattern.search(content)
     if not match:
-        click.echo(
-            f"  {styled([Style.BRIGHT, Fore.YELLOW], 'MISSING')} {target.description}: "
-            "no version line found"
-        )
-        return False
+        raise VersionTargetMissingError(target)
 
     new_value = target.render(version)
     new_content = target.pattern.sub(lambda m: target.replacement(m, new_value), content, count=1)
@@ -104,8 +114,18 @@ def _sync_target(target: VersionTarget, version: ProjectVersion, dry_run: bool) 
 
 
 def sync_versions(version: ProjectVersion, *, dry_run: bool = False) -> int:
+    for target in TARGETS:
+        _validate_target(target)
+
     changed = 0
     for target in TARGETS:
         if _sync_target(target, version, dry_run):
             changed += 1
     return changed
+
+
+def sync_target(path: Path, version: ProjectVersion, *, dry_run: bool = False) -> bool:
+    for target in TARGETS:
+        if target.path == path:
+            return _sync_target(target, version, dry_run)
+    raise ValueError(f"No version sync target registered for {path}")

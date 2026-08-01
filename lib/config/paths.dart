@@ -1,5 +1,9 @@
+import "dart:io";
+
 import "package:path/path.dart" as p;
 import "package:path_provider/path_provider.dart";
+
+const applicationId = "dev.efa_tech.eve_fit_assistant";
 
 class PathProvider {
   const PathProvider._();
@@ -32,7 +36,17 @@ class PathProvider {
     tempPath = (await getTemporaryDirectory()).path;
     appSupportPath = (await getApplicationSupportDirectory()).path;
     downloadsPath = (await getDownloadsDirectory())?.path;
-
     cachesPath = (await getApplicationCacheDirectory()).path;
+
+    if (Platform.isLinux) {
+      // xdg-user-dir may fail silently under AppImage runtimes (empty path);
+      // fall back to $HOME/Documents to avoid a relative path leaking into CWD.
+      if (documentsPath.isEmpty) {
+        documentsPath = p.join(Platform.environment["HOME"] ?? ".", "Documents");
+      }
+      documentsPath = p.join(documentsPath, applicationId);
+      appSupportPath = p.join(p.dirname(appSupportPath), applicationId);
+      cachesPath = p.join(p.dirname(cachesPath), applicationId);
+    }
   }
 }

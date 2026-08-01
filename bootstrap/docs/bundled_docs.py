@@ -20,6 +20,7 @@ from bootstrap.constant import PROJECT_ROOT
 from bootstrap.docs.announcements_remote import AnnouncementCatalogPage
 from bootstrap.docs.announcements_remote import AnnouncementEntry
 from bootstrap.docs.announcements_remote import AnnouncementPage
+from bootstrap.docs.announcements_remote import AnnouncementPlatform
 from bootstrap.docs.document_parser import parse_locale_document
 from bootstrap.log import info
 from bootstrap.utils import normalize_version_dir
@@ -62,7 +63,7 @@ class BundledSourceMetadata(BaseModel):
     tags: list[str] = Field(default_factory=list)
     startup: bool = False
     channels: list[str] = Field(default=["testing"])
-    platforms: list[str] = Field(default=["android", "ios"])
+    platforms: list[AnnouncementPlatform] = Field(default_factory=list)
     min_app_version: str | None = Field(alias="minAppVersion", default=None)
     max_app_version: str | None = Field(alias="maxAppVersion", default=None)
     app_version: str | None = Field(alias="appVersion", default=None)

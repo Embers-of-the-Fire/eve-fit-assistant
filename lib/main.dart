@@ -13,10 +13,12 @@ import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/fd_limit.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 void main() async {
+  raiseFdSoftLimitToHard();
   final stores = await initSingletons();
   runApp(
     ProviderScope(

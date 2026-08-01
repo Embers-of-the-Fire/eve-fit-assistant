@@ -29,6 +29,15 @@ No query parameters — the worker reads all channels from `efa/v2/channels/head
         "armv7":  { … },
         "arm64":  { … },
         "x64":    { … }
+      },
+      "linux": {
+        "appimage": {
+          "identifier": "dev.efa-tech…",
+          "content_hash": "sha256…",
+          "size": 12345678,
+          "download_url": "https://api.efa-tech.dev/releases/download/testing/appimage/sha256…"
+        },
+        "native":   { … }
       }
     }
   },
@@ -68,8 +77,11 @@ The artifacts endpoint does not use HTTP status codes for errors; always check t
 
 ### `GET /releases/download/{channel}/{variant}/{hash}`
 
-Streams the APK blob for the given channel and variant (`general`, `armv7`,
-`arm64`, `x64`) directly from R2. The `{hash}` path segment must equal the
+Streams the artifact blob for the given channel and variant directly from R2.
+Android variants are `general`, `armv7`, `arm64`, `x64` (served as
+`application/vnd.android.package-archive`); Linux variants are `appimage`
+(served as `application/vnd.appimage`) and `native` (served as
+`application/zip`). The `{hash}` path segment must equal the
 variant's current `content_hash`, making the URL content-addressed. The
 response carries a proper download name via `Content-Disposition`, e.g.:
 
@@ -77,6 +89,14 @@ response carries a proper download name via `Content-Disposition`, e.g.:
 Content-Type: application/vnd.android.package-archive
 Content-Disposition: attachment; filename="eve-fit-assistant-0.1.0-arm64.apk"
 Content-Length: 12345678
+Cache-Control: public, max-age=31536000, immutable
+```
+
+or, for Linux:
+
+```text
+Content-Type: application/vnd.appimage
+Content-Disposition: attachment; filename="eve-fit-assistant-0.1.0-linux.AppImage"
 Cache-Control: public, max-age=31536000, immutable
 ```
 

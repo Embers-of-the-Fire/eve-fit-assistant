@@ -9,6 +9,7 @@ export type ArtifactInfo = {
     id: string;
     version: string;
     android: Record<string, VariantInfo> | null;
+    linux: Record<string, VariantInfo> | null;
 };
 
 export type PageState = "loading" | "loaded" | "error" | "empty";

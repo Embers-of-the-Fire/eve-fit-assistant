@@ -46,6 +46,7 @@ dependencies:
   dio: ^5.11.0
   dio_cache_interceptor: ^4.0.7
   fast_immutable_collections: ^11.1.0
+  ffi: ^2.2.0
   file: ^7.0.1
   file_picker: ^12.0.0-beta.7
   flutter_breadcrumb: ^1.0.1

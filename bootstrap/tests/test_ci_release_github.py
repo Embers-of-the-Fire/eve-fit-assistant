@@ -49,6 +49,15 @@ def _make_apks(root: Path, version_str: str) -> Path:
     return apk_dir
 
 
+def _make_linux_artifacts(root: Path, version_str: str) -> Path:
+    linux_dir = root / "cache" / "releases" / "linux" / version_str
+    linux_dir.mkdir(parents=True, exist_ok=True)
+    (linux_dir / f"{version_str}-linux.AppImage").write_text("fake appimage", encoding="utf-8")
+    (linux_dir / f"{version_str}-linux.AppImage.zsync").write_text("fake zsync", encoding="utf-8")
+    (linux_dir / f"{version_str}-linux-native.zip").write_text("fake zip", encoding="utf-8")
+    return linux_dir
+
+
 def _invoke(root: Path, version_str: str, tag: str) -> click.testing.Result:
     @click.group()
     def cli() -> None:
@@ -68,6 +77,8 @@ def _invoke(root: Path, version_str: str, tag: str) -> click.testing.Result:
             tag,
             "--apk-dir",
             str(root / "cache" / "releases" / "apk"),
+            "--linux-dir",
+            str(root / "cache" / "releases" / "linux"),
             "--dry-run",
         ],
     )
@@ -94,6 +105,25 @@ class TestGithubReleaseCommand:
         assert "0.3.0-alpha.1+42-android.apk" in result.output
         assert "0.3.0-alpha.1+42-android-arm64.apk" in result.output
         assert "0.3.0-alpha.1+42-android.apk.sha1" in result.output
+        assert "No Linux artifacts found" in result.output
+
+    def test_dry_run_includes_linux_assets(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        version = "0.3.0-alpha.1+42"
+        tag = "releases/v0.3.0-alpha.1"
+        monkeypatch.setattr("bootstrap.ci.release_github.PROJECT_ROOT", tmp_path)
+        _make_notes(tmp_path, version)
+        _make_apks(tmp_path, version)
+        _make_linux_artifacts(tmp_path, version)
+
+        result = _invoke(tmp_path, version, tag)
+
+        assert result.exit_code == 0, result.output
+        assert "Including 3 Linux asset(s)" in result.output
+        assert "0.3.0-alpha.1+42-linux.AppImage" in result.output
+        assert "0.3.0-alpha.1+42-linux.AppImage.zsync" in result.output
+        assert "0.3.0-alpha.1+42-linux-native.zip" in result.output
 
     def test_dry_run_stable_release(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         version = "1.0.0"
