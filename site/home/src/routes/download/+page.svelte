@@ -3,6 +3,7 @@ import { RELEASE_API_URL } from "$lib/api/releases";
 import { downloadState } from "$lib/download-state.svelte";
 import type { ArtifactInfo, VariantInfo } from "$lib/download-state.svelte";
 import { t } from "$lib/i18n/index.svelte";
+import type { TranslationKey } from "$lib/i18n/translations";
 
 type ApiResponse =
     | {
@@ -21,11 +22,16 @@ function formatSize(bytes: number): string {
     return mb < 10 ? mb.toFixed(1) : Math.round(mb).toString();
 }
 
+const androidVariants = ["general", "armv7", "arm64", "x64"] as const;
+const linuxVariants = ["appimage", "native"] as const;
+
 const variantLabels: Record<string, string> = {
     general: "Universal",
     arm64: "ARM64",
     armv7: "ARMv7",
     x64: "x86_64",
+    appimage: "AppImage",
+    native: "Native (zip)",
 };
 
 function variantLabel(key: string): string {
@@ -39,17 +45,21 @@ function recommendedVariant(arch: string | undefined, bitness: string | undefine
     return "general";
 }
 
-function rawArchDisplay(arch: string | undefined, bitness: string | undefined): string {
-    if (!arch && !bitness) return "Unknown";
-    const bits = bitness ? `${bitness}-bit` : "unknown bitness";
-    return arch ? `${arch} (${bits})` : `unknown arch (${bits})`;
-}
+const linuxCtaKeys: Record<(typeof linuxVariants)[number], TranslationKey> = {
+    appimage: "download.linux.appimage",
+    native: "download.linux.native",
+};
 
+type DetectedOS = "android" | "linux" | "other";
+
+let uaPlatform = $state("");
 let uaArch = $state<string | undefined>();
 let uaBitness = $state<string | undefined>();
 
 $effect(() => {
-    if (typeof navigator === "undefined" || !("userAgentData" in navigator)) return;
+    if (typeof navigator === "undefined") return;
+    uaPlatform = navigator.platform ?? "";
+    if (!("userAgentData" in navigator)) return;
     const uad: {
         getHighEntropyValues: (
             hints: string[],
@@ -61,7 +71,49 @@ $effect(() => {
     });
 });
 
+// Android browsers report navigator.platform as "Linux armv8l", so the
+// android substring must win over linux.
+const detectedOS = $derived.by<DetectedOS>(() => {
+    const platform = uaPlatform.toLowerCase();
+    const ua = typeof navigator === "undefined" ? "" : navigator.userAgent.toLowerCase();
+    if (platform.includes("android") || ua.includes("android")) return "android";
+    if (platform.includes("linux")) return "linux";
+    return "other";
+});
+
 const detected = $derived(recommendedVariant(uaArch, uaBitness));
+
+// Linux builds ship x86-64 only; unknown arch (non-Chromium) is assumed x86-64.
+const linuxSupported = $derived.by(() => {
+    if (uaArch === undefined && uaBitness === undefined) return true;
+    if (uaArch === "arm") return false;
+    return !(uaBitness === "32");
+});
+
+type PlatformTab = "android" | "linux" | "other";
+const tabKeys: Record<PlatformTab, TranslationKey> = {
+    android: "download.tabs.android",
+    linux: "download.tabs.linux",
+    other: "download.tabs.other",
+};
+const tabs: PlatformTab[] = ["android", "linux", "other"];
+
+let tabOverride = $state<PlatformTab | null>(null);
+const activeTab = $derived<PlatformTab>(
+    tabOverride ?? (detectedOS === "linux" ? "linux" : "android"),
+);
+
+function rawArchDisplay(arch: string | undefined, bitness: string | undefined): string {
+    if (!arch && !bitness) return "Unknown";
+    const bits = bitness ? `${bitness}-bit` : "unknown bitness";
+    return arch ? `${arch} (${bits})` : `unknown arch (${bits})`;
+}
+
+function osDisplay(os: DetectedOS): string {
+    if (os === "android") return "Android";
+    if (os === "linux") return "Linux";
+    return uaPlatform || "Unknown";
+}
 
 let cancelled = false;
 
@@ -95,6 +147,8 @@ const artifact: ArtifactInfo | undefined = $derived(
     downloadState.artifacts[downloadState.activeChannel],
 );
 
+const availableLinux = $derived(linuxVariants.filter((k) => artifact?.linux?.[k]));
+
 function onChannelChange(e: Event) {
     downloadState.activeChannel = (e.target as HTMLSelectElement).value;
 }
@@ -107,6 +161,70 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 	<title>{t('download.title')}</title>
 	<meta name="description" content={t('download.meta_description')} />
 </svelte:head>
+
+{#snippet variantCard(
+    platform: string,
+    key: string,
+    info: VariantInfo | undefined,
+    descKey: TranslationKey,
+    ctaKey: TranslationKey,
+    hero: boolean,
+)}
+	{#if info}
+		<a
+			href={info.download_url}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="card-hover-glow group relative rounded-lg bg-eve-surface p-8 transition-all duration-300 {hero ? 'border-2 border-eve-gold/40 text-center' : 'border border-eve-border'}"
+		>
+			{#if hero}
+				<div class="mb-2 inline-block rounded-full bg-eve-gold/15 px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-eve-gold">{t('download.recommended')}</div>
+			{:else}
+				<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-gold text-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">▣</div>
+			{/if}
+			<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
+				{platform} — {variantLabel(key)}
+			</h2>
+			{#if artifact}
+				<p class="mt-1 text-xs text-eve-text-muted">v{artifact.version}</p>
+			{/if}
+			<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">{t(descKey)}</p>
+			<div class="mt-6 flex items-center {hero ? 'justify-center' : 'justify-between'}">
+				<div class="flex items-center gap-2 text-sm text-eve-gold">
+					<span class="font-medium">{t(ctaKey)}</span>
+					<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
+				</div>
+				{#if !hero}
+					<span class="text-xs text-eve-text-muted">{formatSize(info.size)} MB</span>
+				{/if}
+			</div>
+		</a>
+	{:else}
+		<div
+			class="relative rounded-lg border border-eve-border bg-eve-surface p-8 opacity-50 cursor-not-allowed {hero ? 'text-center' : ''}"
+		>
+			{#if hero}
+				<div class="mb-2 inline-block rounded-full bg-eve-surface-alt px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-eve-text-muted">{t('download.not_available')}</div>
+			{:else}
+				<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-text-muted text-2xl">▣</div>
+			{/if}
+			<h2 class="text-xl font-semibold text-eve-text-muted">
+				{platform} — {variantLabel(key)}
+			</h2>
+			<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">{t(descKey)}</p>
+			<div class="mt-6 flex items-center {hero ? 'justify-center' : 'justify-between'}">
+				<span class="text-sm text-eve-text-muted">{t('download.not_available')}</span>
+			</div>
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet unavailableNotice(descKey: TranslationKey)}
+	<div class="mx-auto mb-6 max-w-xl rounded-lg border border-eve-border bg-eve-surface p-8 text-center opacity-80">
+		<h2 class="text-xl font-semibold text-eve-text-muted">{t('download.unavailable.title')}</h2>
+		<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">{t(descKey)}</p>
+	</div>
+{/snippet}
 
 <section class="relative overflow-hidden">
 	<div class="absolute top-0 right-0 w-96 h-96 bg-eve-gold-glow/20 rounded-full blur-3xl animate-[float_8s_ease-in-out_infinite]"></div>
@@ -175,121 +293,116 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 				</select>
 			</div>
 
-			{#if artifact?.android?.[detected]}
-				{@const rec = artifact.android[detected]}
-				<a
-					href={rec.download_url}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="card-hover-glow group relative mx-auto mb-6 block max-w-xl rounded-lg border-2 border-eve-gold/40 bg-eve-surface p-8 text-center transition-all duration-300"
-				>
-					<div class="mb-2 inline-block rounded-full bg-eve-gold/15 px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-eve-gold">{t('download.recommended')}</div>
-					<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
-						Android — {variantLabel(detected)}
-					</h2>
-					<p class="mt-1 text-xs text-eve-text-muted">v{artifact.version}</p>
-					<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">{t('download.android.desc')}</p>
-					<div class="mt-5 flex items-center justify-center gap-2 text-sm text-eve-gold">
-						<span class="font-medium">{t('download.android.apk')}</span>
-						<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
+			{#if detectedOS === "linux"}
+				{#if linuxSupported}
+					<div class="mx-auto mb-6 grid max-w-4xl gap-6 sm:grid-cols-2">
+						{#each linuxVariants as key}
+							{@render variantCard("Linux", key, artifact?.linux?.[key], "download.linux.desc", linuxCtaKeys[key], true)}
+						{/each}
 					</div>
-				</a>
+				{:else}
+					{@render unavailableNotice("download.unavailable.linux_unsupported")}
+				{/if}
+			{:else if detectedOS === "android"}
+				{#if artifact?.android?.[detected]}
+					<div class="mx-auto mb-6 max-w-xl">
+						{@render variantCard("Android", detected, artifact.android[detected], "download.android.desc", "download.android.apk", true)}
+					</div>
+				{:else}
+					{@render unavailableNotice("download.unavailable.desc")}
+				{/if}
+			{:else}
+				{@render unavailableNotice("download.unavailable.desc")}
 			{/if}
 
 			<div class="mb-10 text-center text-xs text-eve-text-muted">
-				<span class="text-eve-text-muted">{t('download.detected')}</span> {rawArchDisplay(uaArch, uaBitness)} — {variantLabel(detected)}
+				<span class="text-eve-text-muted">{t('download.detected')}</span> {osDisplay(detectedOS)}{#if detectedOS === "android"} — {rawArchDisplay(uaArch, uaBitness)}{#if artifact?.android?.[detected]} — {variantLabel(detected)}{/if}{:else if detectedOS === "linux"} — {availableLinux.length > 0 ? availableLinux.map(variantLabel).join(" / ") : t('download.detected.unavailable')}{/if}
 			</div>
 
 			<div class="eve-divider-gold mb-10"></div>
 
-			<div class="grid gap-8 md:grid-cols-2">
-				{#if artifact?.android}
-					{#each Object.entries(artifact.android) as [key, info]}
+			<div class="mb-8 flex justify-center gap-2">
+				{#each tabs as tab}
+					<button
+						onclick={() => (tabOverride = tab)}
+						class="rounded-lg border px-4 py-2 text-sm transition-colors cursor-pointer {activeTab === tab ? 'border-eve-gold/60 bg-eve-gold/10 text-eve-gold' : 'border-eve-border bg-eve-surface text-eve-text-muted hover:border-eve-gold/40 hover:text-eve-text'}"
+					>
+						{t(tabKeys[tab])}
+					</button>
+				{/each}
+			</div>
+
+			{#if activeTab === "android"}
+				<div class="grid gap-8 md:grid-cols-2">
+					{#each androidVariants as key}
+						{@render variantCard("Android", key, artifact?.android?.[key], "download.android.desc", "download.android.apk", false)}
+					{/each}
+
+					{#if !artifact?.android?.general}
 						<a
-							href={info.download_url}
+							href="https://github.com/Embers-of-the-Fire/eve-fit-assistant/releases/latest"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="card-hover-glow group relative rounded-lg border border-eve-border bg-eve-surface p-8 transition-all duration-300"
 						>
 							<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-gold text-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">▣</div>
 							<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
-								Android — {variantLabel(key)}
+								{t('download.android.title')}
 							</h2>
-							<p class="mt-1 text-xs text-eve-text-muted">
-								v{artifact.version}
-							</p>
 							<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
 								{t('download.android.desc')}
 							</p>
-							<div class="mt-6 flex items-center justify-between">
-								<div class="flex items-center gap-2 text-sm text-eve-gold">
-									<span class="font-medium">{t('download.android.apk')}</span>
-									<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
-								</div>
-								<span class="text-xs text-eve-text-muted">
-									{formatSize(info.size)} MB
-								</span>
+							<div class="mt-6 flex items-center gap-2 text-sm text-eve-gold">
+								<span class="font-medium">{t('download.android.apk')}</span>
+								<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
+							</div>
+							<div class="mt-2 text-xs text-eve-text-muted">
+								{t('download.android.requirements')}
 							</div>
 						</a>
+					{/if}
+				</div>
+			{:else if activeTab === "linux"}
+				<div class="grid gap-8 md:grid-cols-2">
+					{#each linuxVariants as key}
+						{@render variantCard("Linux", key, artifact?.linux?.[key], "download.linux.desc", linuxCtaKeys[key], false)}
 					{/each}
-				{/if}
+				</div>
+			{:else}
+				<div class="grid gap-8 md:grid-cols-2">
+					<div class="card-hover-glow group relative rounded-lg border border-eve-border bg-eve-surface p-8 transition-all duration-300 cursor-default">
+						<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-text-muted text-2xl transition-all duration-300">◇</div>
+						<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300">
+							{t('download.ios.title')}
+						</h2>
+						<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
+							{t('download.ios.desc')}
+						</p>
+						<div class="mt-6 flex items-center gap-2 text-sm text-eve-text-muted">
+							<span>{t('download.ios.build')}</span>
+						</div>
+					</div>
 
-				{#if !artifact?.android?.general}
 					<a
-						href="https://github.com/Embers-of-the-Fire/eve-fit-assistant/releases/latest"
+						href="https://github.com/Embers-of-the-Fire/eve-fit-assistant"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="card-hover-glow group relative rounded-lg border border-eve-border bg-eve-surface p-8 transition-all duration-300"
 					>
-						<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-gold text-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">▣</div>
+						<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-gold text-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">◈</div>
 						<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
-							{t('download.android.title')}
+							{t('download.source.title')}
 						</h2>
 						<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
-							{t('download.android.desc')}
+							{t('download.source.desc')}
 						</p>
 						<div class="mt-6 flex items-center gap-2 text-sm text-eve-gold">
-							<span class="font-medium">{t('download.android.apk')}</span>
+							<span class="font-medium">{t('download.source.github')}</span>
 							<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
 						</div>
-						<div class="mt-2 text-xs text-eve-text-muted">
-							{t('download.android.requirements')}
-						</div>
 					</a>
-				{/if}
-
-				<div class="card-hover-glow group relative rounded-lg border border-eve-border bg-eve-surface p-8 transition-all duration-300 cursor-default">
-					<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-text-muted text-2xl transition-all duration-300">◇</div>
-					<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300">
-						{t('download.ios.title')}
-					</h2>
-					<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
-						{t('download.ios.desc')}
-					</p>
-					<div class="mt-6 flex items-center gap-2 text-sm text-eve-text-muted">
-						<span>{t('download.ios.build')}</span>
-					</div>
 				</div>
-
-				<a
-					href="https://github.com/Embers-of-the-Fire/eve-fit-assistant"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="card-hover-glow group relative rounded-lg border border-eve-border bg-eve-surface p-8 transition-all duration-300"
-				>
-					<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-gold text-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">◈</div>
-					<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
-						{t('download.source.title')}
-					</h2>
-					<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
-						{t('download.source.desc')}
-					</p>
-					<div class="mt-6 flex items-center gap-2 text-sm text-eve-gold">
-						<span class="font-medium">{t('download.source.github')}</span>
-						<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
-					</div>
-				</a>
-			</div>
+			{/if}
 		{/if}
 	</div>
 </section>

@@ -13,6 +13,8 @@ use proto::ReleaseIndex;
 
 const RESOURCE_ROOT: &str = "efa/v2";
 const APK_CONTENT_TYPE: &str = "application/vnd.android.package-archive";
+const APPIMAGE_CONTENT_TYPE: &str = "application/vnd.appimage";
+const ZIP_CONTENT_TYPE: &str = "application/zip";
 
 #[derive(Serialize)]
 struct ArtifactResponse {
@@ -32,6 +34,8 @@ struct ArtifactInfo {
     version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     android: Option<HashMap<String, VariantInfo>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    linux: Option<HashMap<String, VariantInfo>>,
 }
 
 #[derive(Serialize)]
@@ -52,6 +56,7 @@ struct RawArtifactInfo {
     id: String,
     version: String,
     android: Option<HashMap<String, RawVariantInfo>>,
+    linux: Option<HashMap<String, RawVariantInfo>>,
 }
 
 fn sha256_hex(input: &str) -> String {
@@ -211,10 +216,30 @@ async fn fetch_channel_artifact(bucket: &Bucket, channel: &str) -> Result<Option
         variants
     });
 
+    let linux = index.linux.map(|arts| {
+        let mut variants = HashMap::new();
+        let names = ["appimage", "native"];
+        let fields = [arts.appimage, arts.native];
+        for (i, field) in fields.into_iter().enumerate() {
+            if let Some(v) = field {
+                variants.insert(
+                    names[i].to_string(),
+                    RawVariantInfo {
+                        identifier: v.identifier.clone(),
+                        content_hash: v.content_hash.clone(),
+                        size: v.size,
+                    },
+                );
+            }
+        }
+        variants
+    });
+
     Ok(Some(RawArtifactInfo {
         id: index.id,
         version: index.version,
         android,
+        linux,
     }))
 }
 
@@ -313,12 +338,31 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
                 })
                 .collect()
         });
+        let linux = raw.linux.map(|variants| {
+            variants
+                .into_iter()
+                .map(|(name, v)| {
+                    let download_url = format!(
+                        "{}/releases/download/{}/{}/{}",
+                        origin, ch, name, v.content_hash
+                    );
+                    let info = VariantInfo {
+                        identifier: v.identifier,
+                        content_hash: v.content_hash,
+                        size: v.size,
+                        download_url,
+                    };
+                    (name, info)
+                })
+                .collect()
+        });
         artifacts.insert(
             ch.clone(),
             ArtifactInfo {
                 id: raw.id,
                 version: raw.version,
                 android,
+                linux,
             },
         );
     }
@@ -354,13 +398,34 @@ async fn handle_download(
         None => return Response::error(format!("channel not found: {}", channel), 404),
     };
 
-    let info = match artifact
+    enum Platform {
+        Android,
+        AppImage,
+        NativeZip,
+    }
+
+    let (platform, info) = match artifact
         .android
         .as_ref()
         .and_then(|variants| variants.get(variant))
     {
-        Some(v) => v,
-        None => return Response::error(format!("variant not found: {}/{}", channel, variant), 404),
+        Some(v) => (Platform::Android, v),
+        None => match artifact
+            .linux
+            .as_ref()
+            .and_then(|variants| variants.get(variant))
+        {
+            Some(v) => (
+                match variant {
+                    "appimage" => Platform::AppImage,
+                    _ => Platform::NativeZip,
+                },
+                v,
+            ),
+            None => {
+                return Response::error(format!("variant not found: {}/{}", channel, variant), 404);
+            }
+        },
     };
 
     if info.content_hash != hash {
@@ -385,15 +450,29 @@ async fn handle_download(
         .body()
         .ok_or_else(|| Error::RustError(format!("object has no body: {}", path)))?;
 
-    let filename = format!(
-        "eve-fit-assistant-{}-{}.apk",
-        sanitize_filename_part(&artifact.version),
-        sanitize_filename_part(variant)
-    );
+    let version = sanitize_filename_part(&artifact.version);
+    let (content_type, filename) = match platform {
+        Platform::Android => (
+            APK_CONTENT_TYPE,
+            format!(
+                "eve-fit-assistant-{}-{}.apk",
+                version,
+                sanitize_filename_part(variant)
+            ),
+        ),
+        Platform::AppImage => (
+            APPIMAGE_CONTENT_TYPE,
+            format!("eve-fit-assistant-{}-linux.AppImage", version),
+        ),
+        Platform::NativeZip => (
+            ZIP_CONTENT_TYPE,
+            format!("eve-fit-assistant-{}-linux-native.zip", version),
+        ),
+    };
 
     let mut res = Response::from_body(body.response_body()?)?;
     let headers = res.headers_mut();
-    headers.set("Content-Type", APK_CONTENT_TYPE)?;
+    headers.set("Content-Type", content_type)?;
     headers.set(
         "Content-Disposition",
         &format!("attachment; filename=\"{}\"", filename),

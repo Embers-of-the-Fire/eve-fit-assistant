@@ -161,6 +161,11 @@ export const en = {
         "Native Android app built with Flutter and a Rust fitting engine. Requires Android 8.0+ (API 26).",
     "download.android.apk": "Download Latest APK",
     "download.android.requirements": "Android 8.0+ required",
+    "download.linux.title": "Linux",
+    "download.linux.desc":
+        "Native Linux desktop build (x86-64). The AppImage bundles its dependencies; the native zip uses host system libraries.",
+    "download.linux.appimage": "Download AppImage",
+    "download.linux.native": "Download Native Zip",
     "download.all_releases": "View All Releases on GitHub →",
     "download.source.title": "Build from Source",
     "download.source.desc":
@@ -181,6 +186,16 @@ export const en = {
     "download.channel": "Channel:",
     "download.recommended": "Recommended",
     "download.detected": "Detected:",
+    "download.detected.unavailable": "no build available",
+    "download.not_available": "Not available",
+    "download.tabs.android": "Android",
+    "download.tabs.linux": "Linux",
+    "download.tabs.other": "Other",
+    "download.unavailable.title": "Not available for your platform yet",
+    "download.unavailable.desc":
+        "No build for your platform has been published on this channel yet. Available builds are listed below.",
+    "download.unavailable.linux_unsupported":
+        "Linux builds are x86-64 only; your device's architecture is not supported.",
 };
 
 export const zh: Record<TranslationKey, string> = {
@@ -336,6 +351,11 @@ export const zh: Record<TranslationKey, string> = {
         "基于 Flutter 和 Rust 装配引擎的原生 Android 应用，需要 Android 8.0+（API 26）。",
     "download.android.apk": "下载最新 APK",
     "download.android.requirements": "需要 Android 8.0+",
+    "download.linux.title": "Linux",
+    "download.linux.desc":
+        "原生 Linux 桌面版本（x86-64）。AppImage 自带依赖；native zip 使用宿主系统库。",
+    "download.linux.appimage": "下载 AppImage",
+    "download.linux.native": "下载 Native Zip",
     "download.all_releases": "在 GitHub 上查看所有版本 →",
     "download.source.title": "从源码构建",
     "download.source.desc": "克隆仓库并按照构建说明操作。需要 Flutter、Rust 和 Nix。",
@@ -353,4 +373,12 @@ export const zh: Record<TranslationKey, string> = {
     "download.channel": "频道：",
     "download.recommended": "推荐",
     "download.detected": "检测到：",
+    "download.detected.unavailable": "暂无可用构建",
+    "download.not_available": "暂不可用",
+    "download.tabs.android": "Android",
+    "download.tabs.linux": "Linux",
+    "download.tabs.other": "其他",
+    "download.unavailable.title": "暂未适配你的平台",
+    "download.unavailable.desc": "该频道尚未发布适用于你平台的构建，下方列出了可用的构建。",
+    "download.unavailable.linux_unsupported": "Linux 构建仅支持 x86-64，不支持你的设备架构。",
 };
