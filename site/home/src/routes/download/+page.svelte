@@ -296,14 +296,16 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 			</div>
 
 			{#if detectedOS === "linux"}
-				{#if linuxSupported}
+				{#if !linuxSupported}
+					{@render unavailableNotice("download.unavailable.linux_unsupported")}
+				{:else if availableLinux.length === 0}
+					{@render unavailableNotice("download.unavailable.desc")}
+				{:else}
 					<div class="mx-auto mb-6 grid max-w-4xl gap-6 sm:grid-cols-2">
 						{#each linuxVariants as key}
-							{@render variantCard("Linux", key, artifact?.linux?.[key], "download.linux.desc", linuxCtaKeys[key], true)}
+							{@render variantCard("Linux", key, artifact?.linux?.[key], "download.linux.desc", linuxCtaKeys[key], key === "appimage")}
 						{/each}
 					</div>
-				{:else}
-					{@render unavailableNotice("download.unavailable.linux_unsupported")}
 				{/if}
 			{:else if detectedOS === "android"}
 				{#if artifact?.android?.[detected]}
