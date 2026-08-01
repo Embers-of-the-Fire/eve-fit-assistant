@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
+import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
 import "package:eve_fit_assistant/pages/announcements/detail_page.dart";
 import "package:eve_fit_assistant/pages/router.dart" show AnnouncementFeedRoute;
@@ -70,7 +71,10 @@ class UpdateVersionSummary extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = context.theme;
     final installedVersion = ref.watch(appVersionProvider).value;
-    final artifact = ref.watch(appUpdateArtifactProvider(release)).value;
+    final selfUpdate = ref.watch(
+      appUpdatePlatformAdapterProvider.select((adapter) => adapter.supportsSelfUpdate),
+    );
+    final artifact = selfUpdate ? ref.watch(appUpdateArtifactProvider(release)).value : null;
 
     Widget row(String label, String value) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
