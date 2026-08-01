@@ -65,10 +65,12 @@ $effect(() => {
             hints: string[],
         ) => Promise<{ architecture?: string; bitness?: string }>;
     } = (navigator as { userAgentData: unknown }).userAgentData as typeof uad;
-    uad.getHighEntropyValues(["architecture", "bitness"]).then((v) => {
-        uaArch = v.architecture;
-        uaBitness = v.bitness;
-    });
+    uad.getHighEntropyValues(["architecture", "bitness"])
+        .then((v) => {
+            uaArch = v.architecture;
+            uaBitness = v.bitness;
+        })
+        .catch(() => {});
 });
 
 // Android browsers report navigator.platform as "Linux armv8l", so the
@@ -201,19 +203,19 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 		</a>
 	{:else}
 		<div
-			class="relative rounded-lg border border-eve-border bg-eve-surface p-8 opacity-50 cursor-not-allowed {hero ? 'text-center' : ''}"
+			class="relative rounded-lg border border-dashed border-eve-border bg-eve-surface p-8 cursor-not-allowed {hero ? 'text-center' : ''}"
 		>
 			{#if hero}
-				<div class="mb-2 inline-block rounded-full bg-eve-surface-alt px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-eve-text-muted">{t('download.not_available')}</div>
+				<div class="mb-2 inline-block rounded-full bg-eve-surface-alt px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-eve-text-dim">{t('download.not_available')}</div>
 			{:else}
-				<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-text-muted text-2xl">▣</div>
+				<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-text-dim text-2xl">▣</div>
 			{/if}
-			<h2 class="text-xl font-semibold text-eve-text-muted">
+			<h2 class="text-xl font-semibold text-eve-text-dim">
 				{platform} — {variantLabel(key)}
 			</h2>
-			<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">{t(descKey)}</p>
+			<p class="mt-3 text-sm leading-relaxed text-eve-text-dim">{t(descKey)}</p>
 			<div class="mt-6 flex items-center {hero ? 'justify-center' : 'justify-between'}">
-				<span class="text-sm text-eve-text-muted">{t('download.not_available')}</span>
+				<span class="text-sm text-eve-text-dim">{t('download.not_available')}</span>
 			</div>
 		</div>
 	{/if}
@@ -321,9 +323,11 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 
 			<div class="eve-divider-gold mb-10"></div>
 
-			<div class="mb-8 flex justify-center gap-2">
+			<div class="mb-8 flex justify-center gap-2" role="tablist">
 				{#each tabs as tab}
 					<button
+						role="tab"
+						aria-selected={activeTab === tab}
 						onclick={() => (tabOverride = tab)}
 						class="rounded-lg border px-4 py-2 text-sm transition-colors cursor-pointer {activeTab === tab ? 'border-eve-gold/60 bg-eve-gold/10 text-eve-gold' : 'border-eve-border bg-eve-surface text-eve-text-muted hover:border-eve-gold/40 hover:text-eve-text'}"
 					>
