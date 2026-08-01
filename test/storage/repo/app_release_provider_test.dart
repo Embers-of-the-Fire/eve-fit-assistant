@@ -82,7 +82,7 @@ void main() {
     required bool remoteEnabled,
     String channel = "testing",
     bool ignoreBugfixUpdates = false,
-    AppUpdatePlatformAdapter? platformAdapter,
+    AppUpdatePlatformAdapter platformAdapter = const AndroidAppUpdateAdapter(),
   }) => ProviderContainer(
     overrides: [
       appSettingServiceProvider.overrideWithValue(
@@ -100,8 +100,7 @@ void main() {
       appVersionStateStoreProvider.overrideWithValue(versionStore),
       channelServiceProvider.overrideWith((_) => mockChannelService),
       releaseSyncServiceProvider.overrideWith((_) => mockReleaseSyncService),
-      if (platformAdapter != null)
-        appUpdatePlatformAdapterProvider.overrideWithValue(platformAdapter),
+      appUpdatePlatformAdapterProvider.overrideWithValue(platformAdapter),
     ],
   );
 
