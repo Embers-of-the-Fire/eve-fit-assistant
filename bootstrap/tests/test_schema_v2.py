@@ -306,6 +306,43 @@ class TestSnapshotStore:
         assert loaded_index.android.general.content_hash == "aa" * 32
         assert loaded_index.android.general.size == 12345
 
+    def test_create_release_snapshot_windows(self, snap_store: SnapshotStore) -> None:
+        meta = ReleaseSnapshotMetadata(
+            releaseCount=1, offerings=["windows"], createdAt="2026-06-14T12:00:00Z"
+        )
+        from bootstrap.remote.models import make_release_index
+
+        index = make_release_index(
+            release_id="rel-001",
+            version="1.0.0",
+            windows={
+                "native": {
+                    "identifier": "release://1.0.0/windows/native",
+                    "content_hash": "bb" * 32,
+                    "size": 23456,
+                },
+                "installer": {
+                    "identifier": "release://1.0.0/windows/installer",
+                    "content_hash": "cc" * 32,
+                    "size": 34567,
+                },
+            },
+        )
+        snap_hash = snap_store.create_release_snapshot(meta, index)
+        assert len(snap_hash) == 64
+
+        loaded_meta, loaded_index = snap_store.load_release_snapshot(snap_hash)
+        assert loaded_meta.release_count == 1
+        assert loaded_meta.offerings == ["windows"]
+        assert loaded_index.id == "rel-001"
+        assert loaded_index.version == "1.0.0"
+        assert loaded_index.windows.native.identifier == "release://1.0.0/windows/native"
+        assert loaded_index.windows.native.content_hash == "bb" * 32
+        assert loaded_index.windows.native.size == 23456
+        assert loaded_index.windows.installer.identifier == "release://1.0.0/windows/installer"
+        assert loaded_index.windows.installer.content_hash == "cc" * 32
+        assert loaded_index.windows.installer.size == 34567
+
     def test_list_snapshots(self, snap_store: SnapshotStore) -> None:
         meta = ResourceSnapshotMetadata(
             serverId="tranquility",

@@ -34,6 +34,7 @@ _ABI_FLUTTER_TO_APK = {
 _PLATFORM_DIR = {
     "android": "apk",
     "linux": "linux",
+    "windows": "windows",
 }
 
 _PLATFORM_SUFFIX = {
@@ -46,6 +47,19 @@ def _linux_variant_files(ver: str) -> dict[str, str]:
         "appimage": f"{ver}-linux.AppImage",
         "native": f"{ver}-linux-native.zip",
     }
+
+
+def _windows_variant_files(ver: str) -> dict[str, str]:
+    return {
+        "native": f"{ver}-windows-native.zip",
+        "installer": f"{ver}-windows-setup.msi",
+    }
+
+
+_PLATFORM_VARIANT_FILES = {
+    "linux": _linux_variant_files,
+    "windows": _windows_variant_files,
+}
 
 
 def _build_apk_copy_and_verify(src_apk: Path, src_sha1: Path, dst_apk: Path, dst_sha1: Path):
@@ -96,13 +110,15 @@ def _build_release_platform(
         raise click.ClickException(f"Build directory not found: {src_dir}")
 
     artifacts: dict[str, str] = {}
-    if platform == "linux":
-        for variant, name in _linux_variant_files(ver).items():
+    if platform in _PLATFORM_VARIANT_FILES:
+        for variant, name in _PLATFORM_VARIANT_FILES[platform](ver).items():
             f = src_dir / name
             if f.is_file():
-                artifacts[variant] = str(f.relative_to(root))
+                # POSIX separators: fragments are merged on Linux CI runners even
+                # when produced by the Windows job.
+                artifacts[variant] = f.relative_to(root).as_posix()
         if not artifacts:
-            raise click.ClickException(f"No linux variant files found in {src_dir}")
+            raise click.ClickException(f"No {platform} variant files found in {src_dir}")
     else:
         suffix = _PLATFORM_SUFFIX[platform]
         for f in sorted(src_dir.iterdir()):
@@ -111,9 +127,9 @@ def _build_release_platform(
                 prefix = f"{ver}-{platform}-"
                 if name.startswith(prefix):
                     variant = name[len(prefix) : -len(suffix)]
-                    artifacts[variant] = str(f.relative_to(root))
+                    artifacts[variant] = f.relative_to(root).as_posix()
                 elif name == f"{ver}-{platform}{suffix}":
-                    artifacts["general"] = str(f.relative_to(root))
+                    artifacts["general"] = f.relative_to(root).as_posix()
 
         if not artifacts:
             raise click.ClickException(f"No {suffix} files found in {src_dir}")
@@ -518,6 +534,128 @@ def register_build_commands(cli_group: click.Group) -> None:
         if not runtime.is_dry_run():
             _build_release_platform(
                 platform="linux",
+                ver=ver,
+                ver_semver=version.render_semver(),
+                output=output,
+                release_id=release_id,
+                version_min=version_min,
+                version_max=version_max,
+                root=root,
+            )
+
+    @build.command("windows")
+    @click.option(
+        "--clean", is_flag=True, default=False, help="Run `flutter clean` before building."
+    )
+    @click.option(
+        "--skip-flutter",
+        is_flag=True,
+        default=False,
+        help="Skip the Flutter Windows build and reuse the existing release bundle.",
+    )
+    @click.option(
+        "--variant",
+        "variants",
+        multiple=True,
+        type=click.Choice(["native", "installer"]),
+        help="Windows variant to build (repeatable; default: all variants).",
+    )
+    @click.option(
+        "--root",
+        "-r",
+        type=click.Path(path_type=Path),
+        default=PROJECT_ROOT / "cache" / "releases",
+        help="Release root directory (default: cache/releases).",
+    )
+    @click.option(
+        "--output",
+        "-o",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Release fragment output path (default: <root>/windows/<ver>/<ver>-windows.json).",
+    )
+    @click.option(
+        "--release-id", default=None, help="Override release.id (default: rel-{version})."
+    )
+    @click.option("--version-min", default=None, help="Override minimum version string.")
+    @click.option("--version-max", default=None, help="Override maximum version string.")
+    def build_windows_cmd(
+        clean: bool,
+        skip_flutter: bool,
+        variants: tuple[str, ...],
+        root: Path,
+        output: Path | None,
+        release_id: str | None,
+        version_min: str | None,
+        version_max: str | None,
+    ):
+        """Build the Windows release variants (native zip and/or MSI installer)."""
+        if sys.platform != "win32":
+            raise click.ClickException("The Windows build must run on a Windows host.")
+        if clean and skip_flutter:
+            raise click.ClickException(
+                "--clean and --skip-flutter cannot be combined: "
+                "`flutter clean` removes the release bundle that --skip-flutter relies on."
+            )
+        selected = set(variants) if variants else {"native", "installer"}
+        ProjectConfiguration.ensure_loaded()
+        version = bootstrap.config.CONFIGURATION.version
+        ver = version.render_full()
+        output_dir = root / "windows" / ver
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        from bootstrap.release.windows import pack_msi
+        from bootstrap.release.windows import pack_native_zip
+        from bootstrap.release.windows import validate_bundle
+        from bootstrap.utils import get_command
+
+        flutter = get_command("flutter")
+        if "installer" in selected:
+            missing = [name for name in ("dotnet", "wix") if not shutil.which(name)]
+            if missing:
+                raise click.ClickException(
+                    f"Command(s) not found in PATH: {', '.join(missing)}. "
+                    "Install the WiX toolset v6 with: dotnet tool install --global wix "
+                    "--version 6.0.1 (requires the .NET SDK; WiX v7 requires accepting "
+                    "the OSMF EULA and is not supported)."
+                )
+
+        if clean:
+            runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
+
+        runtime.execute([flutter, "config", "--enable-windows-desktop"], "ENABLE WINDOWS DESKTOP")
+
+        if not skip_flutter:
+            runtime.execute([flutter, "build", "windows", "--release"], "BUILDING WINDOWS BUNDLE")
+
+        bundle_dir = PROJECT_ROOT / "build" / "windows" / "x64" / "runner" / "Release"
+        validate_bundle(bundle_dir)
+
+        if "native" in selected:
+            pack_native_zip(
+                bundle_dir=bundle_dir,
+                output_dir=output_dir,
+                version=version,
+                dry_run=runtime.is_dry_run(),
+            )
+        if "installer" in selected:
+            pack_msi(
+                bundle_dir=bundle_dir,
+                output_dir=output_dir,
+                version=version,
+                wix=get_command("wix"),
+                dry_run=runtime.is_dry_run(),
+            )
+
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
+        for f in sorted(output_dir.iterdir()):
+            if f.is_file():
+                size = get_bin_size(f.stat().st_size)
+                click.echo(f"  {f.name} ({size})")
+
+        if not runtime.is_dry_run():
+            _build_release_platform(
+                platform="windows",
                 ver=ver,
                 ver_semver=version.render_semver(),
                 output=output,

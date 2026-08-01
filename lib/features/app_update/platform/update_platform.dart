@@ -122,6 +122,41 @@ class LinuxAppUpdateAdapter extends AppUpdatePlatformAdapter {
   }
 }
 
+/// Windows: no self-update support; the MSI installer and the portable
+/// archive are offered as manual downloads.
+class WindowsAppUpdateAdapter extends AppUpdatePlatformAdapter {
+  const WindowsAppUpdateAdapter();
+
+  @override
+  bool hasArtifacts(ReleaseIndex index) =>
+      index.hasWindows() && (index.windows.hasInstaller() || index.windows.hasNative());
+
+  @override
+  bool get supportsSelfUpdate => false;
+
+  @override
+  List<ReleaseDownloadTarget> downloadTargets(ReleaseIndex index) {
+    if (!hasArtifacts(index)) return const [];
+    final artifacts = index.windows;
+    return [
+      if (artifacts.hasInstaller())
+        ReleaseDownloadTarget(
+          variant: "installer",
+          identifier: artifacts.installer.identifier,
+          contentHash: artifacts.installer.contentHash,
+          size: artifacts.installer.size.toInt(),
+        ),
+      if (artifacts.hasNative())
+        ReleaseDownloadTarget(
+          variant: "native",
+          identifier: artifacts.native.identifier,
+          contentHash: artifacts.native.contentHash,
+          size: artifacts.native.size.toInt(),
+        ),
+    ];
+  }
+}
+
 /// Fallback for platforms with no artifact support at all.
 class UnsupportedAppUpdateAdapter extends AppUpdatePlatformAdapter {
   const UnsupportedAppUpdateAdapter();
@@ -140,6 +175,7 @@ class UnsupportedAppUpdateAdapter extends AppUpdatePlatformAdapter {
 AppUpdatePlatformAdapter detectAppUpdatePlatform() {
   if (Platform.isAndroid) return const AndroidAppUpdateAdapter();
   if (Platform.isLinux) return const LinuxAppUpdateAdapter();
+  if (Platform.isWindows) return const WindowsAppUpdateAdapter();
   return const UnsupportedAppUpdateAdapter();
 }
 

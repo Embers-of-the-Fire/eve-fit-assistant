@@ -1628,6 +1628,63 @@ class TestSessionAddByFileRelease:
         assert index.android.general.size == apk_file.stat().st_size
         assert index.android.general.content_hash
 
+    def test_add_release_snapshot_windows_variants(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """Windows native/installer variants in a release registry are indexed."""
+        _init_session(store)
+
+        version = "1.0.0"
+        win_dir = tmp_root / "win" / version
+        win_dir.mkdir(parents=True, exist_ok=True)
+        native_file = win_dir / f"{version}-windows-native.zip"
+        native_file.write_bytes(b"fake native zip content")
+        installer_file = win_dir / f"{version}-windows-installer.msi"
+        installer_file.write_bytes(b"fake installer msi content")
+
+        registry_dir = tmp_root / "merge"
+        registry_dir.mkdir(parents=True, exist_ok=True)
+        registry_file = registry_dir / f"{version}.json"
+        registry_file.write_text(
+            json.dumps(
+                {
+                    "metadata": {
+                        "versionMin": version,
+                        "versionMax": version,
+                        "offerings": ["windows"],
+                        "releaseCount": 1,
+                        "createdAt": "2026-01-01T00:00:00Z",
+                    },
+                    "release": {
+                        "id": f"rel-{version}",
+                        "version": version,
+                        "windows": {
+                            "native": str(Path("..") / native_file.relative_to(tmp_root)),
+                            "installer": str(Path("..") / installer_file.relative_to(tmp_root)),
+                        },
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        _add_snapshot_by_file(store, tmp_root, "release", registry_file)
+
+        session = store.load()
+        assert len(session.staged.releases) == 1
+
+        mgr = SessionManager(tmp_root)
+        snap_store = mgr.snap_store
+        rel_hash = session.staged.releases[0]
+        meta, index = snap_store.load_release_snapshot(rel_hash)
+        assert meta.release_count == 1
+        assert index.windows.native.identifier == f"release://{version}/windows/native"
+        assert index.windows.native.size == native_file.stat().st_size
+        assert index.windows.native.content_hash
+        assert index.windows.installer.identifier == f"release://{version}/windows/installer"
+        assert index.windows.installer.size == installer_file.stat().st_size
+        assert index.windows.installer.content_hash
+
     def test_build_release_merge_emits_self_relative_paths(
         self, store: SessionStore, tmp_root: Path
     ) -> None:
