@@ -28,10 +28,14 @@
     @keyframes glow-pulse {
         0%,
         100% {
-            box-shadow: 0 0 20px rgba(200, 169, 81, 0.15), 0 0 40px rgba(200, 169, 81, 0.05);
+            box-shadow:
+                0 0 20px rgba(200, 169, 81, 0.15),
+                0 0 40px rgba(200, 169, 81, 0.05);
         }
         50% {
-            box-shadow: 0 0 30px rgba(200, 169, 81, 0.3), 0 0 60px rgba(200, 169, 81, 0.1);
+            box-shadow:
+                0 0 30px rgba(200, 169, 81, 0.3),
+                0 0 60px rgba(200, 169, 81, 0.1);
         }
     }
 
@@ -152,7 +156,9 @@ body {
 .animate-on-scroll {
     opacity: 0;
     transform: translateY(24px);
-    transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+    transition:
+        opacity 0.7s ease-out,
+        transform 0.7s ease-out;
 }
 
 .animate-on-scroll.visible {
@@ -170,9 +176,18 @@ body {
     inset: -1px;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, transparent 30%, rgba(200, 169, 81, 0) 50%, transparent 70%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    background: linear-gradient(
+        135deg,
+        transparent 30%,
+        rgba(200, 169, 81, 0) 50%,
+        transparent 70%
+    );
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     transition: background 0.5s ease;
@@ -194,7 +209,9 @@ body {
 }
 
 .hover-lift {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
 }
 
 .hover-lift:hover {
@@ -202,13 +219,18 @@ body {
 }
 
 .card-hover-glow {
-    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, background-color
-        0.3s ease;
+    transition:
+        border-color 0.3s ease,
+        box-shadow 0.3s ease,
+        transform 0.3s ease,
+        background-color 0.3s ease;
 }
 
 .card-hover-glow:hover {
     border-color: rgba(200, 169, 81, 0.35);
-    box-shadow: 0 0 30px rgba(200, 169, 81, 0.08), 0 0 60px rgba(200, 169, 81, 0.03);
+    box-shadow:
+        0 0 30px rgba(200, 169, 81, 0.08),
+        0 0 60px rgba(200, 169, 81, 0.03);
     transform: translateY(-2px);
     background-color: var(--color-eve-surface-alt);
 }

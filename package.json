@@ -13,6 +13,6 @@
     "check:email-filter": "pnpm --filter email-filter check"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4"
+    "@biomejs/biome": "^2.5.6"
   }
 }

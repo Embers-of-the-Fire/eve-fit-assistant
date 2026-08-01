@@ -1,50 +1,53 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  },
-  "files": {
-    "ignoreUnknown": false,
-    "ignore": [".svelte-kit/**", "build/**", ".wrangler/**", "node_modules/**", "dist/**"]
-  },
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "space",
-    "indentWidth": 4,
-    "lineWidth": 100
-  },
-  "javascript": {
+    "$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true
+    },
+    "files": {
+        "includes": ["site/**/*", "pkgs/worker/**/*"],
+        "ignoreUnknown": false
+    },
     "formatter": {
-      "quoteStyle": "double",
-      "semicolons": "always",
-      "trailingCommas": "all"
-    }
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "suspicious": {
-        "noExplicitAny": "warn"
-      },
-      "style": {
-        "useConst": "error",
-        "useImportType": "error"
-      }
-    }
-  },
-  "overrides": [
-    {
-      "include": ["site/**/*.svelte"],
-      "linter": {
-        "rules": {
-          "style": {
-            "useConst": "off"
-          }
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 100
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "double",
+            "semicolons": "always",
+            "trailingCommas": "all"
         }
-      }
-    }
-  ]
+    },
+    "css": {
+        "parser": { "tailwindDirectives": true }
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true,
+            "suspicious": {
+                "noExplicitAny": "warn"
+            },
+            "style": {
+                "useConst": "error",
+                "useImportType": "error"
+            }
+        }
+    },
+    "overrides": [
+        {
+            "includes": ["site/**/*.svelte"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "useConst": "off"
+                    }
+                }
+            }
+        }
+    ]
 }
