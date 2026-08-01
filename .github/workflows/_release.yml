@@ -403,14 +403,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
-          submodules: true
           persist-credentials: false
-
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -425,11 +418,18 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
+            const fs = require("fs");
+            const path = require("path");
+
             const tag = process.env.TAG;
+            const version = process.env.VERSION;
+            const semver = version.split("+")[0];
+            const { owner, repo } = context.repo;
+
             try {
               await github.rest.git.getRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 ref: `tags/${tag}`,
               });
               core.setFailed(`Tag ${tag} already exists; aborting.`);
@@ -441,18 +441,68 @@ jobs:
               }
             }
             await github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner,
+              repo,
               ref: `refs/tags/${tag}`,
               sha: context.sha,
             });
-            core.info(`Created tag ${tag}`)
+            core.info(`Created tag ${tag}`);
 
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          nix develop .#python --command bash -c \
-            'uv run x.py ci release github-release \
-              --version "$VERSION" \
-              --tag "$TAG"'
+            const notesDir = `docs/changelog/${semver.replaceAll(".", "-")}`;
+            const contentPath = `${notesDir}/content.en.md`;
+            const changelogPath = `${notesDir}/changelog.md`;
+            for (const required of [contentPath, changelogPath]) {
+              if (!fs.existsSync(required)) {
+                core.setFailed(`Missing ${required}`);
+                return;
+              }
+            }
+            const enLines = fs.readFileSync(contentPath, "utf8").split("\n");
+            const h1Index = enLines.findIndex((line) => line.startsWith("# "));
+            if (h1Index === -1) {
+              core.setFailed(`${contentPath} is missing a level-1 heading`);
+              return;
+            }
+            const humanBody = enLines.slice(h1Index + 1).join("\n").trim();
+            const changelogBody = fs.readFileSync(changelogPath, "utf8").trim();
+            const notes = `${humanBody}\n\n## Full Changelog\n\n${changelogBody}\n`;
+
+            const apkFiles = [
+              ...(await (await glob.create(`cache/releases/apk/${version}/*.apk`)).glob()),
+              ...(await (await glob.create(`cache/releases/apk/${version}/*.sha1`)).glob()),
+            ].sort();
+            if (apkFiles.length === 0) {
+              core.setFailed(`No APK assets found in cache/releases/apk/${version}`);
+              return;
+            }
+            const linuxFiles = [
+              ...(await (await glob.create(`cache/releases/linux/${version}/*.AppImage`)).glob()),
+              ...(await (await glob.create(`cache/releases/linux/${version}/*.AppImage.zsync`)).glob()),
+              ...(await (await glob.create(`cache/releases/linux/${version}/*.zip`)).glob()),
+            ].sort();
+            core.info(
+              linuxFiles.length > 0
+                ? `Including ${linuxFiles.length} Linux asset(s)`
+                : "No Linux artifacts found; releasing Android assets only",
+            );
+
+            const release = await github.rest.repos.createRelease({
+              owner,
+              repo,
+              tag_name: tag,
+              name: `v${semver}`,
+              body: notes,
+              prerelease: semver.includes("-"),
+            });
+            core.info(`Created GitHub Release: ${release.data.html_url}`);
+
+            for (const file of [...apkFiles, ...linuxFiles]) {
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: release.data.id,
+                name: path.basename(file),
+                data: fs.readFileSync(file),
+              });
+              core.info(`Uploaded asset: ${path.basename(file)}`);
+            }
