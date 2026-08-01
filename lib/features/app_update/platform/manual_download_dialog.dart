@@ -99,7 +99,20 @@ class _DownloadTargetTile extends ConsumerWidget {
 
   Future<void> _openLink(BuildContext context, WidgetRef ref) async {
     final uri = _downloadUri(ref);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final didLaunch = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!didLaunch && context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.reportOpenError)));
+      }
+    } on Object {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.reportOpenError)));
+      }
+    }
   }
 
   @override
