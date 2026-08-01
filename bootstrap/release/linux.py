@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -150,6 +151,23 @@ def assemble_appdir(
     env["LD_LIBRARY_PATH"] = ":".join(
         [f"{appdir}/usr/bin/lib", *search_dirs, env.get("LD_LIBRARY_PATH", "")]
     ).rstrip(":")
+
+    # linuxdeploy execs `ldd` from PATH; the Nix glibc ldd is a script with a
+    # `#!/bin/sh` shebang, which resolves to the host shell. On hosts whose
+    # /bin/sh links a different glibc (e.g. dash on Ubuntu CI runners), the
+    # seeded LD_LIBRARY_PATH (containing the Nix glibc lib dir) makes that
+    # shell load the mismatched Nix libc and die with SIGSEGV before the
+    # script runs. Force the script through the dev shell's bash, which is
+    # already linked against the same Nix glibc.
+    bash = shutil.which("bash")
+    if bash is None:
+        raise click.ClickException("bash not found in PATH; enter the Nix dev shell.")
+    shim_dir = support_dir / "bin"
+    shim_dir.mkdir(parents=True)
+    shim = shim_dir / "ldd"
+    shim.write_text(f'#!{bash}\nexec {shlex.quote(bash)} {shlex.quote(ldd)} "$@"\n')
+    shim.chmod(0o755)
+    env["PATH"] = f"{shim_dir}{os.pathsep}{env.get('PATH', '')}"
 
     execute_command(
         [
