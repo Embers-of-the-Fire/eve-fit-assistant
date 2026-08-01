@@ -85,11 +85,12 @@ def _resolved_lib_dirs(ldd: str, files: list[Path]) -> list[str]:
 def _bundle_glibc_loader(appdir: Path, readelf: str) -> None:
     """Copy the ELF interpreter (ld-linux) and glibc NSS modules into the AppDir."""
     interp = _elf_interpreter(appdir / "usr" / "bin" / BINARY_NAME, readelf)
-    ld_so = appdir / "usr" / "lib" / interp.name
     for name in (interp.name, "libnss_files.so.2", "libnss_dns.so.2"):
         src = interp.parent / name
-        if src.exists():
-            shutil.copy2(src.resolve(), appdir / "usr" / "lib" / name)
+        if not src.exists():
+            raise click.ClickException(f"Required glibc loader module not found: {src}")
+        shutil.copy2(src.resolve(), appdir / "usr" / "lib" / name)
+    ld_so = appdir / "usr" / "lib" / interp.name
     if not ld_so.exists():
         raise click.ClickException(f"Failed to bundle ELF interpreter: {interp}")
 
