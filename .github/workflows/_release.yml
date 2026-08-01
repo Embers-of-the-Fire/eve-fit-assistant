@@ -12,10 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  release:
-    name: Build and publish
+  verify:
+    name: Verify release version
     runs-on: ubuntu-latest
-    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
     outputs:
       tag: ${{ steps.verify.outputs.tag }}
       version: ${{ steps.verify.outputs.version }}
@@ -39,26 +38,28 @@ jobs:
           echo "version=$(grep '^Canonical version:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
           echo "tag=$(grep '^Expected tag:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
 
-      - name: Init dev env
-        uses: ./.github/actions/init-dev-env
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-release-verify
 
-      - name: Setup CI developer config
-        run: nix develop .#python --command bash -c 'uv run x.py dev env write-backend'
+  android:
+    name: Build Android APK
+    needs: [verify]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
 
-      - name: Fetch native CI data
-        run: |
-          curl -sfLo /tmp/ci-native-data.tar.gz \
-            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
-          mkdir -p "$GITHUB_WORKSPACE/ci-native"
-          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
-          mkdir -p rust/lib/eve-fit-os/data/out
-          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
-
-      - name: Install Flutter dependencies
-        run: nix develop .#android --command bash -c 'flutter pub get'
-
-      - name: Generate all
-        run: nix develop .#android --command bash -c 'uv run x.py generate -f all'
+      - name: Setup build env
+        uses: ./.github/actions/setup-build-env
+        with:
+          shell: android
 
       - name: Prepare release signing
         if: inputs.test_mode == false
@@ -88,13 +89,114 @@ jobs:
           nix develop .#android --command bash -c \
             'uv run x.py ci release verify-signing'
 
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: apk
+          path: |
+            cache/releases/apk/**/*.apk
+            cache/releases/apk/**/*.sha1
+            cache/releases/apk/**/*.json
+          retention-days: 1
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-android-release
+          redact-values: |
+            ${{ secrets.APP_KEYSTORE }}
+            ${{ secrets.APP_KEYSTORE_PASSWORD }}
+            ${{ secrets.APP_KEY_PASSWORD }}
+            ${{ secrets.APP_KEY_ALIAS }}
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/efa-release.keystore"
+
+  linux:
+    name: Build Linux Variants
+    needs: [verify]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup build env
+        uses: ./.github/actions/setup-build-env
+        with:
+          shell: linux
+
+      - name: Build Linux variants
+        run: nix develop .#linux --command bash -c 'uv run x.py build linux'
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux
+          path: |
+            cache/releases/linux/**/*.AppImage
+            cache/releases/linux/**/*.AppImage.zsync
+            cache/releases/linux/**/*.zip
+            cache/releases/linux/**/*.json
+          retention-days: 1
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-linux-release
+
+  publish:
+    name: Merge and publish to remote channel
+    needs: [verify, android, linux]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
+      # The remote session/publish tooling imports generated pb2 modules
+      # (bootstrap/data/schema, gitignored). The .#python shell has no protoc,
+      # so use the .#dart shell.
+      - name: Generate protobuf bindings
+        run: nix develop .#dart --command bash -c 'uv run x.py generate protobuf'
+
+      # Platform artifacts (binaries + release fragments) produced by the
+      # per-platform build jobs above.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: apk
+          path: cache/releases/apk
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: linux
+          path: cache/releases/linux
+
       - name: Merge release registry
-        env:
-          VERSION: ${{ steps.verify.outputs.version }}
         run: |
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
-            "uv run x.py build release --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json"
+            "uv run x.py build release \
+              --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json \
+              --fragments cache/releases/linux/${VERSION}/${VERSION}-linux.json"
 
       - name: Start MinIO mock
         if: inputs.test_mode
@@ -158,8 +260,6 @@ jobs:
             'uv run x.py remote announce add-release-note'
 
       - name: Stage release snapshot
-        env:
-          VERSION: ${{ steps.verify.outputs.version }}
         run: |
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
@@ -273,106 +373,33 @@ jobs:
           fi
           echo "Remote head verified: $synced_hash"
 
-      - name: Upload APK artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: apk
-          path: |
-            cache/releases/apk/**/*.apk
-            cache/releases/apk/**/*.sha1
-          retention-days: 1
-
       - name: Upload diagnostics
         if: failure()
         uses: ./.github/actions/upload-diagnostics
         with:
-          name: diagnostics-app-release
+          name: diagnostics-app-publish
           redact-values: |
             ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
             ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
-            ${{ secrets.APP_KEYSTORE }}
-            ${{ secrets.APP_KEYSTORE_PASSWORD }}
-            ${{ secrets.APP_KEY_PASSWORD }}
-            ${{ secrets.APP_KEY_ALIAS }}
-
-      - name: Clean up keystore
-        if: always()
-        run: rm -f "$RUNNER_TEMP/efa-release.keystore"
-
-  linux:
-    name: Build Linux Variants
-    runs-on: ubuntu-latest
-    # The Linux artifacts are distributed via GitHub Releases only and are
-    # still experimental; never let its failure block the Android release, the
-    # remote channel publish, or the surrounding check run.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-          submodules: true
-          persist-credentials: false
-
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
-
-      - name: Init dev env
-        uses: ./.github/actions/init-dev-env
-
-      - name: Setup CI developer config
-        run: nix develop .#python --command bash -c 'uv run x.py dev env write-backend'
-
-      - name: Fetch native CI data
-        run: |
-          curl -sfLo /tmp/ci-native-data.tar.gz \
-            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
-          mkdir -p "$GITHUB_WORKSPACE/ci-native"
-          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
-          mkdir -p rust/lib/eve-fit-os/data/out
-          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
-
-      - name: Install Flutter dependencies
-        run: nix develop .#linux --command bash -c 'flutter pub get'
-
-      - name: Generate all
-        run: nix develop .#linux --command bash -c 'uv run x.py generate -f all'
-
-      - name: Build Linux variants
-        run: nix develop .#linux --command bash -c 'uv run x.py build linux'
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: linux
-          path: |
-            cache/releases/linux/**/*.AppImage
-            cache/releases/linux/**/*.AppImage.zsync
-            cache/releases/linux/**/*.zip
-          retention-days: 1
-
-      - name: Upload diagnostics
-        if: failure()
-        uses: ./.github/actions/upload-diagnostics
-        with:
-          name: diagnostics-linux-release
 
   tag:
     name: Create Git tag
-    needs: [release, linux]
+    needs: [verify, android, linux, publish]
     runs-on: ubuntu-slim
-    # Wait for the Linux job so its artifacts can be attached to the GitHub
-    # Release, but do not let its (masked) failure block tagging.
+    # Tag only after every platform build succeeded and the remote channel has
+    # accepted the joined (multi-platform) release.
     if: |
       always() &&
-      needs.release.result == 'success' &&
+      needs.verify.result == 'success' &&
+      needs.android.result == 'success' &&
+      needs.linux.result == 'success' &&
+      needs.publish.result == 'success' &&
       inputs.test_mode == false
     permissions:
       contents: write
     env:
-      TAG: ${{ needs.release.outputs.tag }}
-      VERSION: ${{ needs.release.outputs.version }}
+      TAG: ${{ needs.verify.outputs.tag }}
+      VERSION: ${{ needs.verify.outputs.version }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -390,9 +417,7 @@ jobs:
           name: apk
           path: cache/releases/apk
 
-      # Optional: only present when the (non-blocking) linux job succeeded.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        continue-on-error: true
         with:
           name: linux
           path: cache/releases/linux
