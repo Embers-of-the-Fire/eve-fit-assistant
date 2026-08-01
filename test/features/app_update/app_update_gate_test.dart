@@ -10,6 +10,8 @@ import "package:eve_fit_assistant/features/announcements/repository/announcement
     show appVersionProvider;
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
+import "package:eve_fit_assistant/features/app_update/platform/manual_download_dialog.dart";
+import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
@@ -19,6 +21,7 @@ import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:fixnum/fixnum.dart";
 import "package:fpdart/fpdart.dart";
 
 import "../../test_helpers.dart";
@@ -57,7 +60,30 @@ RemoteAppRelease _release({String releaseId = "rel-2", String version = "2.0.0"}
       releaseId: releaseId,
       version: version,
       snapshotHash: "release_snapshot",
-      index: ReleaseIndex(schemaVersion: 1, id: releaseId, version: version),
+      index: ReleaseIndex(
+        schemaVersion: 1,
+        id: releaseId,
+        version: version,
+        android: AndroidArtifacts(
+          general: AndroidArtifactVariant(
+            identifier: "ident/general",
+            contentHash: "hash",
+            size: Int64(100),
+          ),
+        ),
+        linux: LinuxArtifacts(
+          appimage: LinuxArtifactVariant(
+            identifier: "ident/appimage",
+            contentHash: "hash-appimage",
+            size: Int64(200),
+          ),
+          native: LinuxArtifactVariant(
+            identifier: "ident/native",
+            contentHash: "hash-native",
+            size: Int64(300),
+          ),
+        ),
+      ),
     );
 
 AppSetting _setting({required bool silentUpdate}) => AppSetting(
@@ -97,6 +123,7 @@ void main() {
     required AppSetting setting,
     required RemoteAppRelease release,
     required _FakeAppUpdateController controller,
+    AppUpdatePlatformAdapter platformAdapter = const AndroidAppUpdateAdapter(),
   }) => ProviderScope(
     overrides: [
       appSettingServiceProvider.overrideWithValue(setting),
@@ -106,6 +133,7 @@ void main() {
       appVersionProvider.overrideWith((_) async => "1.0.0"),
       appUpdateArtifactProvider.overrideWith((_, _) async => null),
       appReleaseNoteProvider.overrideWith((_, _) async => null),
+      appUpdatePlatformAdapterProvider.overrideWithValue(platformAdapter),
     ],
     child: testApp(const AppReleaseUpdateGate(child: Scaffold(body: Text("gate child")))),
   );
@@ -192,5 +220,54 @@ void main() {
     expect(find.byType(AppReleaseUpdateDialog), findsNothing);
     expect(find.byType(ConfirmDialog), findsNothing);
     expect(versionStore.lastAcknowledgedReleaseId, isNull);
+  });
+
+  testWidgets("platform without self-update shows the manual download dialog", (tester) async {
+    final release = _release();
+    final controller = _FakeAppUpdateController(
+      statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
+    );
+
+    await tester.pumpWidget(
+      buildGate(
+        setting: _setting(silentUpdate: false),
+        release: release,
+        controller: controller,
+        platformAdapter: const LinuxAppUpdateAdapter(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppReleaseUpdateDialog), findsOneWidget);
+    expect(find.byType(ManualReleaseDownloadDialog), findsOneWidget);
+    expect(controller.downloadCalls, 0);
+    // Both Linux artifacts are listed as manual download targets.
+    expect(find.text("AppImage"), findsOneWidget);
+    expect(find.text("便携压缩包 (.zip)"), findsOneWidget);
+  });
+
+  testWidgets("silent strategy falls back to the manual dialog without self-update", (
+    tester,
+  ) async {
+    final release = _release();
+    final controller = _FakeAppUpdateController(
+      statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
+    );
+
+    await tester.pumpWidget(
+      buildGate(
+        setting: _setting(silentUpdate: true),
+        release: release,
+        controller: controller,
+        platformAdapter: const LinuxAppUpdateAdapter(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // No background download is attempted on platforms without self-update;
+    // the manual download dialog is shown instead.
+    expect(controller.downloadCalls, 0);
+    expect(find.byType(ManualReleaseDownloadDialog), findsOneWidget);
+    expect(find.byType(ConfirmDialog), findsNothing);
   });
 }

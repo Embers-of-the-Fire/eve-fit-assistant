@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
@@ -561,6 +562,10 @@ IList<String> installedCheckoutIds(Ref ref) {
 /// before the user has created a checkout. It is the base provider for app
 /// release checks — invalidate it (after syncing the channel generation) to
 /// force a fresh check.
+///
+/// A newer release that ships no artifact for the current platform (per
+/// [AppUpdatePlatformAdapter.hasArtifacts]) is reported as
+/// [ReleaseCheckUpToDate] since it is not actionable on this device.
 @riverpod
 Future<ReleaseCheckStatus> appReleaseCheckStatus(Ref ref) async {
   final settings = ref.watch(appSettingServiceProvider);
@@ -584,10 +589,19 @@ Future<ReleaseCheckStatus> appReleaseCheckStatus(Ref ref) async {
         ignoreBugfix: settings.ignoreBugfixUpdates,
       );
 
-  return result.fold(
-    (error) => Future<ReleaseCheckStatus>.error(error, StackTrace.current),
-    Future<ReleaseCheckStatus>.value,
-  );
+  return result.fold((error) => Future<ReleaseCheckStatus>.error(error, StackTrace.current), (
+    status,
+  ) {
+    // A newer release that ships no artifact for this platform is not
+    // actionable (e.g. an Android-only release seen from Linux); report it
+    // as up to date so neither the gate dialog nor the version-page tile
+    // surfaces it.
+    if (status is ReleaseCheckUpdateAvailable &&
+        !ref.read(appUpdatePlatformAdapterProvider).hasArtifacts(status.release.index)) {
+      return const ReleaseCheckUpToDate();
+    }
+    return status;
+  });
 }
 
 /// Detects whether a newer app release is available from the remote release
