@@ -426,27 +426,31 @@ jobs:
             const semver = version.split("+")[0];
             const { owner, repo } = context.repo;
 
+            let tagExists = true;
             try {
               await github.rest.git.getRef({
                 owner,
                 repo,
                 ref: `tags/${tag}`,
               });
-              core.setFailed(`Tag ${tag} already exists; aborting.`);
-              return;
             } catch (error) {
               const status = error.status || error.response?.status;
               if (status !== 404) {
                 throw error;
               }
+              tagExists = false;
             }
-            await github.rest.git.createRef({
-              owner,
-              repo,
-              ref: `refs/tags/${tag}`,
-              sha: context.sha,
-            });
-            core.info(`Created tag ${tag}`);
+            if (tagExists) {
+              core.info(`Tag ${tag} already exists; reusing it and its release.`);
+            } else {
+              await github.rest.git.createRef({
+                owner,
+                repo,
+                ref: `refs/tags/${tag}`,
+                sha: context.sha,
+              });
+              core.info(`Created tag ${tag}`);
+            }
 
             const notesDir = `docs/changelog/${semver.replaceAll(".", "-")}`;
             const contentPath = `${notesDir}/content.en.md`;
@@ -486,23 +490,65 @@ jobs:
                 : "No Linux artifacts found; releasing Android assets only",
             );
 
-            const release = await github.rest.repos.createRelease({
-              owner,
-              repo,
-              tag_name: tag,
-              name: `v${semver}`,
-              body: notes,
-              prerelease: semver.includes("-"),
-            });
-            core.info(`Created GitHub Release: ${release.data.html_url}`);
+            let release;
+            try {
+              release = (
+                await github.rest.repos.getReleaseByTag({
+                  owner,
+                  repo,
+                  tag,
+                })
+              ).data;
+              core.info(`Reusing existing GitHub Release: ${release.html_url}`);
+            } catch (error) {
+              const status = error.status || error.response?.status;
+              if (status !== 404) {
+                throw error;
+              }
+              release = (
+                await github.rest.repos.createRelease({
+                  owner,
+                  repo,
+                  tag_name: tag,
+                  name: `v${semver}`,
+                  body: notes,
+                  prerelease: semver.includes("-"),
+                })
+              ).data;
+              core.info(`Created GitHub Release: ${release.html_url}`);
+            }
+
+            const existingAssets = new Set();
+            let page = 1;
+            while (true) {
+              const { data: assets } = await github.rest.repos.listReleaseAssets({
+                owner,
+                repo,
+                release_id: release.id,
+                per_page: 100,
+                page,
+              });
+              for (const asset of assets) {
+                existingAssets.add(asset.name);
+              }
+              if (assets.length < 100) {
+                break;
+              }
+              page += 1;
+            }
 
             for (const file of [...apkFiles, ...linuxFiles]) {
+              const name = path.basename(file);
+              if (existingAssets.has(name)) {
+                core.info(`Skipping existing asset: ${name}`);
+                continue;
+              }
               await github.rest.repos.uploadReleaseAsset({
                 owner,
                 repo,
-                release_id: release.data.id,
-                name: path.basename(file),
+                release_id: release.id,
+                name,
                 data: fs.readFileSync(file),
               });
-              core.info(`Uploaded asset: ${path.basename(file)}`);
+              core.info(`Uploaded asset: ${name}`);
             }
