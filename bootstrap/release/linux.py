@@ -118,6 +118,10 @@ def assemble_appdir(
 
     appdir = work_dir / "AppDir"
     support_dir = work_dir / "support"
+    if dry_run:
+        info(f"[DRY-RUN] Would assemble AppDir: {appdir}")
+        return appdir
+
     shutil.rmtree(appdir, ignore_errors=True)
     shutil.rmtree(support_dir, ignore_errors=True)
     (appdir / "usr" / "bin").mkdir(parents=True)
@@ -165,9 +169,6 @@ def assemble_appdir(
         env=env,
     )
 
-    if dry_run:
-        return appdir
-
     _bundle_glibc_loader(appdir, readelf)
 
     # Drop duplicates of bundle libs that linuxdeploy redeployed into usr/lib.
@@ -209,7 +210,10 @@ def pack_appimage(
         cwd=output_dir,
         env=pack_env,
     )
-    info(f"Packed AppImage: {dst}")
+    if dry_run:
+        info(f"[DRY-RUN] Would pack AppImage: {dst}")
+    else:
+        info(f"Packed AppImage: {dst}")
     return dst
 
 
