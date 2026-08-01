@@ -127,13 +127,6 @@ export const en = {
 
     "report.form.labels": "Labels",
     "report.form.labels.placeholder": "Comma-separated labels, e.g. T-Bug, V-Needs Triage",
-    "report.form.metadata": "Metadata",
-    "report.form.metadata.key": "Key",
-    "report.form.metadata.value": "Value",
-    "report.form.metadata.add": "Add row",
-    "report.form.metadata.remove": "Remove",
-    "report.form.metadata.key.placeholder": "e.g. os_version",
-    "report.form.metadata.value.placeholder": "e.g. Android 14",
 
     "report.form.platform.android": "Android",
     "report.form.platform.ios": "iOS",
@@ -300,13 +293,6 @@ export const zh: Record<TranslationKey, string> = {
 
     "report.form.labels": "标签",
     "report.form.labels.placeholder": "逗号分隔的标签，例如 T-Bug, V-Needs Triage",
-    "report.form.metadata": "元数据",
-    "report.form.metadata.key": "键",
-    "report.form.metadata.value": "值",
-    "report.form.metadata.add": "添加行",
-    "report.form.metadata.remove": "移除",
-    "report.form.metadata.key.placeholder": "例如 os_version",
-    "report.form.metadata.value.placeholder": "例如 Android 14",
 
     "report.form.platform.android": "Android",
     "report.form.platform.ios": "iOS",

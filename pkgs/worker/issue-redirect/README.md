@@ -23,10 +23,14 @@ Create a bug report issue.
     "logs": "Error: null pointer exception",
     "metadata": {
         "os_version": "Android 14",
-        "device": "Pixel 8"
+        "app_version": "0.1.0"
     }
 }
 ```
+
+`metadata` is optional and restricted to an allowlist of system keys (`os_version`,
+`app_version`) with short string values; requests carrying any other metadata key are
+rejected with a validation error. Free-form or contact metadata is not accepted.
 
 ### `POST /feature-request`
 

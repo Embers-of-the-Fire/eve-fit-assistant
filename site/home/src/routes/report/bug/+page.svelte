@@ -28,8 +28,6 @@ let platform: string = $state("Android");
 
 let attachExtras = $state(false);
 let version = $state("");
-let metadata = $state<{ id: number; key: string; value: string }[]>([]);
-let metadataNextId = $state(0);
 
 let submitting = $state(false);
 let success: IssueResult | null = $state(null);
@@ -49,22 +47,9 @@ $effect(() => {
         if (platforms.some((p) => p.value === raw)) platform = raw;
     }
 
-    const extrasKeys = ["version", "metadata"];
-    if (extrasKeys.some((k) => params.has(k))) attachExtras = true;
-    if (params.has("version")) version = params.get("version") ?? "";
-    if (params.has("metadata")) {
-        try {
-            const obj = JSON.parse(params.get("metadata") ?? "");
-            const rows: typeof metadata = [];
-            let id = 0;
-            for (const [key, val] of Object.entries(obj)) {
-                rows.push({ id: id++, key, value: String(val) });
-            }
-            metadata = rows;
-            metadataNextId = rows.length;
-        } catch {
-            // ignore malformed JSON
-        }
+    if (params.has("version")) {
+        attachExtras = true;
+        version = params.get("version") ?? "";
     }
 });
 
@@ -74,22 +59,6 @@ function getFieldError(path: string): string {
 
 function hasFieldError(path: string): boolean {
     return fieldErrors.some((e) => e.path === path);
-}
-
-function addMetadataRow() {
-    metadata = [...metadata, { id: metadataNextId++, key: "", value: "" }];
-}
-
-function removeMetadataRow(id: number) {
-    metadata = metadata.filter((m) => m.id !== id);
-}
-
-function updateMetadataKey(id: number, key: string) {
-    metadata = metadata.map((m) => (m.id === id ? { ...m, key } : m));
-}
-
-function updateMetadataValue(id: number, value: string) {
-    metadata = metadata.map((m) => (m.id === id ? { ...m, value } : m));
 }
 
 async function handleSubmit(e: Event) {
@@ -127,17 +96,8 @@ async function handleSubmit(e: Event) {
             platform: platform as Platform,
         };
 
-        if (attachExtras) {
-            if (version.trim()) payload.version = version.trim();
-            const meta: Record<string, unknown> = {};
-            let hasMeta = false;
-            for (const m of metadata) {
-                if (m.key.trim()) {
-                    meta[m.key.trim()] = m.value;
-                    hasMeta = true;
-                }
-            }
-            if (hasMeta) payload.metadata = meta;
+        if (attachExtras && version.trim()) {
+            payload.version = version.trim();
         }
 
         const result = await submitBugReport(payload);
@@ -300,59 +260,15 @@ async function handleSubmit(e: Event) {
                     {#if attachExtras}
                         <div class="eve-divider my-6"></div>
 
-                        <div class="space-y-5">
-                            <label class="block">
-                                <span class="block text-xs font-medium text-eve-text-muted mb-1.5">{t("report.form.bug.version")}</span>
-                                <input
-                                    type="text"
-                                    bind:value={version}
-                                    placeholder={t("report.form.bug.version.placeholder")}
-                                    class="w-full rounded border border-eve-border bg-eve-bg px-3.5 py-2.5 text-sm text-eve-text placeholder:text-eve-text-muted/50 focus:border-eve-gold focus:outline-none transition-colors"
-                                />
-                            </label>
-
-                            <div>
-                                <div class="mb-3 flex items-center justify-between">
-                                    <span class="text-xs font-medium text-eve-text-muted">{t("report.form.metadata")}</span>
-                                    <button
-                                        type="button"
-                                        onclick={addMetadataRow}
-                                        class="rounded border border-eve-border px-3 py-1 text-xs text-eve-text-muted hover:text-eve-gold hover:border-eve-gold/30 transition-colors"
-                                    >
-                                        + {t("report.form.metadata.add")}
-                                    </button>
-                                </div>
-                                {#each metadata as row, i (row.id)}
-                                    <div class="mb-3 flex items-start gap-3">
-                                        <div class="flex-1">
-                                            <input
-                                                type="text"
-                                                value={row.key}
-                                                oninput={(e) => updateMetadataKey(row.id, e.currentTarget.value)}
-                                                placeholder={t("report.form.metadata.key.placeholder")}
-                                                class="w-full rounded border border-eve-border bg-eve-bg px-3 py-2 text-sm text-eve-text placeholder:text-eve-text-muted/50 focus:border-eve-gold focus:outline-none transition-colors"
-                                            />
-                                        </div>
-                                        <div class="flex-1">
-                                            <input
-                                                type="text"
-                                                value={row.value}
-                                                oninput={(e) => updateMetadataValue(row.id, e.currentTarget.value)}
-                                                placeholder={t("report.form.metadata.value.placeholder")}
-                                                class="w-full rounded border border-eve-border bg-eve-bg px-3 py-2 text-sm text-eve-text placeholder:text-eve-text-muted/50 focus:border-eve-gold focus:outline-none transition-colors"
-                                            />
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onclick={() => removeMetadataRow(row.id)}
-                                            class="rounded border border-eve-border px-2 py-2 text-xs text-eve-text-muted hover:text-eve-red hover:border-eve-red/30 transition-colors"
-                                        >
-                                            &times;
-                                        </button>
-                                    </div>
-                                {/each}
-                            </div>
-                        </div>
+                        <label class="block">
+                            <span class="block text-xs font-medium text-eve-text-muted mb-1.5">{t("report.form.bug.version")}</span>
+                            <input
+                                type="text"
+                                bind:value={version}
+                                placeholder={t("report.form.bug.version.placeholder")}
+                                class="w-full rounded border border-eve-border bg-eve-bg px-3.5 py-2.5 text-sm text-eve-text placeholder:text-eve-text-muted/50 focus:border-eve-gold focus:outline-none transition-colors"
+                            />
+                        </label>
                     {/if}
                 </div>
 
