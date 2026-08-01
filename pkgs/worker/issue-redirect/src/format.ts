@@ -155,9 +155,6 @@ function formatFooter(req: IssueRequest): string {
             parts.push(entries.map(([k, v]) => `${k}: ${v}`).join(" | "));
         }
     }
-    if (req.contact) {
-        parts.push(`contact: ${req.contact}`);
-    }
     if (parts.length === 0) {
         return "";
     }

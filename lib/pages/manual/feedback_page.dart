@@ -34,7 +34,6 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleCtrl;
   final _descriptionCtrl = TextEditingController();
-  final _contactCtrl = TextEditingController();
 
   bool _submitting = false;
   bool _includeMetadata = true;
@@ -51,7 +50,6 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
   void dispose() {
     _titleCtrl.dispose();
     _descriptionCtrl.dispose();
-    _contactCtrl.dispose();
     super.dispose();
   }
 
@@ -92,13 +90,6 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
                     ),
                     const SizedBox(height: 16),
                     _buildMetadataToggle(),
-                    const SizedBox(height: 4),
-                    _buildField(
-                      context.l10n.reportFieldContact,
-                      _contactCtrl,
-                      hint: context.l10n.reportFieldContactHint,
-                      helperText: context.l10n.reportFieldContactPrivacy,
-                    ),
                   ]),
                   const SizedBox(height: 32),
                 ],
@@ -215,7 +206,6 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
           kind: widget.kind,
           title: _titleCtrl.text.trim(),
           description: _descriptionCtrl.text.trim(),
-          contact: _contactCtrl.text.trim(),
           locale: locale.startsWith("zh") ? "zh" : "en",
           docId: widget.docId,
         ),
@@ -240,7 +230,6 @@ class _ManualFeedbackPageState extends ConsumerState<ManualFeedbackPage> {
   void _clearForm() {
     _titleCtrl.clear();
     _descriptionCtrl.clear();
-    _contactCtrl.clear();
     setState(() => _includeMetadata = true);
   }
 

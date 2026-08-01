@@ -21,13 +21,16 @@ Create a bug report issue.
     "platform": "Android",
     "version": "0.1.0",
     "logs": "Error: null pointer exception",
-    "contact": "user@example.com",
     "metadata": {
         "os_version": "Android 14",
-        "device": "Pixel 8"
+        "app_version": "0.1.0"
     }
 }
 ```
+
+`metadata` is optional and restricted to an allowlist of system keys (`os_version`,
+`app_version`) with short string values; requests carrying any other metadata key are
+rejected with a validation error. Free-form or contact metadata is not accepted.
 
 ### `POST /feature-request`
 
@@ -57,8 +60,7 @@ Default labels: `F-App`, `T-Docs`, `T-Bug`, `V-Needs Triage`.
     "language": "en",
     "pagePath": "/docs/fitting/capacitor",
     "pageId": "fitting-capacitor",
-    "content": "The recharge rate section describes pre-patch behavior",
-    "contact": "user@example.com"
+    "content": "The recharge rate section describes pre-patch behavior"
 }
 ```
 

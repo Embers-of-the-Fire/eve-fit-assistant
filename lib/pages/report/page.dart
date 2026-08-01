@@ -45,8 +45,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   final _featureAlternativesCtrl = TextEditingController();
   final _featureExtraCtrl = TextEditingController();
 
-  final _contactCtrl = TextEditingController();
-
   bool _submitting = false;
   bool _includeMetadata = true;
 
@@ -72,7 +70,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _featureImpactCtrl.dispose();
     _featureAlternativesCtrl.dispose();
     _featureExtraCtrl.dispose();
-    _contactCtrl.dispose();
     super.dispose();
   }
 
@@ -160,12 +157,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           ),
           const SizedBox(height: 16),
           _buildMetadataToggle(),
-          const SizedBox(height: 4),
-          _buildField(
-            context.l10n.reportFieldContact,
-            _contactCtrl,
-            hint: context.l10n.reportFieldContactHint,
-          ),
         ]),
         const SizedBox(height: 32),
       ],
@@ -224,12 +215,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           ),
           const SizedBox(height: 16),
           _buildMetadataToggle(),
-          const SizedBox(height: 4),
-          _buildField(
-            context.l10n.reportFieldContact,
-            _contactCtrl,
-            hint: context.l10n.reportFieldContactHint,
-          ),
         ]),
         const SizedBox(height: 32),
       ],
@@ -331,7 +316,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             expected: _bugExpectedCtrl.text.trim(),
             actual: _bugActualCtrl.text.trim(),
             platform: _detectPlatform(),
-            contact: _contactCtrl.text.trim(),
           ),
           language,
           includeMetadata: includeMetadata,
@@ -345,7 +329,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             impact: _featureImpactCtrl.text.trim(),
             alternatives: _featureAlternativesCtrl.text.trim(),
             extra: _featureExtraCtrl.text.trim(),
-            contact: _contactCtrl.text.trim(),
           ),
           language,
           includeMetadata: includeMetadata,
@@ -379,7 +362,6 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _featureImpactCtrl.clear();
     _featureAlternativesCtrl.clear();
     _featureExtraCtrl.clear();
-    _contactCtrl.clear();
     setState(() => _includeMetadata = true);
   }
 

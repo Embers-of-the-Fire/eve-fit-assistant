@@ -11,9 +11,7 @@ export interface BugReportPayload {
     platform: Platform;
     version?: string;
     logs?: string;
-    contact?: string;
     labels?: string[];
-    metadata?: Record<string, unknown>;
 }
 
 export interface FeatureRequestPayload {
@@ -24,9 +22,7 @@ export interface FeatureRequestPayload {
     impact: string;
     alternatives?: string;
     extra?: string;
-    contact?: string;
     labels?: string[];
-    metadata?: Record<string, unknown>;
 }
 
 export interface IssueResult {

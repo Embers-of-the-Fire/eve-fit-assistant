@@ -33,7 +33,6 @@ class ReportApi {
       if (includeMetadata) "metadata": await _collectMetadata(),
       if (report.version != null && report.version!.isNotEmpty) "version": report.version,
       if (report.logs != null && report.logs!.isNotEmpty) "logs": report.logs,
-      if (report.contact != null && report.contact!.isNotEmpty) "contact": report.contact,
     };
     return _post("bug-report", data);
   }
@@ -53,7 +52,6 @@ class ReportApi {
       if (req.alternatives != null && req.alternatives!.isNotEmpty)
         "alternatives": req.alternatives,
       if (req.extra != null && req.extra!.isNotEmpty) "extra": req.extra,
-      if (req.contact != null && req.contact!.isNotEmpty) "contact": req.contact,
     };
     return _post("feature-request", data);
   }

@@ -125,17 +125,8 @@ export const en = {
     "report.form.feature.extra.placeholder":
         "Links to mockups, references, or any additional context",
 
-    "report.form.contact": "Contact",
-    "report.form.contact.placeholder": "Email, QQ, or other way to reach you (optional)",
     "report.form.labels": "Labels",
     "report.form.labels.placeholder": "Comma-separated labels, e.g. T-Bug, V-Needs Triage",
-    "report.form.metadata": "Metadata",
-    "report.form.metadata.key": "Key",
-    "report.form.metadata.value": "Value",
-    "report.form.metadata.add": "Add row",
-    "report.form.metadata.remove": "Remove",
-    "report.form.metadata.key.placeholder": "e.g. os_version",
-    "report.form.metadata.value.placeholder": "e.g. Android 14",
 
     "report.form.platform.android": "Android",
     "report.form.platform.ios": "iOS",
@@ -300,17 +291,8 @@ export const zh: Record<TranslationKey, string> = {
     "report.form.feature.extra": "原型 / 参考 / 其他补充",
     "report.form.feature.extra.placeholder": "原型链接、参考资料或任何补充上下文",
 
-    "report.form.contact": "联系方式",
-    "report.form.contact.placeholder": "邮箱、QQ 或其他联系方式（选填）",
     "report.form.labels": "标签",
     "report.form.labels.placeholder": "逗号分隔的标签，例如 T-Bug, V-Needs Triage",
-    "report.form.metadata": "元数据",
-    "report.form.metadata.key": "键",
-    "report.form.metadata.value": "值",
-    "report.form.metadata.add": "添加行",
-    "report.form.metadata.remove": "移除",
-    "report.form.metadata.key.placeholder": "例如 os_version",
-    "report.form.metadata.value.placeholder": "例如 Android 14",
 
     "report.form.platform.android": "Android",
     "report.form.platform.ios": "iOS",

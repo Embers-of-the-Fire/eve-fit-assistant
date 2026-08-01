@@ -4,12 +4,15 @@ const PlatformEnum = z.enum(["Android", "iOS", "Windows 10/11", "Linux", "Other"
 
 const LanguageEnum = z.enum(["en", "zh"]);
 
+const MetadataSchema = z
+    .record(z.enum(["os_version", "app_version"]), z.string().max(200))
+    .optional();
+
 const CommonFields = {
     language: LanguageEnum.default("en"),
     title: z.string().min(1, "title is required"),
     labels: z.array(z.string()).optional(),
-    contact: z.string().optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: MetadataSchema,
 };
 
 export const BugReportSchema = z.object({
@@ -36,8 +39,7 @@ const DocsCommonFields = {
     language: LanguageEnum.default("en"),
     topic: z.string().min(1, "topic is required"),
     labels: z.array(z.string()).optional(),
-    contact: z.string().optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: MetadataSchema,
 };
 
 export const DocsFlagSchema = z.object({

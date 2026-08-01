@@ -17,7 +17,6 @@ class ManualFeedback {
     required this.kind,
     required this.title,
     required this.description,
-    required this.contact,
     required this.locale,
     this.docId,
   });
@@ -25,7 +24,6 @@ class ManualFeedback {
   final ManualFeedbackKind kind;
   final String title;
   final String description;
-  final String contact;
   final String locale;
 
   /// Path-joined id of the document being reported (e.g. `fitting/modules`);
@@ -64,7 +62,6 @@ class ManualFeedbackApi {
       "pageId": docId,
       "content": feedback.description,
       if (includeMetadata) "metadata": await _collectMetadata(),
-      if (feedback.contact.isNotEmpty) "contact": feedback.contact,
     };
     return _post("docs-flag", data);
   }
@@ -75,7 +72,6 @@ class ManualFeedbackApi {
       "topic": feedback.title,
       "content": feedback.description,
       if (includeMetadata) "metadata": await _collectMetadata(),
-      if (feedback.contact.isNotEmpty) "contact": feedback.contact,
     };
     return _post("docs-question", data);
   }
