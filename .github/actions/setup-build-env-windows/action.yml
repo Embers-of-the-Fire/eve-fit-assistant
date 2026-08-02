@@ -93,4 +93,9 @@ runs:
       shell: pwsh
       run: |
         dotnet tool install --global wix --version 6.0.1
+        # dotnet tool install does not add the global tools dir to PATH for the
+        # running process; export it for this step and all later job steps.
+        $toolsDir = "$env:USERPROFILE\.dotnet\tools"
+        $env:PATH = "$toolsDir;$env:PATH"
+        Add-Content $env:GITHUB_PATH $toolsDir
         wix extension add -g WixToolset.UI.wixext/6.0.1
