@@ -144,7 +144,7 @@ export const en = {
 
     "download.title": "EVE Fit Assistant — Download & Installation",
     "download.meta_description":
-        "Download the latest EVE Fit Assistant APK for Android, view all releases on GitHub, or build from source.",
+        "Download the latest EVE Fit Assistant for Android, Linux, and Windows, view all releases on GitHub, or build from source.",
     "download.heading": "Get EVE Fit Assistant",
     "download.subtitle": "Choose the installation method that works best for you.",
     "download.android.title": "Android APK",
@@ -157,6 +157,11 @@ export const en = {
         "Native Linux desktop build (x86-64). The AppImage bundles its dependencies; the native zip uses host system libraries.",
     "download.linux.appimage": "Download AppImage",
     "download.linux.native": "Download Native Zip",
+    "download.windows.title": "Windows",
+    "download.windows.desc":
+        "Native Windows desktop build (x86-64). The MSI installer is recommended; the native zip runs as-is. The installer is unsigned, so Windows SmartScreen may show a warning.",
+    "download.windows.installer": "Download Installer (MSI)",
+    "download.windows.native": "Download Native Zip",
     "download.all_releases": "View All Releases on GitHub →",
     "download.source.title": "Build from Source",
     "download.source.desc":
@@ -181,6 +186,7 @@ export const en = {
     "download.not_available": "Not available",
     "download.tabs.android": "Android",
     "download.tabs.linux": "Linux",
+    "download.tabs.windows": "Windows",
     "download.tabs.other": "Other",
     "download.unavailable.title": "Not available for your platform yet",
     "download.unavailable.desc":
@@ -325,7 +331,7 @@ export const zh: Record<TranslationKey, string> = {
 
     "download.title": "EVE Fit Assistant — 下载与安装",
     "download.meta_description":
-        "下载最新的 EVE Fit Assistant APK（Android），在 GitHub 上查看所有版本，或从源码构建。",
+        "下载最新的 EVE Fit Assistant（Android、Linux、Windows），在 GitHub 上查看所有版本，或从源码构建。",
     "download.heading": "获取 EVE Fit Assistant",
     "download.subtitle": "选择最适合你的安装方式。",
     "download.android.title": "Android APK",
@@ -338,6 +344,11 @@ export const zh: Record<TranslationKey, string> = {
         "原生 Linux 桌面版本（x86-64）。AppImage 自带依赖；native zip 使用宿主系统库。",
     "download.linux.appimage": "下载 AppImage",
     "download.linux.native": "下载 Native Zip",
+    "download.windows.title": "Windows",
+    "download.windows.desc":
+        "原生 Windows 桌面版本（x86-64）。推荐使用 MSI 安装包；native zip 解压即可运行。安装包未签名，Windows SmartScreen 可能会弹出警告。",
+    "download.windows.installer": "下载安装程序 (MSI)",
+    "download.windows.native": "下载 Native Zip",
     "download.all_releases": "在 GitHub 上查看所有版本 →",
     "download.source.title": "从源码构建",
     "download.source.desc": "克隆仓库并按照构建说明操作。需要 Flutter、Rust 和 Nix。",
@@ -359,6 +370,7 @@ export const zh: Record<TranslationKey, string> = {
     "download.not_available": "暂不可用",
     "download.tabs.android": "Android",
     "download.tabs.linux": "Linux",
+    "download.tabs.windows": "Windows",
     "download.tabs.other": "其他",
     "download.unavailable.title": "暂未适配你的平台",
     "download.unavailable.desc": "该频道尚未发布适用于你平台的构建，下方列出了可用的构建。",
