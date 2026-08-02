@@ -417,6 +417,16 @@ async fn handle_download(
         WindowsInstaller,
     }
 
+    impl Platform {
+        fn name(self) -> &'static str {
+            match self {
+                Platform::Android => "android",
+                Platform::AppImage | Platform::LinuxNative => "linux",
+                Platform::WindowsNative | Platform::WindowsInstaller => "windows",
+            }
+        }
+    }
+
     // Variant names are not unique across platforms (both Linux and Windows
     // ship a `native` zip), so candidates are collected from every platform
     // and disambiguated by the content hash embedded in the URL.
@@ -449,10 +459,15 @@ async fn handle_download(
             return Response::error(format!("variant not found: {}/{}", channel, variant), 404);
         }
         None => {
+            let current = candidates
+                .iter()
+                .map(|(p, v)| format!("{}: {}", p.name(), v.content_hash))
+                .collect::<Vec<_>>()
+                .join(", ");
             let mut res = Response::error(
                 format!(
                     "stale content hash for {}/{}: {} (current: {})",
-                    channel, variant, hash, candidates[0].1.content_hash
+                    channel, variant, hash, current
                 ),
                 404,
             )?;

@@ -322,6 +322,8 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 					</div>
 				{/if}
 			{:else if detectedOS === "windows"}
+				<!-- No architecture gate here (unlike Linux): Windows on ARM runs the
+				     x86-64 build under emulation, so offering it is intentional. -->
 				{#if availableWindows.length === 0}
 					{@render unavailableNotice("download.unavailable.desc")}
 				{:else}
