@@ -2,15 +2,23 @@
 
 Native variant: the raw Flutter Windows release bundle zipped as-is.
 
-Installer variant: a per-user MSI built with the WiX v6 toolset from
+Installer variant: a per-user, multi-language (en-US base + embedded language
+transforms) MSI built with the WiX v6 toolset from
 distro/windows/installer/Package.wxs; the release bundle is harvested via
-WiX wildcard harvesting (<Files Include="...\\**" />).
+WiX wildcard harvesting (<Files Include="...\\**" />). Each additional culture
+is built separately, diffed against the base MSI with
+`wix msi transform -t language`, and embedded as a substorage named by LCID
+(Windows Installer auto-applies it for matching UI languages).
 """
 
 from __future__ import annotations
 
+import ctypes
+import tempfile
+import uuid
 import zipfile
 
+from ctypes import wintypes
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,13 +33,27 @@ if TYPE_CHECKING:
     from bootstrap.config import ProjectVersion
 
 
-APP_NAME = "EFA"
 BINARY_NAME = "eve_fit_assistant"
 
 BUNDLE_DIR = PROJECT_ROOT / "build" / "windows" / "x64" / "runner" / "Release"
 _PACKAGING_DIR = PROJECT_ROOT / "distro" / "windows" / "installer"
 
 _WIX_UI_EXTENSION = "WixToolset.UI.wixext"
+
+_MSI_ARCH = "x64"
+# (culture, LCID) pairs; the first entry is the MSI base language.
+_MSI_CULTURES: tuple[tuple[str, int], ...] = (("en-US", 1033), ("zh-CN", 2052))
+
+# UpgradeCode derivation inputs (UUIDv5, RFC 4122 §4.3). The resulting GUID is
+# the MSI product-family identity: it must NEVER change between releases, so
+# these inputs must never change either.
+_UPGRADE_CODE_NAMESPACE = uuid.NAMESPACE_URL
+_UPGRADE_CODE_NAME = "https://efa-tech.dev/msi/upgrade-code"
+
+_MSIDBOPEN_TRANSACT = 1
+_MSIMODIFY_INSERT = 1
+_VT_LPSTR = 30
+_PID_TEMPLATE = 7
 
 
 def validate_bundle(bundle_dir: Path) -> None:
@@ -79,13 +101,28 @@ def msi_version(version: ProjectVersion) -> str:
     return f"{version.major}.{version.minor}.{version.patch}.{version.build}"
 
 
+def upgrade_code() -> str:
+    """Derive the MSI UpgradeCode as a deterministic UUIDv5.
+
+    Computed as uuid5(NAMESPACE_URL, _UPGRADE_CODE_NAME) (RFC 4122 §4.3, SHA-1
+    over namespace + name). Being deterministic, it is stable across builds and
+    machines while remaining unique to this product family. Do not change the
+    inputs: the UpgradeCode links every release of the MSI for MajorUpgrade.
+    """
+    return str(uuid.uuid5(_UPGRADE_CODE_NAMESPACE, _UPGRADE_CODE_NAME)).upper()
+
+
 def pack_msi(
     *, bundle_dir: Path, output_dir: Path, version: ProjectVersion, wix: str, dry_run: bool
 ) -> Path:
-    """Build the per-user MSI installer from the WiX source with the wix CLI."""
+    """Build the per-user multi-language MSI installer from the WiX source."""
     wxs = _PACKAGING_DIR / "Package.wxs"
     if not wxs.exists():
         raise click.ClickException(f"WiX source file not found: {wxs}")
+    for culture, _ in _MSI_CULTURES:
+        wxl = _wxl_path(culture)
+        if not wxl.exists():
+            raise click.ClickException(f"WiX localization file not found: {wxl}")
     ver = version.render_full()
     dst = output_dir / f"{ver}-windows-setup.msi"
 
@@ -99,29 +136,247 @@ def pack_msi(
             dry_run,
         )
 
+    base_culture, _ = _MSI_CULTURES[0]
+    extra_cultures = _MSI_CULTURES[1:]
+
     execute_command(
-        [
-            wix,
-            "build",
-            str(wxs),
-            "-d",
-            f"SourceDir={bundle_dir}",
-            "-d",
-            f"MsiVersion={msi_version(version)}",
-            "-d",
-            f"RepoRoot={PROJECT_ROOT}",
-            "-ext",
-            _WIX_UI_EXTENSION,
-            "-pdbtype",
-            "none",
-            "-o",
-            str(dst),
-        ],
-        "BUILDING MSI INSTALLER",
+        _build_msi_args(wix, wxs, bundle_dir, version, base_culture, dst),
+        f"BUILDING MSI INSTALLER ({base_culture})",
         dry_run,
     )
     if dry_run:
+        for culture, lcid in extra_cultures:
+            info(f"[DRY-RUN] Would embed {culture} language transform (LCID {lcid}) into: {dst}")
         info(f"[DRY-RUN] Would build MSI installer: {dst}")
-    else:
-        info(f"Built MSI installer: {dst}")
+        return dst
+
+    with tempfile.TemporaryDirectory(prefix="efa-msi-") as tmp:
+        tmp_dir = Path(tmp)
+        for culture, lcid in extra_cultures:
+            localized = tmp_dir / f"{culture}.msi"
+            mst = tmp_dir / f"{lcid}.mst"
+            execute_command(
+                _build_msi_args(wix, wxs, bundle_dir, version, culture, localized),
+                f"BUILDING MSI INSTALLER ({culture})",
+                dry_run,
+            )
+            _sync_product_code(dst, localized)
+            execute_command(
+                [
+                    wix,
+                    "msi",
+                    "transform",
+                    "-t",
+                    "language",
+                    str(dst),
+                    str(localized),
+                    "-o",
+                    str(mst),
+                ],
+                f"CREATING {culture} LANGUAGE TRANSFORM",
+                dry_run,
+            )
+            _embed_language_transform(dst, mst, lcid)
+            info(f"Embedded {culture} language transform (LCID {lcid}) into: {dst}")
+
+    info(f"Built MSI installer: {dst}")
     return dst
+
+
+def _wxl_path(culture: str) -> Path:
+    return _PACKAGING_DIR / f"Package.{culture.lower()}.wxl"
+
+
+def _build_msi_args(
+    wix: str, wxs: Path, bundle_dir: Path, version: ProjectVersion, culture: str, out: Path
+) -> list[str]:
+    return [
+        wix,
+        "build",
+        str(wxs),
+        "-d",
+        f"SourceDir={bundle_dir}",
+        "-d",
+        f"MsiVersion={msi_version(version)}",
+        "-d",
+        f"UpgradeCode={upgrade_code()}",
+        "-d",
+        f"RepoRoot={PROJECT_ROOT}",
+        "-arch",
+        _MSI_ARCH,
+        "-culture",
+        culture,
+        "-loc",
+        str(_wxl_path(culture)),
+        "-ext",
+        _WIX_UI_EXTENSION,
+        "-pdbtype",
+        "none",
+        "-o",
+        str(out),
+    ]
+
+
+def _read_product_code(msi_dll: ctypes.WinDLL, msi_path: Path) -> str:
+    db = ctypes.c_ulong()
+    rc = msi_dll.MsiOpenDatabaseW(str(msi_path), ctypes.c_void_p(0), ctypes.byref(db))
+    if rc != 0:
+        raise click.ClickException(f"MsiOpenDatabase failed (error {rc}) for {msi_path}")
+    try:
+        view = ctypes.c_ulong()
+        rc = msi_dll.MsiDatabaseOpenViewW(
+            db, "SELECT `Value` FROM `Property` WHERE `Property`='ProductCode'", ctypes.byref(view)
+        )
+        if rc == 0:
+            rc = msi_dll.MsiViewExecute(view, 0)
+        if rc != 0:
+            raise click.ClickException(f"Reading ProductCode failed (error {rc}) for {msi_path}")
+        record = ctypes.c_ulong()
+        if msi_dll.MsiViewFetch(view, ctypes.byref(record)) != 0:
+            raise click.ClickException(f"ProductCode not found in {msi_path}")
+        size = wintypes.DWORD(64)
+        buffer = ctypes.create_unicode_buffer(64)
+        rc = msi_dll.MsiRecordGetStringW(record, 1, buffer, ctypes.byref(size))
+        msi_dll.MsiCloseHandle(record)
+        msi_dll.MsiViewClose(view)
+        msi_dll.MsiCloseHandle(view)
+        if rc != 0:
+            raise click.ClickException(f"Reading ProductCode failed (error {rc}) for {msi_path}")
+        return buffer.value
+    finally:
+        msi_dll.MsiCloseHandle(db)
+
+
+def _sync_product_code(base_msi: Path, localized_msi: Path) -> None:
+    """Copy the base MSI's ProductCode into a localized build.
+
+    WiX auto-generates a random ProductCode per build, but the language
+    transform must keep both builds as the same product instance.
+    """
+    msi_dll = ctypes.WinDLL("msi")
+    code = _read_product_code(msi_dll, base_msi)
+    db = ctypes.c_ulong()
+    rc = msi_dll.MsiOpenDatabaseW(
+        str(localized_msi), ctypes.c_void_p(_MSIDBOPEN_TRANSACT), ctypes.byref(db)
+    )
+    if rc != 0:
+        raise click.ClickException(f"MsiOpenDatabase failed (error {rc}) for {localized_msi}")
+    try:
+        view = ctypes.c_ulong()
+        rc = msi_dll.MsiDatabaseOpenViewW(
+            db, "UPDATE `Property` SET `Value`=? WHERE `Property`='ProductCode'", ctypes.byref(view)
+        )
+        if rc == 0:
+            record = msi_dll.MsiCreateRecord(1)
+            msi_dll.MsiRecordSetStringW(record, 1, code)
+            rc = msi_dll.MsiViewExecute(view, record)
+            msi_dll.MsiCloseHandle(record)
+        if rc == 0:
+            msi_dll.MsiViewClose(view)
+            msi_dll.MsiCloseHandle(view)
+            rc = msi_dll.MsiDatabaseCommit(db)
+        if rc != 0:
+            raise click.ClickException(
+                f"Syncing ProductCode failed (error {rc}) for {localized_msi}"
+            )
+    finally:
+        msi_dll.MsiCloseHandle(db)
+
+
+def _embed_language_transform(msi_path: Path, mst_path: Path, lcid: int) -> None:
+    """Embed a language transform into an MSI as a substorage named by LCID.
+
+    Also appends the LCID to the Template Summary language list so Windows
+    Installer auto-applies the transform for matching UI languages.
+    """
+    msi_dll = ctypes.WinDLL("msi")
+    db = ctypes.c_ulong()
+    rc = msi_dll.MsiOpenDatabaseW(
+        str(msi_path), ctypes.c_void_p(_MSIDBOPEN_TRANSACT), ctypes.byref(db)
+    )
+    if rc != 0:
+        raise click.ClickException(f"MsiOpenDatabase failed (error {rc}) for {msi_path}")
+    try:
+        _insert_substorage(msi_dll, db, mst_path, str(lcid))
+        _register_template_language(msi_dll, db, lcid)
+        rc = msi_dll.MsiDatabaseCommit(db)
+        if rc != 0:
+            raise click.ClickException(f"MsiDatabaseCommit failed (error {rc}) for {msi_path}")
+    finally:
+        msi_dll.MsiCloseHandle(db)
+
+
+def _insert_substorage(
+    msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, mst_path: Path, name: str
+) -> None:
+    view = ctypes.c_ulong()
+    rc = msi_dll.MsiDatabaseOpenViewW(
+        db, "SELECT `Name`, `Data` FROM `_Storages`", ctypes.byref(view)
+    )
+    if rc != 0:
+        raise click.ClickException(f"MsiDatabaseOpenView failed (error {rc}) for _Storages")
+    try:
+        record = msi_dll.MsiCreateRecord(2)
+        msi_dll.MsiRecordSetStringW(record, 1, name)
+        rc = msi_dll.MsiRecordSetStreamW(record, 2, str(mst_path))
+        if rc != 0:
+            raise click.ClickException(f"MsiRecordSetStream failed (error {rc}) for {mst_path}")
+        rc = msi_dll.MsiViewExecute(view, 0)
+        if rc == 0:
+            rc = msi_dll.MsiViewModify(view, _MSIMODIFY_INSERT, record)
+        if rc != 0:
+            raise click.ClickException(
+                f"Embedding substorage '{name}' failed (error {rc}) for {mst_path}"
+            )
+        msi_dll.MsiCloseHandle(record)
+    finally:
+        msi_dll.MsiViewClose(view)
+        msi_dll.MsiCloseHandle(view)
+
+
+def _register_template_language(msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, lcid: int) -> None:
+    summary = ctypes.c_ulong()
+    rc = msi_dll.MsiGetSummaryInformationW(db, None, 1, ctypes.byref(summary))
+    if rc != 0:
+        raise click.ClickException(f"MsiGetSummaryInformation failed (error {rc})")
+    try:
+        prop_type = wintypes.UINT()
+        int_value = wintypes.INT()
+        file_time = wintypes.FILETIME()
+        size = wintypes.DWORD(0)
+        msi_dll.MsiSummaryInfoGetPropertyW(
+            summary,
+            _PID_TEMPLATE,
+            ctypes.byref(prop_type),
+            ctypes.byref(int_value),
+            ctypes.byref(file_time),
+            None,
+            ctypes.byref(size),
+        )
+        buffer = ctypes.create_unicode_buffer(size.value + 1)
+        size = wintypes.DWORD(size.value + 1)
+        rc = msi_dll.MsiSummaryInfoGetPropertyW(
+            summary,
+            _PID_TEMPLATE,
+            ctypes.byref(prop_type),
+            ctypes.byref(int_value),
+            ctypes.byref(file_time),
+            buffer,
+            ctypes.byref(size),
+        )
+        if rc != 0:
+            raise click.ClickException(f"MsiSummaryInfoGetProperty failed (error {rc})")
+        platform, _, languages = buffer.value.partition(";")
+        language_ids = [lang for lang in languages.split(",") if lang]
+        if str(lcid) not in language_ids:
+            language_ids.append(str(lcid))
+        template = f"{platform};{','.join(language_ids)}"
+        rc = msi_dll.MsiSummaryInfoSetPropertyW(
+            summary, _PID_TEMPLATE, _VT_LPSTR, 0, None, template
+        )
+        if rc == 0:
+            rc = msi_dll.MsiSummaryInfoPersist(summary)
+        if rc != 0:
+            raise click.ClickException(f"Updating template summary failed (error {rc})")
+    finally:
+        msi_dll.MsiCloseHandle(summary)

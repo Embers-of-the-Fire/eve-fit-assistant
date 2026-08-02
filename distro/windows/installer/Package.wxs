@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <!-- UpgradeCode is derived at build time as UUIDv5(NAMESPACE_URL,
+       "https://efa-tech.dev/msi/upgrade-code"); see upgrade_code() in
+       bootstrap/release/windows.py. It identifies the product family across
+       releases and must never change. -->
   <Package
-      Name="EVE Fit Assistant"
+      Name="!(loc.ProductName)"
       Manufacturer="dev.efa_tech"
       Version="$(var.MsiVersion)"
-      UpgradeCode="7F3A9C2E-8B4D-4E1F-9A6B-2C5D8E7F1A3B"
+      UpgradeCode="$(var.UpgradeCode)"
       Scope="perUser"
       InstallerVersion="500">
 
-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of EVE Fit Assistant is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="!(loc.DowngradeErrorMessage)" />
     <MediaTemplate EmbedCab="yes" />
 
     <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.RepoRoot)\distro\windows\installer\LICENSE.rtf" />
 
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Embers-of-the-Fire/eve-fit-assistant" />
+    <Property Id="ARPURLINFOABOUT" Value="https://efa-tech.dev" />
+    <Property Id="ARPHELPLINK" Value="https://docs.efa-tech.dev" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/Embers-of-the-Fire/eve-fit-assistant" />
+    <Property Id="ARPCOMMENTS" Value="!(loc.ProductDescription)" />
     <Icon Id="AppIcon" SourceFile="$(var.RepoRoot)\windows\runner\resources\app_icon.ico" />
 
     <StandardDirectory Id="LocalAppDataFolder">
@@ -29,20 +37,20 @@
       <Component Id="StartMenuShortcut" Guid="*">
         <RegistryValue
             Root="HKCU"
-            Key="Software\EFA"
+            Key="Software\dev.efa_tech\EFA"
             Name="StartMenuShortcut"
             Type="integer"
             Value="1"
             KeyPath="yes" />
         <Shortcut
             Directory="ProgramMenuFolder"
-            Name="EVE Fit Assistant"
+            Name="!(loc.ShortcutName)"
             Target="[INSTALLFOLDER]eve_fit_assistant.exe"
             WorkingDirectory="INSTALLFOLDER" />
       </Component>
     </DirectoryRef>
 
-    <Feature Id="Main" Title="EVE Fit Assistant" Level="1">
+    <Feature Id="Main" Title="!(loc.ProductName)" Level="1">
       <ComponentGroupRef Id="PayloadComponents" />
       <ComponentRef Id="StartMenuShortcut" />
     </Feature>

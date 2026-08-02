@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl" Culture="en-US" Codepage="1252">
+  <String Id="ProductName" Value="EFA" />
+  <String Id="ProductDescription" Value="EVE Fit Assistant: plan, simulate, and share EVE Online ship fittings." />
+  <String Id="ShortcutName" Value="EFA" />
+  <String Id="DowngradeErrorMessage" Value="A newer version of EFA is already installed." />
+</WixLocalization>
