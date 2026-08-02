@@ -8,7 +8,7 @@
       Scope="perUser"
       InstallerVersion="500">
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of EVE Fit Assistant is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of EVE Fit Assistant is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
     <ui:WixUI Id="WixUI_Minimal" />

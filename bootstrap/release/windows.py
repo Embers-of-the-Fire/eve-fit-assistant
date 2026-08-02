@@ -71,8 +71,10 @@ def pack_native_zip(
 def msi_version(version: ProjectVersion) -> str:
     """Map the project version to MSI's strictly numeric four-part version.
 
-    Prerelease labels cannot appear in MSI versions, so the build number
-    distinguishes builds that share the same major.minor.patch triple.
+    Prerelease labels cannot appear in MSI versions, and Windows Installer
+    compares only the first three fields, so same-triple prerelease upgrades
+    rely on MajorUpgrade AllowSameVersionUpgrades in Package.wxs. The fourth
+    field is display-only (ARP) to distinguish builds.
     """
     return f"{version.major}.{version.minor}.{version.patch}.{version.build}"
 
