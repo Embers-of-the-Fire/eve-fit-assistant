@@ -2,9 +2,10 @@ name: Setup build env (Windows)
 
 description: >-
   Windows variant of the shared platform build preamble, without Nix:
-  uv/Python dependencies, Flutter, Rust toolchain and cargo cache, protoc,
-  flutter_rust_bridge_codegen, dev config, backend env, native CI data,
-  Flutter dependencies, code generation, and the WiX toolset.
+  uv/Python dependencies, Flutter, Rust toolchain and cargo cache, protoc
+  with the Dart plugin (protoc-gen-dart), flutter_rust_bridge_codegen,
+  dev config, backend env, native CI data, Flutter dependencies,
+  code generation, and the WiX toolset.
 
 runs:
   using: composite
@@ -39,6 +40,15 @@ runs:
       run: cargo binstall --no-confirm flutter_rust_bridge_codegen@2.12.0
 
     - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+
+    # The Nix shells ship protoc-gen-dart directly; on Windows it only exists
+    # as a pub-global package. Its shim lives in the pub cache bin dir, which
+    # is not on PATH by default — export it for all later job steps.
+    - name: Install protoc-gen-dart
+      shell: pwsh
+      run: |
+        dart pub global activate protoc_plugin
+        Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
 
     # flutter_secure_storage_windows includes <atlstr.h>, which ships with the
     # VS C++ ATL component — not preinstalled on windows-latest images.
