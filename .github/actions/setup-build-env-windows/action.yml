@@ -46,7 +46,7 @@ runs:
     # is not on PATH by default — export it for all later job steps.
     - name: Install protoc-gen-dart
       shell: pwsh
-      run: |
+      run: | # zizmor: ignore[github-env] fixed runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
         dart pub global activate protoc_plugin
         Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
 
@@ -101,7 +101,7 @@ runs:
     # (https://wixtoolset.org/osmf/), which we do not auto-accept in CI.
     - name: Install WiX toolset
       shell: pwsh
-      run: |
+      run: | # zizmor: ignore[github-env] fixed runner-local dotnet tools dir; not attacker-controlled, required on PATH for later wix steps
         dotnet tool install --global wix --version 6.0.1
         # dotnet tool install does not add the global tools dir to PATH for the
         # running process; export it for this step and all later job steps.
