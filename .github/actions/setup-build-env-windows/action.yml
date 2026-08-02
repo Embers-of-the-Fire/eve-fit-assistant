@@ -30,7 +30,7 @@ runs:
 
     - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
-    - uses: cargo-bins/cargo-binstall@23ee8ab6b7397851bc11705bcdf46f2519ea0285 # v1.9.0
+    - uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
 
     - name: Install flutter_rust_bridge_codegen
       shell: pwsh
