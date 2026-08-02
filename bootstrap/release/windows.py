@@ -55,14 +55,14 @@ def pack_native_zip(
     *, bundle_dir: Path, output_dir: Path, version: ProjectVersion, dry_run: bool
 ) -> Path:
     """Pack the raw Flutter Windows release bundle into a zip archive as-is."""
-    exe = bundle_dir / f"{BINARY_NAME}.exe"
-    if not exe.exists():
-        raise click.ClickException(f"Flutter Windows bundle binary not found: {exe}")
     ver = version.render_full()
     dst = output_dir / f"{ver}-windows-native.zip"
     if dry_run:
         info(f"[DRY-RUN] Would pack native zip archive: {dst}")
         return dst
+    exe = bundle_dir / f"{BINARY_NAME}.exe"
+    if not exe.exists():
+        raise click.ClickException(f"Flutter Windows bundle binary not found: {exe}")
     _zip_tree(bundle_dir, "eve-fit-assistant", dst)
     info(f"Packed native zip archive: {dst}")
     return dst

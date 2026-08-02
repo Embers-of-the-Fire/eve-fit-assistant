@@ -629,7 +629,8 @@ def register_build_commands(cli_group: click.Group) -> None:
             runtime.execute([flutter, "build", "windows", "--release"], "BUILDING WINDOWS BUNDLE")
 
         bundle_dir = PROJECT_ROOT / "build" / "windows" / "x64" / "runner" / "Release"
-        validate_bundle(bundle_dir)
+        if not runtime.is_dry_run():
+            validate_bundle(bundle_dir)
 
         if "native" in selected:
             pack_native_zip(
