@@ -23,6 +23,7 @@ NATIVE_ENV_OUTPUT_DIR = "OUTPUT_DIR"
 NATIVE_OUTPUT_DIR = "native"
 
 EN_RESOURCE_ID = "res:/localizationfsd/localization_fsd_en-us.pickle"
+DBUFF_RESOURCE_ID = "res:/staticdata/dbuffcollections.static"
 
 
 async def __get_native_env_map(gen: GeneratorDatasource):
@@ -40,6 +41,31 @@ async def __get_native_env_map(gen: GeneratorDatasource):
 async def generate(data: GeneratorDatasource):
     env_map = await __get_native_env_map(data)
     uv = get_command("uv")
+    env = {**dict(**os.environ), **env_map}
+
+    dbuff_path = data.resources.res.get_resource(DBUFF_RESOURCE_ID)
+    await dbuff_path.download()
+    info("Executing dbuffcollections patching...")
+    info(
+        f"Executing command: uv run -m data.patching dbuffcollections "
+        f"in native directory: {NATIVE_LIB_ROOT.resolve()}"
+    )
+    execute_command(
+        [
+            uv,
+            "run",
+            "-m",
+            "data.patching",
+            "dbuffcollections",
+            str(dbuff_path.local_path),
+            "--localization",
+            env_map[NATIVE_ENV_FSD_LOC_EN_DIR],
+        ],
+        "NATIVE PATCHING",
+        cwd=NATIVE_LIB_ROOT.resolve(),
+        env=env,
+    )
+
     info("Executing native generator...")
     info(
         f"Executing command: uv run -m data.convert in native directory: {NATIVE_LIB_ROOT.resolve()}"
@@ -48,7 +74,7 @@ async def generate(data: GeneratorDatasource):
         [uv, "run", "-m", "data.convert"],
         "NATIVE CONVERT",
         cwd=NATIVE_LIB_ROOT.resolve(),
-        env={**dict(**os.environ), **env_map},
+        env=env,
     )
     pb_dir = data.config.paths.cache / NATIVE_OUTPUT_DIR / "pb2"
     target_dir = data.paths.native_root_path
