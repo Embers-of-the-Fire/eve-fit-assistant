@@ -26,7 +26,7 @@
     <Icon Id="AppIcon" SourceFile="$(var.RepoRoot)\windows\runner\resources\app_icon.ico" />
 
     <StandardDirectory Id="LocalAppDataFolder">
-      <Directory Id="INSTALLFOLDER" Name="Programs\EFA" />
+      <Directory Id="INSTALLFOLDER" Name="Programs\eve_fit_assistant" />
     </StandardDirectory>
 
     <ComponentGroup Id="PayloadComponents" Directory="INSTALLFOLDER">
@@ -37,7 +37,7 @@
       <Component Id="StartMenuShortcut" Guid="*">
         <RegistryValue
             Root="HKCU"
-            Key="Software\dev.efa_tech\EFA"
+            Key="Software\dev.efa_tech\eve_fit_assistant"
             Name="StartMenuShortcut"
             Type="integer"
             Value="1"
