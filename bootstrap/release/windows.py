@@ -26,6 +26,8 @@ import click
 
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.log import info
+from bootstrap.release.msi import MSIHANDLE
+from bootstrap.release.msi import Msi
 from bootstrap.utils import execute_command
 
 
@@ -50,7 +52,6 @@ _MSI_CULTURES: tuple[tuple[str, int], ...] = (("en-US", 1033), ("zh-CN", 2052))
 _UPGRADE_CODE_NAMESPACE = uuid.NAMESPACE_URL
 _UPGRADE_CODE_NAME = "https://efa-tech.dev/msi/upgrade-code"
 
-_MSIDBOPEN_TRANSACT = 1
 _MSIMODIFY_INSERT = 1
 _VT_LPSTR = 30
 _PID_TEMPLATE = 7
@@ -217,34 +218,24 @@ def _build_msi_args(
     ]
 
 
-def _read_product_code(msi_dll: ctypes.WinDLL, msi_path: Path) -> str:
-    db = ctypes.c_ulong()
-    rc = msi_dll.MsiOpenDatabaseW(str(msi_path), ctypes.c_void_p(0), ctypes.byref(db))
-    if rc != 0:
-        raise click.ClickException(f"MsiOpenDatabase failed (error {rc}) for {msi_path}")
-    try:
-        view = ctypes.c_ulong()
-        rc = msi_dll.MsiDatabaseOpenViewW(
-            db, "SELECT `Value` FROM `Property` WHERE `Property`='ProductCode'", ctypes.byref(view)
-        )
-        if rc == 0:
-            rc = msi_dll.MsiViewExecute(view, 0)
+def _read_product_code(msi: Msi, msi_path: Path) -> str:
+    query = "SELECT `Value` FROM `Property` WHERE `Property`='ProductCode'"
+    with (
+        msi.open_database(msi_path) as db,
+        msi.open_view(db, query, what=f"ProductCode in {msi_path}") as view,
+    ):
+        rc = msi.dll.MsiViewExecute(view, 0)
         if rc != 0:
             raise click.ClickException(f"Reading ProductCode failed (error {rc}) for {msi_path}")
-        record = ctypes.c_ulong()
-        if msi_dll.MsiViewFetch(view, ctypes.byref(record)) != 0:
-            raise click.ClickException(f"ProductCode not found in {msi_path}")
-        size = wintypes.DWORD(64)
-        buffer = ctypes.create_unicode_buffer(64)
-        rc = msi_dll.MsiRecordGetStringW(record, 1, buffer, ctypes.byref(size))
-        msi_dll.MsiCloseHandle(record)
-        msi_dll.MsiViewClose(view)
-        msi_dll.MsiCloseHandle(view)
-        if rc != 0:
-            raise click.ClickException(f"Reading ProductCode failed (error {rc}) for {msi_path}")
-        return buffer.value
-    finally:
-        msi_dll.MsiCloseHandle(db)
+        with msi.fetch_record(view, what=f"ProductCode in {msi_path}") as record:
+            size = wintypes.DWORD(64)
+            buffer = ctypes.create_unicode_buffer(64)
+            rc = msi.dll.MsiRecordGetStringW(record, 1, buffer, ctypes.byref(size))
+            if rc != 0:
+                raise click.ClickException(
+                    f"Reading ProductCode failed (error {rc}) for {msi_path}"
+                )
+            return buffer.value
 
 
 def _sync_product_code(base_msi: Path, localized_msi: Path) -> None:
@@ -253,34 +244,24 @@ def _sync_product_code(base_msi: Path, localized_msi: Path) -> None:
     WiX auto-generates a random ProductCode per build, but the language
     transform must keep both builds as the same product instance.
     """
-    msi_dll = ctypes.WinDLL("msi")
-    code = _read_product_code(msi_dll, base_msi)
-    db = ctypes.c_ulong()
-    rc = msi_dll.MsiOpenDatabaseW(
-        str(localized_msi), ctypes.c_void_p(_MSIDBOPEN_TRANSACT), ctypes.byref(db)
-    )
-    if rc != 0:
-        raise click.ClickException(f"MsiOpenDatabase failed (error {rc}) for {localized_msi}")
-    try:
-        view = ctypes.c_ulong()
-        rc = msi_dll.MsiDatabaseOpenViewW(
-            db, "UPDATE `Property` SET `Value`=? WHERE `Property`='ProductCode'", ctypes.byref(view)
-        )
-        if rc == 0:
-            record = msi_dll.MsiCreateRecord(1)
-            msi_dll.MsiRecordSetStringW(record, 1, code)
-            rc = msi_dll.MsiViewExecute(view, record)
-            msi_dll.MsiCloseHandle(record)
-        if rc == 0:
-            msi_dll.MsiViewClose(view)
-            msi_dll.MsiCloseHandle(view)
-            rc = msi_dll.MsiDatabaseCommit(db)
+    msi = Msi()
+    code = _read_product_code(msi, base_msi)
+    with msi.open_database(localized_msi, transact=True) as db:
+        query = "UPDATE `Property` SET `Value`=? WHERE `Property`='ProductCode'"
+        with msi.open_view(db, query, what=f"ProductCode in {localized_msi}") as view:
+            with msi.create_record(1) as record:
+                rc = msi.dll.MsiRecordSetStringW(record, 1, code)
+                if rc == 0:
+                    rc = msi.dll.MsiViewExecute(view, record)
+            if rc != 0:
+                raise click.ClickException(
+                    f"Syncing ProductCode failed (error {rc}) for {localized_msi}"
+                )
+        rc = msi.dll.MsiDatabaseCommit(db)
         if rc != 0:
             raise click.ClickException(
                 f"Syncing ProductCode failed (error {rc}) for {localized_msi}"
             )
-    finally:
-        msi_dll.MsiCloseHandle(db)
 
 
 def _embed_language_transform(msi_path: Path, mst_path: Path, lcid: int) -> None:
@@ -289,49 +270,32 @@ def _embed_language_transform(msi_path: Path, mst_path: Path, lcid: int) -> None
     Also appends the LCID to the Template Summary language list so Windows
     Installer auto-applies the transform for matching UI languages.
     """
-    msi_dll = ctypes.WinDLL("msi")
-    db = ctypes.c_ulong()
-    rc = msi_dll.MsiOpenDatabaseW(
-        str(msi_path), ctypes.c_void_p(_MSIDBOPEN_TRANSACT), ctypes.byref(db)
-    )
-    if rc != 0:
-        raise click.ClickException(f"MsiOpenDatabase failed (error {rc}) for {msi_path}")
-    try:
-        _insert_substorage(msi_dll, db, mst_path, str(lcid))
-        _register_template_language(msi_dll, db, lcid)
-        rc = msi_dll.MsiDatabaseCommit(db)
+    msi = Msi()
+    with msi.open_database(msi_path, transact=True) as db:
+        _insert_substorage(msi, db, mst_path, str(lcid))
+        _register_template_language(msi, db, lcid)
+        rc = msi.dll.MsiDatabaseCommit(db)
         if rc != 0:
             raise click.ClickException(f"MsiDatabaseCommit failed (error {rc}) for {msi_path}")
-    finally:
-        msi_dll.MsiCloseHandle(db)
 
 
-def _insert_substorage(
-    msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, mst_path: Path, name: str
-) -> None:
-    view = ctypes.c_ulong()
-    rc = msi_dll.MsiDatabaseOpenViewW(
-        db, "SELECT `Name`, `Data` FROM `_Storages`", ctypes.byref(view)
-    )
-    if rc != 0:
-        raise click.ClickException(f"MsiDatabaseOpenView failed (error {rc}) for _Storages")
-    try:
-        record = msi_dll.MsiCreateRecord(2)
-        msi_dll.MsiRecordSetStringW(record, 1, name)
-        rc = msi_dll.MsiRecordSetStreamW(record, 2, str(mst_path))
+def _insert_substorage(msi: Msi, db: MSIHANDLE, mst_path: Path, name: str) -> None:
+    with (
+        msi.open_view(db, "SELECT `Name`, `Data` FROM `_Storages`", what="_Storages") as view,
+        msi.create_record(2) as record,
+    ):
+        rc = msi.dll.MsiRecordSetStringW(record, 1, name)
+        if rc == 0:
+            rc = msi.dll.MsiRecordSetStreamW(record, 2, str(mst_path))
         if rc != 0:
             raise click.ClickException(f"MsiRecordSetStream failed (error {rc}) for {mst_path}")
-        rc = msi_dll.MsiViewExecute(view, 0)
+        rc = msi.dll.MsiViewExecute(view, 0)
         if rc == 0:
-            rc = msi_dll.MsiViewModify(view, _MSIMODIFY_INSERT, record)
+            rc = msi.dll.MsiViewModify(view, _MSIMODIFY_INSERT, record)
         if rc != 0:
             raise click.ClickException(
                 f"Embedding substorage '{name}' failed (error {rc}) for {mst_path}"
             )
-        msi_dll.MsiCloseHandle(record)
-    finally:
-        msi_dll.MsiViewClose(view)
-        msi_dll.MsiCloseHandle(view)
 
 
 def _append_lcid(template: str, lcid: int) -> str:
@@ -342,17 +306,13 @@ def _append_lcid(template: str, lcid: int) -> str:
     return f"{platform};{','.join(language_ids)}"
 
 
-def _register_template_language(msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, lcid: int) -> None:
-    summary = ctypes.c_ulong()
-    rc = msi_dll.MsiGetSummaryInformationW(db, None, 1, ctypes.byref(summary))
-    if rc != 0:
-        raise click.ClickException(f"MsiGetSummaryInformation failed (error {rc})")
-    try:
+def _register_template_language(msi: Msi, db: MSIHANDLE, lcid: int) -> None:
+    with msi.summary_info(db, 1) as summary:
         prop_type = wintypes.UINT()
         int_value = wintypes.INT()
         file_time = wintypes.FILETIME()
         size = wintypes.DWORD(0)
-        msi_dll.MsiSummaryInfoGetPropertyW(
+        msi.dll.MsiSummaryInfoGetPropertyW(
             summary,
             _PID_TEMPLATE,
             ctypes.byref(prop_type),
@@ -363,7 +323,7 @@ def _register_template_language(msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, lcid
         )
         buffer = ctypes.create_unicode_buffer(size.value + 1)
         size = wintypes.DWORD(size.value + 1)
-        rc = msi_dll.MsiSummaryInfoGetPropertyW(
+        rc = msi.dll.MsiSummaryInfoGetPropertyW(
             summary,
             _PID_TEMPLATE,
             ctypes.byref(prop_type),
@@ -375,12 +335,10 @@ def _register_template_language(msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, lcid
         if rc != 0:
             raise click.ClickException(f"MsiSummaryInfoGetProperty failed (error {rc})")
         template = _append_lcid(buffer.value, lcid)
-        rc = msi_dll.MsiSummaryInfoSetPropertyW(
+        rc = msi.dll.MsiSummaryInfoSetPropertyW(
             summary, _PID_TEMPLATE, _VT_LPSTR, 0, None, template
         )
         if rc == 0:
-            rc = msi_dll.MsiSummaryInfoPersist(summary)
+            rc = msi.dll.MsiSummaryInfoPersist(summary)
         if rc != 0:
             raise click.ClickException(f"Updating template summary failed (error {rc})")
-    finally:
-        msi_dll.MsiCloseHandle(summary)
