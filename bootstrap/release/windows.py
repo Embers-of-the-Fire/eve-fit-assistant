@@ -334,6 +334,14 @@ def _insert_substorage(
         msi_dll.MsiCloseHandle(view)
 
 
+def _append_lcid(template: str, lcid: int) -> str:
+    platform, _, languages = template.partition(";")
+    language_ids = [lang for lang in languages.split(",") if lang]
+    if str(lcid) not in language_ids:
+        language_ids.append(str(lcid))
+    return f"{platform};{','.join(language_ids)}"
+
+
 def _register_template_language(msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, lcid: int) -> None:
     summary = ctypes.c_ulong()
     rc = msi_dll.MsiGetSummaryInformationW(db, None, 1, ctypes.byref(summary))
@@ -366,11 +374,7 @@ def _register_template_language(msi_dll: ctypes.WinDLL, db: ctypes.c_ulong, lcid
         )
         if rc != 0:
             raise click.ClickException(f"MsiSummaryInfoGetProperty failed (error {rc})")
-        platform, _, languages = buffer.value.partition(";")
-        language_ids = [lang for lang in languages.split(",") if lang]
-        if str(lcid) not in language_ids:
-            language_ids.append(str(lcid))
-        template = f"{platform};{','.join(language_ids)}"
+        template = _append_lcid(buffer.value, lcid)
         rc = msi_dll.MsiSummaryInfoSetPropertyW(
             summary, _PID_TEMPLATE, _VT_LPSTR, 0, None, template
         )
