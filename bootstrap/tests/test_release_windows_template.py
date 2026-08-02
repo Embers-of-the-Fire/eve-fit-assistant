@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from bootstrap.release.windows import _append_lcid
+
+windows = pytest.importorskip(
+    "bootstrap.release.windows", reason="requires Windows-specific ctypes bindings"
+)
+
+_append_lcid = windows._append_lcid
 
 
 @pytest.mark.parametrize(

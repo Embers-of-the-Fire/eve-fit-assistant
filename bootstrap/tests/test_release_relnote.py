@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -28,6 +30,13 @@ def isolated_changelog_root(tmp_path: Path) -> Path:
 
 
 def _write_cliff_stub(tmp_path: Path) -> Path:
+    output = "## [v0.2.0-beta.1] - 2026-07-04\n\n### Added\n\n- stub\n"
+    if sys.platform == "win32":
+        output_file = tmp_path / "git-cliff-output.txt"
+        output_file.write_text(output, encoding="utf-8")
+        stub = tmp_path / "git-cliff.cmd"
+        stub.write_text(f'@echo off\r\ntype "{output_file}"\r\n', encoding="utf-8")
+        return stub
     stub = tmp_path / "git-cliff"
     stub.write_text(
         '#!/bin/sh\necho "## [v0.2.0-beta.1] - 2026-07-04\\n\\n### Added\\n\\n- stub"\n',

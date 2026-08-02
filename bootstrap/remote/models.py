@@ -140,10 +140,10 @@ def write_json(path: Path, data: dict | BaseModel) -> None:
 
 
 def write_json_atomic(path: Path, data: dict | BaseModel) -> None:
-    """Write to .tmp then atomically rename to path."""
+    """Write to .tmp then atomically replace path."""
     tmp_path = path.with_suffix(path.suffix + ".tmp")
     write_json(tmp_path, data)
-    tmp_path.rename(path)
+    tmp_path.replace(path)
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +165,7 @@ def write_pb2(path: Path, message) -> None:
 def write_pb2_atomic(path: Path, message) -> None:
     tmp_path = path.with_suffix(path.suffix + ".tmp")
     write_pb2(tmp_path, message)
-    tmp_path.rename(path)
+    tmp_path.replace(path)
 
 
 # ---------------------------------------------------------------------------

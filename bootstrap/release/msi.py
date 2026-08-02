@@ -12,7 +12,6 @@ from __future__ import annotations
 import contextlib
 import ctypes
 
-from ctypes import wintypes
 from typing import TYPE_CHECKING
 
 import click
@@ -36,6 +35,8 @@ class Msi:
     """Prototype-declared msi.dll handle with RAII wrappers for MSIHANDLEs."""
 
     def __init__(self) -> None:
+        from ctypes import wintypes
+
         dll = ctypes.WinDLL("msi")
 
         dll.MsiOpenDatabaseW.argtypes = [

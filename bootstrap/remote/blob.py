@@ -39,7 +39,7 @@ class BlobStore:
         target.parent.mkdir(parents=True, exist_ok=True)
         tmp = target.with_suffix(target.suffix + ".tmp")
         tmp.write_bytes(data)
-        tmp.rename(target)
+        tmp.replace(target)
         return chash
 
     def store_from_path(self, src: Path, ident_hash: str) -> str:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+import sys
 
 from typing import TYPE_CHECKING
 
@@ -44,6 +45,18 @@ Signer #1 key size (bits): 2048
 def _make_fake_apksigner(
     root: Path, *, output: str = _APKSIGNER_OUTPUT, exit_code: int = 0
 ) -> Path:
+    if sys.platform == "win32":
+        output_file = root / "apksigner-output.txt"
+        output_file.write_text(output, encoding="utf-8")
+        script = root / "apksigner.cmd"
+        lines = ["@echo off"]
+        if exit_code == 0:
+            lines.append(f'type "{output_file}"')
+        else:
+            lines.append("echo verification failed >&2")
+        lines.append(f"exit /b {exit_code}")
+        script.write_text("\r\n".join(lines) + "\r\n", encoding="utf-8")
+        return script
     script = root / "apksigner"
     lines = ["#!/usr/bin/env bash"]
     if exit_code == 0:

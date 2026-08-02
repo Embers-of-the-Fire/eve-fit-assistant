@@ -133,7 +133,7 @@ def generate_resource_snapshot(
                 skipped_count += 1
                 continue
 
-            normalized = _normalize_path(str(rel))
+            normalized = _normalize_path(rel.as_posix())
             resource_id = f"resource://{normalized}"
 
             content_bytes = file_path.read_bytes()
@@ -145,7 +145,7 @@ def generate_resource_snapshot(
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
                 tmp_path = dest_path.with_suffix(dest_path.suffix + ".tmp")
                 tmp_path.write_bytes(content_bytes)
-                tmp_path.rename(dest_path)
+                tmp_path.replace(dest_path)
 
             entries.append((resource_id, chash, file_path.stat().st_size))
             file_count += 1

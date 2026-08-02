@@ -18,7 +18,6 @@ import tempfile
 import uuid
 import zipfile
 
-from ctypes import wintypes
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -219,6 +218,8 @@ def _build_msi_args(
 
 
 def _read_product_code(msi: Msi, msi_path: Path) -> str:
+    from ctypes import wintypes
+
     query = "SELECT `Value` FROM `Property` WHERE `Property`='ProductCode'"
     with (
         msi.open_database(msi_path) as db,
@@ -307,6 +308,8 @@ def _append_lcid(template: str, lcid: int) -> str:
 
 
 def _register_template_language(msi: Msi, db: MSIHANDLE, lcid: int) -> None:
+    from ctypes import wintypes
+
     with msi.summary_info(db, 1) as summary:
         prop_type = wintypes.UINT()
         int_value = wintypes.INT()

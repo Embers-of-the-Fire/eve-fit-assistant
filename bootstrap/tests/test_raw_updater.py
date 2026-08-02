@@ -408,6 +408,10 @@ class _AsyncIterator:
 
 
 class TestRunMc:
+    @pytest.fixture(autouse=True)
+    def _stub_mc_command(self, monkeypatch) -> None:
+        monkeypatch.setattr("bootstrap.data.updater.uploader.get_command", lambda _name: "mc")
+
     async def test_redacts_secret_values(self, monkeypatch) -> None:
         logged: list[str] = []
         monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
