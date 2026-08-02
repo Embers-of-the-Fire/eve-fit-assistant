@@ -230,6 +230,14 @@ def _apply_options(options):
     return decorator
 
 
+def _quote_dotenv_value(value: object) -> str:
+    text = str(value)
+    if "'" in text or "\\\\" in text:
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return "'" + text + "'"
+
+
 def register_dev_commands(cli_group: click.Group) -> None:
     @cli_group.group()
     def dev():
@@ -287,7 +295,7 @@ def register_dev_commands(cli_group: click.Group) -> None:
             )
 
         env_path = NATIVE_LIB_ROOT / ".env"
-        lines = [f"{key}={value}" for key, value in values.items()]
+        lines = [f"{key}={_quote_dotenv_value(value)}" for key, value in values.items()]
         env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Wrote backend env: ") + str(env_path))
 

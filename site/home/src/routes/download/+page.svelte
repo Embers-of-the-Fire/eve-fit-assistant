@@ -1,7 +1,7 @@
 <script lang="ts">
 import { RELEASE_API_URL } from "$lib/api/releases";
-import { downloadState } from "$lib/download-state.svelte";
 import type { ArtifactInfo, VariantInfo } from "$lib/download-state.svelte";
+import { downloadState } from "$lib/download-state.svelte";
 import { t } from "$lib/i18n/index.svelte";
 import type { TranslationKey } from "$lib/i18n/translations";
 
@@ -24,6 +24,9 @@ function formatSize(bytes: number): string {
 
 const androidVariants = ["general", "armv7", "arm64", "x64"] as const;
 const linuxVariants = ["appimage", "native"] as const;
+// Installer is listed first: on Windows the MSI bundle is the recommended
+// distribution, the native zip is a fallback.
+const windowsVariants = ["installer", "native"] as const;
 
 const variantLabels: Record<string, string> = {
     general: "Universal",
@@ -32,6 +35,7 @@ const variantLabels: Record<string, string> = {
     x64: "x86_64",
     appimage: "AppImage",
     native: "Native (zip)",
+    installer: "Installer (MSI)",
 };
 
 function variantLabel(key: string): string {
@@ -50,7 +54,12 @@ const linuxCtaKeys: Record<(typeof linuxVariants)[number], TranslationKey> = {
     native: "download.linux.native",
 };
 
-type DetectedOS = "android" | "linux" | "other";
+const windowsCtaKeys: Record<(typeof windowsVariants)[number], TranslationKey> = {
+    installer: "download.windows.installer",
+    native: "download.windows.native",
+};
+
+type DetectedOS = "android" | "linux" | "windows" | "other";
 
 let uaPlatform = $state("");
 let uaArch = $state<string | undefined>();
@@ -79,6 +88,7 @@ const detectedOS = $derived.by<DetectedOS>(() => {
     const platform = uaPlatform.toLowerCase();
     const ua = typeof navigator === "undefined" ? "" : navigator.userAgent.toLowerCase();
     if (platform.includes("android") || ua.includes("android")) return "android";
+    if (platform.startsWith("win") || ua.includes("windows")) return "windows";
     if (platform.includes("linux")) return "linux";
     return "other";
 });
@@ -92,17 +102,19 @@ const linuxSupported = $derived.by(() => {
     return !(uaBitness === "32");
 });
 
-type PlatformTab = "android" | "linux" | "other";
+type PlatformTab = "android" | "linux" | "windows" | "other";
 const tabKeys: Record<PlatformTab, TranslationKey> = {
     android: "download.tabs.android",
     linux: "download.tabs.linux",
+    windows: "download.tabs.windows",
     other: "download.tabs.other",
 };
-const tabs: PlatformTab[] = ["android", "linux", "other"];
+const tabs: PlatformTab[] = ["android", "linux", "windows", "other"];
 
 let tabOverride = $state<PlatformTab | null>(null);
 const activeTab = $derived<PlatformTab>(
-    tabOverride ?? (detectedOS === "linux" ? "linux" : "android"),
+    tabOverride ??
+        (detectedOS === "linux" ? "linux" : detectedOS === "windows" ? "windows" : "android"),
 );
 
 function rawArchDisplay(arch: string | undefined, bitness: string | undefined): string {
@@ -114,6 +126,7 @@ function rawArchDisplay(arch: string | undefined, bitness: string | undefined): 
 function osDisplay(os: DetectedOS): string {
     if (os === "android") return "Android";
     if (os === "linux") return "Linux";
+    if (os === "windows") return "Windows";
     return uaPlatform || "Unknown";
 }
 
@@ -150,6 +163,7 @@ const artifact: ArtifactInfo | undefined = $derived(
 );
 
 const availableLinux = $derived(linuxVariants.filter((k) => artifact?.linux?.[k]));
+const availableWindows = $derived(windowsVariants.filter((k) => artifact?.windows?.[k]));
 
 function onChannelChange(e: Event) {
     downloadState.activeChannel = (e.target as HTMLSelectElement).value;
@@ -307,6 +321,18 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 						{/each}
 					</div>
 				{/if}
+			{:else if detectedOS === "windows"}
+				<!-- No architecture gate here (unlike Linux): Windows on ARM runs the
+				     x86-64 build under emulation, so offering it is intentional. -->
+				{#if availableWindows.length === 0}
+					{@render unavailableNotice("download.unavailable.desc")}
+				{:else}
+					<div class="mx-auto mb-6 grid max-w-4xl gap-6 sm:grid-cols-2">
+						{#each windowsVariants as key}
+							{@render variantCard("Windows", key, artifact?.windows?.[key], "download.windows.desc", windowsCtaKeys[key], key === "installer")}
+						{/each}
+					</div>
+				{/if}
 			{:else if detectedOS === "android"}
 				{#if artifact?.android?.[detected]}
 					<div class="mx-auto mb-6 max-w-xl">
@@ -320,7 +346,7 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 			{/if}
 
 			<div class="mb-10 text-center text-xs text-eve-text-muted">
-				<span class="text-eve-text-muted">{t('download.detected')}</span> {osDisplay(detectedOS)}{#if detectedOS === "android"} — {rawArchDisplay(uaArch, uaBitness)}{#if artifact?.android?.[detected]} — {variantLabel(detected)}{/if}{:else if detectedOS === "linux"} — {availableLinux.length > 0 ? availableLinux.map(variantLabel).join(" / ") : t('download.detected.unavailable')}{/if}
+				<span class="text-eve-text-muted">{t('download.detected')}</span> {osDisplay(detectedOS)}{#if detectedOS === "android"} — {rawArchDisplay(uaArch, uaBitness)}{#if artifact?.android?.[detected]} — {variantLabel(detected)}{/if}{:else if detectedOS === "linux"} — {availableLinux.length > 0 ? availableLinux.map(variantLabel).join(" / ") : t('download.detected.unavailable')}{:else if detectedOS === "windows"} — {availableWindows.length > 0 ? availableWindows.map(variantLabel).join(" / ") : t('download.detected.unavailable')}{/if}
 			</div>
 
 			<div class="eve-divider-gold mb-10"></div>
@@ -368,13 +394,19 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 						</a>
 					{/if}
 				</div>
-			{:else if activeTab === "linux"}
-				<div class="grid gap-8 md:grid-cols-2">
-					{#each linuxVariants as key}
-						{@render variantCard("Linux", key, artifact?.linux?.[key], "download.linux.desc", linuxCtaKeys[key], false)}
-					{/each}
-				</div>
-			{:else}
+		{:else if activeTab === "linux"}
+			<div class="grid gap-8 md:grid-cols-2">
+				{#each linuxVariants as key}
+					{@render variantCard("Linux", key, artifact?.linux?.[key], "download.linux.desc", linuxCtaKeys[key], false)}
+				{/each}
+			</div>
+		{:else if activeTab === "windows"}
+			<div class="grid gap-8 md:grid-cols-2">
+				{#each windowsVariants as key}
+					{@render variantCard("Windows", key, artifact?.windows?.[key], "download.windows.desc", windowsCtaKeys[key], false)}
+				{/each}
+			</div>
+		{:else}
 				<div class="grid gap-8 md:grid-cols-2">
 					<div class="card-hover-glow group relative rounded-lg border border-eve-border bg-eve-surface p-8 transition-all duration-300 cursor-default">
 						<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-text-muted text-2xl transition-all duration-300">◇</div>

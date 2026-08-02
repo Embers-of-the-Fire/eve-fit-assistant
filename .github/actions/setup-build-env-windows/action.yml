@@ -1,0 +1,111 @@
+name: Setup build env (Windows)
+
+description: >-
+  Windows variant of the shared platform build preamble, without Nix:
+  uv/Python dependencies, Flutter, Rust toolchain and cargo cache, protoc
+  with the Dart plugin (protoc-gen-dart), flutter_rust_bridge_codegen,
+  dev config, backend env, native CI data, Flutter dependencies,
+  code generation, and the WiX toolset.
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      with:
+        python-version: "3.13"
+
+    - name: Install Python dependencies
+      shell: pwsh
+      run: uv sync
+
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        flutter-version: "3.41.7"
+        channel: stable
+        cache: true
+
+    - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      with:
+        toolchain: stable
+        targets: x86_64-pc-windows-msvc
+
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+    - uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
+
+    - name: Install flutter_rust_bridge_codegen
+      shell: pwsh
+      # Prebuilt binary via cargo-binstall; falls back to source build if no
+      # artifact matches the runner.
+      run: cargo binstall --no-confirm flutter_rust_bridge_codegen@2.12.0
+
+    - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+
+    # The Nix shells ship protoc-gen-dart directly; on Windows it only exists
+    # as a pub-global package. Its shim lives in the pub cache bin dir, which
+    # is not on PATH by default — export it for all later job steps.
+    - name: Install protoc-gen-dart
+      shell: pwsh
+      run: | # zizmor: ignore[github-env] fixed runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
+        dart pub global activate protoc_plugin
+        Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
+
+    # flutter_secure_storage_windows includes <atlstr.h>, which ships with the
+    # VS C++ ATL component — not preinstalled on windows-latest images.
+    - name: Ensure VS ATL component (atlstr.h)
+      shell: pwsh
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $atl = & $vswhere -latest -products * -find "**\atlmfc\include\atlstr.h" | Select-Object -First 1
+        if (-not $atl) {
+          $vsPath = & $vswhere -latest -products * -property installationPath
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe" modify `
+            --installPath "$vsPath" `
+            --add Microsoft.VisualStudio.Component.VC.ATL `
+            --quiet --wait --norestart
+          if ($LASTEXITCODE -ne 0) { throw "VS ATL component install failed (exit $LASTEXITCODE)" }
+          $atl = & $vswhere -latest -products * -find "**\atlmfc\include\atlstr.h" | Select-Object -First 1
+          if (-not $atl) { throw "atlstr.h still not found after installing VC.ATL" }
+        }
+        "ATL header: $atl"
+
+    - name: Init dev env
+      shell: pwsh
+      run: Copy-Item ci/config/efa.dev.toml efa.dev.toml
+
+    - name: Setup CI developer config
+      shell: pwsh
+      run: uv run x.py dev env write-backend
+
+    # Same payload as the Nix action's symlink step, but Windows runners copy
+    # the pb2 tree instead of symlinking it.
+    - name: Fetch native CI data
+      shell: pwsh
+      run: |
+        curl.exe -sfLo "$env:RUNNER_TEMP\ci-native-data.tar.gz" `
+          https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+        New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\ci-native" | Out-Null
+        tar -xzf "$env:RUNNER_TEMP\ci-native-data.tar.gz" -C "$env:GITHUB_WORKSPACE\ci-native"
+        New-Item -ItemType Directory -Force rust/lib/eve-fit-os/data/out | Out-Null
+        Copy-Item -Recurse -Force "$env:GITHUB_WORKSPACE\ci-native\pb2" rust/lib/eve-fit-os/data/out/pb2
+
+    - name: Install Flutter dependencies
+      shell: pwsh
+      run: flutter pub get
+
+    - name: Generate all
+      shell: pwsh
+      run: uv run x.py generate -f all
+
+    # WiX is pinned to v6: v7 requires accepting the OSMF EULA
+    # (https://wixtoolset.org/osmf/), which we do not auto-accept in CI.
+    - name: Install WiX toolset
+      shell: pwsh
+      run: | # zizmor: ignore[github-env] fixed runner-local dotnet tools dir; not attacker-controlled, required on PATH for later wix steps
+        dotnet tool install --global wix --version 6.0.1
+        # dotnet tool install does not add the global tools dir to PATH for the
+        # running process; export it for this step and all later job steps.
+        $toolsDir = "$env:USERPROFILE\.dotnet\tools"
+        $env:PATH = "$toolsDir;$env:PATH"
+        Add-Content $env:GITHUB_PATH $toolsDir
+        wix extension add -g WixToolset.UI.wixext/6.0.1

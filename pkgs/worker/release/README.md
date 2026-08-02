@@ -38,6 +38,15 @@ No query parameters — the worker reads all channels from `efa/v2/channels/head
           "download_url": "https://api.efa-tech.dev/releases/download/testing/appimage/sha256…"
         },
         "native":   { … }
+      },
+      "windows": {
+        "native": {
+          "identifier": "dev.efa-tech…",
+          "content_hash": "sha256…",
+          "size": 12345678,
+          "download_url": "https://api.efa-tech.dev/releases/download/testing/native/sha256…"
+        },
+        "installer": { … }
       }
     }
   },
@@ -81,8 +90,12 @@ Streams the artifact blob for the given channel and variant directly from R2.
 Android variants are `general`, `armv7`, `arm64`, `x64` (served as
 `application/vnd.android.package-archive`); Linux variants are `appimage`
 (served as `application/vnd.appimage`) and `native` (served as
-`application/zip`). The `{hash}` path segment must equal the
-variant's current `content_hash`, making the URL content-addressed. The
+`application/zip`); Windows variants are `installer` (served as
+`application/x-msi`) and `native` (served as `application/zip`). Variant
+names are not unique across platforms (both Linux and Windows ship a
+`native` zip), so the variant is resolved against every platform and
+disambiguated by the `{hash}` path segment, which must equal the variant's
+current `content_hash`, making the URL content-addressed. The
 response carries a proper download name via `Content-Disposition`, e.g.:
 
 ```text
@@ -97,6 +110,14 @@ or, for Linux:
 ```text
 Content-Type: application/vnd.appimage
 Content-Disposition: attachment; filename="eve-fit-assistant-0.1.0-linux.AppImage"
+Cache-Control: public, max-age=31536000, immutable
+```
+
+or, for Windows:
+
+```text
+Content-Type: application/x-msi
+Content-Disposition: attachment; filename="eve-fit-assistant-0.1.0-windows-setup.msi"
 Cache-Control: public, max-age=31536000, immutable
 ```
 

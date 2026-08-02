@@ -297,11 +297,20 @@ def _add_snapshot_by_file(
                     for key in ("appimage", "native")
                     if linux.get(key) is not None
                 }
+            windows = release.get("windows")
+            windows_dict = None
+            if windows is not None:
+                windows_dict = {
+                    key: windows.get(key)
+                    for key in ("native", "installer")
+                    if windows.get(key) is not None
+                }
             index = make_release_index(
                 release_id=release["id"],
                 version=version,
                 android=android_dict,
                 linux=linux_dict,
+                windows=windows_dict,
             )
         except KeyError as e:
             raise click.ClickException(

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import os
+import sys
 
 from typing import TYPE_CHECKING
+
+import pytest
 
 from bootstrap.ci.diagnostics import collect_diagnostics
 from bootstrap.ci.diagnostics import redact_staged_files
@@ -60,6 +63,10 @@ def test_redact_non_utf8_secret(tmp_path: Path):
     assert target.read_bytes() == b"<redacted> value <redacted>\n"
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="relies on POSIX chmod semantics; Windows chmod only toggles the read-only flag",
+)
 def test_redact_removes_unreadable_files(tmp_path: Path):
     target = _write(tmp_path / "log.txt", b"secret\n")
     os.chmod(target, 0)

@@ -33,6 +33,7 @@ from bootstrap.remote.snapshot import SnapshotStore
 _RELEASE_PLATFORM_VARIANTS = {
     "android": ("general", "armv7", "arm64", "x64"),
     "linux": ("appimage", "native"),
+    "windows": ("native", "installer"),
 }
 
 

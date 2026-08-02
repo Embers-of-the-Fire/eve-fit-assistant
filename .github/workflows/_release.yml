@@ -150,9 +150,43 @@ jobs:
         with:
           name: diagnostics-linux-release
 
+  windows:
+    name: Build Windows Variants
+    needs: [verify]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup build env
+        uses: ./.github/actions/setup-build-env-windows
+
+      - name: Build Windows variants
+        shell: pwsh
+        run: uv run x.py build windows
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows
+          path: |
+            cache/releases/windows/**/*.zip
+            cache/releases/windows/**/*.msi
+            cache/releases/windows/**/*.json
+          retention-days: 1
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-windows-release
+
   publish:
     name: Merge and publish to remote channel
-    needs: [verify, android, linux]
+    needs: [verify, android, linux, windows]
     runs-on: ubuntu-latest
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
     env:
@@ -190,13 +224,19 @@ jobs:
           name: linux
           path: cache/releases/linux
 
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows
+          path: cache/releases/windows
+
       - name: Merge release registry
         run: |
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             "uv run x.py build release \
               --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json \
-              --fragments cache/releases/linux/${VERSION}/${VERSION}-linux.json"
+              --fragments cache/releases/linux/${VERSION}/${VERSION}-linux.json \
+              --fragments cache/releases/windows/${VERSION}/${VERSION}-windows.json"
 
       - name: Start MinIO mock
         if: inputs.test_mode
@@ -384,7 +424,7 @@ jobs:
 
   tag:
     name: Create Git tag
-    needs: [verify, android, linux, publish]
+    needs: [verify, android, linux, windows, publish]
     runs-on: ubuntu-slim
     # Tag only after every platform build succeeded and the remote channel has
     # accepted the joined (multi-platform) release.
@@ -393,6 +433,7 @@ jobs:
       needs.verify.result == 'success' &&
       needs.android.result == 'success' &&
       needs.linux.result == 'success' &&
+      needs.windows.result == 'success' &&
       needs.publish.result == 'success' &&
       inputs.test_mode == false
     permissions:
@@ -414,6 +455,11 @@ jobs:
         with:
           name: linux
           path: cache/releases/linux
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows
+          path: cache/releases/windows
 
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
@@ -489,6 +535,15 @@ jobs:
                 ? `Including ${linuxFiles.length} Linux asset(s)`
                 : "No Linux artifacts found; releasing Android assets only",
             );
+            const windowsFiles = [
+              ...(await (await glob.create(`cache/releases/windows/${version}/*.zip`)).glob()),
+              ...(await (await glob.create(`cache/releases/windows/${version}/*.msi`)).glob()),
+            ].sort();
+            core.info(
+              windowsFiles.length > 0
+                ? `Including ${windowsFiles.length} Windows asset(s)`
+                : "No Windows artifacts found; releasing without Windows assets",
+            );
 
             let release;
             try {
@@ -537,7 +592,7 @@ jobs:
               page += 1;
             }
 
-            for (const file of [...apkFiles, ...linuxFiles]) {
+            for (const file of [...apkFiles, ...linuxFiles, ...windowsFiles]) {
               const name = path.basename(file);
               if (existingAssets.has(name)) {
                 core.info(`Skipping existing asset: ${name}`);

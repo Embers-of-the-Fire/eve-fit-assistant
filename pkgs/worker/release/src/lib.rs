@@ -15,6 +15,7 @@ const RESOURCE_ROOT: &str = "efa/v2";
 const APK_CONTENT_TYPE: &str = "application/vnd.android.package-archive";
 const APPIMAGE_CONTENT_TYPE: &str = "application/vnd.appimage";
 const ZIP_CONTENT_TYPE: &str = "application/zip";
+const MSI_CONTENT_TYPE: &str = "application/x-msi";
 
 #[derive(Serialize)]
 struct ArtifactResponse {
@@ -36,6 +37,8 @@ struct ArtifactInfo {
     android: Option<HashMap<String, VariantInfo>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     linux: Option<HashMap<String, VariantInfo>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    windows: Option<HashMap<String, VariantInfo>>,
 }
 
 #[derive(Serialize)]
@@ -57,6 +60,7 @@ struct RawArtifactInfo {
     version: String,
     android: Option<HashMap<String, RawVariantInfo>>,
     linux: Option<HashMap<String, RawVariantInfo>>,
+    windows: Option<HashMap<String, RawVariantInfo>>,
 }
 
 fn sha256_hex(input: &str) -> String {
@@ -235,11 +239,31 @@ async fn fetch_channel_artifact(bucket: &Bucket, channel: &str) -> Result<Option
         variants
     });
 
+    let windows = index.windows.map(|arts| {
+        let mut variants = HashMap::new();
+        let names = ["native", "installer"];
+        let fields = [arts.native, arts.installer];
+        for (i, field) in fields.into_iter().enumerate() {
+            if let Some(v) = field {
+                variants.insert(
+                    names[i].to_string(),
+                    RawVariantInfo {
+                        identifier: v.identifier.clone(),
+                        content_hash: v.content_hash.clone(),
+                        size: v.size,
+                    },
+                );
+            }
+        }
+        variants
+    });
+
     Ok(Some(RawArtifactInfo {
         id: index.id,
         version: index.version,
         android,
         linux,
+        windows,
     }))
 }
 
@@ -320,7 +344,7 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
                 continue;
             }
         };
-        let android = raw.android.map(|variants| {
+        let map_variants = |variants: HashMap<String, RawVariantInfo>| {
             variants
                 .into_iter()
                 .map(|(name, v)| {
@@ -337,25 +361,10 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
                     (name, info)
                 })
                 .collect()
-        });
-        let linux = raw.linux.map(|variants| {
-            variants
-                .into_iter()
-                .map(|(name, v)| {
-                    let download_url = format!(
-                        "{}/releases/download/{}/{}/{}",
-                        origin, ch, name, v.content_hash
-                    );
-                    let info = VariantInfo {
-                        identifier: v.identifier,
-                        content_hash: v.content_hash,
-                        size: v.size,
-                        download_url,
-                    };
-                    (name, info)
-                })
-                .collect()
-        });
+        };
+        let android = raw.android.map(map_variants);
+        let linux = raw.linux.map(map_variants);
+        let windows = raw.windows.map(map_variants);
         artifacts.insert(
             ch.clone(),
             ArtifactInfo {
@@ -363,6 +372,7 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
                 version: raw.version,
                 android,
                 linux,
+                windows,
             },
         );
     }
@@ -398,47 +408,73 @@ async fn handle_download(
         None => return Response::error(format!("channel not found: {}", channel), 404),
     };
 
+    #[derive(Clone, Copy)]
     enum Platform {
         Android,
         AppImage,
-        NativeZip,
+        LinuxNative,
+        WindowsNative,
+        WindowsInstaller,
     }
 
-    let (platform, info) = match artifact
-        .android
-        .as_ref()
-        .and_then(|variants| variants.get(variant))
-    {
-        Some(v) => (Platform::Android, v),
-        None => match artifact
-            .linux
-            .as_ref()
-            .and_then(|variants| variants.get(variant))
-        {
-            Some(v) => (
-                match variant {
-                    "appimage" => Platform::AppImage,
-                    _ => Platform::NativeZip,
-                },
-                v,
-            ),
-            None => {
-                return Response::error(format!("variant not found: {}/{}", channel, variant), 404);
+    impl Platform {
+        fn name(self) -> &'static str {
+            match self {
+                Platform::Android => "android",
+                Platform::AppImage | Platform::LinuxNative => "linux",
+                Platform::WindowsNative | Platform::WindowsInstaller => "windows",
             }
-        },
-    };
-
-    if info.content_hash != hash {
-        let mut res = Response::error(
-            format!(
-                "stale content hash for {}/{}: {} (current: {})",
-                channel, variant, hash, info.content_hash
-            ),
-            404,
-        )?;
-        res.headers_mut().set("Cache-Control", "no-cache")?;
-        return Ok(res);
+        }
     }
+
+    // Variant names are not unique across platforms (both Linux and Windows
+    // ship a `native` zip), so candidates are collected from every platform
+    // and disambiguated by the content hash embedded in the URL.
+    let mut candidates: Vec<(Platform, &RawVariantInfo)> = Vec::new();
+    if let Some(v) = artifact.android.as_ref().and_then(|vs| vs.get(variant)) {
+        candidates.push((Platform::Android, v));
+    }
+    if let Some(v) = artifact.linux.as_ref().and_then(|vs| vs.get(variant)) {
+        candidates.push((
+            match variant {
+                "appimage" => Platform::AppImage,
+                _ => Platform::LinuxNative,
+            },
+            v,
+        ));
+    }
+    if let Some(v) = artifact.windows.as_ref().and_then(|vs| vs.get(variant)) {
+        candidates.push((
+            match variant {
+                "installer" => Platform::WindowsInstaller,
+                _ => Platform::WindowsNative,
+            },
+            v,
+        ));
+    }
+
+    let (platform, info) = match candidates.iter().find(|(_, v)| v.content_hash == hash) {
+        Some((p, v)) => (*p, *v),
+        None if candidates.is_empty() => {
+            return Response::error(format!("variant not found: {}/{}", channel, variant), 404);
+        }
+        None => {
+            let current = candidates
+                .iter()
+                .map(|(p, v)| format!("{}: {}", p.name(), v.content_hash))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let mut res = Response::error(
+                format!(
+                    "stale content hash for {}/{}: {} (current: {})",
+                    channel, variant, hash, current
+                ),
+                404,
+            )?;
+            res.headers_mut().set("Cache-Control", "no-cache")?;
+            return Ok(res);
+        }
+    };
 
     let path = blob_path(&info.identifier, &info.content_hash);
     let object = match bucket.get(&path).execute().await? {
@@ -464,9 +500,17 @@ async fn handle_download(
             APPIMAGE_CONTENT_TYPE,
             format!("eve-fit-assistant-{}-linux.AppImage", version),
         ),
-        Platform::NativeZip => (
+        Platform::LinuxNative => (
             ZIP_CONTENT_TYPE,
             format!("eve-fit-assistant-{}-linux-native.zip", version),
+        ),
+        Platform::WindowsNative => (
+            ZIP_CONTENT_TYPE,
+            format!("eve-fit-assistant-{}-windows-native.zip", version),
+        ),
+        Platform::WindowsInstaller => (
+            MSI_CONTENT_TYPE,
+            format!("eve-fit-assistant-{}-windows-setup.msi", version),
         ),
     };
 

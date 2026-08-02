@@ -126,7 +126,7 @@ When the PR is ready, add the `V-Test` label.
 
 This triggers `release-full.yml`, which runs:
 
-- `App release test` — builds the APK in test mode using `_release.yml`.
+- `App release test` — builds the app (APK, Linux, and Windows variants) in test mode using `_release.yml`.
 - `Data release test` — builds data snapshots in test mode using `_release-data.yml`.
 - `Mark as tested release` — adds `V-Tested Release` and removes `V-Test` after both jobs succeed.
 
@@ -139,7 +139,7 @@ Once both `V-Release` and `V-Tested Release` are present, merge the PR into `dev
 The `release.yml` workflow on the merge commit then:
 
 1. Identifies the merged PR and confirms it has `V-Tested Release`.
-2. Reuses `_release.yml` to build and publish the APK.
+2. Reuses `_release.yml` to build and publish the app (APK, Linux, and Windows variants).
 3. Merges the release registry fragment.
 4. Publishes the release to the remote `testing` channel.
 5. Publishes the release note as a remote announcement entry so users are notified

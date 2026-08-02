@@ -8,6 +8,7 @@ message ReleaseIndex {
   required string version = 3;
   optional AndroidArtifacts android = 4;
   optional LinuxArtifacts linux = 5;
+  optional WindowsArtifacts windows = 6;
 }
 
 message AndroidArtifactVariant {
@@ -32,4 +33,15 @@ message LinuxArtifactVariant {
 message LinuxArtifacts {
   optional LinuxArtifactVariant appimage = 1;
   optional LinuxArtifactVariant native = 2;
+}
+
+message WindowsArtifactVariant {
+  required string identifier = 1;
+  required string content_hash = 2;
+  required int64 size = 3;
+}
+
+message WindowsArtifacts {
+  optional WindowsArtifactVariant native = 1;
+  optional WindowsArtifactVariant installer = 2;
 }

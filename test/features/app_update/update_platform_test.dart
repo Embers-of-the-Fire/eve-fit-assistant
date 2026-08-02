@@ -9,8 +9,21 @@ AndroidArtifactVariant _androidVariant(String name) =>
 LinuxArtifactVariant _linuxVariant(String name) =>
     LinuxArtifactVariant(identifier: "ident/$name", contentHash: "hash-$name", size: Int64(100));
 
-ReleaseIndex _index({AndroidArtifacts? android, LinuxArtifacts? linux}) =>
-    ReleaseIndex(schemaVersion: 1, id: "rel-1", version: "2.0.0", android: android, linux: linux);
+WindowsArtifactVariant _windowsVariant(String name) =>
+    WindowsArtifactVariant(identifier: "ident/$name", contentHash: "hash-$name", size: Int64(100));
+
+ReleaseIndex _index({
+  AndroidArtifacts? android,
+  LinuxArtifacts? linux,
+  WindowsArtifacts? windows,
+}) => ReleaseIndex(
+  schemaVersion: 1,
+  id: "rel-1",
+  version: "2.0.0",
+  android: android,
+  linux: linux,
+  windows: windows,
+);
 
 void main() {
   group("AndroidAppUpdateAdapter", () {
@@ -79,6 +92,46 @@ void main() {
       final targets = adapter.downloadTargets(index);
 
       expect(targets.map((t) => t.variant), ["appimage", "native"]);
+      expect(targets.last.identifier, "ident/native");
+      expect(targets.last.contentHash, "hash-native");
+    });
+
+    test("downloadTargets is empty without artifacts", () {
+      expect(adapter.downloadTargets(_index()), isEmpty);
+    });
+  });
+
+  group("WindowsAppUpdateAdapter", () {
+    const adapter = WindowsAppUpdateAdapter();
+
+    test("does not support self update", () {
+      expect(adapter.supportsSelfUpdate, isFalse);
+    });
+
+    test("hasArtifacts requires at least one windows variant", () {
+      expect(adapter.hasArtifacts(_index()), isFalse);
+      expect(adapter.hasArtifacts(_index(windows: WindowsArtifacts())), isFalse);
+      expect(
+        adapter.hasArtifacts(_index(windows: WindowsArtifacts(installer: _windowsVariant("i")))),
+        isTrue,
+      );
+      expect(
+        adapter.hasArtifacts(_index(windows: WindowsArtifacts(native: _windowsVariant("n")))),
+        isTrue,
+      );
+    });
+
+    test("downloadTargets lists installer before native", () {
+      final index = _index(
+        windows: WindowsArtifacts(
+          installer: _windowsVariant("installer"),
+          native: _windowsVariant("native"),
+        ),
+      );
+
+      final targets = adapter.downloadTargets(index);
+
+      expect(targets.map((t) => t.variant), ["installer", "native"]);
       expect(targets.last.identifier, "ident/native");
       expect(targets.last.contentHash, "hash-native");
     });

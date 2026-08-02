@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import tomllib
 
+from pathlib import Path
+
 from bootstrap.config import DeveloperConfiguration
 from bootstrap.constant import PROJECT_ROOT
 
@@ -28,7 +30,7 @@ def test_ci_dev_config_minio_mock_values():
     assert minio.bucket == "efa-ci-mock"
     assert minio.access_key.get_secret_value() == "efa-ci-mock-access"
     assert minio.secret_key.get_secret_value() == "efa-ci-mock-secret"
-    assert str(minio.data_dir) == "/tmp/efa-ci-minio"
+    assert minio.data_dir == Path("/tmp/efa-ci-minio")
     assert minio.alias == "efa-ci-mock"
     assert minio.public_download is True
 

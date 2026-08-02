@@ -140,10 +140,10 @@ def write_json(path: Path, data: dict | BaseModel) -> None:
 
 
 def write_json_atomic(path: Path, data: dict | BaseModel) -> None:
-    """Write to .tmp then atomically rename to path."""
+    """Write to .tmp then atomically replace path."""
     tmp_path = path.with_suffix(path.suffix + ".tmp")
     write_json(tmp_path, data)
-    tmp_path.rename(path)
+    tmp_path.replace(path)
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +165,7 @@ def write_pb2(path: Path, message) -> None:
 def write_pb2_atomic(path: Path, message) -> None:
     tmp_path = path.with_suffix(path.suffix + ".tmp")
     write_pb2(tmp_path, message)
-    tmp_path.rename(path)
+    tmp_path.replace(path)
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +180,8 @@ _PB2_ALIAS_MAP: dict[str, tuple[str, str]] = {
     "AndroidArtifacts": ("release_index_pb2", "AndroidArtifacts"),
     "LinuxArtifactVariant": ("release_index_pb2", "LinuxArtifactVariant"),
     "LinuxArtifacts": ("release_index_pb2", "LinuxArtifacts"),
+    "WindowsArtifactVariant": ("release_index_pb2", "WindowsArtifactVariant"),
+    "WindowsArtifacts": ("release_index_pb2", "WindowsArtifacts"),
     "ServerIndex": ("server_index_pb2", "ServerIndex"),
     "GenerationResources": ("generation_resources_pb2", "GenerationResources"),
     "GenerationPointer": ("generation_pointer_pb2", "GenerationPointer"),
@@ -354,11 +356,13 @@ def make_release_index(
     version: str,
     android: dict[str, dict[str, object]] | None = None,
     linux: dict[str, dict[str, object]] | None = None,
+    windows: dict[str, dict[str, object]] | None = None,
 ) -> ReleaseIndex:
     """Build a ReleaseIndex with optional AndroidArtifacts and LinuxArtifacts.
 
     android keys: general (required), armv7, arm64, x64 (optional).
     linux keys: appimage, native (both optional).
+    windows keys: native, installer (both optional).
     Each value is a dict with {"identifier": str, "content_hash": str, "size": int}.
     identifier is the literal release URI (e.g. "release://1.0.0/android/general").
     content_hash is the SHA-256 of the artifact file bytes.
@@ -385,6 +389,15 @@ def make_release_index(
         if "native" in linux:
             la.native.CopyFrom(_make_artifact_variant("LinuxArtifactVariant", linux["native"]))
         msg.linux.CopyFrom(la)
+    if windows:
+        wa = _load_pb2_type("WindowsArtifacts")()
+        if "native" in windows:
+            wa.native.CopyFrom(_make_artifact_variant("WindowsArtifactVariant", windows["native"]))
+        if "installer" in windows:
+            wa.installer.CopyFrom(
+                _make_artifact_variant("WindowsArtifactVariant", windows["installer"])
+            )
+        msg.windows.CopyFrom(wa)
     return msg
 
 
