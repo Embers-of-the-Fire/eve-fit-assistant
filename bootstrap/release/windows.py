@@ -2,9 +2,9 @@
 
 Native variant: the raw Flutter Windows release bundle zipped as-is.
 
-Installer variant: a per-user MSI built with the WiX v4 toolset from
+Installer variant: a per-user MSI built with the WiX v6 toolset from
 distro/windows/installer/Package.wxs; the release bundle is harvested via
-WiX v4 wildcard harvesting (<Files Include="...\\**" />).
+WiX wildcard harvesting (<Files Include="...\\**" />).
 """
 
 from __future__ import annotations
