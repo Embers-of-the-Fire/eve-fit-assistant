@@ -61,3 +61,8 @@ def test_double_quote_and_dollar():
 def test_dollar_not_substituted():
     value = r"\$HOME\dir"
     assert _round_trip(value) == value
+
+
+def test_single_quote_and_dollar():
+    value = "it's $HOME"
+    assert _round_trip(value) == value

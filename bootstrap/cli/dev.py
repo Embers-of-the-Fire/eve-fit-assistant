@@ -233,7 +233,7 @@ def _apply_options(options):
 def _quote_dotenv_value(value: object) -> str:
     text = str(value)
     if "'" in text or "\\\\" in text:
-        escaped = text.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$")
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
         return f'"{escaped}"'
     return "'" + text + "'"
 
