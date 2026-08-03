@@ -6,6 +6,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/storage/fs/file_doc_store.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
@@ -42,7 +43,7 @@ void main() {
 
   group("Migration from legacy document_storage.json", () {
     test("fresh install produces initial state", () async {
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       await store.init();
       await store.ensureSynced;
 
@@ -67,7 +68,7 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       final migration = await store.init();
       await store.ensureSynced;
 
@@ -95,7 +96,7 @@ void main() {
       };
       newStateFile().writeAsStringSync(jsonEncode(newStateJson));
 
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       final migration = await store.init();
       await store.ensureSynced;
 
@@ -109,7 +110,7 @@ void main() {
     test("corrupted legacy file falls back to initial", () async {
       legacyFile().writeAsStringSync("not valid json {{{");
 
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       await store.init();
       await store.ensureSynced;
 
@@ -127,7 +128,7 @@ void main() {
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
       expect(newStateFile().existsSync(), isFalse);
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       await store.init();
       await store.ensureSynced;
       expect(newStateFile().existsSync(), isTrue);
@@ -145,7 +146,7 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       await store.init();
       await store.ensureSynced;
 
@@ -162,7 +163,7 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       final migration = await store.init();
       await store.ensureSynced;
 
@@ -179,7 +180,7 @@ void main() {
       };
       legacyFile().writeAsStringSync(jsonEncode(legacyJson));
 
-      final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+      final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
       final migration = await store.init();
       await store.ensureSynced;
 

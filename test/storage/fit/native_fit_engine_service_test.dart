@@ -12,12 +12,11 @@ import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
-import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:fpdart/fpdart.dart";
 import "package:riverpod/riverpod.dart";
 
 // ── Stubs for FRB types ─────────────────────────────────────────────────────────
@@ -46,6 +45,15 @@ class _StubRustLibApi extends RustLibApi {
   @override
   Future<native_server.FitEngineData> crateApiServerFitEngineDataInit({
     required native_server.FitEnginePath path,
+  }) async => _StubFitEngineData();
+
+  @override
+  Future<native_server.FitEngineData> crateApiServerFitEngineDataInitBytes({
+    required List<int> types,
+    required List<int> dogmaAttributes,
+    required List<int> dogmaEffects,
+    required List<int> typeDogma,
+    required List<int> buffCollections,
   }) async => _StubFitEngineData();
 
   @override
@@ -149,28 +157,17 @@ ResourceIndex _testResourceIndex() {
   return ri;
 }
 
-/// Writes a ResourceIndex with the five engine `.pb2` entries to disk so that
-/// [NativeFitEngineService] can resolve them from the content-addressed blob store.
-/// Returns the snapshot hash.
-String _writeTestResourceSnapshot() {
-  final assetStore = const AssetStore();
-  final resourceIndex = _testResourceIndex();
-  final meta = ResourceSnapshotMeta(
-    schemaVersion: 1,
-    serverId: "test-server",
-    gameBuild: "test-build",
-    gameVersion: "test-version",
-    resourceCount: 5,
-    createdAt: "2024-01-01T00:00:00Z",
-  );
-  return assetStore.writeResourceSnapshotSync(meta: meta, resourceIndex: resourceIndex);
-}
+/// Builds a [ResourceBlobProxy] over an in-memory asset store for [ri].
+///
+/// The engine resolves the five `.pb2` entries via [ResourceBlobProxy.resolvePath]
+/// (native path math only — no disk reads), and the FRB layer is stubbed, so no
+/// real blobs need to exist.
+ResourceBlobProxy _proxy(ResourceIndex ri) => ResourceBlobProxy(AssetStore(), ri);
 
 late String _tempDir;
-late String _snapshotHash;
 
-ProviderContainer _container({required Option<String> activeSnapshotHash}) => ProviderContainer(
-  overrides: [activeSnapshotHashProvider.overrideWithValue(activeSnapshotHash)],
+ProviderContainer _container({required ResourceBlobProxy? proxy}) => ProviderContainer(
+  overrides: [resourceBlobProxyProvider.overrideWith((ref) async => proxy)],
 );
 
 void main() {
@@ -184,7 +181,6 @@ void main() {
     _tempDir = Directory.systemTemp.createTempSync("efa_engine_test_").path;
     PathProvider.documentsPath = _tempDir;
     PathProvider.appSupportPath = _tempDir;
-    _snapshotHash = _writeTestResourceSnapshot();
   });
 
   tearDown(() {
@@ -193,18 +189,20 @@ void main() {
   });
 
   group("NativeFitEngineService", () {
-    test("starts in notInitialized state", () {
-      final container = _container(activeSnapshotHash: const None());
+    test("starts in notInitialized state", () async {
+      final container = _container(proxy: null);
       addTearDown(container.dispose);
 
+      await container.read(resourceBlobProxyProvider.future);
       final state = container.read(nativeFitEngineServiceProvider);
       expect(state.debugOnlyDisplayState, "not initialized");
     });
 
-    test("initializes via retry when snapshot hash is available", () async {
-      final container = _container(activeSnapshotHash: Some(_snapshotHash));
+    test("initializes via retry when a proxy is available", () async {
+      final container = _container(proxy: _proxy(_testResourceIndex()));
       addTearDown(container.dispose);
 
+      await container.read(resourceBlobProxyProvider.future);
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
 
       final state = container.read(nativeFitEngineServiceProvider);
@@ -212,9 +210,10 @@ void main() {
     });
 
     test("retry re-initializes successfully on second call", () async {
-      final container = _container(activeSnapshotHash: Some(_snapshotHash));
+      final container = _container(proxy: _proxy(_testResourceIndex()));
       addTearDown(container.dispose);
 
+      await container.read(resourceBlobProxyProvider.future);
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
 
@@ -223,33 +222,21 @@ void main() {
     });
 
     test("transitions to error when resource index is missing engine entries", () async {
-      final ri = ResourceIndex()..schemaVersion = 1;
-      final meta = ResourceSnapshotMeta(
-        schemaVersion: 1,
-        serverId: "test-server",
-        gameBuild: "test-build",
-        gameVersion: "test-version",
-        resourceCount: 0,
-        createdAt: "2024-06-18T00:00:00Z",
-      );
-      final brokenHash = const AssetStore().writeResourceSnapshotSync(
-        meta: meta,
-        resourceIndex: ri,
-      );
-
-      final container = _container(activeSnapshotHash: Some(brokenHash));
+      final container = _container(proxy: _proxy(ResourceIndex()..schemaVersion = 1));
       addTearDown(container.dispose);
 
+      await container.read(resourceBlobProxyProvider.future);
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
 
       final state = container.read(nativeFitEngineServiceProvider);
       expect(state.debugOnlyDisplayState, contains("error"));
     });
 
-    test("retry is no-op when no snapshot hash is available", () async {
-      final container = _container(activeSnapshotHash: const None());
+    test("retry is no-op when no proxy is available", () async {
+      final container = _container(proxy: null);
       addTearDown(container.dispose);
 
+      await container.read(resourceBlobProxyProvider.future);
       await container.read(nativeFitEngineServiceProvider.notifier).retry();
 
       final state = container.read(nativeFitEngineServiceProvider);

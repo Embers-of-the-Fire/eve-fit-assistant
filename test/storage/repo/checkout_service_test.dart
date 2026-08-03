@@ -7,6 +7,7 @@ import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/fs/file_blob_store.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
@@ -121,7 +122,7 @@ void main() {
     PathProvider.documentsPath = tempDir;
     PathProvider.appSupportPath = tempDir;
     PathProvider.cachesPath = tempDir;
-    assetStore = const AssetStore();
+    assetStore = AssetStore(FileBlobStore());
     checkoutRegistry = CheckoutRegistryService();
   });
 
@@ -137,15 +138,15 @@ void main() {
     checkoutRegistry: checkoutRegistry,
   );
 
-  _TestSnapshot _makeSnapshot({
+  Future<_TestSnapshot> _makeSnapshot({
     required String createdAt,
     Uint8List? blobContent,
     bool writeBlob = true,
-  }) {
+  }) async {
     final content = blobContent ?? Uint8List.fromList([1, 2, 3, 4]);
     final ihash = RepoHash.hashIdent("resource://static/native/types.pb2");
     if (writeBlob) {
-      assetStore.writeBlobSync(ihash, content);
+      await assetStore.writeBlob(ihash, content);
     }
     final resourceIndex = ResourceIndex(
       schemaVersion: 1,
@@ -165,7 +166,7 @@ void main() {
       resourceCount: resourceIndex.entries.length,
       createdAt: createdAt,
     );
-    final hash = assetStore.writeResourceSnapshotSync(meta: meta, resourceIndex: resourceIndex);
+    final hash = await assetStore.writeResourceSnapshot(meta: meta, resourceIndex: resourceIndex);
     return _TestSnapshot(hash: hash, meta: meta, resourceIndex: resourceIndex);
   }
 
@@ -215,8 +216,8 @@ void main() {
     test(
       "unchanged generation but changed snapshot hash uses local GenerationResources and updates checkout",
       () async {
-        final oldSnapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
-        final newSnapshot = _makeSnapshot(createdAt: "2026-06-16T12:00:00Z");
+        final oldSnapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+        final newSnapshot = await _makeSnapshot(createdAt: "2026-06-16T12:00:00Z");
         expect(oldSnapshot.hash, isNot(newSnapshot.hash));
         expect(
           oldSnapshot.resourceIndex.writeToBuffer(),
@@ -252,13 +253,13 @@ void main() {
         expect(result.toNullable(), newSnapshot.hash);
         verifyNever(() => mockRemote.fetchGenerationResources(any()));
 
-        final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+        final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
         expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
 
         final registry = checkoutRegistry.readRegistry().toNullable()!;
         expect(registry.checkouts[checkoutId]!.resourceSnapshotHash, newSnapshot.hash);
 
-        final reflog = service.readCheckoutReflog(checkoutId).toNullable()!;
+        final reflog = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
         final transition = reflog.entries.last;
         expect(transition.from, oldSnapshot.hash);
         expect(transition.to, newSnapshot.hash);
@@ -268,7 +269,7 @@ void main() {
     test(
       "unchanged generation and unchanged snapshot hash short-circuits via local GenerationResources",
       () async {
-        final snapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+        final snapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
 
         final mockRemote = _mockRemote();
         final service = _makeService(mockRemote);
@@ -276,7 +277,7 @@ void main() {
         _writeChannelHead(_testChannelName, _testGenerationHashNew);
         _writeChannelResources(_testChannelName, snapshot.hash);
 
-        final reflogBefore = service.readCheckoutReflog(checkoutId).toNullable()!;
+        final reflogBefore = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
 
         final result = await service.applyDataUpdate(
           checkoutId: checkoutId,
@@ -288,10 +289,10 @@ void main() {
         expect(result.toNullable(), snapshot.hash);
         verifyNever(() => mockRemote.fetchGenerationResources(any()));
 
-        final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+        final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
         expect(updatedMeta.resourceSnapshotHash, snapshot.hash);
 
-        final reflogAfter = service.readCheckoutReflog(checkoutId).toNullable()!;
+        final reflogAfter = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
         expect(reflogAfter.entries.length, reflogBefore.entries.length + 1);
         final transition = reflogAfter.entries.last;
         expect(transition.from, snapshot.hash);
@@ -300,8 +301,8 @@ void main() {
     );
 
     test("changed generation with changed snapshot hash performs full update", () async {
-      final oldSnapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
-      final newSnapshot = _makeSnapshot(createdAt: "2026-06-16T12:00:00Z");
+      final oldSnapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+      final newSnapshot = await _makeSnapshot(createdAt: "2026-06-16T12:00:00Z");
 
       final mockRemote = _mockRemote(
         serverIndexResult: ServerIndex(
@@ -328,20 +329,20 @@ void main() {
       expect(result.toNullable(), newSnapshot.hash);
       verify(() => mockRemote.fetchGenerationResources(_testGenerationHashNew)).called(1);
 
-      final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
       expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
 
       final registry = checkoutRegistry.readRegistry().toNullable()!;
       expect(registry.checkouts[checkoutId]!.resourceSnapshotHash, newSnapshot.hash);
 
-      final reflog = service.readCheckoutReflog(checkoutId).toNullable()!;
+      final reflog = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
       final transition = reflog.entries.last;
       expect(transition.from, oldSnapshot.hash);
       expect(transition.to, newSnapshot.hash);
     });
 
     test("changed generation but unchanged snapshot hash performs metadata-only update", () async {
-      final snapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+      final snapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
 
       final mockRemote = _mockRemote(
         serverIndexResult: ServerIndex(
@@ -356,7 +357,7 @@ void main() {
       final checkoutId = await _createCheckout(service, snapshotHash: snapshot.hash);
       _writeChannelHead(_testChannelName, _testGenerationHashOld);
 
-      final reflogBefore = service.readCheckoutReflog(checkoutId).toNullable()!;
+      final reflogBefore = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
 
       final result = await service.applyDataUpdate(
         checkoutId: checkoutId,
@@ -368,10 +369,10 @@ void main() {
       expect(result.toNullable(), snapshot.hash);
       verify(() => mockRemote.fetchGenerationResources(_testGenerationHashNew)).called(1);
 
-      final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
       expect(updatedMeta.resourceSnapshotHash, snapshot.hash);
 
-      final reflogAfter = service.readCheckoutReflog(checkoutId).toNullable()!;
+      final reflogAfter = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
       expect(reflogAfter.entries.length, reflogBefore.entries.length + 1);
       final transition = reflogAfter.entries.last;
       expect(transition.from, snapshot.hash);
@@ -379,7 +380,7 @@ void main() {
     });
 
     test("preserves snapshot metadata name field so local hash matches remote", () async {
-      final oldSnapshot = _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+      final oldSnapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
 
       final newMeta = ResourceSnapshotMeta(
         schemaVersion: 1,
@@ -400,7 +401,7 @@ void main() {
           ),
         ],
       );
-      final expectedHash = assetStore.writeResourceSnapshotSync(
+      final expectedHash = await assetStore.writeResourceSnapshot(
         meta: newMeta,
         resourceIndex: newIndex,
       );
@@ -443,11 +444,11 @@ void main() {
     test("changed blob content triggers fetchBlob download", () async {
       final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
       final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
-      final oldSnapshot = _makeSnapshot(
+      final oldSnapshot = await _makeSnapshot(
         createdAt: "2026-06-15T12:00:00Z",
         blobContent: oldBlobContent,
       );
-      final newSnapshot = _makeSnapshot(
+      final newSnapshot = await _makeSnapshot(
         createdAt: "2026-06-16T12:00:00Z",
         blobContent: newBlobContent,
         writeBlob: false,
@@ -484,18 +485,18 @@ void main() {
       expect(progressCalls, contains((0, 1)));
       expect(progressCalls.last, (1, 1));
 
-      final updatedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
       expect(updatedMeta.resourceSnapshotHash, newSnapshot.hash);
     });
 
     test("returns Left when fetchBlob fails with a non-304 error", () async {
       final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
       final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
-      final oldSnapshot = _makeSnapshot(
+      final oldSnapshot = await _makeSnapshot(
         createdAt: "2026-06-15T12:00:00Z",
         blobContent: oldBlobContent,
       );
-      final newSnapshot = _makeSnapshot(
+      final newSnapshot = await _makeSnapshot(
         createdAt: "2026-06-16T12:00:00Z",
         blobContent: newBlobContent,
         writeBlob: false,
@@ -530,18 +531,18 @@ void main() {
       expect(result.getLeft().toNullable(), "Failed to download changed files");
       verify(() => mockRemote.fetchBlob(any(), any())).called(1);
 
-      final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      final unchangedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
       expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
     });
 
     test("returns Left when fetchResourceSnapshotMeta fails", () async {
       final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
       final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
-      final oldSnapshot = _makeSnapshot(
+      final oldSnapshot = await _makeSnapshot(
         createdAt: "2026-06-15T12:00:00Z",
         blobContent: oldBlobContent,
       );
-      final newSnapshot = _makeSnapshot(
+      final newSnapshot = await _makeSnapshot(
         createdAt: "2026-06-16T12:00:00Z",
         blobContent: newBlobContent,
         writeBlob: false,
@@ -575,24 +576,24 @@ void main() {
       expect(result.isLeft(), isTrue);
       expect(result.getLeft().toNullable(), "metadata timeout");
 
-      final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      final unchangedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
       expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
 
       final registry = checkoutRegistry.readRegistry().toNullable()!;
       expect(registry.checkouts[checkoutId]!.resourceSnapshotHash, oldSnapshot.hash);
 
-      final reflog = service.readCheckoutReflog(checkoutId).toNullable()!;
+      final reflog = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
       expect(reflog.entries.length, 1);
     });
 
     test("returns Left when fetchServerIndex fails", () async {
       final oldBlobContent = Uint8List.fromList([1, 2, 3, 4]);
       final newBlobContent = Uint8List.fromList([5, 6, 7, 8]);
-      final oldSnapshot = _makeSnapshot(
+      final oldSnapshot = await _makeSnapshot(
         createdAt: "2026-06-15T12:00:00Z",
         blobContent: oldBlobContent,
       );
-      final newSnapshot = _makeSnapshot(
+      final newSnapshot = await _makeSnapshot(
         createdAt: "2026-06-16T12:00:00Z",
         blobContent: newBlobContent,
         writeBlob: false,
@@ -621,7 +622,7 @@ void main() {
       expect(result.isLeft(), isTrue);
       expect(result.getLeft().toNullable(), "server index timeout");
 
-      final unchangedMeta = service.readCheckoutMeta(checkoutId).toNullable()!;
+      final unchangedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
       expect(unchangedMeta.resourceSnapshotHash, oldSnapshot.hash);
     });
   });

@@ -6,6 +6,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/fs/file_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -24,7 +25,7 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync("efa_schema_version_test_").path;
     PathProvider.documentsPath = tempDir;
     PathProvider.appSupportPath = tempDir;
-    service = const SchemaVersionService();
+    service = SchemaVersionService(FileBlobStore());
   });
 
   tearDown(() {
@@ -33,8 +34,8 @@ void main() {
   });
 
   group("SchemaVersionService.ensure", () {
-    test("writes file on first call", () {
-      service.ensure();
+    test("writes file on first call", () async {
+      await service.ensure();
 
       final file = File(RepoPaths.schemaVersionPath);
       expect(file.existsSync(), isTrue);
@@ -43,8 +44,8 @@ void main() {
       expect(json["schemaVersion"], 2);
     });
 
-    test("is idempotent on second call", () {
-      service.ensure();
+    test("is idempotent on second call", () async {
+      await service.ensure();
 
       // Set a sentinel mtime so a rewrite is detectable even within the same
       // filesystem timestamp tick.
@@ -52,42 +53,42 @@ void main() {
       final sentinel = DateTime(2020, 1, 1);
       file.setLastModifiedSync(sentinel);
 
-      service.ensure();
+      await service.ensure();
       expect(file.lastModifiedSync(), sentinel);
     });
   });
 
   group("SchemaVersionService.read", () {
-    test("returns Some(1) after ensure", () {
-      service.ensure();
+    test("returns Some(2) after ensure", () async {
+      await service.ensure();
 
-      expect(service.read(), const Some(2));
+      expect(await service.read(), const Some(2));
     });
 
-    test("returns None when file is absent", () {
-      expect(service.read(), const None());
+    test("returns None when file is absent", () async {
+      expect(await service.read(), const None());
     });
 
-    test("returns None on malformed JSON", () {
+    test("returns None on malformed JSON", () async {
       final file = File(RepoPaths.schemaVersionPath);
       file.parent.createSync(recursive: true);
       file.writeAsStringSync("not json");
 
-      expect(service.read(), const None());
+      expect(await service.read(), const None());
     });
 
-    test("returns None when schemaVersion field is missing", () {
+    test("returns None when schemaVersion field is missing", () async {
       final file = File(RepoPaths.schemaVersionPath);
       file.parent.createSync(recursive: true);
       file.writeAsStringSync(jsonEncode({"other": 1}));
 
-      expect(service.read(), const None());
+      expect(await service.read(), const None());
     });
   });
 
   group("SchemaVersionService atomic write", () {
-    test("after ensure, no .tmp file remains", () {
-      service.ensure();
+    test("after ensure, no .tmp file remains", () async {
+      await service.ensure();
 
       final tmpFile = File("${RepoPaths.schemaVersionPath}.tmp");
       expect(tmpFile.existsSync(), isFalse);
@@ -95,29 +96,29 @@ void main() {
   });
 
   group("SchemaVersionService.exists", () {
-    test("returns false when file is absent", () {
-      expect(service.exists(), isFalse);
+    test("returns false when file is absent", () async {
+      expect(await service.exists(), isFalse);
     });
 
-    test("returns true after ensure", () {
-      service.ensure();
-      expect(service.exists(), isTrue);
+    test("returns true after ensure", () async {
+      await service.ensure();
+      expect(await service.exists(), isTrue);
     });
 
-    test("returns true when file exists with valid content", () {
+    test("returns true when file exists with valid content", () async {
       final file = File(RepoPaths.schemaVersionPath);
       file.parent.createSync(recursive: true);
       file.writeAsStringSync(jsonEncode({"schemaVersion": 2}));
 
-      expect(service.exists(), isTrue);
+      expect(await service.exists(), isTrue);
     });
 
-    test("returns true when file exists even with malformed content", () {
+    test("returns true when file exists even with malformed content", () async {
       final file = File(RepoPaths.schemaVersionPath);
       file.parent.createSync(recursive: true);
       file.writeAsStringSync("garbage");
 
-      expect(service.exists(), isTrue);
+      expect(await service.exists(), isTrue);
     });
   });
 }

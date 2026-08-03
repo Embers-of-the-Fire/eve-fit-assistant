@@ -6,6 +6,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
+import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
@@ -61,6 +62,16 @@ ProviderContainer _container({
   );
 }
 
+/// The fit registry now loads asynchronously from the document store; wait for
+/// the seeded registry to be populated before asserting on derived providers.
+Future<void> _waitForRegistryLoad(ProviderContainer container) async {
+  for (var i = 0; i < 200; i++) {
+    if (container.read(fitRegistryManagerProvider).fits.isNotEmpty) return;
+    await Future<void>.delayed(Duration.zero);
+  }
+  fail("Fit registry did not load in time");
+}
+
 void main() {
   setUp(() {
     _tempDir = Directory.systemTemp.createTempSync("efa_compat_test_").path;
@@ -73,7 +84,7 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  test("returns compatible when active checkout matches fit's checkout", () {
+  test("returns compatible when active checkout matches fit's checkout", () async {
     final container = _container(
       fitId: "fit-a",
       metadata: _fitMeta("fit-a", "checkout-1", "Serenity"),
@@ -81,6 +92,7 @@ void main() {
       activeCheckoutId: "checkout-1",
     );
     addTearDown(container.dispose);
+    await _waitForRegistryLoad(container);
 
     final result = container.read(fitCheckoutCompatibilityProvider("fit-a"));
     expect(result, isNotNull);
@@ -88,7 +100,7 @@ void main() {
     expect(result.allowsEditing, isTrue);
   });
 
-  test("returns outdated when same server but different checkout", () {
+  test("returns outdated when same server but different checkout", () async {
     final container = _container(
       fitId: "fit-b",
       metadata: _fitMeta("fit-b", "checkout-1", "Serenity"),
@@ -96,13 +108,14 @@ void main() {
       activeCheckoutId: "checkout-2",
     );
     addTearDown(container.dispose);
+    await _waitForRegistryLoad(container);
 
     final result = container.read(fitCheckoutCompatibilityProvider("fit-b"));
     expect(result, isNotNull);
     expect(result!.kind, FitCheckoutCompatibilityKind.outdated);
   });
 
-  test("returns incompatible when different server", () {
+  test("returns incompatible when different server", () async {
     final container = _container(
       fitId: "fit-c",
       metadata: _fitMeta("fit-c", "checkout-1", "Serenity"),
@@ -110,13 +123,14 @@ void main() {
       activeCheckoutId: "checkout-1",
     );
     addTearDown(container.dispose);
+    await _waitForRegistryLoad(container);
 
     final result = container.read(fitCheckoutCompatibilityProvider("fit-c"));
     expect(result, isNotNull);
     expect(result!.kind, FitCheckoutCompatibilityKind.incompatible);
   });
 
-  test("returns compatible when fit has empty checkout ID (sentinel)", () {
+  test("returns compatible when fit has empty checkout ID (sentinel)", () async {
     final container = _container(
       fitId: "fit-d",
       metadata: _fitMeta("fit-d", "", ""),
@@ -124,13 +138,14 @@ void main() {
       activeCheckoutId: "checkout-1",
     );
     addTearDown(container.dispose);
+    await _waitForRegistryLoad(container);
 
     final result = container.read(fitCheckoutCompatibilityProvider("fit-d"));
     expect(result, isNotNull);
     expect(result!.kind, FitCheckoutCompatibilityKind.compatible);
   });
 
-  test("returns null when fit metadata is missing from registry", () {
+  test("returns null when fit metadata is missing from registry", () async {
     final container = _container(
       fitId: "fit-e",
       metadata: _fitMeta("fit-e", "checkout-1", "Serenity"),
@@ -138,6 +153,7 @@ void main() {
       activeCheckoutId: "checkout-1",
     );
     addTearDown(container.dispose);
+    await _waitForRegistryLoad(container);
 
     final result = container.read(fitCheckoutCompatibilityProvider("fit-missing"));
     expect(result, isNull);

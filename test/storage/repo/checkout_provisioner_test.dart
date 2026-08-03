@@ -9,11 +9,11 @@ import "package:eve_fit_assistant/config/paths.dart" show PathProvider;
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/storage/fs/memory_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_provisioner.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
-import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -51,82 +51,7 @@ CheckoutService _testCheckoutService({Option<String>? createResult}) {
 
 /// In-memory asset store that records blobs without touching the real
 /// filesystem. Each test gets a fresh instance.
-class _FakeAssetStore implements AssetStore {
-  final _blobs = <String, Uint8List>{};
-
-  @override
-  ({String identHash, String contentHash}) writeBlobSync(String identHash, Uint8List content) {
-    final contentHash = RepoHash.hashContent(content);
-    _blobs[identHash] = content;
-    return (identHash: identHash, contentHash: contentHash);
-  }
-
-  @override
-  ({String identHash, String contentHash}) writeBlobByIdentSync(
-    BlobIdent ident,
-    Uint8List content,
-  ) => writeBlobSync(ident.identHash, content);
-
-  @override
-  bool blobExistsSync(String identHash, String contentHash) => _blobs.containsKey(identHash);
-
-  @override
-  void deleteBlobSync(String identHash, String contentHash) {
-    _blobs.remove(identHash);
-  }
-
-  @override
-  String writeResourceSnapshotSync({
-    required ResourceSnapshotMeta meta,
-    required ResourceIndex resourceIndex,
-  }) {
-    return "snap-${meta.serverId}";
-  }
-
-  @override
-  Option<Uint8List> readBlobSync(String identHash, String contentHash) =>
-      Option.fromNullable(_blobs[identHash]);
-
-  @override
-  Option<ResourceIndex> readResourceIndexSync(String snapshotHash) => const None();
-
-  @override
-  Option<ResourceSnapshotMeta> readResourceSnapshotMetaSync(String snapshotHash) => const None();
-
-  @override
-  IList<String> verifyResourceIndexSync(
-    ResourceIndex resourceIndex, {
-    void Function(int checked, int total)? onProgress,
-  }) => const IList.empty();
-
-  @override
-  int pruneSync({
-    required Set<String> activeSnapshotHashes,
-    required List<ResourceIndex> activeResourceIndexes,
-    void Function(int scanned, int total)? onProgress,
-  }) => 0;
-
-  @override
-  void recoverSync() {}
-
-  @override
-  Future<void> writeBlobUnchecked(String identHash, String contentHash, Uint8List content) async {
-    _blobs[identHash] = content;
-  }
-
-  @override
-  Future<void> writeBlobUncheckedAt(String assetPath, Uint8List content) async {
-    // Extract identHash from the last path segment's parent directory.
-    // Path format: .../blobs/{2c}/{identHash}/{contentHash}
-    final parts = assetPath.split("/");
-    if (parts.length >= 2) {
-      _blobs[parts[parts.length - 2]] = content;
-    }
-  }
-
-  @override
-  void ensureBlobIdentDirs(Iterable<String> identHashes) {}
-}
+AssetStore _fakeAssetStore() => AssetStore.forTest(MemoryBlobStore());
 
 /// Builds a [ResourceIndex] protobuf from a list of (resourceId, contentHash,
 /// size) tuples.
@@ -193,7 +118,7 @@ void main() {
   });
 
   late MockRemoteCatalogService mockRemoteCatalog;
-  late _FakeAssetStore fakeAssetStore;
+  late AssetStore fakeAssetStore;
   late CheckoutProvisioner provisioner;
 
   /// Configures [provisioner] with the standard test parameters.
@@ -219,7 +144,7 @@ void main() {
     PathProvider.appSupportPath = tempDir;
 
     mockRemoteCatalog = MockRemoteCatalogService();
-    fakeAssetStore = _FakeAssetStore();
+    fakeAssetStore = _fakeAssetStore();
 
     // Stub fetchServerIndex to return Left so _persistServerIndex never
     // writes to the real filesystem.
@@ -322,7 +247,7 @@ void main() {
       expect(complete.failedBlobs, isEmpty);
 
       // Verify blob was stored in the fake store
-      expect(fakeAssetStore.blobExistsSync(identHash, contentHash), isTrue);
+      expect(await fakeAssetStore.blobExists(identHash, contentHash), isTrue);
     });
 
     test("emits final Preparing with cached and total counts", () async {
@@ -341,7 +266,7 @@ void main() {
       addTearDown(provisioner.dispose);
 
       // Pre-write the blob so it counts as cached
-      fakeAssetStore.writeBlobSync(identHash, blobBytes);
+      await fakeAssetStore.writeBlob(identHash, blobBytes);
 
       when(
         () => mockRemoteCatalog.fetchResourceIndex(any()),

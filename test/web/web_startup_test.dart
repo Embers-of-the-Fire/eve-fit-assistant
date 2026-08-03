@@ -28,16 +28,16 @@ void main() {
   });
 
   group("AppSettingService on web", () {
-    test("init falls back to defaults without touching storage", () {
-      AppSettingService.init();
+    test("init loads defaults from the settings store", () async {
+      await AppSettingService.init();
 
       expect(AppSettingService.appSetting.welcomeCompleted, isFalse);
       expect(AppSettingService.appSetting.developerMode, isFalse);
       expect(AppSettingService.appSetting.fontScale, 1.0);
     });
 
-    test("updates apply in memory without disk sync", () {
-      AppSettingService.init();
+    test("updates apply in memory and persist to the settings store", () async {
+      await AppSettingService.init();
       final container = ProviderContainer();
       addTearDown(container.dispose);
 

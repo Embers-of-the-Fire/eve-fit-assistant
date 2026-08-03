@@ -12,6 +12,7 @@ import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/storage/fs/file_doc_store.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
@@ -124,9 +125,9 @@ void main() {
   late AppVersionStateStore versionStore;
 
   setUp(() async {
-    stateStore = AnnouncementStateStore(settingsPath: tempDir.path);
+    stateStore = AnnouncementStateStore(store: FileDocStore(tempDir.path));
     await stateStore.init();
-    versionStore = AppVersionStateStore(settingsPath: tempDir.path);
+    versionStore = AppVersionStateStore(store: FileDocStore(tempDir.path));
     await versionStore.init();
   });
 

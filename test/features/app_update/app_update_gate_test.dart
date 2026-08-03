@@ -19,6 +19,7 @@ import "package:eve_fit_assistant/features/app_update/platform/update_platform.d
 import "package:eve_fit_assistant/features/app_update/providers.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
+import "package:eve_fit_assistant/storage/fs/file_doc_store.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart" show availableAppReleaseProvider;
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -121,7 +122,7 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync("efa_app_update_gate_test_").path;
     PathProvider.documentsPath = tempDir;
     PathProvider.cachesPath = tempDir;
-    versionStore = AppVersionStateStore(settingsPath: tempDir);
+    versionStore = AppVersionStateStore(store: FileDocStore(tempDir));
     await versionStore.init();
   });
 

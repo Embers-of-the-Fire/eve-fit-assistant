@@ -6,6 +6,7 @@ import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/storage/fs/file_doc_store.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
@@ -29,7 +30,7 @@ void main() {
       }),
     );
 
-    final store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+    final store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
     final migration = await store.init();
     await store.ensureSynced;
 

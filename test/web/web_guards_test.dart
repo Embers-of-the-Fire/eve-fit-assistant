@@ -26,8 +26,11 @@ void main() {
       final dio = createBlobDio();
       addTearDown(dio.close);
 
-      expect(dio.options.headers["User-Agent"], contains("EFA/"));
-      expect(dio.options.headers["Accept-Encoding"], contains("gzip"));
+      // Forbidden headers are omitted on web (XHR ignores them), so the
+      // factory must not set them.
+      expect(dio.options.headers.containsKey("User-Agent"), isFalse);
+      expect(dio.options.headers.containsKey("Accept-Encoding"), isFalse);
+      expect(dio.options.headers.containsKey("Connection"), isFalse);
     });
   });
 
