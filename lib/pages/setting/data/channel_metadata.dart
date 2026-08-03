@@ -42,7 +42,7 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _readAll();
+    unawaited(_readAll());
   }
 
   @override
@@ -55,24 +55,38 @@ class _ChannelMetadataPageState extends ConsumerState<ChannelMetadataPage>
 
   String get _currentChannel => _selectedChannel ?? _activeChannel;
 
-  void _readAll() {
+  Future<void> _readAll() async {
     final channelService = ref.read(channelServiceProvider);
-    _channelRegistry = channelService.readLocalChannelRegistry().toNullable();
-    _headMeta = channelService.readHeadMeta(_currentChannel).toNullable();
-    _serverIndex = channelService.readServerIndex(_currentChannel).toNullable();
-    _genResources = channelService.readGenerationResources(_currentChannel).toNullable();
-    _releasePointer = channelService.readReleasePointer(_currentChannel).toNullable();
+    final registry = await channelService.readLocalChannelRegistry();
+    final headMeta = await channelService.readHeadMeta(_currentChannel);
+    final serverIndex = await channelService.readServerIndex(_currentChannel);
+    final genResources = await channelService.readGenerationResources(_currentChannel);
+    final releasePointer = await channelService.readReleasePointer(_currentChannel);
+    if (!mounted) return;
+    setState(() {
+      _channelRegistry = registry.toNullable();
+      _headMeta = headMeta.toNullable();
+      _serverIndex = serverIndex.toNullable();
+      _genResources = genResources.toNullable();
+      _releasePointer = releasePointer.toNullable();
+    });
   }
 
-  void _switchChannel(String channelName) {
+  Future<void> _switchChannel(String channelName) async {
     final channelService = ref.read(channelServiceProvider);
-    _selectedChannel = channelName;
-    _headMeta = channelService.readHeadMeta(channelName).toNullable();
-    _serverIndex = channelService.readServerIndex(channelName).toNullable();
-    _genResources = channelService.readGenerationResources(channelName).toNullable();
-    _releasePointer = channelService.readReleasePointer(channelName).toNullable();
-    _releaseIndex = null;
-    setState(() {});
+    final headMeta = await channelService.readHeadMeta(channelName);
+    final serverIndex = await channelService.readServerIndex(channelName);
+    final genResources = await channelService.readGenerationResources(channelName);
+    final releasePointer = await channelService.readReleasePointer(channelName);
+    if (!mounted) return;
+    setState(() {
+      _selectedChannel = channelName;
+      _headMeta = headMeta.toNullable();
+      _serverIndex = serverIndex.toNullable();
+      _genResources = genResources.toNullable();
+      _releasePointer = releasePointer.toNullable();
+      _releaseIndex = null;
+    });
   }
 
   List<String> get _availableChannels {

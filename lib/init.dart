@@ -16,6 +16,8 @@ import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/storage/path_migration.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -63,7 +65,7 @@ Future<InitializedStores> initSingletons() async {
   if (!kIsWeb) {
     await const StoragePathMigrator().migrateIfNeeded();
   }
-  AppSettingService.init();
+  await AppSettingService.init();
   GlobalLogger.init(
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,
@@ -72,8 +74,10 @@ Future<InitializedStores> initSingletons() async {
   initErrorBoundary();
   GlobalLoading.init();
 
-  final announcementStateStore = AnnouncementStateStore(settingsPath: PathProvider.settingsPath);
-  final appVersionStateStore = AppVersionStateStore(settingsPath: PathProvider.settingsPath);
+  final settingsStore = createUserDocStore(UserDataDomain.settings);
+  await settingsStore.init();
+  final announcementStateStore = AnnouncementStateStore(store: settingsStore);
+  final appVersionStateStore = AppVersionStateStore(store: settingsStore);
 
   unawaited(_deferredInit(announcementStateStore, appVersionStateStore));
 
@@ -103,7 +107,7 @@ Future<void> _deferredInit(
       await appVersionStateStore.ensureSynced;
     }
 
-    FeedbackStateStore.init();
+    await FeedbackStateStore.init();
     await AnnouncementBodyCache.init();
     await repairStartupPersistence();
   } catch (e, st) {

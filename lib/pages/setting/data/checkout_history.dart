@@ -34,16 +34,18 @@ class _CheckoutHistoryPageState extends ConsumerState<CheckoutHistoryPage> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    unawaited(_loadData());
   }
 
-  void _loadData() {
+  Future<void> _loadData() async {
     final registry = ref.read(checkoutRegistryServiceProvider).readRegistry();
     _entry = registry
         .flatMap((r) => Option.fromNullable(r.checkouts[widget.checkoutId]))
         .toNullable();
-    _meta = ref.read(checkoutServiceProvider).readCheckoutMeta(widget.checkoutId).toNullable();
-    _reflog = ref.read(checkoutServiceProvider).readCheckoutReflog(widget.checkoutId).toNullable();
+    final checkoutService = ref.read(checkoutServiceProvider);
+    _meta = (await checkoutService.readCheckoutMeta(widget.checkoutId)).toNullable();
+    _reflog = (await checkoutService.readCheckoutReflog(widget.checkoutId)).toNullable();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -270,18 +272,19 @@ class _HistoryRowState extends ConsumerState<_HistoryRow> {
   @override
   void initState() {
     super.initState();
-    _loadMeta();
+    unawaited(_loadMeta());
   }
 
-  void _loadMeta() {
+  Future<void> _loadMeta() async {
     final hash = widget.transition.to;
     if (widget.metaCache.containsKey(hash)) return;
     if (hash.isEmpty) {
       widget.metaCache[hash] = null;
       return;
     }
-    final meta = ref.read(assetStoreProvider).readResourceSnapshotMetaSync(hash);
+    final meta = await ref.read(assetStoreProvider).readResourceSnapshotMeta(hash);
     widget.metaCache[hash] = meta.toNullable();
+    if (mounted) setState(() {});
   }
 
   @override

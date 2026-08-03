@@ -1,23 +1,24 @@
+import "dart:async";
 import "dart:convert";
-import "package:eve_fit_assistant/compat/io.dart";
-import "package:eve_fit_assistant/compat/isolate.dart";
 
-import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/feedback/feedback_state.dart";
-import "package:path/path.dart" as p;
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
 
 class FeedbackStateStore {
   FeedbackStateStore._();
 
   static const int _currentVersion = 1;
-  static const String _fileName = "feedback_state.json";
+  static const String _key = "feedback_state.json";
   static FeedbackState _state = FeedbackState.initial();
   static Future<void> _pendingSync = Future<void>.value();
+  static DocStore? _store;
 
-  static File get _file => File(p.join(PathProvider.settingsPath, _fileName));
-
-  static void init() {
-    _state = _readFromDisk();
+  static Future<void> init() async {
+    final store = createUserDocStore(UserDataDomain.settings);
+    await store.init();
+    _store = store;
+    _state = await _readFromStore();
     _state = _state.copyWith(
       launchCount: _state.launchCount + 1,
       firstLaunchDate: _state.firstLaunchDate ?? DateTime.now(),
@@ -64,10 +65,10 @@ class FeedbackStateStore {
 
   static Future<void> get ensureSynced => _pendingSync;
 
-  static FeedbackState _readFromDisk() {
+  static Future<FeedbackState> _readFromStore() async {
     try {
-      if (_file.existsSync()) {
-        final text = _file.readAsStringSync();
+      final text = await _store?.read(_key);
+      if (text != null) {
         final json = jsonDecode(text) as Map<String, dynamic>;
         final state = FeedbackState.fromJson(json);
         if (state.schemaVersion < _currentVersion) {
@@ -84,19 +85,11 @@ class FeedbackStateStore {
   static FeedbackState _migrate(FeedbackState old) => old.copyWith(schemaVersion: _currentVersion);
 
   static void _sync() {
-    final filePath = _file.path;
+    final store = _store;
+    if (store == null) return;
     final state = _state;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)));
-  }
-
-  static void _syncToDisk(String filePath, FeedbackState state) {
-    final file = File(filePath);
-    final text = jsonEncode(state.toJson());
-    if (!file.existsSync()) {
-      file.createSync(recursive: true);
-    }
-    file.writeAsStringSync(text);
+        .then((_) => store.write(_key, jsonEncode(state.toJson())));
   }
 }

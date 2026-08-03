@@ -187,11 +187,12 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
     return DateFormat("yyyy-MM-dd HH:mm").format(dt.toLocal());
   }
 
-  void _showInfoSheet(String checkoutId, CheckoutRegistryEntry entry, bool isActive) {
+  Future<void> _showInfoSheet(String checkoutId, CheckoutRegistryEntry entry, bool isActive) async {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final displayName = _displayName(entry);
-    final ri = ref.read(assetStoreProvider).readResourceIndexSync(entry.resourceSnapshotHash);
+    final ri = await ref.read(assetStoreProvider).readResourceIndex(entry.resourceSnapshotHash);
+    if (!mounted) return;
     final fileCount = ri.match(() => -1, (r) => r.entries.length);
     final totalSize = ri.match(
       () => -1,
@@ -452,14 +453,20 @@ class _CheckoutCreateSheetState extends ConsumerState<_CheckoutCreateSheet> {
   @override
   void initState() {
     super.initState();
-    _readLocalGenData();
+    unawaited(
+      _readLocalGenData().then((_) {
+        if (mounted) setState(() {});
+      }),
+    );
   }
 
-  void _readLocalGenData() {
+  Future<void> _readLocalGenData() async {
     final channelService = ref.read(channelServiceProvider);
-    _genResources = channelService.readGenerationResources(widget.activeChannel).toNullable();
-    _serverIndex = channelService.readServerIndex(widget.activeChannel).toNullable();
-    _generationHash = channelService.localGenerationHash(widget.activeChannel);
+    _genResources = (await channelService.readGenerationResources(
+      widget.activeChannel,
+    )).toNullable();
+    _serverIndex = (await channelService.readServerIndex(widget.activeChannel)).toNullable();
+    _generationHash = await channelService.localGenerationHash(widget.activeChannel);
   }
 
   bool get _hasGenData => _genResources != null && _genResources!.entries.isNotEmpty;
@@ -496,7 +503,7 @@ class _CheckoutCreateSheetState extends ConsumerState<_CheckoutCreateSheet> {
         setState(() => _syncError = discoverResult.getLeft().toNullable());
         return;
       }
-      _readLocalGenData();
+      await _readLocalGenData();
       setState(() {});
     } finally {
       setState(() => _syncing = false);
@@ -892,7 +899,7 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
       final toDownload = <ResourceIndex_Entry>[];
       for (final entry in resourceIndex.entries) {
         final identHash = RepoHash.hashIdent(entry.resourceId);
-        if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
+        if (await assetStore.blobExists(identHash, entry.contentHash)) {
           downloaded++;
         } else {
           toDownload.add(entry);
@@ -939,7 +946,7 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
             final identHash = RepoHash.hashIdent(entry.resourceId);
             final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
             if (blobResult.isRight()) {
-              assetStore.writeBlobSync(identHash, blobResult.getRight().toNullable()!);
+              await assetStore.writeBlob(identHash, blobResult.getRight().toNullable()!);
             } else {
               failedBlobs.add(entry.resourceId);
             }
@@ -970,11 +977,11 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
       setState(() => _status = l10n.checkoutCreateProgressFinalizing);
       final metaResult = await remoteCatalog.fetchResourceSnapshotMeta(widget.snapshotHash);
       final localSnapshotHash = metaResult.isRight()
-          ? assetStore.writeResourceSnapshotSync(
+          ? await assetStore.writeResourceSnapshot(
               meta: metaResult.getRight().toNullable()!,
               resourceIndex: resourceIndex,
             )
-          : assetStore.writeResourceSnapshotSync(
+          : await assetStore.writeResourceSnapshot(
               // Write basic metadata anyway
               meta: ResourceSnapshotMeta(
                 schemaVersion: 1,

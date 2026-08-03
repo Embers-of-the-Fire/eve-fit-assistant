@@ -2,6 +2,11 @@ import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/repo_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
+import "package:eve_fit_assistant/storage/repo/paths.dart";
+import "package:flutter/foundation.dart";
 import "package:path/path.dart" as p;
 
 /// Wipes all application-local storage and resets the app to first-launch state.
@@ -12,11 +17,21 @@ import "package:path/path.dart" as p;
 class ResetStorageService {
   const ResetStorageService();
 
-  /// Deletes all mutable app data directories and clears in-memory caches.
+  /// Deletes all mutable app data and clears in-memory caches.
   ///
-  /// Preserves the base documents/support/cache directories themselves; only
-  /// the contents owned by the app are removed. Logs are also deleted.
+  /// On native this removes the app-owned directory contents (preserving the
+  /// base directories themselves). On web it clears the OPFS repo tree and the
+  /// IndexedDB-backed user document stores.
   Future<void> resetAll() async {
+    if (kIsWeb) {
+      await _resetWeb();
+    } else {
+      await _resetNative();
+    }
+    await RemoteCache.clear();
+  }
+
+  Future<void> _resetNative() async {
     final dirs = <String>[
       PathProvider.settingsPath,
       PathProvider.resourcesPath,
@@ -36,8 +51,29 @@ class ResetStorageService {
     for (final path in dirs) {
       await _deleteRecursively(Directory(path));
     }
+  }
 
-    await RemoteCache.clear();
+  Future<void> _resetWeb() async {
+    // Wipe the repo tree (blobs, snapshots, channels, checkouts, marker).
+    final repoStore = createRepoBlobStore();
+    await repoStore.init();
+    for (final path in [
+      RepoPaths.assetsPath,
+      RepoPaths.channelsPath,
+      RepoPaths.checkoutsPath,
+      RepoPaths.schemaVersionPath,
+    ]) {
+      await repoStore.deleteTree(path);
+    }
+
+    // Wipe the user document stores (fits, characters, settings).
+    for (final domain in UserDataDomain.values) {
+      final docs = createUserDocStore(domain);
+      await docs.init();
+      for (final key in await docs.keys()) {
+        await docs.delete(key);
+      }
+    }
   }
 
   Future<void> _deleteRecursively(Directory dir) async {

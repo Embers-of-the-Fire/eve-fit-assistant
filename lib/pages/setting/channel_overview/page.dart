@@ -41,18 +41,25 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
   @override
   void initState() {
     super.initState();
-    _readAll();
+    unawaited(_readAll());
   }
 
-  void _readAll() {
+  Future<void> _readAll() async {
     final channelService = ref.read(channelServiceProvider);
 
-    _channelRegistry = channelService.readLocalChannelRegistry().toNullable();
-
-    _headMeta = channelService.readHeadMeta(_activeChannel).toNullable();
-    _serverIndex = channelService.readServerIndex(_activeChannel).toNullable();
-    _genResources = channelService.readGenerationResources(_activeChannel).toNullable();
-    _releasePointer = channelService.readReleasePointer(_activeChannel).toNullable();
+    final registry = await channelService.readLocalChannelRegistry();
+    final headMeta = await channelService.readHeadMeta(_activeChannel);
+    final serverIndex = await channelService.readServerIndex(_activeChannel);
+    final genResources = await channelService.readGenerationResources(_activeChannel);
+    final releasePointer = await channelService.readReleasePointer(_activeChannel);
+    if (!mounted) return;
+    setState(() {
+      _channelRegistry = registry.toNullable();
+      _headMeta = headMeta.toNullable();
+      _serverIndex = serverIndex.toNullable();
+      _genResources = genResources.toNullable();
+      _releasePointer = releasePointer.toNullable();
+    });
   }
 
   String get _activeChannel => ref.read(appSettingServiceProvider).remoteContent.channel;
@@ -276,10 +283,8 @@ class _ChannelOverviewPageState extends ConsumerState<ChannelOverviewPage> {
     }
 
     if (mounted) {
-      setState(() {
-        _refreshing = false;
-        _readAll();
-      });
+      setState(() => _refreshing = false);
+      await _readAll();
     }
   }
 

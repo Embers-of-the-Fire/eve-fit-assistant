@@ -1,157 +1,104 @@
 import "dart:convert";
-import "dart:typed_data";
 
-import "package:eve_fit_assistant/compat/io.dart";
-import "package:eve_fit_assistant/compat/local_fs.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:eve_fit_assistant/storage/fs/blob_store.dart";
+import "package:eve_fit_assistant/storage/fs/repo_store.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
-import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
-import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
-import "package:file/file.dart" hide Directory, File, FileSystemEntity;
+import "package:flutter/foundation.dart";
 import "package:fpdart/fpdart.dart";
-import "package:path/path.dart" as p;
 
 /// Content-addressed blob I/O with atomic writes.
 ///
 /// Blobs are stored at `assets/blobs/{2c}/{ident_hash}/{content_hash}`
 /// and resource snapshots at `assets/resources/{snapshot_hash}/`.
+///
+/// All I/O goes through a [BlobStore]: `FileBlobStore` on native platforms,
+/// `OpfsBlobStore` on web. Every method is async because OPFS is async-only.
 class AssetStore {
-  const AssetStore() : _fs = null;
+  /// Creates an asset store over the platform's repo blob store (or [store]).
+  AssetStore([BlobStore? store]) : _store = store ?? createRepoBlobStore();
 
-  AssetStore.forTest(this._fs);
+  /// Creates an asset store over an explicit [BlobStore] (tests).
+  AssetStore.forTest(this._store);
 
-  final FileSystem? _fs;
+  final BlobStore _store;
 
-  FileSystem get _fileSystem => _fs ?? const LocalFileSystem();
+  /// The backing blob store.
+  BlobStore get store => _store;
 
   /// Writes a blob identified by [identHash] and [content] to the asset store.
   ///
   /// The content_hash is computed as SHA-256 of [content]. Returns (identHash, contentHash).
   /// Idempotent: skips write if the file already exists.
-  ({String identHash, String contentHash}) writeBlobSync(String identHash, Uint8List content) {
+  Future<({String identHash, String contentHash})> writeBlob(
+    String identHash,
+    Uint8List content,
+  ) async {
     final contentHash = RepoHash.hashContent(content);
     final assetPath = RepoPaths.blobPath(identHash, contentHash);
-    return _writeBlobAtPath(assetPath, identHash, contentHash, content);
+    if (await _store.exists(assetPath)) {
+      return (identHash: identHash, contentHash: contentHash);
+    }
+    await _writeBlobAtPath(assetPath, content);
+    return (identHash: identHash, contentHash: contentHash);
   }
-
-  /// Writes a blob without computing its content hash — the caller supplies
-  /// the known [contentHash] from the ResourceIndex.
-  ///
-  /// The canonical entry point for batch downloaders. Skips the redundant
-  /// SHA-256 and uses async I/O to avoid stalling concurrent HTTP workers.
-  Future<void> writeBlobUnchecked(String identHash, String contentHash, Uint8List content) =>
-      writeBlobUncheckedAt(RepoPaths.blobPath(identHash, contentHash), content);
 
   /// Writes a blob directly to [assetPath] — no path resolution, no hash
   /// computation, no idempotency guard. The path and content are trusted.
   ///
-  /// Preferred over [writeBlobUnchecked] when the path has already been
+  /// The canonical entry point for batch downloaders, whose paths have been
   /// pre-computed during the partition phase.
-  Future<void> writeBlobUncheckedAt(String assetPath, Uint8List content) async {
-    final tmp = _fileSystem.file("$assetPath.tmp");
+  Future<void> writeBlobUncheckedAt(String assetPath, Uint8List content) =>
+      _writeBlobAtPath(assetPath, content);
+
+  Future<void> _writeBlobAtPath(String assetPath, Uint8List content) async {
     try {
-      await tmp.writeAsBytes(content);
-      await tmp.rename(assetPath);
-    } on FileSystemException catch (e, stackTrace) {
+      await _store.write(assetPath, content);
+    } catch (e, stackTrace) {
       warning("Blob write failed: $assetPath", stackTrace: stackTrace);
-      try {
-        if (await tmp.exists()) await tmp.delete();
-      } on FileSystemException {
-        // best-effort cleanup
-      }
       rethrow;
     }
   }
 
-  /// Ensures blob parent directories exist for all given [identHashes].
-  ///
-  /// Call once before a batch of [writeBlobUnchecked] calls to avoid
-  /// redundant per-blob `parent.existsSync` + `parent.createSync` calls.
-  void ensureBlobIdentDirs(Iterable<String> identHashes) {
-    final seen = <String>{};
-    for (final ihash in identHashes) {
-      if (!seen.add(ihash)) continue;
-      final dir = _fileSystem.directory(RepoPaths.blobIdentDir(ihash));
-      if (!dir.existsSync()) dir.createSync(recursive: true);
-    }
-  }
-
-  /// Writes a blob identified by [ident] and [content] to the asset store.
-  ({String identHash, String contentHash}) writeBlobByIdentSync(
-    BlobIdent ident,
-    Uint8List content,
-  ) => writeBlobSync(ident.identHash, content);
-
   /// Reads a blob by ident_hash and content_hash.
   ///
   /// Returns [None] if the file does not exist.
-  Option<Uint8List> readBlobSync(String identHash, String contentHash) {
+  Future<Option<Uint8List>> readBlob(String identHash, String contentHash) async {
     final assetPath = RepoPaths.blobPath(identHash, contentHash);
-    final file = File(assetPath);
-    if (!file.existsSync()) return const None();
-    try {
-      return Some(file.readAsBytesSync());
-    } on FileSystemException catch (e, stackTrace) {
-      warning("Blob read failed: $assetPath", stackTrace: stackTrace);
-      return const None();
-    }
+    final bytes = await _store.read(assetPath);
+    if (bytes == null) return const None();
+    return Some(bytes);
   }
 
-  /// Returns `true` if the blob exists on disk.
-  bool blobExistsSync(String identHash, String contentHash) {
-    final assetPath = RepoPaths.blobPath(identHash, contentHash);
-    return File(assetPath).existsSync();
-  }
-
-  /// Deletes a blob.
-  void deleteBlobSync(String identHash, String contentHash) {
-    final assetPath = RepoPaths.blobPath(identHash, contentHash);
-    final file = File(assetPath);
-    try {
-      if (file.existsSync()) file.deleteSync();
-    } on FileSystemException catch (e, stackTrace) {
-      warning("Blob delete failed: $assetPath", stackTrace: stackTrace);
-    }
-  }
+  /// Returns `true` if the blob exists in the store.
+  Future<bool> blobExists(String identHash, String contentHash) =>
+      _store.exists(RepoPaths.blobPath(identHash, contentHash));
 
   // ── Resource snapshot I/O ───────────────────────────────────────────────────
 
-  /// Writes a complete resource snapshot atomically.
+  /// Writes a complete resource snapshot.
   ///
-  /// Steps:
-  /// 1. Write metadata.json and resources.pb2 to a temp directory
-  /// 2. Compute snapshot_hash (v4) binding metadata.json + resources.pb2
-  /// 3. Rename temp → assets/resources/{snapshot_hash}/
+  /// The snapshot_hash (v4) binds the canonical metadata.json and resources.pb2
+  /// bytes, computed in memory before either file is written. Each file write
+  /// is atomic; a crash between the two leaves an unreferenced partial
+  /// snapshot that [prune] later removes (the snapshot hash is only published
+  /// to the checkout registry after this method returns).
   ///
   /// Returns the computed snapshot_hash. Idempotent: skips if the snapshot
-  /// already exists.
-  String writeResourceSnapshotSync({
+  /// already exists (content-addressed, so existing content is identical).
+  Future<String> writeResourceSnapshot({
     required ResourceSnapshotMeta meta,
     required ResourceIndex resourceIndex,
-  }) {
-    // Write to temp to compute hash
-    final tempDir = Directory(_resourceTempPath());
-    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-    tempDir.createSync(recursive: true);
-
-    const metaPath = "metadata.json";
-    const indexPath = "resources.pb2";
-
-    // Write resources.pb2 to temp dir
-    final indexFile = File("${tempDir.path}/$indexPath");
-    writeProtobufSync(indexFile.path, resourceIndex);
-
-    // Serialize metadata.json as canonical JSON
-    _writeMetadataJson("${tempDir.path}/$metaPath", meta);
+  }) async {
+    final indexBytes = resourceIndex.writeToBuffer();
+    final metaBytes = canonicalJsonEncode(meta.toJson());
 
     // Compute snapshot hash (v4) binding metadata.json + resources.pb2 (spec §7).
-    final metaBytes = File("${tempDir.path}/$metaPath").readAsBytesSync();
-    final indexBytes = File("${tempDir.path}/$indexPath").readAsBytesSync();
     final metaHash = RepoHash.hashContent(metaBytes);
     final indexHash = RepoHash.hashContent(indexBytes);
     final snapshotHash = RepoHash.hashResourceSnapshotV4(
@@ -159,26 +106,23 @@ class AssetStore {
       resourcesPb2Hash: indexHash,
     );
 
-    final targetDir = Directory(RepoPaths.resourceSnapshotPath(snapshotHash));
-    if (targetDir.existsSync()) {
-      tempDir.deleteSync(recursive: true);
-      return snapshotHash;
-    }
+    final indexPath = RepoPaths.resourceIndexPath(snapshotHash);
+    if (await _store.exists(indexPath)) return snapshotHash;
 
-    targetDir.parent.createSync(recursive: true);
-    tempDir.renameSync(targetDir.path);
+    await _store.write(indexPath, indexBytes);
+    await _store.write(RepoPaths.resourceSnapshotMetaPath(snapshotHash), metaBytes);
     return snapshotHash;
   }
 
   /// Reads the ResourceIndex from a resource snapshot.
   ///
-  /// Returns [None] if the snapshot does not exist.
-  Option<ResourceIndex> readResourceIndexSync(String snapshotHash) {
+  /// Returns [None] if the snapshot does not exist or cannot be parsed.
+  Future<Option<ResourceIndex>> readResourceIndex(String snapshotHash) async {
     final indexPath = RepoPaths.resourceIndexPath(snapshotHash);
-    final file = File(indexPath);
-    if (!file.existsSync()) return const None();
+    final bytes = await _store.read(indexPath);
+    if (bytes == null) return const None();
     try {
-      return Some(ResourceIndex.fromBuffer(file.readAsBytesSync()));
+      return Some(ResourceIndex.fromBuffer(bytes));
     } on Exception catch (e, stackTrace) {
       warning("Failed to read ResourceIndex $snapshotHash", stackTrace: stackTrace);
       return const None();
@@ -189,12 +133,12 @@ class AssetStore {
   ///
   /// Returns [None] if the snapshot or metadata.json does not exist, or if
   /// parsing fails.
-  Option<ResourceSnapshotMeta> readResourceSnapshotMetaSync(String snapshotHash) {
+  Future<Option<ResourceSnapshotMeta>> readResourceSnapshotMeta(String snapshotHash) async {
     final path = RepoPaths.resourceSnapshotMetaPath(snapshotHash);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
+    final bytes = await _store.read(path);
+    if (bytes == null) return const None();
     try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       return Some(ResourceSnapshotMeta.fromJson(json));
     } on Exception catch (e, stackTrace) {
       warning("Failed to read resource snapshot metadata $snapshotHash", stackTrace: stackTrace);
@@ -202,38 +146,34 @@ class AssetStore {
     }
   }
 
-  /// Verifies every blob referenced by [resourceIndex] exists on disk with
-  /// correct content hash.
+  /// Verifies every blob referenced by [resourceIndex] exists with a correct
+  /// content hash.
   ///
   /// [onProgress] receives (checked, total) blob counts as verification
-  /// proceeds.
+  /// proceeds. The loop yields to the event loop periodically so it can run
+  /// on the web main thread without janking the UI.
   ///
   /// Returns a list of missing or mismatched resource_id values.
-  IList<String> verifyResourceIndexSync(
+  Future<IList<String>> verifyResourceIndex(
     ResourceIndex resourceIndex, {
     void Function(int checked, int total)? onProgress,
-  }) {
+  }) async {
     final failures = <String>[];
     final total = resourceIndex.entries.length;
     var checked = 0;
     for (final entry in resourceIndex.entries) {
       final ihash = RepoHash.hashIdent(entry.resourceId);
       final assetPath = RepoPaths.blobPath(ihash, entry.contentHash);
-      final file = File(assetPath);
-      if (!file.existsSync()) {
+      final bytes = await _store.read(assetPath);
+      if (bytes == null || RepoHash.hashContent(bytes) != entry.contentHash) {
         failures.add(entry.resourceId);
-      } else {
-        try {
-          final diskHash = RepoHash.hashContent(file.readAsBytesSync());
-          if (diskHash != entry.contentHash) {
-            failures.add(entry.resourceId);
-          }
-        } on FileSystemException {
-          failures.add(entry.resourceId);
-        }
       }
       checked++;
       onProgress?.call(checked, total);
+      if (checked % 64 == 0) {
+        // Let the event loop breathe (matters on the web main thread).
+        await Future<void>.delayed(Duration.zero);
+      }
     }
     return failures.toIList();
   }
@@ -242,105 +182,64 @@ class AssetStore {
 
   /// Scans the assets directory and deletes resource snapshots not in
   /// [activeSnapshotHashes]. Deletes blobs not referenced by any
-  /// [activeResourceIndexes]. Removes empty directories.
+  /// [activeResourceIndexes]. Also removes orphaned `.tmp` files and snapshot
+  /// directories left empty after pruning.
   ///
   /// [onProgress] receives (scanned, total) item counts as pruning proceeds.
   ///
   /// Returns the count of files deleted.
-  int pruneSync({
+  Future<int> prune({
     required Set<String> activeSnapshotHashes,
     required List<ResourceIndex> activeResourceIndexes,
     void Function(int scanned, int total)? onProgress,
-  }) {
-    var deleted = 0;
-
+  }) async {
     final referencedBlobs = <String>{};
     for (final ri in activeResourceIndexes) {
       for (final entry in ri.entries) {
         final ihash = RepoHash.hashIdent(entry.resourceId);
-        referencedBlobs.add(RepoPaths.blobPath(ihash, entry.contentHash));
+        referencedBlobs.add(_normalize(RepoPaths.blobPath(ihash, entry.contentHash)));
       }
     }
 
-    final assetsDir = Directory(RepoPaths.assetsPath);
-    if (!assetsDir.existsSync()) return 0;
-
-    final snapshotDirs = <Directory>[];
-    final resourcesDir = Directory(RepoPaths.resourcesDirPath);
-    if (resourcesDir.existsSync()) {
-      snapshotDirs.addAll(resourcesDir.listSync().whereType<Directory>());
-    }
-
-    final blobFiles = <File>[];
-    final blobsDir = Directory(RepoPaths.blobsDirPath);
-    if (blobsDir.existsSync()) {
-      for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
-        for (final entity in prefixDir.listSync().whereType<Directory>()) {
-          blobFiles.addAll(entity.listSync().whereType<File>());
-        }
-      }
-    }
-
-    final totalItems = snapshotDirs.length + blobFiles.length;
+    final files = await _store.list(RepoPaths.assetsPath);
+    final total = files.length;
+    var deleted = 0;
     var scanned = 0;
 
-    for (final dir in snapshotDirs) {
-      final name = p.basename(dir.path);
-      if (!activeSnapshotHashes.contains(name)) {
-        try {
-          dir.deleteSync(recursive: true);
-          deleted++;
-        } on FileSystemException {
-          // best-effort
-        }
-      }
+    final resourcesPrefix = "${_normalize(RepoPaths.resourcesDirPath)}/";
+    final blobsPrefix = "${_normalize(RepoPaths.blobsDirPath)}/";
+    final emptiedSnapshotDirs = <String>{};
+
+    for (final file in files) {
       scanned++;
-      onProgress?.call(scanned, totalItems);
-    }
+      final normalized = _normalize(file);
 
-    for (final blob in blobFiles) {
-      if (!referencedBlobs.contains(blob.path)) {
-        try {
-          blob.deleteSync();
-          deleted++;
-        } on FileSystemException {
-          // best-effort
+      var remove = false;
+      if (normalized.endsWith(".tmp")) {
+        remove = true;
+      } else if (normalized.startsWith(resourcesPrefix)) {
+        // assets/resources/{snapshotHash}/...
+        final snapshotHash = normalized.substring(resourcesPrefix.length).split("/").first;
+        if (!activeSnapshotHashes.contains(snapshotHash)) {
+          remove = true;
+          emptiedSnapshotDirs.add(_normalize(RepoPaths.resourceSnapshotPath(snapshotHash)));
         }
+      } else if (normalized.startsWith(blobsPrefix)) {
+        if (!referencedBlobs.contains(normalized)) remove = true;
       }
-      scanned++;
-      onProgress?.call(scanned, totalItems);
-    }
 
-    if (blobsDir.existsSync()) {
-      for (final prefixDir in blobsDir.listSync().whereType<Directory>()) {
-        for (final entity in prefixDir.listSync().whereType<Directory>()) {
-          if (entity.listSync().isEmpty) {
-            try {
-              entity.deleteSync();
-            } on FileSystemException {
-              // best-effort
-            }
-          }
-        }
-        if (prefixDir.listSync().isEmpty) {
-          try {
-            prefixDir.deleteSync();
-          } on FileSystemException {
-            // best-effort
-          }
-        }
+      if (remove) {
+        await _store.delete(file);
+        deleted++;
       }
+      onProgress?.call(scanned, total);
     }
 
-    for (final dir in assetsDir.listSync().whereType<Directory>()) {
-      final name = p.basename(dir.path);
-      if (name.startsWith("tmp_") || name.endsWith("_temp")) {
-        try {
-          dir.deleteSync(recursive: true);
-          deleted++;
-        } on FileSystemException {
-          // best-effort
-        }
+    // Remove snapshot directories whose files were all pruned. A directory
+    // that still holds files (e.g. a concurrent write) is left untouched.
+    for (final dir in emptiedSnapshotDirs) {
+      if ((await _store.list(dir)).isEmpty) {
+        await _store.deleteTree(dir);
       }
     }
 
@@ -352,81 +251,30 @@ class AssetStore {
   /// Cleans up orphaned temporary artifacts left behind by interrupted atomic
   /// writes.
   ///
-  /// Atomic writes use a `tmp → rename` pattern; a crash between the temp write
-  /// and the rename leaves a `.tmp` file (e.g. `blob.tmp`) on disk. This also
-  /// removes orphaned `tmp_*` / `*_temp` working directories.
+  /// Native atomic writes use a `.tmp → rename` pattern; a crash between the
+  /// temp write and the rename leaves a `.tmp` file behind. OPFS writes are
+  /// atomic on stream close and never create `.tmp` files, so this is a no-op
+  /// on web.
   ///
   /// Best-effort and idempotent; intended to run once at startup.
-  void recoverSync() {
-    final assetsDir = _fileSystem.directory(RepoPaths.assetsPath);
-    if (!assetsDir.existsSync()) return;
-
-    // Clean orphaned `.tmp` files created by atomic write patterns.
+  Future<void> recover() async {
+    if (kIsWeb) return;
+    final List<String> files;
     try {
-      for (final entity in assetsDir.listSync(recursive: true, followLinks: false)) {
-        if (entity is File && entity.path.endsWith(".tmp")) {
-          try {
-            entity.deleteSync();
-          } on FileSystemException {
-            // best-effort
-          }
-        }
-      }
-    } on FileSystemException {
-      // best-effort
+      files = await _store.list(RepoPaths.assetsPath);
+    } catch (e, stackTrace) {
+      warning("Failed to scan assets for recovery", stackTrace: stackTrace);
+      return;
     }
-
-    // Clean orphaned temporary working directories.
-    try {
-      for (final dir in assetsDir.listSync(followLinks: false).whereType<Directory>()) {
-        final name = p.basename(dir.path);
-        if (name.startsWith("tmp_") || name.endsWith("_temp")) {
-          try {
-            dir.deleteSync(recursive: true);
-          } on FileSystemException {
-            // best-effort
-          }
-        }
-      }
-    } on FileSystemException {
-      // best-effort
-    }
-  }
-
-  // ── Private helpers ────────────────────────────────────────────────────────
-
-  ({String identHash, String contentHash}) _writeBlobAtPath(
-    String assetPath,
-    String identHash,
-    String contentHash,
-    Uint8List content,
-  ) {
-    final file = File(assetPath);
-    if (file.existsSync()) return (identHash: identHash, contentHash: contentHash);
-
-    if (!file.parent.existsSync()) file.parent.createSync(recursive: true);
-
-    final tmp = File("$assetPath.tmp");
-    try {
-      tmp
-        ..writeAsBytesSync(content)
-        ..renameSync(assetPath);
-    } on FileSystemException catch (e, stackTrace) {
-      warning("Blob write failed: $assetPath", stackTrace: stackTrace);
+    for (final file in files) {
+      if (!file.endsWith(".tmp")) continue;
       try {
-        if (tmp.existsSync()) tmp.deleteSync();
-      } on FileSystemException {
-        // best-effort cleanup
+        await _store.delete(file);
+      } catch (e, stackTrace) {
+        warning("Failed to delete orphaned temp file $file", stackTrace: stackTrace);
       }
-      rethrow;
     }
-
-    return (identHash: identHash, contentHash: contentHash);
   }
 
-  void _writeMetadataJson(String path, ResourceSnapshotMeta meta) {
-    File(path).writeAsBytesSync(canonicalJsonEncode(meta.toJson()), flush: true);
-  }
-
-  String _resourceTempPath() => p.join(RepoPaths.assetsPath, "tmp_resource_snapshot");
+  static String _normalize(String path) => path.replaceAll(r"\", "/");
 }

@@ -26,7 +26,9 @@ class EveIcon extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final imageService = ref.watch(imageAssetServiceProvider);
+    // Async provider: null while the active ResourceIndex loads; icons fall
+    // back briefly until the image service is available.
+    final imageService = ref.watch(imageAssetServiceProvider).value;
     final provider = imageService?.resolve(
       icon,
       acceptGraphic: acceptGraphic,

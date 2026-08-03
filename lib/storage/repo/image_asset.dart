@@ -31,9 +31,9 @@ class BlobImageKey {
 /// store. Keyed by [BlobImageKey] so Flutter's [ImageCache] deduplicates by
 /// blob identity rather than byte-buffer identity.
 ///
-/// The [loadImage] implementation reads bytes synchronously from the local
-/// blob store and decodes them. Future implementations may swap the read for
-/// a network fetch or on-demand decode without changing consumers.
+/// The [loadImage] implementation reads bytes asynchronously from the blob
+/// store (OPFS on web) and decodes them. Future implementations may swap the
+/// read for a network fetch or on-demand decode without changing consumers.
 class BlobImageProvider extends ImageProvider<BlobImageKey> {
   const BlobImageProvider(this.key, this._assetStore);
 
@@ -44,15 +44,15 @@ class BlobImageProvider extends ImageProvider<BlobImageKey> {
   Future<BlobImageKey> obtainKey(ImageConfiguration configuration) async => key;
 
   @override
-  ImageStreamCompleter loadImage(BlobImageKey key, ImageDecoderCallback decode) {
-    final bytes = _assetStore.readBlobSync(key.identHash, key.contentHash);
+  ImageStreamCompleter loadImage(BlobImageKey key, ImageDecoderCallback decode) =>
+      MultiFrameImageStreamCompleter(codec: _loadBytes(key).then(decode), scale: 1);
+
+  Future<ui.ImmutableBuffer> _loadBytes(BlobImageKey key) async {
+    final bytes = await _assetStore.readBlob(key.identHash, key.contentHash);
     if (bytes.isNone()) {
       throw StateError("Blob not found: ${key.identHash}/${key.contentHash}");
     }
-    return MultiFrameImageStreamCompleter(
-      codec: ui.ImmutableBuffer.fromUint8List(bytes.toNullable()!).then(decode),
-      scale: 1,
-    );
+    return ui.ImmutableBuffer.fromUint8List(bytes.toNullable()!);
   }
 
   @override
@@ -111,7 +111,9 @@ class ImageAssetService {
   ImageProvider<BlobImageKey>? _resolve(String resourceId) {
     final ident = _proxy.ident(resourceId);
     if (ident == null) return null;
-    if (!_assetStore.blobExistsSync(ident.identHash, ident.contentHash)) return null;
+    // The ResourceIndex is the source of truth for existence; blob presence
+    // is guaranteed by the download/verify pipelines. A missing blob surfaces
+    // as an image-load error instead of a sync disk probe (OPFS is async).
     return BlobImageProvider(BlobImageKey(ident.identHash, ident.contentHash), _assetStore);
   }
 }

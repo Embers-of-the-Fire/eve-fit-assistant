@@ -1,13 +1,14 @@
 import "dart:async";
 
 import "package:dio/dio.dart";
-import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
+import "package:eve_fit_assistant/storage/fs/blob_store.dart";
+import "package:eve_fit_assistant/storage/fs/repo_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/batch_data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
@@ -49,26 +50,40 @@ Dio remoteDio(Ref ref) => createRemoteDio();
 // ── Sub-service providers ──────────────────────────────────────────────────────
 
 @riverpodSingleton
-SchemaVersionService schemaVersionService(Ref ref) => const SchemaVersionService();
+SchemaVersionService schemaVersionService(Ref ref) => SchemaVersionService();
+
+/// The platform repo blob store: `FileBlobStore` on native, the shared
+/// `OpfsBlobStore` singleton on web. Initialized during
+/// [RepoStateNotifier.initialize]; every method also awaits initialization
+/// internally, so early use is safe.
+@riverpodSingleton
+BlobStore repoBlobStore(Ref ref) => createRepoBlobStore();
 
 @riverpodSingleton
-AssetStore assetStore(Ref ref) => const AssetStore();
+AssetStore assetStore(Ref ref) => AssetStore(ref.watch(repoBlobStoreProvider));
 
+/// Loads the active checkout's `ResourceIndex` and exposes it as a
+/// [ResourceBlobProxy].
+///
+/// Async because the index lives in the (possibly OPFS-backed) blob store;
+/// only the ACTIVE checkout's index is ever loaded — other checkouts' data is
+/// read lazily by the flows that need it.
 @riverpodSingleton
-ResourceBlobProxy? resourceBlobProxy(Ref ref) {
+Future<ResourceBlobProxy?> resourceBlobProxy(Ref ref) async {
   final activeOpt = ref.watch(activeCheckoutProvider);
   if (activeOpt.isNone()) return null;
   final active = activeOpt.toNullable()!;
   if (active.resourceSnapshotHash.isEmpty) return null;
 
-  final riOpt = ref.watch(assetStoreProvider).readResourceIndexSync(active.resourceSnapshotHash);
+  final store = ref.watch(assetStoreProvider);
+  final riOpt = await store.readResourceIndex(active.resourceSnapshotHash);
   if (riOpt.isNone()) return null;
-  return ResourceBlobProxy(ref.watch(assetStoreProvider), riOpt.toNullable()!);
+  return ResourceBlobProxy(store, riOpt.toNullable()!);
 }
 
 @riverpodSingleton
-ImageAssetService? imageAssetService(Ref ref) {
-  final proxy = ref.watch(resourceBlobProxyProvider);
+Future<ImageAssetService?> imageAssetService(Ref ref) async {
+  final proxy = await ref.watch(resourceBlobProxyProvider.future);
   if (proxy == null) return null;
   return ImageAssetService(proxy, ref.watch(assetStoreProvider));
 }
@@ -135,7 +150,7 @@ CheckoutRegistryService checkoutRegistryService(Ref ref) => CheckoutRegistryServ
 @riverpodSingleton
 ChannelService channelService(Ref ref) => ChannelService(
   remoteCatalogService: ref.watch(remoteCatalogServiceProvider),
-  assetStore: ref.watch(assetStoreProvider),
+  store: ref.watch(repoBlobStoreProvider),
 );
 
 @riverpodSingleton
@@ -246,19 +261,24 @@ class RepoStateNotifier extends _$RepoStateNotifier {
   Future<void> initialize() async {
     state = const RepoState.initializing();
     try {
-      // Clean up orphaned temp files/dirs from interrupted writes before
-      // trusting the on-disk state.
-      final repo = ref.read(repoServiceProvider)..recoverPartialDownloads();
+      final repo = ref.read(repoServiceProvider);
 
-      final registryOpt = repo.checkoutRegistry.readRegistry();
+      // Initialize the platform blob store (acquires the OPFS root on web),
+      // then clean up orphaned temp files before trusting the stored state.
+      await ref.read(repoBlobStoreProvider).init();
+      await repo.recoverPartialDownloads();
+
+      final registry = repo.checkoutRegistry;
+      await registry.load();
+
+      final registryOpt = registry.readRegistry();
       if (registryOpt.isSome()) {
-        final registry = registryOpt.toNullable()!;
-        repo.checkoutRegistry.seedStream();
+        final registryValue = registryOpt.toNullable()!;
 
-        final activeId = registry.activeCheckoutId;
+        final activeId = registryValue.activeCheckoutId;
 
         if (activeId != null) {
-          final entry = registry.checkouts[activeId];
+          final entry = registryValue.checkouts[activeId];
           if (entry != null) {
             state = RepoState.active(entry: entry);
           } else {
@@ -273,23 +293,19 @@ class RepoStateNotifier extends _$RepoStateNotifier {
           // Registry exists but no active checkout — need setup
           state = const RepoState.active();
         }
+      } else if (registry.fileState == RegistryFileState.corrupt) {
+        // The file exists but could not be parsed (corruption). Do not
+        // overwrite it with an empty registry.
+        state = RepoState.error(
+          error: RepoError.corrupt(
+            message: "Checkout registry exists but could not be read",
+            filePath: RepoPaths.checkoutRegistryPath,
+          ),
+        );
       } else {
-        // Check whether the file exists but couldn't be parsed (corruption),
-        // vs truly missing (first launch).  This prevents inadvertently
-        // overwriting a corrupted-but-present file with an empty registry.
-        final registryFile = File(RepoPaths.checkoutRegistryPath);
-        if (registryFile.existsSync()) {
-          state = RepoState.error(
-            error: RepoError.corrupt(
-              message: "Checkout registry exists but could not be read",
-              filePath: RepoPaths.checkoutRegistryPath,
-            ),
-          );
-        } else {
-          // No registry — first launch
-          await repo.checkoutRegistry.ensureRegistry();
-          state = const RepoState.active();
-        }
+        // No registry — first launch
+        await registry.ensureRegistry();
+        state = const RepoState.active();
       }
     } on RepoError catch (e) {
       state = RepoState.error(error: e);
@@ -523,10 +539,10 @@ class CheckoutUpdateController extends _$CheckoutUpdateController {
   }
 
   /// Moves the transient `applied` state back to `upToDate`.
-  void acknowledgeApplied() {
+  Future<void> acknowledgeApplied() async {
     final channelName = _channelName;
     final currentHash = channelName != null
-        ? ref.read(channelServiceProvider).localGenerationHash(channelName) ?? ""
+        ? await ref.read(channelServiceProvider).localGenerationHash(channelName) ?? ""
         : "";
     state = DataUpdateStatus.upToDate(currentGenerationHash: currentHash);
   }
@@ -574,7 +590,7 @@ Future<ReleaseCheckStatus> appReleaseCheckStatus(Ref ref) async {
   final channelName = settings.remoteContent.channel;
   if (channelName.isEmpty) return const ReleaseCheckUnavailable();
 
-  final pointer = ref.read(channelServiceProvider).readReleasePointer(channelName);
+  final pointer = await ref.read(channelServiceProvider).readReleasePointer(channelName);
   if (pointer.isNone()) return const ReleaseCheckUnavailable();
 
   // A pointer without a snapshot hash means the channel has no app release

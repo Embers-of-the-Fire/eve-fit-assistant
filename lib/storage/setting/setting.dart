@@ -1,17 +1,16 @@
+import "dart:async";
 import "dart:convert";
 import "dart:ui" as ui;
 
-import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/config/force_column.dart";
 import "package:eve_fit_assistant/config/list_tile_anti_scroll.dart";
 import "package:eve_fit_assistant/config/locale.dart";
-import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
-import "package:flutter/foundation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:path/path.dart" as p;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "setting.freezed.dart";
@@ -85,14 +84,21 @@ bool attributeDebugView(Ref ref) => ref.watch(appSettingServiceProvider).attribu
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {
-  static const String _settingFile = "settings.json";
-  static File get settingFile => File(p.join(PathProvider.settingsPath, _settingFile));
+  static const String _settingKey = "settings.json";
+  static DocStore? _store;
+  static Future<void> _pendingSync = Future<void>.value();
   static late AppSetting _appSetting;
   static AppSetting get appSetting => _appSetting;
 
-  static void init() {
-    _readFromDisk();
-    _syncToDisk();
+  /// Loads settings from the platform document store (files on native,
+  /// IndexedDB on web) and persists the effective value. Must be awaited
+  /// before [appSetting] is trusted.
+  static Future<void> init() async {
+    final store = createUserDocStore(UserDataDomain.settings);
+    await store.init();
+    _store = store;
+    await _readFromStore();
+    await _syncToStore();
   }
 
   @override
@@ -100,25 +106,25 @@ class AppSettingService extends _$AppSettingService {
 
   void update(AppSetting Function(AppSetting) updater) {
     _appSetting = updater(_appSetting);
-    _syncToDisk();
+    unawaited(_syncToStore());
     state = _appSetting;
   }
 
-  static void _syncToDisk() {
-    // Web has no persistent storage yet; keep settings in memory only.
-    if (kIsWeb) return;
+  static Future<void> _syncToStore() {
+    final store = _store;
+    if (store == null) return Future<void>.value();
     final text = jsonEncode(_appSetting.toJson());
-    if (!settingFile.existsSync()) {
-      settingFile.createSync(recursive: true);
-    }
-    settingFile.writeAsStringSync(text);
+    _pendingSync = _pendingSync
+        .catchError((Object _, StackTrace _) {})
+        .then((_) => store.write(_settingKey, text));
+    return _pendingSync;
   }
 
-  static void _readFromDisk() {
+  static Future<void> _readFromStore() async {
+    final store = _store;
     final Map<String, dynamic> json;
-    // Web has no persistent storage yet; always start from defaults.
-    if (!kIsWeb && settingFile.existsSync()) {
-      final content = settingFile.readAsStringSync();
+    final content = store == null ? null : await store.read(_settingKey);
+    if (content != null) {
       json = ensure(jsonDecode(content), {});
     } else {
       json = {};

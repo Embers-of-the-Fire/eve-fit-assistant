@@ -1,5 +1,4 @@
 import "dart:async";
-import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/components/wizard/wizard_tokens.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -166,7 +165,7 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
       final size = entry.size.toInt();
       totalBytes += size;
       final identHash = RepoHash.hashIdent(entry.resourceId);
-      if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
+      if (await assetStore.blobExists(identHash, entry.contentHash)) {
         downloaded++;
         cachedBytes += size;
       } else {
@@ -211,7 +210,6 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     }
 
     if (toDownload.isNotEmpty) {
-      assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
       stopwatch.start();
       // Periodic re-emit so the progress bar keeps moving and the reported
       // speed decays honestly while all workers are busy on large blobs.
@@ -244,7 +242,8 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
               await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
               downloaded++;
               tracker.blobComplete(idx, blobSize);
-            } on FileSystemException {
+            } catch (e, stackTrace) {
+              warning("Failed to write blob: ${entry.resourceId}", stackTrace: stackTrace);
               tracker.blobAborted(idx);
               failedBlobs.add(entry.resourceId);
             }
@@ -304,11 +303,11 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
       // Write resource snapshot
       final metaResult = await remoteCatalog.fetchResourceSnapshotMeta(target.snapshotHash);
       final localSnapshotHash = metaResult.isRight()
-          ? assetStore.writeResourceSnapshotSync(
+          ? await assetStore.writeResourceSnapshot(
               meta: metaResult.getRight().toNullable()!,
               resourceIndex: resourceIndex,
             )
-          : assetStore.writeResourceSnapshotSync(
+          : await assetStore.writeResourceSnapshot(
               meta: ResourceSnapshotMeta(
                 schemaVersion: 1,
                 serverId: target.serverId,
@@ -353,22 +352,16 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
   }
 
   Future<void> _persistServerIndex(RemoteCatalogService remoteCatalog) async {
+    final assetStore = ref.read(assetStoreProvider);
     final path = RepoPaths.channelServerIndexPath(widget.channel.value);
-    if (File(path).existsSync()) return;
+    if (await assetStore.store.exists(path)) return;
 
     final result = await remoteCatalog.fetchServerIndex(widget.generationHash);
     if (result.isLeft()) return;
 
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
     try {
-      tmp
-        ..writeAsBytesSync(result.getRight().toNullable()!, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await assetStore.store.write(path, result.getRight().toNullable()!);
+    } catch (e, stackTrace) {
       warning("Failed to write server index for ${widget.channelName}: $e", stackTrace: stackTrace);
     }
   }

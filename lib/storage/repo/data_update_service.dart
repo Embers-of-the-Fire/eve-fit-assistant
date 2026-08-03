@@ -68,10 +68,11 @@ class DataUpdateService {
 
     final entry = checkout.toNullable()!;
     final channelResult = await _checkChannel(entry.channel);
-    return channelResult.fold(
-      (failure) => failure,
-      (info) => _evaluateCheckout(entry, info.remoteGenerationHash, info.generationResources),
-    );
+    if (channelResult.isLeft()) {
+      return channelResult.getLeft().toNullable()!;
+    }
+    final info = channelResult.getRight().toNullable()!;
+    return _evaluateCheckout(entry, info.remoteGenerationHash, info.generationResources);
   }
 
   Option<CheckoutRegistryEntry> _readCheckout(String checkoutId) => repoService.checkoutRegistry
@@ -81,7 +82,7 @@ class DataUpdateService {
   Future<Either<DataUpdateCheckResultFailed, _ChannelUpdateInfo>> _checkChannel(
     String channelName,
   ) async {
-    final localHash = channelService.localGenerationHash(channelName);
+    final localHash = await channelService.localGenerationHash(channelName);
     if (localHash == null || localHash.isEmpty) {
       return const Right(_ChannelUpdateInfo(remoteGenerationHash: "", generationResources: null));
     }
@@ -132,7 +133,7 @@ class DataUpdateService {
   }) async {
     Option<GenerationResources> genResourcesOpt;
     if (remoteGenerationHash == localGenerationHash) {
-      genResourcesOpt = channelService.readGenerationResources(channelName);
+      genResourcesOpt = await channelService.readGenerationResources(channelName);
     } else {
       genResourcesOpt = const None();
     }
@@ -148,12 +149,12 @@ class DataUpdateService {
     return genResourcesOpt.toNullable();
   }
 
-  DataUpdateCheckResult _evaluateCheckout(
+  Future<DataUpdateCheckResult> _evaluateCheckout(
     CheckoutRegistryEntry checkout,
     String remoteGenerationHash,
     GenerationResources? generationResources,
-  ) {
-    final localHash = channelService.localGenerationHash(checkout.channel);
+  ) async {
+    final localHash = await channelService.localGenerationHash(checkout.channel);
     if (localHash == null || localHash.isEmpty) {
       return const DataUpdateCheckResult.upToDate(currentGenerationHash: "");
     }
@@ -216,7 +217,7 @@ class DataUpdateService {
 
     final newSnapshotHash = applyResult.getRight().toNullable()!;
 
-    final resourceIndex = assetStore.readResourceIndexSync(newSnapshotHash);
+    final resourceIndex = await assetStore.readResourceIndex(newSnapshotHash);
     if (resourceIndex.isNone()) {
       return const Left("Updated snapshot is missing its resource index");
     }
@@ -245,10 +246,16 @@ class DataUpdateService {
     for (final checkoutId in checkouts.keys) {
       final checkout = checkouts[checkoutId]!;
       final channelResult = channelResults[checkout.channel]!;
-      results[checkoutId] = channelResult.fold(
-        (failure) => failure,
-        (info) => _evaluateCheckout(checkout, info.remoteGenerationHash, info.generationResources),
-      );
+      if (channelResult.isLeft()) {
+        results[checkoutId] = channelResult.getLeft().toNullable()!;
+      } else {
+        final info = channelResult.getRight().toNullable()!;
+        results[checkoutId] = await _evaluateCheckout(
+          checkout,
+          info.remoteGenerationHash,
+          info.generationResources,
+        );
+      }
     }
     return results;
   }
@@ -313,7 +320,7 @@ class DataUpdateService {
       }
     }
 
-    repoService.prune();
+    await repoService.pruneAsync();
 
     return BatchUpdateResult(successes: successes, failures: failures, skipped: skipped);
   }

@@ -1,10 +1,13 @@
 import "dart:async";
 import "dart:convert";
-import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/fs/blob_store.dart";
+import "package:eve_fit_assistant/storage/fs/memory_blob_store.dart";
+import "package:eve_fit_assistant/storage/fs/repo_store.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
+import "package:flutter/foundation.dart";
 import "package:fpdart/fpdart.dart";
 
 /// Simple Future-based mutex for serializing write operations.
@@ -19,62 +22,116 @@ class _Mutex {
   }
 }
 
-/// Manages the checkout registry (checkouts/checkouts.json) read and write operations.
+/// State of the `checkouts.json` backing file as observed by the last load.
+enum RegistryFileState {
+  /// `load` has not run yet.
+  unknown,
+
+  /// The file does not exist (first launch).
+  missing,
+
+  /// The file exists and parsed successfully.
+  ok,
+
+  /// The file exists but could not be parsed.
+  corrupt,
+}
+
+/// Manages the checkout registry (checkouts/checkouts.json) read and write
+/// operations.
 ///
-/// Replaces the old ActiveService. The registry tracks all checkouts and the
-/// currently active one via activeCheckoutId.
+/// Reads are served synchronously from a write-through in-memory cache that
+/// is populated by [load] during startup. Writes update the cache immediately
+/// and persist asynchronously (mutex-guarded), so callers observe new values
+/// without waiting for storage I/O. This keeps the registry — a tiny JSON
+/// document — readable from synchronous UI providers while the underlying
+/// store may be async-only (OPFS on web).
 class CheckoutRegistryService {
-  CheckoutRegistryService();
+  CheckoutRegistryService([BlobStore? store])
+    : _store = store ?? createRepoBlobStore(),
+      _fileState = RegistryFileState.unknown;
+
+  /// Creates a service with [registry] already loaded into the cache.
+  ///
+  /// Test-only: avoids async storage I/O (which does not complete under
+  /// widget-test `FakeAsync`) while keeping the synchronous read contract.
+  @visibleForTesting
+  CheckoutRegistryService.seeded(CheckoutRegistry registry, {BlobStore? store})
+    : _store = store ?? MemoryBlobStore(),
+      _cache = registry,
+      _fileState = RegistryFileState.ok;
+
+  final BlobStore _store;
 
   final _Mutex _mutex = _Mutex();
 
   final _changeController = StreamController<CheckoutRegistry>.broadcast();
 
+  CheckoutRegistry? _cache;
+  RegistryFileState _fileState;
+  Future<void>? _loadInFlight;
+
+  /// State of the backing file as of the last [load].
+  RegistryFileState get fileState => _fileState;
+
   /// A stream that emits the latest [CheckoutRegistry] whenever
-  /// checkouts.json is written.
+  /// checkouts.json is written or loaded.
   Stream<CheckoutRegistry> get watch => _changeController.stream;
 
-  /// Reads checkouts.json and returns [Some] with the parsed [CheckoutRegistry],
-  /// or [None] if the file is missing or unreadable.
-  Option<CheckoutRegistry> readRegistry() {
-    final file = File(RepoPaths.checkoutRegistryPath);
-    if (!file.existsSync()) return const None();
-    try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      return Some(CheckoutRegistry.fromJson(json));
-    } on Exception catch (e, stackTrace) {
-      warning("Failed to read checkout registry", stackTrace: stackTrace);
-      return const None();
+  /// Loads the registry from storage into the in-memory cache and emits it on
+  /// [watch] when present.
+  ///
+  /// Await this once during startup when you need to distinguish "missing"
+  /// (first launch) from "corrupt" (present but unparseable) via [fileState]
+  /// before proceeding. Reads via [readRegistry] are otherwise self-serving:
+  /// the first read lazily triggers a load and subsequent reads return the
+  /// populated cache.
+  Future<void> load() => _loadInFlight ??= _doLoad();
+
+  Future<void> _doLoad() async {
+    CheckoutRegistry? cache;
+    RegistryFileState state;
+    final bytes = await _store.read(RepoPaths.checkoutRegistryPath);
+    if (bytes == null) {
+      state = RegistryFileState.missing;
+    } else {
+      try {
+        cache = CheckoutRegistry.fromJson(jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>);
+        state = RegistryFileState.ok;
+      } on Exception catch (e, stackTrace) {
+        warning("Failed to read checkout registry", stackTrace: stackTrace);
+        state = RegistryFileState.corrupt;
+      }
     }
+    _cache = cache;
+    _fileState = state;
+    if (cache != null) _changeController.add(cache);
   }
 
-  /// Writes [registry] to checkouts.json atomically.
+  /// Reads the cached registry, or [None] if absent.
   ///
-  /// The write is guarded by a mutex. After the write completes, the [watch]
+  /// The first call lazily kicks off the async [load]; the result becomes
+  /// visible on a later read (and is pushed to [watch] listeners).
+  Option<CheckoutRegistry> readRegistry() {
+    if (_fileState == RegistryFileState.unknown) {
+      unawaited(load());
+    }
+    return Option.fromNullable(_cache);
+  }
+
+  /// Writes [registry] to the cache and persists it to checkouts.json.
+  ///
+  /// The persist is guarded by a mutex. After the write completes, the [watch]
   /// stream emits the new value.
   Future<void> writeRegistry(CheckoutRegistry registry) => _mutex.synchronized(() async {
-    final path = RepoPaths.checkoutRegistryPath;
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    File("$path.tmp")
-      ..writeAsStringSync(jsonEncode(registry.toJson()), flush: true)
-      ..renameSync(path);
+    _cache = registry;
+    _fileState = RegistryFileState.ok;
+    await _store.write(
+      RepoPaths.checkoutRegistryPath,
+      Uint8List.fromList(utf8.encode(jsonEncode(registry.toJson()))),
+    );
     _changeController.add(registry);
   });
-
-  /// Seeds the [watch] stream with the current registry state from disk (if any).
-  ///
-  /// Unlike [writeRegistry], this does not write to disk. Call this during
-  /// initialization so that reactive UI providers that watch [watch] receive
-  /// the current state without requiring a [writeRegistry] call.
-  void seedStream() {
-    final registry = readRegistry();
-    if (registry.isSome()) {
-      _changeController.add(registry.toNullable()!);
-    }
-  }
 
   /// Creates an empty registry if none exists, writes it, and emits it.
   Future<CheckoutRegistry> ensureRegistry() async {
@@ -143,7 +200,7 @@ class CheckoutRegistryService {
     await writeRegistry(updated);
   }
 
-  /// Returns `true` when no registry file exists or no active checkout is set.
+  /// Returns `true` when no registry exists or no active checkout is set.
   bool get hasNoSetup =>
       readRegistry().map((r) => r.activeCheckoutId == null).getOrElse(() => true);
 }

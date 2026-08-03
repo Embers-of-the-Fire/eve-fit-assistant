@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/data/data_update_tile.dart";
+import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -37,7 +38,7 @@ final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
       (r) => Option.fromNullable(r.checkouts[id]),
     );
     if (entry.isNone()) continue;
-    final ri = assetStore.readResourceIndexSync(entry.toNullable()!.resourceSnapshotHash);
+    final ri = await assetStore.readResourceIndex(entry.toNullable()!.resourceSnapshotHash);
     if (ri.isNone()) continue;
     for (final file in ri.toNullable()!.entries) {
       if (seen.add(file.resourceId)) {
@@ -48,6 +49,19 @@ final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
   }
 
   return StorageOverview(fileCount: totalFiles, totalSize: totalSize);
+});
+
+typedef _ChannelOverviewInfo = ({String? generationHash, ChannelHeadMeta? headMeta});
+
+/// Local channel generation hash + head metadata for the storage overview card.
+final storageChannelOverviewProvider = FutureProvider.family<_ChannelOverviewInfo, String>((
+  ref,
+  channelName,
+) async {
+  final channelService = ref.watch(channelServiceProvider);
+  final genHash = await channelService.localGenerationHash(channelName);
+  final headMeta = (await channelService.readHeadMeta(channelName)).toNullable();
+  return (generationHash: genHash, headMeta: headMeta);
 });
 
 @RoutePage(name: "StorageManagement")
@@ -167,12 +181,13 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     final l10n = context.l10n;
     final theme = context.theme;
 
-    final genHash = ref.watch(channelServiceProvider).localGenerationHash(channelName);
-    final headMeta = ref.watch(channelServiceProvider).readHeadMeta(channelName);
+    final info = ref.watch(storageChannelOverviewProvider(channelName)).value;
+    final genHash = info?.generationHash;
+    final headMeta = info?.headMeta;
     final metadata = genHash == null
         ? l10n.storageNeverSynced
         : "$channelName · ${_truncateHash(genHash)}";
-    final lastUpdated = headMeta.fold(() => l10n.storageNeverSynced, (m) => m.updatedAt);
+    final lastUpdated = headMeta == null ? l10n.storageNeverSynced : headMeta.updatedAt;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

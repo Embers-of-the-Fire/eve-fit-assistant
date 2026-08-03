@@ -1,5 +1,4 @@
 import "dart:async";
-import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
@@ -195,7 +194,7 @@ class CheckoutProvisioner {
       final size = entry.size.toInt();
       totalBytes += size;
       final identHash = RepoHash.hashIdent(entry.resourceId);
-      if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
+      if (await assetStore.blobExists(identHash, entry.contentHash)) {
         cachedCount++;
         cachedBytes += size;
       } else {
@@ -253,7 +252,6 @@ class CheckoutProvisioner {
     }
 
     if (toDownload.isNotEmpty) {
-      assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
       stopwatch.start();
       // Periodic re-emit so the progress bar keeps moving and the reported
       // speed decays honestly while all workers are busy on large blobs.
@@ -285,7 +283,8 @@ class CheckoutProvisioner {
               await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
               downloaded++;
               tracker.blobComplete(idx, entry.size.toInt());
-            } on FileSystemException {
+            } catch (e, stackTrace) {
+              warning("Failed to write blob: ${entry.resourceId}", stackTrace: stackTrace);
               tracker.blobAborted(idx);
               failedBlobs.add(entry.resourceId);
             }
@@ -335,7 +334,7 @@ class CheckoutProvisioner {
       _emit(ProvisionerFatal(message: msg, retryable: err is CatalogNetworkError));
       return;
     }
-    final localSnapshotHash = assetStore.writeResourceSnapshotSync(
+    final localSnapshotHash = await assetStore.writeResourceSnapshot(
       meta: metaResult.getRight().toNullable()!,
       resourceIndex: resourceIndex,
     );
@@ -388,7 +387,7 @@ class CheckoutProvisioner {
     }
   }
 
-  /// Fetches the server index protobuf and writes it to disk so
+  /// Fetches the server index protobuf and writes it to the store so
   /// [CheckoutService.createCheckout] can read server metadata.
   Future<void> _persistServerIndex(
     String generationHash,
@@ -397,22 +396,15 @@ class CheckoutProvisioner {
   ) async {
     final path = RepoPaths.channelServerIndexPath(channel.value);
 
-    // Skip if already on disk (from a prior sync)
-    if (File(path).existsSync()) return;
+    // Skip if already present (from a prior sync)
+    if (await assetStore.store.exists(path)) return;
 
     final result = await remoteCatalog.fetchServerIndex(generationHash);
     if (result.isLeft()) return;
 
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
     try {
-      tmp
-        ..writeAsBytesSync(result.getRight().toNullable()!, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await assetStore.store.write(path, result.getRight().toNullable()!);
+    } catch (e, stackTrace) {
       warning("Failed to write server index for $channelName", stackTrace: stackTrace);
     }
   }

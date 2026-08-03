@@ -1,10 +1,10 @@
 import "dart:async";
 import "dart:convert";
-import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/compatibility.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
@@ -15,7 +15,6 @@ import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:path/path.dart" as p;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 import "package:uuid/uuid.dart";
 
@@ -61,11 +60,15 @@ abstract class CharacterRegistry with _$CharacterRegistry {
       _$CharacterRegistryFromJson(json);
 }
 
+/// Shared characters document store (files on native, IndexedDB on web).
+@riverpodSingleton
+DocStore charactersDocStore(Ref ref) => createUserDocStore(UserDataDomain.characters);
+
 /// Character storage is always under global control,
 /// so profile persistence stays behind this manager.
 @riverpodSingleton
 class CharacterRegistryManager extends _$CharacterRegistryManager {
-  static String get _characterRegistryPath => p.join(PathProvider.charactersPath, "registry.json");
+  static const _registryKey = "registry.json";
 
   static const builtInCharacterIds = <String>[
     predefinedMaxCharacterId,
@@ -79,6 +82,18 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   Future<void> _pendingRegistrySync = Future<void>.value();
   CharacterRegistry? _registrySyncSnapshot;
   final Set<String> _reportedRepoWarnings = <String>{};
+
+  DocStore? _store;
+
+  Future<DocStore> get _storeReady async {
+    var store = _store;
+    if (store == null) {
+      store = createUserDocStore(UserDataDomain.characters);
+      await store.init();
+      _store = store;
+    }
+    return store;
+  }
 
   static bool isBuiltInCharacterId(String characterId) => builtInCharacterIds.contains(characterId);
 
@@ -99,22 +114,32 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
         unawaited(_queueRegistrySync(registry));
       }
     });
-    final registryFile = File(_characterRegistryPath);
-    if (!registryFile.existsSync()) {
-      registryFile
-        ..createSync(recursive: true)
-        ..writeAsStringSync("{}");
-    }
+    unawaited(_loadRegistry());
+    final initial = _ensureBuiltInCharacters(
+      const CharacterRegistry(characters: IMap.empty()),
+      activeCheckout: ref.read(activeCheckoutProvider),
+    );
+    _registrySyncSnapshot = initial;
+    return initial;
+  }
 
-    final registryContent = registryFile.readAsStringSync();
-    final registryJson = jsonDecode(registryContent) as Map<String, dynamic>;
-    final registry = CharacterRegistry.fromJson(registryJson);
+  Future<void> _loadRegistry() async {
+    final store = await _storeReady;
+    final text = await store.read(_registryKey);
+    final CharacterRegistry registry;
+    if (text == null) {
+      registry = const CharacterRegistry(characters: IMap.empty());
+      await store.write(_registryKey, "{}");
+    } else {
+      registry = CharacterRegistry.fromJson(jsonDecode(text) as Map<String, dynamic>);
+    }
     final normalizedRegistry = _ensureBuiltInCharacters(
       registry,
       activeCheckout: ref.read(activeCheckoutProvider),
     );
+    if (!ref.mounted) return;
     _registrySyncSnapshot = normalizedRegistry;
-    return normalizedRegistry;
+    state = normalizedRegistry;
   }
 
   void updateCharacter(CharacterMetadata metadata) {
@@ -133,15 +158,10 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       return _loadBuiltInCharacter(characterId);
     }
 
-    final path = File(CharacterStorage.characterStoragePathForId(characterId));
-    final String text;
-    try {
-      text = await path.readAsString();
-    } on FileSystemException catch (exception) {
-      if (exception.osError?.errorCode == 2) {
-        return null;
-      }
-      rethrow;
+    final store = await _storeReady;
+    final text = await store.read("$characterId.json");
+    if (text == null) {
+      return null;
     }
     final json = jsonDecode(text) as Map<String, dynamic>;
     final character = CharacterStorage.fromJson(json);
@@ -251,10 +271,8 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
       throw StateError("Built-in characters cannot be deleted: $characterId");
     }
 
-    final path = File(CharacterStorage.characterStoragePathForId(characterId));
-    if (path.existsSync()) {
-      await path.delete();
-    }
+    final store = await _storeReady;
+    await store.delete("$characterId.json");
     _setRegistry(state.copyWith(characters: state.characters.remove(characterId)));
     await _flushRegistrySync();
   }
@@ -286,13 +304,10 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   }
 
   Future<void> _syncRegistryToDisk(CharacterRegistry registry) async {
-    final registryFile = File(_characterRegistryPath);
-    if (!registryFile.existsSync()) {
-      registryFile.createSync(recursive: true);
-    }
+    final store = await _storeReady;
     final registryJson = _registryForDisk(registry).toJson();
     final registryContent = jsonEncode(registryJson);
-    await registryFile.writeAsString(registryContent);
+    await store.write(_registryKey, registryContent);
   }
 
   void _setRegistry(CharacterRegistry registry) {
@@ -301,11 +316,8 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
   }
 
   Future<void> _writeCharacter(CharacterStorage character) async {
-    final path = File(character.characterStoragePath);
-    if (!path.existsSync()) {
-      await path.parent.create(recursive: true);
-    }
-    await path.writeAsString(jsonEncode(character.toJson()));
+    final store = await _storeReady;
+    await store.write("${character.characterId}.json", jsonEncode(character.toJson()));
   }
 
   Future<CharacterStorage> _createCharacterFromSkills({

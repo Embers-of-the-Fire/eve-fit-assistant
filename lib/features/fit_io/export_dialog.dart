@@ -1,9 +1,9 @@
 import "dart:async";
 import "dart:convert";
-import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/fit_io/text_export.dart";
+import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -137,8 +137,11 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
 
   Future<void> _loadFit() async {
     try {
-      final path = File(FitStorage.fitStoragePathForId(widget.fitId));
-      final text = await path.readAsString();
+      final store = ref.read(fitsDocStoreProvider);
+      final text = await store.read("${widget.fitId}.json");
+      if (text == null) {
+        throw StateError("Fit file does not exist: ${widget.fitId}");
+      }
       final fit = decodeFitStorage(jsonDecode(text) as Map<String, dynamic>).fit;
       if (!mounted) return;
       setState(() => _fit = fit);

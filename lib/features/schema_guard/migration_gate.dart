@@ -29,17 +29,17 @@ class _MigrationGateState extends State<MigrationGate> {
   @override
   void initState() {
     super.initState();
-    _detectLegacyData();
+    unawaited(_detectLegacyData());
   }
 
-  void _detectLegacyData() {
+  Future<void> _detectLegacyData() async {
     if (kIsWeb) {
       // Web builds never have legacy on-disk data; go straight to repo init.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
+      WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_activateRepoAndReload()));
       return;
     }
-    if (const SchemaVersionService().exists()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
+    if (await SchemaVersionService().exists()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_activateRepoAndReload()));
       return;
     }
 
@@ -100,7 +100,7 @@ class _MigrationGateState extends State<MigrationGate> {
     }
 
     if (!hasLegacyFits && !hasLegacyCharacters) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
+      WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_activateRepoAndReload()));
       return;
     }
 
@@ -109,9 +109,9 @@ class _MigrationGateState extends State<MigrationGate> {
     });
   }
 
-  void _activateRepoAndReload() {
+  Future<void> _activateRepoAndReload() async {
     if (!kIsWeb) {
-      const SchemaVersionService().ensure();
+      await SchemaVersionService().ensure();
     }
     widget.onMigrationComplete();
   }
@@ -129,11 +129,11 @@ class _MigrationGateState extends State<MigrationGate> {
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     try {
-      await MigrateService(schemaVersionService: const SchemaVersionService()).migrate();
+      await MigrateService(schemaVersionService: SchemaVersionService()).migrate();
 
       if (mounted) {
         navigator.popUntil((route) => route.isFirst);
-        _activateRepoAndReload();
+        await _activateRepoAndReload();
       }
     } catch (e, stackTrace) {
       warning("Migration failed: $e", stackTrace: stackTrace);
@@ -214,7 +214,7 @@ class _MigrationGateState extends State<MigrationGate> {
                                 FilledButton(
                                   onPressed: () {
                                     Navigator.of(dialogContext).pop();
-                                    _activateRepoAndReload();
+                                    unawaited(_activateRepoAndReload());
                                   },
                                   child: Text(context.l10n.migrationSkipButton),
                                 ),

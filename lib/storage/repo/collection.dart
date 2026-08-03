@@ -122,6 +122,9 @@ class RepoCollectionService {
   /// Builds a [RepoCollectionService] by reading protobuf files directly from
   /// filesystem paths. Suitable for use inside an isolate since it performs
   /// no provider lookups or shared-state access.
+  ///
+  /// Native-only: on web, blobs live in OPFS and have no filesystem path —
+  /// use `decodeFromBytes` there.
   factory RepoCollectionService.decodeFromPaths({
     required String collectionPath,
     required Map<String, String> localizationPaths,
@@ -135,6 +138,16 @@ class RepoCollectionService {
 
     return _decode(collectionBytes, localizationBytes);
   }
+
+  /// Builds a [RepoCollectionService] from in-memory protobuf bytes.
+  ///
+  /// The web decode path: blobs are read from OPFS through the blob store
+  /// (async) and decoded here. Suitable for use inside an isolate since it
+  /// performs no provider lookups or shared-state access.
+  factory RepoCollectionService.decodeFromBytes({
+    required Uint8List collectionBytes,
+    required Map<String, Uint8List> localizationBytes,
+  }) => _decode(collectionBytes, localizationBytes);
 
   // ignore: prefer_constructors_over_static_methods
   static RepoCollectionService _decode(

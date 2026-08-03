@@ -1,4 +1,5 @@
 import "dart:async";
+
 import "package:eve_fit_assistant/compat/isolate.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
@@ -7,6 +8,7 @@ import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:flutter/foundation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
@@ -55,7 +57,7 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
 
   @override
   DataReadinessState build() {
-    final proxy = ref.watch(resourceBlobProxyProvider);
+    final proxy = ref.watch(resourceBlobProxyProvider).value;
     ref.watch(nativeFitEngineServiceProvider);
 
     if (!identical(proxy, _activeProxy)) {
@@ -115,7 +117,33 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     }
   }
 
-  Future<RepoCollectionService> _decodeInIsolate(ResourceBlobProxy proxy) {
+  Future<RepoCollectionService> _decodeInIsolate(ResourceBlobProxy proxy) async {
+    if (kIsWeb) {
+      // Web: blobs live in OPFS — read bytes through the blob store, then
+      // decode (the isolate stub runs this inline on the main event loop).
+      final collectionBytes = (await proxy.read("resource://static/collection.pb2")).toNullable();
+      if (collectionBytes == null) {
+        return Future.error(StateError("collection.pb2 not found in resource index"));
+      }
+
+      final localizationBytes = <String, Uint8List>{};
+      for (final locale in ["en", "zh"]) {
+        final bytes = (await proxy.read(
+          "resource://localization/localization_$locale.pb2",
+        )).toNullable();
+        if (bytes != null) localizationBytes[locale] = bytes;
+      }
+
+      return Isolate.run(
+        () => RepoCollectionService.decodeFromBytes(
+          collectionBytes: collectionBytes,
+          localizationBytes: localizationBytes,
+        ),
+      );
+    }
+
+    // Native: resolve content-addressed paths and read inside the background
+    // isolate so large files never transit the main isolate.
     final collectionPath = proxy.resolvePath("resource://static/collection.pb2");
     if (collectionPath == null) {
       return Future.error(StateError("collection.pb2 not found in resource index"));
@@ -140,7 +168,7 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
 
   /// Forces a retry after an error state.
   void retry() {
-    final proxy = ref.read(resourceBlobProxyProvider);
+    final proxy = ref.read(resourceBlobProxyProvider).value;
     if (proxy == null) return;
     _decodedCollection = null;
     _decodeInFlight = true;
