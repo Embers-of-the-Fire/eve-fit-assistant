@@ -112,4 +112,28 @@ impl FitEngineData {
             )?,
         })
     }
+
+    /// Initialize the engine database from in-memory `.pb2` bytes.
+    ///
+    /// The web counterpart of [`Self::init`]: OPFS blobs have no native file
+    /// path, so the Dart side reads the five engine files through the blob
+    /// store and passes their bytes directly.
+    #[frb]
+    pub fn init_bytes(
+        types: Vec<u8>,
+        dogma_attributes: Vec<u8>,
+        dogma_effects: Vec<u8>,
+        type_dogma: Vec<u8>,
+        buff_collections: Vec<u8>,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            database: Database::init_from_bytes(
+                &dogma_attributes,
+                &dogma_effects,
+                &type_dogma,
+                &types,
+                &buff_collections,
+            )?,
+        })
+    }
 }
