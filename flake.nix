@@ -121,7 +121,10 @@
         protoc-gen-dart
       ];
 
-      frbPackages = with pkgs; [ flutter_rust_bridge_codegen ];
+      frbPackages = with pkgs; [
+        flutter_rust_bridge_codegen
+        wasm-pack
+      ];
 
       jsPackages = with pkgs; [
         nodejs_26
@@ -208,6 +211,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${pkgs.flutter}";
             NIX_ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_HOME = developmentAndroidSdkRoot;
@@ -240,6 +244,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${pkgs.flutter}";
             NIX_ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_HOME = androidSdkRoot;
@@ -271,6 +276,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${pkgs.flutter}";
             UV_PYTHON = "${python3}/bin/python3";
             UV_PYTHON_DOWNLOADS = "never";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
@@ -315,6 +321,7 @@
             UV_PYTHON = "${python3}/bin/python3";
             UV_PYTHON_DOWNLOADS = "never";
             JAVA_HOME = jdk17.home;
+            FLUTTER_ROOT = "${pkgs.flutter}";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
@@ -377,6 +384,7 @@
 
             inherit (localeEnv) LANG LC_ALL;
             JAVA_HOME = jdk17.home;
+            FLUTTER_ROOT = "${pkgs.flutter}";
             UV_PYTHON = "${python3}/bin/python3";
             UV_PYTHON_DOWNLOADS = "never";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
