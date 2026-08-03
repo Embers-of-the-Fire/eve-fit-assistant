@@ -1,5 +1,5 @@
 import "dart:convert";
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:path/path.dart" as p;

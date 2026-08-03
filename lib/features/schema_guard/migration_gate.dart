@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/service.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:path/path.dart" as p;
 
@@ -32,6 +33,11 @@ class _MigrationGateState extends State<MigrationGate> {
   }
 
   void _detectLegacyData() {
+    if (kIsWeb) {
+      // Web builds never have legacy on-disk data; go straight to repo init.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
+      return;
+    }
     if (const SchemaVersionService().exists()) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
       return;
@@ -104,7 +110,9 @@ class _MigrationGateState extends State<MigrationGate> {
   }
 
   void _activateRepoAndReload() {
-    const SchemaVersionService().ensure();
+    if (!kIsWeb) {
+      const SchemaVersionService().ensure();
+    }
     widget.onMigrationComplete();
   }
 

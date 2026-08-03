@@ -12,6 +12,7 @@ import "package:eve_fit_assistant/pages/setting/app-settings/restart_init.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/trigger_feedback.dart";
 import "package:eve_fit_assistant/storage/setting/reset_service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:restart_app/restart_app.dart";
@@ -42,7 +43,8 @@ class DeveloperToolsPage extends ConsumerWidget {
           ),
           const ConfigListTile.custom(RestartInitTile()),
           const ConfigListTile.custom(TriggerFeedbackTile()),
-          const ConfigListTile.custom(ResetStorageTile()),
+          // Storage reset requires a filesystem and a native restart.
+          if (!kIsWeb) const ConfigListTile.custom(ResetStorageTile()),
         ],
       ),
     );

@@ -1,7 +1,7 @@
 import "dart:async";
-import "dart:io";
 
 import "package:dio/dio.dart";
+import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";

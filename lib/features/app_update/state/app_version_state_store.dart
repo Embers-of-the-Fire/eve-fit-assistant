@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
-import "dart:isolate";
+import "package:eve_fit_assistant/compat/io.dart";
+import "package:eve_fit_assistant/compat/isolate.dart";
 
 import "package:eve_fit_assistant/features/app_update/models/app_version_state.dart";
 import "package:path/path.dart" as p;

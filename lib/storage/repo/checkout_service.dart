@@ -1,7 +1,7 @@
 import "dart:convert";
-import "dart:io";
 import "dart:typed_data";
 
+import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";

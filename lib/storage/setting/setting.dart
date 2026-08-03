@@ -1,7 +1,7 @@
 import "dart:convert";
-import "dart:io";
 import "dart:ui" as ui;
 
+import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/config/force_column.dart";
 import "package:eve_fit_assistant/config/list_tile_anti_scroll.dart";
 import "package:eve_fit_assistant/config/locale.dart";
@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
+import "package:flutter/foundation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as p;
 import "package:riverpod_annotation/riverpod_annotation.dart";
@@ -104,6 +105,8 @@ class AppSettingService extends _$AppSettingService {
   }
 
   static void _syncToDisk() {
+    // Web has no persistent storage yet; keep settings in memory only.
+    if (kIsWeb) return;
     final text = jsonEncode(_appSetting.toJson());
     if (!settingFile.existsSync()) {
       settingFile.createSync(recursive: true);
@@ -113,7 +116,8 @@ class AppSettingService extends _$AppSettingService {
 
   static void _readFromDisk() {
     final Map<String, dynamic> json;
-    if (settingFile.existsSync()) {
+    // Web has no persistent storage yet; always start from defaults.
+    if (!kIsWeb && settingFile.existsSync()) {
       final content = settingFile.readAsStringSync();
       json = ensure(jsonDecode(content), {});
     } else {

@@ -1,5 +1,5 @@
 import "dart:async";
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/components/wizard/wizard_tokens.dart";
 import "package:eve_fit_assistant/config/logger.dart";

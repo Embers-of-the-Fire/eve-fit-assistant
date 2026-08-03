@@ -1,7 +1,8 @@
 import "dart:convert";
-import "dart:io";
 import "dart:typed_data";
 
+import "package:eve_fit_assistant/compat/io.dart";
+import "package:eve_fit_assistant/compat/local_fs.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
@@ -12,7 +13,6 @@ import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:file/file.dart" hide Directory, File, FileSystemEntity;
-import "package:file/local.dart";
 import "package:fpdart/fpdart.dart";
 import "package:path/path.dart" as p;
 

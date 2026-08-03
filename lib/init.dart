@@ -1,8 +1,8 @@
 // Init helpers for the package
 
 import "dart:async";
-import "dart:ui";
 
+import "package:eve_fit_assistant/compat/wasm_probe.dart";
 import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -19,6 +19,7 @@ import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/path_migration.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
 import "package:flutter_easyloading/flutter_easyloading.dart";
@@ -39,9 +40,29 @@ class InitializedStores {
 
 Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await RustLib.init();
+  if (kIsWeb) {
+    // FRB's web loader awaits the script's onLoad, which never fires when
+    // the WASM bundle is missing (onError fires instead) — init would hang
+    // forever. Probe first and boot without the native engine if absent.
+    const engineBundleUrl = "pkg/rust_lib_eve_fit_assistant.js";
+    if (await wasmBundleAvailable(engineBundleUrl)) {
+      try {
+        await RustLib.init();
+      } on Object catch (e) {
+        debugPrint("RustLib.init() failed on web: $e");
+      }
+    } else {
+      debugPrint(
+        "WASM engine bundle not found at $engineBundleUrl; booting without native engine.",
+      );
+    }
+  } else {
+    await RustLib.init();
+  }
   await PathProvider.init();
-  await const StoragePathMigrator().migrateIfNeeded();
+  if (!kIsWeb) {
+    await const StoragePathMigrator().migrateIfNeeded();
+  }
   AppSettingService.init();
   GlobalLogger.init(
     PathProvider.logsPath,

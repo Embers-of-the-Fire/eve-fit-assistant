@@ -1,4 +1,4 @@
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:flutter/foundation.dart";

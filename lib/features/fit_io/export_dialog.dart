@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/fit_io/text_export.dart";

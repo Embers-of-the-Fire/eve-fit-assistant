@@ -1,4 +1,4 @@
-import "dart:io" show Platform;
+import "package:eve_fit_assistant/compat/io.dart" show Platform;
 
 /// Target platforms for announcement entries.
 ///

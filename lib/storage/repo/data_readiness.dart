@@ -1,5 +1,5 @@
 import "dart:async";
-import "dart:isolate";
+import "package:eve_fit_assistant/compat/isolate.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";

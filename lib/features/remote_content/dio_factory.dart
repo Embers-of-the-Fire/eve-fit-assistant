@@ -1,9 +1,9 @@
-import "dart:io" show HttpClient, Platform;
-
 import "package:dio/dio.dart";
-import "package:dio/io.dart";
 import "package:dio_cache_interceptor/dio_cache_interceptor.dart";
+import "package:eve_fit_assistant/compat/io.dart" show Platform;
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
+import "package:eve_fit_assistant/features/remote_content/dio_adapter_io.dart"
+    if (dart.library.js_interop) "dio_adapter_stub.dart";
 import "package:package_info_plus/package_info_plus.dart";
 
 String _userAgentVersion = "0.0.0";
@@ -63,7 +63,11 @@ Dio createRemoteDio({
   );
 
   dio.interceptors.add(DioCacheInterceptor(options: RemoteCache.options));
-  _configureConnectionPool(dio, maxConnectionsPerHost: _remoteMaxConnectionsPerHost);
+  configureConnectionPool(
+    dio,
+    maxConnectionsPerHost: _remoteMaxConnectionsPerHost,
+    idleTimeout: _idleTimeout,
+  );
 
   return dio;
 }
@@ -94,7 +98,11 @@ Dio createBlobDio({
     ),
   );
 
-  _configureConnectionPool(dio, maxConnectionsPerHost: _blobMaxConnectionsPerHost);
+  configureConnectionPool(
+    dio,
+    maxConnectionsPerHost: _blobMaxConnectionsPerHost,
+    idleTimeout: _idleTimeout,
+  );
 
   return dio;
 }
@@ -107,11 +115,3 @@ final int _blobMaxConnectionsPerHost = Platform.isLinux ? 32 : 64;
 final Duration _idleTimeout = Platform.isLinux
     ? const Duration(seconds: 15)
     : const Duration(seconds: 60);
-
-void _configureConnectionPool(Dio dio, {required int maxConnectionsPerHost}) {
-  dio.httpClientAdapter = IOHttpClientAdapter(
-    createHttpClient: () => HttpClient()
-      ..maxConnectionsPerHost = maxConnectionsPerHost
-      ..idleTimeout = _idleTimeout,
-  );
-}
