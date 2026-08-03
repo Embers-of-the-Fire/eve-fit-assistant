@@ -63,7 +63,7 @@ jobs:
       - name: Install Python dependencies
         run: nix develop .#python --command bash -c 'uv sync'
       - name: Install Dart dependencies
-        if: matrix.suite == 'dart'
+        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
         run: nix develop .#dart --command bash -c 'flutter pub get'
       - name: Install JS dependencies
         if: matrix.suite == 'site'
