@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import shutil
+
 import click
 
 from colorama import Fore
@@ -32,10 +35,33 @@ def register_test_commands(cli_group: click.Group) -> None:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter test")
         runtime.execute([flutter, "test"], "FLUTTER TEST OUTPUT")
 
+    @test.command("web")
+    def test_web():
+        """Run Flutter/Dart tests on the web platform in headless Chrome."""
+        flutter = get_command("flutter")
+        chrome = os.environ.get("CHROME_EXECUTABLE")
+        if not chrome:
+            for candidate in ("google-chrome", "chromium", "chrome"):
+                chrome = shutil.which(candidate)
+                if chrome:
+                    break
+        if not chrome:
+            raise click.ClickException(
+                "Chrome not found. Set CHROME_EXECUTABLE or install google-chrome/chromium."
+            )
+        os.environ["CHROME_EXECUTABLE"] = chrome
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + "flutter test --platform chrome"
+        )
+        runtime.execute([flutter, "test", "--platform", "chrome"], "FLUTTER WEB TEST OUTPUT")
+
     @test.command("all")
     def test_all():
-        """Run all test suites (Python + Dart)."""
+        """Run all test suites (Python + Dart + Web)."""
         ctx = click.get_current_context()
         ctx.invoke(test_python)
         click.echo()
         ctx.invoke(test_dart)
+        click.echo()
+        ctx.invoke(test_web)

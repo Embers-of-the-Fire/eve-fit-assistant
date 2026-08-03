@@ -72,6 +72,10 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Single Rust integration test file/function: `cargo test -p eve-fit-os --test test_basic_fit -- --nocapture`; `cargo test -p eve-fit-os test_basic_fit -- --exact --nocapture`.
 - Python tests: `./x test python` or `uv run pytest`.
 - Flutter/Dart tests: `./x test dart` or `flutter test`.
+- Web-platform tests: `./x test web` (headless Chrome via `flutter test --platform chrome`;
+  Chrome resolved from `CHROME_EXECUTABLE` or `google-chrome`/`chromium`/`chrome` on PATH).
+  Suites are platform-aware: VM-only tests carry `@TestOn("vm")`, web-only tests
+  (`test/web/`) carry `@TestOn("browser")`.
 - Repo module tests: `dart test test/storage/repo/`.
 - Data-flow integration tests (e.g., `test/storage/repo/`) use `package:mocktail`
   for network and filesystem mocks; run with `dart test test/storage/repo/`.

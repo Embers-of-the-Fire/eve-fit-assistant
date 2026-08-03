@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:io";
 
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
