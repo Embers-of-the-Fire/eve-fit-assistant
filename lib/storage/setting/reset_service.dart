@@ -54,15 +54,12 @@ class ResetStorageService {
   }
 
   Future<void> _resetWeb() async {
-    // Wipe the repo tree (blobs, snapshots, channels, checkouts, marker).
+    // Wipe the repo tree (blobs, snapshots, channels, checkouts). The
+    // schema_version.json marker never exists on web (the migration gate is
+    // skipped there), so it is not part of the wipe.
     final repoStore = createRepoBlobStore();
     await repoStore.init();
-    for (final path in [
-      RepoPaths.assetsPath,
-      RepoPaths.channelsPath,
-      RepoPaths.checkoutsPath,
-      RepoPaths.schemaVersionPath,
-    ]) {
+    for (final path in [RepoPaths.assetsPath, RepoPaths.channelsPath, RepoPaths.checkoutsPath]) {
       await repoStore.deleteTree(path);
     }
 

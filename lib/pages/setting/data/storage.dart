@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/data/data_update_tile.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -18,10 +19,26 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
 
 class StorageOverview {
-  const StorageOverview({required this.fileCount, required this.totalSize});
+  const StorageOverview({
+    required this.fileCount,
+    required this.totalSize,
+    required this.eagerCount,
+    required this.eagerSize,
+    required this.lazyCount,
+    required this.lazySize,
+  });
 
+  /// Logical totals across all index entries (downloaded + on-demand).
   final int fileCount;
   final int totalSize;
+
+  /// Entries downloaded ahead of time (FORCE, or legacy pre-policy indexes).
+  final int eagerCount;
+  final int eagerSize;
+
+  /// Entries fetched lazily on first access (NON_FORCE).
+  final int lazyCount;
+  final int lazySize;
 }
 
 final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
@@ -32,6 +49,10 @@ final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
   final seen = <String>{};
   var totalSize = 0;
   var totalFiles = 0;
+  var eagerCount = 0;
+  var eagerSize = 0;
+  var lazyCount = 0;
+  var lazySize = 0;
 
   for (final id in checkoutIds) {
     final entry = registryService.readRegistry().flatMap(
@@ -40,15 +61,30 @@ final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
     if (entry.isNone()) continue;
     final ri = await assetStore.readResourceIndex(entry.toNullable()!.resourceSnapshotHash);
     if (ri.isNone()) continue;
-    for (final file in ri.toNullable()!.entries) {
-      if (seen.add(file.resourceId)) {
-        totalFiles++;
-        totalSize += file.size.toInt();
+    final index = ri.toNullable()!;
+    for (final file in index.entries) {
+      if (!seen.add(file.resourceId)) continue;
+      final size = file.size.toInt();
+      totalFiles++;
+      totalSize += size;
+      if (shouldEagerDownload(index, file)) {
+        eagerCount++;
+        eagerSize += size;
+      } else {
+        lazyCount++;
+        lazySize += size;
       }
     }
   }
 
-  return StorageOverview(fileCount: totalFiles, totalSize: totalSize);
+  return StorageOverview(
+    fileCount: totalFiles,
+    totalSize: totalSize,
+    eagerCount: eagerCount,
+    eagerSize: eagerSize,
+    lazyCount: lazyCount,
+    lazySize: lazySize,
+  );
 });
 
 typedef _ChannelOverviewInfo = ({String? generationHash, ChannelHeadMeta? headMeta});
@@ -196,9 +232,30 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         children: [
           _overviewRow(l10n.storageFileCount, "${overview.fileCount}"),
           _overviewRow(l10n.storageTotalSize, _formatSize(overview.totalSize)),
+          _overviewRow(
+            l10n.storageDownloadedLabel,
+            l10n.storageDownloadedValue(
+              count: overview.eagerCount,
+              size: _formatSize(overview.eagerSize),
+            ),
+          ),
+          _overviewRow(
+            l10n.storageOnDemandLabel,
+            l10n.storageOnDemandValue(
+              count: overview.lazyCount,
+              size: _formatSize(overview.lazySize),
+            ),
+          ),
           _overviewRow(l10n.storageMetadata, metadata),
           _overviewRow(l10n.storageLastUpdated, lastUpdated),
           const SizedBox(height: 8),
+          if (overview.lazyCount > 0) ...[
+            Text(
+              l10n.storageOnDemandHint,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             l10n.storageCacheInfoHint,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),

@@ -12,7 +12,7 @@ import "package:eve_fit_assistant/pages/setting/app-settings/restart_init.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/trigger_feedback.dart";
 import "package:eve_fit_assistant/storage/setting/reset_service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
-import "package:flutter/foundation.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:restart_app/restart_app.dart";
@@ -43,8 +43,9 @@ class DeveloperToolsPage extends ConsumerWidget {
           ),
           const ConfigListTile.custom(RestartInitTile()),
           const ConfigListTile.custom(TriggerFeedbackTile()),
-          // Storage reset requires a filesystem and a native restart.
-          if (!kIsWeb) const ConfigListTile.custom(ResetStorageTile()),
+          // Storage reset is implemented on both platforms: native wipes the
+          // app directories, web clears OPFS and the IndexedDB user stores.
+          const ConfigListTile.custom(ResetStorageTile()),
         ],
       ),
     );
@@ -58,7 +59,11 @@ class ResetStorageTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => ListTile(
     leading: const Icon(Icons.delete_forever, color: Colors.red),
     title: const Text("Reset All Storage"),
-    subtitle: const Text("Wipe all app data and restart into setup flow"),
+    subtitle: const Text(
+      kIsWeb
+          ? "Wipe all app data and reload into setup flow"
+          : "Wipe all app data and restart into setup flow",
+    ),
     onTap: () => _confirm(context, ref),
   );
 
@@ -69,7 +74,9 @@ class ResetStorageTile extends ConsumerWidget {
         builder: (dialogCtx) => AlertDialog(
           title: const Text("Reset All Storage?"),
           content: const Text(
-            "This will delete all settings, fits, characters, checkouts, cached remote data, and logs. The app will restart and show the welcome/setup flow.",
+            kIsWeb
+                ? "This will delete all settings, fits, characters, checkouts, and cached remote data stored in the browser. The page will reload and show the welcome/setup flow."
+                : "This will delete all settings, fits, characters, checkouts, cached remote data, and logs. The app will restart and show the welcome/setup flow.",
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(dialogCtx).pop(), child: const Text("Cancel")),

@@ -5,8 +5,8 @@ import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
-import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
+import "package:eve_fit_assistant/storage/repo/provisioning.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
@@ -190,29 +190,14 @@ class CheckoutProvisioner {
       return;
     }
 
-    // 2. Partition cached vs. to-download — pre-build identHash and blob
-    // path once per entry so the hot loop has zero alloc overhead. NON_FORCE
-    // entries are skipped: they are fetched lazily on first access.
-    final toDownload = <(ResourceIndex_Entry, String, String)>[];
-    var cachedCount = 0;
-    var cachedBytes = 0;
-    var totalBytes = 0;
-    var totalEntries = 0;
-    for (final entry in resourceIndex.entries) {
-      if (!shouldEagerDownload(resourceIndex, entry)) continue;
-      final size = entry.size.toInt();
-      totalBytes += size;
-      totalEntries++;
-      final identHash = RepoHash.hashIdent(entry.resourceId);
-      if (await assetStore.blobExists(identHash, entry.contentHash)) {
-        cachedCount++;
-        cachedBytes += size;
-      } else {
-        toDownload.add((entry, identHash, RepoPaths.blobPath(identHash, entry.contentHash)));
-      }
-    }
-
-    toDownload.sort((a, b) => b.$1.size.compareTo(a.$1.size));
+    // 2. Partition cached vs. to-download via the shared policy-aware work
+    // list: NON_FORCE entries are skipped and fetched lazily on first access.
+    final workList = await computeEagerWorkList(assetStore, [resourceIndex]);
+    final toDownload = workList.toDownload;
+    final cachedCount = workList.cachedCount;
+    final cachedBytes = workList.cachedBytes;
+    final totalBytes = workList.totalBytes;
+    final totalEntries = workList.totalEntries;
 
     if (_cancelled) return;
 
@@ -276,9 +261,9 @@ class CheckoutProvisioner {
           if (_cancelled) return;
 
           final dl = toDownload[idx];
-          final entry = dl.$1;
-          final identHash = dl.$2;
-          final blobPath = dl.$3;
+          final entry = dl.entry;
+          final identHash = dl.identHash;
+          final blobPath = dl.blobPath;
 
           final blobResult = await remoteCatalog.fetchBlob(
             identHash,

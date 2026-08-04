@@ -86,6 +86,16 @@ void main() {
       expect(await assetStore.blobExists(identHash, contentHash), isFalse);
     });
 
+    test("rejects a corrupt payload whose content hash does not match", () async {
+      final corrupt = Uint8List.fromList([0x00, 0x11, 0x22]);
+      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async => Right(corrupt));
+
+      final result = await fetcher.read(identHash, contentHash);
+
+      expect(result.isNone(), isTrue);
+      expect(await assetStore.blobExists(identHash, contentHash), isFalse);
+    });
+
     test("deduplicates concurrent reads of the same blob", () async {
       final results = await Future.wait([
         fetcher.read(identHash, contentHash),

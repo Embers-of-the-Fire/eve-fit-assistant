@@ -5,18 +5,17 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/data/data_update_dialog.dart";
+import "package:eve_fit_assistant/storage/repo/checkout_provisioner.dart";
 import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
-import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
-import "package:eve_fit_assistant/storage/repo/utils.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -198,6 +197,28 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
       () => -1,
       (r) => r.entries.fold<int>(0, (sum, e) => sum + e.size.toInt()),
     );
+    final split = ri.match(() => null, (r) {
+      var eagerCount = 0;
+      var eagerSize = 0;
+      var lazyCount = 0;
+      var lazySize = 0;
+      for (final e in r.entries) {
+        final size = e.size.toInt();
+        if (shouldEagerDownload(r, e)) {
+          eagerCount++;
+          eagerSize += size;
+        } else {
+          lazyCount++;
+          lazySize += size;
+        }
+      }
+      return (
+        eagerCount: eagerCount,
+        eagerSize: eagerSize,
+        lazyCount: lazyCount,
+        lazySize: lazySize,
+      );
+    });
 
     unawaited(
       showModalBottomSheet<void>(
@@ -229,6 +250,22 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
                 l10n.checkoutFieldTotalSize,
                 totalSize >= 0 ? _formatSize(totalSize) : l10n.checkoutNA,
               ),
+              if (split != null) ...[
+                _checkoutField(
+                  l10n.storageDownloadedLabel,
+                  l10n.storageDownloadedValue(
+                    count: split.eagerCount,
+                    size: _formatSize(split.eagerSize),
+                  ),
+                ),
+                _checkoutField(
+                  l10n.storageOnDemandLabel,
+                  l10n.storageOnDemandValue(
+                    count: split.lazyCount,
+                    size: _formatSize(split.lazySize),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -856,175 +893,77 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
   bool _failed = false;
   String? _error;
   bool _complete = false;
+  CheckoutProvisioner? _provisioner;
+  StreamSubscription<ProvisionerState>? _stateSub;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _runDownload());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startProvisioning());
   }
 
-  Future<void> _runDownload() async {
+  @override
+  void dispose() {
+    unawaited(_stateSub?.cancel());
+    _provisioner
+      ?..cancel()
+      ..dispose();
+    super.dispose();
+  }
+
+  /// Runs the shared policy-aware provisioning pipeline: NON_FORCE resources
+  /// are skipped (fetched lazily on first access) and the index is validated
+  /// for the current platform.
+  void _startProvisioning() {
+    final provisioner = CheckoutProvisioner(
+      remoteCatalog: ref.read(remoteCatalogServiceProvider),
+      assetStore: ref.read(assetStoreProvider),
+      checkoutService: ref.read(checkoutServiceProvider),
+    );
+    _provisioner = provisioner;
+    _stateSub = provisioner.state.listen(_onProvisionerState);
+    provisioner.configure(
+      channel: widget.channel,
+      channelName: widget.channelName,
+      serverId: widget.serverId,
+      name: IMap({"zh": widget.serverDisplayName, "en": widget.serverDisplayName}),
+      generationHash: widget.generationHash,
+      resourceSnapshotHash: widget.snapshotHash,
+    );
+    unawaited(provisioner.execute());
+  }
+
+  Future<void> _onProvisionerState(ProvisionerState state) async {
+    if (!mounted) return;
     final l10n = context.l10n;
-
-    try {
-      setState(() => _status = l10n.checkoutCreateProgressFetchingIndex);
-
-      // Fetch ResourceIndex
-      final remoteCatalog = ref.read(remoteCatalogServiceProvider);
-      final indexResult = await remoteCatalog.fetchResourceIndex(widget.snapshotHash);
-      if (indexResult.isLeft()) {
-        final err = indexResult.getLeft().toNullable()!;
+    switch (state) {
+      case ProvisionerPreparing():
+        setState(() => _status = l10n.checkoutCreateProgressFetchingIndex);
+      case ProvisionerDownloading(:final downloaded, :final total, :final progress):
         setState(() {
-          _failed = true;
-          _error = err is CatalogNetworkError
-              ? err.message
-              : l10n.checkoutCreateProgressIndexFailed;
+          _status = l10n.checkoutCreateProgressDownloading2(current: downloaded, total: total);
+          _progress = progress;
         });
-        return;
-      }
-      final resourceIndex = ResourceIndex.fromBuffer(indexResult.getRight().toNullable()!);
-      final totalEntries = resourceIndex.entries.length;
-
-      setState(() {
-        _status = l10n.checkoutCreateProgressDownloading(count: totalEntries);
-        _progress = 0;
-      });
-
-      // Download blobs in parallel with sliding-window concurrency
-      var downloaded = 0;
-      final failedBlobs = <String>[];
-      final assetStore = ref.read(assetStoreProvider);
-
-      // Separate cached entries from those needing download
-      final toDownload = <ResourceIndex_Entry>[];
-      for (final entry in resourceIndex.entries) {
-        final identHash = RepoHash.hashIdent(entry.resourceId);
-        if (await assetStore.blobExists(identHash, entry.contentHash)) {
-          downloaded++;
-        } else {
-          toDownload.add(entry);
+      case ProvisionerFinalizing():
+        setState(() => _status = l10n.checkoutCreateProgressFinalizing);
+      case ProvisionerComplete(:final failedBlobs):
+        if (failedBlobs.isNotEmpty) {
+          // The checkout was still created; verify & repair can re-fetch the
+          // failed blobs later. Surface the failure as in the legacy flow.
+          setState(() {
+            _failed = true;
+            _error = l10n.checkoutCreateProgressBlobsFailed(count: failedBlobs.length);
+          });
+          return;
         }
-      }
-
-      toDownload.sort((a, b) => b.size.compareTo(a.size));
-
-      if (mounted) {
+        // Auto-activate via registry (setActive: true is default in addCheckout)
+        await ref.read(repoStateProvider.notifier).initialize();
+        if (!mounted) return;
         setState(() {
-          _progress = totalEntries > 0 ? downloaded / totalEntries : null;
-          _status = l10n.checkoutCreateProgressDownloading2(
-            current: downloaded,
-            total: totalEntries,
-          );
+          _complete = true;
+          _progress = 1;
+          _status = l10n.checkoutCreateProgressComplete;
         });
-      }
-
-      var nextIdx = 0;
-      var lastProgressMs = 0;
-      const throttleMs = 200;
-
-      void maybeProgress() {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        if (now - lastProgressMs >= throttleMs || downloaded >= totalEntries) {
-          if (mounted) {
-            setState(() {
-              _progress = totalEntries > 0 ? downloaded / totalEntries : null;
-              _status = l10n.checkoutCreateProgressDownloading2(
-                current: downloaded,
-                total: totalEntries,
-              );
-            });
-          }
-          lastProgressMs = now;
-        }
-      }
-
-      if (toDownload.isNotEmpty) {
-        Future<void> downloadNext() async {
-          int idx;
-          while ((idx = nextIdx++) < toDownload.length) {
-            final entry = toDownload[idx];
-            final identHash = RepoHash.hashIdent(entry.resourceId);
-            final blobResult = await remoteCatalog.fetchBlob(identHash, entry.contentHash);
-            if (blobResult.isRight()) {
-              await assetStore.writeBlob(identHash, blobResult.getRight().toNullable()!);
-            } else {
-              failedBlobs.add(entry.resourceId);
-            }
-
-            downloaded++;
-            maybeProgress();
-          }
-        }
-
-        final tasks = <Future<void>>[
-          for (var i = 0; i < kBlobDownloadConcurrency.clamp(1, toDownload.length); i++)
-            downloadNext(),
-        ];
-        await Future.wait(tasks);
-      }
-
-      maybeProgress();
-
-      if (failedBlobs.isNotEmpty) {
-        setState(() {
-          _failed = true;
-          _error = l10n.checkoutCreateProgressBlobsFailed(count: failedBlobs.length);
-        });
-        return;
-      }
-
-      // Write snapshot metadata locally
-      setState(() => _status = l10n.checkoutCreateProgressFinalizing);
-      final metaResult = await remoteCatalog.fetchResourceSnapshotMeta(widget.snapshotHash);
-      final localSnapshotHash = metaResult.isRight()
-          ? await assetStore.writeResourceSnapshot(
-              meta: metaResult.getRight().toNullable()!,
-              resourceIndex: resourceIndex,
-            )
-          : await assetStore.writeResourceSnapshot(
-              // Write basic metadata anyway
-              meta: ResourceSnapshotMeta(
-                schemaVersion: 1,
-                serverId: widget.serverId,
-                gameBuild: "",
-                gameVersion: "",
-                resourceCount: totalEntries,
-                createdAt: DateTime.now().toUtc().toIso8601String(),
-              ),
-              resourceIndex: resourceIndex,
-            );
-
-      // Create checkout entry
-      setState(() => _status = l10n.checkoutCreateProgressCreatingCheckout);
-
-      final checkoutService = ref.read(checkoutServiceProvider);
-      final nameMap = IMap({"zh": widget.serverDisplayName, "en": widget.serverDisplayName});
-      final result = await checkoutService.createCheckout(
-        channel: widget.channel,
-        serverId: widget.serverId,
-        name: nameMap,
-        generationHash: widget.generationHash,
-        resourceSnapshotHash: localSnapshotHash,
-      );
-
-      if (result.isNone()) {
-        setState(() {
-          _failed = true;
-          _error = l10n.checkoutCreateProgressCheckoutFailed;
-        });
-        return;
-      }
-
-      // Auto-activate via registry (setActive: true is default in addCheckout)
-      await ref.read(repoStateProvider.notifier).initialize();
-
-      setState(() {
-        _complete = true;
-        _progress = 1;
-        _status = l10n.checkoutCreateProgressComplete;
-      });
-
-      if (mounted) {
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
             Navigator.of(context).pop();
@@ -1033,14 +972,11 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
             ).showSnackBar(SnackBar(content: Text(l10n.checkoutCreateSuccess)));
           }
         });
-      }
-    } catch (e) {
-      if (mounted) {
+      case ProvisionerFatal(:final message):
         setState(() {
           _failed = true;
-          _error = e.toString();
+          _error = message;
         });
-      }
     }
   }
 

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
+import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:flutter/foundation.dart";
@@ -47,6 +48,13 @@ class OnDemandBlobFetcher {
       }
 
       final bytes = result.getRight().toNullable()!;
+      // Content-addressed storage: a payload whose hash does not match the
+      // index entry would be persisted under a wrong identity until the next
+      // verify. Reject it instead of storing a corrupt blob.
+      if (RepoHash.hashContent(bytes) != contentHash) {
+        warning("On-demand blob content hash mismatch: $key");
+        return const None();
+      }
       try {
         await _assetStore.writeBlobUncheckedAt(RepoPaths.blobPath(identHash, contentHash), bytes);
       } catch (e, stackTrace) {
