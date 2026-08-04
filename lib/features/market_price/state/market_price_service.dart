@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "market_price_service.g.dart";
@@ -18,6 +19,10 @@ part "market_price_service.g.dart";
 /// disabling the feature — when neither yields a known server.
 @riverpodSingleton
 Future<MarketServer?> marketPriceServer(Ref ref) async {
+  // Market price lookups are not available on web; disable the feature at its
+  // root so no downstream client, pool, or fetch is ever created there.
+  if (kIsWeb) return null;
+
   final activeOpt = ref.watch(activeCheckoutProvider);
   if (activeOpt.isSome()) {
     final snapshotHash = activeOpt.toNullable()!.resourceSnapshotHash;

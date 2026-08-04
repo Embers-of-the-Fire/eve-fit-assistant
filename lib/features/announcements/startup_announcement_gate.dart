@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/announcements/repository/repository.d
 import "package:eve_fit_assistant/features/announcements/state/state.dart";
 import "package:eve_fit_assistant/pages/announcements/detail_page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -25,14 +26,18 @@ class _StartupAnnouncementGateState extends ConsumerState<StartupAnnouncementGat
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<List<AnnouncementRecord>>>(
-      startupAnnouncementQueueProvider,
-      (_, next) => next.whenData((queue) {
-        if (queue.isEmpty || _isShowing) return;
-        _isShowing = true;
-        unawaited(_showQueue(queue));
-      }),
-    );
+    // Startup announcements (changelog) are not served on web; skip the feed
+    // subscription so it is never triggered there.
+    if (!kIsWeb) {
+      ref.listen<AsyncValue<List<AnnouncementRecord>>>(
+        startupAnnouncementQueueProvider,
+        (_, next) => next.whenData((queue) {
+          if (queue.isEmpty || _isShowing) return;
+          _isShowing = true;
+          unawaited(_showQueue(queue));
+        }),
+      );
+    }
     return widget.child;
   }
 

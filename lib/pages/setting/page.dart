@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/features/announcements/repository/repository.d
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -47,7 +48,9 @@ class SettingPage extends ConsumerWidget {
   }
 
   Widget _buildVersionTile(BuildContext context, WidgetRef ref) {
-    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
+    // The changelog is not served on web; skip the announcement feed read so
+    // the unread badge never shows (and the feed is never triggered) there.
+    final unreadCount = kIsWeb ? 0 : ref.watch(unreadAnnouncementCountProvider);
     return ListTile(
       leading: const Icon(Icons.info_outline),
       title: Text(context.l10n.settingTileVersionTitle),

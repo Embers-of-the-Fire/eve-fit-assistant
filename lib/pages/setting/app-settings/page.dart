@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -41,10 +42,14 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionMarket),
         const ConfigListTile.custom(MarketServerFallbackTile()),
-        ConfigListTile.title(context.l10n.appSettingsPageSectionUpdate),
-        const ConfigListTile.custom(UpdateIgnoreBugfixTile()),
-        if (ref.watch(appUpdatePlatformAdapterProvider).supportsSelfUpdate)
-          const ConfigListTile.custom(UpdateSilentTile()),
+        // App update detection is not served on web, so its settings do not
+        // apply there.
+        if (!kIsWeb) ...[
+          ConfigListTile.title(context.l10n.appSettingsPageSectionUpdate),
+          const ConfigListTile.custom(UpdateIgnoreBugfixTile()),
+          if (ref.watch(appUpdatePlatformAdapterProvider).supportsSelfUpdate)
+            const ConfigListTile.custom(UpdateSilentTile()),
+        ],
       ],
     ),
   );

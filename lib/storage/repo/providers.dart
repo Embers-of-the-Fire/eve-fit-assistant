@@ -34,6 +34,7 @@ import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:fpdart/fpdart.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
@@ -597,6 +598,11 @@ IList<String> installedCheckoutIds(Ref ref) {
 /// [ReleaseCheckUpToDate] since it is not actionable on this device.
 @riverpod
 Future<ReleaseCheckStatus> appReleaseCheckStatus(Ref ref) async {
+  // App update detection is not applicable on web: the served bundle is
+  // always the latest release, so there is nothing to detect. Short-circuit
+  // before any network access.
+  if (kIsWeb) return const ReleaseCheckUnavailable();
+
   final settings = ref.watch(appSettingServiceProvider);
   if (!settings.remoteContent.enabled) return const ReleaseCheckUnavailable();
 
