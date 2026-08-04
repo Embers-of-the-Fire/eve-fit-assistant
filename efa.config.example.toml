@@ -39,6 +39,21 @@ data_schema = 1
 # `resource_root` is the server-side URL path prefix for remote content.
 resource_root = "efa/v2"
 
+[download]
+# The `download` section configures how the data generator classifies
+# resources for downloading. It is bound to the generator implementation,
+# not to any individual resource descriptor.
+#
+# `lazy_prefixes` lists resource path prefixes (relative to "resource://")
+# that are marked NON_FORCE in generated resource snapshots. NON_FORCE
+# resources are not downloaded ahead of time during provisioning; clients
+# fetch them lazily on first access. Every other resource is FORCE and is
+# downloaded eagerly.
+#
+# When the whole section (or this key) is omitted, the built-in default
+# applies: all images are lazy. Set an empty list to force everything.
+lazy_prefixes = ["static/images/"]
+
 [paths]
 # `paths` section defines some global paths used to store resources or outputs
 # Most of the paths are suggested not to change.

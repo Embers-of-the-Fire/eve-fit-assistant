@@ -16,6 +16,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -289,7 +290,10 @@ class CheckoutService {
         label: remoteLabel,
       );
       final ri = await assetStore.readResourceIndex(m.resourceSnapshotHash);
-      final total = ri.match(() => 0, (r) => r.entries.length);
+      final total = ri.match(
+        () => 0,
+        (r) => r.entries.where((e) => shouldEagerDownload(r, e)).length,
+      );
       onProgress?.call(total, total);
       return Right(m.resourceSnapshotHash);
     }
@@ -300,7 +304,12 @@ class CheckoutService {
       final err = indexBytes.getLeft().toNullable()!;
       return Left(err is CatalogNetworkError ? err.message : "Failed to fetch resource index");
     }
-    final newIndex = ResourceIndex.fromBuffer(indexBytes.getRight().toNullable()!);
+    final ResourceIndex newIndex;
+    try {
+      newIndex = decodeResourceIndex(indexBytes.getRight().toNullable()!);
+    } on UnsupportedResourceIndexError catch (e) {
+      return Left(e.toString());
+    }
 
     final previousIndex = await assetStore.readResourceIndex(m.resourceSnapshotHash);
     final entriesToDownload = <({String resourceId, String contentHash, int size})>[];
@@ -308,6 +317,8 @@ class CheckoutService {
 
     if (previousIndex.isNone()) {
       for (final entry in newIndex.entries) {
+        // NON_FORCE entries fetch lazily on first access; skip them here.
+        if (!shouldEagerDownload(newIndex, entry)) continue;
         entriesToDownload.add((
           resourceId: entry.resourceId,
           contentHash: entry.contentHash,
@@ -320,6 +331,7 @@ class CheckoutService {
         prevMap[e.resourceId] = e.contentHash;
       }
       for (final e in newIndex.entries) {
+        if (!shouldEagerDownload(newIndex, e)) continue;
         final prevHash = prevMap[e.resourceId];
         if (prevHash == null || prevHash != e.contentHash) {
           entriesToDownload.add((
@@ -354,7 +366,9 @@ class CheckoutService {
 
     actualToDownload.sort((a, b) => b.size.compareTo(a.size));
 
-    final totalCount = newIndex.entries.length;
+    // Progress counts only eager entries — NON_FORCE entries are skipped and
+    // would otherwise leave the counter permanently short of the total.
+    final totalCount = newIndex.entries.where((e) => shouldEagerDownload(newIndex, e)).length;
     onProgress?.call(downloadedCount, totalCount);
 
     // 5. Download changed blobs with sliding-window concurrency.

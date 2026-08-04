@@ -671,4 +671,152 @@ void main() {
       expect(fatal.message, contains("metadata timeout"));
     });
   });
+
+  group("Download policy", () {
+    /// Builds a policy-aware (format_version 2) [ResourceIndex].
+    ResourceIndex buildPolicyAwareIndex(
+      List<({String resourceId, String contentHash, int size, bool force})> entries,
+    ) {
+      final ri = ResourceIndex()
+        ..schemaVersion = 1
+        ..formatVersion = 2;
+      for (final e in entries) {
+        ri.entries.add(
+          ResourceIndex_Entry()
+            ..resourceId = e.resourceId
+            ..contentHash = e.contentHash
+            ..size = Int64(e.size)
+            ..downloadPolicy = e.force
+                ? ResourceIndex_DownloadPolicy.FORCE
+                : ResourceIndex_DownloadPolicy.NON_FORCE,
+        );
+      }
+      return ri;
+    }
+
+    test("skips NON_FORCE entries and downloads FORCE entries", () async {
+      const ridForce = "resource://static/collection.pb2";
+      const ridLazy = "resource://static/images/graphics/1.png";
+      final forceBytes = Uint8List.fromList([0x11, 0x22]);
+      final forceCH = RepoHash.hashContent(forceBytes);
+      final forceIH = RepoHash.hashIdent(ridForce);
+      final lazyBytes = Uint8List.fromList([0x33, 0x44]);
+      final lazyCH = RepoHash.hashContent(lazyBytes);
+      final lazyIH = RepoHash.hashIdent(ridLazy);
+
+      final ri = buildPolicyAwareIndex([
+        (resourceId: ridForce, contentHash: forceCH, size: 2, force: true),
+        (resourceId: ridLazy, contentHash: lazyCH, size: 2, force: false),
+      ]);
+      final si = _buildServerIndex(_testServerId);
+
+      when(
+        () => mockRemoteCatalog.fetchResourceIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(ri.writeToBuffer())));
+      when(() => mockRemoteCatalog.fetchResourceSnapshotMeta(any())).thenAnswer(
+        (_) async => Right(
+          ResourceSnapshotMeta(
+            schemaVersion: 1,
+            serverId: _testServerId,
+            gameBuild: "21.0",
+            gameVersion: "1.0",
+            resourceCount: 2,
+            createdAt: "2026-06-15T12:00:00Z",
+          ),
+        ),
+      );
+      when(
+        () => mockRemoteCatalog.fetchServerIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
+      when(
+        () => mockRemoteCatalog.fetchBlob(
+          forceIH,
+          forceCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      ).thenAnswer((_) async => Right(forceBytes));
+      when(
+        () => mockRemoteCatalog.fetchBlob(
+          lazyIH,
+          lazyCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      ).thenAnswer((_) async => Right(lazyBytes));
+
+      configureProvisioner();
+      final states = await collectStates();
+
+      expect(states.last, isA<ProvisionerComplete>());
+      final complete = states.last as ProvisionerComplete;
+      expect(complete.failedBlobs, isEmpty);
+
+      // FORCE blob downloaded; NON_FORCE blob untouched.
+      expect(await fakeAssetStore.blobExists(forceIH, forceCH), isTrue);
+      expect(await fakeAssetStore.blobExists(lazyIH, lazyCH), isFalse);
+      verifyNever(
+        () => mockRemoteCatalog.fetchBlob(
+          lazyIH,
+          lazyCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      );
+
+      // Progress totals count only the eager entry.
+      final preparing = states.whereType<ProvisionerPreparing>().last;
+      expect(preparing.totalBlobs, 1);
+      final downloading = states.whereType<ProvisionerDownloading>().last;
+      expect(downloading.total, 1);
+      expect(downloading.progress, 1.0);
+    });
+
+    test("treats every entry as FORCE for pre-policy indexes", () async {
+      const rid = "resource://static/images/icons/1.png";
+      final blobBytes = Uint8List.fromList([0x55]);
+      final contentHash = RepoHash.hashContent(blobBytes);
+      final identHash = RepoHash.hashIdent(rid);
+
+      // format_version absent (defaults to 1); download_policy is ignored.
+      final ri = ResourceIndex()..schemaVersion = 1;
+      ri.entries.add(
+        ResourceIndex_Entry()
+          ..resourceId = rid
+          ..contentHash = contentHash
+          ..size = Int64(1)
+          ..downloadPolicy = ResourceIndex_DownloadPolicy.NON_FORCE,
+      );
+      final si = _buildServerIndex(_testServerId);
+
+      when(
+        () => mockRemoteCatalog.fetchResourceIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(ri.writeToBuffer())));
+      when(() => mockRemoteCatalog.fetchResourceSnapshotMeta(any())).thenAnswer(
+        (_) async => Right(
+          ResourceSnapshotMeta(
+            schemaVersion: 1,
+            serverId: _testServerId,
+            gameBuild: "21.0",
+            gameVersion: "1.0",
+            resourceCount: 1,
+            createdAt: "2026-06-15T12:00:00Z",
+          ),
+        ),
+      );
+      when(
+        () => mockRemoteCatalog.fetchServerIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
+      when(
+        () => mockRemoteCatalog.fetchBlob(
+          identHash,
+          contentHash,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      ).thenAnswer((_) async => Right(blobBytes));
+
+      configureProvisioner();
+      final states = await collectStates();
+
+      expect(states.last, isA<ProvisionerComplete>());
+      expect(await fakeAssetStore.blobExists(identHash, contentHash), isTrue);
+    });
+  });
 }

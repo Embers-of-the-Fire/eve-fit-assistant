@@ -206,7 +206,12 @@ def _add_snapshot_by_file(
     snap_store = SnapshotStore(root)
 
     if snap_type == "resource":
+        import bootstrap.config
+
         from bootstrap.remote.models import make_resource_index
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
+        lazy_prefixes = bootstrap.config.CONFIGURATION.download.lazy_prefixes
 
         try:
             metadata = ResourceSnapshotMetadata.model_validate(data["metadata"])
@@ -235,7 +240,7 @@ def _add_snapshot_by_file(
             raise click.ClickException(
                 f"Invalid resource catalog entry in {source_file}: invalid value: {e}"
             ) from None
-        index = make_resource_index(index_entries)
+        index = make_resource_index(index_entries, lazy_prefixes=lazy_prefixes)
         hash_value = snap_store.create_resource_snapshot(metadata, index)
 
     elif snap_type == "release":

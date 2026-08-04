@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 // ── State machine ────────────────────────────────────────────────────────────
@@ -181,18 +182,27 @@ class CheckoutProvisioner {
       return;
     }
 
-    final resourceIndex = ResourceIndex.fromBuffer(indexResult.getRight().toNullable()!);
-    final totalEntries = resourceIndex.entries.length;
+    final ResourceIndex resourceIndex;
+    try {
+      resourceIndex = decodeResourceIndex(indexResult.getRight().toNullable()!);
+    } on UnsupportedResourceIndexError catch (e) {
+      _emit(ProvisionerFatal(message: e.toString(), retryable: false));
+      return;
+    }
 
     // 2. Partition cached vs. to-download — pre-build identHash and blob
-    // path once per entry so the hot loop has zero alloc overhead.
+    // path once per entry so the hot loop has zero alloc overhead. NON_FORCE
+    // entries are skipped: they are fetched lazily on first access.
     final toDownload = <(ResourceIndex_Entry, String, String)>[];
     var cachedCount = 0;
     var cachedBytes = 0;
     var totalBytes = 0;
+    var totalEntries = 0;
     for (final entry in resourceIndex.entries) {
+      if (!shouldEagerDownload(resourceIndex, entry)) continue;
       final size = entry.size.toInt();
       totalBytes += size;
+      totalEntries++;
       final identHash = RepoHash.hashIdent(entry.resourceId);
       if (await assetStore.blobExists(identHash, entry.contentHash)) {
         cachedCount++;

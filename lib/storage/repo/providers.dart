@@ -21,6 +21,7 @@ import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/image_asset.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
+import "package:eve_fit_assistant/storage/repo/on_demand_blob.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/release_sync.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
@@ -62,12 +63,20 @@ BlobStore repoBlobStore(Ref ref) => createRepoBlobStore();
 @riverpodSingleton
 AssetStore assetStore(Ref ref) => AssetStore(ref.watch(repoBlobStoreProvider));
 
+/// Downloads NON_FORCE blobs lazily on first access from the remote catalog.
+@riverpodSingleton
+OnDemandBlobFetcher onDemandBlobFetcher(Ref ref) => OnDemandBlobFetcher(
+  assetStore: ref.watch(assetStoreProvider),
+  remoteCatalog: ref.watch(remoteCatalogServiceProvider),
+);
+
 /// Loads the active checkout's `ResourceIndex` and exposes it as a
 /// [ResourceBlobProxy].
 ///
 /// Async because the index lives in the (possibly OPFS-backed) blob store;
 /// only the ACTIVE checkout's index is ever loaded — other checkouts' data is
-/// read lazily by the flows that need it.
+/// read lazily by the flows that need it. Reads of NON_FORCE blobs absent
+/// locally are fetched on demand via [onDemandBlobFetcher].
 @riverpodSingleton
 Future<ResourceBlobProxy?> resourceBlobProxy(Ref ref) async {
   final activeOpt = ref.watch(activeCheckoutProvider);
@@ -78,14 +87,18 @@ Future<ResourceBlobProxy?> resourceBlobProxy(Ref ref) async {
   final store = ref.watch(assetStoreProvider);
   final riOpt = await store.readResourceIndex(active.resourceSnapshotHash);
   if (riOpt.isNone()) return null;
-  return ResourceBlobProxy(store, riOpt.toNullable()!);
+  return ResourceBlobProxy(store, riOpt.toNullable()!, ref.watch(onDemandBlobFetcherProvider));
 }
 
 @riverpodSingleton
 Future<ImageAssetService?> imageAssetService(Ref ref) async {
   final proxy = await ref.watch(resourceBlobProxyProvider.future);
   if (proxy == null) return null;
-  return ImageAssetService(proxy, ref.watch(assetStoreProvider));
+  return ImageAssetService(
+    proxy,
+    ref.watch(assetStoreProvider),
+    ref.watch(onDemandBlobFetcherProvider),
+  );
 }
 
 @riverpodSingleton

@@ -17,6 +17,7 @@ from bootstrap.remote.canonical_json import encode_canonical_json
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 
@@ -206,15 +207,59 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def make_resource_index(entries: list[tuple[str, str, int]]) -> ResourceIndex:
-    """Build a ResourceIndex from (resource_id, content_hash, size) tuples."""
+#: Per-snapshot resource list format version emitted by this generator.
+#:
+#: Format 2 entries carry a download policy (NON_FORCE = fetched lazily on
+#: first access, FORCE = downloaded eagerly during provisioning). Format 1
+#: (the default encoded in older snapshots) has no policy; clients treat
+#: every entry as FORCE. The message-level `schema_version` is reserved for
+#: the remote storage protocol and is intentionally left untouched.
+RESOURCE_INDEX_FORMAT_VERSION = 2
+
+#: The resource_id URI scheme prefix; lazy prefixes are matched against the
+#: remainder of the resource_id after this prefix.
+RESOURCE_ID_SCHEME = "resource://"
+
+
+def is_lazy_resource(resource_id: str, lazy_prefixes: Sequence[str]) -> bool:
+    """Return whether [resource_id] matches any lazy prefix.
+
+    Prefixes are matched against the resource path relative to
+    ``resource://`` (e.g. ``static/images/`` matches
+    ``resource://static/images/icons/1.png``).
+    """
+    path = resource_id.removeprefix(RESOURCE_ID_SCHEME)
+    return any(path.startswith(prefix) for prefix in lazy_prefixes)
+
+
+def make_resource_index(
+    entries: list[tuple[str, str, int]],
+    lazy_prefixes: Sequence[str] | None = None,
+) -> ResourceIndex:
+    """Build a ResourceIndex from (resource_id, content_hash, size) tuples.
+
+    Emits [RESOURCE_INDEX_FORMAT_VERSION]: entries whose resource_id matches
+    a lazy prefix are marked NON_FORCE; all others are marked FORCE.
+
+    ``lazy_prefixes`` defaults to the built-in default (all images lazy);
+    pass an explicit list to override, or an empty list to mark every entry
+    FORCE (download everything ahead of time).
+    """
+    from bootstrap.config import DEFAULT_LAZY_PREFIXES
+
+    prefixes = DEFAULT_LAZY_PREFIXES if lazy_prefixes is None else lazy_prefixes
     msg = _load_pb2_type("ResourceIndex")()
     msg.schema_version = 1
+    msg.format_version = RESOURCE_INDEX_FORMAT_VERSION
+    policy = msg.DownloadPolicy
     for rid, content, size in entries:
         entry = msg.entries.add()
         entry.resource_id = rid
         entry.content_hash = content
         entry.size = size
+        entry.download_policy = (
+            policy.NON_FORCE if is_lazy_resource(rid, prefixes) else policy.FORCE
+        )
     return msg
 
 

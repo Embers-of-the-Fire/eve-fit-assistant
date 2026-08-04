@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/storage/fs/repo_store.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/foundation.dart";
@@ -117,12 +118,17 @@ class AssetStore {
   /// Reads the ResourceIndex from a resource snapshot.
   ///
   /// Returns [None] if the snapshot does not exist or cannot be parsed.
+  ///
+  /// An index rejected by the platform gate (see
+  /// [validateResourceIndexForPlatform]) escapes as an
+  /// [UnsupportedResourceIndexError] — it is an [Error], deliberately not
+  /// swallowed by the parse-failure path.
   Future<Option<ResourceIndex>> readResourceIndex(String snapshotHash) async {
     final indexPath = RepoPaths.resourceIndexPath(snapshotHash);
     final bytes = await _store.read(indexPath);
     if (bytes == null) return const None();
     try {
-      return Some(ResourceIndex.fromBuffer(bytes));
+      return Some(decodeResourceIndex(bytes));
     } on Exception catch (e, stackTrace) {
       warning("Failed to read ResourceIndex $snapshotHash", stackTrace: stackTrace);
       return const None();
@@ -149,6 +155,10 @@ class AssetStore {
   /// Verifies every blob referenced by [resourceIndex] exists with a correct
   /// content hash.
   ///
+  /// A NON_FORCE blob that was never fetched is expected to be absent — it
+  /// downloads lazily on first access — so its absence is not a failure. A
+  /// NON_FORCE blob that *is* present must still hash-check clean.
+  ///
   /// [onProgress] receives (checked, total) blob counts as verification
   /// proceeds. The loop yields to the event loop periodically so it can run
   /// on the web main thread without janking the UI.
@@ -165,7 +175,11 @@ class AssetStore {
       final ihash = RepoHash.hashIdent(entry.resourceId);
       final assetPath = RepoPaths.blobPath(ihash, entry.contentHash);
       final bytes = await _store.read(assetPath);
-      if (bytes == null || RepoHash.hashContent(bytes) != entry.contentHash) {
+      if (bytes == null) {
+        if (shouldEagerDownload(resourceIndex, entry)) {
+          failures.add(entry.resourceId);
+        }
+      } else if (RepoHash.hashContent(bytes) != entry.contentHash) {
         failures.add(entry.resourceId);
       }
       checked++;

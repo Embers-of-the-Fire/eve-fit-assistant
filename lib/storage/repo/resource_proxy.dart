@@ -1,6 +1,7 @@
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
+import "package:eve_fit_assistant/storage/repo/on_demand_blob.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:flutter/foundation.dart";
 import "package:fpdart/fpdart.dart";
@@ -11,21 +12,32 @@ import "package:fpdart/fpdart.dart";
 /// by `resource_id` URI. All consumers (collection service, engine service,
 /// image assets) resolve resources through this proxy instead of accessing the
 /// blob store or filesystem paths directly.
+///
+/// When an [OnDemandBlobFetcher] is supplied, reads of blobs that are absent
+/// locally (NON_FORCE resources skipped during provisioning, or failed
+/// downloads) transparently fetch them from the remote catalog.
 class ResourceBlobProxy {
-  ResourceBlobProxy(this._assetStore, ResourceIndex resourceIndex)
+  ResourceBlobProxy(this._assetStore, ResourceIndex resourceIndex, [this._fetcher])
     : _entries = {for (final e in resourceIndex.entries) e.resourceId: e};
 
   final AssetStore _assetStore;
+  final OnDemandBlobFetcher? _fetcher;
   final Map<String, ResourceIndex_Entry> _entries;
 
   /// Reads resource bytes by [resourceId] (e.g. `"resource://static/collection.pb2"`).
   ///
-  /// Returns [None] if the resource is not in the index or the blob is missing.
-  Future<Option<Uint8List>> read(String resourceId) {
+  /// Returns [None] if the resource is not in the index, or the blob is
+  /// missing locally and no [OnDemandBlobFetcher] is available (or the
+  /// on-demand fetch fails).
+  Future<Option<Uint8List>> read(String resourceId) async {
     final entry = _entries[resourceId];
-    if (entry == null) return Future.value(const None());
+    if (entry == null) return const None();
     final identHash = RepoHash.hashIdent(resourceId);
-    return _assetStore.readBlob(identHash, entry.contentHash);
+    final local = await _assetStore.readBlob(identHash, entry.contentHash);
+    if (local.isSome()) return local;
+    final fetcher = _fetcher;
+    if (fetcher == null) return const None();
+    return fetcher.read(identHash, entry.contentHash);
   }
 
   /// Resolves the direct content-addressed blob store file path for [resourceId].
