@@ -22,7 +22,7 @@ impl FitEnginePath {
     /// Expects `{root}/types.pb2`, `{root}/dogmaAttributes.pb2`,
     /// `{root}/dogmaEffects.pb2`, `{root}/typeDogma.pb2`, and
     /// `{root}/dbuffcollections.pb2`.
-    pub fn from_root(root: String) -> Self {
+    pub async fn from_root(root: String) -> Self {
         let r = std::path::Path::new(&root);
         Self {
             types: r
@@ -54,7 +54,7 @@ impl FitEnginePath {
     }
 
     /// Construct with explicit per-file paths.
-    pub fn from_files(
+    pub async fn from_files(
         types: String,
         dogma_attributes: String,
         dogma_effects: String,
@@ -82,7 +82,7 @@ impl FitEngine {
     }
 
     #[frb]
-    pub fn emulate(&self, fit: &FitStorage) -> Ship {
+    pub async fn emulate(&self, fit: &FitStorage) -> Ship {
         let out = calculate(fit.get_container(), &self.data.database);
         let mut ship = Ship::from_native(out);
         ship.validation_issues = validate_fit(fit, &ship, &self.data.database);
@@ -101,7 +101,7 @@ impl FitEngineData {
     /// [`FitEnginePath::from_root`] when all `.pb2` files live under a single
     /// directory.
     #[frb]
-    pub fn init(path: FitEnginePath) -> anyhow::Result<Self> {
+    pub async fn init(path: FitEnginePath) -> anyhow::Result<Self> {
         Ok(Self {
             database: Database::init_from_files(
                 &path.types,
@@ -119,7 +119,7 @@ impl FitEngineData {
     /// path, so the Dart side reads the five engine files through the blob
     /// store and passes their bytes directly.
     #[frb]
-    pub fn init_bytes(
+    pub async fn init_bytes(
         types: Vec<u8>,
         dogma_attributes: Vec<u8>,
         dogma_effects: Vec<u8>,

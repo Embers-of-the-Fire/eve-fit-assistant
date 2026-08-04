@@ -124,6 +124,9 @@
       frbPackages = with pkgs; [
         flutter_rust_bridge_codegen
         wasm-pack
+        # Provides wasm-opt; wasm-pack uses the local binary instead of
+        # downloading binaryen from GitHub releases (blocked in some envs).
+        binaryen
       ];
 
       jsPackages = with pkgs; [
