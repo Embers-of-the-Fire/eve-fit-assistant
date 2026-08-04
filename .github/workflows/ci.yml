@@ -69,7 +69,7 @@ jobs:
         if: matrix.suite == 'site'
         run: nix develop .#js --command bash -c 'pnpm install'
       - name: Fetch native CI data
-        if: matrix.suite == 'dart'
+        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
         run: |
           curl -sfLo /tmp/ci-native-data.tar.gz \
             https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
@@ -78,10 +78,10 @@ jobs:
           mkdir -p rust/lib/eve-fit-os/data/out
           ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
       - name: Init dev env
-        if: matrix.suite == 'dart'
+        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
         uses: ./.github/actions/init-dev-env
       - name: Setup CI dev config
-        if: matrix.suite == 'dart'
+        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
         run: nix develop .#dart --command bash -c 'uv run x.py dev env write-backend'
       - name: Generate code
         run: nix develop .#codegen --command bash -c '${{ matrix.codegen_command }}'
