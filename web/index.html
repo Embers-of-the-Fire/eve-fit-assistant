@@ -17,6 +17,9 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
+  <!-- Declare scheme support so browsers don't treat the page as light-only
+       and invert it (e.g. Chrome Auto Dark Mode turns light text black). -->
+  <meta name="color-scheme" content="dark light">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -30,6 +33,10 @@
   <title>eve_fit_assistant</title>
   <link rel="manifest" href="manifest.json">
   <style id="splash-screen-style">
+    :root {
+      color-scheme: dark light;
+    }
+
     html {
       height: 100%
     }
