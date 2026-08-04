@@ -31,10 +31,16 @@ jobs:
         with:
           python-version: "3.13"
       - name: Get changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git diff --name-only "${{ github.event.pull_request.base.sha }}" \
-              "${{ github.event.pull_request.head.sha }}" > /tmp/changed.txt
+            # The checkout only fetched history reachable from the PR merge
+            # ref; the base/head tips may not be ancestors of it (e.g. when
+            # the base branch advanced), so fetch them explicitly.
+            git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
           else
             echo "FULL" > /tmp/changed.txt
           fi
