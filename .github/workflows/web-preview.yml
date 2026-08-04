@@ -6,6 +6,7 @@ permissions:
 on:
   pull_request:
     branches: [dev]
+    types: [opened, synchronize, reopened, closed]
   push:
     branches: [dev]
 
@@ -15,6 +16,9 @@ concurrency:
 
 jobs:
   changes:
+    # Skip the build path when the PR is being closed; the cleanup job
+    # handles that event instead.
+    if: github.event_name == 'push' || github.event.action != 'closed'
     runs-on: ubuntu-slim
     outputs:
       build: ${{ steps.filter.outputs.build }}
@@ -119,3 +123,82 @@ jobs:
             | Commit | ${{ github.sha }} |
 
             Build: `x build web` (wasm, skwasm renderer, locally bundled canvaskit).
+
+  cleanup:
+    # Cloudflare keeps preview deployments forever (and refuses to delete a
+    # branch's aliased one without force); remove this branch's previews once
+    # its PR is merged or closed.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Delete branch preview deployments
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOSED_BRANCH: ${{ github.event.pull_request.head.ref }}
+        with:
+          script: |
+            const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+            const token = process.env.CLOUDFLARE_API_TOKEN;
+            const branch = process.env.CLOSED_BRANCH;
+            if (!accountId || !token || !branch) {
+              core.setFailed("Missing CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, or branch.");
+              return;
+            }
+            const project = "efa-app";
+            const headers = {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            };
+            const base =
+              `https://api.cloudflare.com/client/v4/accounts/${accountId}` +
+              `/pages/projects/${project}/deployments`;
+
+            const targets = [];
+            let page = 1;
+            let totalPages = 1;
+            do {
+              const res = await fetch(`${base}?env=preview&page=${page}&per_page=100`, {
+                headers,
+              });
+              const body = await res.json();
+              if (!res.ok || !body.success) {
+                core.setFailed(`Listing deployments failed: ${JSON.stringify(body.errors ?? body)}`);
+                return;
+              }
+              for (const d of body.result) {
+                if (
+                  d.environment === "preview" &&
+                  d.deployment_trigger?.metadata?.branch === branch
+                ) {
+                  targets.push(d);
+                }
+              }
+              totalPages = body.result_info?.total_pages ?? 1;
+              page += 1;
+            } while (page <= totalPages);
+
+            core.info(`Found ${targets.length} preview deployment(s) for branch '${branch}'.`);
+            let failed = 0;
+            for (const d of targets) {
+              // force=true also deletes the branch's aliased (latest) deployment.
+              const res = await fetch(`${base}/${d.id}?force=true`, {
+                method: "DELETE",
+                headers,
+              });
+              const body = await res.json().catch(() => ({}));
+              if (res.ok && body.success) {
+                core.info(`Deleted ${d.id} (${d.url}).`);
+              } else {
+                failed += 1;
+                core.warning(`Could not delete ${d.id}: ${JSON.stringify(body.errors ?? body)}`);
+              }
+            }
+            if (failed > 0) {
+              core.setFailed(`${failed} deployment(s) could not be deleted.`);
+            }
