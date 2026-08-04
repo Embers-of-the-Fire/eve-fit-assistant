@@ -11,7 +11,7 @@ class Cargo extends StatelessWidget {
         minTileHeight: 0,
         minVerticalPadding: 0,
         leading: const Image(image: ImageAssets.attrMass, height: 28),
-        title: DefaultTextStyle(
+        title: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: 16),
           textAlign: TextAlign.end,
           child: Text(
@@ -26,7 +26,7 @@ class Cargo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [Image(image: ImageAssets.attrTargetRange, height: 28)],
         ),
-        title: DefaultTextStyle(
+        title: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: 16),
           textAlign: TextAlign.end,
           child: Text(
@@ -51,7 +51,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${fleetCap.round().commaSeparated} m³"),
@@ -77,7 +77,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${shipCap.round().commaSeparated} m³"),
@@ -103,7 +103,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${generalMineCap.round().commaSeparated} m³"),
@@ -129,7 +129,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${gasCap.round().commaSeparated} m³"),
@@ -155,7 +155,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${mineralCap.round().commaSeparated} m³"),
@@ -181,7 +181,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 26),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${iceCap.round().commaSeparated} m³"),
@@ -207,7 +207,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${cmdCenterCap.round().commaSeparated} m³"),
@@ -235,7 +235,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${planetCap.round().commaSeparated} m³"),
@@ -263,7 +263,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${colonyCap.round().commaSeparated} m³"),
@@ -289,7 +289,7 @@ class Cargo extends StatelessWidget {
                 Image(image: ImageAssets.unknownIcon, height: 28),
               ],
             ),
-            title: DefaultTextStyle(
+            title: DefaultTextStyle.merge(
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.end,
               child: Text("${fuelCap.round().commaSeparated} m³"),

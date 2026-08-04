@@ -15,7 +15,7 @@ class Resource extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.only(left: 20, right: 22, top: 8, bottom: 8),
-      child: DefaultTextStyle(
+      child: DefaultTextStyle.merge(
         style: const TextStyle(fontSize: 16),
         child: Column(
           spacing: 10,

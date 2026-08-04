@@ -24,7 +24,7 @@ class _HpState extends State<Hp> {
       ListTile(
         minTileHeight: 0,
         leading: _getMaxEhpIcon(widget.ship.hull),
-        title: DefaultTextStyle(
+        title: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -99,7 +99,7 @@ class _HpTable extends ConsumerWidget {
   final bool allowMutations;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => DefaultTextStyle(
+  Widget build(BuildContext context, WidgetRef ref) => DefaultTextStyle.merge(
     style: const TextStyle(fontSize: 16),
     textAlign: TextAlign.center,
     child: Table(
@@ -263,7 +263,7 @@ class _RepairTable extends StatelessWidget {
     final double remoteArmor = hull.getAttribute(EveConstExtendedAttrID.armorRemoteRepairRate);
     final double remoteHull = hull.getAttribute(EveConstExtendedAttrID.hullRemoteRepairRate);
 
-    return DefaultTextStyle(
+    return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: 16),
       textAlign: TextAlign.center,
       child: Table(

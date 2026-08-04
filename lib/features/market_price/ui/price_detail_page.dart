@@ -373,7 +373,7 @@ class _PriceItemTable extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: DefaultTextStyle(
+    child: DefaultTextStyle.merge(
       style: const TextStyle(fontSize: 16),
       child: Table(
         columnWidths: const {
