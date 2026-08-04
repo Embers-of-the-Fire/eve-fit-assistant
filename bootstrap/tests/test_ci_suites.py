@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from bootstrap.ci.suites import SUITE_DEFINITIONS
+from bootstrap.ci.suites import WEB_PREVIEW_PATTERNS
 from bootstrap.ci.suites import calculate_ci_matrix
+from bootstrap.ci.suites import web_preview_affected
 
 
 def _suite_names(files: list[str]) -> set[str]:
@@ -37,3 +39,47 @@ def test_dart_web_not_included_for_python_only_changes():
 def test_dart_web_included_on_infra_change():
     names = _suite_names(["bootstrap/ci/suites.py"])
     assert "dart-web" in names
+
+
+def test_web_preview_patterns_cover_core_build_inputs():
+    for path in [
+        "flake.nix",
+        "flake.lock",
+        "rust/src/api/fit.rs",
+        "rust/lib/eve-fit-os",
+        "web/index.html",
+        "lib/main.dart",
+        "pubspec.yaml",
+        "pubspec.lock",
+        "l10n.yaml",
+        "l10n/app_zh.arb",
+        "data/schema/release_index.proto",
+        "bootstrap/cli/build.py",
+        "x.py",
+        "pyproject.toml",
+        "uv.lock",
+        ".github/workflows/web-preview.yml",
+    ]:
+        assert web_preview_affected([path]), f"expected {path} to trigger web preview"
+
+
+def test_web_preview_unaffected_by_unrelated_changes():
+    assert not web_preview_affected(
+        [
+            "site/home/src/routes/+page.svelte",
+            "docs/manual/intro.md",
+            ".github/workflows/ci.yml",
+            "AGENTS.md",
+            "README.md",
+        ]
+    )
+
+
+def test_web_preview_empty_change_list():
+    assert not web_preview_affected([])
+
+
+def test_web_preview_patterns_are_anchored():
+    # Sibling paths sharing a prefix must not match directory patterns.
+    assert not web_preview_affected(["webfoo/x.txt", "library/main.dart"])
+    assert "web/**" in WEB_PREVIEW_PATTERNS

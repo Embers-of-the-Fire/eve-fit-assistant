@@ -86,6 +86,33 @@ SUITE_DEFINITIONS = [
 ]
 
 
+# Paths that can change the Flutter web bundle (build/web) and therefore
+# require a web preview rebuild. Generated Dart output is gitignored, so the
+# sources feeding codegen (proto schemas, ARB files) are included as well.
+WEB_PREVIEW_PATTERNS = [
+    "flake.nix",
+    "flake.lock",
+    "rust/**",
+    "web/**",
+    "lib/**",
+    "pubspec.yaml",
+    "pubspec.lock",
+    "l10n.yaml",
+    "l10n/*.arb",
+    "data/schema/**",
+    "bootstrap/**",
+    "x.py",
+    "pyproject.toml",
+    "uv.lock",
+    ".github/workflows/web-preview.yml",
+]
+
+
+def web_preview_affected(files: list[str]) -> bool:
+    """Check whether changed files require a web preview rebuild."""
+    return any(match_any_pattern(f, WEB_PREVIEW_PATTERNS) for f in files)
+
+
 def glob_to_regex(pattern: str) -> str:
     """Convert a glob-style pattern to a prefix-anchored regex."""
     parts = []

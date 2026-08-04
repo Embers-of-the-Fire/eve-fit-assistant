@@ -1,0 +1,121 @@
+name: Web Preview
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-slim
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: "3.13"
+      - name: Get changed files
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff --name-only "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" > /tmp/changed.txt
+          else
+            echo "FULL" > /tmp/changed.txt
+          fi
+      - name: Check web preview relevance
+        id: filter
+        run: |
+          if grep -q "^FULL$" /tmp/changed.txt; then
+            BUILD=$(uv run x.py ci web-affected --full)
+          else
+            BUILD=$(uv run x.py ci web-affected --from-file /tmp/changed.txt)
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
+  build-deploy:
+    needs: changes
+    # Fork PRs cannot access the Cloudflare secrets, so they get no preview.
+    if: >-
+      needs.changes.outputs.build == 'true' &&
+      (github.event_name == 'push' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - name: Fetch native CI data
+        run: |
+          curl -sfLo /tmp/ci-native-data.tar.gz \
+            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+          mkdir -p "$GITHUB_WORKSPACE/ci-native"
+          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
+          mkdir -p rust/lib/eve-fit-os/data/out
+          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+      - name: Install Python dependencies
+        run: nix develop .#codegen --command bash -c 'uv sync'
+      - name: Install Dart dependencies
+        run: nix develop .#codegen --command bash -c 'flutter pub get'
+      - name: Write backend env
+        run: nix develop .#codegen --command bash -c 'uv run x.py dev env write-backend'
+      - name: Generate code
+        run: nix develop .#codegen --command bash -c 'uv run x.py ci codegen --lang dart'
+      - name: Build web bundle
+        run: nix develop .#codegen --command bash -c 'uv run x.py build web'
+      - name: Compute deploy command
+        id: args
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "command=pages deploy build/web --project-name=efa-app --branch=$HEAD_REF" \
+              >> "$GITHUB_OUTPUT"
+          else
+            echo "command=pages deploy build/web --project-name=efa-app" >> "$GITHUB_OUTPUT"
+          fi
+      # Deploys to the Pages production URL on push to dev, and to a preview
+      # alias on PRs. The project's production branch must be set to "dev"
+      # (one-time setup in the Cloudflare dashboard).
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.118.0"
+          command: ${{ steps.args.outputs.command }}
+      - name: Comment preview URL
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: web-preview
+          message: |
+            Web preview deployed to Cloudflare Pages (`efa-app`).
+
+            | | |
+            |---|---|
+            | Deployment | ${{ steps.deploy.outputs.deployment-url }} |
+            | Branch alias | ${{ steps.deploy.outputs.pages-deployment-alias-url }} |
+            | Commit | ${{ github.sha }} |
+
+            Build: `x build web` (wasm, skwasm renderer, locally bundled canvaskit).

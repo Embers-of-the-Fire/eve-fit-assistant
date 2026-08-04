@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -219,6 +220,63 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
     _emit_release_json(data, output, default_output)
 
 
+# Canvaskit artifacts required per renderer. The Flutter loader only fetches
+# the files belonging to the renderers declared in flutter_bootstrap.js;
+# everything else (other renderers, *.symbols debug files) can be pruned.
+_WEB_RENDERER_ARTIFACTS = {
+    "skwasm": {"skwasm.js", "skwasm.wasm", "skwasm_heavy.js", "skwasm_heavy.wasm"},
+    "canvaskit": {"canvaskit.js", "canvaskit.wasm", "chromium"},
+}
+
+
+def _read_web_renderers(build_dir: Path) -> set[str]:
+    bootstrap_js = build_dir / "flutter_bootstrap.js"
+    match = re.search(
+        r"_flutter\.buildConfig\s*=\s*(\{.*?\});",
+        bootstrap_js.read_text(encoding="utf-8"),
+        re.DOTALL,
+    )
+    if match is None:
+        raise click.ClickException(f"Could not locate buildConfig in {bootstrap_js}")
+    config = json.loads(match.group(1))
+    builds = config.get("builds", [])
+    return {b["renderer"] for b in builds if "renderer" in b}
+
+
+def _prune_canvaskit(build_dir: Path) -> int:
+    """Remove canvaskit artifacts unused by the declared renderers.
+
+    Returns the number of bytes removed.
+    """
+    canvaskit_dir = build_dir / "canvaskit"
+    if not canvaskit_dir.is_dir():
+        return 0
+
+    renderers = _read_web_renderers(build_dir)
+    keep: set[str] = set()
+    for renderer in renderers:
+        keep |= _WEB_RENDERER_ARTIFACTS.get(renderer, set())
+
+    removed_bytes = 0
+
+    def _measure(path: Path) -> int:
+        if path.is_dir():
+            return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+        return path.stat().st_size
+
+    for entry in sorted(canvaskit_dir.iterdir()):
+        drop = entry.name.endswith(".symbols") or entry.name not in keep
+        if not drop:
+            continue
+        removed_bytes += _measure(entry)
+        if entry.is_dir():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+
+    return removed_bytes
+
+
 def register_build_commands(cli_group: click.Group) -> None:
     @cli_group.group()
     def build():
@@ -316,6 +374,58 @@ def register_build_commands(cli_group: click.Group) -> None:
             build_site_manual()
         except (ValueError, FileNotFoundError, TypeError) as exception:
             raise click.ClickException(str(exception)) from exception
+
+    @build.command("web")
+    @click.option(
+        "--no-prune",
+        is_flag=True,
+        default=False,
+        help="Skip pruning canvaskit artifacts unused by the declared renderers.",
+    )
+    def build_web_cmd(no_prune: bool):
+        """Build the Flutter web (wasm) bundle for static hosting.
+
+        Builds the FRB engine wasm without atomics (no COOP/COEP required) and
+        the Dart bundle with locally bundled canvaskit/skwasm (no CDN). Run
+        inside a shell providing flutter_rust_bridge_codegen, wasm-pack, and
+        binaryen (e.g. `nix develop .#codegen`).
+        """
+        from bootstrap.utils import get_command
+
+        flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
+        flutter = get_command("flutter")
+
+        runtime.execute(
+            [
+                flutter_rust_bridge_codegen,
+                "build-web",
+                "--release",
+                "--wasm-pack-rustflags",
+                "-C target-feature=+bulk-memory,+mutable-globals",
+            ],
+            "BUILDING WEB ENGINE (WASM)",
+        )
+        runtime.execute(
+            [flutter, "build", "web", "--wasm", "--no-web-resources-cdn"],
+            "BUILDING FLUTTER WEB BUNDLE",
+        )
+
+        output_dir = PROJECT_ROOT / "build" / "web"
+        if not output_dir.is_dir():
+            raise click.ClickException(f"Expected web build output not found: {output_dir}")
+
+        if no_prune:
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "Skipping canvaskit prune."))
+        else:
+            removed_bytes = _prune_canvaskit(output_dir)
+            click.echo(
+                styled(
+                    [Style.BRIGHT, Fore.GREEN],
+                    f"Pruned unused canvaskit artifacts ({get_bin_size(removed_bytes)}).",
+                )
+            )
+
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
 
     @build.command("apk")
     @click.option(
