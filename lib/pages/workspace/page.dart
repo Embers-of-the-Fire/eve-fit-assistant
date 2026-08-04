@@ -8,8 +8,10 @@ import "package:eve_fit_assistant/features/app_update/state/app_version_state_no
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/workspace/data_update_banner.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:url_launcher/url_launcher.dart";
 
 class _WorkspaceShortcutItem {
   const _WorkspaceShortcutItem({required this.title, required this.icon, required this.onTap});
@@ -36,15 +38,18 @@ class WorkspacePage extends ConsumerWidget {
           }
         },
       ),
-      _WorkspaceShortcutItem(
-        title: context.l10n.workspaceTabAnnouncementTitle,
-        icon: Icons.campaign_outlined,
-        onTap: () => context.router.push(AnnouncementFeedRoute()),
-      ),
+      if (!kIsWeb)
+        _WorkspaceShortcutItem(
+          title: context.l10n.workspaceTabAnnouncementTitle,
+          icon: Icons.campaign_outlined,
+          onTap: () => context.router.push(AnnouncementFeedRoute()),
+        ),
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabManualTitle,
         icon: Icons.menu_book_outlined,
-        onTap: () => context.router.push(const ManualBrowserRoute()),
+        onTap: kIsWeb
+            ? () => unawaited(_openWebManual(context))
+            : () => context.router.push(const ManualBrowserRoute()),
       ),
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabReportTitle,
@@ -58,7 +63,7 @@ class WorkspacePage extends ConsumerWidget {
       ),
     ];
 
-    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
+    final unreadCount = kIsWeb ? 0 : ref.watch(unreadAnnouncementCountProvider);
 
     final grid = Center(
       child: ConstrainedBox(
@@ -86,7 +91,7 @@ class WorkspacePage extends ConsumerWidget {
       ),
     );
 
-    final hasVersionBump = ref.watch(pendingVersionBumpProvider);
+    final hasVersionBump = !kIsWeb && ref.watch(pendingVersionBumpProvider);
 
     return Column(
       children: [
@@ -95,6 +100,26 @@ class WorkspacePage extends ConsumerWidget {
         Expanded(child: grid),
       ],
     );
+  }
+
+  Future<void> _openWebManual(BuildContext context) async {
+    final uri = context.locale.languageCode == "zh"
+        ? Uri.parse("https://docs.efa-tech.dev/zh/")
+        : Uri.parse("https://docs.efa-tech.dev/");
+    try {
+      final didLaunch = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!didLaunch && context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.reportOpenError)));
+      }
+    } on Object {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.reportOpenError)));
+      }
+    }
   }
 
   Widget _buildVersionBumpCard(BuildContext context, WidgetRef ref) {
