@@ -1,0 +1,12 @@
+# Cross-origin isolation is required by the threaded (atomics) engine wasm
+# build: FRB's web worker pool shares the wasm memory with Web Workers via
+# SharedArrayBuffer, which browsers only expose on isolated origins.
+#
+# `require-corp` (not `credentialless`) is used for cross-browser support
+# (credentialless is Chromium-only). All cross-origin resources must be
+# fetched with CORS or carry Cross-Origin-Resource-Policy headers; the app
+# bundle itself is fully self-contained (no CDN canvaskit, no remote fonts).
+/*
+  Cross-Origin-Resource-Policy: same-site
+  Cross-Origin-Opener-Policy: same-site
+  Cross-Origin-Embedder-Policy: require-corp

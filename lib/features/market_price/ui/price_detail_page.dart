@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/features/market_price/state/state.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/num.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
@@ -16,12 +17,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
   final shipType = ref.watch(repoCollectionProvider.select((c) => c?.getType(shipTypeId)));
   final locale = context.locale.languageCode;
   final shipName = shipType != null
-      ? ref.watch(
-              repoCollectionProvider.select(
-                (c) => c?.getLocalizedName(shipType.typeName.id, locale),
-              ),
-            ) ??
-            ""
+      ? ref.watch(localizedNameProvider(id: shipType.typeName.id, locale: locale)).value ?? ""
       : "";
   return (shipType, shipName);
 }

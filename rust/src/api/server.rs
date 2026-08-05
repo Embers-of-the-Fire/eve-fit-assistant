@@ -22,7 +22,8 @@ impl FitEnginePath {
     /// Expects `{root}/types.pb2`, `{root}/dogmaAttributes.pb2`,
     /// `{root}/dogmaEffects.pb2`, `{root}/typeDogma.pb2`, and
     /// `{root}/dbuffcollections.pb2`.
-    pub async fn from_root(root: String) -> Self {
+    #[frb(sync)]
+    pub fn from_root(root: String) -> Self {
         let r = std::path::Path::new(&root);
         Self {
             types: r
@@ -54,7 +55,8 @@ impl FitEnginePath {
     }
 
     /// Construct with explicit per-file paths.
-    pub async fn from_files(
+    #[frb(sync)]
+    pub fn from_files(
         types: String,
         dogma_attributes: String,
         dogma_effects: String,
@@ -81,8 +83,14 @@ impl FitEngine {
         Self { data }
     }
 
+    /// Emulate a fit.
+    ///
+    /// Deliberately a *normal* (neither `async` nor `#[frb(sync)]`) function:
+    /// FRB executes normal functions on its internal thread pool, which on the
+    /// web platform is backed by a pool of real Web Workers. This keeps the
+    /// potentially expensive calculation off the browser event loop.
     #[frb]
-    pub async fn emulate(&self, fit: &FitStorage) -> Ship {
+    pub fn emulate(&self, fit: &FitStorage) -> Ship {
         let out = calculate(fit.get_container(), &self.data.database);
         let mut ship = Ship::from_native(out);
         ship.validation_issues = validate_fit(fit, &ship, &self.data.database);
@@ -100,8 +108,14 @@ impl FitEngineData {
     /// Use [`FitEnginePath::from_files`] for per-file configuration or
     /// [`FitEnginePath::from_root`] when all `.pb2` files live under a single
     /// directory.
+    ///
+    /// Deliberately a *normal* (neither `async` nor `#[frb(sync)]`) function:
+    /// FRB executes normal functions on its internal thread pool, which on the
+    /// web platform is backed by a pool of real Web Workers. Decoding the five
+    /// `.pb2` files is the most expensive step on the whole engine path and
+    /// must not block the browser event loop.
     #[frb]
-    pub async fn init(path: FitEnginePath) -> anyhow::Result<Self> {
+    pub fn init(path: FitEnginePath) -> anyhow::Result<Self> {
         Ok(Self {
             database: Database::init_from_files(
                 &path.types,
@@ -118,8 +132,12 @@ impl FitEngineData {
     /// The web counterpart of [`Self::init`]: OPFS blobs have no native file
     /// path, so the Dart side reads the five engine files through the blob
     /// store and passes their bytes directly.
+    ///
+    /// Deliberately a *normal* (neither `async` nor `#[frb(sync)]`) function,
+    /// like [`Self::init`]: on the web it runs in a Web Worker from FRB's
+    /// pool, so decoding the `.pb2` bytes never blocks the browser event loop.
     #[frb]
-    pub async fn init_bytes(
+    pub fn init_bytes(
         types: Vec<u8>,
         dogma_attributes: Vec<u8>,
         dogma_effects: Vec<u8>,

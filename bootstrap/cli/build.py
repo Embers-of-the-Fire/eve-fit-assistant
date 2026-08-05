@@ -385,10 +385,19 @@ def register_build_commands(cli_group: click.Group) -> None:
     def build_web_cmd(no_prune: bool):
         """Build the Flutter web (wasm) bundle for static hosting.
 
-        Builds the FRB engine wasm without atomics (no COOP/COEP required) and
-        the Dart bundle with locally bundled canvaskit/skwasm (no CDN). Run
-        inside a shell providing flutter_rust_bridge_codegen, wasm-pack, and
-        binaryen (e.g. `nix develop .#codegen`).
+        Builds the FRB engine wasm with atomics so FRB's web worker pool can
+        run engine calls (database parsing, emulation) in real Web Workers
+        instead of the main thread. The threaded build requires the deployment
+        to be cross-origin isolated (COOP/COEP headers, shipped via
+        `web/_headers`). The Dart bundle uses locally bundled canvaskit/skwasm
+        (no CDN). Run inside a shell providing flutter_rust_bridge_codegen,
+        wasm-pack, and binaryen (e.g. `nix develop .#codegen`).
+
+        The link args follow the wasm-bindgen threading recipe: lld does not
+        enable shared memory from `+atomics` alone, so `--shared-memory`,
+        `--import-memory` (workers must share the *same* memory instance), a
+        fixed `--max-memory` (shared memories cannot grow), and the TLS/heap
+        symbols are passed explicitly.
         """
         from bootstrap.utils import get_command
 
@@ -401,7 +410,17 @@ def register_build_commands(cli_group: click.Group) -> None:
                 "build-web",
                 "--release",
                 "--wasm-pack-rustflags",
-                "-C target-feature=+bulk-memory,+mutable-globals",
+                (
+                    "-C target-feature=+atomics,+bulk-memory,+mutable-globals"
+                    " -Clink-args=--shared-memory"
+                    " -Clink-args=--max-memory=1073741824"
+                    " -Clink-args=--import-memory"
+                    " -Clink-args=--export=__heap_base"
+                    " -Clink-args=--export=__wasm_init_tls"
+                    " -Clink-args=--export=__tls_size"
+                    " -Clink-args=--export=__tls_align"
+                    " -Clink-args=--export=__tls_base"
+                ),
             ],
             "BUILDING WEB ENGINE (WASM)",
         )

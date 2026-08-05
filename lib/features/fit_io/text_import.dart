@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -479,30 +480,36 @@ class _FitTypeNameIndex {
   final Map<String, int> shipNames;
 
   static Future<_FitTypeNameIndex> load(WidgetRef ref) async {
-    final allTypes = ref.read(repoCollectionProvider)?.getAllTypes() ?? const IList.empty();
+    final collection = ref.read(repoCollectionProvider);
+    final allTypes = collection?.getAllTypes() ?? const IList.empty();
     final locale = ref.watch(localeProvider).name;
+
+    final localizationKeys = <int>[];
+    for (final type in allTypes) {
+      localizationKeys.add(type.typeName.id);
+    }
+
+    final service = await ref.read(localizationDbServiceProvider.future);
+    final localizedNames = await service?.localizedNames(localizationKeys, locale) ?? const {};
+    final englishNames = locale == "en"
+        ? localizedNames
+        : await service?.localizedNames(localizationKeys, "en") ?? const {};
+
     final names = <String, int>{};
     final shipNames = <String, int>{};
+    void addName(Map<int, String> resolved, int localizationKey, int typeId) {
+      final name = resolved[localizationKey];
+      if (name == null || name.trim().isEmpty) return;
+      final trimmed = name.trim();
+      names.putIfAbsent(trimmed, () => typeId);
+      if (collection?.getShip(typeId) != null) {
+        shipNames.putIfAbsent(trimmed, () => typeId);
+      }
+    }
 
     for (final type in allTypes) {
-      final localizationKey = type.typeName.id;
-      final localizedName = ref
-          .read(repoCollectionProvider)
-          ?.getLocalizedName(localizationKey, locale);
-      if (localizedName != null && localizedName.trim().isNotEmpty) {
-        names.putIfAbsent(localizedName.trim(), () => type.typeId);
-        if (ref.read(repoCollectionProvider)?.getShip(type.typeId) != null) {
-          shipNames.putIfAbsent(localizedName.trim(), () => type.typeId);
-        }
-      }
-
-      final englishName = ref.read(repoCollectionProvider)?.getLocalizedName(localizationKey, "en");
-      if (englishName != null && englishName.trim().isNotEmpty) {
-        names.putIfAbsent(englishName.trim(), () => type.typeId);
-        if (ref.read(repoCollectionProvider)?.getShip(type.typeId) != null) {
-          shipNames.putIfAbsent(englishName.trim(), () => type.typeId);
-        }
-      }
+      addName(localizedNames, type.typeName.id, type.typeId);
+      addName(englishNames, type.typeName.id, type.typeId);
     }
 
     return _FitTypeNameIndex(byName: names, shipNames: shipNames);

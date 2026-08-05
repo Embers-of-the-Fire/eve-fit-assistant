@@ -62,6 +62,15 @@ class PathManager:
         return path
 
     @property
+    def localization_db_path(self) -> Path:
+        """SQLite database with all localized strings (lazy query access).
+
+        Ships alongside the per-language `.pb2` files, which are kept for
+        backward compatibility with older clients.
+        """
+        return self.localization_root_path / "localization.db"
+
+    @property
     def native_root_path(self) -> Path:
         path = self.static_root_path / "native"
         path.mkdir(parents=True, exist_ok=True)

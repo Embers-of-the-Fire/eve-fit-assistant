@@ -120,47 +120,29 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
   Future<RepoCollectionService> _decodeInIsolate(ResourceBlobProxy proxy) async {
     if (kIsWeb) {
       // Web: blobs live in OPFS — read bytes through the blob store, then
-      // decode (the isolate stub runs this inline on the main event loop).
+      // decode. Web has no isolates, so the decode runs on the main event
+      // loop; the chunked decoder yields between chunks to keep the UI
+      // responsive and stops early when this generation is superseded.
       final collectionBytes = (await proxy.read("resource://static/collection.pb2")).toNullable();
       if (collectionBytes == null) {
         return Future.error(StateError("collection.pb2 not found in resource index"));
       }
 
-      final localizationBytes = <String, Uint8List>{};
-      for (final locale in ["en", "zh"]) {
-        final bytes = (await proxy.read(
-          "resource://localization/localization_$locale.pb2",
-        )).toNullable();
-        if (bytes != null) localizationBytes[locale] = bytes;
-      }
-
-      return Isolate.run(
-        () => RepoCollectionService.decodeFromBytes(
-          collectionBytes: collectionBytes,
-          localizationBytes: localizationBytes,
-        ),
+      final generation = _generation;
+      return RepoCollectionService.decodeFromBytesChunked(
+        collectionBytes: collectionBytes,
+        isCancelled: () => generation != _generation || !ref.mounted,
       );
     }
 
-    // Native: resolve content-addressed paths and read inside the background
-    // isolate so large files never transit the main isolate.
+    // Native: resolve the content-addressed path and read inside the
+    // background isolate so the large file never transits the main isolate.
     final collectionPath = proxy.resolvePath("resource://static/collection.pb2");
     if (collectionPath == null) {
       return Future.error(StateError("collection.pb2 not found in resource index"));
     }
 
-    final localizationPaths = <String, String>{};
-    for (final locale in ["en", "zh"]) {
-      final path = proxy.resolvePath("resource://localization/localization_$locale.pb2");
-      if (path != null) localizationPaths[locale] = path;
-    }
-
-    return Isolate.run(
-      () => RepoCollectionService.decodeFromPaths(
-        collectionPath: collectionPath,
-        localizationPaths: localizationPaths,
-      ),
-    );
+    return Isolate.run(() => RepoCollectionService.decodeFromPaths(collectionPath: collectionPath));
   }
 
   /// Exposes the decoded collection for the synchronous provider to consume.

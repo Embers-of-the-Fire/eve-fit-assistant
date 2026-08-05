@@ -4,7 +4,9 @@ import "package:archive/archive.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fpdart/fpdart.dart";
 
 enum FitTextExportFormat { native, eft }
 
@@ -35,7 +37,7 @@ class FitTextExporter {
   }
 
   Future<String> _exportEft(FitStorage fit) async {
-    final names = await _FitTextNameResolver.load(ref);
+    final names = await _FitTextNameResolver.load(ref, fit);
     final sections = <String>[];
 
     final moduleSection = <String>[];
@@ -135,20 +137,79 @@ class FitTextExporter {
 }
 
 class _FitTextNameResolver {
-  const _FitTextNameResolver({required this.ref});
+  const _FitTextNameResolver({required this.typeNames});
 
-  final WidgetRef ref;
+  final Map<int, String> typeNames;
 
-  static Future<_FitTextNameResolver> load(WidgetRef ref) async => _FitTextNameResolver(ref: ref);
+  /// Pre-resolves the English names of every item referenced by [fit].
+  ///
+  /// EFT export names always use the `"en"` locale; the names are batch-loaded
+  /// from the checkout's localization database in a single pass instead of
+  /// being looked up one by one from an eagerly decoded map.
+  static Future<_FitTextNameResolver> load(WidgetRef ref, FitStorage fit) async {
+    final collection = ref.read(repoCollectionProvider);
 
-  String typeName(int typeId) {
-    final type = ref.read(repoCollectionProvider)?.getType(typeId);
-    if (type == null) {
-      return "Unknown Type[$typeId]";
+    final typeIds = <int>{fit.body.shipTypeId};
+    void collect(FitStorageItemId itemId) => typeIds.add(_resolveItemId(fit, itemId));
+
+    final slotLists = [
+      fit.body.slots.low,
+      fit.body.slots.medium,
+      fit.body.slots.high,
+      fit.body.slots.rig,
+      fit.body.slots.subsystem,
+      fit.body.slots.service,
+    ];
+    for (final slots in slotLists) {
+      for (final slotOpt in slots) {
+        slotOpt.map((slot) {
+          collect(slot.itemId);
+          slot.charge.map((charge) => typeIds.add(charge.typeId));
+        });
+      }
+    }
+    if (fit.body.slots.tacticalMode case Some(:final value)) {
+      typeIds.add(value);
+    }
+    for (final drone in fit.body.drones) {
+      collect(drone.itemId);
+    }
+    for (final fighter in fit.body.fighters) {
+      collect(fighter.itemId);
+    }
+    for (final implant in fit.body.implants) {
+      collect(implant.itemId);
+    }
+    for (final booster in fit.body.boosters) {
+      collect(booster.itemId);
     }
 
-    final localizationKey = type.typeName.id;
-    return ref.read(repoCollectionProvider)?.getLocalizedName(localizationKey, "en") ??
-        "Unknown Type[$typeId]";
+    final localizationKeys = <int>[];
+    for (final typeId in typeIds) {
+      final type = collection?.getType(typeId);
+      if (type != null) localizationKeys.add(type.typeName.id);
+    }
+
+    final service = await ref.read(localizationDbServiceProvider.future);
+    final names = await service?.localizedNames(localizationKeys, "en") ?? const <int, String>{};
+
+    final typeNames = <int, String>{};
+    for (final typeId in typeIds) {
+      final type = collection?.getType(typeId);
+      final name = type != null ? names[type.typeName.id] : null;
+      if (name != null && name.isNotEmpty) typeNames[typeId] = name;
+    }
+
+    return _FitTextNameResolver(typeNames: typeNames);
   }
+
+  static int _resolveItemId(FitStorage fit, FitStorageItemId itemId) => itemId.when(
+    item: (id) => id,
+    dynamic: (dynamicId) =>
+        fit.dynamicRegistry.dynamicItems[dynamicId]?.originTypeId ??
+        fit.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
+        dynamicId,
+  );
+
+  String typeName(int typeId) => typeNames[typeId] ?? "Unknown Type[$typeId]";
 }

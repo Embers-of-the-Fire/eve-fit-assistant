@@ -57,13 +57,13 @@ class _StubRustLibApi extends RustLibApi {
   }) async => _StubFitEngineData();
 
   @override
-  Future<native_server.FitEnginePath> crateApiServerFitEnginePathFromFiles({
+  native_server.FitEnginePath crateApiServerFitEnginePathFromFiles({
     required String types,
     required String dogmaAttributes,
     required String dogmaEffects,
     required String typeDogma,
     required String buffCollections,
-  }) async => native_server.FitEnginePath(
+  }) => native_server.FitEnginePath(
     types: types,
     dogmaAttributes: dogmaAttributes,
     dogmaEffects: dogmaEffects,
@@ -72,9 +72,9 @@ class _StubRustLibApi extends RustLibApi {
   );
 
   @override
-  Future<native_server.FitEnginePath> crateApiServerFitEnginePathFromRoot({
+  native_server.FitEnginePath crateApiServerFitEnginePathFromRoot({
     required String root,
-  }) async => native_server.FitEnginePath(
+  }) => native_server.FitEnginePath(
     types: "$root/types.pb2",
     dogmaAttributes: "$root/dogmaAttributes.pb2",
     dogmaEffects: "$root/dogmaEffects.pb2",

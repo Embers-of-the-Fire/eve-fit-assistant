@@ -20,6 +20,7 @@ import "package:eve_fit_assistant/pages/item-detail/dogma_unit_display.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart"
     show attributeDebugViewProvider, localeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
@@ -1980,9 +1981,7 @@ String _formatDynamicValue(double value) {
 String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) {
   if (localization == null) return null;
   final locale = ref.watch(localeProvider).name;
-  return ref.watch(
-    repoCollectionProvider.select((c) => c?.getLocalizedName(localization.id, locale)),
-  );
+  return ref.watch(localizedNameProvider(id: localization.id, locale: locale)).value;
 }
 
 String? _attributeLocalizedName(WidgetRef ref, DogmaAttribute? attribute) {

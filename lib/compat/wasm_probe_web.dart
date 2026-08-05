@@ -17,3 +17,16 @@ Future<bool> wasmBundleAvailable(String jsUrl) async {
     return false;
   }
 }
+
+/// Whether the page is cross-origin isolated (COOP + COEP headers present).
+///
+/// The engine wasm is built with atomics so FRB can run engine calls in a Web
+/// Worker pool; the shared memory this requires (`SharedArrayBuffer`) is only
+/// exposed on isolated origins.
+bool crossOriginIsolated() {
+  try {
+    return web.window.crossOriginIsolated;
+  } on Object {
+    return false;
+  }
+}

@@ -1,5 +1,6 @@
 import "package:eve_fit_assistant/data/proto/utils.pb.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -22,9 +23,7 @@ class LocalizedText extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider).name;
-    final loc = ref.watch(
-      repoCollectionProvider.select((c) => c?.getLocalizedName(localizationKey.id, locale)),
-    );
+    final loc = ref.watch(localizedNameProvider(id: localizationKey.id, locale: locale)).value;
 
     return Text(
       (loc != null && loc.isNotEmpty) ? formatter(loc) : "LOC[${localizationKey.id}]",

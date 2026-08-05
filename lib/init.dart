@@ -43,11 +43,20 @@ class InitializedStores {
 Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (kIsWeb) {
-    // FRB's web loader awaits the script's onLoad, which never fires when
-    // the WASM bundle is missing (onError fires instead) — init would hang
-    // forever. Probe first and boot without the native engine if absent.
+    // The engine wasm is built with atomics so FRB can run engine calls in
+    // its Web Worker pool; the shared memory behind that only exists on
+    // cross-origin isolated origins. Without the COOP/COEP headers the module
+    // cannot instantiate, so boot without the native engine instead. Also
+    // probe the bundle first: FRB's web loader awaits the script's onLoad,
+    // which never fires when the WASM bundle is missing (onError fires
+    // instead) — init would hang forever.
     const engineBundleUrl = "pkg/rust_lib_eve_fit_assistant.js";
-    if (await wasmBundleAvailable(engineBundleUrl)) {
+    if (!crossOriginIsolated()) {
+      debugPrint(
+        "Page is not cross-origin isolated (missing COOP/COEP headers); "
+        "booting without native engine.",
+      );
+    } else if (await wasmBundleAvailable(engineBundleUrl)) {
       try {
         await RustLib.init();
       } on Object catch (e) {

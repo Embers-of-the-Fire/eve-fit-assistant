@@ -43,6 +43,7 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -169,10 +170,7 @@ class _FitPage extends ConsumerWidget {
     }
     final locale = context.locale.languageCode;
     final shipName =
-        ref.watch(
-          repoCollectionProvider.select((c) => c?.getLocalizedName(ship.typeName.id, locale)),
-        ) ??
-        "";
+        ref.watch(localizedNameProvider(id: ship.typeName.id, locale: locale)).value ?? "";
 
     if (!fit.isInitialized) {
       if (fit.hasError) {
