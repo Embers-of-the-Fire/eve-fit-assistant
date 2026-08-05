@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
+import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/startup_announcement_gate.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
@@ -114,6 +115,30 @@ void main() {
 
       expect(find.text("child"), findsOneWidget);
       expect(find.byType(AnnouncementDialog), findsNothing);
+    });
+  });
+
+  group("announcement body cache on web", () {
+    test("filesystem operations are inert no-ops", () async {
+      await AnnouncementBodyCache.init();
+
+      const hash = "abcdef12345678901234567890123456789012345678901234567890abcdef";
+      await AnnouncementBodyCache.put(hash, "content");
+
+      expect(await AnnouncementBodyCache.get(hash), isNull);
+      expect(AnnouncementBodyCache.exists(hash), isFalse);
+      await AnnouncementBodyCache.prune(referencedHashes: {hash});
+    });
+  });
+
+  group("announcement feed on web", () {
+    test("raw feed short-circuits to empty without network", () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final raw = await container.read(announcementRawFeedProvider.future);
+      expect(raw.entries, isEmpty);
+      expect(raw.remoteIds, isEmpty);
     });
   });
 

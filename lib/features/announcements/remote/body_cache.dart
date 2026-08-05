@@ -2,12 +2,19 @@ import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:path/path.dart" as p;
 
+/// Disk cache for announcement markdown bodies.
+///
+/// Announcements are not served on web and there is no filesystem there, so
+/// every operation degrades to an inert no-op instead of touching the
+/// `dart:io` stub (which would throw [UnsupportedError]).
 class AnnouncementBodyCache {
   AnnouncementBodyCache._();
 
   static Future<void> init() async {
+    if (kIsWeb) return;
     final dir = Directory(_cacheDir);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
@@ -15,6 +22,7 @@ class AnnouncementBodyCache {
   }
 
   static Future<String?> get(String bodyHash) async {
+    if (kIsWeb) return null;
     try {
       final file = File(_filePath(bodyHash));
       if (!file.existsSync()) {
@@ -28,6 +36,7 @@ class AnnouncementBodyCache {
   }
 
   static Future<void> put(String bodyHash, String content) async {
+    if (kIsWeb) return;
     try {
       final path = _filePath(bodyHash);
       final file = File(path);
@@ -39,6 +48,7 @@ class AnnouncementBodyCache {
   }
 
   static bool exists(String bodyHash) {
+    if (kIsWeb) return false;
     try {
       return File(_filePath(bodyHash)).existsSync();
     } on FileSystemException {
@@ -50,6 +60,7 @@ class AnnouncementBodyCache {
   /// Failures are logged and skipped so a single bad file does not abort the
   /// sweep.
   static Future<void> prune({required Set<String> referencedHashes}) async {
+    if (kIsWeb) return;
     try {
       final root = Directory(_cacheDir);
       if (!root.existsSync()) return;
