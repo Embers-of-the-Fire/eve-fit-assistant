@@ -142,7 +142,7 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
       return Future.error(StateError("collection.pb2 not found in resource index"));
     }
 
-    return Isolate.run(() => RepoCollectionService.decodeFromPaths(collectionPath: collectionPath));
+    return _decodeCollectionFromPath(collectionPath);
   }
 
   /// Exposes the decoded collection for the synchronous provider to consume.
@@ -157,3 +157,11 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     unawaited(_dispatchDecode(proxy));
   }
 }
+
+/// Decodes the collection file in a background isolate.
+///
+/// Top-level helper so the `Isolate.run()` closure is created in a scope that
+/// does not capture the notifier instance — Dart's closure context sharing
+/// would otherwise drag the whole Riverpod state into the isolate message.
+Future<RepoCollectionService> _decodeCollectionFromPath(String collectionPath) =>
+    Isolate.run(() => RepoCollectionService.decodeFromPaths(collectionPath: collectionPath));

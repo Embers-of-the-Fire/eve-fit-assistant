@@ -1,9 +1,11 @@
 import "dart:async";
 
+import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/schema_guard/migration_gate.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -56,12 +58,21 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
     return switch (state) {
       RepoStateInitializing() => _buildLoading(),
       RepoStateActive(:final entry) => _buildActive(entry),
-      RepoStateError(:final error) => _buildError(context, ref, error.message),
+      RepoStateError(:final error) => _buildError(ref, error.message),
       _ => _buildLoading(),
     };
   }
 
-  Widget _buildLoading() => const Scaffold(body: Center(child: CircularProgressIndicator()));
+  Widget _appShell(Widget home) => MaterialApp(
+    theme: widget.theme,
+    locale: Locale(ref.watch(localeProvider).name),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  );
+
+  Widget _buildLoading() =>
+      _appShell(const Scaffold(body: Center(child: CircularProgressIndicator())));
 
   Widget _buildActive(CheckoutRegistryEntry? entry) {
     if (entry == null) {
@@ -70,24 +81,31 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
     return widget.builder(entry);
   }
 
-  Widget _buildError(BuildContext context, WidgetRef ref, String message) => Scaffold(
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(context.l10n.repoInitErrorTitle, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(message, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => ref.read(repoStateProvider.notifier).initialize(),
-              child: Text(context.l10n.fitPageRetryAction),
+  Widget _buildError(WidgetRef ref, String message) => _appShell(
+    Builder(
+      builder: (context) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  context.l10n.repoInitErrorTitle,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(message, style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => ref.read(repoStateProvider.notifier).initialize(),
+                  child: Text(context.l10n.fitPageRetryAction),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     ),
