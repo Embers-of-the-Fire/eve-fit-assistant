@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/compat/isolate.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -102,6 +103,12 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     final generation = ++_generation;
     state = const DataReadinessState.loading();
 
+    // Warm the localization database in parallel with the collection decode so
+    // the first name lookup never pays the open cost (blob copy + worker on
+    // web) on the critical path. The provider self-manages its lifecycle across
+    // checkout switches, so a stale warm-up here is harmless.
+    unawaited(_warmLocalizationDb());
+
     try {
       final collection = await _decodeInIsolate(proxy);
       if (generation != _generation || !ref.mounted) return;
@@ -147,6 +154,19 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
 
   /// Exposes the decoded collection for the synchronous provider to consume.
   RepoCollectionService? get decodedCollection => _decodedCollection;
+
+  /// Opens the localization database ahead of first use.
+  ///
+  /// Best-effort: failures are logged and never surface to the UI. Once opened
+  /// the singleton stays warm for the active checkout; a checkout switch
+  /// reopens it through the provider's own dependency tracking.
+  Future<void> _warmLocalizationDb() async {
+    try {
+      await ref.read(localizationDbServiceProvider.future);
+    } on Object catch (e, st) {
+      debug("DataReadiness: localization db warm-up failed: $e", stackTrace: st);
+    }
+  }
 
   /// Forces a retry after an error state.
   void retry() {

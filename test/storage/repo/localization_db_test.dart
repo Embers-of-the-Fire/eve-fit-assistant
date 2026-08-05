@@ -18,10 +18,11 @@ void _writeFixtureDb(String path) {
     "PRIMARY KEY(locale, id)) WITHOUT ROWID",
   );
   db.execute("INSERT INTO meta(key, value) VALUES ('schema_version', '1')");
-  db.execute(
-    "INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)",
-    ["en", 1001, "Gallente Frigate"],
-  );
+  db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", [
+    "en",
+    1001,
+    "Gallente Frigate",
+  ]);
   db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", ["en", 1002, "Test Item"]);
   db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", ["zh", 1001, "加伦特护卫舰"]);
   db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", ["zh", 1003, ""]);
@@ -73,16 +74,17 @@ void main() {
     expect(results, ["Gallente Frigate", "Gallente Frigate", "Test Item"]);
   });
 
-  test("lookups are debounced before the batched query runs", () async {
+  test("lookups are batched through the flush", () async {
     var resolved = false;
     final future = service.localizedName(1001, "en").then((value) {
       resolved = true;
       return value;
     });
-    // The debounce timer cannot fire during this synchronous segment, so the
-    // lookup must still be pending — only the batched flush resolves it.
+    // Lookups are never resolved synchronously — the batch flush runs on the
+    // event loop and resolves all pending lookups together.
     expect(resolved, isFalse);
     expect(await future, "Gallente Frigate");
+    expect(resolved, isTrue);
   });
 
   test("localizedNames batch-resolves and omits missing ids", () async {

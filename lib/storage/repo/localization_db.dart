@@ -49,11 +49,12 @@ class LocalizationDbService {
   LocalizationDbService.fromDatabase(this._db);
 
   final SqliteDatabase _db;
-  static const Duration _flushDebounce = Duration(milliseconds: 100);
+  static const Duration _flushDebounce = Duration(milliseconds: 50);
 
   final Map<String, Map<int, String>> _cache = {};
   final Map<String, Map<int, Completer<String>>> _pending = {};
   Timer? _flushTimer;
+  DateTime? _lastFlushAt;
   bool _closed = false;
 
   /// Opens the localization database referenced by [proxy].
@@ -102,8 +103,9 @@ class LocalizationDbService {
   /// Resolves the localized string for [id] in [locale].
   ///
   /// Returns an empty string when the database is unavailable or the id has no
-  /// entry. Lookups are debounced into batched queries: ids requested within
-  /// [_flushDebounce] of each other are resolved by a single query.
+  /// entry. Lookups are batched: a fresh batch flushes on the next event-loop
+  /// turn with no added latency, while a burst (e.g. scrolling) is debounced
+  /// into a single query.
   Future<String> localizedName(int id, String locale) {
     final cached = _cache[locale]?[id];
     if (cached != null) return Future.value(cached);
@@ -138,14 +140,24 @@ class LocalizationDbService {
     };
   }
 
-  /// Schedules a debounced flush of all pending lookups.
+  /// Schedules a flush of all pending lookups.
   ///
-  /// Every new pending id restarts the timer, so a burst of lookups (e.g. a
-  /// list scrolling into view) is resolved by a single batched query instead
-  /// of one query per frame — which is what made names pop in one at a time.
+  /// A batch that follows an idle period (e.g. a list opening) flushes on the
+  /// very next event-loop turn, so names appear without an artificial delay.
+  /// Lookups that keep arriving while a batch is still settling — e.g. during
+  /// a scroll — are debounced, coalescing the burst into a single query
+  /// instead of one per frame (the per-frame queries are what made names pop
+  /// in one at a time).
   void _scheduleFlush() {
     _flushTimer?.cancel();
-    _flushTimer = Timer(_flushDebounce, () => unawaited(_flushPending()));
+    final idle = _lastFlushAt == null || DateTime.now().difference(_lastFlushAt!) > _flushDebounce;
+    _flushTimer = Timer(idle ? Duration.zero : _flushDebounce, _onFlushTimer);
+  }
+
+  void _onFlushTimer() {
+    _flushTimer = null;
+    _lastFlushAt = DateTime.now();
+    unawaited(_flushPending());
   }
 
   Future<void> _flushPending() async {
