@@ -54,8 +54,8 @@ The protobuf definitions are included in the `schema` folder.
 Basically, all static data are stored collectively in a single protobuf message,
 see [`collections.proto`](./schema/collections.proto) for details.
 
-And, the localizations are stored in separate protobuf messages per language,
-see [`localizations.proto`](./schema/localizations.proto) for details.
+And, the localizations are stored in a single SQLite database
+(`localization.db`), queried lazily by clients.
 
 The converted output shall contain:
 ```text
@@ -72,7 +72,7 @@ The converted output shall contain:
         - <graphic_id>_bp.png   # blueprint image file
         - <graphic_id>_bpc.png  # high quality image file
   - localization/
-    - localization_<lang>.pb2   # for each supported language
+    - localization.db            # all localized strings (SQLite)
   - schema/
     - checkouts/<hash>.json     # V2 checkout catalog
     - assets/                   # content-addressed asset store
@@ -93,7 +93,7 @@ The data generation process contains the following steps:
    Convert the native static data used by `eve-fit-os`.
 4. **Localization Extraction**:  
    Extract the localization files from the extracted FSD files and/or the resource files.  
-   Parse the files and merge them into separate protobuf messages per language.
+   Parse the files and merge them into a single SQLite database.
 5. **Image Extraction**:  
    Extract the icon and graphic images from the extracted FSD files and/or the resource files.  
    Save them into the output directory.

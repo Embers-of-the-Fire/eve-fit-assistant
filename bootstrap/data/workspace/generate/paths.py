@@ -57,16 +57,12 @@ class PathManager:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def get_localization_path(self, lang: str) -> Path:
-        path = self.localization_root_path / f"localization_{lang}.pb2"
-        return path
-
     @property
     def localization_db_path(self) -> Path:
         """SQLite database with all localized strings (lazy query access).
 
-        Ships alongside the per-language `.pb2` files, which are kept for
-        backward compatibility with older clients.
+        Localization ships only as this database; per-language `.pb2` files
+        were removed with resource index format version 3.
         """
         return self.localization_root_path / "localization.db"
 

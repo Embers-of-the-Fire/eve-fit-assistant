@@ -57,7 +57,7 @@ class TestIsLazyResource:
 
     def test_no_match_outside_prefix(self) -> None:
         assert not is_lazy_resource("resource://static/collection.pb2", ["static/images/"])
-        assert not is_lazy_resource("resource://localization/l10n_en.pb2", ["static/images/"])
+        assert not is_lazy_resource("resource://localization/localization.db", ["static/images/"])
 
     def test_empty_prefixes_never_lazy(self) -> None:
         assert not is_lazy_resource("resource://static/images/icons/1.png", [])
@@ -68,14 +68,14 @@ class TestMakeResourceIndex:
         ("resource://static/collection.pb2", "aa" * 32, 10),
         ("resource://static/images/icons/1.png", "bb" * 32, 20),
         ("resource://static/images/graphics/2.png", "cc" * 32, 30),
-        ("resource://localization/localization_en.pb2", "dd" * 32, 40),
+        ("resource://localization/localization.db", "dd" * 32, 40),
     ]
 
     def test_emits_policy_aware_format_without_touching_schema_version(self) -> None:
         index = make_resource_index(self._entries)
         # schema_version is reserved for the remote storage protocol.
         assert index.schema_version == 1
-        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 2
+        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 3
 
     def test_default_classification_marks_all_images_lazy(self) -> None:
         index = make_resource_index(self._entries)
@@ -83,7 +83,7 @@ class TestMakeResourceIndex:
         force = index.DownloadPolicy.FORCE
         non_force = index.DownloadPolicy.NON_FORCE
         assert policy["resource://static/collection.pb2"] == force
-        assert policy["resource://localization/localization_en.pb2"] == force
+        assert policy["resource://localization/localization.db"] == force
         assert policy["resource://static/images/icons/1.png"] == non_force
         assert policy["resource://static/images/graphics/2.png"] == non_force
 

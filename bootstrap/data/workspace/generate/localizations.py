@@ -6,11 +6,8 @@ import sqlite3
 
 from typing import TYPE_CHECKING
 
-import aiofiles
-
 import bootstrap.config
 
-from bootstrap.data.schema import localizations_pb2
 from bootstrap.localization import to_native_localization
 from bootstrap.log import info
 
@@ -25,16 +22,6 @@ if TYPE_CHECKING:
 #: Schema version of the emitted localization SQLite database. Bump when the
 #: layout changes; clients refuse to open mismatched versions.
 LOCALIZATION_DB_SCHEMA_VERSION = 1
-
-
-def __to_proto_loc_type(loc_type: LocalizationType) -> localizations_pb2.LocalizationLanguage:
-    match loc_type:
-        case "en":
-            return localizations_pb2.LocalizationLanguage.EN
-        case "zh":
-            return localizations_pb2.LocalizationLanguage.ZH
-
-    raise ValueError(f"Unknown localization type: {loc_type}")
 
 
 async def generate(ws_data: GeneratorDatasource):
@@ -61,16 +48,8 @@ async def __generate(
 
     strings: dict[int, str] = {key: value[0] for key, value in loc.items()}
 
-    pb = localizations_pb2.Localization()
-    pb.language = __to_proto_loc_type(lang)
-    for key, value in strings.items():
-        pb.localized_strings[key] = value
-
-    # The protobuf bundle is preserved for backward compatibility with older
-    # clients; newer clients query the SQLite database instead.
-    async with aiofiles.open(ws_data.paths.get_localization_path(lang), "wb") as f:
-        await f.write(pb.SerializeToString())
-
+    # Localization ships only as the SQLite database; the per-language protobuf
+    # bundle was removed with resource index format version 3.
     info(f"Generated localization for {lang}.")
     return lang, strings
 

@@ -178,7 +178,7 @@ void main() {
             policy: ResourceIndex_DownloadPolicy.FORCE,
           ),
           (
-            resourceId: "resource://localization/localization_en.pb2",
+            resourceId: "resource://localization/localization.db",
             contentHash: "dd" * 32,
             size: 7,
             policy: ResourceIndex_DownloadPolicy.FORCE,
@@ -194,7 +194,7 @@ void main() {
       expect(workList.toDownload, hasLength(1));
       expect(
         workList.toDownload.single.entry.resourceId,
-        "resource://localization/localization_en.pb2",
+        "resource://localization/localization.db",
       );
     });
 
