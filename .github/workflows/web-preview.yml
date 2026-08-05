@@ -124,11 +124,15 @@ jobs:
             >> "$GITHUB_OUTPUT"
       - name: Deploy preview to Cloudflare Pages
         id: deploy
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.118.0"
+          # The repo root carries a pnpm lockfile, which the action would
+          # auto-detect and use to install wrangler; pnpm is not preinstalled
+          # on the runner and npm suffices for a global wrangler install.
+          packageManager: npm
           command: ${{ steps.args.outputs.command }}
       - name: Comment preview URL
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
@@ -163,11 +167,12 @@ jobs:
           name: web-bundle
           path: build/web
       - name: Deploy production to Cloudflare Pages
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.118.0"
+          packageManager: npm
           command: pages deploy build/web --project-name=efa-app
 
   cleanup:
