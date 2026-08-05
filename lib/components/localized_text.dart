@@ -23,10 +23,13 @@ class LocalizedText extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider).name;
-    final loc = ref.watch(localizedNameProvider(id: localizationKey.id, locale: locale)).value;
+    final locAsync = ref.watch(localizedNameProvider(id: localizationKey.id, locale: locale));
+    final loc = locAsync.value;
 
     return Text(
-      (loc != null && loc.isNotEmpty) ? formatter(loc) : "LOC[${localizationKey.id}]",
+      locAsync.isLoading
+          ? ""
+          : ((loc != null && loc.isNotEmpty) ? formatter(loc) : "LOC[${localizationKey.id}]"),
       textAlign: textAlign,
     );
   }

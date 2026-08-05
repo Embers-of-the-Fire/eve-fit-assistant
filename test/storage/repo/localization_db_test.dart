@@ -73,6 +73,18 @@ void main() {
     expect(results, ["Gallente Frigate", "Gallente Frigate", "Test Item"]);
   });
 
+  test("lookups are debounced before the batched query runs", () async {
+    var resolved = false;
+    final future = service.localizedName(1001, "en").then((value) {
+      resolved = true;
+      return value;
+    });
+    // The debounce timer cannot fire during this synchronous segment, so the
+    // lookup must still be pending — only the batched flush resolves it.
+    expect(resolved, isFalse);
+    expect(await future, "Gallente Frigate");
+  });
+
   test("localizedNames batch-resolves and omits missing ids", () async {
     final names = await service.localizedNames([1001, 1002, 9999], "en");
     expect(names, {1001: "Gallente Frigate", 1002: "Test Item"});

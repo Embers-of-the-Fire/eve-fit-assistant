@@ -49,9 +49,11 @@ class LocalizationDbService {
   LocalizationDbService.fromDatabase(this._db);
 
   final SqliteDatabase _db;
+  static const Duration _flushDebounce = Duration(milliseconds: 100);
+
   final Map<String, Map<int, String>> _cache = {};
   final Map<String, Map<int, Completer<String>>> _pending = {};
-  bool _flushScheduled = false;
+  Timer? _flushTimer;
   bool _closed = false;
 
   /// Opens the localization database referenced by [proxy].
@@ -100,8 +102,8 @@ class LocalizationDbService {
   /// Resolves the localized string for [id] in [locale].
   ///
   /// Returns an empty string when the database is unavailable or the id has no
-  /// entry. Concurrent lookups within the same event-loop turn are coalesced
-  /// into batched queries.
+  /// entry. Lookups are debounced into batched queries: ids requested within
+  /// [_flushDebounce] of each other are resolved by a single query.
   Future<String> localizedName(int id, String locale) {
     final cached = _cache[locale]?[id];
     if (cached != null) return Future.value(cached);
@@ -136,15 +138,14 @@ class LocalizationDbService {
     };
   }
 
+  /// Schedules a debounced flush of all pending lookups.
+  ///
+  /// Every new pending id restarts the timer, so a burst of lookups (e.g. a
+  /// list scrolling into view) is resolved by a single batched query instead
+  /// of one query per frame — which is what made names pop in one at a time.
   void _scheduleFlush() {
-    if (_flushScheduled) return;
-    _flushScheduled = true;
-    unawaited(
-      Future(() async {
-        _flushScheduled = false;
-        await _flushPending();
-      }),
-    );
+    _flushTimer?.cancel();
+    _flushTimer = Timer(_flushDebounce, () => unawaited(_flushPending()));
   }
 
   Future<void> _flushPending() async {
@@ -191,6 +192,9 @@ class LocalizationDbService {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+
+    _flushTimer?.cancel();
+    _flushTimer = null;
 
     for (final pending in _pending.values) {
       for (final completer in pending.values) {
