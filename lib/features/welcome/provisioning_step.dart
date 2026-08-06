@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:io";
 
 import "package:eve_fit_assistant/components/wizard/wizard_tokens.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -7,11 +6,12 @@ import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/welcome/multi_provisioner_state.dart";
 
-import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/repo/provisioning.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -136,7 +136,11 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
           _emit(MultiProvisionerFatal(message: msg, retryable: err is CatalogNetworkError));
         },
         (bytes) {
-          targetToIndex[target] = ResourceIndex.fromBuffer(bytes);
+          try {
+            targetToIndex[target] = decodeResourceIndex(bytes);
+          } on UnsupportedResourceIndexError catch (e) {
+            _emit(MultiProvisionerFatal(message: e.toString(), retryable: false));
+          }
         },
       );
       if (_currentState is MultiProvisionerFatal) return;
@@ -146,40 +150,18 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
 
     _emit(MultiProvisionerFetching(done: targets.length, total: targets.length));
 
-    // Phase 2: Compute union blob set (deduplicated by contentHash)
-    final unionEntries = <ResourceIndex_Entry>[];
-    final seen = <String>{};
-    for (final index in targetToIndex.values) {
-      for (final entry in index.entries) {
-        if (seen.add(entry.contentHash)) {
-          unionEntries.add(entry);
-        }
-      }
-    }
-
-    // Separate cached from to-download — pre-build identHash and blob path.
-    final toDownload = <(ResourceIndex_Entry, String, String, int)>[];
-    var downloaded = 0;
-    var cachedBytes = 0;
-    var totalBytes = 0;
-    for (final entry in unionEntries) {
-      final size = entry.size.toInt();
-      totalBytes += size;
-      final identHash = RepoHash.hashIdent(entry.resourceId);
-      if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
-        downloaded++;
-        cachedBytes += size;
-      } else {
-        toDownload.add((entry, identHash, RepoPaths.blobPath(identHash, entry.contentHash), size));
-      }
-    }
-
-    toDownload.sort((a, b) => b.$4.compareTo(a.$4));
-
+    // Phase 2: Partition the union of eager entries across all targets.
+    // NON_FORCE entries are skipped — they are fetched lazily on first
+    // access — and identical blobs shared between servers download once.
+    final workList = await computeEagerWorkList(assetStore, targetToIndex.values);
     if (_cancelled) return;
 
-    final cachedCount = downloaded;
-    final unionTotal = unionEntries.length;
+    final toDownload = workList.toDownload;
+    var downloaded = workList.cachedCount;
+    final cachedCount = workList.cachedCount;
+    final cachedBytes = workList.cachedBytes;
+    final totalBytes = workList.totalBytes;
+    final unionTotal = workList.totalEntries;
 
     // Download blobs with sliding-window concurrency.
     const blobConcurrency = kBlobDownloadConcurrency;
@@ -211,7 +193,6 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     }
 
     if (toDownload.isNotEmpty) {
-      assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
       stopwatch.start();
       // Periodic re-emit so the progress bar keeps moving and the reported
       // speed decays honestly while all workers are busy on large blobs.
@@ -226,10 +207,10 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
           if (_cancelled) return;
 
           final dl = toDownload[idx];
-          final entry = dl.$1;
-          final identHash = dl.$2;
-          final blobPath = dl.$3;
-          final blobSize = dl.$4;
+          final entry = dl.entry;
+          final identHash = dl.identHash;
+          final blobPath = dl.blobPath;
+          final blobSize = dl.size;
 
           final blobResult = await remoteCatalog.fetchBlob(
             identHash,
@@ -244,7 +225,8 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
               await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
               downloaded++;
               tracker.blobComplete(idx, blobSize);
-            } on FileSystemException {
+            } catch (e, stackTrace) {
+              warning("Failed to write blob: ${entry.resourceId}", stackTrace: stackTrace);
               tracker.blobAborted(idx);
               failedBlobs.add(entry.resourceId);
             }
@@ -304,11 +286,11 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
       // Write resource snapshot
       final metaResult = await remoteCatalog.fetchResourceSnapshotMeta(target.snapshotHash);
       final localSnapshotHash = metaResult.isRight()
-          ? assetStore.writeResourceSnapshotSync(
+          ? await assetStore.writeResourceSnapshot(
               meta: metaResult.getRight().toNullable()!,
               resourceIndex: resourceIndex,
             )
-          : assetStore.writeResourceSnapshotSync(
+          : await assetStore.writeResourceSnapshot(
               meta: ResourceSnapshotMeta(
                 schemaVersion: 1,
                 serverId: target.serverId,
@@ -353,22 +335,16 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
   }
 
   Future<void> _persistServerIndex(RemoteCatalogService remoteCatalog) async {
+    final assetStore = ref.read(assetStoreProvider);
     final path = RepoPaths.channelServerIndexPath(widget.channel.value);
-    if (File(path).existsSync()) return;
+    if (await assetStore.store.exists(path)) return;
 
     final result = await remoteCatalog.fetchServerIndex(widget.generationHash);
     if (result.isLeft()) return;
 
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
     try {
-      tmp
-        ..writeAsBytesSync(result.getRight().toNullable()!, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await assetStore.store.write(path, result.getRight().toNullable()!);
+    } catch (e, stackTrace) {
       warning("Failed to write server index for ${widget.channelName}: $e", stackTrace: stackTrace);
     }
   }

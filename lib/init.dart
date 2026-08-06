@@ -1,8 +1,9 @@
 // Init helpers for the package
 
 import "dart:async";
-import "dart:ui";
 
+import "package:eve_fit_assistant/compat/wasm_probe.dart";
+import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -16,9 +17,12 @@ import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/storage/path_migration.dart";
 import "package:eve_fit_assistant/storage/persistence/startup_repair.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
 import "package:flutter_easyloading/flutter_easyloading.dart";
@@ -39,10 +43,41 @@ class InitializedStores {
 
 Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await RustLib.init();
+  if (kIsWeb) {
+    // The engine wasm is built with atomics so FRB can run engine calls in
+    // its Web Worker pool; the shared memory behind that only exists on
+    // cross-origin isolated origins. Without the COOP/COEP headers the module
+    // cannot instantiate, so boot without the native engine instead. Also
+    // probe the bundle first: FRB's web loader awaits the script's onLoad,
+    // which never fires when the WASM bundle is missing (onError fires
+    // instead) — init would hang forever.
+    const engineBundleUrl = "pkg/rust_lib_eve_fit_assistant.js";
+    if (!crossOriginIsolated()) {
+      debugPrint(
+        "Page is not cross-origin isolated (missing COOP/COEP headers); "
+        "booting without native engine.",
+      );
+    } else if (await wasmBundleAvailable(engineBundleUrl)) {
+      try {
+        await RustLib.init();
+        NativeEngineAvailability.setAvailable(value: true);
+      } on Object catch (e) {
+        debugPrint("RustLib.init() failed on web: $e");
+      }
+    } else {
+      debugPrint(
+        "WASM engine bundle not found at $engineBundleUrl; booting without native engine.",
+      );
+    }
+  } else {
+    await RustLib.init();
+    NativeEngineAvailability.setAvailable(value: true);
+  }
   await PathProvider.init();
-  await const StoragePathMigrator().migrateIfNeeded();
-  AppSettingService.init();
+  if (!kIsWeb) {
+    await const StoragePathMigrator().migrateIfNeeded();
+  }
+  await AppSettingService.init();
   GlobalLogger.init(
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,
@@ -51,8 +86,10 @@ Future<InitializedStores> initSingletons() async {
   initErrorBoundary();
   GlobalLoading.init();
 
-  final announcementStateStore = AnnouncementStateStore(settingsPath: PathProvider.settingsPath);
-  final appVersionStateStore = AppVersionStateStore(settingsPath: PathProvider.settingsPath);
+  final settingsStore = createUserDocStore(UserDataDomain.settings);
+  await settingsStore.init();
+  final announcementStateStore = AnnouncementStateStore(store: settingsStore);
+  final appVersionStateStore = AppVersionStateStore(store: settingsStore);
 
   unawaited(_deferredInit(announcementStateStore, appVersionStateStore));
 
@@ -82,7 +119,7 @@ Future<void> _deferredInit(
       await appVersionStateStore.ensureSynced;
     }
 
-    FeedbackStateStore.init();
+    await FeedbackStateStore.init();
     await AnnouncementBodyCache.init();
     await repairStartupPersistence();
   } catch (e, st) {

@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:io";
 import "dart:typed_data";
 
@@ -6,11 +9,11 @@ import "package:eve_fit_assistant/config/paths.dart" show PathProvider;
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/storage/fs/memory_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_provisioner.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
-import "package:eve_fit_assistant/storage/repo/models/blob_ident.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -48,82 +51,7 @@ CheckoutService _testCheckoutService({Option<String>? createResult}) {
 
 /// In-memory asset store that records blobs without touching the real
 /// filesystem. Each test gets a fresh instance.
-class _FakeAssetStore implements AssetStore {
-  final _blobs = <String, Uint8List>{};
-
-  @override
-  ({String identHash, String contentHash}) writeBlobSync(String identHash, Uint8List content) {
-    final contentHash = RepoHash.hashContent(content);
-    _blobs[identHash] = content;
-    return (identHash: identHash, contentHash: contentHash);
-  }
-
-  @override
-  ({String identHash, String contentHash}) writeBlobByIdentSync(
-    BlobIdent ident,
-    Uint8List content,
-  ) => writeBlobSync(ident.identHash, content);
-
-  @override
-  bool blobExistsSync(String identHash, String contentHash) => _blobs.containsKey(identHash);
-
-  @override
-  void deleteBlobSync(String identHash, String contentHash) {
-    _blobs.remove(identHash);
-  }
-
-  @override
-  String writeResourceSnapshotSync({
-    required ResourceSnapshotMeta meta,
-    required ResourceIndex resourceIndex,
-  }) {
-    return "snap-${meta.serverId}";
-  }
-
-  @override
-  Option<Uint8List> readBlobSync(String identHash, String contentHash) =>
-      Option.fromNullable(_blobs[identHash]);
-
-  @override
-  Option<ResourceIndex> readResourceIndexSync(String snapshotHash) => const None();
-
-  @override
-  Option<ResourceSnapshotMeta> readResourceSnapshotMetaSync(String snapshotHash) => const None();
-
-  @override
-  IList<String> verifyResourceIndexSync(
-    ResourceIndex resourceIndex, {
-    void Function(int checked, int total)? onProgress,
-  }) => const IList.empty();
-
-  @override
-  int pruneSync({
-    required Set<String> activeSnapshotHashes,
-    required List<ResourceIndex> activeResourceIndexes,
-    void Function(int scanned, int total)? onProgress,
-  }) => 0;
-
-  @override
-  void recoverSync() {}
-
-  @override
-  Future<void> writeBlobUnchecked(String identHash, String contentHash, Uint8List content) async {
-    _blobs[identHash] = content;
-  }
-
-  @override
-  Future<void> writeBlobUncheckedAt(String assetPath, Uint8List content) async {
-    // Extract identHash from the last path segment's parent directory.
-    // Path format: .../blobs/{2c}/{identHash}/{contentHash}
-    final parts = assetPath.split("/");
-    if (parts.length >= 2) {
-      _blobs[parts[parts.length - 2]] = content;
-    }
-  }
-
-  @override
-  void ensureBlobIdentDirs(Iterable<String> identHashes) {}
-}
+AssetStore _fakeAssetStore() => AssetStore.forTest(MemoryBlobStore());
 
 /// Builds a [ResourceIndex] protobuf from a list of (resourceId, contentHash,
 /// size) tuples.
@@ -190,7 +118,7 @@ void main() {
   });
 
   late MockRemoteCatalogService mockRemoteCatalog;
-  late _FakeAssetStore fakeAssetStore;
+  late AssetStore fakeAssetStore;
   late CheckoutProvisioner provisioner;
 
   /// Configures [provisioner] with the standard test parameters.
@@ -216,7 +144,7 @@ void main() {
     PathProvider.appSupportPath = tempDir;
 
     mockRemoteCatalog = MockRemoteCatalogService();
-    fakeAssetStore = _FakeAssetStore();
+    fakeAssetStore = _fakeAssetStore();
 
     // Stub fetchServerIndex to return Left so _persistServerIndex never
     // writes to the real filesystem.
@@ -319,7 +247,7 @@ void main() {
       expect(complete.failedBlobs, isEmpty);
 
       // Verify blob was stored in the fake store
-      expect(fakeAssetStore.blobExistsSync(identHash, contentHash), isTrue);
+      expect(await fakeAssetStore.blobExists(identHash, contentHash), isTrue);
     });
 
     test("emits final Preparing with cached and total counts", () async {
@@ -338,7 +266,7 @@ void main() {
       addTearDown(provisioner.dispose);
 
       // Pre-write the blob so it counts as cached
-      fakeAssetStore.writeBlobSync(identHash, blobBytes);
+      await fakeAssetStore.writeBlob(identHash, blobBytes);
 
       when(
         () => mockRemoteCatalog.fetchResourceIndex(any()),
@@ -741,6 +669,154 @@ void main() {
       final fatal = states.last as ProvisionerFatal;
       expect(fatal.retryable, isTrue);
       expect(fatal.message, contains("metadata timeout"));
+    });
+  });
+
+  group("Download policy", () {
+    /// Builds a policy-aware (format_version 2) [ResourceIndex].
+    ResourceIndex buildPolicyAwareIndex(
+      List<({String resourceId, String contentHash, int size, bool force})> entries,
+    ) {
+      final ri = ResourceIndex()
+        ..schemaVersion = 1
+        ..formatVersion = 2;
+      for (final e in entries) {
+        ri.entries.add(
+          ResourceIndex_Entry()
+            ..resourceId = e.resourceId
+            ..contentHash = e.contentHash
+            ..size = Int64(e.size)
+            ..downloadPolicy = e.force
+                ? ResourceIndex_DownloadPolicy.FORCE
+                : ResourceIndex_DownloadPolicy.NON_FORCE,
+        );
+      }
+      return ri;
+    }
+
+    test("skips NON_FORCE entries and downloads FORCE entries", () async {
+      const ridForce = "resource://static/collection.pb2";
+      const ridLazy = "resource://static/images/graphics/1.png";
+      final forceBytes = Uint8List.fromList([0x11, 0x22]);
+      final forceCH = RepoHash.hashContent(forceBytes);
+      final forceIH = RepoHash.hashIdent(ridForce);
+      final lazyBytes = Uint8List.fromList([0x33, 0x44]);
+      final lazyCH = RepoHash.hashContent(lazyBytes);
+      final lazyIH = RepoHash.hashIdent(ridLazy);
+
+      final ri = buildPolicyAwareIndex([
+        (resourceId: ridForce, contentHash: forceCH, size: 2, force: true),
+        (resourceId: ridLazy, contentHash: lazyCH, size: 2, force: false),
+      ]);
+      final si = _buildServerIndex(_testServerId);
+
+      when(
+        () => mockRemoteCatalog.fetchResourceIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(ri.writeToBuffer())));
+      when(() => mockRemoteCatalog.fetchResourceSnapshotMeta(any())).thenAnswer(
+        (_) async => Right(
+          ResourceSnapshotMeta(
+            schemaVersion: 1,
+            serverId: _testServerId,
+            gameBuild: "21.0",
+            gameVersion: "1.0",
+            resourceCount: 2,
+            createdAt: "2026-06-15T12:00:00Z",
+          ),
+        ),
+      );
+      when(
+        () => mockRemoteCatalog.fetchServerIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
+      when(
+        () => mockRemoteCatalog.fetchBlob(
+          forceIH,
+          forceCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      ).thenAnswer((_) async => Right(forceBytes));
+      when(
+        () => mockRemoteCatalog.fetchBlob(
+          lazyIH,
+          lazyCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      ).thenAnswer((_) async => Right(lazyBytes));
+
+      configureProvisioner();
+      final states = await collectStates();
+
+      expect(states.last, isA<ProvisionerComplete>());
+      final complete = states.last as ProvisionerComplete;
+      expect(complete.failedBlobs, isEmpty);
+
+      // FORCE blob downloaded; NON_FORCE blob untouched.
+      expect(await fakeAssetStore.blobExists(forceIH, forceCH), isTrue);
+      expect(await fakeAssetStore.blobExists(lazyIH, lazyCH), isFalse);
+      verifyNever(
+        () => mockRemoteCatalog.fetchBlob(
+          lazyIH,
+          lazyCH,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      );
+
+      // Progress totals count only the eager entry.
+      final preparing = states.whereType<ProvisionerPreparing>().last;
+      expect(preparing.totalBlobs, 1);
+      final downloading = states.whereType<ProvisionerDownloading>().last;
+      expect(downloading.total, 1);
+      expect(downloading.progress, 1.0);
+    });
+
+    test("treats every entry as FORCE for pre-policy indexes", () async {
+      const rid = "resource://static/images/icons/1.png";
+      final blobBytes = Uint8List.fromList([0x55]);
+      final contentHash = RepoHash.hashContent(blobBytes);
+      final identHash = RepoHash.hashIdent(rid);
+
+      // format_version absent (defaults to 1); download_policy is ignored.
+      final ri = ResourceIndex()..schemaVersion = 1;
+      ri.entries.add(
+        ResourceIndex_Entry()
+          ..resourceId = rid
+          ..contentHash = contentHash
+          ..size = Int64(1)
+          ..downloadPolicy = ResourceIndex_DownloadPolicy.NON_FORCE,
+      );
+      final si = _buildServerIndex(_testServerId);
+
+      when(
+        () => mockRemoteCatalog.fetchResourceIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(ri.writeToBuffer())));
+      when(() => mockRemoteCatalog.fetchResourceSnapshotMeta(any())).thenAnswer(
+        (_) async => Right(
+          ResourceSnapshotMeta(
+            schemaVersion: 1,
+            serverId: _testServerId,
+            gameBuild: "21.0",
+            gameVersion: "1.0",
+            resourceCount: 1,
+            createdAt: "2026-06-15T12:00:00Z",
+          ),
+        ),
+      );
+      when(
+        () => mockRemoteCatalog.fetchServerIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
+      when(
+        () => mockRemoteCatalog.fetchBlob(
+          identHash,
+          contentHash,
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      ).thenAnswer((_) async => Right(blobBytes));
+
+      configureProvisioner();
+      final states = await collectStates();
+
+      expect(states.last, isA<ProvisionerComplete>());
+      expect(await fakeAssetStore.blobExists(identHash, contentHash), isTrue);
     });
   });
 }

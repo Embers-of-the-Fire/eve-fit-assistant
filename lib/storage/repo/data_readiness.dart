@@ -1,12 +1,15 @@
 import "dart:async";
-import "dart:isolate";
+
+import "package:eve_fit_assistant/compat/isolate.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:flutter/foundation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
@@ -55,7 +58,7 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
 
   @override
   DataReadinessState build() {
-    final proxy = ref.watch(resourceBlobProxyProvider);
+    final proxy = ref.watch(resourceBlobProxyProvider).value;
     ref.watch(nativeFitEngineServiceProvider);
 
     if (!identical(proxy, _activeProxy)) {
@@ -100,6 +103,12 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     final generation = ++_generation;
     state = const DataReadinessState.loading();
 
+    // Warm the localization database in parallel with the collection decode so
+    // the first name lookup never pays the open cost (blob copy + worker on
+    // web) on the critical path. The provider self-manages its lifecycle across
+    // checkout switches, so a stale warm-up here is harmless.
+    unawaited(_warmLocalizationDb());
+
     try {
       final collection = await _decodeInIsolate(proxy);
       if (generation != _generation || !ref.mounted) return;
@@ -115,35 +124,64 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     }
   }
 
-  Future<RepoCollectionService> _decodeInIsolate(ResourceBlobProxy proxy) {
+  Future<RepoCollectionService> _decodeInIsolate(ResourceBlobProxy proxy) async {
+    if (kIsWeb) {
+      // Web: blobs live in OPFS — read bytes through the blob store, then
+      // decode. Web has no isolates, so the decode runs on the main event
+      // loop; the chunked decoder yields between chunks to keep the UI
+      // responsive and stops early when this generation is superseded.
+      final collectionBytes = (await proxy.read("resource://static/collection.pb2")).toNullable();
+      if (collectionBytes == null) {
+        return Future.error(StateError("collection.pb2 not found in resource index"));
+      }
+
+      final generation = _generation;
+      return RepoCollectionService.decodeFromBytesChunked(
+        collectionBytes: collectionBytes,
+        isCancelled: () => generation != _generation || !ref.mounted,
+      );
+    }
+
+    // Native: resolve the content-addressed path and read inside the
+    // background isolate so the large file never transits the main isolate.
     final collectionPath = proxy.resolvePath("resource://static/collection.pb2");
     if (collectionPath == null) {
       return Future.error(StateError("collection.pb2 not found in resource index"));
     }
 
-    final localizationPaths = <String, String>{};
-    for (final locale in ["en", "zh"]) {
-      final path = proxy.resolvePath("resource://localization/localization_$locale.pb2");
-      if (path != null) localizationPaths[locale] = path;
-    }
-
-    return Isolate.run(
-      () => RepoCollectionService.decodeFromPaths(
-        collectionPath: collectionPath,
-        localizationPaths: localizationPaths,
-      ),
-    );
+    return _decodeCollectionFromPath(collectionPath);
   }
 
   /// Exposes the decoded collection for the synchronous provider to consume.
   RepoCollectionService? get decodedCollection => _decodedCollection;
 
+  /// Opens the localization database ahead of first use.
+  ///
+  /// Best-effort: failures are logged and never surface to the UI. Once opened
+  /// the singleton stays warm for the active checkout; a checkout switch
+  /// reopens it through the provider's own dependency tracking.
+  Future<void> _warmLocalizationDb() async {
+    try {
+      await ref.read(localizationDbServiceProvider.future);
+    } on Object catch (e, st) {
+      debug("DataReadiness: localization db warm-up failed: $e", stackTrace: st);
+    }
+  }
+
   /// Forces a retry after an error state.
   void retry() {
-    final proxy = ref.read(resourceBlobProxyProvider);
+    final proxy = ref.read(resourceBlobProxyProvider).value;
     if (proxy == null) return;
     _decodedCollection = null;
     _decodeInFlight = true;
     unawaited(_dispatchDecode(proxy));
   }
 }
+
+/// Decodes the collection file in a background isolate.
+///
+/// Top-level helper so the `Isolate.run()` closure is created in a scope that
+/// does not capture the notifier instance — Dart's closure context sharing
+/// would otherwise drag the whole Riverpod state into the isolate message.
+Future<RepoCollectionService> _decodeCollectionFromPath(String collectionPath) =>
+    Isolate.run(() => RepoCollectionService.decodeFromPaths(collectionPath: collectionPath));

@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/service.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:path/path.dart" as p;
 
@@ -28,12 +29,17 @@ class _MigrationGateState extends State<MigrationGate> {
   @override
   void initState() {
     super.initState();
-    _detectLegacyData();
+    unawaited(_detectLegacyData());
   }
 
-  void _detectLegacyData() {
-    if (const SchemaVersionService().exists()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
+  Future<void> _detectLegacyData() async {
+    if (kIsWeb) {
+      // Web builds never have legacy on-disk data; go straight to repo init.
+      WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_activateRepoAndReload()));
+      return;
+    }
+    if (await SchemaVersionService().exists()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_activateRepoAndReload()));
       return;
     }
 
@@ -94,7 +100,7 @@ class _MigrationGateState extends State<MigrationGate> {
     }
 
     if (!hasLegacyFits && !hasLegacyCharacters) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _activateRepoAndReload());
+      WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_activateRepoAndReload()));
       return;
     }
 
@@ -103,8 +109,10 @@ class _MigrationGateState extends State<MigrationGate> {
     });
   }
 
-  void _activateRepoAndReload() {
-    const SchemaVersionService().ensure();
+  Future<void> _activateRepoAndReload() async {
+    if (!kIsWeb) {
+      await SchemaVersionService().ensure();
+    }
     widget.onMigrationComplete();
   }
 
@@ -121,11 +129,11 @@ class _MigrationGateState extends State<MigrationGate> {
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     try {
-      await MigrateService(schemaVersionService: const SchemaVersionService()).migrate();
+      await MigrateService(schemaVersionService: SchemaVersionService()).migrate();
 
       if (mounted) {
         navigator.popUntil((route) => route.isFirst);
-        _activateRepoAndReload();
+        await _activateRepoAndReload();
       }
     } catch (e, stackTrace) {
       warning("Migration failed: $e", stackTrace: stackTrace);
@@ -206,7 +214,7 @@ class _MigrationGateState extends State<MigrationGate> {
                                 FilledButton(
                                   onPressed: () {
                                     Navigator.of(dialogContext).pop();
-                                    _activateRepoAndReload();
+                                    unawaited(_activateRepoAndReload());
                                   },
                                   child: Text(context.l10n.migrationSkipButton),
                                 ),

@@ -1,12 +1,11 @@
 import "dart:convert";
-import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
-import "package:path/path.dart" as p;
 
 class StartupPersistenceRepairReport {
   const StartupPersistenceRepairReport({
@@ -88,21 +87,18 @@ Future<StartupPersistenceRepairReport> _runRepairStep(
 }
 
 Future<StartupPersistenceRepairReport> _repairFitPersistence() async {
-  final fittingsDir = Directory(PathProvider.fittingsPath);
-  if (!fittingsDir.existsSync()) {
-    await fittingsDir.create(recursive: true);
-  }
+  final store = createUserDocStore(UserDataDomain.fittings);
+  await store.init();
 
-  final registryFile = File(p.join(PathProvider.fittingsPath, "registry.json"));
   var rewroteRegistry = false;
   FitRegistry registry;
-  if (!registryFile.existsSync()) {
+  final registryText = await store.read("registry.json");
+  if (registryText == null) {
     registry = FitRegistry(fits: const <String, FitMetadata>{}.lock);
     rewroteRegistry = true;
   } else {
     try {
-      final registryJson = jsonDecode(await registryFile.readAsString()) as Map<String, dynamic>;
-      final decodedRegistry = decodeFitRegistry(registryJson);
+      final decodedRegistry = decodeFitRegistry(jsonDecode(registryText) as Map<String, dynamic>);
       registry = decodedRegistry.registry;
       rewroteRegistry = decodedRegistry.didMigrate;
     } on Object catch (errorValue, stackTrace) {
@@ -118,61 +114,58 @@ Future<StartupPersistenceRepairReport> _repairFitPersistence() async {
   final repairedFits = <String, FitMetadata>{...registry.fits.unlock};
   var removedMissingFitEntries = 0;
   for (final entry in repairedFits.entries.toList()) {
-    final fitPath = File(FitStorage.fitStoragePathForId(entry.key));
-    if (fitPath.existsSync()) {
+    if (await store.exists("${entry.key}.json")) {
       continue;
     }
     removedMissingFitEntries += 1;
     repairedFits.remove(entry.key);
-    warning("Removed fit registry entry for missing fit file ${fitPath.path}");
+    warning("Removed fit registry entry for missing fit file ${entry.key}");
   }
 
   var restoredFitEntries = 0;
   var unrestoredFitFiles = 0;
-  for (final entity in fittingsDir.listSync()) {
-    if (entity is! File || p.extension(entity.path) != ".json") {
+  for (final key in await store.keys()) {
+    if (!key.endsWith(".json")) {
       continue;
     }
-    if (p.basename(entity.path) == "registry.json") {
+    if (key == "registry.json") {
       continue;
     }
 
-    final fitId = p.basenameWithoutExtension(entity.path);
+    final fitId = key.substring(0, key.length - ".json".length);
     if (repairedFits.containsKey(fitId)) {
       continue;
     }
 
     try {
-      final fitJson = jsonDecode(await entity.readAsString()) as Map<String, dynamic>;
-      final decodedFit = decodeFitStorage(fitJson);
+      final text = await store.read(key);
+      if (text == null) {
+        unrestoredFitFiles += 1;
+        continue;
+      }
+      final decodedFit = decodeFitStorage(jsonDecode(text) as Map<String, dynamic>);
       final metadata = decodedFit.fit.metadata;
       final metadataFitId = metadata.fitId;
       if (metadataFitId != fitId) {
         unrestoredFitFiles += 1;
-        warning(
-          "Skipped orphan fit file with mismatched metadata id ${entity.path}: $metadataFitId",
-        );
+        warning("Skipped orphan fit file with mismatched metadata id $key: $metadataFitId");
         continue;
       }
       repairedFits[fitId] = metadata;
       restoredFitEntries += 1;
       if (decodedFit.didMigrate) {
-        await entity.writeAsString(jsonEncode(encodeFitStorage(decodedFit.fit)));
+        await store.write(key, jsonEncode(encodeFitStorage(decodedFit.fit)));
       }
       info("Restored missing fit registry entry for $fitId");
     } on Object catch (errorValue, stackTrace) {
       unrestoredFitFiles += 1;
-      warning(
-        "Failed to restore fit metadata from ${entity.path}: $errorValue",
-        stackTrace: stackTrace,
-      );
+      warning("Failed to restore fit metadata from $key: $errorValue", stackTrace: stackTrace);
     }
   }
 
   final repairedRegistry = FitRegistry(fits: repairedFits.lock);
   if (rewroteRegistry || removedMissingFitEntries > 0 || restoredFitEntries > 0) {
-    await registryFile.create(recursive: true);
-    await registryFile.writeAsString(jsonEncode(encodeFitRegistry(repairedRegistry)));
+    await store.write("registry.json", jsonEncode(encodeFitRegistry(repairedRegistry)));
   }
 
   return StartupPersistenceRepairReport(

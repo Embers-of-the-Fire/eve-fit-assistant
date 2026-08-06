@@ -10,3 +10,6 @@ Cargo.lock
 uv.lock
 
 /rust/lib/eve-fit-os/data/fsd-patches/*.yaml
+
+/web/sqlite
+/web/pkg

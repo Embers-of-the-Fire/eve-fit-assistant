@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
@@ -5,6 +8,7 @@ import "dart:typed_data";
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/fs/file_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
@@ -74,7 +78,7 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync("efa_channel_service_test_").path;
     PathProvider.documentsPath = tempDir;
     PathProvider.appSupportPath = tempDir;
-    assetStore = const AssetStore();
+    assetStore = AssetStore(FileBlobStore());
   });
 
   tearDown(() {
@@ -83,7 +87,7 @@ void main() {
   });
 
   ChannelService _makeService(_FakeRemoteCatalogService fakeRemote) =>
-      ChannelService(remoteCatalogService: fakeRemote, assetStore: assetStore);
+      ChannelService(remoteCatalogService: fakeRemote, store: assetStore.store);
 
   group("syncChannelGeneration", () {
     test("persists all files on success", () async {

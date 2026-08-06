@@ -6,12 +6,33 @@ package efa.v2;
 /// Each entry maps a resource_id (URI path) to its content hash and size.
 /// All blobs live in the shared assets/blobs/ store addressed by SHA-256(resource_id).
 message ResourceIndex {
+  /// Remote storage protocol version. Reserved for the storage protocol as a
+  /// whole; per-snapshot format details are versioned via [format_version].
   required int32 schema_version = 1;
   repeated Entry entries = 2;
+
+  /// Per-snapshot resource list format version.
+  ///
+  /// 1 (default): entries carry no download policy; every resource is
+  /// force-downloaded during provisioning and data updates.
+  /// 2: entries carry [Entry.download_policy]; a NON_FORCE resource is not
+  /// downloaded ahead of time and is fetched lazily on first access.
+  optional int32 format_version = 3 [default = 1];
+
+  enum DownloadPolicy {
+    /// Not force-downloaded; fetched lazily on first access.
+    NON_FORCE = 0;
+    /// Downloaded eagerly during provisioning and data updates.
+    FORCE = 1;
+  }
 
   message Entry {
     required string resource_id = 1;  // e.g. "resource://static/native/types.pb2"
     required string content_hash = 2; // SHA-256 hex of raw blob bytes
     required int64 size = 3;          // File size in bytes
+    /// Download policy for this resource. Only meaningful when the enclosing
+    /// index has [ResourceIndex.format_version] >= 2; entries of older
+    /// indexes are treated as FORCE regardless of this field.
+    optional DownloadPolicy download_policy = 4 [default = NON_FORCE];
   }
 }

@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:convert";
 import "dart:io";
 
@@ -114,7 +117,7 @@ void main() {
         jsonEncode(_legacyCharacterJson("char-1", bundleSnapshot: "abc123")),
       );
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       final progress = await service.migrate();
 
       expect(progress.isComplete, isTrue);
@@ -149,7 +152,7 @@ void main() {
       final fitFile = File(p.join(oldFittingsPath, "fit-1.json"));
       fitFile.writeAsStringSync(jsonEncode(_legacyFitJson("fit-1", bundleSnapshot: "abc123")));
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       await service.migrate();
 
       final newPath = File(p.join(PathProvider.fittingsPath, "fit-1.json"));
@@ -189,7 +192,7 @@ void main() {
       };
       File(p.join(oldFittingsPath, "registry.json")).writeAsStringSync(jsonEncode(legacyRegistry));
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       await service.migrate();
 
       // Registry cleaned and written to new path
@@ -220,7 +223,7 @@ void main() {
       const store = MigrateProgressStore();
       await store.save(partialProgress);
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       final progress = await service.migrate();
 
       expect(progress.isComplete, isTrue);
@@ -242,7 +245,7 @@ void main() {
       const store = MigrateProgressStore();
       await store.save(partialProgress);
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       final progress = await service.migrate();
 
       expect(progress.isComplete, isTrue);
@@ -265,7 +268,7 @@ void main() {
       const store = MigrateProgressStore();
       await store.save(completeProgress);
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       final progress = await service.migrate();
 
       expect(progress.isComplete, isTrue);
@@ -278,7 +281,7 @@ void main() {
       Directory(PathProvider.oldFittingsPath).createSync(recursive: true);
       Directory(PathProvider.oldCharactersPath).createSync(recursive: true);
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       final progress = await service.migrate();
 
       expect(progress.isComplete, isTrue);
@@ -298,7 +301,7 @@ void main() {
     });
 
     test("no old data dirs at all — still completes with zero results", () async {
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       final progress = await service.migrate();
 
       expect(progress.isComplete, isTrue);
@@ -333,7 +336,7 @@ void main() {
         p.join(oldCharactersPath, "registry.json"),
       ).writeAsStringSync(jsonEncode(legacyRegistry));
 
-      final service = MigrateService(schemaVersionService: const SchemaVersionService());
+      final service = MigrateService(schemaVersionService: SchemaVersionService());
       await service.migrate();
 
       // Character registry cleaned and written to new path

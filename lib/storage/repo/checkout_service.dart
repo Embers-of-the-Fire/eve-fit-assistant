@@ -1,5 +1,4 @@
 import "dart:convert";
-import "dart:io";
 import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/logger.dart";
@@ -8,6 +7,7 @@ import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/storage/fs/blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
@@ -16,6 +16,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -25,6 +26,9 @@ import "package:uuid/uuid.dart";
 /// resource fetch orchestration.
 ///
 /// Follows agent/schemav2/workflow.md §2.3-§2.4.
+///
+/// All local persistence goes through a [BlobStore], so every read/write is
+/// asynchronous (OPFS on web is async-only).
 class CheckoutService {
   const CheckoutService({
     required this.assetStore,
@@ -37,6 +41,8 @@ class CheckoutService {
   final RemoteCatalogService remoteCatalogService;
   final DiffEngine diffEngine;
   final CheckoutRegistryService checkoutRegistry;
+
+  BlobStore get _store => assetStore.store;
 
   // ── Checkout CRUD ──────────────────────────────────────────────────────────
 
@@ -60,10 +66,9 @@ class CheckoutService {
     String sync = "";
     String branch = "";
     try {
-      final siPath = RepoPaths.channelServerIndexPath(channel.value);
-      final siFile = File(siPath);
-      if (siFile.existsSync()) {
-        final si = ServerIndex.fromBuffer(siFile.readAsBytesSync());
+      final siBytes = await _store.read(RepoPaths.channelServerIndexPath(channel.value));
+      if (siBytes != null) {
+        final si = ServerIndex.fromBuffer(siBytes);
         for (final entry in si.servers) {
           if (entry.serverId == serverId) {
             gameBuild = entry.gameBuild;
@@ -93,13 +98,13 @@ class CheckoutService {
       sync: sync,
       branch: branch,
     );
-    if (!_writeCheckoutMeta(checkoutId, meta)) {
+    if (!await _writeCheckoutMeta(checkoutId, meta)) {
       warning("Failed to write checkout metadata for $checkoutId");
       return const None();
     }
 
     // Write initial reflog entry
-    _appendCheckoutReflog(checkoutId, "", resourceSnapshotHash, now);
+    await _appendCheckoutReflog(checkoutId, "", resourceSnapshotHash, now);
 
     // Add to registry
     final entry = CheckoutRegistryEntry(
@@ -118,23 +123,19 @@ class CheckoutService {
   Future<void> deleteCheckout(String checkoutId) async {
     await checkoutRegistry.removeCheckout(checkoutId);
 
-    final dir = Directory("${RepoPaths.checkoutsPath}/$checkoutId");
-    if (dir.existsSync()) {
-      try {
-        dir.deleteSync(recursive: true);
-      } on FileSystemException catch (e, stackTrace) {
-        warning("Failed to delete checkout directory $checkoutId", stackTrace: stackTrace);
-      }
+    try {
+      await _store.deleteTree("${RepoPaths.checkoutsPath}/$checkoutId");
+    } catch (e, stackTrace) {
+      warning("Failed to delete checkout directory $checkoutId", stackTrace: stackTrace);
     }
   }
 
   /// Reads a checkout's metadata.
-  Option<CheckoutMeta> readCheckoutMeta(String checkoutId) {
-    final path = RepoPaths.checkoutMetaPath(checkoutId);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
+  Future<Option<CheckoutMeta>> readCheckoutMeta(String checkoutId) async {
+    final bytes = await _store.read(RepoPaths.checkoutMetaPath(checkoutId));
+    if (bytes == null) return const None();
     try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       return Some(CheckoutMeta.fromJson(json));
     } on Exception catch (e, stackTrace) {
       warning("Failed to read checkout metadata $checkoutId", stackTrace: stackTrace);
@@ -143,12 +144,11 @@ class CheckoutService {
   }
 
   /// Reads a checkout's reflog.
-  Option<CheckoutReflog> readCheckoutReflog(String checkoutId) {
-    final path = RepoPaths.checkoutReflogPath(checkoutId);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
+  Future<Option<CheckoutReflog>> readCheckoutReflog(String checkoutId) async {
+    final bytes = await _store.read(RepoPaths.checkoutReflogPath(checkoutId));
+    if (bytes == null) return const None();
     try {
-      return Some(CheckoutReflog.fromBuffer(file.readAsBytesSync()));
+      return Some(CheckoutReflog.fromBuffer(bytes));
     } on Exception catch (e, stackTrace) {
       warning("Failed to read checkout reflog $checkoutId", stackTrace: stackTrace);
       return const None();
@@ -160,23 +160,23 @@ class CheckoutService {
   ///
   /// Static so it can be called from isolates without constructing the full
   /// service graph.
-  static Set<String> collectReflogSnapshotHashes(String checkoutId) {
+  static Future<Set<String>> collectReflogSnapshotHashes(BlobStore store, String checkoutId) async {
     final hashes = <String>{};
 
-    final metaFile = File(RepoPaths.checkoutMetaPath(checkoutId));
-    if (metaFile.existsSync()) {
+    final metaBytes = await store.read(RepoPaths.checkoutMetaPath(checkoutId));
+    if (metaBytes != null) {
       try {
-        final json = jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>;
+        final json = jsonDecode(utf8.decode(metaBytes)) as Map<String, dynamic>;
         hashes.add(CheckoutMeta.fromJson(json).resourceSnapshotHash);
       } on Exception {
         // best-effort
       }
     }
 
-    final reflogFile = File(RepoPaths.checkoutReflogPath(checkoutId));
-    if (reflogFile.existsSync()) {
+    final reflogBytes = await store.read(RepoPaths.checkoutReflogPath(checkoutId));
+    if (reflogBytes != null) {
       try {
-        final reflog = CheckoutReflog.fromBuffer(reflogFile.readAsBytesSync());
+        final reflog = CheckoutReflog.fromBuffer(reflogBytes);
         for (final entry in reflog.entries) {
           if (entry.from.isNotEmpty) hashes.add(entry.from);
           if (entry.to.isNotEmpty) hashes.add(entry.to);
@@ -224,7 +224,7 @@ class CheckoutService {
     required String channelName,
     void Function(int downloaded, int total)? onProgress,
   }) async {
-    final meta = readCheckoutMeta(checkoutId);
+    final meta = await readCheckoutMeta(checkoutId);
     if (meta.isNone()) return const Left("Checkout metadata not found");
     final m = meta.toNullable()!;
 
@@ -237,13 +237,13 @@ class CheckoutService {
     final remoteHead = headResult.getRight().toNullable()!;
     final remoteLabel = Map<String, String>.from(remoteHead.label.unlock);
 
-    final currentGenHash = _readLocalGenerationHash(channelName);
+    final currentGenHash = await _readLocalGenerationHash(channelName);
     final isSameGeneration = currentGenHash == remoteHead.generationHash;
     final newGenerationHash = remoteHead.generationHash;
 
     String? newSnapshotHash;
     if (isSameGeneration) {
-      final localGenResources = _readLocalGenerationResources(channelName);
+      final localGenResources = await _readLocalGenerationResources(channelName);
       if (localGenResources.isSome()) {
         for (final entry in localGenResources.toNullable()!.entries) {
           if (entry.serverId == m.serverId) {
@@ -289,8 +289,11 @@ class CheckoutService {
         m.resourceSnapshotHash,
         label: remoteLabel,
       );
-      final ri = assetStore.readResourceIndexSync(m.resourceSnapshotHash);
-      final total = ri.match(() => 0, (r) => r.entries.length);
+      final ri = await assetStore.readResourceIndex(m.resourceSnapshotHash);
+      final total = ri.match(
+        () => 0,
+        (r) => r.entries.where((e) => shouldEagerDownload(r, e)).length,
+      );
       onProgress?.call(total, total);
       return Right(m.resourceSnapshotHash);
     }
@@ -301,14 +304,21 @@ class CheckoutService {
       final err = indexBytes.getLeft().toNullable()!;
       return Left(err is CatalogNetworkError ? err.message : "Failed to fetch resource index");
     }
-    final newIndex = ResourceIndex.fromBuffer(indexBytes.getRight().toNullable()!);
+    final ResourceIndex newIndex;
+    try {
+      newIndex = decodeResourceIndex(indexBytes.getRight().toNullable()!);
+    } on UnsupportedResourceIndexError catch (e) {
+      return Left(e.toString());
+    }
 
-    final previousIndex = assetStore.readResourceIndexSync(m.resourceSnapshotHash);
+    final previousIndex = await assetStore.readResourceIndex(m.resourceSnapshotHash);
     final entriesToDownload = <({String resourceId, String contentHash, int size})>[];
     int downloadedCount = 0;
 
     if (previousIndex.isNone()) {
       for (final entry in newIndex.entries) {
+        // NON_FORCE entries fetch lazily on first access; skip them here.
+        if (!shouldEagerDownload(newIndex, entry)) continue;
         entriesToDownload.add((
           resourceId: entry.resourceId,
           contentHash: entry.contentHash,
@@ -321,6 +331,7 @@ class CheckoutService {
         prevMap[e.resourceId] = e.contentHash;
       }
       for (final e in newIndex.entries) {
+        if (!shouldEagerDownload(newIndex, e)) continue;
         final prevHash = prevMap[e.resourceId];
         if (prevHash == null || prevHash != e.contentHash) {
           entriesToDownload.add((
@@ -334,13 +345,13 @@ class CheckoutService {
       }
     }
 
-    // Entries whose blobs are already on disk count as downloaded immediately.
-    // Pre-build identHash and blob path once per entry.
+    // Entries whose blobs are already in the store count as downloaded
+    // immediately. Pre-build identHash and blob path once per entry.
     final actualToDownload =
         <({String resourceId, String contentHash, String identHash, String blobPath, int size})>[];
     for (final dl in entriesToDownload) {
       final ihash = RepoHash.hashIdent(dl.resourceId);
-      if (assetStore.blobExistsSync(ihash, dl.contentHash)) {
+      if (await assetStore.blobExists(ihash, dl.contentHash)) {
         downloadedCount++;
       } else {
         actualToDownload.add((
@@ -355,7 +366,9 @@ class CheckoutService {
 
     actualToDownload.sort((a, b) => b.size.compareTo(a.size));
 
-    final totalCount = newIndex.entries.length;
+    // Progress counts only eager entries — NON_FORCE entries are skipped and
+    // would otherwise leave the counter permanently short of the total.
+    final totalCount = newIndex.entries.where((e) => shouldEagerDownload(newIndex, e)).length;
     onProgress?.call(downloadedCount, totalCount);
 
     // 5. Download changed blobs with sliding-window concurrency.
@@ -377,8 +390,6 @@ class CheckoutService {
     }
 
     if (actualToDownload.isNotEmpty) {
-      assetStore.ensureBlobIdentDirs(actualToDownload.map((d) => d.identHash));
-
       Future<void> downloadNext() async {
         int idx;
         while ((idx = nextIdx++) < actualToDownload.length) {
@@ -391,7 +402,8 @@ class CheckoutService {
                 dl.blobPath,
                 blobResult.getRight().toNullable()!,
               );
-            } on FileSystemException {
+            } catch (e, stackTrace) {
+              warning("Failed to write blob ${dl.blobPath}", stackTrace: stackTrace);
               downloadFailed = true;
               return;
             }
@@ -428,7 +440,7 @@ class CheckoutService {
       );
     }
     final snapshotMeta = metaResult.getRight().toNullable()!;
-    final localSnapshotHash = assetStore.writeResourceSnapshotSync(
+    final localSnapshotHash = await assetStore.writeResourceSnapshot(
       meta: snapshotMeta,
       resourceIndex: newIndex,
     );
@@ -439,7 +451,7 @@ class CheckoutService {
       final err = serverIndexBytes.getLeft().toNullable()!;
       return Left(err is CatalogNetworkError ? err.message : "Failed to fetch server index");
     }
-    _writeServerIndex(channelName, serverIndexBytes.getRight().toNullable()!);
+    await _writeServerIndex(channelName, serverIndexBytes.getRight().toNullable()!);
 
     await _updateAfterFetch(
       checkoutId,
@@ -461,13 +473,13 @@ class CheckoutService {
   /// Does NOT modify the reflog — it is an append-only history of fetch
   /// transitions, not user actions (spec §2.8).
   Future<Option<String>> revertCheckoutTo(String checkoutId, String targetSnapshotHash) async {
-    final meta = readCheckoutMeta(checkoutId);
+    final meta = await readCheckoutMeta(checkoutId);
     if (meta.isNone()) return const None();
 
     final m = meta.toNullable()!;
 
     final updated = m.copyWith(resourceSnapshotHash: targetSnapshotHash);
-    if (!_writeCheckoutMeta(checkoutId, updated)) {
+    if (!await _writeCheckoutMeta(checkoutId, updated)) {
       return const None();
     }
 
@@ -489,34 +501,28 @@ class CheckoutService {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  bool _writeCheckoutMeta(String checkoutId, CheckoutMeta meta) {
-    final path = RepoPaths.checkoutMetaPath(checkoutId);
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
+  Future<bool> _writeCheckoutMeta(String checkoutId, CheckoutMeta meta) async {
     try {
-      tmp
-        ..writeAsStringSync(jsonEncode(meta.toJson()), flush: true)
-        ..renameSync(path);
+      await _store.write(
+        RepoPaths.checkoutMetaPath(checkoutId),
+        Uint8List.fromList(utf8.encode(jsonEncode(meta.toJson()))),
+      );
       return true;
-    } on FileSystemException catch (e, stackTrace) {
+    } catch (e, stackTrace) {
       warning("Failed to write checkout meta $checkoutId", stackTrace: stackTrace);
       return false;
     }
   }
 
-  void _appendCheckoutReflog(
+  Future<void> _appendCheckoutReflog(
     String checkoutId,
     String fromSnapshotHash,
     String toSnapshotHash,
     String timestamp,
-  ) {
-    final path = RepoPaths.checkoutReflogPath(checkoutId);
-    final existing = readCheckoutReflog(
+  ) async {
+    final existing = (await readCheckoutReflog(
       checkoutId,
-    ).getOrElse(() => CheckoutReflog(schemaVersion: 1));
+    )).getOrElse(() => CheckoutReflog(schemaVersion: 1));
 
     final entry = CheckoutReflog_Entry()
       ..from = fromSnapshotHash
@@ -525,47 +531,38 @@ class CheckoutService {
 
     final updated = existing.deepCopy()..entries.add(entry);
 
-    if (!File(path).parent.existsSync()) {
-      File(path).parent.createSync(recursive: true);
+    try {
+      await _store.write(RepoPaths.checkoutReflogPath(checkoutId), updated.writeToBuffer());
+    } catch (e, stackTrace) {
+      warning("Failed to write checkout reflog $checkoutId", stackTrace: stackTrace);
     }
-    writeProtobufSync(path, updated);
   }
 
-  String? _readLocalGenerationHash(String channelName) {
-    final path = RepoPaths.channelHeadMetaPath(channelName);
-    final file = File(path);
-    if (!file.existsSync()) return null;
+  Future<String?> _readLocalGenerationHash(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelHeadMetaPath(channelName));
+    if (bytes == null) return null;
     try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       return json["generationHash"] as String?;
     } on Exception {
       return null;
     }
   }
 
-  Option<GenerationResources> _readLocalGenerationResources(String channelName) {
-    final path = RepoPaths.channelResourcesPath(channelName);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
+  Future<Option<GenerationResources>> _readLocalGenerationResources(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelResourcesPath(channelName));
+    if (bytes == null) return const None();
     try {
-      return Some(GenerationResources.fromBuffer(file.readAsBytesSync()));
+      return Some(GenerationResources.fromBuffer(bytes));
     } on Exception {
       return const None();
     }
   }
 
-  void _writeServerIndex(String channelName, Uint8List bytes) {
-    final path = RepoPaths.channelServerIndexPath(channelName);
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
+  Future<void> _writeServerIndex(String channelName, Uint8List bytes) async {
     try {
-      tmp
-        ..writeAsBytesSync(bytes, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await _store.write(RepoPaths.channelServerIndexPath(channelName), bytes);
+    } catch (e, stackTrace) {
       warning("Failed to write server index for $channelName", stackTrace: stackTrace);
     }
   }
@@ -581,14 +578,14 @@ class CheckoutService {
     final now = formatTimestamp(DateTime.now().toUtc());
 
     // Update channel head metadata
-    _writeChannelHeadMeta(channelName, newGenerationHash, now, label: label);
+    await _writeChannelHeadMeta(channelName, newGenerationHash, now, label: label);
 
     // Update checkout metadata
     final updatedMeta = oldMeta.copyWith(resourceSnapshotHash: newSnapshotHash);
-    _writeCheckoutMeta(checkoutId, updatedMeta);
+    await _writeCheckoutMeta(checkoutId, updatedMeta);
 
     // Append reflog entry
-    _appendCheckoutReflog(checkoutId, oldMeta.resourceSnapshotHash, newSnapshotHash, now);
+    await _appendCheckoutReflog(checkoutId, oldMeta.resourceSnapshotHash, newSnapshotHash, now);
 
     // Update registry
     final registry = checkoutRegistry.readRegistry();
@@ -604,17 +601,12 @@ class CheckoutService {
     }
   }
 
-  void _writeChannelHeadMeta(
+  Future<void> _writeChannelHeadMeta(
     String channelName,
     String generationHash,
     String updatedAt, {
     Map<String, String>? label,
-  }) {
-    final path = RepoPaths.channelHeadMetaPath(channelName);
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
+  }) async {
     final json = <String, dynamic>{
       "schemaVersion": 1,
       "generationHash": generationHash,
@@ -623,12 +615,12 @@ class CheckoutService {
     if (label != null && label.isNotEmpty) {
       json["label"] = label;
     }
-    final tmp = File("$path.tmp");
     try {
-      tmp
-        ..writeAsStringSync(jsonEncode(json), flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await _store.write(
+        RepoPaths.channelHeadMetaPath(channelName),
+        Uint8List.fromList(utf8.encode(jsonEncode(json))),
+      );
+    } catch (e, stackTrace) {
       warning("Failed to write channel head meta for $channelName", stackTrace: stackTrace);
     }
   }

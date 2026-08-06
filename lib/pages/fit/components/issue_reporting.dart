@@ -348,10 +348,7 @@ String _localizedGroupName(WidgetRef ref, int groupId) {
   if (group == null) return "$groupId";
 
   final locale = ref.watch(localeProvider).name;
-  return ref.watch(
-        repoCollectionProvider.select((c) => c?.getLocalizedName(group.groupName.id, locale)),
-      ) ??
-      "$groupId";
+  return watchLocalizedName(ref, id: group.groupName.id, locale: locale) ?? "$groupId";
 }
 
 String _localizedTypeName(WidgetRef ref, int typeId) {
@@ -359,10 +356,7 @@ String _localizedTypeName(WidgetRef ref, int typeId) {
   if (type == null) return "$typeId";
 
   final locale = ref.watch(localeProvider).name;
-  return ref.watch(
-        repoCollectionProvider.select((c) => c?.getLocalizedName(type.typeName.id, locale)),
-      ) ??
-      "$typeId";
+  return watchLocalizedName(ref, id: type.typeName.id, locale: locale) ?? "$typeId";
 }
 
 String _sizeName(BuildContext context, int size) => switch (size) {

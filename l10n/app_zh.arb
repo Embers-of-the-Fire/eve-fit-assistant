@@ -1320,6 +1320,31 @@
   "storagePruneConfirm": "这将删除未被任何已安装版本引用的文件。",
   "storageTotalSize": "总占用空间",
   "storageFileCount": "文件数量",
+  "storageDownloadedLabel": "已下载",
+  "storageDownloadedValue": "{count,plural, =1{1 个文件} other{{count} 个文件}} · {size}",
+  "@storageDownloadedValue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "storageOnDemandLabel": "按需下载",
+  "storageOnDemandHint": "这些资源不会预先下载，而是在首次访问时自动获取。",
+  "storageOnDemandValue": "{count,plural, =1{1 个文件} other{{count} 个文件}} · {size}",
+  "@storageOnDemandValue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "storageVerifiedOk": "所有文件完整",
   "storageMissingFiles": "缺失 {count} 个文件",
   "@storageMissingFiles": {
@@ -1559,11 +1584,9 @@
   },
   "checkoutCreateProgressTitleComplete": "创建完成",
   "checkoutCreateProgressTitleFailed": "创建失败",
+  "checkoutCreateProgressTitlePartial": "创建完成（有警告）",
+  "checkoutCreateProgressPartialHint": "数据版本已创建并激活。失败的资产将在首次访问时自动获取，您也可以在存储管理中通过“验证完整性 / 修复缺失文件”重试。",
   "checkoutCreateProgressFetchingIndex": "正在获取资源索引...",
-  "checkoutCreateProgressDownloading": "正在下载资产 (共 {count} 个)...",
-  "@checkoutCreateProgressDownloading": {
-    "placeholders": { "count": { "type": "int" } }
-  },
   "checkoutCreateProgressDownloading2": "下载资产 ({current}/{total})...",
   "@checkoutCreateProgressDownloading2": {
     "placeholders": {
@@ -1731,6 +1754,10 @@
   "welcomeServerMetaBranch": "分支",
   "welcomeServerDownloadSize": "需要下载: {size}",
   "@welcomeServerDownloadSize": {
+    "placeholders": { "size": { "type": "String" } }
+  },
+  "welcomeServerDownloadOnDemand": "另有 {size} 将在首次访问时按需下载",
+  "@welcomeServerDownloadOnDemand": {
     "placeholders": { "size": { "type": "String" } }
   },
   "welcomeDownloadConfirmTitle": "初始化数据",

@@ -1,27 +1,21 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
-import "dart:isolate";
 
 import "package:eve_fit_assistant/features/app_update/models/app_version_state.dart";
-import "package:path/path.dart" as p;
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 
 class AppVersionStateStore {
-  AppVersionStateStore({required String settingsPath})
-    : _filePath = p.join(settingsPath, _fileName);
+  AppVersionStateStore({required DocStore store}) : _store = store;
 
   static const int _currentVersion = 1;
-  static const String _fileName = "app_version_state.json";
+  static const String _key = "app_version_state.json";
 
-  final String _filePath;
+  final DocStore _store;
   late AppVersionState _state = AppVersionState.initial();
   Future<void> _pendingSync = Future<void>.value();
 
-  File get _file => File(_filePath);
-
   Future<void> init() async {
-    final filePath = _filePath;
-    _state = await Isolate.run(() => _readFromDisk(filePath));
+    _state = await _readFromStore();
     _sync();
   }
 
@@ -56,11 +50,10 @@ class AppVersionStateStore {
     _sync();
   }
 
-  static AppVersionState _readFromDisk(String filePath) {
+  Future<AppVersionState> _readFromStore() async {
     try {
-      final file = File(filePath);
-      if (file.existsSync()) {
-        final text = file.readAsStringSync();
+      final text = await _store.read(_key);
+      if (text != null) {
         final json = jsonDecode(text) as Map<String, dynamic>;
         final state = AppVersionState.fromJson(json);
         return _migrate(state);
@@ -75,19 +68,9 @@ class AppVersionStateStore {
       old.copyWith(schemaVersion: _currentVersion);
 
   void _sync() {
-    final filePath = _file.path;
     final state = _state;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)));
-  }
-
-  static void _syncToDisk(String filePath, AppVersionState state) {
-    final file = File(filePath);
-    final text = jsonEncode(state.toJson());
-    if (!file.existsSync()) {
-      file.createSync(recursive: true);
-    }
-    file.writeAsStringSync(text);
+        .then((_) => _store.write(_key, jsonEncode(state.toJson())));
   }
 }

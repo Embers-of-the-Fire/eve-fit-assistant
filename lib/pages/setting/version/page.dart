@@ -15,6 +15,7 @@ import "package:eve_fit_assistant/storage/setting/setting.dart"
     show appSettingServiceProvider, developerModeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:package_info_plus/package_info_plus.dart";
@@ -49,7 +50,9 @@ class _VersionPageState extends ConsumerState<VersionPage> {
     final appSetting = ref.watch(appSettingServiceProvider);
     final developerMode = ref.watch(developerModeProvider);
     final activeCheckout = ref.watch(activeCheckoutProvider).toNullable();
-    final unreadCount = ref.watch(unreadAnnouncementCountProvider);
+    // Update detection and the changelog are not served on web; skip the
+    // announcement feed read so it is never triggered there.
+    final unreadCount = kIsWeb ? 0 : ref.watch(unreadAnnouncementCountProvider);
 
     return Layout(
       title: context.l10n.versionPageTitle,
@@ -79,8 +82,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     const SizedBox(height: 24),
                   ],
                 ),
-              const AppUpdateCheckTile(),
-              const SizedBox(height: 24),
+              if (!kIsWeb) ...[const AppUpdateCheckTile(), const SizedBox(height: 24)],
               if (isWide)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,11 +184,13 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     ),
                   ],
                 ),
-              const SizedBox(height: 24),
-              _ReleaseNotesCard(
-                unreadCount: unreadCount,
-                onTap: () => unawaited(context.router.push(AnnouncementFeedRoute())),
-              ),
+              if (!kIsWeb) ...[
+                const SizedBox(height: 24),
+                _ReleaseNotesCard(
+                  unreadCount: unreadCount,
+                  onTap: () => unawaited(context.router.push(AnnouncementFeedRoute())),
+                ),
+              ],
             ],
           );
         },

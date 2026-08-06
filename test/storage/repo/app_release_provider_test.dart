@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:async";
 import "dart:io";
 
@@ -10,6 +13,7 @@ import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
+import "package:eve_fit_assistant/storage/fs/file_doc_store.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -65,7 +69,7 @@ void main() {
   setUp(() async {
     tempDir = Directory.systemTemp.createTempSync("efa_app_release_provider_test_").path;
     PathProvider.documentsPath = tempDir;
-    versionStore = AppVersionStateStore(settingsPath: tempDir);
+    versionStore = AppVersionStateStore(store: FileDocStore(tempDir));
     await versionStore.init();
 
     mockChannelService = MockChannelService();
@@ -126,7 +130,7 @@ void main() {
     final container = _container(remoteEnabled: true);
     addTearDown(container.dispose);
 
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(const None());
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => const None());
 
     final result = await container.read(availableAppReleaseProvider.future);
 
@@ -138,7 +142,7 @@ void main() {
     addTearDown(container.dispose);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -167,7 +171,7 @@ void main() {
     versionStore.acknowledgeRelease("rel-2");
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -191,7 +195,7 @@ void main() {
     addTearDown(container.dispose);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -219,7 +223,7 @@ void main() {
     addTearDown(container.dispose);
 
     // First-run state: the release pointer is not cached locally yet.
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(const None());
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => const None());
 
     // Keep the provider alive for the whole scenario, mirroring the
     // AppReleaseUpdateGate listener in production.
@@ -232,7 +236,7 @@ void main() {
     // The startup background sync persists the pointer, then invalidates the
     // base provider so the fresh pointer is re-read.
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -258,7 +262,7 @@ void main() {
     final container = _container(remoteEnabled: true);
     addTearDown(container.dispose);
 
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(const None());
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => const None());
 
     final sub = container.listen(availableAppReleaseProvider, (_, _) {});
     addTearDown(sub.close);
@@ -267,7 +271,7 @@ void main() {
     expect(initial, const None());
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -297,7 +301,7 @@ void main() {
     final container = _container(remoteEnabled: true);
     addTearDown(container.dispose);
 
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(const None());
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => const None());
 
     final status = await container.read(appReleaseCheckStatusProvider.future);
 
@@ -311,7 +315,7 @@ void main() {
     // Channels without any published app release have a generation pointer
     // with an empty snapshot hash.
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
 
     final status = await container.read(appReleaseCheckStatusProvider.future);
 
@@ -324,7 +328,7 @@ void main() {
     addTearDown(container.dispose);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -343,7 +347,7 @@ void main() {
     addTearDown(container.dispose);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -362,7 +366,7 @@ void main() {
     final container = _container(remoteEnabled: true);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -386,7 +390,7 @@ void main() {
     addTearDown(container.dispose);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -410,7 +414,7 @@ void main() {
     addTearDown(container.dispose);
 
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",
@@ -431,7 +435,7 @@ void main() {
 
   void stubUpdateAvailable(RemoteAppRelease release) {
     final pointer = GenerationPointer(schemaVersion: 1, snapshotHash: "release_snapshot");
-    when(() => mockChannelService.readReleasePointer("testing")).thenReturn(Some(pointer));
+    when(() => mockChannelService.readReleasePointer("testing")).thenAnswer((_) async => Some(pointer));
     when(
       () => mockReleaseSyncService.checkStatusFromSnapshotHash(
         snapshotHash: "release_snapshot",

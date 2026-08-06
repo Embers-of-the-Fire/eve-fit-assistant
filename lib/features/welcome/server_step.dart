@@ -102,6 +102,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
 
     final focusedServer = _findServer(selectionData.value?.servers, _activeId);
     final totalSize = _computeTotal(selectionData.value);
+    final onDemandSize = _computeOnDemandTotal(selectionData.value);
     final downloadCount = _computeCount(selectionData.value);
 
     return WizardScaffold(
@@ -132,7 +133,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
         onRetry: () => ref.invalidate(serverSelectionDataProvider(widget.channelName)),
         errorMessage: context.l10n.welcomeServerError,
         retryLabel: context.l10n.fitPageRetryAction,
-        builder: (data) => _buildList(context, data, locale, totalSize),
+        builder: (data) => _buildList(context, data, locale, totalSize, onDemandSize),
       ),
     );
   }
@@ -145,18 +146,33 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     return null;
   }
 
-  String? _computeTotal(ServerSelectionData? data) {
+  String? _computeTotal(ServerSelectionData? data) =>
+      _formatUnionSize(_unionBlobs(data, (d) => d.blobsForServer));
+
+  /// Deduplicated size of the lazy (NON_FORCE) blobs across the selection —
+  /// the on-demand tail that provisioning does not download up front.
+  String? _computeOnDemandTotal(ServerSelectionData? data) =>
+      _formatUnionSize(_unionBlobs(data, (d) => d.lazyBlobsForServer));
+
+  String? _formatUnionSize(Map<String, int>? union) {
+    if (union == null || union.isEmpty) return null;
+    return _formatSize(union.values.fold<int>(0, (a, b) => a + b));
+  }
+
+  Map<String, int>? _unionBlobs(
+    ServerSelectionData? data,
+    Map<String, Map<String, int>> Function(ServerSelectionData) blobsOf,
+  ) {
     if (data == null || _selected.isEmpty) return null;
     final union = <String, int>{};
     for (final serverId in _selected) {
-      final blobs = data.blobsForServer[serverId];
+      final blobs = blobsOf(data)[serverId];
       if (blobs == null) continue;
       for (final entry in blobs.entries) {
         union[entry.key] = entry.value;
       }
     }
-    if (union.isEmpty) return null;
-    return _formatSize(union.values.fold<int>(0, (a, b) => a + b));
+    return union;
   }
 
   int? _computeCount(ServerSelectionData? data) {
@@ -192,6 +208,7 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
     ServerSelectionData data,
     String locale,
     String? totalSize,
+    String? onDemandSize,
   ) {
     final servers = data.servers;
     if (servers.isEmpty) {
@@ -214,9 +231,19 @@ class _ServerStepPageState extends ConsumerState<ServerStepPage> {
           padding: EdgeInsets.only(left: WizardTokens.of(context).cardRadius),
           child: SizedBox(
             width: double.infinity,
-            child: Text(
-              totalSize != null ? context.l10n.welcomeServerDownloadSize(size: totalSize) : "—",
-              style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  totalSize != null ? context.l10n.welcomeServerDownloadSize(size: totalSize) : "—",
+                  style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                ),
+                if (onDemandSize != null)
+                  Text(
+                    context.l10n.welcomeServerDownloadOnDemand(size: onDemandSize),
+                    style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                  ),
+              ],
             ),
           ),
         ),

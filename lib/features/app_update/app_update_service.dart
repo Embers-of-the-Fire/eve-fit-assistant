@@ -1,9 +1,9 @@
 import "dart:async";
-import "dart:io";
 
 import "package:convert/convert.dart";
 import "package:crypto/crypto.dart";
 import "package:dio/dio.dart";
+import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";

@@ -16,12 +16,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
   final shipType = ref.watch(repoCollectionProvider.select((c) => c?.getType(shipTypeId)));
   final locale = context.locale.languageCode;
   final shipName = shipType != null
-      ? ref.watch(
-              repoCollectionProvider.select(
-                (c) => c?.getLocalizedName(shipType.typeName.id, locale),
-              ),
-            ) ??
-            ""
+      ? watchLocalizedName(ref, id: shipType.typeName.id, locale: locale) ?? ""
       : "";
   return (shipType, shipName);
 }
@@ -373,7 +368,7 @@ class _PriceItemTable extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: DefaultTextStyle(
+    child: DefaultTextStyle.merge(
       style: const TextStyle(fontSize: 16),
       child: Table(
         columnWidths: const {

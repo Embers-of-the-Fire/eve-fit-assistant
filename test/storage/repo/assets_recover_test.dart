@@ -1,15 +1,19 @@
+@TestOn("vm")
+library;
+
 import "dart:io";
+import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/fs/memory_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
-import "package:file/memory.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
 void main() {
-  late MemoryFileSystem fs;
+  late MemoryBlobStore store;
 
   setUpAll(() {
     GlobalLogger.init(
@@ -19,39 +23,23 @@ void main() {
   });
 
   setUp(() {
-    fs = MemoryFileSystem();
+    store = MemoryBlobStore();
     PathProvider.documentsPath = "/";
     PathProvider.appSupportPath = "/";
   });
 
-  test("recoverSync deletes orphaned .tmp files but keeps real blobs", () {
-    final assets = fs.directory(RepoPaths.assetsPath)..createSync(recursive: true);
-    final blobDir = fs.directory(p.join(assets.path, "blobs", "ab", "abc"))
-      ..createSync(recursive: true);
-    final realBlob = fs.file(p.join(blobDir.path, "content"))..writeAsStringSync("data");
-    final orphanedTmp = fs.file(p.join(blobDir.path, "content.tmp"))..writeAsStringSync("partial");
+  test("recover deletes orphaned .tmp files but keeps real blobs", () async {
+    final blobDir = p.join(RepoPaths.blobsDirPath, "ab", "abc");
+    await store.write(p.join(blobDir, "content"), Uint8List.fromList([1, 2, 3]));
+    await store.write(p.join(blobDir, "content.tmp"), Uint8List.fromList([4, 5]));
 
-    AssetStore.forTest(fs).recoverSync();
+    await AssetStore.forTest(store).recover();
 
-    expect(realBlob.existsSync(), isTrue);
-    expect(orphanedTmp.existsSync(), isFalse);
+    expect(await store.exists(p.join(blobDir, "content")), isTrue);
+    expect(await store.exists(p.join(blobDir, "content.tmp")), isFalse);
   });
 
-  test("recoverSync removes tmp_* and *_temp working directories", () {
-    final assets = fs.directory(RepoPaths.assetsPath)..createSync(recursive: true);
-    final tmpDir = fs.directory(p.join(assets.path, "tmp_resource_snapshot"))
-      ..createSync(recursive: true);
-    fs.file(p.join(tmpDir.path, "x")).writeAsStringSync("y");
-    final tempSuffixDir = fs.directory(p.join(assets.path, "foo_temp"))
-      ..createSync(recursive: true);
-
-    AssetStore.forTest(fs).recoverSync();
-
-    expect(tmpDir.existsSync(), isFalse);
-    expect(tempSuffixDir.existsSync(), isFalse);
-  });
-
-  test("recoverSync is a no-op when the assets directory is absent", () {
-    expect(AssetStore.forTest(fs).recoverSync, returnsNormally);
+  test("recover is a no-op when the assets directory is absent", () async {
+    await expectLater(AssetStore.forTest(store).recover(), completes);
   });
 }

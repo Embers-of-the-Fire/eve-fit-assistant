@@ -1,12 +1,11 @@
 import "dart:convert";
-import "dart:io";
 import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
 import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
 import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
-import "package:eve_fit_assistant/storage/repo/assets.dart";
+import "package:eve_fit_assistant/storage/fs/blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/server_meta.dart";
@@ -19,11 +18,15 @@ import "package:fpdart/fpdart.dart";
 /// Manages channel discovery, head metadata, and server index.
 ///
 /// Follows agent/schemav2/workflow.md §2.2 (Channel Discovery).
+///
+/// All local persistence goes through a [BlobStore], so every read/write is
+/// asynchronous (OPFS on web is async-only).
 class ChannelService {
-  const ChannelService({required this.remoteCatalogService, required this.assetStore});
+  const ChannelService({required this.remoteCatalogService, required BlobStore store})
+    : _store = store;
 
   final RemoteCatalogService remoteCatalogService;
-  final AssetStore assetStore;
+  final BlobStore _store;
 
   /// Fetches and persists the channel registry from remote.
   ///
@@ -41,7 +44,7 @@ class ChannelService {
     final remoteRegistry = result.getRight().toNullable()!;
 
     // Write locally
-    _writeChannelRegistry(remoteRegistry);
+    await _writeChannelRegistry(remoteRegistry);
 
     return Right(remoteRegistry);
   }
@@ -64,12 +67,12 @@ class ChannelService {
     final head = headResult.getRight().toNullable()!;
 
     // Write local channel head metadata
-    _writeLocalHeadMeta(channelName, head);
+    await _writeLocalHeadMeta(channelName, head);
 
     // Fetch and write server index
     final serverResult = await remoteCatalogService.fetchServerIndex(head.generationHash);
     if (serverResult.isRight()) {
-      _writeServerIndex(channelName, serverResult.getRight().toNullable()!);
+      await _writeServerIndex(channelName, serverResult.getRight().toNullable()!);
     }
 
     return const Right(unit);
@@ -111,7 +114,7 @@ class ChannelService {
     final generationHash = head.generationHash;
 
     // Write local channel head metadata
-    _writeLocalHeadMeta(channelName, head);
+    await _writeLocalHeadMeta(channelName, head);
     onProgress?.call(1, totalSteps);
 
     // Fetch and persist all generation-level files independently.
@@ -141,12 +144,11 @@ class ChannelService {
   }
 
   /// Returns the local generation hash for [channelName], or null.
-  String? localGenerationHash(String channelName) {
-    final path = RepoPaths.channelHeadMetaPath(channelName);
-    final file = File(path);
-    if (!file.existsSync()) return null;
+  Future<String?> localGenerationHash(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelHeadMetaPath(channelName));
+    if (bytes == null) return null;
     try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       return json["generationHash"] as String?;
     } on Exception {
       return null;
@@ -154,11 +156,11 @@ class ChannelService {
   }
 
   /// Reads the local channel registry.
-  Option<ChannelRegistry> readLocalChannelRegistry() {
-    final file = File(RepoPaths.channelRegistryPath);
-    if (!file.existsSync()) return const None();
+  Future<Option<ChannelRegistry>> readLocalChannelRegistry() async {
+    final bytes = await _store.read(RepoPaths.channelRegistryPath);
+    if (bytes == null) return const None();
     try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       return Some(ChannelRegistry.fromJson(json));
     } on Exception {
       return const None();
@@ -168,12 +170,11 @@ class ChannelService {
   /// Reads the ServerIndex protobuf for [channelName].
   ///
   /// Returns [None] if not present locally.
-  Option<ServerIndex> readServerIndex(String channelName) {
-    final path = RepoPaths.channelServerIndexPath(channelName);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
+  Future<Option<ServerIndex>> readServerIndex(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelServerIndexPath(channelName));
+    if (bytes == null) return const None();
     try {
-      return Some(ServerIndex.fromBuffer(file.readAsBytesSync()));
+      return Some(ServerIndex.fromBuffer(bytes));
     } on Exception {
       return const None();
     }
@@ -182,11 +183,11 @@ class ChannelService {
   /// Reads the channel head metadata for [channelName].
   ///
   /// Returns [None] if not present locally.
-  Option<ChannelHeadMeta> readHeadMeta(String channelName) {
-    final file = File(RepoPaths.channelHeadMetaPath(channelName));
-    if (!file.existsSync()) return const None();
+  Future<Option<ChannelHeadMeta>> readHeadMeta(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelHeadMetaPath(channelName));
+    if (bytes == null) return const None();
     try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       return Some(ChannelHeadMeta.fromJson(json));
     } on Exception {
       return const None();
@@ -196,12 +197,11 @@ class ChannelService {
   /// Reads the GenerationResources protobuf for [channelName].
   ///
   /// Returns [None] if not present locally.
-  Option<GenerationResources> readGenerationResources(String channelName) {
-    final path = RepoPaths.channelResourcesPath(channelName);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
+  Future<Option<GenerationResources>> readGenerationResources(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelResourcesPath(channelName));
+    if (bytes == null) return const None();
     try {
-      return Some(GenerationResources.fromBuffer(file.readAsBytesSync()));
+      return Some(GenerationResources.fromBuffer(bytes));
     } on Exception {
       return const None();
     }
@@ -210,20 +210,19 @@ class ChannelService {
   /// Reads the release GenerationPointer protobuf for [channelName].
   ///
   /// Returns [None] if not present locally.
-  Option<GenerationPointer> readReleasePointer(String channelName) {
-    final path = RepoPaths.channelReleasesPath(channelName);
-    final file = File(path);
-    if (!file.existsSync()) return const None();
+  Future<Option<GenerationPointer>> readReleasePointer(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelReleasesPath(channelName));
+    if (bytes == null) return const None();
     try {
-      return Some(GenerationPointer.fromBuffer(file.readAsBytesSync()));
+      return Some(GenerationPointer.fromBuffer(bytes));
     } on Exception {
       return const None();
     }
   }
 
   /// Returns a list of [ServerMeta] entries for [channelName].
-  IList<ServerMeta> listServers(String channelName) {
-    final si = readServerIndex(channelName);
+  Future<IList<ServerMeta>> listServers(String channelName) async {
+    final si = await readServerIndex(channelName);
     if (si.isNone()) return const IList.empty();
     return si
         .toNullable()!
@@ -244,7 +243,7 @@ class ChannelService {
 
   /// Returns `true` if a newer generation is available on remote.
   Future<bool> hasUpdates(String channelName) async {
-    final localHash = localGenerationHash(channelName);
+    final localHash = await localGenerationHash(channelName);
     if (localHash == null) return true; // No local state → needs fetch
 
     final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
@@ -290,70 +289,45 @@ class ChannelService {
       return;
     }
     final bytes = result.getRight().toNullable()!;
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
     try {
-      tmp
-        ..writeAsBytesSync(bytes, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await _store.write(path, bytes);
+    } catch (e, stackTrace) {
       warning("Failed to write generation file for $channelName: $path", stackTrace: stackTrace);
     }
   }
 
-  void _writeChannelRegistry(ChannelRegistry registry) {
-    final path = RepoPaths.channelRegistryPath;
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
+  Future<void> _writeChannelRegistry(ChannelRegistry registry) async {
     try {
-      tmp
-        ..writeAsStringSync(jsonEncode(registry.toJson()), flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await _store.write(
+        RepoPaths.channelRegistryPath,
+        Uint8List.fromList(utf8.encode(jsonEncode(registry.toJson()))),
+      );
+    } catch (e, stackTrace) {
       warning("Failed to write channel registry", stackTrace: stackTrace);
     }
   }
 
-  void _writeLocalHeadMeta(String channelName, ChannelHeadMeta head) {
-    final path = RepoPaths.channelHeadMetaPath(channelName);
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
+  Future<void> _writeLocalHeadMeta(String channelName, ChannelHeadMeta head) async {
     final json = {
       "schemaVersion": 1,
       "generationHash": head.generationHash,
       "updatedAt": formatTimestamp(DateTime.now().toUtc()),
       "label": head.label.unlock,
     };
-    final tmp = File("$path.tmp");
     try {
-      tmp
-        ..writeAsStringSync(jsonEncode(json), flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await _store.write(
+        RepoPaths.channelHeadMetaPath(channelName),
+        Uint8List.fromList(utf8.encode(jsonEncode(json))),
+      );
+    } catch (e, stackTrace) {
       warning("Failed to write local head meta for $channelName", stackTrace: stackTrace);
     }
   }
 
-  void _writeServerIndex(String channelName, Uint8List bytes) {
-    final path = RepoPaths.channelServerIndexPath(channelName);
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
+  Future<void> _writeServerIndex(String channelName, Uint8List bytes) async {
     try {
-      tmp
-        ..writeAsBytesSync(bytes, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await _store.write(RepoPaths.channelServerIndexPath(channelName), bytes);
+    } catch (e, stackTrace) {
       warning("Failed to write server index for $channelName", stackTrace: stackTrace);
     }
   }

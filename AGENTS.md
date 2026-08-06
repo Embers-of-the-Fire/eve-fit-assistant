@@ -15,7 +15,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 ## Storage Layer
 
 | System | Path | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | Repo System | `lib/storage/repo/` | Content-addressed repository implementing the EFA V2 unified storage schema (generation-based, protobuf-driven) with blob store, resource snapshots, channel discovery, checkout lifecycle, and Riverpod providers. |
 | Schema Version | `lib/storage/repo/schema_version.dart` | `SchemaVersionService` — reads/writes `schema_version.json`, determines active storage system |
 | Channel Discovery | `lib/storage/repo/channel_service.dart` | `ChannelService` — fetches channel registry, head metadata, server index; update detection |
@@ -23,10 +23,12 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 | Checkout Lifecycle | `lib/storage/repo/checkout_service.dart` | `CheckoutService` — checkout CRUD, reflog management, resource fetch orchestration |
 | Release Sync | `lib/storage/repo/release_sync.dart` | `ReleaseSyncService` — detects newer app versions against the remote release index via `ReleaseIndex` protobuf (detection only) |
 | Generation Navigation | `lib/storage/repo/generation_nav.dart` | `GenerationNavigationService` — channel → server browser for setup page |
-| Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole type-data source; pre-loads type data (ships, skills, items, localization, icons) from active checkout's ResourceIndex. |
+| Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole structural type-data source; pre-loads type data (ships, skills, items, icons) from active checkout's ResourceIndex. |
+| Localization DB | `lib/storage/repo/localization_db.dart` | `LocalizationDbService` — lazy localized-string lookups backed by the checkout's prebuilt SQLite `localization.db` (sqlite_async). Native opens the content-addressed blob read-only; web copies the blob once (per content hash) into sqlite3_web's OPFS path and opens it in a web worker (requires cross-origin isolation). `localizedNameProvider` resolves `(id, locale)` on demand. |
 | Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit/character storage schemas; fit supports storageVersion 3 with CheckoutRef |
 | Settings | `lib/storage/setting/` | User settings including remote content configuration |
+| Storage FS | `lib/storage/fs/` | Platform storage abstraction: `DocStore`/`BlobStore` interfaces with File (native) and Hive/OPFS (web) backends; `createUserDocStore`/`createRepoBlobStore` factories route settings, fits, characters, announcements, feedback, and version state to the right backend. |
 
 All writes to `checkouts.json` are mutex-guarded; reads are lock-free. The checkout registry provides a reactive stream for live UI updates.
 
@@ -35,7 +37,7 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 ### Data-Flow Orchestration
 
 | Workflow | Entry Point | Service |
-|----------|------------|---------|
+| ---------- | ------------ | --------- |
 | Channel discovery | `discoverChannels()` | `RepoService` → `ChannelService.discoverChannels()` |
 | Resource fetch | `fetchResourcesForActiveCheckout()` | `RepoService` → `CheckoutService.fetchResourcesForCheckout()` |
 | Create checkout | `createCheckout()` | `RepoService` → `CheckoutService.createCheckout()` |
@@ -64,6 +66,8 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Android build: `flutter build apk` (or `./x build apk` from the workspace CLI).
 - Linux build: `./x build linux` (output in `cache/releases/linux/<ver>/`) builds two variants: `appimage` (requires `linuxdeploy` and `appimagetool` from the Nix dev shell; linuxdeploy resolves and bundles dependent libs, and the glibc loader plus its NSS modules are bundled — the AppRun launches through the bundled loader — while all other libraries (including the graphics-driver family) are resolved from the host at runtime; the Flutter bundle `lib/` dir is searched first via `LD_LIBRARY_PATH`) and `native` (the raw Flutter Linux release bundle zipped as-is). Use `--variant appimage` / `--variant native` to select a subset. The command also emits a linux release fragment (`<ver>-linux.json`) for the release registry.
 - Windows build: `./x build windows` (Windows host only; output in `cache/releases/windows/<ver>/`) builds two variants: `native` (the raw Flutter Windows release bundle zipped as-is) and `installer` (a per-user multi-language MSI — en-US base with the zh-CN language transform embedded as an LCID-named substorage, auto-applied by Windows Installer on matching UI languages — built with the WiX v6 toolset from `distro/windows/installer/Package.wxs` plus per-culture `Package.<culture>.wxl` files; requires the .NET SDK plus `dotnet tool install --global wix --version 6.0.1` — WiX v7 is excluded because it requires accepting the OSMF EULA). Use `--variant native` / `--variant installer` to select a subset. The command also emits a windows release fragment (`<ver>-windows.json`) for the release registry. There is no Nix toolchain on Windows: `flutter`, `cargo`, `protoc`, `dotnet`, and `wix` must be on PATH, and the Visual Studio C++ ATL component (`Microsoft.VisualStudio.Component.VC.ATL`, providing `atlstr.h` required by `flutter_secure_storage_windows`) must be installed.
+- Web engine (wasm) build: `flutter_rust_bridge_codegen build-web --release --wasm-pack-rustflags "-C target-feature=+atomics,+bulk-memory,+mutable-globals -Clink-args=--shared-memory -Clink-args=--max-memory=1073741824 -Clink-args=--import-memory -Clink-args=--export=__heap_base -Clink-args=--export=__wasm_init_tls -Clink-args=--export=__tls_size -Clink-args=--export=__tls_align -Clink-args=--export=__tls_base"` (FRB toolchain: wasm-pack + nightly `-Z build-std`, needs `rust-src` on nightly; dev shell provides `wasm-pack` and `binaryen` so `wasm-opt` resolves locally instead of downloading from GitHub). Output lands in gitignored `web/pkg/` and is copied into `build/web` by `flutter build web`. The atomics build lets FRB's web worker pool run engine calls (database parsing, emulation) in real Web Workers instead of blocking the browser event loop; FRB routes *normal* fns (not `#[frb(sync)]`, not `async`) through that pool, so the heavy engine APIs in `rust/src/api/server.rs` are deliberately normal fns. lld does not enable shared memory from `+atomics` alone — the `--shared-memory`/`--import-memory`/`--max-memory`/TLS-export link args (wasm-bindgen threading recipe) are required so pool workers can share the same memory instance. The threaded build requires a cross-origin isolated origin: `web/_headers` ships `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp` for Cloudflare Pages, and local dev needs the equivalent headers (e.g. `flutter run -d chrome --web-header=...`); without isolation the app boots without the native engine (`crossOriginIsolated()` probe in `lib/compat/`).
+- Web build: `./x build web` (run inside `nix develop .#codegen`; output in `build/web/`). Wraps the web engine build above plus `flutter build web --wasm --no-web-resources-cdn` (canvaskit/skwasm bundled locally instead of the gstatic CDN, so the bundle is fully self-contained), then prunes canvaskit artifacts unused by the declared renderers (`--no-prune` to skip). The localization SQLite web worker also ships under `web/sqlite/` (`sqlite3.wasm` from simolus3/sqlite3.dart releases matching the `sqlite3` version, `db_worker.js` from powersync-ja/sqlite_async.dart releases matching `sqlite_async`); both are copied into `build/web` and are required for localized names on web.
 - Release preflight checks: `./x ci release verify --check-all`.
 - Create raw release note: `./x release relnote` (emits `spec.yaml` and `changelog.md`; author `content.zh.md` and `content.en.md` separately).
 - Sync canonical version to manifests: `./x release version sync`.
@@ -72,6 +76,19 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Single Rust integration test file/function: `cargo test -p eve-fit-os --test test_basic_fit -- --nocapture`; `cargo test -p eve-fit-os test_basic_fit -- --exact --nocapture`.
 - Python tests: `./x test python` or `uv run pytest`.
 - Flutter/Dart tests: `./x test dart` or `flutter test`.
+- Web-platform tests: `./x test web` (headless Chrome via `flutter test --platform chrome`;
+  Chrome resolved from `CHROME_EXECUTABLE` or `google-chrome`/`chromium`/`chrome` on PATH).
+  Suites are platform-aware: VM-only tests carry `@TestOn("vm")`, web-only tests
+  (`test/web/`) carry `@TestOn("browser")`. The web test pipeline compiles every
+  suite in the selection regardless of `@TestOn`, so `x.py test web` excludes
+  `@TestOn("vm")` suites (their `dart:ffi`-only imports would fail the web compile)
+  and instead passes the explicit web-compatible suite list. The pipeline compiles
+  to JS, not wasm: the dart2wasm web-test harness cannot run sqlite3_web in headless
+  Chrome (dedicated workers and OPFS sync access handles are unavailable there),
+  while the JS build exercises the real worker + OPFS path. `x.py test web` also
+  mirrors `web/sqlite/{db_worker.js,sqlite3.wasm}` into `test/web/sqlite/` (the web
+  test server only serves the `test/` tree), which `localization_db_web_test.dart`
+  needs.
 - Repo module tests: `dart test test/storage/repo/`.
 - Data-flow integration tests (e.g., `test/storage/repo/`) use `package:mocktail`
   for network and filesystem mocks; run with `dart test test/storage/repo/`.
@@ -104,6 +121,7 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - In test mode both workflows exercise the full commit → publish → sync → verify cycle against a local MinIO mock (`./x remote mock launch --daemon`, stop with `./x remote mock stop`) instead of touching the real remote.
 - CI workflows share the tracked developer config `ci/config/efa.dev.toml` (non-secret values; secret fields are `.invalid` placeholders). The composite action `.github/actions/init-dev-env` copies it to `./efa.dev.toml` after checkout; jobs inject real secrets via `--dev-env` overrides on top.
 - Publishing credentials live in GitHub Environments, not repository secrets: `production-app` (reviewer-gated; app releases), `production-data` (`dev`-only; data publishes), and `ci-write` (`dev`-only; raw-data uploads). Endpoints/keys are environment secrets, bucket names are variables. PR-triggered builds use a read-only repo-level `CI_STORAGE_*` token. See `RELEASING.md` → "Secrets and environments" for the full map.
+- Flutter web delivery pipeline: the `build/web` bundle (via `x build web`) is deployed to two Cloudflare Pages projects — `efa-app` (production; release-only) and `efa-app-nightly` (branch previews and nightly builds). All jobs build via the shared `.github/actions/build-web` composite action and deploy via `.github/actions/deploy-web-pages`, which copies the tracked `ci/config/wrangler.{prod,nightly}.toml` to `./wrangler.toml` (wrangler requires a config file; same copy-in pattern as `init-dev-env`) and runs `wrangler pages deploy` with `--commit-hash`. Entry points: `web-preview.yml` (PRs to `dev` that touch web bundle inputs — `WEB_PREVIEW_PATTERNS` in `bootstrap/ci/suites.py`, checked via `x.py ci web-affected` — get a branch preview on `efa-app-nightly` plus a pinned PR comment; when a PR closes, a cleanup job deletes that branch's preview deployments through the Pages REST API — `?force=true` also removes the aliased latest one, Cloudflare otherwise keeps previews forever; fork PRs get no preview), `site-nightly.yml` (daily cron on `dev`: fetches the last nightly production deployment's commit hash from the Pages API, diffs it against `HEAD`, and only rebuilds/deploys to `efa-app-nightly` when `x.py ci web-affected` says the bundle changed; no PR comment), and `_release.yml` (`site` build job + `site-deploy`: test mode deploys to `efa-app-nightly` with a pinned comment on the release PR; real releases deploy to `efa-app`). Deploy jobs run in GitHub deployment environments — `web-preview` (everything on `efa-app-nightly`) and `web-production` (`efa-app` only) — holding `CLOUDFLARE_API_TOKEN` (Pages:Edit) and `CLOUDFLARE_ACCOUNT_ID`, mirroring the `production-app`/`production-data` convention. Each Pages project's production branch must be set to `dev` (one-time dashboard setup).
 
 ## Validation Expectations
 
@@ -123,10 +141,12 @@ The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `develope
 **Access:** On **Settings → Version**, tap the **App Version** value in the version info table 5 times within 2 seconds. A confirmation dialog (`developerModeEnableConfirmTitle` / `developerModeEnableConfirmDescription`) is shown; confirming sets `developerMode` to `true` via `appSettingServiceProvider`. Once enabled, a **Developer Settings** card appears on the Version page.
 
 **Entry points after enabled:**
+
 - Version page → Developer Settings (`/setting/developer-settings`): debug log toggle, remote-content settings visibility, open remote content settings, collect logs, clear cache, and a shortcut to Developer Tools.
 - Developer Settings → Developer Tools (`/setting/developer-tools`): channel overview, restart init, trigger feedback, reset all storage.
 
 **Providers:**
+
 - `developerModeProvider` — reactive read via `ref.watch(developerModeProvider)` (always up-to-date).
 - `appSettingServiceProvider.select((s) => s.developerMode)` — fine-grained reactive read.
 - `ref.read(appSettingServiceProvider).developerMode` — imperative read within callbacks.
@@ -138,7 +158,7 @@ The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `develope
 - Dart analyzer is strict (`strict-casts`, `strict-inference`, `strict-raw-types`) and enforces package imports, double quotes, explicit public API types, and 100-column formatting.
 - Python Ruff requires `from __future__ import annotations`, absolute imports, one import per line, double quotes, and 100-column formatting; `rust/lib/` is excluded from root Ruff.
 - Root `rustfmt.toml` uses 100 columns plus field-init and `?` shorthands; the bridge crate stays Rust 2021 because of `flutter_rust_bridge`.
-- Keep FRB-facing APIs small and explicit in `rust/src/api/`; put core fitting behavior in `rust/lib/eve-fit-os` when possible.
+- Keep FRB-facing APIs small and explicit in `rust/src/api/`; put core fitting behavior in `rust/lib/eve-fit-os` when possible. Choose the FRB fn flavor by threading intent: `#[frb(sync)]` runs on the caller's thread/event loop (cheap calls only), `async` runs on the main browser event loop on web (never for CPU-heavy work), and a plain ("normal") fn runs on FRB's thread pool — backed by the Web Worker pool on web, which the atomics build plus COOP/COEP headers (see the web engine build note) enable. Heavy engine work must stay in normal fns.
 - Do not manually edit generated bridge/localization/protobuf/build outputs unless the task is explicitly about generated artifacts; change sources and run the matching generator.
 
 ## Python Pipeline

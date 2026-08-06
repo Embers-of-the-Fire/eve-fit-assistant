@@ -1,5 +1,4 @@
-import "dart:io";
-import "dart:isolate";
+import "package:eve_fit_assistant/compat/isolate.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -13,6 +12,7 @@ import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:flutter/foundation.dart";
 
 /// Represents a single integrity issue found during verification.
 sealed class VerificationIssue {
@@ -80,17 +80,14 @@ class VerificationService {
   /// Returns a list of issues found. An empty list means all checkouts are intact.
   ///
   /// Throws [StateError] if another verification operation is already running.
-  IList<VerificationIssue> verify() {
-    _acquire();
-    try {
-      return _verifyInternal();
-    } finally {
-      _release();
-    }
-  }
+  Future<IList<VerificationIssue>> verify({void Function(int current, int total)? onProgress}) =>
+      verifyAsync(onProgress: onProgress);
 
-  /// Async variant of [verify] that runs the heavy I/O in a background isolate,
-  /// keeping the UI thread responsive.
+  /// Verifies all checkouts' integrity, off the UI thread where possible.
+  ///
+  /// On native this runs the heavy I/O in a background isolate; on web it runs
+  /// inline (web has no isolates) with periodic event-loop yields inside
+  /// [AssetStore.verifyResourceIndex].
   ///
   /// [onProgress] receives (checked, total) blob counts as verification proceeds.
   ///
@@ -100,6 +97,9 @@ class VerificationService {
   }) async {
     _acquire();
     try {
+      if (kIsWeb) {
+        return await _verifyInternal(onProgress: onProgress);
+      }
       final paths = _capturePaths();
       if (onProgress == null) {
         return await _spawnVerify(paths, null);
@@ -121,8 +121,7 @@ class VerificationService {
     }
   }
 
-  /// Async variant of [prune] that runs the heavy I/O in a background isolate,
-  /// keeping the UI thread responsive.
+  /// Prunes unreferenced data, off the UI thread where possible.
   ///
   /// [onProgress] receives (deleted, total-scanned) item counts as pruning proceeds.
   ///
@@ -130,6 +129,9 @@ class VerificationService {
   Future<int> pruneAsync({void Function(int current, int total)? onProgress}) async {
     _acquire();
     try {
+      if (kIsWeb) {
+        return await _pruneInternal(onProgress: onProgress);
+      }
       final paths = _capturePaths();
       if (onProgress == null) {
         return await _spawnPrune(paths, null);
@@ -151,25 +153,42 @@ class VerificationService {
     }
   }
 
-  IList<VerificationIssue> _verifyInternal() {
+  Future<IList<VerificationIssue>> _verifyInternal({
+    void Function(int current, int total)? onProgress,
+  }) async {
     final registry = checkoutRegistry.readRegistry();
     if (registry.isNone()) return const IList.empty();
 
     final issues = <VerificationIssue>[];
 
-    for (final entry in registry.toNullable()!.checkouts.entries) {
+    final checkouts = registry.toNullable()!.checkouts.entries.toList();
+
+    // Load all resource indexes up front so progress totals are accurate.
+    final resourceIndexes = <String, ResourceIndex>{};
+    var totalBlobs = 0;
+    for (final entry in checkouts) {
+      final ri = await assetStore.readResourceIndex(entry.value.resourceSnapshotHash);
+      if (ri.isSome()) {
+        resourceIndexes[entry.key] = ri.toNullable()!;
+        totalBlobs += ri.toNullable()!.entries.length;
+      }
+    }
+
+    var checkedOffset = 0;
+
+    for (final entry in checkouts) {
       final checkoutId = entry.key;
       final checkoutEntry = entry.value;
 
-      final meta = checkoutService.readCheckoutMeta(checkoutId);
+      final meta = await checkoutService.readCheckoutMeta(checkoutId);
       if (meta.isNone()) {
         issues.add(VerificationNoMeta(checkoutId: checkoutId));
         continue;
       }
 
       final snapshotHash = checkoutEntry.resourceSnapshotHash;
-      final ri = assetStore.readResourceIndexSync(snapshotHash);
-      if (ri.isNone()) {
+      final ri = resourceIndexes[checkoutId];
+      if (ri == null) {
         issues.add(
           VerificationMissingFiles(
             checkoutId: checkoutId,
@@ -180,7 +199,20 @@ class VerificationService {
         continue;
       }
 
-      final missing = assetStore.verifyResourceIndexSync(ri.toNullable()!);
+      final offset = checkedOffset;
+      final missing = await assetStore.verifyResourceIndex(
+        ri,
+        onProgress: onProgress == null
+            ? null
+            : (checked, _) {
+                final global = offset + checked;
+                if (global % 16 == 0 || global == totalBlobs) {
+                  onProgress(global, totalBlobs);
+                }
+              },
+      );
+      checkedOffset += ri.entries.length;
+
       if (missing.isNotEmpty) {
         issues.add(
           VerificationMissingFiles(
@@ -200,21 +232,8 @@ class VerificationService {
   /// Follows spec §12.2 client deletion rules:
   /// 1. Collect reachable snapshot hashes from all checkouts and reflogs
   /// 2. Collect referenced blobs from reachable ResourceIndexes
-  /// 3. Delete unreferenced snapshots, blobs, empty dirs, tmp dirs
-  ///
-  /// Returns the total number of items pruned.
-  ///
-  /// Throws [StateError] if another verification operation is already running.
-  int prune() {
-    _acquire();
-    try {
-      return _pruneInternal();
-    } finally {
-      _release();
-    }
-  }
-
-  int _pruneInternal() {
+  /// 3. Delete unreferenced snapshots, blobs, tmp files
+  Future<int> _pruneInternal({void Function(int current, int total)? onProgress}) async {
     final registry = checkoutRegistry.readRegistry();
     if (registry.isNone()) return 0;
 
@@ -228,27 +247,31 @@ class VerificationService {
       activeSnapshotHashes.add(checkoutEntry.resourceSnapshotHash);
 
       // From reflog
-      final reflogHashes = CheckoutService.collectReflogSnapshotHashes(entry.key);
+      final reflogHashes = await CheckoutService.collectReflogSnapshotHashes(
+        assetStore.store,
+        entry.key,
+      );
       activeSnapshotHashes.addAll(reflogHashes);
 
       // Load ResourceIndex for current snapshot
-      final ri = assetStore.readResourceIndexSync(checkoutEntry.resourceSnapshotHash);
+      final ri = await assetStore.readResourceIndex(checkoutEntry.resourceSnapshotHash);
       if (ri.isSome()) {
         activeResourceIndexes.add(ri.toNullable()!);
       }
       // Also load for historical snapshots from reflog
       for (final hash in reflogHashes) {
         if (hash == checkoutEntry.resourceSnapshotHash) continue;
-        final histRi = assetStore.readResourceIndexSync(hash);
+        final histRi = await assetStore.readResourceIndex(hash);
         if (histRi.isSome()) {
           activeResourceIndexes.add(histRi.toNullable()!);
         }
       }
     }
 
-    return assetStore.pruneSync(
+    return assetStore.prune(
       activeSnapshotHashes: activeSnapshotHashes,
       activeResourceIndexes: activeResourceIndexes,
+      onProgress: onProgress,
     );
   }
 
@@ -275,7 +298,7 @@ class VerificationService {
     required Channel channel,
     void Function(int current, int total)? onProgress,
   }) async {
-    final issues = _verifyInternal();
+    final issues = await _verifyInternal();
     final unresolved = <VerificationIssue>[];
 
     final toRepair =
@@ -292,7 +315,7 @@ class VerificationService {
 
     for (final issue in issues) {
       if (issue is VerificationMissingFiles) {
-        final ri = assetStore.readResourceIndexSync(issue.snapshotHash);
+        final ri = await assetStore.readResourceIndex(issue.snapshotHash);
         if (ri.isNone()) {
           unresolved.add(issue);
           continue;
@@ -331,7 +354,6 @@ class VerificationService {
 
     if (toRepair.isNotEmpty) {
       onProgress?.call(0, totalToRepair);
-      assetStore.ensureBlobIdentDirs(toRepair.map((r) => r.identHash));
 
       Future<void> repairNext() async {
         int idx;
@@ -344,7 +366,8 @@ class VerificationService {
                 item.blobPath,
                 blobResult.getRight().toNullable()!,
               );
-            } on FileSystemException {
+            } catch (e, stackTrace) {
+              warning("Failed to write blob ${item.blobPath}", stackTrace: stackTrace);
               unresolved.add(
                 VerificationMissingFiles(
                   checkoutId: item.checkoutId,
@@ -426,14 +449,17 @@ Future<int> _spawnPrune(_IsolatePaths paths, SendPort? sendPort) =>
 
 // ── Isolate entry points ───────────────────────────────────────────────────────
 // Top-level functions so they can be sent to Isolate.run(). They reconstruct
-// the minimal stateless services from the passed paths.
+// the minimal stateless services from the passed paths. On native the blob
+// store is a fresh stateless FileBlobStore; on web these run inline (Isolate
+// stub) and share the OpfsBlobStore singleton via createRepoBlobStore().
 
-IList<VerificationIssue> _isolateVerify(_IsolatePaths paths, SendPort? progress) {
+Future<IList<VerificationIssue>> _isolateVerify(_IsolatePaths paths, SendPort? progress) async {
   _seedPaths(paths);
   GlobalLogger.init(paths.logs, enableDebugLog: false);
 
-  const assetStore = AssetStore();
+  final assetStore = AssetStore();
   final registryService = CheckoutRegistryService();
+  await registryService.load();
 
   final registry = registryService.readRegistry();
   if (registry.isNone()) return const IList.empty();
@@ -443,7 +469,7 @@ IList<VerificationIssue> _isolateVerify(_IsolatePaths paths, SendPort? progress)
   var totalBlobs = 0;
   final resourceIndexes = <String, ResourceIndex>{};
   for (final entry in checkouts) {
-    final ri = assetStore.readResourceIndexSync(entry.value.resourceSnapshotHash);
+    final ri = await assetStore.readResourceIndex(entry.value.resourceSnapshotHash);
     if (ri.isSome()) {
       resourceIndexes[entry.key] = ri.toNullable()!;
       totalBlobs += ri.toNullable()!.entries.length;
@@ -457,8 +483,8 @@ IList<VerificationIssue> _isolateVerify(_IsolatePaths paths, SendPort? progress)
     final checkoutId = entry.key;
     final checkoutEntry = entry.value;
 
-    final metaFile = File(RepoPaths.checkoutMetaPath(checkoutId));
-    if (!metaFile.existsSync()) {
+    final metaExists = await assetStore.store.exists(RepoPaths.checkoutMetaPath(checkoutId));
+    if (!metaExists) {
       issues.add(VerificationNoMeta(checkoutId: checkoutId));
       continue;
     }
@@ -477,7 +503,7 @@ IList<VerificationIssue> _isolateVerify(_IsolatePaths paths, SendPort? progress)
     }
 
     final offset = checkedOffset;
-    final missing = assetStore.verifyResourceIndexSync(
+    final missing = await assetStore.verifyResourceIndex(
       ri,
       onProgress: progress == null
           ? null
@@ -504,12 +530,13 @@ IList<VerificationIssue> _isolateVerify(_IsolatePaths paths, SendPort? progress)
   return issues.toIList();
 }
 
-int _isolatePrune(_IsolatePaths paths, SendPort? progress) {
+Future<int> _isolatePrune(_IsolatePaths paths, SendPort? progress) async {
   _seedPaths(paths);
   GlobalLogger.init(paths.logs, enableDebugLog: false);
 
-  const assetStore = AssetStore();
+  final assetStore = AssetStore();
   final registryService = CheckoutRegistryService();
+  await registryService.load();
 
   final registry = registryService.readRegistry();
   if (registry.isNone()) return 0;
@@ -523,23 +550,26 @@ int _isolatePrune(_IsolatePaths paths, SendPort? progress) {
 
     activeSnapshotHashes.add(checkoutEntry.resourceSnapshotHash);
 
-    final reflogHashes = CheckoutService.collectReflogSnapshotHashes(checkoutId);
+    final reflogHashes = await CheckoutService.collectReflogSnapshotHashes(
+      assetStore.store,
+      checkoutId,
+    );
     activeSnapshotHashes.addAll(reflogHashes);
 
-    final ri = assetStore.readResourceIndexSync(checkoutEntry.resourceSnapshotHash);
+    final ri = await assetStore.readResourceIndex(checkoutEntry.resourceSnapshotHash);
     if (ri.isSome()) {
       activeResourceIndexes.add(ri.toNullable()!);
     }
     for (final hash in reflogHashes) {
       if (hash == checkoutEntry.resourceSnapshotHash) continue;
-      final histRi = assetStore.readResourceIndexSync(hash);
+      final histRi = await assetStore.readResourceIndex(hash);
       if (histRi.isSome()) {
         activeResourceIndexes.add(histRi.toNullable()!);
       }
     }
   }
 
-  return assetStore.pruneSync(
+  return assetStore.prune(
     activeSnapshotHashes: activeSnapshotHashes,
     activeResourceIndexes: activeResourceIndexes,
     onProgress: progress == null ? null : (scanned, total) => progress.send([scanned, total]),

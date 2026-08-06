@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/announcements/state/state.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/version.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:package_info_plus/package_info_plus.dart";
@@ -207,6 +208,10 @@ final appVersionProvider = FutureProvider<String>((Ref ref) async {
 /// [announcementStateServiceProvider], so toggling read/dismiss state never
 /// re-fires this provider.
 final announcementRawFeedProvider = FutureProvider<AnnouncementRawFeed>((Ref ref) async {
+  // Announcements (changelog) are not served on web; short-circuit before
+  // any watch so the feed never touches network or filesystem there.
+  if (kIsWeb) return const AnnouncementRawFeed(entries: [], remoteIds: {});
+
   final locale = ref.watch(localeProvider);
   final setting = ref.watch(appSettingServiceProvider);
   final repo = ref.watch(announcementRepositoryProvider);

@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:convert";
 import "dart:io";
 
@@ -122,8 +125,15 @@ void main() {
         MigrationGate(onMigrationComplete: () => completed = true, theme: ThemeData.light()),
       );
 
-      await tester.pump();
-      await tester.pump();
+      // Detection and activation perform real file I/O (schema_version write)
+      // that only completes outside FakeAsync; drive frames inside runAsync so
+      // the async chain lands and onMigrationComplete fires.
+      await tester.runAsync(() async {
+        for (var i = 0; i < 30 && !completed; i++) {
+          await tester.pump(const Duration(milliseconds: 10));
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      });
 
       expect(completed, isTrue);
     });

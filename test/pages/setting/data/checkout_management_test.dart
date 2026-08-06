@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:async";
 import "dart:convert";
 import "dart:io";
@@ -8,6 +11,7 @@ import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/pages/setting/data/checkout_management.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
+import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -50,10 +54,12 @@ CheckoutRegistry _testRegistry({String activeId = "checkout-1", int count = 1}) 
 }
 
 void _seedRegistry(CheckoutRegistry registry) {
-  final file = File(RepoPaths.checkoutRegistryPath);
-  file.parent.createSync(recursive: true);
-  file.writeAsStringSync(jsonEncode(registry.toJson()));
+  // Widget tests run under FakeAsync where real storage I/O never completes;
+  // the registry is injected synchronously via CheckoutRegistryService.seeded.
+  _seededRegistryService = CheckoutRegistryService.seeded(registry);
 }
+
+late CheckoutRegistryService _seededRegistryService;
 
 void main() {
   late MockAssetStore mockAssetStore;
@@ -66,13 +72,18 @@ void main() {
     PathProvider.documentsPath = tempDir.path;
     PathProvider.appSupportPath = tempDir.path;
 
+    // Default to an empty registry; tests with data call _seedRegistry.
+    _seededRegistryService = CheckoutRegistryService.seeded(
+      const CheckoutRegistry(schemaVersion: 1),
+    );
+
     mockAssetStore = MockAssetStore();
-    when(() => mockAssetStore.readResourceIndexSync(any())).thenReturn(const None());
+    when(() => mockAssetStore.readResourceIndex(any())).thenAnswer((_) async => const None());
 
     mockChannelService = MockChannelService();
-    when(() => mockChannelService.readGenerationResources(any())).thenReturn(const None());
-    when(() => mockChannelService.readServerIndex(any())).thenReturn(const None());
-    when(() => mockChannelService.localGenerationHash(any())).thenReturn(null);
+    when(() => mockChannelService.readGenerationResources(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readServerIndex(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.localGenerationHash(any())).thenAnswer((_) async => null);
   });
 
   tearDown(() {
@@ -89,11 +100,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => const Stream<CheckoutRegistry>.empty()),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
 
     expect(find.text("尚未安装数据版本"), findsOneWidget);
     expect(find.text("管理数据"), findsOneWidget);
@@ -107,11 +120,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
     await tester.pump();
 
     // Active checkout shows a check icon (no text badge)
@@ -129,11 +144,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
     await tester.pump();
 
     // Active checkout has check icon
@@ -155,11 +172,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
     await tester.pump();
 
     // Delete icon button should be disabled (onPressed is null)
@@ -177,12 +196,14 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
           channelServiceProvider.overrideWith((_) => mockChannelService),
-          activeCheckoutWatchProvider.overrideWith((_) => const Stream<CheckoutRegistry>.empty()),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
 
     // Tap the FAB by its label text
     await tester.tap(find.text("管理数据"));
@@ -200,11 +221,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
     await tester.pump();
 
     // Tap info button to open info sheet
@@ -223,11 +246,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
     await tester.pump();
 
     // 3 checkout cards with the same name; 1 has the active check icon
@@ -243,11 +268,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
     await tester.pump();
 
     // Activate is triggered by tapping the inactive checkout's circle indicator.
@@ -273,11 +300,13 @@ void main() {
         overrides: [
           appSettingServiceProvider.overrideWithValue(_testAppSetting()),
           assetStoreProvider.overrideWith((_) => mockAssetStore),
-          activeCheckoutWatchProvider.overrideWith((_) => Stream.value(registry)),
+          checkoutRegistryServiceProvider.overrideWith((_) => _seededRegistryService),
         ],
         child: testApp(const CheckoutManagementPage()),
       ),
     );
+
+    await tester.pump();
     await tester.pump();
 
     // Tap delete on the first (inactive) checkout

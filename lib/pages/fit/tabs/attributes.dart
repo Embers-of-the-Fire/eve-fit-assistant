@@ -48,7 +48,9 @@ class _AttributeTabState extends ConsumerState<_AttributeTab> with AutomaticKeep
             ),
             Miscellaneous(ship: emulated),
             Cargo(ship: emulated),
-            FitPriceTile(fitId: widget.fitContext.fitId),
+            // Market price lookups are not available on web; hide the tile so
+            // the price provider chain is never triggered there.
+            if (!kIsWeb) FitPriceTile(fitId: widget.fitContext.fitId),
           ],
         ),
       ),

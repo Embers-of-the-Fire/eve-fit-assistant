@@ -1,5 +1,6 @@
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
+import "package:flutter/foundation.dart";
 import "package:path/path.dart" as p;
 import "package:path_provider/path_provider.dart";
 
@@ -32,6 +33,15 @@ class PathProvider {
   static String get legacyRuntimePath => p.join(documentsPath, "runtime");
   static String get legacyLogsPath => p.join(documentsPath, "logs");
   static Future<void> init() async {
+    if (kIsWeb) {
+      // Web has no filesystem and path_provider has no web implementation.
+      // Placeholder paths keep legacy path-derived constants well-defined;
+      // real persistence goes through the OPFS/IndexedDB stores in
+      // `lib/storage/fs/`.
+      documentsPath = tempPath = appSupportPath = cachesPath = "/";
+      downloadsPath = null;
+      return;
+    }
     documentsPath = (await getApplicationDocumentsDirectory()).path;
     tempPath = (await getTemporaryDirectory()).path;
     appSupportPath = (await getApplicationSupportDirectory()).path;

@@ -1,6 +1,6 @@
-import "dart:io";
 import "dart:typed_data";
 
+import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/proto/categories.pb.dart" as pb_categories;
 import "package:eve_fit_assistant/data/proto/collections.pb.dart";
@@ -9,11 +9,11 @@ import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart" as pb_units;
 import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/data/proto/groups.pb.dart" as pb_groups;
-import "package:eve_fit_assistant/data/proto/localizations.pb.dart";
 import "package:eve_fit_assistant/data/proto/market_groups.pb.dart" as pb_market;
 import "package:eve_fit_assistant/data/proto/meta_groups.pb.dart" as pb_meta;
 import "package:eve_fit_assistant/data/proto/type_materials.pb.dart" as pb_materials;
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
+import "package:eve_fit_assistant/storage/repo/collection_chunked_decode.dart";
 import "package:eve_fit_assistant/storage/repo/data_readiness.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -36,14 +36,12 @@ RepoCollectionService? repoCollection(Ref ref) {
 
 /// Pre-loaded type data proxy backed by the content-addressed blob store.
 ///
-/// Same query surface but reads from the repo's ResourceIndex-referenced
-/// protobuf files. All data is loaded synchronously at construction from
-/// a single Collection.toBuffer file and optional per-locale Localization
-/// files found in the ResourceIndex.
+/// Structural type-data only, decoded from a single Collection.toBuffer
+/// file referenced by the repo's ResourceIndex. Localized names resolve
+/// via `LocalizationDbService`.
 class RepoCollectionService {
   const RepoCollectionService._({
     required Collection collection,
-    required IMap<String, IMap<int, String>> localizedNames,
     required IMap<int, Ship> ships,
     required IMap<int, pb_types.Type> types,
     required IList<int> skillTypeIds,
@@ -61,7 +59,6 @@ class RepoCollectionService {
     required IMap<int, ImplantSet> implantSets,
     required IMap<int, int> implantTypeToSet,
   }) : _collection = collection,
-       _localizedNames = localizedNames,
        _ships = ships,
        _types = types,
        _skillTypeIds = skillTypeIds,
@@ -99,7 +96,6 @@ class RepoCollectionService {
 
     return RepoCollectionService._(
       collection: collection,
-      localizedNames: const IMap.empty(),
       ships: ships,
       types: types,
       skillTypeIds: skillTypeIds,
@@ -119,30 +115,46 @@ class RepoCollectionService {
     );
   }
 
-  /// Builds a [RepoCollectionService] by reading protobuf files directly from
-  /// filesystem paths. Suitable for use inside an isolate since it performs
-  /// no provider lookups or shared-state access.
-  factory RepoCollectionService.decodeFromPaths({
-    required String collectionPath,
-    required Map<String, String> localizationPaths,
-  }) {
-    final collectionBytes = Uint8List.fromList(File(collectionPath).readAsBytesSync());
+  /// Builds a [RepoCollectionService] by reading the collection protobuf file
+  /// directly from a filesystem path. Suitable for use inside an isolate since
+  /// it performs no provider lookups or shared-state access.
+  ///
+  /// Native-only: on web, blobs live in OPFS and have no filesystem path —
+  /// use `decodeFromBytes` there.
+  factory RepoCollectionService.decodeFromPaths({required String collectionPath}) =>
+      _decode(Uint8List.fromList(File(collectionPath).readAsBytesSync()));
 
-    final localizationBytes = <String, Uint8List>{};
-    for (final entry in localizationPaths.entries) {
-      localizationBytes[entry.key] = Uint8List.fromList(File(entry.value).readAsBytesSync());
-    }
+  /// Builds a [RepoCollectionService] from in-memory collection protobuf bytes.
+  ///
+  /// The web decode path: blobs are read from OPFS through the blob store
+  /// (async) and decoded here. Suitable for use inside an isolate since it
+  /// performs no provider lookups or shared-state access.
+  factory RepoCollectionService.decodeFromBytes({required Uint8List collectionBytes}) =>
+      _decode(collectionBytes);
 
-    return _decode(collectionBytes, localizationBytes);
+  static RepoCollectionService _decode(Uint8List collectionRaw) =>
+      _assemble(Collection.fromBuffer(collectionRaw));
+
+  /// Builds a [RepoCollectionService] from in-memory protobuf bytes without
+  /// ever blocking the event loop for long.
+  ///
+  /// The web decode path: web has no isolates, so the synchronous
+  /// [RepoCollectionService.decodeFromBytes] would freeze the UI for the whole
+  /// decode (hundreds of milliseconds for a full bundle). This variant decodes
+  /// entry by entry, yielding to the event loop between chunks, at the cost of
+  /// a slightly longer total decode time.
+  static Future<RepoCollectionService> decodeFromBytesChunked({
+    required Uint8List collectionBytes,
+    bool Function()? isCancelled,
+  }) async {
+    final options = ChunkedDecodeOptions(isCancelled: isCancelled);
+    final collection = await decodeCollectionChunked(collectionBytes, options);
+    return _assembleAsync(collection, options);
   }
 
+  /// Builds the index maps from an already-decoded collection message.
   // ignore: prefer_constructors_over_static_methods
-  static RepoCollectionService _decode(
-    Uint8List collectionRaw,
-    Map<String, Uint8List> localizationRaw,
-  ) {
-    final collection = Collection.fromBuffer(collectionRaw);
-
+  static RepoCollectionService _assemble(Collection collection) {
     final ships = IMap.fromEntries(collection.ships.entries.map((e) => MapEntry(e.key, e.value)));
     final types = IMap.fromEntries(collection.types.entries.map((e) => MapEntry(e.key, e.value)));
     final categories = IMap.fromEntries(
@@ -198,17 +210,109 @@ class RepoCollectionService {
       );
     }
 
-    final localizedNames = <String, IMap<int, String>>{};
-    for (final entry in localizationRaw.entries) {
-      final localization = Localization.fromBuffer(entry.value);
-      localizedNames[entry.key] = IMap.fromEntries(
-        localization.localizedStrings.entries.map((e) => MapEntry(e.key, e.value)),
+    return RepoCollectionService._(
+      collection: collection,
+      ships: ships,
+      types: types,
+      skillTypeIds: skillTypeIds,
+      skillProfiles: skillProfiles.toIMap(),
+      categories: categories,
+      groups: groups,
+      marketGroups: marketGroups,
+      metaGroups: metaGroups,
+      dogmaUnits: dogmaUnits,
+      dogmaAttributes: dogmaAttributes,
+      subsystems: subsystems,
+      typeMaterials: typeMaterials,
+      dynamicMutators: dynamicMutators,
+      dynamicTypeOptions: dynamicTypeOptions,
+      implantSets: implantSets,
+      implantTypeToSet: implantTypeToSet,
+    );
+  }
+
+  /// Chunked counterpart of [_assemble]: identical index construction, but
+  /// yields to the event loop between the individual map builds so no single
+  /// synchronous stretch exceeds the pacing budget by much.
+  static Future<RepoCollectionService> _assembleAsync(
+    Collection collection,
+    ChunkedDecodeOptions options,
+  ) async {
+    final pacemaker = ChunkedPacemaker(options);
+
+    final ships = IMap.fromEntries(collection.ships.entries.map((e) => MapEntry(e.key, e.value)));
+    await pacemaker.tick();
+    final types = IMap.fromEntries(collection.types.entries.map((e) => MapEntry(e.key, e.value)));
+    await pacemaker.tick();
+    final categories = IMap.fromEntries(
+      collection.categories.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final groups = IMap.fromEntries(collection.groups.entries.map((e) => MapEntry(e.key, e.value)));
+    await pacemaker.tick();
+    final marketGroups = IMap.fromEntries(
+      collection.marketGroups.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final metaGroups = IMap.fromEntries(
+      collection.metaGroups.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final dogmaUnits = IMap.fromEntries(
+      collection.dogmaUnits.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final dogmaAttributes = IMap.fromEntries(
+      collection.dogmaAttributes.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final subsystems = IMap.fromEntries(
+      collection.subsystems.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final typeMaterials = IMap.fromEntries(
+      collection.typeMaterials.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final dynamicMutators = IMap.fromEntries(
+      collection.dynamicMutators.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final dynamicTypeOptions = IMap.fromEntries(
+      collection.dynamicTypeOptions.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final implantSets = IMap.fromEntries(
+      collection.implantSets.entries.map((e) => MapEntry(e.key, e.value)),
+    );
+    await pacemaker.tick();
+    final implantTypeToSet = IMap.fromEntries([
+      for (final set in implantSets.values)
+        for (final typeId in set.memberTypeIds) MapEntry(typeId, set.setId),
+    ]);
+    await pacemaker.tick();
+
+    final skillGroupIds = collection.groups.values
+        .where((group) => group.categoryId == EveConstCategoryId.skill)
+        .map((group) => group.groupId)
+        .toSet();
+
+    final skillTypeIds = collection.types.values
+        .where((type) => skillGroupIds.contains(type.groupId))
+        .map((type) => type.typeId)
+        .toIList();
+    await pacemaker.tick();
+
+    final skillProfiles = <String, IMap<int, int>>{};
+    for (final entry in collection.skillProfiles.entries) {
+      skillProfiles[entry.key] = IMap.fromEntries(
+        entry.value.skills.entries.map((e) => MapEntry(e.key, e.value)),
       );
     }
+    await pacemaker.tick();
 
     return RepoCollectionService._(
       collection: collection,
-      localizedNames: localizedNames.toIMap(),
       ships: ships,
       types: types,
       skillTypeIds: skillTypeIds,
@@ -230,7 +334,6 @@ class RepoCollectionService {
 
   // ── Internal data ──
   final Collection _collection;
-  final IMap<String, IMap<int, String>> _localizedNames;
 
   // ── Pre-built indexes for hot-path lookups ──
   final IMap<int, Ship> _ships;
@@ -287,11 +390,6 @@ class RepoCollectionService {
   IList<pb_groups.Group> getAllGroups() => _groups.values.toIList();
   IList<pb_market.MarketGroup> getAllMarketGroups() => _marketGroups.values.toIList();
   IList<pb_meta.MetaGroup> getAllMetaGroups() => _metaGroups.values.toIList();
-
-  /// Returns the localized name for [id] (a type name localization key) in the
-  /// given [locale] (e.g. `"en"`, `"zh"`). Returns an empty string when the
-  /// locale or key is absent.
-  String getLocalizedName(int id, String locale) => _localizedNames[locale]?[id] ?? "";
 
   /// Returns the logical resource path for the icon of [typeId] at the given
   /// [size] (e.g. 32, 64, 128, 256).

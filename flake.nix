@@ -2,9 +2,11 @@
   description = "Development shell for EVE Fit Assistant";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/64c08a7ca051951c8eae34e3e3cb1e202fe36786";
+  inputs.fenix.url = "github:nix-community/fenix";
+  inputs.fenix.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs =
-    { nixpkgs, ... }:
+    { nixpkgs, fenix, ... }:
     let
       system = "x86_64-linux";
 
@@ -60,13 +62,31 @@
         pkgs.libsecret
       ];
 
-      nativeRustToolchainPath = pkgs.lib.makeBinPath [
-        pkgs.cargo
-        pkgs.rustc
-        pkgs.rustfmt
-        pkgs.clippy
-        pkgs.rust-analyzer
+      fenixPkgs = fenix.packages.${system};
+
+      rustCrossTargets = [
+        "aarch64-linux-android"
+        "armv7-linux-androideabi"
+        "i686-linux-android"
+        "x86_64-linux-android"
+        "wasm32-unknown-unknown"
       ];
+
+      rustToolchain = fenixPkgs.combine (
+        [
+          (fenixPkgs.latest.withComponents [
+            "cargo"
+            "clippy"
+            "rust-analyzer"
+            "rustc"
+            "rustfmt"
+            "rust-src"
+          ])
+        ]
+        ++ map (target: fenixPkgs.targets.${target}.latest.rust-std) rustCrossTargets
+      );
+
+      nativeRustToolchainPath = pkgs.lib.makeBinPath [ rustToolchain ];
 
       inherit (pkgs)
         flutter
@@ -80,13 +100,7 @@
         uv
       ];
 
-      rustPackages = with pkgs; [
-        rustc
-        cargo
-        rustfmt
-        clippy
-        rust-analyzer
-      ];
+      rustPackages = [ rustToolchain ];
 
       nativeBuildPackages = with pkgs; [
         pkg-config
@@ -107,7 +121,13 @@
         protoc-gen-dart
       ];
 
-      frbPackages = with pkgs; [ flutter_rust_bridge_codegen ];
+      frbPackages = with pkgs; [
+        flutter_rust_bridge_codegen
+        wasm-pack
+        # Provides wasm-opt; wasm-pack uses the local binary instead of
+        # downloading binaryen from GitHub releases (blocked in some envs).
+        binaryen
+      ];
 
       jsPackages = with pkgs; [
         nodejs_26
@@ -180,7 +200,6 @@
           # Full development shell
           fullShell = pkgs.mkShell {
             packages = basePackages ++ appimageTools ++ [
-              pkgs.rustup
               pkgs.worker-build
               developmentAndroidSdk
               developmentAndroidComposition.platform-tools
@@ -195,6 +214,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${pkgs.flutter}";
             NIX_ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_HOME = developmentAndroidSdkRoot;
@@ -218,7 +238,6 @@
           # Android build shell
           androidShell = pkgs.mkShell {
             packages = basePackages ++ [
-              pkgs.rustup
               pkgs.worker-build
               androidSdk
               androidComposition.platform-tools
@@ -228,6 +247,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${pkgs.flutter}";
             NIX_ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_HOME = androidSdkRoot;
@@ -251,7 +271,6 @@
           # Linux desktop build shell (AppImage packaging; no Android SDK)
           linuxShell = pkgs.mkShell {
             packages = basePackages ++ appimageTools ++ [
-              pkgs.rustup
               pkgs.libsecret
               pkgs.xdg-user-dirs
             ];
@@ -260,6 +279,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${pkgs.flutter}";
             UV_PYTHON = "${python3}/bin/python3";
             UV_PYTHON_DOWNLOADS = "never";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
@@ -304,6 +324,7 @@
             UV_PYTHON = "${python3}/bin/python3";
             UV_PYTHON_DOWNLOADS = "never";
             JAVA_HOME = jdk17.home;
+            FLUTTER_ROOT = "${pkgs.flutter}";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
@@ -366,6 +387,7 @@
 
             inherit (localeEnv) LANG LC_ALL;
             JAVA_HOME = jdk17.home;
+            FLUTTER_ROOT = "${pkgs.flutter}";
             UV_PYTHON = "${python3}/bin/python3";
             UV_PYTHON_DOWNLOADS = "never";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";

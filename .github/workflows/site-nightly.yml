@@ -1,0 +1,119 @@
+name: Site Nightly
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check for web bundle changes
+    if: |
+      github.ref == 'refs/heads/dev' &&
+      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+      github.event.repository.fork == false
+    runs-on: ubuntu-slim
+    environment: web-preview
+    outputs:
+      deploy: ${{ steps.decide.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: "3.13"
+      - name: Get last nightly deployment commit
+        id: last
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        with:
+          script: |
+            const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+            const token = process.env.CLOUDFLARE_API_TOKEN;
+            if (!accountId || !token) {
+              core.setFailed("Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN.");
+              return;
+            }
+            const res = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${accountId}` +
+                `/pages/projects/efa-app-nightly/deployments?env=production&per_page=1`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            const body = await res.json();
+            if (!res.ok || !body.success) {
+              core.warning(
+                `Listing deployments failed (${JSON.stringify(body.errors ?? body)}); ` +
+                  "defaulting to deploy.",
+              );
+              core.setOutput("sha", "");
+              return;
+            }
+            const latest = body.result?.[0];
+            const sha = latest?.deployment_trigger?.metadata?.commit_hash ?? "";
+            core.info(`Last nightly deployment commit: ${sha || "(none)"}`);
+            core.setOutput("sha", sha);
+      - name: Decide whether to deploy
+        id: decide
+        env:
+          LAST_SHA: ${{ steps.last.outputs.sha }}
+        run: |
+          # No prior deployment (or its commit is unreadable): deploy rather
+          # than risk a stale nightly.
+          if [[ -z "$LAST_SHA" ]] || ! git cat-file -e "$LAST_SHA^{commit}" 2>/dev/null; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "$LAST_SHA" HEAD > /tmp/changed.txt
+          if [[ ! -s /tmp/changed.txt ]]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BUILD=$(uv run x.py ci web-affected --from-file /tmp/changed.txt)
+          echo "deploy=$BUILD" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build web bundle
+    needs: check
+    if: needs.check.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Build web bundle
+        uses: ./.github/actions/build-web
+
+  deploy:
+    name: Deploy nightly to Cloudflare Pages
+    needs: [check, build]
+    if: needs.check.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Deploy to the nightly project's production URL; the project's production
+    # branch must be set to "dev" (one-time setup in the Cloudflare dashboard).
+    environment: web-preview
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Deploy nightly to Cloudflare Pages
+        uses: ./.github/actions/deploy-web-pages
+        with:
+          flavor: nightly
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          commit-hash: ${{ github.sha }}
+          comment: "false"

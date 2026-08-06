@@ -1,9 +1,13 @@
+@TestOn("vm")
+library;
+
 import "dart:convert";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_state.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/storage/fs/file_doc_store.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
@@ -21,7 +25,7 @@ void main() {
     PathProvider.appSupportPath = testDir.path;
     PathProvider.cachesPath = testDir.path;
     settingsPath = p.join(testDir.path, "settings");
-    store = AnnouncementStateStore(settingsPath: settingsPath);
+    store = AnnouncementStateStore(store: FileDocStore(settingsPath));
     await store.init();
     await store.ensureSynced;
   });
@@ -39,7 +43,7 @@ void main() {
 
       await store.ensureSynced;
 
-      final reloaded = AnnouncementStateStore(settingsPath: settingsPath);
+      final reloaded = AnnouncementStateStore(store: FileDocStore(settingsPath));
       await reloaded.init();
 
       expect(reloaded.isRead("entry-1"), isTrue);
@@ -100,7 +104,7 @@ void main() {
       settingsDir.createSync(recursive: true);
       File(p.join(settingsDir.path, "announcement_state.json")).writeAsStringSync(oldJson);
 
-      final reloaded = AnnouncementStateStore(settingsPath: settingsPath);
+      final reloaded = AnnouncementStateStore(store: FileDocStore(settingsPath));
       await reloaded.init();
 
       expect(reloaded.state.schemaVersion, 3);
@@ -112,7 +116,7 @@ void main() {
       settingsDir.createSync(recursive: true);
       File(p.join(settingsDir.path, "announcement_state.json")).writeAsStringSync("not json");
 
-      final reloaded = AnnouncementStateStore(settingsPath: settingsPath);
+      final reloaded = AnnouncementStateStore(store: FileDocStore(settingsPath));
       await reloaded.init();
 
       expect(reloaded.state.schemaVersion, 3);

@@ -1,10 +1,9 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
 
+import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/character/manager.dart";
@@ -17,7 +16,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
-import "package:fpdart/fpdart.dart";
+import "package:flutter/foundation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:riverpod/riverpod.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
@@ -133,18 +132,19 @@ class Fit extends _$Fit {
     }
     state = const FitServiceState.notInitialized();
     _mountedFit = null;
-    final path = File(FitStorage.fitStoragePathForId(fitId));
+    final store = ref.read(fitsDocStoreProvider);
+    final fitKey = "$fitId.json";
     try {
-      if (!path.existsSync()) {
-        throw StateError("Fit file does not exist: ${path.path}");
+      final text = await store.read(fitKey);
+      if (text == null) {
+        throw StateError("Fit file does not exist: $fitId");
       }
-      final text = await path.readAsString();
       final json = jsonDecode(text) as Map<String, dynamic>;
       final decodedFit = decodeFitStorage(json);
       final fit = pruneDynamicRegistry(decodedFit.fit);
       if (decodedFit.didMigrate) {
         try {
-          await path.writeAsString(jsonEncode(encodeFitStorage(fit)));
+          await store.write(fitKey, jsonEncode(encodeFitStorage(fit)));
         } on Object catch (errorValue, stackTrace) {
           warning("Failed to rewrite migrated fit $fitId: $errorValue");
           debug(errorValue.toString(), stackTrace: stackTrace);
@@ -156,7 +156,8 @@ class Fit extends _$Fit {
         fit: fit,
       );
     } on Object catch (errorValue, stackTrace) {
-      final messageKey = path.existsSync()
+      final exists = await store.exists(fitKey);
+      final messageKey = exists
           ? FitErrorMessageKey.fitLoadFailed
           : FitErrorMessageKey.fitLoadMissing;
       _setLoadError(fitId, messageKey, errorValue, stackTrace);
@@ -165,13 +166,10 @@ class Fit extends _$Fit {
 
   Future<void> _syncToDisk(FitStorage fit, int revision) async {
     _mountedFit = fit;
-    final path = File(fit.fitStoragePath);
+    final store = ref.read(fitsDocStoreProvider);
     final text = jsonEncode(encodeFitStorage(fit));
     try {
-      if (!path.existsSync()) {
-        await path.parent.create(recursive: true);
-      }
-      await path.writeAsString(text);
+      await store.write("${fit.metadata.fitId}.json", text);
       if (revision != _latestSyncRevision) return;
       state = FitServiceState.loaded(
         status: FitServiceStatus.loaded(lastSync: DateTime.now()),
@@ -215,12 +213,9 @@ class Fit extends _$Fit {
       return;
     }
     try {
-      final path = File(fit.fitStoragePath);
+      final store = ref.read(fitsDocStoreProvider);
       final text = jsonEncode(encodeFitStorage(fit));
-      if (!path.existsSync()) {
-        path.parent.createSync(recursive: true);
-      }
-      unawaited(path.writeAsString(text));
+      unawaited(store.write("${fit.metadata.fitId}.json", text));
     } on Object catch (errorValue, stackTrace) {
       warning("Failed to persist fit ${fit.metadata.fitId} on unmount: $errorValue");
       debug(errorValue.toString(), stackTrace: stackTrace);
@@ -263,7 +258,7 @@ class Fit extends _$Fit {
 }
 
 @freezed
-class FitEmulatorState with _$FitEmulatorState {
+abstract class FitEmulatorState with _$FitEmulatorState {
   const factory FitEmulatorState.notInitialized() = _FitEmulatorStateNotInitialized;
   const factory FitEmulatorState.emulating({required native.Ship? previous}) =
       _FitEmulatorStateEmulating;
@@ -443,7 +438,7 @@ class FitEmulatorService extends _$FitEmulatorService {
 }
 
 @freezed
-class NativeFitEngineState with _$NativeFitEngineState {
+abstract class NativeFitEngineState with _$NativeFitEngineState {
   const factory NativeFitEngineState.notInitialized() = _NativeFitEngineStateNotInitialized;
   const factory NativeFitEngineState.initializing() = _NativeFitEngineStateInitializing;
   const factory NativeFitEngineState.error({required FitErrorMessageKey messageKey}) =
@@ -473,16 +468,23 @@ class NativeFitEngineState with _$NativeFitEngineState {
 
 @riverpodSingleton
 class NativeFitEngineService extends _$NativeFitEngineService {
-  String? _lastSnapshotHash;
-  ResourceIndex? _lastResourceIndex;
+  ResourceBlobProxy? _lastProxy;
   Future<void>? _pendingInit;
 
-  void _scheduleInit(ResourceIndex resourceIndex) {
-    unawaited(Future(() => _initializeFromResourceIndex(resourceIndex)));
+  void _scheduleInit(ResourceBlobProxy proxy) {
+    unawaited(Future(() => _initializeFromProxy(proxy)));
   }
+
+  static const _engineTypesId = "resource://static/native/types.pb2";
+  static const _engineDogmaAttributesId = "resource://static/native/dogmaAttributes.pb2";
+  static const _engineDogmaEffectsId = "resource://static/native/dogmaEffects.pb2";
+  static const _engineTypeDogmaId = "resource://static/native/typeDogma.pb2";
+  static const _engineBuffCollectionsId = "resource://static/native/dbuffcollections.pb2";
 
   /// Resolves the five engine `.pb2` files directly from the content-addressed
   /// blob store using a [ResourceBlobProxy], bypassing any filesystem tree.
+  ///
+  /// Native-only: [ResourceBlobProxy.resolvePath] returns `null` on web.
   static native_server.FitEnginePath _enginePathFromProxy(ResourceBlobProxy proxy) {
     String resolve(String resourceId) {
       final path = proxy.resolvePath(resourceId);
@@ -493,73 +495,111 @@ class NativeFitEngineService extends _$NativeFitEngineService {
     }
 
     return native_server.FitEnginePath(
-      types: resolve("resource://static/native/types.pb2"),
-      dogmaAttributes: resolve("resource://static/native/dogmaAttributes.pb2"),
-      dogmaEffects: resolve("resource://static/native/dogmaEffects.pb2"),
-      typeDogma: resolve("resource://static/native/typeDogma.pb2"),
-      buffCollections: resolve("resource://static/native/dbuffcollections.pb2"),
+      types: resolve(_engineTypesId),
+      dogmaAttributes: resolve(_engineDogmaAttributesId),
+      dogmaEffects: resolve(_engineDogmaEffectsId),
+      typeDogma: resolve(_engineTypeDogmaId),
+      buffCollections: resolve(_engineBuffCollectionsId),
+    );
+  }
+
+  /// Reads the five engine `.pb2` blobs as bytes through the blob store.
+  ///
+  /// Web-only path: OPFS blobs have no native file path, so the bytes are
+  /// handed to the engine via `FitEngineData.initBytes`.
+  static Future<
+    ({
+      Uint8List types,
+      Uint8List dogmaAttributes,
+      Uint8List dogmaEffects,
+      Uint8List typeDogma,
+      Uint8List buffCollections,
+    })
+  >
+  _engineBytesFromProxy(ResourceBlobProxy proxy) async {
+    Future<Uint8List> read(String resourceId) async {
+      final bytes = (await proxy.read(resourceId)).toNullable();
+      if (bytes == null) {
+        throw StateError("Engine resource not found in store: $resourceId");
+      }
+      return bytes;
+    }
+
+    return (
+      types: await read(_engineTypesId),
+      dogmaAttributes: await read(_engineDogmaAttributesId),
+      dogmaEffects: await read(_engineDogmaEffectsId),
+      typeDogma: await read(_engineTypeDogmaId),
+      buffCollections: await read(_engineBuffCollectionsId),
     );
   }
 
   @override
   NativeFitEngineState build() {
-    final assetStore = ref.read(assetStoreProvider);
-    ref.listen(activeSnapshotHashProvider, (prev, next) {
-      if (prev == next || next.isNone()) return;
-      final hash = next.toNullable()!;
-      final ri = assetStore.readResourceIndexSync(hash);
-      if (ri.isNone()) return;
-      _lastSnapshotHash = hash;
-      _lastResourceIndex = ri.toNullable();
-      _scheduleInit(ri.toNullable()!);
+    ref.listen(resourceBlobProxyProvider, (prev, next) {
+      final proxy = next.value;
+      if (proxy == null || identical(proxy, _lastProxy)) return;
+      _lastProxy = proxy;
+      _scheduleInit(proxy);
     }, weak: true);
 
-    final initialHash = ref.read(activeSnapshotHashProvider);
-    if (initialHash case Some(:final value)) {
-      final ri = assetStore.readResourceIndexSync(value);
-      if (ri.isSome()) {
-        _lastSnapshotHash = value;
-        _lastResourceIndex = ri.toNullable();
-        _scheduleInit(ri.toNullable()!);
-      }
+    final proxy = ref.read(resourceBlobProxyProvider).value;
+    if (proxy != null && !identical(proxy, _lastProxy)) {
+      _lastProxy = proxy;
+      _scheduleInit(proxy);
     }
 
     return const NativeFitEngineState.notInitialized();
   }
 
   Future<void> retry() async {
-    final hash = _lastSnapshotHash;
-    final ri = _lastResourceIndex;
-    if (hash == null || ri == null) {
-      final initialHash = ref.read(activeSnapshotHashProvider);
-      if (initialHash case Some(:final value)) {
-        final freshRi = ref.read(assetStoreProvider).readResourceIndexSync(value);
-        if (freshRi.isSome()) {
-          _lastSnapshotHash = value;
-          _lastResourceIndex = freshRi.toNullable();
-          await _initializeFromResourceIndex(freshRi.toNullable()!);
-        }
-      }
-      return;
-    }
-    await _initializeFromResourceIndex(ri);
+    final proxy = _lastProxy ?? ref.read(resourceBlobProxyProvider).value;
+    if (proxy == null) return;
+    _lastProxy = proxy;
+    await _initializeFromProxy(proxy);
   }
 
-  Future<void> _initializeFromResourceIndex(ResourceIndex resourceIndex) async {
+  Future<void> _initializeFromProxy(ResourceBlobProxy proxy) async {
     if (!ref.mounted) return;
     if (_pendingInit != null) return _pendingInit!;
 
     final completer = Completer<void>();
     _pendingInit = completer.future;
 
+    if (!NativeEngineAvailability.available) {
+      // The bridge was never initialized (e.g. web without cross-origin
+      // isolation or without the wasm bundle); booted without the native
+      // engine by design. Do not touch FRB — every call would throw a
+      // misleading "flutter_rust_bridge has not been initialized" error.
+      debug("Native engine unavailable; skipping initialization from resource index.");
+      state = const NativeFitEngineState.error(
+        messageKey: FitErrorMessageKey.fitCalculationsUnavailable,
+      );
+      completer.complete();
+      _pendingInit = null;
+      return;
+    }
+
     state = const NativeFitEngineState.initializing();
     try {
-      final proxy = ResourceBlobProxy(ref.read(assetStoreProvider), resourceIndex);
-      final path = _enginePathFromProxy(proxy);
+      final native_server.FitEngineData data;
+      if (kIsWeb) {
+        final bytes = await _engineBytesFromProxy(proxy);
+        if (!ref.mounted) return;
+        data = await native_server.FitEngineData.initBytes(
+          types: bytes.types,
+          dogmaAttributes: bytes.dogmaAttributes,
+          dogmaEffects: bytes.dogmaEffects,
+          typeDogma: bytes.typeDogma,
+          buffCollections: bytes.buffCollections,
+        );
+      } else {
+        final path = _enginePathFromProxy(proxy);
+        if (!ref.mounted) return;
+        data = await native_server.FitEngineData.init(path: path);
+      }
       if (!ref.mounted) return;
-      final engine = native_server.FitEngine(
-        data: await native_server.FitEngineData.init(path: path),
-      );
+      final engine = native_server.FitEngine(data: data);
       if (!ref.mounted) return;
       state = NativeFitEngineState.initialized(engine: engine);
       completer.complete();

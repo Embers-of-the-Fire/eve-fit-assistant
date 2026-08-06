@@ -1,5 +1,5 @@
 import "dart:convert";
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -99,7 +99,7 @@ class MigrateService {
     // ── Stage 3: Finalize ───────────────────────────────────────────────────
     if (!progress.finalized) {
       info("Migration: finalizing...");
-      _finalize();
+      await _finalize();
       final next = progress.copyWith(
         finalized: true,
         completedAt: DateTime.now().toUtc().millisecondsSinceEpoch,
@@ -195,8 +195,8 @@ class MigrateService {
 
   // ── Finalization ───────────────────────────────────────────────────────────
 
-  void _finalize() {
-    schemaVersionService.ensure();
+  Future<void> _finalize() async {
+    await schemaVersionService.ensure();
     _deleteOldDirectories();
   }
 

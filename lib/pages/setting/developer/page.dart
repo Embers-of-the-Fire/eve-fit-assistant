@@ -17,6 +17,7 @@ import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
@@ -56,12 +57,14 @@ class DeveloperSettingsPage extends ConsumerWidget {
             subtitle: context.l10n.developerSettingsPageRemoteContentOpenDescription,
             onTap: () => unawaited(_openRemoteContentSettings(context)),
           ),
-          ConfigListTile.item(
-            icon: const Icon(Icons.bug_report_outlined),
-            title: context.l10n.developerSettingsPageCollectLogsTitle,
-            subtitle: context.l10n.developerSettingsPageCollectLogsDescription,
-            onTap: () => unawaited(context.router.push(const CollectLogsRoute())),
-          ),
+          // Log collection reads on-disk log files; unavailable on web.
+          if (!kIsWeb)
+            ConfigListTile.item(
+              icon: const Icon(Icons.bug_report_outlined),
+              title: context.l10n.developerSettingsPageCollectLogsTitle,
+              subtitle: context.l10n.developerSettingsPageCollectLogsDescription,
+              onTap: () => unawaited(context.router.push(const CollectLogsRoute())),
+            ),
           ConfigListTile.item(
             icon: const Icon(Icons.cached_outlined),
             title: context.l10n.developerSettingsPageClearCacheTitle,

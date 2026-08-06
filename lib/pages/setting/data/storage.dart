@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" show min;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
@@ -7,6 +8,8 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/data/data_update_tile.dart";
+import "package:eve_fit_assistant/storage/repo/hash.dart";
+import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -17,10 +20,26 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
 
 class StorageOverview {
-  const StorageOverview({required this.fileCount, required this.totalSize});
+  const StorageOverview({
+    required this.fileCount,
+    required this.totalSize,
+    required this.downloadedCount,
+    required this.downloadedSize,
+    required this.onDemandCount,
+    required this.onDemandSize,
+  });
 
+  /// Logical totals across all index entries (downloaded + on-demand).
   final int fileCount;
   final int totalSize;
+
+  /// Entries whose blobs are present on disk.
+  final int downloadedCount;
+  final int downloadedSize;
+
+  /// Entries whose blobs are not on disk yet (fetched lazily on first access).
+  final int onDemandCount;
+  final int onDemandSize;
 }
 
 final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
@@ -29,25 +48,71 @@ final storageOverviewProvider = FutureProvider<StorageOverview>((ref) async {
   final assetStore = ref.watch(assetStoreProvider);
 
   final seen = <String>{};
-  var totalSize = 0;
-  var totalFiles = 0;
+  final entries = <({String identHash, String contentHash, int size})>[];
 
   for (final id in checkoutIds) {
     final entry = registryService.readRegistry().flatMap(
       (r) => Option.fromNullable(r.checkouts[id]),
     );
     if (entry.isNone()) continue;
-    final ri = assetStore.readResourceIndexSync(entry.toNullable()!.resourceSnapshotHash);
+    final ri = await assetStore.readResourceIndex(entry.toNullable()!.resourceSnapshotHash);
     if (ri.isNone()) continue;
-    for (final file in ri.toNullable()!.entries) {
-      if (seen.add(file.resourceId)) {
-        totalFiles++;
-        totalSize += file.size.toInt();
+    final index = ri.toNullable()!;
+    for (final file in index.entries) {
+      if (!seen.add(file.resourceId)) continue;
+      entries.add((
+        identHash: RepoHash.hashIdent(file.resourceId),
+        contentHash: file.contentHash,
+        size: file.size.toInt(),
+      ));
+    }
+  }
+
+  // Count blobs actually present on disk (batched), not the download policy:
+  // FORCE entries whose downloads failed are not downloaded, and NON_FORCE
+  // entries already lazily fetched do occupy disk.
+  var downloadedCount = 0;
+  var downloadedSize = 0;
+  var onDemandCount = 0;
+  var onDemandSize = 0;
+  const batchSize = 64;
+  for (var start = 0; start < entries.length; start += batchSize) {
+    final batch = entries.sublist(start, min(start + batchSize, entries.length));
+    final exists = await Future.wait(
+      batch.map((e) => assetStore.blobExists(e.identHash, e.contentHash)),
+    );
+    for (var i = 0; i < batch.length; i++) {
+      if (exists[i]) {
+        downloadedCount++;
+        downloadedSize += batch[i].size;
+      } else {
+        onDemandCount++;
+        onDemandSize += batch[i].size;
       }
     }
   }
 
-  return StorageOverview(fileCount: totalFiles, totalSize: totalSize);
+  return StorageOverview(
+    fileCount: entries.length,
+    totalSize: entries.fold(0, (sum, e) => sum + e.size),
+    downloadedCount: downloadedCount,
+    downloadedSize: downloadedSize,
+    onDemandCount: onDemandCount,
+    onDemandSize: onDemandSize,
+  );
+});
+
+typedef _ChannelOverviewInfo = ({String? generationHash, ChannelHeadMeta? headMeta});
+
+/// Local channel generation hash + head metadata for the storage overview card.
+final storageChannelOverviewProvider = FutureProvider.family<_ChannelOverviewInfo, String>((
+  ref,
+  channelName,
+) async {
+  final channelService = ref.watch(channelServiceProvider);
+  final genHash = await channelService.localGenerationHash(channelName);
+  final headMeta = (await channelService.readHeadMeta(channelName)).toNullable();
+  return (generationHash: genHash, headMeta: headMeta);
 });
 
 @RoutePage(name: "StorageManagement")
@@ -167,12 +232,13 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
     final l10n = context.l10n;
     final theme = context.theme;
 
-    final genHash = ref.watch(channelServiceProvider).localGenerationHash(channelName);
-    final headMeta = ref.watch(channelServiceProvider).readHeadMeta(channelName);
+    final info = ref.watch(storageChannelOverviewProvider(channelName)).value;
+    final genHash = info?.generationHash;
+    final headMeta = info?.headMeta;
     final metadata = genHash == null
         ? l10n.storageNeverSynced
         : "$channelName · ${_truncateHash(genHash)}";
-    final lastUpdated = headMeta.fold(() => l10n.storageNeverSynced, (m) => m.updatedAt);
+    final lastUpdated = headMeta == null ? l10n.storageNeverSynced : headMeta.updatedAt;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -181,9 +247,30 @@ class _StorageManagementPageState extends ConsumerState<StorageManagementPage> {
         children: [
           _overviewRow(l10n.storageFileCount, "${overview.fileCount}"),
           _overviewRow(l10n.storageTotalSize, _formatSize(overview.totalSize)),
+          _overviewRow(
+            l10n.storageDownloadedLabel,
+            l10n.storageDownloadedValue(
+              count: overview.downloadedCount,
+              size: _formatSize(overview.downloadedSize),
+            ),
+          ),
+          _overviewRow(
+            l10n.storageOnDemandLabel,
+            l10n.storageOnDemandValue(
+              count: overview.onDemandCount,
+              size: _formatSize(overview.onDemandSize),
+            ),
+          ),
           _overviewRow(l10n.storageMetadata, metadata),
           _overviewRow(l10n.storageLastUpdated, lastUpdated),
           const SizedBox(height: 8),
+          if (overview.onDemandCount > 0) ...[
+            Text(
+              l10n.storageOnDemandHint,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             l10n.storageCacheInfoHint,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),

@@ -1,12 +1,11 @@
-import "dart:io";
-
 import "package:crypto/crypto.dart";
+import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/features/manual/search/manual_search_text.dart";
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:path/path.dart" as p;
 import "package:path_provider/path_provider.dart";
-import "package:sqlite3/sqlite3.dart" show ResultSet;
+import "package:sqlite3/common.dart" show ResultSet;
 import "package:sqlite_async/sqlite_async.dart";
 
 const String _searchDbAssetPath = "assets/content/manual/generated/manual_search.db";
@@ -56,14 +55,14 @@ class ManualSearchService {
     final file = File(p.join(supportDir.path, "manual_search_$hash.db"));
     if (!file.existsSync()) {
       await file.writeAsBytes(bytes, flush: true);
-      await _removeStaleCopies(supportDir, file.path);
+      await _removeStaleCopies(supportDir.path, file.path);
     }
 
     return ManualSearchService._(SqliteDatabase(path: file.path));
   }
 
-  static Future<void> _removeStaleCopies(Directory dir, String currentPath) async {
-    await for (final entity in dir.list()) {
+  static Future<void> _removeStaleCopies(String dirPath, String currentPath) async {
+    await for (final entity in Directory(dirPath).list()) {
       final name = p.basename(entity.path);
       if (entity.path != currentPath && name.startsWith("manual_search_") && name.endsWith(".db")) {
         await entity.delete();

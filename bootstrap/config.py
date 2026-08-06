@@ -176,10 +176,27 @@ class SchemaConfig(BaseModel):
         return self
 
 
+#: Resource path prefixes (relative to ``resource://``) that are marked
+#: NON_FORCE in generated resource snapshots and therefore downloaded lazily
+#: on first access instead of ahead of time. Bound to the data generator
+#: implementation; overridable via the ``[download]`` table in
+#: ``efa.config.toml``.
+DEFAULT_LAZY_PREFIXES: list[str] = ["static/images/"]
+
+
+class DownloadConfig(BaseModel):
+    """Lazy-download classification for generated resource snapshots."""
+
+    model_config = ConfigDict(validate_default=True)
+
+    lazy_prefixes: list[str] = Field(default_factory=lambda: list(DEFAULT_LAZY_PREFIXES))
+
+
 class ProjectConfiguration(BaseModel):
     localizations: ProjectLocalizations
     paths: ProjectPaths
     data_schema: SchemaConfig = Field(default_factory=SchemaConfig)
+    download: DownloadConfig = Field(default_factory=DownloadConfig)
     version: ProjectVersion
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 

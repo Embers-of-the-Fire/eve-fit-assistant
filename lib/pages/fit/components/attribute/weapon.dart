@@ -11,7 +11,7 @@ class Weapon extends StatelessWidget {
       ListTile(
         minTileHeight: 0,
         leading: const Image(image: ImageAssets.attrDamageAlpha, height: 28),
-        title: DefaultTextStyle(
+        title: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: 16),
           child: Row(mainAxisAlignment: MainAxisAlignment.end, children: _getWeaponTextGroup(ship)),
         ),
@@ -19,7 +19,7 @@ class Weapon extends StatelessWidget {
       ListTile(
         minTileHeight: 0,
         leading: const Image(image: ImageAssets.attrWeaponTurret, height: 28),
-        title: DefaultTextStyle(
+        title: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -30,7 +30,7 @@ class Weapon extends StatelessWidget {
       ListTile(
         minTileHeight: 0,
         leading: const Image(image: ImageAssets.attrWeaponDrone, height: 28),
-        title: DefaultTextStyle(
+        title: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,

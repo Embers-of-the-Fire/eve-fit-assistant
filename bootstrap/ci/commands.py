@@ -19,6 +19,7 @@ from bootstrap.ci.release import register_ci_release_commands
 from bootstrap.ci.release_github import register_github_release_command
 from bootstrap.ci.suites import SUITE_DEFINITIONS
 from bootstrap.ci.suites import calculate_ci_matrix
+from bootstrap.ci.suites import web_preview_affected
 from bootstrap.cli import runtime
 from bootstrap.cli.remote.helpers import validate_remote_channel
 from bootstrap.color import styled
@@ -61,6 +62,25 @@ def register_ci_commands(cli_group: click.Group) -> None:
             suites = []
 
         print(json.dumps(suites))
+
+    @ci.command("web-affected")
+    @click.option("--from-file", type=click.Path(exists=True), default=None)
+    @click.option("--full", is_flag=True, default=False)
+    def ci_web_affected(from_file, full):
+        """Check whether changed files affect the Flutter web bundle.
+
+        Prints "true" or "false" to stdout.
+        """
+        if full:
+            affected = True
+        elif from_file:
+            with open(from_file) as f:
+                files = [line.strip() for line in f if line.strip()]
+            affected = web_preview_affected(files)
+        else:
+            affected = False
+
+        print("true" if affected else "false")
 
     @ci.command("lint")
     @click.option(

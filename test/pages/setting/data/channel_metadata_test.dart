@@ -37,7 +37,7 @@ void main() {
     registerFallbackValue("");
     mockChannelService = MockChannelService();
 
-    when(() => mockChannelService.readLocalChannelRegistry()).thenReturn(
+    when(() => mockChannelService.readLocalChannelRegistry()).thenAnswer((_) async => 
       Some(
         ChannelRegistry(
           schemaVersion: 1,
@@ -46,14 +46,14 @@ void main() {
         ),
       ),
     );
-    when(() => mockChannelService.readHeadMeta(any())).thenReturn(const None());
-    when(() => mockChannelService.readServerIndex(any())).thenReturn(const None());
-    when(() => mockChannelService.readGenerationResources(any())).thenReturn(const None());
-    when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
+    when(() => mockChannelService.readHeadMeta(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readServerIndex(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readGenerationResources(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readReleasePointer(any())).thenAnswer((_) async => const None());
   });
 
   testWidgets("shows no data placeholder when registry is null", (tester) async {
-    when(() => mockChannelService.readLocalChannelRegistry()).thenReturn(const None());
+    when(() => mockChannelService.readLocalChannelRegistry()).thenAnswer((_) async => const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -65,12 +65,14 @@ void main() {
       ),
     );
 
+    await tester.pump();
+
     expect(find.text("无频道数据 — 尚未同步。"), findsOneWidget);
     expect(find.text("频道元数据"), findsOneWidget);
   });
 
   testWidgets("shows overview tab with channel info", (tester) async {
-    when(() => mockChannelService.readHeadMeta(any())).thenReturn(
+    when(() => mockChannelService.readHeadMeta(any())).thenAnswer((_) async => 
       Some(
         ChannelHeadMeta(
           schemaVersion: 1,
@@ -80,9 +82,9 @@ void main() {
         ),
       ),
     );
-    when(() => mockChannelService.readServerIndex(any())).thenReturn(const None());
-    when(() => mockChannelService.readGenerationResources(any())).thenReturn(const None());
-    when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
+    when(() => mockChannelService.readServerIndex(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readGenerationResources(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readReleasePointer(any())).thenAnswer((_) async => const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -93,6 +95,8 @@ void main() {
         child: testApp(const ChannelMetadataPage()),
       ),
     );
+
+    await tester.pump();
 
     expect(find.text("abc123def456..."), findsOneWidget);
     expect(find.text("testing"), findsWidgets);
@@ -109,10 +113,10 @@ void main() {
       ),
     );
 
-    when(() => mockChannelService.readHeadMeta(any())).thenReturn(const None());
-    when(() => mockChannelService.readServerIndex(any())).thenReturn(Some(serverIndex));
-    when(() => mockChannelService.readGenerationResources(any())).thenReturn(const None());
-    when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
+    when(() => mockChannelService.readHeadMeta(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readServerIndex(any())).thenAnswer((_) async => Some(serverIndex));
+    when(() => mockChannelService.readGenerationResources(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readReleasePointer(any())).thenAnswer((_) async => const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -123,6 +127,8 @@ void main() {
         child: testApp(const ChannelMetadataPage()),
       ),
     );
+
+    await tester.pump();
 
     await tester.tap(find.text("服务器"));
     await tester.pumpAndSettle();
@@ -138,10 +144,10 @@ void main() {
       GenerationResources_Entry(serverId: "ser", snapshotHash: "hash456"),
     ]);
 
-    when(() => mockChannelService.readHeadMeta(any())).thenReturn(const None());
-    when(() => mockChannelService.readServerIndex(any())).thenReturn(const None());
-    when(() => mockChannelService.readGenerationResources(any())).thenReturn(Some(genResources));
-    when(() => mockChannelService.readReleasePointer(any())).thenReturn(const None());
+    when(() => mockChannelService.readHeadMeta(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readServerIndex(any())).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readGenerationResources(any())).thenAnswer((_) async => Some(genResources));
+    when(() => mockChannelService.readReleasePointer(any())).thenAnswer((_) async => const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -152,6 +158,8 @@ void main() {
         child: testApp(const ChannelMetadataPage()),
       ),
     );
+
+    await tester.pump();
 
     await tester.tap(find.text("资源"));
     await tester.pumpAndSettle();
@@ -172,6 +180,8 @@ void main() {
       ),
     );
 
+    await tester.pump();
+
     expect(find.text("未同步"), findsOneWidget);
   });
 
@@ -186,6 +196,8 @@ void main() {
       ),
     );
 
+    await tester.pump();
+
     await tester.tap(find.text("版本"));
     await tester.pumpAndSettle();
 
@@ -195,7 +207,7 @@ void main() {
   testWidgets("shows releases tab empty state when pointer hash is empty", (tester) async {
     when(
       () => mockChannelService.readReleasePointer(any()),
-    ).thenReturn(Some(GenerationPointer(schemaVersion: 1, snapshotHash: "")));
+    ).thenAnswer((_) async => Some(GenerationPointer(schemaVersion: 1, snapshotHash: "")));
 
     await tester.pumpWidget(
       ProviderScope(
@@ -206,6 +218,8 @@ void main() {
         child: testApp(const ChannelMetadataPage()),
       ),
     );
+
+    await tester.pump();
 
     await tester.tap(find.text("版本"));
     await tester.pumpAndSettle();
@@ -224,11 +238,13 @@ void main() {
       ),
     );
 
+    await tester.pump();
+
     expect(find.byIcon(Icons.swap_horiz), findsOneWidget);
   });
 
   testWidgets("switches channel via popup menu", (tester) async {
-    when(() => mockChannelService.readHeadMeta(any())).thenReturn(const None());
+    when(() => mockChannelService.readHeadMeta(any())).thenAnswer((_) async => const None());
 
     await tester.pumpWidget(
       ProviderScope(
@@ -239,6 +255,8 @@ void main() {
         child: testApp(const ChannelMetadataPage()),
       ),
     );
+
+    await tester.pump();
 
     // Open channel switcher popup
     await tester.tap(find.byIcon(Icons.swap_horiz));

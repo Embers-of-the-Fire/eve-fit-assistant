@@ -1,0 +1,120 @@
+name: Deploy web bundle to Cloudflare Pages
+
+description: >-
+  Shared web bundle deploy: downloads the web bundle artifact, copies the
+  matching tracked wrangler config (ci/config/wrangler.<flavor>.toml) to
+  ./wrangler.toml, and deploys to the corresponding Pages project
+  (`efa-app` for flavor=prod, `efa-app-nightly` for flavor=nightly) via
+  wrangler-action. Optionally posts a sticky PR comment with the deployment
+  URL (only runs on pull_request events). The caller must check out the
+  repository first.
+
+inputs:
+  flavor:
+    description: "Deployment flavor: 'prod' (efa-app) or 'nightly' (efa-app-nightly)."
+    required: true
+  api-token:
+    description: "Cloudflare API token (Pages:Edit)."
+    required: true
+  account-id:
+    description: "Cloudflare account ID."
+    required: true
+  artifact-name:
+    description: "Name of the web bundle artifact to download."
+    required: false
+    default: web-bundle
+  branch:
+    description: "Pages preview branch name (empty for a production deployment)."
+    required: false
+    default: ""
+  commit-hash:
+    description: "Commit hash recorded in the deployment metadata."
+    required: true
+  comment:
+    description: "Post a sticky PR comment with the deployment URL ('true'/'false')."
+    required: false
+    default: "false"
+  comment-header:
+    description: "Sticky comment header key (one pinned comment per header)."
+    required: false
+    default: web-preview
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: build/web
+
+    # Wrangler requires a wrangler.toml; copy the tracked config for the
+    # requested flavor, the same pattern init-dev-env uses for efa.dev.toml.
+    - name: Copy wrangler config
+      shell: bash
+      env:
+        FLAVOR: ${{ inputs.flavor }}
+      run: cp "ci/config/wrangler.${FLAVOR}.toml" wrangler.toml
+
+    - name: Compute deploy command
+      id: args
+      shell: bash
+      env:
+        FLAVOR: ${{ inputs.flavor }}
+        BRANCH: ${{ inputs.branch }}
+        COMMIT_HASH: ${{ inputs.commit-hash }}
+      run: |
+        if [[ "$FLAVOR" == "prod" ]]; then
+          project="efa-app"
+        else
+          project="efa-app-nightly"
+        fi
+        command="pages deploy build/web --project-name=${project} --commit-hash=${COMMIT_HASH}"
+        if [[ -n "$BRANCH" ]]; then
+          command="${command} --branch=${BRANCH}"
+        fi
+        echo "project=${project}" >> "$GITHUB_OUTPUT"
+        echo "command=${command}" >> "$GITHUB_OUTPUT"
+
+    - name: Deploy to Cloudflare Pages
+      id: deploy
+      uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+      with:
+        apiToken: ${{ inputs.api-token }}
+        accountId: ${{ inputs.account-id }}
+        wranglerVersion: "4.118.0"
+        # The repo root carries a pnpm lockfile, which the action would
+        # auto-detect and use to install wrangler; pnpm is not preinstalled
+        # on the runner and npm suffices for a global wrangler install.
+        packageManager: npm
+        command: ${{ steps.args.outputs.command }}
+
+    - name: Comment deployment URL (branch preview)
+      if: inputs.comment == 'true' && github.event_name == 'pull_request' && inputs.branch != ''
+      uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+      with:
+        header: ${{ inputs.comment-header }}
+        message: |
+          Web preview deployed to Cloudflare Pages (`${{ steps.args.outputs.project }}`).
+
+          | | |
+          |---|---|
+          | Deployment | ${{ steps.deploy.outputs.deployment-url }} |
+          | Branch alias | ${{ steps.deploy.outputs.pages-deployment-alias-url }} |
+          | Commit | ${{ inputs.commit-hash }} |
+
+          Build: `x build web` (wasm, skwasm renderer, locally bundled canvaskit).
+
+    - name: Comment deployment URL (production deploy)
+      if: inputs.comment == 'true' && github.event_name == 'pull_request' && inputs.branch == ''
+      uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+      with:
+        header: ${{ inputs.comment-header }}
+        message: |
+          Web bundle deployed to Cloudflare Pages (`${{ steps.args.outputs.project }}`).
+
+          | | |
+          |---|---|
+          | Deployment | ${{ steps.deploy.outputs.deployment-url }} |
+          | Commit | ${{ inputs.commit-hash }} |
+
+          Build: `x build web` (wasm, skwasm renderer, locally bundled canvaskit).

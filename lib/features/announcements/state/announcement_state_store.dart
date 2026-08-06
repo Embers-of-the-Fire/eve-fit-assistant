@@ -1,12 +1,9 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
-import "dart:isolate";
 
-import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_state.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
-import "package:path/path.dart" as p;
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 
 /// Legacy fields extracted from an older `announcement_state.json` that now
 /// live in `AppVersionState`. Returned from [AnnouncementStateStore.init] so
@@ -17,27 +14,21 @@ typedef AnnouncementStateMigration = ({
 });
 
 class AnnouncementStateStore {
-  AnnouncementStateStore({required String settingsPath})
-    : _filePath = p.join(settingsPath, _fileName),
-      _legacyFilePath = p.join(settingsPath, "document_storage.json");
+  AnnouncementStateStore({required DocStore store}) : _store = store;
 
   static const int _currentVersion = 3;
-  static const String _fileName = "announcement_state.json";
+  static const String _key = "announcement_state.json";
+  static const String _legacyKey = "document_storage.json";
 
-  final String _filePath;
-  final String _legacyFilePath;
+  final DocStore _store;
   late AnnouncementState _state = AnnouncementState.initial();
   Future<void> _pendingSync = Future<void>.value();
 
-  File get _file => File(_filePath);
-
-  /// Load state from disk. Returns a non-null [AnnouncementStateMigration]
-  /// when the on-disk file contained version fields that must be applied to
+  /// Load state from the store. Returns a non-null [AnnouncementStateMigration]
+  /// when the stored document contained version fields that must be applied to
   /// the new `AppVersionStateStore` (one-time, in-place migration).
   Future<AnnouncementStateMigration?> init() async {
-    final filePath = _filePath;
-    final legacyFilePath = _legacyFilePath;
-    final result = await Isolate.run(() => _readFromDisk(filePath, legacyFilePath));
+    final result = await _readFromStore();
     _state = result.state;
     _sync();
     return result.migration;
@@ -95,19 +86,16 @@ class AnnouncementStateStore {
     _sync();
   }
 
-  static ({AnnouncementState state, AnnouncementStateMigration? migration}) _readFromDisk(
-    String filePath,
-    String legacyFilePath,
-  ) {
+  Future<({AnnouncementState state, AnnouncementStateMigration? migration})>
+  _readFromStore() async {
     try {
-      final file = File(filePath);
-      if (file.existsSync()) {
-        final text = file.readAsStringSync();
+      final text = await _store.read(_key);
+      if (text != null) {
         final json = jsonDecode(text) as Map<String, dynamic>;
         return _parseStateJson(json);
       }
 
-      final legacy = _tryReadLegacyState(legacyFilePath);
+      final legacy = await _tryReadLegacyState();
       if (legacy != null) return legacy;
 
       return (
@@ -147,14 +135,12 @@ class AnnouncementStateStore {
     return (state: state, migration: migration);
   }
 
-  static ({AnnouncementState state, AnnouncementStateMigration? migration})? _tryReadLegacyState(
-    String legacyFilePath,
-  ) {
+  Future<({AnnouncementState state, AnnouncementStateMigration? migration})?>
+  _tryReadLegacyState() async {
     try {
-      final legacyFile = File(legacyFilePath);
-      if (!legacyFile.existsSync()) return null;
+      final text = await _store.read(_legacyKey);
+      if (text == null) return null;
 
-      final text = legacyFile.readAsStringSync();
       final json = jsonDecode(text) as Map<String, dynamic>;
 
       final readTimestamps = json["readTimestamps"] as Map<String, dynamic>?;
@@ -180,22 +166,9 @@ class AnnouncementStateStore {
   }
 
   void _sync() {
-    final filePath = _file.path;
     final state = _state;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => Isolate.run(() => _syncToDisk(filePath, state)));
-  }
-
-  static void _syncToDisk(String filePath, AnnouncementState state) {
-    final file = File(filePath);
-    final text = jsonEncode(state.toJson());
-    if (!file.existsSync()) {
-      file.createSync(recursive: true);
-    }
-    file.writeAsStringSync(text);
+        .then((_) => _store.write(_key, jsonEncode(state.toJson())));
   }
 }
-
-/// Default settings-path resolver used by `announcementStateStoreProvider`.
-String defaultAnnouncementStateSettingsPath() => PathProvider.settingsPath;

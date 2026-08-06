@@ -24,7 +24,7 @@ class Capacitor extends StatelessWidget {
     return ListTile(
       minTileHeight: 0,
       leading: const Image(image: ImageAssets.attrCapacitorCharge, height: 28),
-      title: DefaultTextStyle(
+      title: DefaultTextStyle.merge(
         style: const TextStyle(fontSize: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

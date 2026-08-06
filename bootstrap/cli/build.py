@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -219,6 +220,100 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
     _emit_release_json(data, output, default_output)
 
 
+# Canvaskit artifacts required per renderer. The Flutter loader only fetches
+# the files belonging to the renderers declared in flutter_bootstrap.js;
+# everything else (other renderers, *.symbols debug files) can be pruned.
+_WEB_RENDERER_ARTIFACTS = {
+    "skwasm": {"skwasm.js", "skwasm.wasm", "skwasm_heavy.js", "skwasm_heavy.wasm"},
+    "canvaskit": {"canvaskit.js", "canvaskit.wasm", "chromium"},
+}
+
+
+def _extract_json_object(text: str, start: int, source: Path) -> str:
+    """Bracket-match the JSON object starting at ``start`` (a ``{``)."""
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    raise click.ClickException(f"Unbalanced buildConfig JSON in {source}")
+
+
+def _read_web_renderers(build_dir: Path) -> set[str]:
+    bootstrap_js = build_dir / "flutter_bootstrap.js"
+    text = bootstrap_js.read_text(encoding="utf-8")
+    match = re.search(r"_flutter\.buildConfig\s*=\s*\{", text)
+    if match is None:
+        raise click.ClickException(f"Could not locate buildConfig in {bootstrap_js}")
+    config = json.loads(_extract_json_object(text, match.end() - 1, bootstrap_js))
+    builds = config.get("builds", [])
+    if not isinstance(builds, list) or not builds:
+        raise click.ClickException(f"buildConfig in {bootstrap_js} has no builds array")
+    return {b["renderer"] for b in builds if "renderer" in b}
+
+
+def _prune_canvaskit(build_dir: Path) -> int:
+    """Remove canvaskit artifacts unused by the declared renderers.
+
+    Returns the number of bytes removed.
+    """
+    canvaskit_dir = build_dir / "canvaskit"
+    if not canvaskit_dir.is_dir():
+        return 0
+
+    renderers = _read_web_renderers(build_dir)
+    unknown = renderers - _WEB_RENDERER_ARTIFACTS.keys()
+    if unknown:
+        raise click.ClickException(
+            "Unknown web renderer(s) declared in flutter_bootstrap.js: "
+            + ", ".join(sorted(unknown))
+            + "; add their artifacts to _WEB_RENDERER_ARTIFACTS"
+        )
+    keep: set[str] = set()
+    for renderer in renderers:
+        keep |= _WEB_RENDERER_ARTIFACTS[renderer]
+    if not keep:
+        raise click.ClickException(
+            "No canvaskit artifacts resolved for the declared renderers; "
+            "refusing to prune the entire canvaskit/ directory"
+        )
+
+    removed_bytes = 0
+
+    def _measure(path: Path) -> int:
+        if path.is_dir():
+            return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+        return path.stat().st_size
+
+    for entry in sorted(canvaskit_dir.iterdir()):
+        drop = entry.name.endswith(".symbols") or entry.name not in keep
+        if not drop:
+            continue
+        removed_bytes += _measure(entry)
+        if entry.is_dir():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+
+    return removed_bytes
+
+
 def register_build_commands(cli_group: click.Group) -> None:
     @cli_group.group()
     def build():
@@ -316,6 +411,82 @@ def register_build_commands(cli_group: click.Group) -> None:
             build_site_manual()
         except (ValueError, FileNotFoundError, TypeError) as exception:
             raise click.ClickException(str(exception)) from exception
+
+    @build.command("web")
+    @click.option(
+        "--no-prune",
+        is_flag=True,
+        default=False,
+        help="Skip pruning canvaskit artifacts unused by the declared renderers.",
+    )
+    def build_web_cmd(no_prune: bool):
+        """Build the Flutter web (wasm) bundle for static hosting.
+
+        Builds the FRB engine wasm with atomics so FRB's web worker pool can
+        run engine calls (database parsing, emulation) in real Web Workers
+        instead of the main thread. The threaded build requires the deployment
+        to be cross-origin isolated (COOP/COEP headers, shipped via
+        `web/_headers`). The Dart bundle uses locally bundled canvaskit/skwasm
+        (no CDN). Run inside a shell providing flutter_rust_bridge_codegen,
+        wasm-pack, and binaryen (e.g. `nix develop .#codegen`).
+
+        The link args follow the wasm-bindgen threading recipe: lld does not
+        enable shared memory from `+atomics` alone, so `--shared-memory`,
+        `--import-memory` (workers must share the *same* memory instance), a
+        fixed `--max-memory` (shared memories cannot grow), and the TLS/heap
+        symbols are passed explicitly.
+        """
+        from bootstrap.utils import get_command
+
+        flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
+        flutter = get_command("flutter")
+        # The FRB step shells out to wasm-pack (which in turn runs wasm-opt
+        # from binaryen); fail up front with an actionable error instead of
+        # mid-build.
+        get_command("wasm-pack")
+        get_command("wasm-opt")
+
+        runtime.execute(
+            [
+                flutter_rust_bridge_codegen,
+                "build-web",
+                "--release",
+                "--wasm-pack-rustflags",
+                (
+                    "-C target-feature=+atomics,+bulk-memory,+mutable-globals"
+                    " -Clink-args=--shared-memory"
+                    " -Clink-args=--max-memory=1073741824"
+                    " -Clink-args=--import-memory"
+                    " -Clink-args=--export=__heap_base"
+                    " -Clink-args=--export=__wasm_init_tls"
+                    " -Clink-args=--export=__tls_size"
+                    " -Clink-args=--export=__tls_align"
+                    " -Clink-args=--export=__tls_base"
+                ),
+            ],
+            "BUILDING WEB ENGINE (WASM)",
+        )
+        runtime.execute(
+            [flutter, "build", "web", "--wasm", "--no-web-resources-cdn"],
+            "BUILDING FLUTTER WEB BUNDLE",
+        )
+
+        output_dir = PROJECT_ROOT / "build" / "web"
+        if not output_dir.is_dir():
+            raise click.ClickException(f"Expected web build output not found: {output_dir}")
+
+        if no_prune:
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "Skipping canvaskit prune."))
+        else:
+            removed_bytes = _prune_canvaskit(output_dir)
+            click.echo(
+                styled(
+                    [Style.BRIGHT, Fore.GREEN],
+                    f"Pruned unused canvaskit artifacts ({get_bin_size(removed_bytes)}).",
+                )
+            )
+
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
 
     @build.command("apk")
     @click.option(

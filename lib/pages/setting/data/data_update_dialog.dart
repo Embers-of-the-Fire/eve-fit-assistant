@@ -135,7 +135,7 @@ class CheckoutDataUpdateOperationDialog extends ConsumerWidget {
         return [
           ElevatedButton(
             onPressed: () {
-              controller.acknowledgeApplied();
+              unawaited(controller.acknowledgeApplied());
               Navigator.of(context).pop();
             },
             child: Text(l10n.dataUpdateDialogDone),

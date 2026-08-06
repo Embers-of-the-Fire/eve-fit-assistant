@@ -5,7 +5,7 @@
 library;
 
 import "dart:convert";
-import "dart:io";
+import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:protobuf/protobuf.dart";
 

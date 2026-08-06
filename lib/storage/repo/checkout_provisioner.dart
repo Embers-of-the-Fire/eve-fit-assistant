@@ -1,14 +1,14 @@
 import "dart:async";
-import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
-import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
+import "package:eve_fit_assistant/storage/repo/provisioning.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 // ── State machine ────────────────────────────────────────────────────────────
@@ -182,28 +182,22 @@ class CheckoutProvisioner {
       return;
     }
 
-    final resourceIndex = ResourceIndex.fromBuffer(indexResult.getRight().toNullable()!);
-    final totalEntries = resourceIndex.entries.length;
-
-    // 2. Partition cached vs. to-download — pre-build identHash and blob
-    // path once per entry so the hot loop has zero alloc overhead.
-    final toDownload = <(ResourceIndex_Entry, String, String)>[];
-    var cachedCount = 0;
-    var cachedBytes = 0;
-    var totalBytes = 0;
-    for (final entry in resourceIndex.entries) {
-      final size = entry.size.toInt();
-      totalBytes += size;
-      final identHash = RepoHash.hashIdent(entry.resourceId);
-      if (assetStore.blobExistsSync(identHash, entry.contentHash)) {
-        cachedCount++;
-        cachedBytes += size;
-      } else {
-        toDownload.add((entry, identHash, RepoPaths.blobPath(identHash, entry.contentHash)));
-      }
+    final ResourceIndex resourceIndex;
+    try {
+      resourceIndex = decodeResourceIndex(indexResult.getRight().toNullable()!);
+    } on UnsupportedResourceIndexError catch (e) {
+      _emit(ProvisionerFatal(message: e.toString(), retryable: false));
+      return;
     }
 
-    toDownload.sort((a, b) => b.$1.size.compareTo(a.$1.size));
+    // 2. Partition cached vs. to-download via the shared policy-aware work
+    // list: NON_FORCE entries are skipped and fetched lazily on first access.
+    final workList = await computeEagerWorkList(assetStore, [resourceIndex]);
+    final toDownload = workList.toDownload;
+    final cachedCount = workList.cachedCount;
+    final cachedBytes = workList.cachedBytes;
+    final totalBytes = workList.totalBytes;
+    final totalEntries = workList.totalEntries;
 
     if (_cancelled) return;
 
@@ -253,7 +247,6 @@ class CheckoutProvisioner {
     }
 
     if (toDownload.isNotEmpty) {
-      assetStore.ensureBlobIdentDirs(toDownload.map((d) => d.$2));
       stopwatch.start();
       // Periodic re-emit so the progress bar keeps moving and the reported
       // speed decays honestly while all workers are busy on large blobs.
@@ -268,9 +261,9 @@ class CheckoutProvisioner {
           if (_cancelled) return;
 
           final dl = toDownload[idx];
-          final entry = dl.$1;
-          final identHash = dl.$2;
-          final blobPath = dl.$3;
+          final entry = dl.entry;
+          final identHash = dl.identHash;
+          final blobPath = dl.blobPath;
 
           final blobResult = await remoteCatalog.fetchBlob(
             identHash,
@@ -285,7 +278,8 @@ class CheckoutProvisioner {
               await assetStore.writeBlobUncheckedAt(blobPath, blobResult.getRight().toNullable()!);
               downloaded++;
               tracker.blobComplete(idx, entry.size.toInt());
-            } on FileSystemException {
+            } catch (e, stackTrace) {
+              warning("Failed to write blob: ${entry.resourceId}", stackTrace: stackTrace);
               tracker.blobAborted(idx);
               failedBlobs.add(entry.resourceId);
             }
@@ -335,7 +329,7 @@ class CheckoutProvisioner {
       _emit(ProvisionerFatal(message: msg, retryable: err is CatalogNetworkError));
       return;
     }
-    final localSnapshotHash = assetStore.writeResourceSnapshotSync(
+    final localSnapshotHash = await assetStore.writeResourceSnapshot(
       meta: metaResult.getRight().toNullable()!,
       resourceIndex: resourceIndex,
     );
@@ -388,7 +382,7 @@ class CheckoutProvisioner {
     }
   }
 
-  /// Fetches the server index protobuf and writes it to disk so
+  /// Fetches the server index protobuf and writes it to the store so
   /// [CheckoutService.createCheckout] can read server metadata.
   Future<void> _persistServerIndex(
     String generationHash,
@@ -397,22 +391,15 @@ class CheckoutProvisioner {
   ) async {
     final path = RepoPaths.channelServerIndexPath(channel.value);
 
-    // Skip if already on disk (from a prior sync)
-    if (File(path).existsSync()) return;
+    // Skip if already present (from a prior sync)
+    if (await assetStore.store.exists(path)) return;
 
     final result = await remoteCatalog.fetchServerIndex(generationHash);
     if (result.isLeft()) return;
 
-    final file = File(path);
-    if (!file.parent.existsSync()) {
-      file.parent.createSync(recursive: true);
-    }
-    final tmp = File("$path.tmp");
     try {
-      tmp
-        ..writeAsBytesSync(result.getRight().toNullable()!, flush: true)
-        ..renameSync(path);
-    } on FileSystemException catch (e, stackTrace) {
+      await assetStore.store.write(path, result.getRight().toNullable()!);
+    } catch (e, stackTrace) {
       warning("Failed to write server index for $channelName", stackTrace: stackTrace);
     }
   }

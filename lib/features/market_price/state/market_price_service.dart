@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "market_price_service.g.dart";
@@ -17,12 +18,16 @@ part "market_price_service.g.dart";
 /// [AppSetting.marketServerFallback] is used instead. Returns `null` —
 /// disabling the feature — when neither yields a known server.
 @riverpodSingleton
-MarketServer? marketPriceServer(Ref ref) {
+Future<MarketServer?> marketPriceServer(Ref ref) async {
+  // Market price lookups are not available on web; disable the feature at its
+  // root so no downstream client, pool, or fetch is ever created there.
+  if (kIsWeb) return null;
+
   final activeOpt = ref.watch(activeCheckoutProvider);
   if (activeOpt.isSome()) {
     final snapshotHash = activeOpt.toNullable()!.resourceSnapshotHash;
     if (snapshotHash.isNotEmpty) {
-      final metaOpt = ref.watch(assetStoreProvider).readResourceSnapshotMetaSync(snapshotHash);
+      final metaOpt = await ref.watch(assetStoreProvider).readResourceSnapshotMeta(snapshotHash);
       if (metaOpt.isSome()) {
         final server = MarketServer.parse(metaOpt.toNullable()!.marketServer);
         if (server != null) return server;
@@ -37,8 +42,8 @@ MarketServer? marketPriceServer(Ref ref) {
 /// feature is disabled. Both worker pools reuse this single client (and its
 /// underlying Dio connection pool + Hive-backed HTTP cache).
 @riverpodSingleton
-MarketPriceClient? marketPriceClient(Ref ref) {
-  final server = ref.watch(marketPriceServerProvider);
+Future<MarketPriceClient?> marketPriceClient(Ref ref) async {
+  final server = await ref.watch(marketPriceServerProvider.future);
   if (server == null) return null;
 
   final client = MarketPriceClient(server: server);
@@ -49,15 +54,15 @@ MarketPriceClient? marketPriceClient(Ref ref) {
 /// Shared worker pool for price fetches, or `null` when the feature is
 /// disabled for the active checkout.
 @riverpodSingleton
-PriceWorkerPool<double>? marketPriceWorkerPool(Ref ref) {
-  final client = ref.watch(marketPriceClientProvider);
+Future<PriceWorkerPool<double>?> marketPriceWorkerPool(Ref ref) async {
+  final client = await ref.watch(marketPriceClientProvider.future);
   if (client == null) return null;
   return PriceWorkerPool<double>(fetcher: client.fetchPrice);
 }
 
 @riverpodSingleton
-PriceWorkerPool<TypePriceEstimate>? marketPriceBreakdownPool(Ref ref) {
-  final client = ref.watch(marketPriceClientProvider);
+Future<PriceWorkerPool<TypePriceEstimate>?> marketPriceBreakdownPool(Ref ref) async {
+  final client = await ref.watch(marketPriceClientProvider.future);
   if (client == null) return null;
   return PriceWorkerPool<TypePriceEstimate>(fetcher: client.fetchPriceBreakdown);
 }
@@ -124,7 +129,7 @@ Map<int, int> collectFitTypeQuantities(FitStorage fit) {
 /// price. Types without a price are silently excluded from the total.
 @riverpod
 Future<FitPriceSummary?> fitEstimatedPrice(Ref ref, String fitId) async {
-  final pool = ref.watch(marketPriceWorkerPoolProvider);
+  final pool = await ref.watch(marketPriceWorkerPoolProvider.future);
   if (pool == null) return null;
 
   final fitState = ref.watch(fitProvider(fitId));
@@ -158,7 +163,7 @@ Future<FitPriceSummary?> fitEstimatedPrice(Ref ref, String fitId) async {
 
 @riverpod
 Future<FitPriceBreakdown?> fitPriceBreakdown(Ref ref, String fitId) async {
-  final pool = ref.watch(marketPriceBreakdownPoolProvider);
+  final pool = await ref.watch(marketPriceBreakdownPoolProvider.future);
   if (pool == null) return null;
 
   final fitState = ref.watch(fitProvider(fitId));

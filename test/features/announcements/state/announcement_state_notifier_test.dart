@@ -1,9 +1,13 @@
+@TestOn("vm")
+library;
+
 import "dart:io";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/features/announcements/models/announcement_state.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
+import "package:eve_fit_assistant/storage/fs/file_doc_store.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
@@ -23,7 +27,7 @@ void main() {
   late ProviderContainer container;
 
   setUp(() async {
-    store = AnnouncementStateStore(settingsPath: p.join(tempDir.path, "settings"));
+    store = AnnouncementStateStore(store: FileDocStore(p.join(tempDir.path, "settings")));
     await store.init();
     container = ProviderContainer(
       overrides: [announcementStateStoreProvider.overrideWithValue(store)],

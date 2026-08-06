@@ -7,7 +7,7 @@ class Miscellaneous extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.only(left: 14, right: 22, top: 8, bottom: 8),
-    child: DefaultTextStyle(
+    child: DefaultTextStyle.merge(
       style: const TextStyle(fontSize: 16),
       textAlign: TextAlign.end,
       child: Table(

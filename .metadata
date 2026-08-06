@@ -21,6 +21,9 @@ migration:
     - platform: windows
       create_revision: nixpkgs000000000000000000000000000000000
       base_revision: nixpkgs000000000000000000000000000000000
+    - platform: web
+      create_revision: nixpkgs000000000000000000000000000000000
+      base_revision: nixpkgs000000000000000000000000000000000
 
   # User provided section
 

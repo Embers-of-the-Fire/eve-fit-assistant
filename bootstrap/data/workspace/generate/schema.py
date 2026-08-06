@@ -154,15 +154,27 @@ def generate_resource_snapshot(
         warning("No files found in build directory")
         return None
 
+    import bootstrap.config
+
+    from bootstrap.remote.models import RESOURCE_INDEX_FORMAT_VERSION
     from bootstrap.remote.models import ResourceIndex
+    from bootstrap.remote.models import is_lazy_resource
+
+    bootstrap.config.ProjectConfiguration.ensure_loaded()
+    lazy_prefixes = bootstrap.config.CONFIGURATION.download.lazy_prefixes
 
     index = ResourceIndex()
     index.schema_version = 1
+    index.format_version = RESOURCE_INDEX_FORMAT_VERSION
+    policy = index.DownloadPolicy
     for rid, chash, size in entries:
         entry = index.entries.add()
         entry.resource_id = rid
         entry.content_hash = chash
         entry.size = size
+        entry.download_policy = (
+            policy.NON_FORCE if is_lazy_resource(rid, lazy_prefixes) else policy.FORCE
+        )
 
     created_at = (
         datetime.datetime.now(datetime.UTC)

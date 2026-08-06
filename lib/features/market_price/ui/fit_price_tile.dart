@@ -24,7 +24,7 @@ class FitPriceTile extends ConsumerWidget {
     return ListTile(
       minTileHeight: 0,
       leading: const Icon(Icons.attach_money, size: 28),
-      title: DefaultTextStyle(
+      title: DefaultTextStyle.merge(
         style: const TextStyle(fontSize: 16),
         textAlign: TextAlign.end,
         child: summary != null

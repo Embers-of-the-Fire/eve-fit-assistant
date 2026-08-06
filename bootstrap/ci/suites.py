@@ -29,6 +29,24 @@ SUITE_DEFINITIONS = [
         ],
     },
     {
+        # Web-platform tests run alongside the Linux native dart suite: same
+        # triggers, same shell, same lint/codegen. No Rust/native data needed.
+        "suite": "dart-web",
+        "shell": "dart",
+        "lint_command": "uv run x.py ci lint --lang dart",
+        "command": "uv run x.py test web",
+        "codegen_command": "uv run x.py ci codegen --lang dart",
+        "patterns": [
+            "lib/**",
+            "test/**",
+            "rust/src/**",
+            "rust/Cargo.toml",
+            "rust/Cargo.lock",
+            "pubspec.yaml",
+            "pubspec.lock",
+        ],
+    },
+    {
         "suite": "site",
         "shell": "js",
         "lint_command": "uv run x.py ci lint --lang site",
@@ -66,6 +84,37 @@ SUITE_DEFINITIONS = [
         "patterns": ["bootstrap/ci/**", "flake.nix", ".github/workflows/**"],
     },
 ]
+
+
+# Paths that can change the Flutter web bundle (build/web) and therefore
+# require a web preview rebuild. Generated Dart output is gitignored, so the
+# sources feeding codegen (proto schemas, ARB files) are included as well.
+WEB_PREVIEW_PATTERNS = [
+    "flake.nix",
+    "flake.lock",
+    "rust/**",
+    "web/**",
+    "lib/**",
+    "pubspec.yaml",
+    "pubspec.lock",
+    "l10n.yaml",
+    "l10n/*.arb",
+    "data/schema/**",
+    "bootstrap/**",
+    "x.py",
+    "pyproject.toml",
+    "uv.lock",
+    ".github/workflows/web-preview.yml",
+    ".github/workflows/site-nightly.yml",
+    ".github/actions/build-web/**",
+    ".github/actions/deploy-web-pages/**",
+    "ci/config/wrangler.*.toml",
+]
+
+
+def web_preview_affected(files: list[str]) -> bool:
+    """Check whether changed files require a web preview rebuild."""
+    return any(match_any_pattern(f, WEB_PREVIEW_PATTERNS) for f in files)
 
 
 def glob_to_regex(pattern: str) -> str:

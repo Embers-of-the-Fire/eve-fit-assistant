@@ -1,5 +1,3 @@
-import "dart:io";
-
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -170,35 +168,25 @@ class RepoService {
   /// UI code can watch this to disable actions instead of catching [StateError].
   bool get isVerificationRunning => verificationService.isRunning;
 
-  /// Verifies all checkouts' integrity.
-  ///
-  /// Throws [StateError] if another storage operation is already in flight.
-  IList<VerificationIssue> verify() => verificationService.verify();
-
-  /// Verifies all checkouts' integrity in a background isolate.
+  /// Verifies all checkouts' integrity in a background isolate (inline on web).
   ///
   /// Throws [StateError] if another storage operation is already in flight.
   Future<IList<VerificationIssue>> verifyAsync({
     void Function(int current, int total)? onProgress,
   }) => verificationService.verifyAsync(onProgress: onProgress);
 
-  /// Prunes unreferenced data.
-  ///
-  /// Throws [StateError] if another storage operation is already in flight.
-  int prune() => verificationService.prune();
-
-  /// Prunes unreferenced data in a background isolate.
+  /// Prunes unreferenced data in a background isolate (inline on web).
   ///
   /// Throws [StateError] if another storage operation is already in flight.
   Future<int> pruneAsync({void Function(int current, int total)? onProgress}) =>
       verificationService.pruneAsync(onProgress: onProgress);
 
-  /// Recovers from interrupted writes by deleting orphaned temp files and
-  /// directories left behind by atomic-write patterns that crashed mid-rename.
+  /// Recovers from interrupted writes by deleting orphaned temp files left
+  /// behind by atomic-write patterns that crashed mid-rename.
   ///
   /// Best-effort and idempotent; intended to run once at startup before the
-  /// registry is read.
-  void recoverPartialDownloads() => assetStore.recoverSync();
+  /// registry is read. No-op on web (OPFS writes are atomic on close).
+  Future<void> recoverPartialDownloads() => assetStore.recover();
 
   /// Verifies and repairs by re-downloading missing files.
   ///
@@ -217,11 +205,9 @@ class RepoService {
   Future<Either<String, Unit>> clearAllStorage() async {
     final failures = <String>[];
     for (final path in [RepoPaths.assetsPath, RepoPaths.channelsPath, RepoPaths.checkoutsPath]) {
-      final dir = Directory(path);
       try {
-        // ignore: avoid_slow_async_io
-        if (await dir.exists()) await dir.delete(recursive: true);
-      } on FileSystemException {
+        await assetStore.store.deleteTree(path);
+      } catch (e) {
         failures.add(p.basename(path));
       }
     }
@@ -241,8 +227,10 @@ class RepoService {
   // ── Server catalog ─────────────────────────────────────────────────────────
 
   /// Returns the list of servers for [channelName] from the local cache.
-  IList<ServerMeta> listServers(String channelName) => channelService.listServers(channelName);
+  Future<IList<ServerMeta>> listServers(String channelName) =>
+      channelService.listServers(channelName);
 
   /// Reads the local channel registry.
-  Option<ChannelRegistry> localChannelRegistry() => channelService.readLocalChannelRegistry();
+  Future<Option<ChannelRegistry>> localChannelRegistry() =>
+      channelService.readLocalChannelRegistry();
 }

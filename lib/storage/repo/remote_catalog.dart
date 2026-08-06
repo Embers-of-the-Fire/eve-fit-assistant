@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:fpdart/fpdart.dart";
 
 /// Errors that may occur during remote catalog operations.
@@ -61,9 +62,12 @@ class RemoteCatalogService {
   /// interceptor, so no cache-control headers are injected. This prevents
   /// CDN/origin servers from sending `Connection: close`, allowing TCP
   /// connection reuse and avoiding a fresh TLS handshake per blob.
+  ///
+  /// `Connection` is a forbidden header in browsers (the browser owns
+  /// connection pooling), so it is only set on native platforms.
   static final Options _blobOptions = Options(
     responseType: ResponseType.bytes,
-    headers: {"Connection": "keep-alive"},
+    headers: kIsWeb ? null : {"Connection": "keep-alive"},
   );
 
   Uri _buildUri(String relativePath) {

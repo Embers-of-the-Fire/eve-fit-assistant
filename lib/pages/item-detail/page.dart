@@ -1980,9 +1980,7 @@ String _formatDynamicValue(double value) {
 String? _resolveLocalization(WidgetRef ref, LocalizationID? localization) {
   if (localization == null) return null;
   final locale = ref.watch(localeProvider).name;
-  return ref.watch(
-    repoCollectionProvider.select((c) => c?.getLocalizedName(localization.id, locale)),
-  );
+  return watchLocalizedName(ref, id: localization.id, locale: locale);
 }
 
 String? _attributeLocalizedName(WidgetRef ref, DogmaAttribute? attribute) {

@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:async";
 import "dart:convert";
 import "dart:io";
@@ -9,6 +12,7 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/data/proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/storage/fs/file_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_registry_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
@@ -92,10 +96,11 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  VerificationService makeService() {
+  Future<VerificationService> makeService() async {
     final fakeRemote = _FakeRemoteCatalogService();
-    const assetStore = AssetStore();
+    final assetStore = AssetStore(FileBlobStore());
     final registryService = CheckoutRegistryService();
+    await registryService.load();
     const diffEngine = DiffEngine();
     final checkoutService = CheckoutService(
       assetStore: assetStore,
@@ -115,8 +120,8 @@ void main() {
   /// registry entry, metadata, reflog, and blobs.
   ///
   /// Returns the resource snapshot hash.
-  String setupCheckout() {
-    const assetStore = AssetStore();
+  Future<String> setupCheckout() async {
+    final assetStore = AssetStore(FileBlobStore());
 
     // 1. Create a ResourceIndex with two test entries
     const ridA = "resource://test/a.bin";
@@ -153,7 +158,7 @@ void main() {
       resourceCount: ri.entries.length,
       createdAt: "2026-06-17T12:00:00Z",
     );
-    final snapshotHash = assetStore.writeResourceSnapshotSync(meta: meta, resourceIndex: ri);
+    final snapshotHash = await assetStore.writeResourceSnapshot(meta: meta, resourceIndex: ri);
 
     // 3. Write blobs at the expected paths
     final blobPathA = RepoPaths.blobPath(ihashA, chashA);
@@ -217,9 +222,9 @@ void main() {
   }
 
   group("prune preserves active checkout resources", () {
-    test("snapshot directory is not deleted by prune", () {
-      final snapshotHash = setupCheckout();
-      final service = makeService();
+    test("snapshot directory is not deleted by prune", () async {
+      final snapshotHash = await setupCheckout();
+      final service = await makeService();
 
       final snapshotDir = RepoPaths.resourceSnapshotPath(snapshotHash);
       final indexPath = RepoPaths.resourceIndexPath(snapshotHash);
@@ -237,7 +242,7 @@ void main() {
       );
 
       // Run prune
-      final deleted = service.prune();
+      final deleted = await service.pruneAsync();
 
       // Snapshot directory should still exist
       expect(
@@ -254,13 +259,13 @@ void main() {
       expect(deleted, 0, reason: "No files should be deleted when checkout references everything");
     });
 
-    test("blob files are not deleted by prune", () {
-      final snapshotHash = setupCheckout();
-      final service = makeService();
+    test("blob files are not deleted by prune", () async {
+      final snapshotHash = await setupCheckout();
+      final service = await makeService();
 
       // Load the ResourceIndex to get expected blob paths
-      final assetStore = const AssetStore();
-      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      final assetStore = AssetStore(FileBlobStore());
+      final riOpt = await assetStore.readResourceIndex(snapshotHash);
       expect(riOpt.isSome(), isTrue);
       final ri = riOpt.toNullable()!;
 
@@ -277,7 +282,7 @@ void main() {
       }
 
       // Run prune
-      final deleted = service.prune();
+      final deleted = await service.pruneAsync();
       expect(deleted, 0, reason: "No files should be deleted");
 
       // Verify blobs still exist after prune
@@ -290,11 +295,11 @@ void main() {
       }
     });
 
-    test("unreferenced snapshot IS deleted by prune", () {
-      setupCheckout(); // Sets up checkout referencing known snapshot
+    test("unreferenced snapshot IS deleted by prune", () async {
+      await setupCheckout(); // Sets up checkout referencing known snapshot
 
       // Create an unreferenced snapshot directly (not linked to any checkout)
-      const assetStore = AssetStore();
+      final assetStore = AssetStore(FileBlobStore());
       final orphanRi = ResourceIndex()
         ..schemaVersion = 1
         ..entries.add(
@@ -312,7 +317,7 @@ void main() {
         resourceCount: orphanRi.entries.length,
         createdAt: "2026-06-17T13:00:00Z",
       );
-      final orphanHash = assetStore.writeResourceSnapshotSync(
+      final orphanHash = await assetStore.writeResourceSnapshot(
         meta: orphanMeta,
         resourceIndex: orphanRi,
       );
@@ -324,8 +329,8 @@ void main() {
       );
 
       // Run prune
-      final service = makeService();
-      final deleted = service.prune();
+      final service = await makeService();
+      final deleted = await service.pruneAsync();
 
       // Referenced snapshot should be preserved, unreferenced deleted
       expect(
@@ -337,10 +342,11 @@ void main() {
       expect(deleted >= 1, isTrue, reason: "At least 1 item should be deleted");
     });
 
-    test("basename matches registry resourceSnapshotHash", () {
-      final snapshotHash = setupCheckout();
+    test("basename matches registry resourceSnapshotHash", () async {
+      final snapshotHash = await setupCheckout();
 
       final registryService = CheckoutRegistryService();
+      await registryService.load();
       final registry = registryService.readRegistry();
       expect(registry.isSome(), isTrue);
 
@@ -370,8 +376,8 @@ void main() {
       );
     });
 
-    test("uri.pathSegments.last returns empty string for Directory (documents the bug)", () {
-      setupCheckout();
+    test("uri.pathSegments.last returns empty string for Directory (documents the bug)", () async {
+      await setupCheckout();
       final resourcesDir = Directory("${RepoPaths.assetsPath}/resources");
       final dirs = resourcesDir.listSync().whereType<Directory>().toList();
       expect(dirs.isNotEmpty, isTrue);
@@ -395,35 +401,35 @@ void main() {
   });
 
   group("concurrency guard", () {
-    test("verify() can be called sequentially after completion", () {
-      setupCheckout();
-      final service = makeService();
+    test("verify() can be called sequentially after completion", () async {
+      await setupCheckout();
+      final service = await makeService();
 
-      final result1 = service.verify();
+      final result1 = await service.verify();
       expect(result1, isEmpty);
 
-      final result2 = service.verify();
+      final result2 = await service.verify();
       expect(result2, isEmpty);
 
       expect(service.isRunning, isFalse);
     });
 
-    test("prune() can be called sequentially after completion", () {
-      setupCheckout();
-      final service = makeService();
+    test("prune() can be called sequentially after completion", () async {
+      await setupCheckout();
+      final service = await makeService();
 
-      final count1 = service.prune();
+      final count1 = await service.pruneAsync();
       expect(count1, 0);
 
-      final count2 = service.prune();
+      final count2 = await service.pruneAsync();
       expect(count2, 0);
 
       expect(service.isRunning, isFalse);
     });
 
     test("verifyAsync() can be called sequentially after completion", () async {
-      setupCheckout();
-      final service = makeService();
+      await setupCheckout();
+      final service = await makeService();
 
       final result1 = await service.verifyAsync();
       expect(result1, isEmpty);
@@ -435,8 +441,8 @@ void main() {
     });
 
     test("pruneAsync() can be called sequentially after completion", () async {
-      setupCheckout();
-      final service = makeService();
+      await setupCheckout();
+      final service = await makeService();
 
       final count1 = await service.pruneAsync();
       expect(count1, 0);
@@ -448,13 +454,13 @@ void main() {
     });
 
     test("verifyAsync() rejects concurrent invocation", () async {
-      setupCheckout();
-      final service = makeService();
+      await setupCheckout();
+      final service = await makeService();
 
       final first = service.verifyAsync();
       expect(service.isRunning, isTrue);
       expect(() => service.verify(), throwsA(isA<StateError>()));
-      expect(() => service.prune(), throwsA(isA<StateError>()));
+      expect(() => service.pruneAsync(), throwsA(isA<StateError>()));
       expect(service.verifyAsync, throwsA(isA<StateError>()));
 
       await first;
@@ -462,10 +468,10 @@ void main() {
     });
 
     test("verifyAsync() detects missing blobs", () async {
-      final snapshotHash = setupCheckout();
-      const assetStore = AssetStore();
+      final snapshotHash = await setupCheckout();
+      final assetStore = AssetStore(FileBlobStore());
 
-      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      final riOpt = await assetStore.readResourceIndex(snapshotHash);
       expect(riOpt.isSome(), isTrue);
       final ri = riOpt.toNullable()!;
 
@@ -474,7 +480,7 @@ void main() {
       final blobPathA = RepoPaths.blobPath(ihashA, entryA.contentHash);
       File(blobPathA).deleteSync();
 
-      final service = makeService();
+      final service = await makeService();
       final issues = await service.verifyAsync();
       expect(issues.length, 1);
       expect(issues.first, isA<VerificationMissingFiles>());
@@ -482,10 +488,10 @@ void main() {
     });
 
     test("repairAll() rejects concurrent invocation", () async {
-      final snapshotHash = setupCheckout();
-      const assetStore = AssetStore();
+      final snapshotHash = await setupCheckout();
+      final assetStore = AssetStore(FileBlobStore());
 
-      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      final riOpt = await assetStore.readResourceIndex(snapshotHash);
       expect(riOpt.isSome(), isTrue);
       final ri = riOpt.toNullable()!;
       final entryA = ri.entries.first;
@@ -496,6 +502,7 @@ void main() {
       final completer = Completer<void>();
       final fakeRemote = _SlowFakeRemoteCatalogService(completer: completer);
       final registryService = CheckoutRegistryService();
+      await registryService.load();
       const diffEngine = DiffEngine();
       final checkoutService = CheckoutService(
         assetStore: assetStore,
@@ -515,7 +522,7 @@ void main() {
       expect(service.isRunning, isTrue);
       expect(() => service.repairAll(channel: Channel.testing), throwsA(isA<StateError>()));
       expect(() => service.verify(), throwsA(isA<StateError>()));
-      expect(() => service.prune(), throwsA(isA<StateError>()));
+      expect(() => service.pruneAsync(), throwsA(isA<StateError>()));
 
       completer.complete();
       final unresolved = await first;
@@ -526,10 +533,10 @@ void main() {
     });
 
     test("guard releases after repairAll() failure", () async {
-      final snapshotHash = setupCheckout();
-      const assetStore = AssetStore();
+      final snapshotHash = await setupCheckout();
+      final assetStore = AssetStore(FileBlobStore());
 
-      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      final riOpt = await assetStore.readResourceIndex(snapshotHash);
       expect(riOpt.isSome(), isTrue);
       final ri = riOpt.toNullable()!;
       final entryA = ri.entries.first;
@@ -540,6 +547,7 @@ void main() {
       final completer = Completer<void>();
       final fakeRemote = _SlowFakeRemoteCatalogService(completer: completer);
       final registryService = CheckoutRegistryService();
+      await registryService.load();
       const diffEngine = DiffEngine();
       final checkoutService = CheckoutService(
         assetStore: assetStore,
@@ -561,7 +569,7 @@ void main() {
       expect(service.isRunning, isFalse);
       expect(unresolved.length, 1);
       expect(unresolved.first, isA<VerificationMissingFiles>());
-      final result = service.verify();
+      final result = await service.verify();
       expect(result.length, 1);
       expect(result.first, isA<VerificationMissingFiles>());
     });
@@ -569,10 +577,10 @@ void main() {
 
   group("repairAll downloads missing blobs", () {
     test("re-downloads a deleted blob and verify passes afterward", () async {
-      final snapshotHash = setupCheckout();
-      const assetStore = AssetStore();
+      final snapshotHash = await setupCheckout();
+      final assetStore = AssetStore(FileBlobStore());
 
-      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      final riOpt = await assetStore.readResourceIndex(snapshotHash);
       expect(riOpt.isSome(), isTrue);
       final ri = riOpt.toNullable()!;
       expect(ri.entries.length, 2);
@@ -584,8 +592,8 @@ void main() {
       final originalData = File(blobPathA).readAsBytesSync();
       File(blobPathA).deleteSync();
 
-      final service = makeService();
-      final issuesBefore = service.verify();
+      final service = await makeService();
+      final issuesBefore = await service.verify();
       expect(issuesBefore.length, 1);
       expect(issuesBefore.first, isA<VerificationMissingFiles>());
 
@@ -593,6 +601,7 @@ void main() {
         blobs: {entryA.contentHash: Uint8List.fromList(originalData)},
       );
       final registryService = CheckoutRegistryService();
+      await registryService.load();
       const diffEngine = DiffEngine();
       final checkoutService = CheckoutService(
         assetStore: assetStore,
@@ -613,15 +622,15 @@ void main() {
       expect(File(blobPathA).existsSync(), isTrue);
       expect(File(blobPathA).readAsBytesSync(), originalData);
 
-      final issuesAfter = repairService.verify();
+      final issuesAfter = await repairService.verify();
       expect(issuesAfter, isEmpty);
     });
 
     test("reports unresolved when remote does not have the blob", () async {
-      final snapshotHash = setupCheckout();
-      const assetStore = AssetStore();
+      final snapshotHash = await setupCheckout();
+      final assetStore = AssetStore(FileBlobStore());
 
-      final riOpt = assetStore.readResourceIndexSync(snapshotHash);
+      final riOpt = await assetStore.readResourceIndex(snapshotHash);
       expect(riOpt.isSome(), isTrue);
       final ri = riOpt.toNullable()!;
 
@@ -632,6 +641,7 @@ void main() {
 
       final servingRemote = _ServingFakeRemoteCatalogService(blobs: {});
       final registryService = CheckoutRegistryService();
+      await registryService.load();
       const diffEngine = DiffEngine();
       final checkoutService = CheckoutService(
         assetStore: assetStore,

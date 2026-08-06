@@ -17,12 +17,17 @@ jobs:
     name: App release test
     permissions:
       contents: write
+      # site-deploy pins a comment with the test deployment URL on this PR.
+      pull-requests: write
     if: |
       contains(github.event.pull_request.labels.*.name, 'V-Release') &&
       contains(github.event.pull_request.labels.*.name, 'V-Test') &&
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/_release.yml
+    # Inherit so site-deploy's `environment: web-preview` secrets resolve
+    # (Cloudflare Pages credentials) inside the reusable workflow.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       test_mode: true
 
