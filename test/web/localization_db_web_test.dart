@@ -239,7 +239,9 @@ void main() {
   });
 
   test("sqlite3_web opens a preplaced OPFS database and queries it", () async {
-    for (final probe in ["", "main.dart.js", "packages/eve_fit_assistant/web/sqlite/sqlite3.wasm", "assets/web/sqlite/sqlite3.wasm", "manifest.json", "assets/AssetManifest.json"]) {
+    // The worker bundle is mirrored from web/sqlite/ into test/web/sqlite/ by
+    // `x test web`; the flutter web test server serves test/ at the root.
+    for (final probe in ["/web/sqlite/db_worker.js", "/web/sqlite/sqlite3.wasm"]) {
       final resp = await web.window.fetch(probe.toJS).toDart;
       // ignore: avoid_print
       print("PROBE $probe -> ${resp.status} ${resp.headers.get("content-type")}");
@@ -264,7 +266,9 @@ void main() {
     final db = SqliteDatabase(
       path: dbName,
       options: const SqliteOptions(
-        webSqliteOptions: WebSqliteOptions(workerUri: "web/sqlite/db_worker.js"),
+        // Absolute path: test pages are served under /web/, so a relative URI
+        // would resolve against the wrong base.
+        webSqliteOptions: WebSqliteOptions(workerUri: "/web/sqlite/db_worker.js"),
       ),
     );
 

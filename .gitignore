@@ -41,6 +41,10 @@ core.[0-9]*
 unlocalized_messages.txt
 android/build/reports/
 
+# sqlite web worker assets mirrored from web/sqlite/ by `x test web`
+# (the flutter web test server only serves the test/ directory)
+/test/web/sqlite/
+
 # Symbolication related
 app.*.symbols
 

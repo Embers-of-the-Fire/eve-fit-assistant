@@ -78,7 +78,16 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Web-platform tests: `./x test web` (headless Chrome via `flutter test --platform chrome`;
   Chrome resolved from `CHROME_EXECUTABLE` or `google-chrome`/`chromium`/`chrome` on PATH).
   Suites are platform-aware: VM-only tests carry `@TestOn("vm")`, web-only tests
-  (`test/web/`) carry `@TestOn("browser")`.
+  (`test/web/`) carry `@TestOn("browser")`. The web test pipeline compiles every
+  suite in the selection regardless of `@TestOn`, so `x.py test web` excludes
+  `@TestOn("vm")` suites (their `dart:ffi`-only imports would fail the web compile)
+  and instead passes the explicit web-compatible suite list. The pipeline compiles
+  to JS, not wasm: the dart2wasm web-test harness cannot run sqlite3_web in headless
+  Chrome (dedicated workers and OPFS sync access handles are unavailable there),
+  while the JS build exercises the real worker + OPFS path. `x.py test web` also
+  mirrors `web/sqlite/{db_worker.js,sqlite3.wasm}` into `test/web/sqlite/` (the web
+  test server only serves the `test/` tree), which `localization_db_web_test.dart`
+  needs.
 - Repo module tests: `dart test test/storage/repo/`.
 - Data-flow integration tests (e.g., `test/storage/repo/`) use `package:mocktail`
   for network and filesystem mocks; run with `dart test test/storage/repo/`.
