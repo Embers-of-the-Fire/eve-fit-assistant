@@ -8,5 +8,5 @@
 # bundle itself is fully self-contained (no CDN canvaskit, no remote fonts).
 /*
   Cross-Origin-Resource-Policy: same-site
-  Cross-Origin-Opener-Policy: same-site
+  Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
