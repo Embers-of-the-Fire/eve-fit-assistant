@@ -47,10 +47,13 @@ jobs:
   build:
     needs: changes
     # Fork PRs cannot access the deployment environments, so they get no
-    # preview; skip the build entirely.
+    # preview; skip the build entirely. Release PRs (V-Release) get their web
+    # bundle built and deployed by release-full.yml's site/site-deploy jobs
+    # instead, so skip the duplicate build here.
     if: >-
       needs.changes.outputs.build == 'true' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'V-Release')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
