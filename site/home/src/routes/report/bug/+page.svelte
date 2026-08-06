@@ -4,16 +4,16 @@ import {
     type ApiError,
     type IssueResult,
     type Platform,
-    type ValidationError,
     submitBugReport,
+    type ValidationError,
 } from "$lib/api/report";
-import { t } from "$lib/i18n/index.svelte";
-import { locale } from "$lib/i18n/index.svelte";
+import { locale, t } from "$lib/i18n/index.svelte";
 
 const platforms: { value: Platform; labelKey: import("$lib/i18n/translations").TranslationKey }[] =
     [
         { value: "Android", labelKey: "report.form.platform.android" },
         { value: "iOS", labelKey: "report.form.platform.ios" },
+        { value: "Web", labelKey: "report.form.platform.web" },
         { value: "Windows 10/11", labelKey: "report.form.platform.windows" },
         { value: "Linux", labelKey: "report.form.platform.linux" },
         { value: "Other", labelKey: "report.form.platform.other" },

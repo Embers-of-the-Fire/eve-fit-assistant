@@ -65,8 +65,17 @@ const stagger4 = "animate-[fade-in-up_0.7s_ease-out_0.45s_forwards] opacity-0";
 
 		<div class="{stagger4} mt-10 flex flex-wrap items-center justify-center gap-4">
 			<a
-				href="/download"
+				href="https://app.efa-tech.dev"
+				target="_blank"
+				rel="noopener noreferrer"
 				class="btn-glow eve-angle-cut inline-flex items-center gap-2 bg-eve-gold px-8 py-3 text-sm font-semibold text-eve-bg hover:bg-eve-gold/90 transition-all duration-300 group"
+			>
+				{t('hero.open_web_app')}
+				<span class="text-lg transition-transform duration-300 group-hover:translate-x-1 inline-block">&rarr;</span>
+			</a>
+			<a
+				href="/download"
+				class="eve-angle-cut inline-flex items-center gap-2 bg-eve-surface px-8 py-3 text-sm font-medium text-eve-text hover:bg-eve-surface-alt transition-all duration-300 group"
 			>
 				{t('hero.get_started')}
 				<span class="text-lg transition-transform duration-300 group-hover:translate-x-1 inline-block">&rarr;</span>

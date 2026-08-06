@@ -102,14 +102,15 @@ const linuxSupported = $derived.by(() => {
     return !(uaBitness === "32");
 });
 
-type PlatformTab = "android" | "linux" | "windows" | "other";
+type PlatformTab = "android" | "linux" | "windows" | "web" | "other";
 const tabKeys: Record<PlatformTab, TranslationKey> = {
     android: "download.tabs.android",
     linux: "download.tabs.linux",
     windows: "download.tabs.windows",
+    web: "download.tabs.web",
     other: "download.tabs.other",
 };
-const tabs: PlatformTab[] = ["android", "linux", "windows", "other"];
+const tabs: PlatformTab[] = ["web", "android", "linux", "windows", "other"];
 
 let tabOverride = $state<PlatformTab | null>(null);
 const activeTab = $derived<PlatformTab>(
@@ -348,7 +349,9 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 			<div class="mb-10 text-center text-xs text-eve-text-muted">
 				<span class="text-eve-text-muted">{t('download.detected')}</span> {osDisplay(detectedOS)}{#if detectedOS === "android"} — {rawArchDisplay(uaArch, uaBitness)}{#if artifact?.android?.[detected]} — {variantLabel(detected)}{/if}{:else if detectedOS === "linux"} — {availableLinux.length > 0 ? availableLinux.map(variantLabel).join(" / ") : t('download.detected.unavailable')}{:else if detectedOS === "windows"} — {availableWindows.length > 0 ? availableWindows.map(variantLabel).join(" / ") : t('download.detected.unavailable')}{/if}
 			</div>
+		{/if}
 
+		{#if downloadState.state !== "loading"}
 			<div class="eve-divider-gold mb-10"></div>
 
 			<div class="mb-8 flex justify-center gap-2" role="tablist">
@@ -364,7 +367,47 @@ const stagger2 = "animate-[fade-in-up_0.7s_ease-out_0.15s_forwards] opacity-0";
 				{/each}
 			</div>
 
-			{#if activeTab === "android"}
+			{#if activeTab === "web"}
+				<div class="grid gap-8 md:grid-cols-2">
+					<a
+						href="https://app.efa-tech.dev"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="card-hover-glow group relative rounded-lg border-2 border-eve-gold/40 bg-eve-surface p-8 transition-all duration-300"
+					>
+						<div class="mb-2 inline-block rounded-full bg-eve-gold/15 px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-eve-gold">{t('download.recommended')}</div>
+						<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
+							{t('download.web.stable.title')}
+						</h2>
+						<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
+							{t('download.web.stable.desc')}
+						</p>
+						<div class="mt-6 flex items-center gap-2 text-sm text-eve-gold">
+							<span class="font-medium">{t('download.web.stable.cta')}</span>
+							<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
+						</div>
+					</a>
+					<a
+						href="https://app-preview.efa-tech.dev"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="card-hover-glow group relative rounded-lg border border-eve-border bg-eve-surface p-8 transition-all duration-300"
+					>
+						<div class="card-icon mb-5 inline-flex h-14 w-14 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-eve-gold text-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">◈</div>
+						<h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
+							{t('download.web.preview.title')}
+						</h2>
+						<p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
+							{t('download.web.preview.desc')}
+						</p>
+						<div class="mt-6 flex items-center gap-2 text-sm text-eve-gold">
+							<span class="font-medium">{t('download.web.preview.cta')}</span>
+							<span class="text-lg transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
+						</div>
+					</a>
+				</div>
+				<p class="mt-6 text-center text-xs text-eve-text-muted">{t('download.web.browser_note')}</p>
+			{:else if activeTab === "android"}
 				<div class="grid gap-8 md:grid-cols-2">
 					{#each androidVariants as key}
 						{@render variantCard("Android", key, artifact?.android?.[key], "download.android.desc", "download.android.apk", false)}

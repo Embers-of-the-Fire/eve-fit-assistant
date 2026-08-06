@@ -3,11 +3,10 @@ import { page } from "$app/state";
 import {
     type ApiError,
     type IssueResult,
-    type ValidationError,
     submitFeatureRequest,
+    type ValidationError,
 } from "$lib/api/report";
-import { t } from "$lib/i18n/index.svelte";
-import { locale } from "$lib/i18n/index.svelte";
+import { locale, t } from "$lib/i18n/index.svelte";
 
 let title = $state("");
 let problem = $state("");
