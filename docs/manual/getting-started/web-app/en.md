@@ -23,7 +23,7 @@ The site is tested on Chromium-based browsers (Chrome, Edge, and similar) and Fi
 
 ## Storage Notes
 
-All data — downloaded game data, fits, characters, and settings — lives in your browser's local storage (OPFS) for the site you are using:
+All data lives in your browser's local storage for the site you are using — downloaded game data (repository blobs and the localization database) in OPFS, and fits, characters, and settings in IndexedDB:
 
 - Clearing the site's data in your browser deletes everything stored by the app.
 - The stable site and the nightly preview keep separate storage; fits created on one are not visible on the other.
