@@ -13,7 +13,7 @@ export const en = {
 
     "home.title": "EVE Fit Assistant — Cross-Platform Ship Fitting for New Eden",
     "home.meta_description":
-        "EFA is a cross-platform mobile EVE fitting tool. Edit fits offline, inspect items, check skill profiles — powered by Flutter and a native Rust backend.",
+        "EFA is a cross-platform EVE fitting tool — online in your browser or as a native app. Edit fits offline, inspect items, check skill profiles — powered by Flutter and a native Rust backend.",
 
     "hero.badge": "Alpha — Now in Development",
     "hero.heading_1": "Cross-Platform Ship Fitting",
@@ -22,6 +22,7 @@ export const en = {
         "A mobile fitting tool built with Flutter and a native Rust backend. Edit fits offline, inspect items, and load character skill profiles — all backed by versioned data bundles with incremental patching.",
     "hero.get_started": "Get Started",
     "hero.learn_more": "Learn More",
+    "hero.open_web_app": "Open Web App",
 
     "features.heading": "Fit Smarter, Fly Better",
     "features.subtitle": "Everything you need to perfect your ship configuration — on the go.",
@@ -48,7 +49,7 @@ export const en = {
 
     "features.cross_platform.title": "Cross-Platform",
     "features.cross_platform.desc":
-        "Full Android support with official APK releases. iOS build support included — a single Flutter codebase targeting both platforms.",
+        "Run EFA online in your browser or install it natively. Full Android support with official APK releases, desktop builds for Linux and Windows, and iOS build support — a single Flutter codebase targeting every platform.",
 
     "architecture.label": "Architecture",
     "architecture.heading": "Flutter + Rust, Built to Last",
@@ -130,6 +131,7 @@ export const en = {
 
     "report.form.platform.android": "Android",
     "report.form.platform.ios": "iOS",
+    "report.form.platform.web": "Web",
     "report.form.platform.windows": "Windows 10/11",
     "report.form.platform.linux": "Linux",
     "report.form.platform.other": "Other",
@@ -144,7 +146,7 @@ export const en = {
 
     "download.title": "EVE Fit Assistant — Download & Installation",
     "download.meta_description":
-        "Download the latest EVE Fit Assistant for Android, Linux, and Windows, view all releases on GitHub, or build from source.",
+        "Use EVE Fit Assistant online in your browser, or download the latest build for Android, Linux, and Windows.",
     "download.heading": "Get EVE Fit Assistant",
     "download.subtitle": "Choose the installation method that works best for you.",
     "download.android.title": "Android APK",
@@ -187,7 +189,18 @@ export const en = {
     "download.tabs.android": "Android",
     "download.tabs.linux": "Linux",
     "download.tabs.windows": "Windows",
+    "download.tabs.web": "Web",
     "download.tabs.other": "Other",
+    "download.web.stable.title": "Web App — Stable",
+    "download.web.stable.desc":
+        "Run EFA directly in your browser — no installation needed. Tracks released versions; use this one for everyday fitting.",
+    "download.web.stable.cta": "Open Stable App",
+    "download.web.preview.title": "Web App — Nightly Preview",
+    "download.web.preview.desc":
+        "Tracks the development branch. You get new features earlier, but things may break without warning. Storage is separate from the stable site.",
+    "download.web.preview.cta": "Open Nightly Preview",
+    "download.web.browser_note":
+        "Requires a browser with SharedArrayBuffer and OPFS support. Tested on Chromium-based browsers and Firefox; Safari may not be fully supported.",
     "download.unavailable.title": "Not available for your platform yet",
     "download.unavailable.desc":
         "No build for your platform has been published on this channel yet. Available builds are listed below.",
@@ -207,7 +220,7 @@ export const zh: Record<TranslationKey, string> = {
 
     "home.title": "EVE Fit Assistant — 新伊甸跨平台舰船配置工具",
     "home.meta_description":
-        "EFA 是一款跨平台移动端 EVE 舰船装配工具。离线编辑配置、查阅物品详情、加载角色技能 — 由 Flutter 和原生 Rust 后端提供支持。",
+        "EFA 是一款跨平台 EVE 舰船装配工具 — 可在线在浏览器中使用，也可安装原生应用。离线编辑配置、查阅物品详情、加载角色技能 — 由 Flutter 和原生 Rust 后端提供支持。",
 
     "hero.badge": "Alpha — 开发中",
     "hero.heading_1": "跨平台舰船配置",
@@ -216,6 +229,7 @@ export const zh: Record<TranslationKey, string> = {
         "一款由 Flutter 和原生 Rust 后端构建的移动端装配工具。离线编辑配置、查阅物品详情、加载角色技能 — 全部基于版本化数据包与增量更新。",
     "hero.get_started": "开始使用",
     "hero.learn_more": "了解更多",
+    "hero.open_web_app": "打开网页版",
 
     "features.heading": "更智能的装配，更好的飞行",
     "features.subtitle": "随时随地完善你的舰船配置所需的一切。",
@@ -242,7 +256,7 @@ export const zh: Record<TranslationKey, string> = {
 
     "features.cross_platform.title": "跨平台",
     "features.cross_platform.desc":
-        "全面支持 Android，提供官方 APK 发布。包含 iOS 构建支持 — 单一 Flutter 代码库同时覆盖双平台。",
+        "可在浏览器中在线使用，也可安装原生应用。全面支持 Android 并提供官方 APK，同时提供 Linux 与 Windows 桌面构建和 iOS 构建支持 — 单一 Flutter 代码库覆盖所有平台。",
 
     "architecture.label": "架构",
     "architecture.heading": "Flutter + Rust，经久耐用",
@@ -317,6 +331,7 @@ export const zh: Record<TranslationKey, string> = {
 
     "report.form.platform.android": "Android",
     "report.form.platform.ios": "iOS",
+    "report.form.platform.web": "网页版",
     "report.form.platform.windows": "Windows 10/11",
     "report.form.platform.linux": "Linux",
     "report.form.platform.other": "其他",
@@ -331,7 +346,7 @@ export const zh: Record<TranslationKey, string> = {
 
     "download.title": "EVE Fit Assistant — 下载与安装",
     "download.meta_description":
-        "下载最新的 EVE Fit Assistant（Android、Linux、Windows），在 GitHub 上查看所有版本，或从源码构建。",
+        "在浏览器中在线使用 EVE Fit Assistant，或下载最新的 Android、Linux、Windows 版本。",
     "download.heading": "获取 EVE Fit Assistant",
     "download.subtitle": "选择最适合你的安装方式。",
     "download.android.title": "Android APK",
@@ -371,7 +386,18 @@ export const zh: Record<TranslationKey, string> = {
     "download.tabs.android": "Android",
     "download.tabs.linux": "Linux",
     "download.tabs.windows": "Windows",
+    "download.tabs.web": "网页版",
     "download.tabs.other": "其他",
+    "download.web.stable.title": "网页版 — 稳定版",
+    "download.web.stable.desc":
+        "直接在浏览器中运行 EFA — 无需安装。跟随正式版本更新，日常使用请选择此站点。",
+    "download.web.stable.cta": "打开稳定版",
+    "download.web.preview.title": "网页版 — nightly 预览版",
+    "download.web.preview.desc":
+        "跟随开发分支更新。可以更早体验新功能，但可能随时出现问题。与稳定版站点的存储相互独立。",
+    "download.web.preview.cta": "打开 nightly 预览版",
+    "download.web.browser_note":
+        "需要浏览器支持 SharedArrayBuffer 与 OPFS。已在基于 Chromium 的浏览器和 Firefox 上测试；Safari 可能无法完全支持。",
     "download.unavailable.title": "暂未适配你的平台",
     "download.unavailable.desc": "该频道尚未发布适用于你平台的构建，下方列出了可用的构建。",
     "download.unavailable.linux_unsupported": "Linux 构建仅支持 x86-64，不支持你的设备架构。",

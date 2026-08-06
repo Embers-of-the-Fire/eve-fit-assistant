@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const PlatformEnum = z.enum(["Android", "iOS", "Windows 10/11", "Linux", "Other"]);
+const PlatformEnum = z.enum(["Android", "iOS", "Web", "Windows 10/11", "Linux", "Other"]);
 
 const LanguageEnum = z.enum(["en", "zh"]);
 

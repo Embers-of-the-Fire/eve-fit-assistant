@@ -1,4 +1,4 @@
-import { type Locale, type TranslationKey, en, zh } from "./translations";
+import { en, type Locale, type TranslationKey, zh } from "./translations";
 
 const translations = { en, zh } as const;
 

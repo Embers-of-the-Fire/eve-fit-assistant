@@ -5,13 +5,22 @@
 > This branch (`dev`) is under active development.
 > The `main` branch is deprecated; all releases ship from `dev`.
 
-EFA is a cross-platform EVE fitting tool for mobile devices (Android).
+EFA is a cross-platform EVE fitting tool, available as an online web app
+and as native apps for mobile (Android) and desktop.
 The current beta focuses on local fit editing with validation,
 bundle-backed static data, item and ship hull inspection,
 character skill profiles, damage profile switching, and a remote
 content system for bundles, announcements, and version notes.
 
 Market statistics and broader EVE reference tools remain planned scope.
+
+### Use Online
+
+No installation needed — EFA runs in the browser:
+
+- **Stable**: <https://app.efa-tech.dev> — tracks released versions.
+- **Nightly preview**: <https://app-preview.efa-tech.dev> — tracks the `dev`
+  branch; newer features, but may be unstable.
 
 > The target form factor is phones. Tablets are not officially
 > targeted but may work on larger screens.
@@ -22,6 +31,13 @@ logic. Unlike the sibling project
 EFA uses a single datasource per installed bundle.
 
 ### Platform Support
+
+EFA is available on the web at [app.efa-tech.dev](https://app.efa-tech.dev)
+(stable) and [app-preview.efa-tech.dev](https://app-preview.efa-tech.dev)
+(nightly preview). The web app is a WebAssembly build of the same Flutter
+codebase, served from Cloudflare Pages, and requires a modern browser with
+SharedArrayBuffer and OPFS support. It is tested on Chromium-based browsers
+and Firefox; Safari may not be fully supported.
 
 EFA guarantees support for Android and partial support
 for Android-based systems and will release officially

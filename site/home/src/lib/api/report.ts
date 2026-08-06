@@ -1,4 +1,4 @@
-export type Platform = "Android" | "iOS" | "Windows 10/11" | "Linux" | "Other";
+export type Platform = "Android" | "iOS" | "Web" | "Windows 10/11" | "Linux" | "Other";
 export type Language = "en" | "zh";
 
 export interface BugReportPayload {
