@@ -3,6 +3,7 @@
 import "dart:async";
 
 import "package:eve_fit_assistant/compat/wasm_probe.dart";
+import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
@@ -59,6 +60,7 @@ Future<InitializedStores> initSingletons() async {
     } else if (await wasmBundleAvailable(engineBundleUrl)) {
       try {
         await RustLib.init();
+        NativeEngineAvailability.setAvailable(value: true);
       } on Object catch (e) {
         debugPrint("RustLib.init() failed on web: $e");
       }
@@ -69,6 +71,7 @@ Future<InitializedStores> initSingletons() async {
     }
   } else {
     await RustLib.init();
+    NativeEngineAvailability.setAvailable(value: true);
   }
   await PathProvider.init();
   if (!kIsWeb) {

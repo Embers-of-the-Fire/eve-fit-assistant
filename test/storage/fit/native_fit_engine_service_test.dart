@@ -3,6 +3,7 @@ library;
 
 import "dart:io";
 
+import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
@@ -72,15 +73,14 @@ class _StubRustLibApi extends RustLibApi {
   );
 
   @override
-  native_server.FitEnginePath crateApiServerFitEnginePathFromRoot({
-    required String root,
-  }) => native_server.FitEnginePath(
-    types: "$root/types.pb2",
-    dogmaAttributes: "$root/dogmaAttributes.pb2",
-    dogmaEffects: "$root/dogmaEffects.pb2",
-    typeDogma: "$root/typeDogma.pb2",
-    buffCollections: "$root/dbuffcollections.pb2",
-  );
+  native_server.FitEnginePath crateApiServerFitEnginePathFromRoot({required String root}) =>
+      native_server.FitEnginePath(
+        types: "$root/types.pb2",
+        dogmaAttributes: "$root/dogmaAttributes.pb2",
+        dogmaEffects: "$root/dogmaEffects.pb2",
+        typeDogma: "$root/typeDogma.pb2",
+        buffCollections: "$root/dbuffcollections.pb2",
+      );
 
   @override
   native_server.FitEngine crateApiServerFitEngineNew({required native_server.FitEngineData data}) =>
@@ -166,13 +166,13 @@ ResourceBlobProxy _proxy(ResourceIndex ri) => ResourceBlobProxy(AssetStore(), ri
 
 late String _tempDir;
 
-ProviderContainer _container({required ResourceBlobProxy? proxy}) => ProviderContainer(
-  overrides: [resourceBlobProxyProvider.overrideWith((ref) async => proxy)],
-);
+ProviderContainer _container({required ResourceBlobProxy? proxy}) =>
+    ProviderContainer(overrides: [resourceBlobProxyProvider.overrideWith((ref) async => proxy)]);
 
 void main() {
   setUpAll(() {
     RustLib.initMock(api: _StubRustLibApi());
+    NativeEngineAvailability.setAvailable(value: true);
     final logDir = Directory.systemTemp.createTempSync("efa_engine_log_");
     GlobalLogger.init(logDir.path, enableDebugLog: false);
   });
@@ -230,6 +230,20 @@ void main() {
 
       final state = container.read(nativeFitEngineServiceProvider);
       expect(state.debugOnlyDisplayState, contains("error"));
+    });
+
+    test("degrades gracefully when the native engine is unavailable", () async {
+      NativeEngineAvailability.setAvailable(value: false);
+      addTearDown(() => NativeEngineAvailability.setAvailable(value: true));
+      final container = _container(proxy: _proxy(_testResourceIndex()));
+      addTearDown(container.dispose);
+
+      await container.read(resourceBlobProxyProvider.future);
+      await container.read(nativeFitEngineServiceProvider.notifier).retry();
+
+      final state = container.read(nativeFitEngineServiceProvider);
+      expect(state.debugOnlyDisplayState, contains("error"));
+      expect(state.errorMessageKey, FitErrorMessageKey.fitCalculationsUnavailable);
     });
 
     test("retry is no-op when no proxy is available", () async {

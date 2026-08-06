@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
@@ -564,6 +565,20 @@ class NativeFitEngineService extends _$NativeFitEngineService {
 
     final completer = Completer<void>();
     _pendingInit = completer.future;
+
+    if (!NativeEngineAvailability.available) {
+      // The bridge was never initialized (e.g. web without cross-origin
+      // isolation or without the wasm bundle); booted without the native
+      // engine by design. Do not touch FRB — every call would throw a
+      // misleading "flutter_rust_bridge has not been initialized" error.
+      debug("Native engine unavailable; skipping initialization from resource index.");
+      state = const NativeFitEngineState.error(
+        messageKey: FitErrorMessageKey.fitCalculationsUnavailable,
+      );
+      completer.complete();
+      _pendingInit = null;
+      return;
+    }
 
     state = const NativeFitEngineState.initializing();
     try {
