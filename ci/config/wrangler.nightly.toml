@@ -1,0 +1,2 @@
+name = "efa-app-nightly"
+pages_build_output_dir = "./build/web"

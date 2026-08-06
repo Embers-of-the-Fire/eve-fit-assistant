@@ -7,8 +7,6 @@ on:
   pull_request:
     branches: [dev]
     types: [opened, synchronize, reopened, closed]
-  push:
-    branches: [dev]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,7 +16,7 @@ jobs:
   changes:
     # Skip the build path when the PR is being closed; the cleanup job
     # handles that event instead.
-    if: github.event_name == 'push' || github.event.action != 'closed'
+    if: github.event.action != 'closed'
     runs-on: ubuntu-slim
     outputs:
       build: ${{ steps.filter.outputs.build }}
@@ -35,23 +33,15 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # The checkout only fetched history reachable from the PR merge
-            # ref; the base/head tips may not be ancestors of it (e.g. when
-            # the base branch advanced), so fetch them explicitly.
-            git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
-            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
-          else
-            echo "FULL" > /tmp/changed.txt
-          fi
+          # The checkout only fetched history reachable from the PR merge
+          # ref; the base/head tips may not be ancestors of it (e.g. when
+          # the base branch advanced), so fetch them explicitly.
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
       - name: Check web preview relevance
         id: filter
         run: |
-          if grep -q "^FULL$" /tmp/changed.txt; then
-            BUILD=$(uv run x.py ci web-affected --full)
-          else
-            BUILD=$(uv run x.py ci web-affected --from-file /tmp/changed.txt)
-          fi
+          BUILD=$(uv run x.py ci web-affected --from-file /tmp/changed.txt)
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
 
   build:
@@ -60,8 +50,7 @@ jobs:
     # preview; skip the build entirely.
     if: >-
       needs.changes.outputs.build == 'true' &&
-      (github.event_name == 'push' ||
-       github.event.pull_request.head.repo.full_name == github.repository)
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -69,37 +58,11 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-      - name: Fetch native CI data
-        run: |
-          curl -sfLo /tmp/ci-native-data.tar.gz \
-            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
-          mkdir -p "$GITHUB_WORKSPACE/ci-native"
-          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
-          mkdir -p rust/lib/eve-fit-os/data/out
-          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
-      - name: Init dev env
-        uses: ./.github/actions/init-dev-env
-      - name: Install Python dependencies
-        run: nix develop .#codegen --command bash -c 'uv sync'
-      - name: Install Dart dependencies
-        run: nix develop .#codegen --command bash -c 'flutter pub get'
-      - name: Write backend env
-        run: nix develop .#codegen --command bash -c 'uv run x.py dev env write-backend'
-      - name: Generate code
-        run: nix develop .#codegen --command bash -c 'uv run x.py ci codegen --lang dart'
       - name: Build web bundle
-        run: nix develop .#codegen --command bash -c 'uv run x.py build web'
-      - name: Upload web bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: web-bundle
-          path: build/web
-          retention-days: 1
+        uses: ./.github/actions/build-web
 
   deploy-preview:
     needs: build
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: web-preview
@@ -111,76 +74,22 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: web-bundle
-          path: build/web
-      - name: Compute deploy command
-        id: args
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
-          echo "command=pages deploy build/web --project-name=efa-app --branch=$HEAD_REF" \
-            >> "$GITHUB_OUTPUT"
       - name: Deploy preview to Cloudflare Pages
-        id: deploy
-        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        uses: ./.github/actions/deploy-web-pages
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.118.0"
-          # The repo root carries a pnpm lockfile, which the action would
-          # auto-detect and use to install wrangler; pnpm is not preinstalled
-          # on the runner and npm suffices for a global wrangler install.
-          packageManager: npm
-          command: ${{ steps.args.outputs.command }}
-      - name: Comment preview URL
-        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        with:
-          header: web-preview
-          message: |
-            Web preview deployed to Cloudflare Pages (`efa-app`).
-
-            | | |
-            |---|---|
-            | Deployment | ${{ steps.deploy.outputs.deployment-url }} |
-            | Branch alias | ${{ steps.deploy.outputs.pages-deployment-alias-url }} |
-            | Commit | ${{ github.sha }} |
-
-            Build: `x build web` (wasm, skwasm renderer, locally bundled canvaskit).
-
-  deploy-production:
-    needs: build
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Deploy to the Pages production URL; the project's production branch must
-    # be set to "dev" (one-time setup in the Cloudflare dashboard).
-    environment: web-production
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          submodules: true
-          persist-credentials: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: web-bundle
-          path: build/web
-      - name: Deploy production to Cloudflare Pages
-        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.118.0"
-          packageManager: npm
-          command: pages deploy build/web --project-name=efa-app
+          flavor: nightly
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          branch: ${{ github.head_ref }}
+          commit-hash: ${{ github.event.pull_request.head.sha }}
+          comment: "true"
+          comment-header: web-preview
 
   cleanup:
     # Cloudflare keeps preview deployments forever (and refuses to delete a
     # branch's aliased one without force); remove this branch's previews once
     # its PR is merged or closed.
     if: >-
-      github.event_name == 'pull_request' &&
       github.event.action == 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-slim
@@ -202,7 +111,7 @@ jobs:
               core.setFailed("Missing CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, or branch.");
               return;
             }
-            const project = "efa-app";
+            const project = "efa-app-nightly";
             const headers = {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",

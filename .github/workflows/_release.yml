@@ -184,6 +184,52 @@ jobs:
         with:
           name: diagnostics-windows-release
 
+  site:
+    name: Build web bundle
+    needs: [verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Build web bundle
+        uses: ./.github/actions/build-web
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-site-release
+
+  site-deploy:
+    name: Deploy web bundle
+    needs: [verify, site]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Test mode deploys to the nightly Pages project (and pins a comment on
+    # the release PR); real releases deploy to the production Pages project.
+    environment: ${{ inputs.test_mode && 'web-preview' || 'web-production' }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Deploy web bundle
+        uses: ./.github/actions/deploy-web-pages
+        with:
+          flavor: ${{ inputs.test_mode && 'nightly' || 'prod' }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          commit-hash: ${{ github.sha }}
+          comment: ${{ inputs.test_mode && 'true' || 'false' }}
+          comment-header: web-release-test
+
   publish:
     name: Merge and publish to remote channel
     needs: [verify, android, linux, windows]

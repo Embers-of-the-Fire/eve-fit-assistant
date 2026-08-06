@@ -1,0 +1,62 @@
+name: Build web bundle
+
+description: >-
+  Shared web bundle build: Nix, native CI data, dev config, Python/Flutter
+  dependencies, Dart codegen, and `x.py build web` inside the .#codegen dev
+  shell, then uploads build/web as an artifact. The caller must check out the
+  repository (with submodules) first.
+
+inputs:
+  artifact-name:
+    description: "Name of the uploaded web bundle artifact."
+    required: false
+    default: web-bundle
+  retention-days:
+    description: "Artifact retention in days."
+    required: false
+    default: "1"
+
+runs:
+  using: composite
+  steps:
+    - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+    - name: Fetch native CI data
+      shell: bash
+      run: |
+        curl -sfLo /tmp/ci-native-data.tar.gz \
+          https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+        mkdir -p "$GITHUB_WORKSPACE/ci-native"
+        tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
+        mkdir -p rust/lib/eve-fit-os/data/out
+        ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+
+    - name: Init dev env
+      uses: ./.github/actions/init-dev-env
+
+    - name: Install Python dependencies
+      shell: bash
+      run: nix develop .#codegen --command bash -c 'uv sync'
+
+    - name: Install Dart dependencies
+      shell: bash
+      run: nix develop .#codegen --command bash -c 'flutter pub get'
+
+    - name: Write backend env
+      shell: bash
+      run: nix develop .#codegen --command bash -c 'uv run x.py dev env write-backend'
+
+    - name: Generate code
+      shell: bash
+      run: nix develop .#codegen --command bash -c 'uv run x.py ci codegen --lang dart'
+
+    - name: Build web bundle
+      shell: bash
+      run: nix develop .#codegen --command bash -c 'uv run x.py build web'
+
+    - name: Upload web bundle
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: build/web
+        retention-days: ${{ inputs.retention-days }}

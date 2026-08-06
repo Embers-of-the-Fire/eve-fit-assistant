@@ -52,6 +52,9 @@ jobs:
     if: needs.identify.outputs.skip == 'false'
     permissions:
       contents: write
+      # _release.yml's site-deploy job declares pull-requests: write for its
+      # (test-mode-only) sticky comment; caller grants must cover it.
+      pull-requests: write
     # _release.yml declares `environment: production-app` and references those
     # secrets directly, but without secrets:inherit the environment context fails
     # to resolve inside the reusable workflow — causing EFA_* signing vars to be

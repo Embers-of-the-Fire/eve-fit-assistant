@@ -126,7 +126,7 @@ When the PR is ready, add the `V-Test` label.
 
 This triggers `release-full.yml`, which runs:
 
-- `App release test` — builds the app (APK, Linux, and Windows variants) in test mode using `_release.yml`.
+- `App release test` — builds the app (APK, Linux, and Windows variants) in test mode using `_release.yml`. It also builds the web bundle and deploys it to the `efa-app-nightly` Cloudflare Pages project, pinning a comment with the test deployment URL on the release PR.
 - `Data release test` — builds data snapshots in test mode using `_release-data.yml`.
 - `Mark as tested release` — adds `V-Tested Release` and removes `V-Test` after both jobs succeed.
 
@@ -140,11 +140,13 @@ The `release.yml` workflow on the merge commit then:
 
 1. Identifies the merged PR and confirms it has `V-Tested Release`.
 2. Reuses `_release.yml` to build and publish the app (APK, Linux, and Windows variants).
-3. Merges the release registry fragment.
-4. Publishes the release to the remote `testing` channel.
-5. Publishes the release note as a remote announcement entry so users are notified
+3. Builds the web bundle and deploys it to the `efa-app` Cloudflare Pages project
+   (production URL).
+4. Merges the release registry fragment.
+5. Publishes the release to the remote `testing` channel.
+6. Publishes the release note as a remote announcement entry so users are notified
    of the new version.
-6. Creates a lightweight Git tag (`releases/v<version>`) pointing at the merge commit.
+7. Creates a lightweight Git tag (`releases/v<version>`) pointing at the merge commit.
 
 If the merged PR is missing `V-Tested Release`, the release aborts.
 
@@ -160,6 +162,8 @@ environment protection rules gate which refs may do so.
 | `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish job (real data releases) |
 | `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `_update-raw-data.yml` upload job |
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
+| `web-preview` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `web-preview.yml` (branch previews + cleanup), `site-nightly.yml`, `_release.yml` `site-deploy` in `test_mode` — all targeting the `efa-app-nightly` Pages project |
+| `web-production` | `dev` branch only | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `_release.yml` `site-deploy` (real releases; `efa-app` Pages project) |
 
 Each environment holds a separately generated token/endpoint group scoped to the
 permissions that environment needs; endpoints therefore live in secrets alongside

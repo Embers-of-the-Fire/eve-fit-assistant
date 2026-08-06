@@ -105,6 +105,9 @@ WEB_PREVIEW_PATTERNS = [
     "pyproject.toml",
     "uv.lock",
     ".github/workflows/web-preview.yml",
+    ".github/workflows/site-nightly.yml",
+    ".github/actions/build-web/**",
+    ".github/actions/deploy-web-pages/**",
 ]
 
 
