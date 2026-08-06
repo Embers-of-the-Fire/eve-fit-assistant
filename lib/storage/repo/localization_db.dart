@@ -18,6 +18,30 @@ part "localization_db.g.dart";
 /// Resource id of the checkout's SQLite localization database.
 const String kLocalizationDbResourceId = "resource://localization/localization.db";
 
+/// Root of the OPFS directory tree sqlite3_web uses for its databases
+/// (`drift_db/<dbName>/database`).
+///
+/// Web-only at runtime, but declared here so the web reset path can wipe the
+/// tree without importing web-only code.
+const String kLocalizationDbOpfsRoot = "drift_db";
+
+/// OPFS database name for the localization database copy of [contentHash].
+///
+/// Web-only at runtime, but pure so tests on any platform can pin the naming
+/// scheme: embedding the content hash makes the OPFS path uniquely identify
+/// the content.
+String localizationDbNameForHash(String contentHash) => "localization_$contentHash";
+
+/// OPFS file path sqlite3_web expects for [dbName]
+/// (`drift_db/<dbName>/database`).
+String localizationDbFilePath(String dbName) => "$kLocalizationDbOpfsRoot/$dbName/database";
+
+/// Whether [dirName] — a direct child of [kLocalizationDbOpfsRoot] — is a
+/// stale localization database directory that should be pruned while [keepName]
+/// is retained.
+bool isStaleLocalizationDbDir(String dirName, {required String keepName}) =>
+    dirName.startsWith("localization_") && dirName != keepName;
+
 /// Schema version of the localization database this client understands.
 const String _kSupportedSchemaVersion = "1";
 
@@ -120,6 +144,13 @@ class LocalizationDbService {
     return completer.future;
   }
 
+  /// Returns the already-resolved localized string for [id] in [locale], or
+  /// `null` when it has not been resolved yet.
+  ///
+  /// Lets consumers synchronously render previously resolved names while a
+  /// fresh lookup is in flight, instead of flashing blank.
+  String? localizedNameCached(int id, String locale) => _cache[locale]?[id];
+
   /// Resolves many strings at once (e.g. building the text-import name index).
   ///
   /// Ids without entries are simply absent from the result.
@@ -187,17 +218,22 @@ class LocalizationDbService {
           "SELECT id, value FROM strings WHERE locale = ? AND id IN ($placeholders)",
           [locale, ...chunk],
         );
+        final found = <int>{};
         for (final row in rows) {
-          cache[row["id"]! as int] = row["value"]! as String;
+          final id = row["id"]! as int;
+          cache[id] = row["value"]! as String;
+          found.add(id);
+        }
+        // Record misses so they are never queried again — but only for ids a
+        // successful query confirmed absent. A failed chunk must leave its ids
+        // uncached so a transient error does not permanently blank names that
+        // do have entries.
+        for (final id in chunk) {
+          if (!found.contains(id)) cache.putIfAbsent(id, () => "");
         }
       } on Object catch (e, st) {
         warning("Localization lookup failed for locale $locale: $e", stackTrace: st);
       }
-    }
-
-    // Record misses so they are never queried again.
-    for (final id in idList) {
-      cache.putIfAbsent(id, () => "");
     }
   }
 
@@ -215,6 +251,15 @@ class LocalizationDbService {
     }
     _pending.clear();
 
+    final closeFuture = _closeDatabase();
+    // Let the web backend order OPFS cleanup (stale-database prune, storage
+    // reset) behind this close: the worker may still hold SyncAccessHandles
+    // inside the database's OPFS directory until it fully shuts down.
+    registerLocalizationDbClose(closeFuture);
+    await closeFuture;
+  }
+
+  Future<void> _closeDatabase() async {
     try {
       await _db.close();
     } on Object catch (e) {

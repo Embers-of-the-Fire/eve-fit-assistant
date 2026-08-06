@@ -15,9 +15,20 @@ from bootstrap.constant import PROJECT_ROOT
 from bootstrap.utils import get_command
 
 
-_VM_ONLY_TEST = re.compile(r"@TestOn\(\s*[\"']vm[\"']\s*\)")
+_TEST_ON = re.compile(r"@TestOn\(\s*[\"']([^\"']*)[\"']\s*\)")
+_PLATFORM_IMPORT = re.compile(r"""^import\s+["']dart:(?:io|ffi)["']""", re.MULTILINE)
 
 _WEB_SQLITE_ASSETS = ("db_worker.js", "sqlite3.wasm")
+
+
+def _is_vm_only_expression(expr: str) -> bool:
+    """Whether a ``@TestOn`` expression restricts the suite to the VM.
+
+    Compound expressions like ``vm && !windows`` still require the VM; only
+    an expression with a ``||`` alternative that does not mention ``vm``
+    (e.g. ``vm || browser``) can run on the web.
+    """
+    return all("vm" in clause for clause in expr.split("||"))
 
 
 def _collect_web_test_suites() -> list[str]:
@@ -30,9 +41,15 @@ def _collect_web_test_suites() -> list[str]:
     test_root = PROJECT_ROOT / "test"
     suites: list[str] = []
     for path in sorted(test_root.rglob("*_test.dart")):
-        header = path.read_text(encoding="utf-8").splitlines()[:30]
-        if any(_VM_ONLY_TEST.search(line) for line in header):
+        content = path.read_text(encoding="utf-8")
+        match = _TEST_ON.search(content)
+        if match is not None and _is_vm_only_expression(match.group(1)):
             continue
+        if _PLATFORM_IMPORT.search(content):
+            raise click.ClickException(
+                f"{path.relative_to(PROJECT_ROOT)} imports dart:io/dart:ffi but is not "
+                'tagged @TestOn("vm"); it would break the web test compile'
+            )
         suites.append(str(path.relative_to(PROJECT_ROOT)))
     return suites
 
@@ -47,6 +64,11 @@ def _stage_web_sqlite_assets() -> None:
     """
     source = PROJECT_ROOT / "web" / "sqlite"
     target = PROJECT_ROOT / "test" / "web" / "sqlite"
+    missing = [name for name in _WEB_SQLITE_ASSETS if not (source / name).is_file()]
+    if missing:
+        raise click.ClickException(
+            "web/sqlite assets missing: " + ", ".join(str(source / name) for name in missing)
+        )
     target.mkdir(parents=True, exist_ok=True)
     for name in _WEB_SQLITE_ASSETS:
         shutil.copy2(source / name, target / name)

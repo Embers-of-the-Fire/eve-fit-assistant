@@ -28,6 +28,7 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 | Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit/character storage schemas; fit supports storageVersion 3 with CheckoutRef |
 | Settings | `lib/storage/setting/` | User settings including remote content configuration |
+| Storage FS | `lib/storage/fs/` | Platform storage abstraction: `DocStore`/`BlobStore` interfaces with File (native) and Hive/OPFS (web) backends; `createUserDocStore`/`createRepoBlobStore` factories route settings, fits, characters, announcements, feedback, and version state to the right backend. |
 
 All writes to `checkouts.json` are mutex-guarded; reads are lock-free. The checkout registry provides a reactive stream for live UI updates.
 

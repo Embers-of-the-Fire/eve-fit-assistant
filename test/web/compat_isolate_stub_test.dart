@@ -2,6 +2,7 @@
 library;
 
 import "package:eve_fit_assistant/compat/isolate.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
@@ -28,10 +29,28 @@ void main() {
       expect(port.close, returnsNormally);
     });
 
-    test("port stream never emits and completes", () async {
+    test("port stream never emits; close terminates listeners", () async {
       final port = ReceivePort();
       port.sendPort.send("ignored");
-      await expectLater(port, emitsDone);
+      final done = expectLater(port, emitsDone);
+      port.close();
+      await done;
+    });
+
+    test("send and close log in debug mode so message-dropping is visible", () {
+      // kDebugMode is always true under flutter test.
+      final messages = <String>[];
+      final previous = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {
+        if (message != null) messages.add(message);
+      };
+      addTearDown(() => debugPrint = previous);
+
+      final port = ReceivePort();
+      port.sendPort.send("message");
+      port.close();
+
+      expect(messages, hasLength(2));
     });
   });
 }

@@ -1282,7 +1282,7 @@ packages:
     source: hosted
     version: "0.2.7"
   sqlite3_web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: sqlite3_web
       sha256: aa6af15ef8bf8551d3a84203e3cbc022990567372e46ef98f91bdb2018fcfb0e

@@ -35,8 +35,9 @@ class PathProvider {
   static Future<void> init() async {
     if (kIsWeb) {
       // Web has no filesystem and path_provider has no web implementation.
-      // Placeholder paths keep the app booting; any actual storage access
-      // fails at runtime until the storage layer is ported.
+      // Placeholder paths keep legacy path-derived constants well-defined;
+      // real persistence goes through the OPFS/IndexedDB stores in
+      // `lib/storage/fs/`.
       documentsPath = tempPath = appSupportPath = cachesPath = "/";
       downloadsPath = null;
       return;

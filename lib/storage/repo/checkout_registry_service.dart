@@ -71,6 +71,10 @@ class CheckoutRegistryService {
   RegistryFileState _fileState;
   Future<void>? _loadInFlight;
 
+  /// Number of writes started so far. A load that began before a write must
+  /// not clobber the newer in-memory registry that write installed.
+  int _writeGeneration = 0;
+
   /// State of the backing file as of the last [load].
   RegistryFileState get fileState => _fileState;
 
@@ -89,6 +93,7 @@ class CheckoutRegistryService {
   Future<void> load() => _loadInFlight ??= _doLoad();
 
   Future<void> _doLoad() async {
+    final generation = _writeGeneration;
     CheckoutRegistry? cache;
     RegistryFileState state;
     final bytes = await _store.read(RepoPaths.checkoutRegistryPath);
@@ -102,6 +107,11 @@ class CheckoutRegistryService {
         warning("Failed to read checkout registry", stackTrace: stackTrace);
         state = RegistryFileState.corrupt;
       }
+    }
+    if (generation != _writeGeneration) {
+      // A write landed while the read was in flight; the newer in-memory
+      // registry installed by that write wins over the stale disk contents.
+      return;
     }
     _cache = cache;
     _fileState = state;
@@ -124,6 +134,7 @@ class CheckoutRegistryService {
   /// The persist is guarded by a mutex. After the write completes, the [watch]
   /// stream emits the new value.
   Future<void> writeRegistry(CheckoutRegistry registry) => _mutex.synchronized(() async {
+    _writeGeneration++;
     _cache = registry;
     _fileState = RegistryFileState.ok;
     await _store.write(

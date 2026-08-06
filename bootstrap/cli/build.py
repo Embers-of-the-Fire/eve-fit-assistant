@@ -229,17 +229,42 @@ _WEB_RENDERER_ARTIFACTS = {
 }
 
 
+def _extract_json_object(text: str, start: int, source: Path) -> str:
+    """Bracket-match the JSON object starting at ``start`` (a ``{``)."""
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    raise click.ClickException(f"Unbalanced buildConfig JSON in {source}")
+
+
 def _read_web_renderers(build_dir: Path) -> set[str]:
     bootstrap_js = build_dir / "flutter_bootstrap.js"
-    match = re.search(
-        r"_flutter\.buildConfig\s*=\s*(\{.*?\});",
-        bootstrap_js.read_text(encoding="utf-8"),
-        re.DOTALL,
-    )
+    text = bootstrap_js.read_text(encoding="utf-8")
+    match = re.search(r"_flutter\.buildConfig\s*=\s*\{", text)
     if match is None:
         raise click.ClickException(f"Could not locate buildConfig in {bootstrap_js}")
-    config = json.loads(match.group(1))
+    config = json.loads(_extract_json_object(text, match.end() - 1, bootstrap_js))
     builds = config.get("builds", [])
+    if not isinstance(builds, list) or not builds:
+        raise click.ClickException(f"buildConfig in {bootstrap_js} has no builds array")
     return {b["renderer"] for b in builds if "renderer" in b}
 
 
@@ -253,9 +278,21 @@ def _prune_canvaskit(build_dir: Path) -> int:
         return 0
 
     renderers = _read_web_renderers(build_dir)
+    unknown = renderers - _WEB_RENDERER_ARTIFACTS.keys()
+    if unknown:
+        raise click.ClickException(
+            "Unknown web renderer(s) declared in flutter_bootstrap.js: "
+            + ", ".join(sorted(unknown))
+            + "; add their artifacts to _WEB_RENDERER_ARTIFACTS"
+        )
     keep: set[str] = set()
     for renderer in renderers:
-        keep |= _WEB_RENDERER_ARTIFACTS.get(renderer, set())
+        keep |= _WEB_RENDERER_ARTIFACTS[renderer]
+    if not keep:
+        raise click.ClickException(
+            "No canvaskit artifacts resolved for the declared renderers; "
+            "refusing to prune the entire canvaskit/ directory"
+        )
 
     removed_bytes = 0
 
@@ -403,6 +440,11 @@ def register_build_commands(cli_group: click.Group) -> None:
 
         flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
         flutter = get_command("flutter")
+        # The FRB step shells out to wasm-pack (which in turn runs wasm-opt
+        # from binaryen); fail up front with an actionable error instead of
+        # mid-build.
+        get_command("wasm-pack")
+        get_command("wasm-opt")
 
         runtime.execute(
             [

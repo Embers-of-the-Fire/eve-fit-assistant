@@ -1,12 +1,11 @@
 {
-    "name": "eve_fit_assistant",
-    "short_name": "eve_fit_assistant",
+    "name": "EVE Fit Assistant",
+    "short_name": "EFA",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#e8f1f0",
+    "background_color": "#0a1a2a",
     "theme_color": "#0a1a2a",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "EVE Fit Assistant — a cross-platform EVE fitting tool.",
     "prefer_related_applications": false,
     "icons": [
         {

@@ -40,8 +40,12 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(ListReturnBehaviorTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
-        ConfigListTile.title(context.l10n.appSettingsPageSectionMarket),
-        const ConfigListTile.custom(MarketServerFallbackTile()),
+        // Market price is disabled at the provider root on web, so its
+        // settings do not apply there.
+        if (!kIsWeb) ...[
+          ConfigListTile.title(context.l10n.appSettingsPageSectionMarket),
+          const ConfigListTile.custom(MarketServerFallbackTile()),
+        ],
         // App update detection is not served on web, so its settings do not
         // apply there.
         if (!kIsWeb) ...[

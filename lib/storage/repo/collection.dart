@@ -36,10 +36,9 @@ RepoCollectionService? repoCollection(Ref ref) {
 
 /// Pre-loaded type data proxy backed by the content-addressed blob store.
 ///
-/// Same query surface but reads from the repo's ResourceIndex-referenced
-/// protobuf files. All data is loaded synchronously at construction from
-/// a single Collection.toBuffer file and optional per-locale Localization
-/// files found in the ResourceIndex.
+/// Structural type-data only, decoded from a single Collection.toBuffer
+/// file referenced by the repo's ResourceIndex. Localized names resolve
+/// via `LocalizationDbService`.
 class RepoCollectionService {
   const RepoCollectionService._({
     required Collection collection,

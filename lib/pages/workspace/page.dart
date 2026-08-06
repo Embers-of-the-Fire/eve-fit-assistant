@@ -14,17 +14,23 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:url_launcher/url_launcher.dart";
 
 class _WorkspaceShortcutItem {
-  const _WorkspaceShortcutItem({required this.title, required this.icon, required this.onTap});
+  const _WorkspaceShortcutItem({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    this.isUpdatesCard = false,
+  });
 
   final String title;
   final IconData icon;
   final void Function() onTap;
+
+  /// Whether this card carries the unread-announcement badge.
+  final bool isUpdatesCard;
 }
 
 class WorkspacePage extends ConsumerWidget {
   const WorkspacePage({super.key});
-
-  static const int _updatesCardIndex = 1;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,6 +49,7 @@ class WorkspacePage extends ConsumerWidget {
           title: context.l10n.workspaceTabAnnouncementTitle,
           icon: Icons.campaign_outlined,
           onTap: () => context.router.push(AnnouncementFeedRoute()),
+          isUpdatesCard: true,
         ),
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabManualTitle,
@@ -81,7 +88,7 @@ class WorkspacePage extends ConsumerWidget {
             itemBuilder: (context, index) {
               final it = items[index];
               Widget card = HomepageLinkCard(title: it.title, icon: it.icon, onTap: it.onTap);
-              if (index == _updatesCardIndex && unreadCount > 0) {
+              if (it.isUpdatesCard && unreadCount > 0) {
                 card = NotificationDot(count: unreadCount, badgeRadius: 13, child: card);
               }
               return card;

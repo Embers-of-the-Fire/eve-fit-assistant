@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" show min;
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
@@ -11,11 +12,11 @@ import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/data/data_update_dialog.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_provisioner.dart";
 import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
+import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
-import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -190,35 +191,48 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final displayName = _displayName(entry);
-    final ri = await ref.read(assetStoreProvider).readResourceIndex(entry.resourceSnapshotHash);
+    final assetStore = ref.read(assetStoreProvider);
+    final ri = await assetStore.readResourceIndex(entry.resourceSnapshotHash);
     if (!mounted) return;
     final fileCount = ri.match(() => -1, (r) => r.entries.length);
     final totalSize = ri.match(
       () => -1,
       (r) => r.entries.fold<int>(0, (sum, e) => sum + e.size.toInt()),
     );
-    final split = ri.match(() => null, (r) {
-      var eagerCount = 0;
-      var eagerSize = 0;
-      var lazyCount = 0;
-      var lazySize = 0;
-      for (final e in r.entries) {
-        final size = e.size.toInt();
-        if (shouldEagerDownload(r, e)) {
-          eagerCount++;
-          eagerSize += size;
-        } else {
-          lazyCount++;
-          lazySize += size;
+    // Count blobs actually present on disk (batched), not the download
+    // policy: FORCE entries whose downloads failed are not downloaded, and
+    // NON_FORCE entries already lazily fetched do occupy disk.
+    final split = await ri.match(() async => null, (r) async {
+      var downloadedCount = 0;
+      var downloadedSize = 0;
+      var onDemandCount = 0;
+      var onDemandSize = 0;
+      const batchSize = 64;
+      final entries = r.entries;
+      for (var start = 0; start < entries.length; start += batchSize) {
+        final batch = entries.sublist(start, min(start + batchSize, entries.length));
+        final exists = await Future.wait(
+          batch.map((e) => assetStore.blobExists(RepoHash.hashIdent(e.resourceId), e.contentHash)),
+        );
+        for (var i = 0; i < batch.length; i++) {
+          final size = batch[i].size.toInt();
+          if (exists[i]) {
+            downloadedCount++;
+            downloadedSize += size;
+          } else {
+            onDemandCount++;
+            onDemandSize += size;
+          }
         }
       }
       return (
-        eagerCount: eagerCount,
-        eagerSize: eagerSize,
-        lazyCount: lazyCount,
-        lazySize: lazySize,
+        downloadedCount: downloadedCount,
+        downloadedSize: downloadedSize,
+        onDemandCount: onDemandCount,
+        onDemandSize: onDemandSize,
       );
     });
+    if (!mounted) return;
 
     unawaited(
       showModalBottomSheet<void>(
@@ -254,15 +268,15 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
                 _checkoutField(
                   l10n.storageDownloadedLabel,
                   l10n.storageDownloadedValue(
-                    count: split.eagerCount,
-                    size: _formatSize(split.eagerSize),
+                    count: split.downloadedCount,
+                    size: _formatSize(split.downloadedSize),
                   ),
                 ),
                 _checkoutField(
                   l10n.storageOnDemandLabel,
                   l10n.storageOnDemandValue(
-                    count: split.lazyCount,
-                    size: _formatSize(split.lazySize),
+                    count: split.onDemandCount,
+                    size: _formatSize(split.onDemandSize),
                   ),
                 ),
               ],
@@ -893,6 +907,7 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
   bool _failed = false;
   String? _error;
   bool _complete = false;
+  bool _partial = false;
   CheckoutProvisioner? _provisioner;
   StreamSubscription<ProvisionerState>? _stateSub;
 
@@ -947,18 +962,22 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
       case ProvisionerFinalizing():
         setState(() => _status = l10n.checkoutCreateProgressFinalizing);
       case ProvisionerComplete(:final failedBlobs):
+        // The checkout was already created and auto-activated by the registry
+        // (setActive: true is default in addCheckout), so it must be loaded
+        // into memory even when some blobs failed — otherwise the next app
+        // start silently activates a half-provisioned checkout. Failed blobs
+        // can be re-fetched later via verify & repair.
+        await ref.read(repoStateProvider.notifier).initialize();
+        if (!mounted) return;
         if (failedBlobs.isNotEmpty) {
-          // The checkout was still created; verify & repair can re-fetch the
-          // failed blobs later. Surface the failure as in the legacy flow.
           setState(() {
-            _failed = true;
+            _partial = true;
+            _progress = 1;
+            _status = l10n.checkoutCreateProgressComplete;
             _error = l10n.checkoutCreateProgressBlobsFailed(count: failedBlobs.length);
           });
           return;
         }
-        // Auto-activate via registry (setActive: true is default in addCheckout)
-        await ref.read(repoStateProvider.notifier).initialize();
-        if (!mounted) return;
         setState(() {
           _complete = true;
           _progress = 1;
@@ -988,6 +1007,8 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
       title: Text(
         _complete
             ? l10n.checkoutCreateProgressTitleComplete
+            : _partial
+            ? l10n.checkoutCreateProgressTitlePartial
             : _failed
             ? l10n.checkoutCreateProgressTitleFailed
             : l10n.checkoutCreateProgressTitle(server: widget.serverDisplayName),
@@ -997,30 +1018,45 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
         children: [
           Text(_status, textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          if (_progress != null && _progress! < 1 && !_failed)
+          if (_progress != null && _progress! < 1 && !_failed && !_partial)
             LinearProgressIndicator(value: _progress)
-          else if (_progress == null && !_failed && !_complete)
+          else if (_progress == null && !_failed && !_complete && !_partial)
             const LinearProgressIndicator()
           else if (_complete)
             const Icon(Icons.check_circle, color: Colors.green, size: 48)
+          else if (_partial)
+            Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700, size: 48)
           else
             const Icon(Icons.error_outline, color: Colors.red, size: 48),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(
               _error!,
-              style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+              style: TextStyle(
+                color: _partial ? Colors.amber.shade900 : Colors.red.shade700,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          if (_partial) ...[
+            const SizedBox(height: 12),
+            Text(
+              l10n.checkoutCreateProgressPartialHint,
+              style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13),
               textAlign: TextAlign.center,
             ),
           ],
         ],
       ),
-      actions: (_complete || _failed)
+      actions: (_complete || _failed || _partial)
           ? [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  _complete ? MaterialLocalizations.of(context).closeButtonLabel : l10n.ok,
+                  _complete || _partial
+                      ? MaterialLocalizations.of(context).closeButtonLabel
+                      : l10n.ok,
                 ),
               ),
             ]

@@ -1584,6 +1584,8 @@
   },
   "checkoutCreateProgressTitleComplete": "创建完成",
   "checkoutCreateProgressTitleFailed": "创建失败",
+  "checkoutCreateProgressTitlePartial": "创建完成（有警告）",
+  "checkoutCreateProgressPartialHint": "数据版本已创建并激活。失败的资产将在首次访问时自动获取，您也可以在存储管理中通过“验证完整性 / 修复缺失文件”重试。",
   "checkoutCreateProgressFetchingIndex": "正在获取资源索引...",
   "checkoutCreateProgressDownloading2": "下载资产 ({current}/{total})...",
   "@checkoutCreateProgressDownloading2": {

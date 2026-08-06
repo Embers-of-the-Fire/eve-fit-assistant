@@ -40,6 +40,8 @@ void main() {
     });
 
     test("routes levels to the matching console method", () {
+      GlobalLogger.init("", enableDebugLog: true);
+
       debug("d");
       info("i");
       warning("w");
@@ -50,6 +52,16 @@ void main() {
       expect(calls["info"], ["[INFO] i"]);
       expect(calls["warn"], ["[WARN] w"]);
       expect(calls["error"], ["[ERROR] e", "[ERROR] f"]);
+    });
+
+    test("debug is suppressed when the debug log is disabled", () {
+      GlobalLogger.init("", enableDebugLog: false);
+
+      debug("d");
+      info("i");
+
+      expect(calls["debug"], isEmpty);
+      expect(calls["info"], ["[INFO] i"]);
     });
 
     test("appends the error and stack trace to the same console entry", () {

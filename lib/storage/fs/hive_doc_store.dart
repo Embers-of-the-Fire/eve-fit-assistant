@@ -42,4 +42,14 @@ class HiveDocStore implements DocStore {
 
   @override
   Future<List<String>> keys() async => (await _boxReady).keys.cast<String>().toList();
+
+  /// Closes the underlying Hive box and resets the store so a later [init]
+  /// reopens it. Closing flushes pending writes; delete-from-disk without a
+  /// close can race those flushes on IndexedDB.
+  Future<void> close() async {
+    final box = _box;
+    _box = null;
+    _ready = null;
+    await box?.close();
+  }
 }

@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/restart_init.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/trigger_feedback.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/reset_service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/foundation.dart" show kIsWeb;
@@ -85,6 +86,9 @@ class ResetStorageTile extends ConsumerWidget {
               onPressed: () async {
                 Navigator.of(dialogCtx).pop();
                 try {
+                  // Close the localization database first so the reset can
+                  // wipe its OPFS copies after the worker lets go.
+                  await ref.read(localizationDbServiceProvider).asData?.value?.close();
                   await const ResetStorageService().resetAll();
                   await Restart.restartApp();
                 } on Exception catch (e, st) {

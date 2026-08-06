@@ -30,7 +30,6 @@ String get _efaUserAgent {
 }
 
 String _platformName() {
-  if (kIsWeb) return "web";
   try {
     return defaultTargetPlatform.name;
   } on Object {

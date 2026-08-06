@@ -226,6 +226,11 @@ jobs:
           flavor: ${{ inputs.test_mode && 'nightly' || 'prod' }}
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Test mode deploys as a branch preview so it does not become the
+          # production-environment deployment that site-nightly uses as its
+          # change baseline (a PR SHA is unreachable from dev and would force
+          # a full nightly rebuild).
+          branch: ${{ inputs.test_mode && 'release-test' || '' }}
           commit-hash: ${{ github.sha }}
           comment: ${{ inputs.test_mode && 'true' || 'false' }}
           comment-header: web-release-test

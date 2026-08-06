@@ -23,6 +23,11 @@ void main() {
     base = "${RepoPaths.schemaResourcesPath}/opfs_test/${DateTime.now().microsecondsSinceEpoch}";
   });
 
+  tearDown(() async {
+    // Clean up the per-test tree so reruns do not accumulate in OPFS.
+    await store.deleteTree(base);
+  });
+
   test("write then read round-trips bytes", () async {
     final path = "$base/blob_a";
     final bytes = Uint8List.fromList([1, 2, 3, 4, 5]);
@@ -85,5 +90,37 @@ void main() {
 
     expect(await store.exists("$base/tree/a"), isFalse);
     expect(await store.exists("$base/tree/b/c"), isFalse);
+  });
+
+  test("write rejects the OPFS root", () async {
+    await expectLater(store.write("", Uint8List.fromList([1])), throwsArgumentError);
+    await expectLater(
+      store.write(RepoPaths.schemaResourcesPath, Uint8List.fromList([1])),
+      throwsArgumentError,
+    );
+  });
+
+  test("deleteTree rejects the OPFS root", () async {
+    await expectLater(store.deleteTree(""), throwsArgumentError);
+    await expectLater(store.deleteTree(RepoPaths.schemaResourcesPath), throwsArgumentError);
+  });
+
+  test("write under a path occupied by a file fails and leaves the file intact", () async {
+    final path = "$base/conflict";
+    final bytes = Uint8List.fromList([5, 6, 7]);
+    await store.write(path, bytes);
+
+    await expectLater(store.write("$path/child", bytes), throwsA(anything));
+    expect(await store.read(path), bytes);
+  });
+
+  test("paths without the resources/v2 prefix resolve to the same OPFS location", () async {
+    final prefixed = "$base/prefix_blob";
+    final bytes = Uint8List.fromList([11, 12]);
+    await store.write(prefixed, bytes);
+
+    final unprefixed = prefixed.substring(RepoPaths.schemaResourcesPath.length);
+    expect(await store.read(unprefixed), bytes);
+    expect(await store.exists(unprefixed), isTrue);
   });
 }

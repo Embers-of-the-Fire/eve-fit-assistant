@@ -724,6 +724,8 @@
   "checkoutCreateProgressTitle": "Creating Checkout — {server}",
   "checkoutCreateProgressTitleComplete": "Creation Complete",
   "checkoutCreateProgressTitleFailed": "Creation Failed",
+  "checkoutCreateProgressTitlePartial": "Creation Complete with Warnings",
+  "checkoutCreateProgressPartialHint": "The checkout was created and activated. Failed assets will be fetched on first access, or you can retry them via Verify Integrity / Repair Missing Files in Storage Management.",
   "checkoutCreateProgressFetchingIndex": "Fetching resource index...",
   "checkoutCreateProgressDownloading2": "Downloading assets ({current}/{total})...",
   "checkoutCreateProgressFinalizing": "Finalizing...",

@@ -31,7 +31,10 @@ abstract final class Platform {
   static String get operatingSystem => "web";
   static String get operatingSystemVersion => "";
   static String get version => "";
-  static String get localeName => "en-US";
+
+  /// Throws: web locale must come from `ui.PlatformDispatcher.instance.locale`,
+  /// not from `Platform.localeName`.
+  static String get localeName => _unsupported("Platform.localeName");
   static Map<String, String> get environment => const {};
   static String get pathSeparator => "/";
   static int get numberOfProcessors => 1;

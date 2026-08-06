@@ -207,26 +207,20 @@ class AssetStore {
     required List<ResourceIndex> activeResourceIndexes,
     void Function(int scanned, int total)? onProgress,
   }) async {
-    final referencedBlobs = <String>{};
-    for (final ri in activeResourceIndexes) {
-      for (final entry in ri.entries) {
-        final ihash = RepoHash.hashIdent(entry.resourceId);
-        referencedBlobs.add(_normalize(RepoPaths.blobPath(ihash, entry.contentHash)));
-      }
-    }
+    final referencedBlobs = referencedBlobPaths(activeResourceIndexes);
 
     final files = await _store.list(RepoPaths.assetsPath);
     final total = files.length;
     var deleted = 0;
     var scanned = 0;
 
-    final resourcesPrefix = "${_normalize(RepoPaths.resourcesDirPath)}/";
-    final blobsPrefix = "${_normalize(RepoPaths.blobsDirPath)}/";
+    final resourcesPrefix = "${normalizeStorePath(RepoPaths.resourcesDirPath)}/";
+    final blobsPrefix = "${normalizeStorePath(RepoPaths.blobsDirPath)}/";
     final emptiedSnapshotDirs = <String>{};
 
     for (final file in files) {
       scanned++;
-      final normalized = _normalize(file);
+      final normalized = normalizeStorePath(file);
 
       var remove = false;
       if (normalized.endsWith(".tmp")) {
@@ -236,7 +230,7 @@ class AssetStore {
         final snapshotHash = normalized.substring(resourcesPrefix.length).split("/").first;
         if (!activeSnapshotHashes.contains(snapshotHash)) {
           remove = true;
-          emptiedSnapshotDirs.add(_normalize(RepoPaths.resourceSnapshotPath(snapshotHash)));
+          emptiedSnapshotDirs.add(normalizeStorePath(RepoPaths.resourceSnapshotPath(snapshotHash)));
         }
       } else if (normalized.startsWith(blobsPrefix)) {
         if (!referencedBlobs.contains(normalized)) remove = true;
@@ -289,6 +283,25 @@ class AssetStore {
       }
     }
   }
+}
 
-  static String _normalize(String path) => path.replaceAll(r"\", "/");
+/// Normalizes a store path so Windows-style and POSIX-style separators
+/// compare equal.
+String normalizeStorePath(String path) => path.replaceAll(r"\", "/");
+
+/// Computes the normalized store paths of every blob referenced by
+/// [activeResourceIndexes].
+///
+/// Pure and store-agnostic: prune decisions compare these paths against the
+/// scanned store listing, so the policy can be unit-tested without a blob
+/// store.
+Set<String> referencedBlobPaths(Iterable<ResourceIndex> activeResourceIndexes) {
+  final referenced = <String>{};
+  for (final ri in activeResourceIndexes) {
+    for (final entry in ri.entries) {
+      final ihash = RepoHash.hashIdent(entry.resourceId);
+      referenced.add(normalizeStorePath(RepoPaths.blobPath(ihash, entry.contentHash)));
+    }
+  }
+  return referenced;
 }

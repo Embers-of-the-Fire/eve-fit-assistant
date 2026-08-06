@@ -2,6 +2,8 @@
 library;
 
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/storage/fs/doc_store.dart";
+import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -25,9 +27,36 @@ void main() {
       expect(PathProvider.logsPath, "/logs");
       expect(PathProvider.runtimePath, "/runtime/v2");
     });
+
+    test("init is idempotent", () async {
+      await PathProvider.init();
+      final first = (
+        PathProvider.documentsPath,
+        PathProvider.tempPath,
+        PathProvider.appSupportPath,
+        PathProvider.cachesPath,
+      );
+
+      await PathProvider.init();
+
+      expect((
+        PathProvider.documentsPath,
+        PathProvider.tempPath,
+        PathProvider.appSupportPath,
+        PathProvider.cachesPath,
+      ), first);
+    });
   });
 
   group("AppSettingService on web", () {
+    setUp(() async {
+      // The service is a global singleton backed by the shared settings
+      // store; clear persisted state so tests do not depend on execution
+      // order. "settings.json" mirrors AppSettingService's storage key.
+      final store = createUserDocStore(UserDataDomain.settings);
+      await store.init();
+      await store.delete("settings.json");
+    });
     test("init loads defaults from the settings store", () async {
       await AppSettingService.init();
 

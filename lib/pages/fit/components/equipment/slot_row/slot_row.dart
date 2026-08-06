@@ -103,8 +103,7 @@ class _SlotRow extends ConsumerWidget {
         }
 
         final locale = ref.watch(localeProvider).name;
-        final typeName =
-            ref.watch(localizedNameProvider(id: type.typeName.id, locale: locale)).value ?? "";
+        final typeName = watchLocalizedName(ref, id: type.typeName.id, locale: locale) ?? "";
 
         return _SlotRowDisplay(
           fitContext: fitContext,
@@ -147,8 +146,7 @@ class _SlotRowDisplay extends ConsumerWidget {
       if (chargeType != null) {
         final locale = ref.watch(localeProvider).name;
         final chargeName =
-            ref.watch(localizedNameProvider(id: chargeType.typeName.id, locale: locale)).value ??
-            "";
+            watchLocalizedName(ref, id: chargeType.typeName.id, locale: locale) ?? "";
         final chargeAmount = moduleItem?.getAttribute(EveConstExtendedAttrID.chargeAmount) ?? 0;
         subtitleWidgets.add(
           InkWell(
@@ -451,8 +449,7 @@ class _DynamicModifierDialog extends ConsumerWidget {
         }
 
         final locale = ref.watch(localeProvider).name;
-        final typeName =
-            ref.watch(localizedNameProvider(id: type.typeName.id, locale: locale)).value ?? "";
+        final typeName = watchLocalizedName(ref, id: type.typeName.id, locale: locale) ?? "";
 
         return ListTile(
           onTap: () => Navigator.of(context).pop(modifierTypeId),

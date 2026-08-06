@@ -60,10 +60,14 @@ class OpfsBlobStore implements BlobStore {
 
   /// Splits [path] into OPFS-relative segments, stripping the well-known
   /// `resources/v2` prefix when present.
+  ///
+  /// The prefix is only stripped at a path boundary: a path like
+  /// `/resources/v2foo/...` merely shares a string prefix and must not be
+  /// remapped.
   List<String> _segments(String path) {
     var rel = path;
     final prefix = RepoPaths.schemaResourcesPath;
-    if (rel.startsWith(prefix)) {
+    if (rel == prefix || rel.startsWith("$prefix/")) {
       rel = rel.substring(prefix.length);
     }
     return rel.split(_separatorPattern).where((s) => s.isNotEmpty).toList();
@@ -139,6 +143,27 @@ class OpfsBlobStore implements BlobStore {
       if (_isNotFound(e)) return false;
       rethrow;
     }
+  }
+
+  /// Returns the byte size of the file at [path], or `null` when it does not
+  /// exist.
+  ///
+  /// Not part of the [BlobStore] contract; used by callers that must validate
+  /// an existing OPFS copy without reading it.
+  Future<int?> fileSize(String path) async {
+    final segments = _segments(path);
+    if (segments.isEmpty) return null;
+    final dir = await _getDir(segments.sublist(0, segments.length - 1), create: false);
+    if (dir == null) return null;
+    final web.FileSystemFileHandle handle;
+    try {
+      handle = await dir.getFileHandle(segments.last).toDart;
+    } catch (e) {
+      if (_isNotFound(e)) return null;
+      rethrow;
+    }
+    final file = await handle.getFile().toDart;
+    return file.size;
   }
 
   @override

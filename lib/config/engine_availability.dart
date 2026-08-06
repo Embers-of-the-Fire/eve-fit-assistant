@@ -7,18 +7,13 @@
 /// When false the engine must never be touched — the FRB bridge was never
 /// initialized, so any call would throw — and callers degrade gracefully
 /// (fits still load, emulated stats are unavailable).
-class NativeEngineAvailability {
-  factory NativeEngineAvailability() => _instance;
+abstract final class NativeEngineAvailability {
+  static bool _available = false;
 
-  NativeEngineAvailability._internal();
-  static final NativeEngineAvailability _instance = NativeEngineAvailability._internal();
-
-  static bool get available => _instance._available;
+  static bool get available => _available;
 
   /// Marks the native engine as available (or not) for the current session.
   ///
   /// Called once from startup after the bridge init attempt.
-  static void setAvailable({required bool value}) => _instance._available = value;
-
-  bool _available = false;
+  static void setAvailable({required bool value}) => _available = value;
 }

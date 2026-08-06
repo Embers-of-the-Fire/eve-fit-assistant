@@ -13,6 +13,7 @@ library;
 import "dart:js_interop";
 
 void debug(dynamic message, {StackTrace? stackTrace}) {
+  if (!GlobalLogger._enableDebugLog) return;
   _log(_ConsoleLevel.debug, message, stackTrace);
 }
 
@@ -78,7 +79,12 @@ external void _consoleError(JSString message);
 
 /// Web variant of the global logger. File logging is unavailable on web, so
 /// only console output is kept. [GlobalLogger.init] accepts the same
-/// arguments as the IO variant and ignores the file output directory.
+/// arguments as the IO variant; the file output directory is ignored, while
+/// `enableDebugLog` gates [debug] output like the IO variant's file sink.
 class GlobalLogger {
-  static void init(String fileOutputDir, {required bool enableDebugLog}) {}
+  static bool _enableDebugLog = false;
+
+  static void init(String fileOutputDir, {required bool enableDebugLog}) {
+    _enableDebugLog = enableDebugLog;
+  }
 }

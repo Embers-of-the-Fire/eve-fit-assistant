@@ -4,12 +4,13 @@ import "package:web/web.dart" as web;
 
 /// Web variant: fetches [jsUrl] and verifies it is actually JavaScript.
 ///
-/// Dev servers and SPA hosts answer missing paths with a `200 text/html`
-/// fallback page, so the status code alone is not enough; the content type
-/// must be checked as well.
+/// A `HEAD` request is used so the probe does not download the multi-MB
+/// bundle on every startup. Dev servers and SPA hosts answer missing paths
+/// with a `200 text/html` fallback page, so the status code alone is not
+/// enough; the content type must be checked as well.
 Future<bool> wasmBundleAvailable(String jsUrl) async {
   try {
-    final response = await web.window.fetch(jsUrl.toJS).toDart;
+    final response = await web.window.fetch(jsUrl.toJS, web.RequestInit(method: "HEAD")).toDart;
     if (!response.ok) return false;
     final contentType = response.headers.get("content-type") ?? "";
     return contentType.contains("javascript") || contentType.contains("ecmascript");

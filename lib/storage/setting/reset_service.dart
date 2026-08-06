@@ -5,6 +5,8 @@ import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/repo_store.dart";
 import "package:eve_fit_assistant/storage/fs/user_store.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db_web.dart"
+    if (dart.library.io) "package:eve_fit_assistant/storage/repo/localization_db_web_stub.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:flutter/foundation.dart";
 import "package:path/path.dart" as p;
@@ -54,6 +56,11 @@ class ResetStorageService {
   }
 
   Future<void> _resetWeb() async {
+    // Wipe the OPFS copies of the localization database. This waits for any
+    // in-flight close so the worker has released its SyncAccessHandles first;
+    // callers are expected to close the localization service before reset.
+    await deleteWebLocalizationDatabases();
+
     // Wipe the repo tree (blobs, snapshots, channels, checkouts). The
     // schema_version.json marker never exists on web (the migration gate is
     // skipped there), so it is not part of the wipe.

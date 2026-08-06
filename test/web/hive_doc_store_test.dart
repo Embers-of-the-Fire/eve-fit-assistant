@@ -20,6 +20,8 @@ void main() {
   });
 
   tearDown(() async {
+    // Close first: deleting an open box can race pending flushes on IndexedDB.
+    await store.close();
     await Hive.deleteBoxFromDisk(boxName);
   });
 

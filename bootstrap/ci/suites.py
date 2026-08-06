@@ -108,6 +108,7 @@ WEB_PREVIEW_PATTERNS = [
     ".github/workflows/site-nightly.yml",
     ".github/actions/build-web/**",
     ".github/actions/deploy-web-pages/**",
+    "ci/config/wrangler.*.toml",
 ]
 
 
