@@ -75,7 +75,7 @@ class TestMakeResourceIndex:
         index = make_resource_index(self._entries)
         # schema_version is reserved for the remote storage protocol.
         assert index.schema_version == 1
-        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 3
+        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 2
 
     def test_default_classification_marks_all_images_lazy(self) -> None:
         index = make_resource_index(self._entries)

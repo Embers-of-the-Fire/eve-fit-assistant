@@ -212,11 +212,11 @@ def __getattr__(name: str):
 #: Format 2 entries carry a download policy (NON_FORCE = fetched lazily on
 #: first access, FORCE = downloaded eagerly during provisioning). Format 1
 #: (the default encoded in older snapshots) has no policy; clients treat
-#: every entry as FORCE. Format 3 builds on format 2 and drops the
-#: per-language `localization_*.pb2` blobs — localization ships only as the
-#: SQLite `localization.db`. The message-level `schema_version` is reserved
-#: for the remote storage protocol and is intentionally left untouched.
-RESOURCE_INDEX_FORMAT_VERSION = 3
+#: every entry as FORCE. Localization ships only as the SQLite
+#: `localization.db`; no per-language `localization_*.pb2` blobs are
+#: emitted. The message-level `schema_version` is reserved for the remote
+#: storage protocol and is intentionally left untouched.
+RESOURCE_INDEX_FORMAT_VERSION = 2
 
 #: The resource_id URI scheme prefix; lazy prefixes are matched against the
 #: remainder of the resource_id after this prefix.

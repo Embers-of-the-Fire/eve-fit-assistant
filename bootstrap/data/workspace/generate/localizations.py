@@ -48,8 +48,8 @@ async def __generate(
 
     strings: dict[int, str] = {key: value[0] for key, value in loc.items()}
 
-    # Localization ships only as the SQLite database; the per-language protobuf
-    # bundle was removed with resource index format version 3.
+    # Localization ships only as the SQLite database; the per-language
+    # protobuf bundle is no longer emitted.
     info(f"Generated localization for {lang}.")
     return lang, strings
 

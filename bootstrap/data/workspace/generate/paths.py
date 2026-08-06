@@ -62,7 +62,7 @@ class PathManager:
         """SQLite database with all localized strings (lazy query access).
 
         Localization ships only as this database; per-language `.pb2` files
-        were removed with resource index format version 3.
+        are no longer emitted.
         """
         return self.localization_root_path / "localization.db"
 
