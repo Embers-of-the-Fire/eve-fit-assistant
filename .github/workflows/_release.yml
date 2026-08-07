@@ -512,8 +512,21 @@ jobs:
           name: windows
           path: cache/releases/windows
 
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: bot
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
+      # The bot token (not GITHUB_TOKEN) is required here: creating a tag whose
+      # lineage touches .github/workflows requires the `workflows` permission,
+      # which GITHUB_TOKEN cannot be granted — git createRef then fails with
+      # 403 "Resource not accessible by integration".
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
+          github-token: ${{ steps.bot.outputs.token }}
           script: |
             const fs = require("fs");
             const path = require("path");
