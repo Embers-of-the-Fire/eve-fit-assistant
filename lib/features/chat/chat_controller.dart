@@ -22,7 +22,7 @@ abstract class ChatState with _$ChatState {
   const factory ChatState({
     ChatConversation? conversation,
     @Default(false) bool sending,
-    String? streamingText,
+    List<ChatSegment>? streamingSegments,
     String? error,
     String? failedText,
   }) = _ChatState;
@@ -103,16 +103,34 @@ class ChatController extends _$ChatController {
           ),
       userMessage,
     );
-    state = ChatState(conversation: conversation, sending: true, streamingText: "");
+    state = ChatState(conversation: conversation, sending: true, streamingSegments: const []);
     await _persist(conversation);
 
-    final buffer = StringBuffer();
+    final segments = <ChatSegment>[];
+    void publish() {
+      state = state.copyWith(streamingSegments: List.of(segments));
+    }
+
     try {
       await for (final event in session.streamPrompt(text: trimmed)) {
         switch (event) {
           case native_chat.ChatStreamEvent_TextDelta(:final text):
-            buffer.write(text);
-            state = state.copyWith(streamingText: buffer.toString());
+            final last = segments.lastOrNull;
+            if (last is ChatTextSegment) {
+              segments[segments.length - 1] = ChatSegment.text(text: last.text + text);
+            } else {
+              segments.add(ChatSegment.text(text: text));
+            }
+            publish();
+          case native_chat.ChatStreamEvent_ToolCallStart(:final id, :final name):
+            segments.add(ChatSegment.toolCall(id: id, name: name));
+            publish();
+          case native_chat.ChatStreamEvent_ToolCallArgsDelta(:final id, :final delta):
+            _updateToolSegment(segments, id, (s) => s.copyWith(args: s.args + delta));
+            publish();
+          case native_chat.ChatStreamEvent_ToolCallEnd(:final id):
+            _updateToolSegment(segments, id, (s) => s.copyWith(done: true));
+            publish();
           case native_chat.ChatStreamEvent_Done(:final fullText):
             final done = DateTime.now().millisecondsSinceEpoch;
             final completed = _appendMessage(
@@ -122,6 +140,13 @@ class ChatController extends _$ChatController {
                 role: ChatMessageRole.assistant,
                 content: fullText,
                 timestamp: done,
+                segments: [
+                  for (final segment in segments)
+                    if (segment is ChatToolCallSegment && !segment.done)
+                      segment.copyWith(done: true)
+                    else
+                      segment,
+                ],
               ),
             );
             state = ChatState(conversation: completed);
@@ -138,6 +163,19 @@ class ChatController extends _$ChatController {
     } on Object catch (e, st) {
       error("chat: stream failed", error: e, stackTrace: st);
       state = ChatState(conversation: state.conversation, error: e.toString(), failedText: trimmed);
+    }
+  }
+
+  static void _updateToolSegment(
+    List<ChatSegment> segments,
+    String id,
+    ChatToolCallSegment Function(ChatToolCallSegment) update,
+  ) {
+    final index = segments.lastIndexWhere((s) => s is ChatToolCallSegment && s.id == id);
+    if (index < 0) return;
+    final segment = segments[index];
+    if (segment is ChatToolCallSegment) {
+      segments[index] = update(segment);
     }
   }
 

@@ -67,9 +67,30 @@ pub struct ChatManualDoc {
 
 /// Events forwarded over the [`StreamSink`] during a streaming turn.
 pub enum ChatStreamEvent {
-    TextDelta { text: String },
-    Done { full_text: String },
-    Error { message: String },
+    TextDelta {
+        text: String,
+    },
+    /// A new tool call started; `id` correlates the args deltas and the end
+    /// event for this call.
+    ToolCallStart {
+        id: String,
+        name: String,
+    },
+    /// Partial JSON argument data for the tool call with this `id`.
+    ToolCallArgsDelta {
+        id: String,
+        delta: String,
+    },
+    /// The tool call with this `id` finished (a result was committed).
+    ToolCallEnd {
+        id: String,
+    },
+    Done {
+        full_text: String,
+    },
+    Error {
+        message: String,
+    },
 }
 
 /// A model exposed by the provider, with optional owner metadata for display.
@@ -191,6 +212,13 @@ impl ChatSession {
         let _ = efa_chat::runtime().block_on(agent.stream_turn(&text, |event| {
             let mapped = match event {
                 ChatEvent::TextDelta(text) => ChatStreamEvent::TextDelta { text },
+                ChatEvent::ToolCallStart { id, name } => {
+                    ChatStreamEvent::ToolCallStart { id, name }
+                }
+                ChatEvent::ToolCallArgsDelta { id, delta } => {
+                    ChatStreamEvent::ToolCallArgsDelta { id, delta }
+                }
+                ChatEvent::ToolCallEnd { id } => ChatStreamEvent::ToolCallEnd { id },
                 ChatEvent::Done(full_text) => ChatStreamEvent::Done { full_text },
                 ChatEvent::Error(message) => ChatStreamEvent::Error { message },
             };
