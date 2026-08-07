@@ -5,7 +5,8 @@
 enum UserDataDomain {
   fittings("efa_fittings"),
   characters("efa_characters"),
-  settings("efa_settings");
+  settings("efa_settings"),
+  chat("efa_chat");
 
   const UserDataDomain(this.boxName);
 

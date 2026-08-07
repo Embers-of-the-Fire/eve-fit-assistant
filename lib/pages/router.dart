@@ -1,12 +1,15 @@
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/manual/repository/manual_feedback_api.dart";
 import "package:eve_fit_assistant/pages/announcements/feed_page.dart";
+import "package:eve_fit_assistant/pages/chat/chat_history_page.dart";
+import "package:eve_fit_assistant/pages/chat/chat_page.dart";
 import "package:eve_fit_assistant/pages/fit/page.dart";
 import "package:eve_fit_assistant/pages/manual/browser_page.dart";
 import "package:eve_fit_assistant/pages/manual/feedback_page.dart";
 import "package:eve_fit_assistant/pages/manual/node_page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
+import "package:eve_fit_assistant/pages/setting/ai-chat/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/collect_logs_page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/remote_content.dart";
@@ -34,6 +37,7 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/", page: FrontRoute.page),
     AutoRoute(path: "/workspace/create-fit", page: FitCreationRoute.page),
     AutoRoute(path: "/setting/app-settings", page: AppSettingsRoute.page),
+    AutoRoute(path: "/setting/ai-chat", page: AiChatSettingsRoute.page),
     AutoRoute(path: "/setting/remote-content", page: RemoteContentSettingsRoute.page),
     AutoRoute(path: "/setting/collect-logs", page: CollectLogsRoute.page),
     AutoRoute(path: "/setting/data/storage", page: StorageManagement.page),
@@ -51,6 +55,8 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/manual/feedback", page: ManualFeedbackRoute.page),
     AutoRoute(path: "/manual/*", page: ManualNodeRoute.page, usesPathAsKey: true),
     AutoRoute(path: "/fitting/current", page: FitRoute.page),
+    AutoRoute(path: "/chat", page: ChatRoute.page),
+    AutoRoute(path: "/chat/history", page: ChatHistoryRoute.page),
   ];
 }
 
