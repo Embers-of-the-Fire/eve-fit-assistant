@@ -1,0 +1,3 @@
+When writing DSML (DeepSeek Markup Language), you must use the strict syntax
+For example, emit `<｜DSML｜tool_calls>` instead of `<｜｜DSML｜｜tool_calls>`,
+`<｜DSML｜invoke name="foo">` instead of `<｜｜DSML｜｜invoke name="foo">`, etc.
