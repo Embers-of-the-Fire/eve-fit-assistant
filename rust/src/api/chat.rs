@@ -2,14 +2,37 @@ use std::sync::{Mutex, MutexGuard};
 
 use efa_chat::Message;
 use efa_chat::agent::ChatAgent;
-use efa_chat::config::ChatProviderConfig;
+use efa_chat::config::{ChatProviderConfig, ChatProviderKind};
 use efa_chat::event::ChatEvent;
+use efa_chat::manual::{ManualCorpus, ManualDocText};
 use flutter_rust_bridge::frb;
 
 use crate::frb_generated::StreamSink;
 
-/// User-facing configuration for the OpenAI-compatible chat provider.
+/// The chat completion provider backing a session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChatProvider {
+    /// Any endpoint speaking the OpenAI Chat Completions API (OpenAI,
+    /// OpenRouter, vLLM, Ollama, ...).
+    OpenAiCompatible,
+    Anthropic,
+    DeepSeek,
+}
+
+impl From<ChatProvider> for ChatProviderKind {
+    fn from(provider: ChatProvider) -> Self {
+        match provider {
+            ChatProvider::OpenAiCompatible => ChatProviderKind::OpenAiCompatible,
+            ChatProvider::Anthropic => ChatProviderKind::Anthropic,
+            ChatProvider::DeepSeek => ChatProviderKind::DeepSeek,
+        }
+    }
+}
+
+/// User-facing configuration for the chat provider. A blank `base_url`
+/// selects the provider's default endpoint.
 pub struct ChatConfig {
+    pub provider: ChatProvider,
     pub api_key: String,
     pub base_url: String,
     pub model: String,
@@ -29,6 +52,18 @@ pub struct ChatHistoryMessage {
     pub content: String,
 }
 
+/// One localization of a user-manual page, used to build the in-session
+/// manual search corpus. Rows sharing the same `id` are grouped into a
+/// single multi-lingual document.
+pub struct ChatManualDoc {
+    /// Path-joined doc id, e.g. `fitting/modules`.
+    pub id: String,
+    pub locale: String,
+    pub title: String,
+    pub summary: String,
+    pub body: String,
+}
+
 /// Events forwarded over the [`StreamSink`] during a streaming turn.
 pub enum ChatStreamEvent {
     TextDelta { text: String },
@@ -42,15 +77,20 @@ pub struct ChatModelInfo {
     pub owned_by: Option<String>,
 }
 
-/// Fetch the model list exposed by the provider (`GET {base_url}/models`),
-/// used to populate the predefined model choices.
+/// Fetch the model list exposed by the provider, used to populate the
+/// predefined model choices. A blank `base_url` selects the provider's
+/// default endpoint.
 #[frb]
 pub fn list_available_models(
+    provider: ChatProvider,
     api_key: String,
     base_url: String,
 ) -> anyhow::Result<Vec<ChatModelInfo>> {
-    let models =
-        efa_chat::runtime().block_on(efa_chat::models::list_models(&api_key, &base_url))?;
+    let models = efa_chat::runtime().block_on(efa_chat::models::list_models(
+        provider.into(),
+        &api_key,
+        &base_url,
+    ))?;
     Ok(models
         .into_iter()
         .map(|m| ChatModelInfo {
@@ -71,8 +111,13 @@ impl ChatSession {
 
     #[frb(sync)]
     pub fn create(config: ChatConfig) -> anyhow::Result<Self> {
-        let config = ChatProviderConfig::new(config.api_key, config.base_url, config.model)?
-            .with_system_prompt(config.system_prompt);
+        let config = ChatProviderConfig::new(
+            config.provider.into(),
+            config.api_key,
+            config.base_url,
+            config.model,
+        )?
+        .with_system_prompt(config.system_prompt);
         Ok(Self {
             agent: Mutex::new(ChatAgent::new(config)?),
         })
@@ -100,6 +145,29 @@ impl ChatSession {
     #[frb(sync)]
     pub fn clear_history(&self) {
         self.lock_agent().clear_history();
+    }
+
+    /// Load the bundled user-manual corpus, exposing the `search_manual` and
+    /// `get_manual_doc` tools to the model. Passing an empty list detaches
+    /// the tools.
+    #[frb(sync)]
+    pub fn set_manual_docs(&self, docs: Vec<ChatManualDoc>) {
+        let rows = docs
+            .into_iter()
+            .map(|doc| {
+                (
+                    doc.id,
+                    ManualDocText {
+                        locale: doc.locale,
+                        title: doc.title,
+                        summary: doc.summary,
+                        body: doc.body,
+                    },
+                )
+            })
+            .collect();
+        self.lock_agent()
+            .set_manual_corpus(ManualCorpus::from_rows(rows));
     }
 
     /// One-shot completion turn (used for connection tests).

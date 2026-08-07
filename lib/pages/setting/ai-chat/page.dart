@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
 import "package:eve_fit_assistant/features/chat/model_list.dart";
+import "package:eve_fit_assistant/features/chat/provider.dart";
 import "package:eve_fit_assistant/features/chat/system_prompt.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
 import "package:eve_fit_assistant/storage/chat/service.dart";
@@ -26,6 +27,7 @@ class AiChatSettingsPage extends ConsumerWidget {
     child: ConfigListView(
       children: [
         ConfigListTile.title(context.l10n.aiChatSettingsSectionConnection),
+        const ConfigListTile.custom(_ProviderTile()),
         const ConfigListTile.custom(_BaseUrlTile()),
         const ConfigListTile.custom(_ApiKeyTile()),
         ConfigListTile.title(context.l10n.aiChatSettingsSectionModels),
@@ -40,27 +42,86 @@ class AiChatSettingsPage extends ConsumerWidget {
   );
 }
 
+String _providerLabel(BuildContext context, ChatProvider provider) => switch (provider) {
+  ChatProvider.openAiCompatible => context.l10n.aiChatProviderOpenAiCompatible,
+  ChatProvider.anthropic => context.l10n.aiChatProviderAnthropic,
+  ChatProvider.deepSeek => context.l10n.aiChatProviderDeepSeek,
+};
+
+class _ProviderTile extends ConsumerWidget {
+  const _ProviderTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = ref.watch(appSettingServiceProvider.select((s) => s.aiChat.provider));
+    return ListTile(
+      leading: const Icon(Icons.hub_outlined),
+      title: Text(context.l10n.aiChatProviderTitle),
+      subtitle: Text(
+        "${_providerLabel(context, provider)}\n${context.l10n.aiChatProviderToolHint}",
+      ),
+      isThreeLine: true,
+      onTap: () async {
+        final selected = await showDialog<ChatProvider>(
+          context: context,
+          builder: (context) => SimpleDialog(
+            title: Text(context.l10n.aiChatProviderTitle),
+            children: [
+              for (final option in ChatProvider.values)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.of(context).pop(option),
+                  child: Row(
+                    children: [
+                      Icon(
+                        option == provider ? Icons.radio_button_checked : Icons.radio_button_off,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(_providerLabel(context, option)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+        if (selected != null && selected != provider) {
+          ref
+              .read(appSettingServiceProvider.notifier)
+              .update((s) => s.copyWith(aiChat: s.aiChat.copyWith(provider: selected)));
+        }
+      },
+    );
+  }
+}
+
 class _BaseUrlTile extends ConsumerWidget {
   const _BaseUrlTile();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final baseUrl = ref.watch(appSettingServiceProvider.select((s) => s.aiChat.baseUrl));
+    final aiChat = ref.watch(appSettingServiceProvider.select((s) => s.aiChat));
     return ListTile(
       leading: const Icon(Icons.link),
       title: Text(context.l10n.aiChatBaseUrlTitle),
-      subtitle: Text(baseUrl),
+      subtitle: Text(aiChat.baseUrl),
       onTap: () async {
         final value = await _showTextInputDialog(
           context,
           title: context.l10n.aiChatBaseUrlTitle,
           hint: context.l10n.aiChatBaseUrlHint,
-          initial: baseUrl,
+          initial: aiChat.connection.baseUrl,
         );
-        if (value != null && value.isNotEmpty) {
+        if (value != null) {
           ref
               .read(appSettingServiceProvider.notifier)
-              .update((s) => s.copyWith(aiChat: s.aiChat.copyWith(baseUrl: value)));
+              .update(
+                (s) => s.copyWith(
+                  aiChat: s.aiChat.withConnection(
+                    s.aiChat.provider,
+                    (connection) => connection.copyWith(baseUrl: value),
+                  ),
+                ),
+              );
         }
       },
     );
@@ -123,7 +184,14 @@ class _DefaultModelTile extends ConsumerWidget {
           if (value != null) {
             ref
                 .read(appSettingServiceProvider.notifier)
-                .update((s) => s.copyWith(aiChat: s.aiChat.copyWith(model: value)));
+                .update(
+                  (s) => s.copyWith(
+                    aiChat: s.aiChat.withConnection(
+                      s.aiChat.provider,
+                      (connection) => connection.copyWith(model: value),
+                    ),
+                  ),
+                );
           }
         },
       ),
@@ -223,11 +291,14 @@ class _ModelListEditor extends ConsumerWidget {
                     .read(appSettingServiceProvider.notifier)
                     .update(
                       (s) => s.copyWith(
-                        aiChat: s.aiChat.copyWith(
-                          models: [
-                            for (final m in s.aiChat.models)
-                              if (m.id != model.id) m,
-                          ],
+                        aiChat: s.aiChat.withConnection(
+                          s.aiChat.provider,
+                          (connection) => connection.copyWith(
+                            models: [
+                              for (final m in connection.models)
+                                if (m.id != model.id) m,
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -251,11 +322,14 @@ class _ModelListEditor extends ConsumerWidget {
                     (s) => s.aiChat.models.any((m) => m.id == value)
                         ? s
                         : s.copyWith(
-                            aiChat: s.aiChat.copyWith(
-                              models: [
-                                ...s.aiChat.models,
-                                AiChatModel(id: value),
-                              ],
+                            aiChat: s.aiChat.withConnection(
+                              s.aiChat.provider,
+                              (connection) => connection.copyWith(
+                                models: [
+                                  ...connection.models,
+                                  AiChatModel(id: value),
+                                ],
+                              ),
                             ),
                           ),
                   );
@@ -299,6 +373,7 @@ class _TestConnectionTileState extends ConsumerState<_TestConnectionTile> {
       final aiChat = ref.read(appSettingServiceProvider).aiChat;
       final session = native_chat.ChatSession.create(
         config: native_chat.ChatConfig(
+          provider: toNativeChatProvider(aiChat.provider),
           apiKey: apiKey,
           baseUrl: aiChat.baseUrl,
           model: aiChat.model,

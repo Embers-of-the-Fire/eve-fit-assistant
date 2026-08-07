@@ -2,6 +2,8 @@ import "dart:async";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
+import "package:eve_fit_assistant/features/chat/manual_corpus.dart";
+import "package:eve_fit_assistant/features/chat/provider.dart";
 import "package:eve_fit_assistant/features/chat/system_prompt.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
 import "package:eve_fit_assistant/storage/chat/models.dart";
@@ -52,7 +54,14 @@ class ChatController extends _$ChatController {
   Future<void> setModel(String model) async {
     ref
         .read(appSettingServiceProvider.notifier)
-        .update((s) => s.copyWith(aiChat: s.aiChat.copyWith(model: model)));
+        .update(
+          (s) => s.copyWith(
+            aiChat: s.aiChat.withConnection(
+              s.aiChat.provider,
+              (connection) => connection.copyWith(model: model),
+            ),
+          ),
+        );
     _session?.setModel(model: model);
     final conversation = state.conversation;
     if (conversation != null) {
@@ -145,7 +154,7 @@ class ChatController extends _$ChatController {
 
   native_chat.ChatSession? _ensureSession(String apiKey) {
     final settings = ref.read(appSettingServiceProvider).aiChat;
-    final fingerprint = "${settings.baseUrl}|${settings.model}|$apiKey";
+    final fingerprint = "${settings.provider.name}|${settings.baseUrl}|${settings.model}|$apiKey";
     final existing = _session;
     if (existing != null && _sessionConfigFingerprint == fingerprint) {
       return existing;
@@ -153,6 +162,7 @@ class ChatController extends _$ChatController {
     try {
       final session = native_chat.ChatSession.create(
         config: native_chat.ChatConfig(
+          provider: toNativeChatProvider(settings.provider),
           apiKey: apiKey,
           baseUrl: settings.baseUrl,
           model: settings.model,
@@ -176,10 +186,22 @@ class ChatController extends _$ChatController {
       }
       _session = session;
       _sessionConfigFingerprint = fingerprint;
+      unawaited(_attachManualCorpus(session));
       return session;
     } on Object catch (e, st) {
       error("chat: failed to create session", error: e, stackTrace: st);
       return null;
+    }
+  }
+
+  /// Push the bundled manual corpus into [session]; failures leave the
+  /// session usable, just without the manual tools.
+  Future<void> _attachManualCorpus(native_chat.ChatSession session) async {
+    try {
+      final docs = await ref.read(chatManualCorpusProvider.future);
+      session.setManualDocs(docs: docs);
+    } on Object catch (e, st) {
+      warning("chat: failed to attach manual corpus: $e", stackTrace: st);
     }
   }
 
