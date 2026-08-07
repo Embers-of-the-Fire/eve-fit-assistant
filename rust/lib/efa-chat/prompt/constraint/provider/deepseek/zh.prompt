@@ -1,0 +1,6 @@
+- 工具调用必须以严格的 DSML（DeepSeek Markup Language）输出，格式见附录。
+  API 在服务端解析 DSML；任何偏差（竖线写成两个、使用 ASCII `|`、裸标签、
+  `string` 属性错误）都会导致解析失败，原始标记会泄漏到可见回复中。
+- 参数类型必须与工具 schema 一致：字符串参数使用 `string="true"`，值为
+  原始字符串；数组、数字、布尔、对象参数使用 `string="false"`，值必须是
+  合法的 JSON。

@@ -1,0 +1,15 @@
+DSML tags are delimited by a single full-width vertical bar `｜` (U+FF5C) on
+each side, in the form `<｜tag｜...>`. Every element carries the full prefix:
+`<｜DSML｜tool_calls>`, `<｜DSML｜invoke name="foo">`, `<｜DSML｜parameter
+name="bar" string="true">value</｜DSML｜parameter>`, `</｜DSML｜invoke>` and
+`</｜DSML｜tool_calls>`. Never double the bar (`<｜｜DSML｜｜...>` is invalid),
+never substitute the ASCII `|`, and never write bare `<parameter ...>` tags.
+
+Complete example with an array parameter and a string parameter:
+
+<｜DSML｜tool_calls>
+<｜DSML｜invoke name="search_manual">
+<｜DSML｜parameter name="keywords" string="false">["search", "fit", "name"]</｜DSML｜parameter>
+<｜DSML｜parameter name="language" string="true">en</｜DSML｜parameter>
+</｜DSML｜invoke>
+</｜DSML｜tool_calls>

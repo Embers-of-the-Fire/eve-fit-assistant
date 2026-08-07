@@ -1,0 +1,7 @@
+- Emit tool calls as strict DSML (DeepSeek Markup Language) exactly as shown
+  in the appendix. The API parses DSML server-side; any deviation (doubled
+  bars, ASCII `|`, bare tags, a wrong `string` attribute) makes the parse
+  fail and the raw markup leak into your visible reply.
+- Parameter typing must match the tool schema: string parameters use
+  `string="true"` with the raw string as the value; array, number, boolean
+  and object parameters use `string="false"` with valid JSON as the value.

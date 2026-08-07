@@ -2,7 +2,7 @@ use std::sync::{Mutex, MutexGuard};
 
 use efa_chat::Message;
 use efa_chat::agent::ChatAgent;
-use efa_chat::config::{ChatProviderConfig, ChatProviderKind};
+use efa_chat::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage};
 use efa_chat::event::ChatEvent;
 use efa_chat::manual::{ManualCorpus, ManualDocText};
 use flutter_rust_bridge::frb;
@@ -39,6 +39,9 @@ pub struct ChatConfig {
     /// Extra system-prompt sections (e.g. the in-app link manifest), appended
     /// after the bundled base prompt; empty uses only the bundled prompt.
     pub system_prompt: String,
+    /// Locale tag ("en", "zh", ...) selecting the language of the bundled
+    /// prompt files; unrecognized tags fall back to English.
+    pub language: String,
 }
 
 pub enum ChatRole {
@@ -139,7 +142,8 @@ impl ChatSession {
             config.base_url,
             config.model,
         )?
-        .with_system_prompt(config.system_prompt);
+        .with_system_prompt(config.system_prompt)
+        .with_language(PromptLanguage::from_locale(&config.language));
         Ok(Self {
             agent: Mutex::new(ChatAgent::new(config)?),
         })
