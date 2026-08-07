@@ -13,6 +13,8 @@ pub struct ChatConfig {
     pub api_key: String,
     pub base_url: String,
     pub model: String,
+    /// System prompt for the session; empty falls back to the crate default.
+    pub system_prompt: String,
 }
 
 pub enum ChatRole {
@@ -69,7 +71,8 @@ impl ChatSession {
 
     #[frb(sync)]
     pub fn create(config: ChatConfig) -> anyhow::Result<Self> {
-        let config = ChatProviderConfig::new(config.api_key, config.base_url, config.model)?;
+        let config = ChatProviderConfig::new(config.api_key, config.base_url, config.model)?
+            .with_system_prompt(config.system_prompt);
         Ok(Self {
             agent: Mutex::new(ChatAgent::new(config)?),
         })

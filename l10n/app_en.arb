@@ -104,6 +104,7 @@
   "chatGoToSettings": "Open settings",
   "chatSendFailed": "Failed to send: {error}",
   "retry": "Retry",
+  "appLinkInvalid": "Invalid link",
   "chatDeleteConversationConfirm": "Delete this conversation?",
   "chatClearAll": "Clear conversations",
   "chatClearAllConfirm": "Clear all conversations?",
