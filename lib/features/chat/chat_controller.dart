@@ -192,7 +192,9 @@ class ChatController extends _$ChatController {
 
   native_chat.ChatSession? _ensureSession(String apiKey) {
     final settings = ref.read(appSettingServiceProvider).aiChat;
-    final fingerprint = "${settings.provider.name}|${settings.baseUrl}|${settings.model}|$apiKey";
+    final locale = ref.read(localeProvider).name;
+    final fingerprint =
+        "${settings.provider.name}|${settings.baseUrl}|${settings.model}|$apiKey|$locale";
     final existing = _session;
     if (existing != null && _sessionConfigFingerprint == fingerprint) {
       return existing;
@@ -205,6 +207,7 @@ class ChatController extends _$ChatController {
           baseUrl: settings.baseUrl,
           model: settings.model,
           systemPrompt: ref.read(chatSystemPromptProvider),
+          language: locale,
         ),
       );
       final conversation = state.conversation;

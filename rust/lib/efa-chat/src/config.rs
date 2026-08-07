@@ -6,16 +6,41 @@ pub const ANTHROPIC_BASE_URL: &str = "https://api.anthropic.com";
 
 pub const DEEPSEEK_BASE_URL: &str = "https://api.deepseek.com";
 
-/// Base system prompt (persona + bundled-manual tool usage), bundled at
-/// compile time.
-pub const BASE_SYSTEM_PROMPT: &str = include_str!("../prompt/system.prompt.txt");
-
-/// DeepSeek-specific prompt addition, bundled at compile time.
-const DEEPSEEK_PROMPT_EXTRA: &str = include_str!("../prompt/deepseek.prompt.txt");
-
 /// Default multi-turn depth: how many tool-call roundtrips a single turn may
 /// take before rig stops the loop.
 pub const DEFAULT_MAX_TURNS: usize = 20;
+
+/// The language of the bundled prompt files (`prompt/**/{en,zh}.prompt`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PromptLanguage {
+    #[default]
+    En,
+    Zh,
+}
+
+impl PromptLanguage {
+    /// Resolve from a locale tag ("en", "zh", "zh-CN", ...); anything not
+    /// starting with "zh" maps to English.
+    pub fn from_locale(locale: &str) -> Self {
+        if locale.trim().to_lowercase().starts_with("zh") {
+            Self::Zh
+        } else {
+            Self::En
+        }
+    }
+}
+
+/// The prompt sections bundled for one (provider, language) pair. The
+/// `system/{lang}.prompt` header is a rust-fmt template taking the other
+/// three as `{constraint_system}` / `{constraint_provider}` /
+/// `{appendix_provider}` args, so wrappers (section headers, "must be
+/// followed" notes) live in the template while the content lives in the
+/// per-scope files.
+struct PromptBundle {
+    constraint_system: &'static str,
+    constraint_provider: &'static str,
+    appendix_provider: &'static str,
+}
 
 /// The chat completion provider backing a session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -37,12 +62,57 @@ impl ChatProviderKind {
         }
     }
 
-    /// Provider-specific prompt addition bundled under `prompt/`, appended to
-    /// the system prompt even when extra sections are configured.
-    pub fn system_prompt_extra(&self) -> Option<&'static str> {
+    /// Directory name under `prompt/constraint/provider/` and
+    /// `prompt/appendix/provider/` holding this provider's prompt files.
+    pub fn prompt_dir(&self) -> &'static str {
         match self {
-            Self::DeepSeek => Some(DEEPSEEK_PROMPT_EXTRA.trim_end()),
-            _ => None,
+            Self::OpenAiCompatible => "openai",
+            Self::Anthropic => "anthropic",
+            Self::DeepSeek => "deepseek",
+        }
+    }
+
+    fn prompt_bundle(&self, language: PromptLanguage) -> PromptBundle {
+        use PromptLanguage::{En, Zh};
+        match (*self, language) {
+            (Self::OpenAiCompatible, En) => PromptBundle {
+                constraint_system: include_str!("../prompt/constraint/system/en.prompt"),
+                constraint_provider: include_str!("../prompt/constraint/provider/openai/en.prompt"),
+                appendix_provider: include_str!("../prompt/appendix/provider/openai/en.prompt"),
+            },
+            (Self::OpenAiCompatible, Zh) => PromptBundle {
+                constraint_system: include_str!("../prompt/constraint/system/zh.prompt"),
+                constraint_provider: include_str!("../prompt/constraint/provider/openai/zh.prompt"),
+                appendix_provider: include_str!("../prompt/appendix/provider/openai/zh.prompt"),
+            },
+            (Self::Anthropic, En) => PromptBundle {
+                constraint_system: include_str!("../prompt/constraint/system/en.prompt"),
+                constraint_provider: include_str!(
+                    "../prompt/constraint/provider/anthropic/en.prompt"
+                ),
+                appendix_provider: include_str!("../prompt/appendix/provider/anthropic/en.prompt"),
+            },
+            (Self::Anthropic, Zh) => PromptBundle {
+                constraint_system: include_str!("../prompt/constraint/system/zh.prompt"),
+                constraint_provider: include_str!(
+                    "../prompt/constraint/provider/anthropic/zh.prompt"
+                ),
+                appendix_provider: include_str!("../prompt/appendix/provider/anthropic/zh.prompt"),
+            },
+            (Self::DeepSeek, En) => PromptBundle {
+                constraint_system: include_str!("../prompt/constraint/system/en.prompt"),
+                constraint_provider: include_str!(
+                    "../prompt/constraint/provider/deepseek/en.prompt"
+                ),
+                appendix_provider: include_str!("../prompt/appendix/provider/deepseek/en.prompt"),
+            },
+            (Self::DeepSeek, Zh) => PromptBundle {
+                constraint_system: include_str!("../prompt/constraint/system/zh.prompt"),
+                constraint_provider: include_str!(
+                    "../prompt/constraint/provider/deepseek/zh.prompt"
+                ),
+                appendix_provider: include_str!("../prompt/appendix/provider/deepseek/zh.prompt"),
+            },
         }
     }
 }
@@ -53,8 +123,10 @@ pub struct ChatProviderConfig {
     pub api_key: String,
     pub base_url: String,
     pub model: String,
-    /// Extra system-prompt sections appended after the bundled base prompt
-    /// ([`BASE_SYSTEM_PROMPT`]); blank adds nothing.
+    /// Language of the bundled prompt files; see [`PromptLanguage`].
+    pub language: PromptLanguage,
+    /// Extra system-prompt sections appended after the rendered bundled
+    /// prompt; blank adds nothing.
     pub system_prompt: String,
     /// Multi-turn depth (tool-call roundtrips per turn); see
     /// [`DEFAULT_MAX_TURNS`].
@@ -74,6 +146,7 @@ impl ChatProviderConfig {
             api_key: api_key.into(),
             base_url: base_url.into(),
             model: model.into(),
+            language: PromptLanguage::default(),
             system_prompt: String::new(),
             max_turns: DEFAULT_MAX_TURNS,
         };
@@ -81,7 +154,13 @@ impl ChatProviderConfig {
         Ok(config)
     }
 
-    /// Add extra system-prompt sections appended after the bundled base
+    /// Select the language of the bundled prompt files.
+    pub fn with_language(mut self, language: PromptLanguage) -> Self {
+        self.language = language;
+        self
+    }
+
+    /// Add extra system-prompt sections appended after the rendered bundled
     /// prompt. Empty or whitespace-only prompts are ignored.
     pub fn with_system_prompt(mut self, system_prompt: impl Into<String>) -> Self {
         let prompt = system_prompt.into();
@@ -91,17 +170,32 @@ impl ChatProviderConfig {
         self
     }
 
-    /// The full system prompt: the bundled base prompt plus the configured
-    /// extra sections and the provider-specific addition (if any).
+    /// The full system prompt: the bundled `system/{lang}.prompt` rust-fmt
+    /// template rendered with the shared and provider-specific sections,
+    /// plus the configured extra sections appended last.
     pub fn full_system_prompt(&self) -> String {
-        let mut prompt = BASE_SYSTEM_PROMPT.trim_end().to_string();
+        let bundle = self.provider.prompt_bundle(self.language);
+        let constraint_system = bundle.constraint_system.trim();
+        let constraint_provider = bundle.constraint_provider.trim();
+        let appendix_provider = bundle.appendix_provider.trim();
+        let rendered = match self.language {
+            PromptLanguage::En => format!(
+                include_str!("../prompt/system/en.prompt"),
+                constraint_system = constraint_system,
+                constraint_provider = constraint_provider,
+                appendix_provider = appendix_provider,
+            ),
+            PromptLanguage::Zh => format!(
+                include_str!("../prompt/system/zh.prompt"),
+                constraint_system = constraint_system,
+                constraint_provider = constraint_provider,
+                appendix_provider = appendix_provider,
+            ),
+        };
+        let mut prompt = rendered.trim_end().to_string();
         if !self.system_prompt.is_empty() {
             prompt.push_str("\n\n");
             prompt.push_str(&self.system_prompt);
-        }
-        if let Some(extra) = self.provider.system_prompt_extra() {
-            prompt.push_str("\n\n");
-            prompt.push_str(extra);
         }
         prompt
     }

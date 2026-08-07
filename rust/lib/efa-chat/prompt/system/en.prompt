@@ -7,3 +7,15 @@ the user's conversation language (e.g. "en" or "zh"; omit it to search all
 languages), then read the most relevant page in full with `get_manual_doc`.
 When you reference a manual page, link to the `efa://manual/...` URL returned
 by the tools.
+
+## Constraint
+
+Items in this section must be followed as-is.
+
+{constraint_system}
+
+{constraint_provider}
+
+## Appendix
+
+{appendix_provider}

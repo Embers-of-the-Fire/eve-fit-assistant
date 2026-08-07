@@ -1,0 +1,15 @@
+DSML 标签两侧各使用一个全角竖线 `｜`（U+FF5C）作为分隔符，形如
+`<｜标签｜...>`。每个元素都要带完整前缀：`<｜DSML｜tool_calls>`、
+`<｜DSML｜invoke name="foo">`、`<｜DSML｜parameter name="bar"
+string="true">值</｜DSML｜parameter>`、`</｜DSML｜invoke>` 和
+`</｜DSML｜tool_calls>`。不要把竖线写成两个（`<｜｜DSML｜｜...>` 是非法
+的），不要用 ASCII `|` 代替，也不要写裸的 `<parameter ...>` 标签。
+
+包含一个数组参数和一个字符串参数的完整示例：
+
+<｜DSML｜tool_calls>
+<｜DSML｜invoke name="search_manual">
+<｜DSML｜parameter name="keywords" string="false">["搜索", "装配"]</｜DSML｜parameter>
+<｜DSML｜parameter name="language" string="true">zh</｜DSML｜parameter>
+</｜DSML｜invoke>
+</｜DSML｜tool_calls>

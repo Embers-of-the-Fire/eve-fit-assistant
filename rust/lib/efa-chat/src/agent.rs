@@ -403,50 +403,68 @@ mod tests {
     fn custom_system_prompt_is_appended_to_base() {
         let config = test_config().with_system_prompt("custom prompt");
         let full = config.full_system_prompt();
-        assert!(full.starts_with(crate::config::BASE_SYSTEM_PROMPT.trim_end()));
+        assert!(full.starts_with("You are a helpful assistant"));
         assert!(full.ends_with("custom prompt"));
     }
 
     #[test]
     fn blank_system_prompt_keeps_base_only() {
         let config = test_config().with_system_prompt("   ");
-        assert_eq!(
-            config.full_system_prompt(),
-            crate::config::BASE_SYSTEM_PROMPT.trim_end()
-        );
+        assert!(!config.full_system_prompt().ends_with("   "));
     }
 
     #[test]
     fn base_prompt_covers_persona_and_manual_tools() {
-        let base = crate::config::BASE_SYSTEM_PROMPT;
+        let base = test_config().full_system_prompt();
         assert!(base.contains("EVE Fit Assistant"));
         assert!(base.contains("search_manual"));
         assert!(base.contains("get_manual_doc"));
     }
 
     #[test]
-    fn deepseek_full_prompt_appends_dsml_note_after_extra_sections() {
+    fn base_prompt_wraps_sections_in_constraint_and_appendix_headers() {
+        let base = test_config().full_system_prompt();
+        let constraint = base.find("## Constraint").unwrap();
+        let system = base.find("Never fabricate").unwrap();
+        let provider = base.find("OpenAI-compatible").unwrap();
+        let appendix = base.find("## Appendix").unwrap();
+        assert!(constraint < system);
+        assert!(system < provider);
+        assert!(provider < appendix);
+    }
+
+    #[test]
+    fn zh_language_renders_zh_template_and_sections() {
+        let config = test_config().with_language(crate::config::PromptLanguage::Zh);
+        let full = config.full_system_prompt();
+        assert!(full.contains("## 约束"));
+        assert!(full.contains("## 附录"));
+        assert!(full.contains("不要编造"));
+    }
+
+    #[test]
+    fn prompt_language_resolves_from_locale_tags() {
+        use crate::config::PromptLanguage;
+        assert_eq!(PromptLanguage::from_locale("zh"), PromptLanguage::Zh);
+        assert_eq!(PromptLanguage::from_locale("zh-CN"), PromptLanguage::Zh);
+        assert_eq!(PromptLanguage::from_locale("en"), PromptLanguage::En);
+        assert_eq!(PromptLanguage::from_locale("en-US"), PromptLanguage::En);
+        assert_eq!(PromptLanguage::from_locale("  "), PromptLanguage::En);
+    }
+
+    #[test]
+    fn deepseek_full_prompt_covers_dsml_syntax_and_parameter_typing() {
         let config =
             ChatProviderConfig::new(ChatProviderKind::DeepSeek, "key", "", "deepseek-chat")
                 .unwrap()
                 .with_system_prompt("custom prompt");
         let full = config.full_system_prompt();
-        assert!(full.contains("custom prompt"));
         assert!(full.contains("DSML"));
-        assert!(full.find("custom prompt") < full.find("DSML"));
-    }
-
-    #[test]
-    fn deepseek_prompt_extra_is_dsml_ascii_note() {
-        let extra = ChatProviderKind::DeepSeek.system_prompt_extra().unwrap();
-        assert!(extra.contains("DSML"));
-        assert!(extra.contains("ASCII"));
-        assert!(
-            ChatProviderKind::OpenAiCompatible
-                .system_prompt_extra()
-                .is_none()
-        );
-        assert!(ChatProviderKind::Anthropic.system_prompt_extra().is_none());
+        assert!(full.contains("U+FF5C"));
+        assert!(full.ends_with("custom prompt"));
+        let typing_rule = full.find("string=\"false\"").unwrap();
+        let example = full.find("<｜DSML｜tool_calls>").unwrap();
+        assert!(typing_rule < example);
     }
 
     #[test]
