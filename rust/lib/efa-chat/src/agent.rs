@@ -72,7 +72,9 @@ impl ChatAgent {
     where
         M: CompletionModel + 'static,
     {
-        let builder = builder.preamble(&self.config.system_prompt);
+        let builder = builder
+            .preamble(&self.config.full_system_prompt())
+            .temperature(0.2);
         match &self.manual_corpus {
             Some(corpus) => builder
                 .tool(ManualSearchTool::new(corpus.clone()))
@@ -348,15 +350,53 @@ mod tests {
     }
 
     #[test]
-    fn custom_system_prompt_overrides_default() {
+    fn custom_system_prompt_is_appended_to_base() {
         let config = test_config().with_system_prompt("custom prompt");
-        assert_eq!(config.system_prompt, "custom prompt");
+        let full = config.full_system_prompt();
+        assert!(full.starts_with(crate::config::BASE_SYSTEM_PROMPT.trim_end()));
+        assert!(full.ends_with("custom prompt"));
     }
 
     #[test]
-    fn blank_system_prompt_keeps_default() {
+    fn blank_system_prompt_keeps_base_only() {
         let config = test_config().with_system_prompt("   ");
-        assert_eq!(config.system_prompt, crate::config::DEFAULT_SYSTEM_PROMPT);
+        assert_eq!(
+            config.full_system_prompt(),
+            crate::config::BASE_SYSTEM_PROMPT.trim_end()
+        );
+    }
+
+    #[test]
+    fn base_prompt_covers_persona_and_manual_tools() {
+        let base = crate::config::BASE_SYSTEM_PROMPT;
+        assert!(base.contains("EVE Fit Assistant"));
+        assert!(base.contains("search_manual"));
+        assert!(base.contains("get_manual_doc"));
+    }
+
+    #[test]
+    fn deepseek_full_prompt_appends_dsml_note_after_extra_sections() {
+        let config =
+            ChatProviderConfig::new(ChatProviderKind::DeepSeek, "key", "", "deepseek-chat")
+                .unwrap()
+                .with_system_prompt("custom prompt");
+        let full = config.full_system_prompt();
+        assert!(full.contains("custom prompt"));
+        assert!(full.contains("DSML"));
+        assert!(full.find("custom prompt") < full.find("DSML"));
+    }
+
+    #[test]
+    fn deepseek_prompt_extra_is_dsml_ascii_note() {
+        let extra = ChatProviderKind::DeepSeek.system_prompt_extra().unwrap();
+        assert!(extra.contains("DSML"));
+        assert!(extra.contains("ASCII"));
+        assert!(
+            ChatProviderKind::OpenAiCompatible
+                .system_prompt_extra()
+                .is_none()
+        );
+        assert!(ChatProviderKind::Anthropic.system_prompt_extra().is_none());
     }
 
     #[test]

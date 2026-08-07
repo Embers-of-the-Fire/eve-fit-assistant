@@ -36,7 +36,8 @@ pub struct ChatConfig {
     pub api_key: String,
     pub base_url: String,
     pub model: String,
-    /// System prompt for the session; empty falls back to the crate default.
+    /// Extra system-prompt sections (e.g. the in-app link manifest), appended
+    /// after the bundled base prompt; empty uses only the bundled prompt.
     pub system_prompt: String,
 }
 
