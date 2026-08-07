@@ -267,6 +267,14 @@ class _AssistantMessage extends ConsumerWidget {
       unawaited(ref.read(appLinkHandlerProvider).open(context, href));
     }
 
+    final waiting =
+        streaming &&
+        (segments.isEmpty ||
+            switch (segments.last) {
+              ChatToolCallSegment(:final done) => done,
+              _ => false,
+            });
+
     return Align(
       alignment: .centerLeft,
       child: Column(
@@ -281,10 +289,33 @@ class _AssistantMessage extends ConsumerWidget {
               ),
               ChatToolCallSegment() => _ToolCallChip(segment: segment),
             },
+          if (waiting) const _LoadingBubble(),
         ],
       ),
     );
   }
+}
+
+class _LoadingBubble extends StatelessWidget {
+  const _LoadingBubble();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const .only(right: 48, top: 4, bottom: 4),
+    padding: const .symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: context.theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: SizedBox(
+      width: 16,
+      height: 16,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        color: context.theme.colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 class _AssistantTextBlock extends StatelessWidget {
