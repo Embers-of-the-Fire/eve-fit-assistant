@@ -224,6 +224,10 @@
     }
   },
   "retry": "重试",
+  "appLinkInvalid": "链接无效",
+  "@appLinkInvalid": {
+    "description": "Snackbar shown when an in-app content link matches no page."
+  },
   "chatDeleteConversationConfirm": "删除该对话?",
   "chatClearAll": "清空对话",
   "chatClearAllConfirm": "清空所有对话?",

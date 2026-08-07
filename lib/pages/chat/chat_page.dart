@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
 import "package:eve_fit_assistant/features/chat/chat_controller.dart";
 import "package:eve_fit_assistant/features/chat/model_list.dart";
+import "package:eve_fit_assistant/features/deeplink/deeplink.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/chat/models.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -240,25 +241,34 @@ class _UserBubble extends StatelessWidget {
   );
 }
 
-class _AssistantBubble extends StatelessWidget {
+class _AssistantBubble extends ConsumerWidget {
   const _AssistantBubble({required this.text, this.streaming = false});
 
   final String text;
   final bool streaming;
 
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: .centerLeft,
-    child: Container(
-      margin: const .only(right: 48, top: 4, bottom: 4),
-      padding: const .symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: context.theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
+  Widget build(BuildContext context, WidgetRef ref) {
+    void onTapLink(String text, String? href, String title) {
+      if (href == null) return;
+      unawaited(ref.read(appLinkHandlerProvider).open(context, href));
+    }
+
+    return Align(
+      alignment: .centerLeft,
+      child: Container(
+        margin: const .only(right: 48, top: 4, bottom: 4),
+        padding: const .symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: context.theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: streaming
+            ? MarkdownBody(data: "$text▍", onTapLink: onTapLink)
+            : MarkdownBody(data: text, selectable: true, onTapLink: onTapLink),
       ),
-      child: streaming ? MarkdownBody(data: "$text▍") : MarkdownBody(data: text, selectable: true),
-    ),
-  );
+    );
+  }
 }
 
 class _ModelPickerSheet extends ConsumerStatefulWidget {

@@ -5,13 +5,14 @@ use rig::prelude::*;
 use rig::providers::openai;
 use rig::streaming::StreamedAssistantContent;
 
-use crate::config::{ChatProviderConfig, SYSTEM_PROMPT};
+use crate::config::ChatProviderConfig;
 use crate::error::ChatError;
 use crate::event::ChatEvent;
 
 pub struct ChatAgent {
     client: openai::CompletionsClient,
     model: String,
+    system_prompt: String,
     history: Vec<Message>,
 }
 
@@ -26,6 +27,7 @@ impl ChatAgent {
         Ok(Self {
             client,
             model: config.model,
+            system_prompt: config.system_prompt,
             history: Vec::new(),
         })
     }
@@ -53,7 +55,7 @@ impl ChatAgent {
     fn build_agent(&self) -> Agent<openai::CompletionModel> {
         self.client
             .agent(self.model.clone())
-            .preamble(SYSTEM_PROMPT)
+            .preamble(&self.system_prompt)
             .build()
     }
 
@@ -147,5 +149,17 @@ mod tests {
         assert_eq!(agent.history().len(), 2);
         agent.clear_history();
         assert!(agent.history().is_empty());
+    }
+
+    #[test]
+    fn custom_system_prompt_overrides_default() {
+        let config = test_config().with_system_prompt("custom prompt");
+        assert_eq!(config.system_prompt, "custom prompt");
+    }
+
+    #[test]
+    fn blank_system_prompt_keeps_default() {
+        let config = test_config().with_system_prompt("   ");
+        assert_eq!(config.system_prompt, crate::config::DEFAULT_SYSTEM_PROMPT);
     }
 }

@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/announcements/announcements.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
+import "package:eve_fit_assistant/features/deeplink/providers.dart";
 import "package:eve_fit_assistant/features/feedback/feedback.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart";
 import "package:eve_fit_assistant/features/welcome/welcome_gate.dart";
@@ -25,6 +26,7 @@ void main() async {
       overrides: [
         announcementStateStoreProvider.overrideWithValue(stores.announcementStateStore),
         appVersionStateStoreProvider.overrideWithValue(stores.appVersionStateStore),
+        routeCollectionProvider.overrideWithValue(MyApp.appRouter.routeCollection),
       ],
       child: const MyApp(),
     ),

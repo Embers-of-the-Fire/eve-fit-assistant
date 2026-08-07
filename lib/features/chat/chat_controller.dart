@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
+import "package:eve_fit_assistant/features/chat/system_prompt.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
 import "package:eve_fit_assistant/storage/chat/models.dart";
 import "package:eve_fit_assistant/storage/chat/service.dart";
@@ -155,6 +156,7 @@ class ChatController extends _$ChatController {
           apiKey: apiKey,
           baseUrl: settings.baseUrl,
           model: settings.model,
+          systemPrompt: ref.read(chatSystemPromptProvider),
         ),
       );
       final conversation = state.conversation;

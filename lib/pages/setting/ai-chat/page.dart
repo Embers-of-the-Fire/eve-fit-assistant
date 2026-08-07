@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
 import "package:eve_fit_assistant/features/chat/model_list.dart";
+import "package:eve_fit_assistant/features/chat/system_prompt.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
 import "package:eve_fit_assistant/storage/chat/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -301,6 +302,7 @@ class _TestConnectionTileState extends ConsumerState<_TestConnectionTile> {
           apiKey: apiKey,
           baseUrl: aiChat.baseUrl,
           model: aiChat.model,
+          systemPrompt: ref.read(chatSystemPromptProvider),
         ),
       );
       await session.prompt(text: "Hello");
