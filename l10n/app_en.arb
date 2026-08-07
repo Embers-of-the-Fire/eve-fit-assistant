@@ -70,6 +70,8 @@
   "settingTileAppSettingsTitle": "App Settings",
   "settingTileRemoteContentTitle": "Remote Content",
   "settingTileVersionTitle": "Version",
+  "sponsorshipTileTitle": "Sponsor Us",
+  "sponsorshipOpenError": "Could not open link",
   "appSettingsPageSectionCheckout": "Data checkout",
   "appSettingsPageCheckoutImpactWarningTitle": "Checkout impact warnings",
   "appSettingsPageCheckoutImpactWarningDescription": "Warn before switching checkouts or importing incremental patches when saved fits or characters may be affected.",

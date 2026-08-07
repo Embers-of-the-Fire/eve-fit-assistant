@@ -3,6 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/constant/links.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show unreadAnnouncementCountProvider;
 import "package:eve_fit_assistant/pages/router.dart"
@@ -83,6 +84,8 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                   ],
                 ),
               if (!kIsWeb) ...[const AppUpdateCheckTile(), const SizedBox(height: 24)],
+              _SponsorshipCard(onTap: () => unawaited(openSponsorshipPage(context))),
+              const SizedBox(height: 24),
               if (isWide)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,6 +264,40 @@ class _DeveloperSettingsCard extends StatelessWidget {
                 ),
               ),
               Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SponsorshipCard extends StatelessWidget {
+  const _SponsorshipCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.volunteer_activism_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  context.l10n.sponsorshipTileTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.open_in_new, color: theme.colorScheme.onSurfaceVariant),
             ],
           ),
         ),
