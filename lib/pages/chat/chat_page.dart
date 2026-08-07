@@ -44,9 +44,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ..listen(chatControllerProvider.select((s) => s.conversation?.messages.length), (_, _) {
         _scrollToBottom();
       })
-      ..listen(chatControllerProvider.select((s) => s.streamingText?.length), (_, _) {
-        _scrollToBottom();
-      });
+      ..listen(
+        chatControllerProvider.select((s) {
+          final segments = s.streamingSegments;
+          if (segments == null) return null;
+          final last = segments.lastOrNull;
+          return (segments.length, last is ChatTextSegment ? last.text.length : 0);
+        }),
+        (_, _) {
+          _scrollToBottom();
+        },
+      );
 
     return Layout(
       title: context.l10n.chatPageTitle,
@@ -98,10 +106,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   Widget _buildChat(BuildContext context, ChatState chatState) {
     final messages = chatState.conversation?.messages ?? const <ChatMessage>[];
+    final streaming = chatState.streamingSegments;
     return Column(
       children: [
         Expanded(
-          child: messages.isEmpty && chatState.streamingText == null
+          child: messages.isEmpty && streaming == null
               ? Center(
                   child: Text(
                     context.l10n.chatEmptyHint,
@@ -113,15 +122,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               : ListView.builder(
                   controller: _scrollController,
                   padding: const .symmetric(horizontal: 12, vertical: 8),
-                  itemCount: messages.length + (chatState.streamingText != null ? 1 : 0),
+                  itemCount: messages.length + (streaming != null ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == messages.length) {
-                      return _AssistantBubble(text: chatState.streamingText!, streaming: true);
+                      return _AssistantMessage(segments: streaming!, streaming: true);
                     }
                     final message = messages[index];
                     return switch (message.role) {
                       ChatMessageRole.user => _UserBubble(text: message.content),
-                      ChatMessageRole.assistant => _AssistantBubble(text: message.content),
+                      ChatMessageRole.assistant => _AssistantMessage(
+                        segments: message.segments.isEmpty
+                            ? [ChatSegment.text(text: message.content)]
+                            : message.segments,
+                      ),
                     };
                   },
                 ),
@@ -241,10 +254,10 @@ class _UserBubble extends StatelessWidget {
   );
 }
 
-class _AssistantBubble extends ConsumerWidget {
-  const _AssistantBubble({required this.text, this.streaming = false});
+class _AssistantMessage extends ConsumerWidget {
+  const _AssistantMessage({required this.segments, this.streaming = false});
 
-  final String text;
+  final List<ChatSegment> segments;
   final bool streaming;
 
   @override
@@ -256,16 +269,96 @@ class _AssistantBubble extends ConsumerWidget {
 
     return Align(
       alignment: .centerLeft,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          for (final (index, segment) in segments.indexed)
+            switch (segment) {
+              ChatTextSegment(:final text) => _AssistantTextBlock(
+                text: streaming && index == segments.length - 1 ? "$text▍" : text,
+                selectable: !streaming,
+                onTapLink: onTapLink,
+              ),
+              ChatToolCallSegment() => _ToolCallChip(segment: segment),
+            },
+        ],
+      ),
+    );
+  }
+}
+
+class _AssistantTextBlock extends StatelessWidget {
+  const _AssistantTextBlock({
+    required this.text,
+    required this.selectable,
+    required this.onTapLink,
+  });
+
+  final String text;
+  final bool selectable;
+  final MarkdownTapLinkCallback onTapLink;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const .only(right: 48, top: 4, bottom: 4),
+    padding: const .symmetric(horizontal: 14, vertical: 10),
+    decoration: BoxDecoration(
+      color: context.theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: selectable
+        ? MarkdownBody(data: text, selectable: true, onTapLink: onTapLink)
+        : MarkdownBody(data: text, onTapLink: onTapLink),
+  );
+}
+
+class _ToolCallChip extends StatelessWidget {
+  const _ToolCallChip({required this.segment});
+
+  final ChatToolCallSegment segment;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.theme.colorScheme;
+    return Tooltip(
+      message: context.l10n.chatToolCallTooltip,
       child: Container(
-        margin: const .only(right: 48, top: 4, bottom: 4),
-        padding: const .symmetric(horizontal: 14, vertical: 10),
+        margin: const .only(top: 2, bottom: 2),
+        padding: const .symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: context.theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
+          color: colorScheme.surfaceContainer,
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: streaming
-            ? MarkdownBody(data: "$text▍", onTapLink: onTapLink)
-            : MarkdownBody(data: text, selectable: true, onTapLink: onTapLink),
+        child: Row(
+          mainAxisSize: .min,
+          children: [
+            Icon(Icons.terminal, size: 14, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                segment.name,
+                style: context.theme.textTheme.bodySmall?.copyWith(
+                  fontFamily: "monospace",
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                overflow: .ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            if (segment.done)
+              Icon(Icons.check, size: 14, color: colorScheme.primary)
+            else
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

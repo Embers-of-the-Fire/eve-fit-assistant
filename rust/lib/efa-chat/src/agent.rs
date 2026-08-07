@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use futures::StreamExt;
@@ -6,7 +7,7 @@ use rig::completion::CompletionModel;
 use rig::message::Message;
 use rig::prelude::*;
 use rig::providers::{anthropic, deepseek, openai};
-use rig::streaming::StreamedAssistantContent;
+use rig::streaming::{StreamedAssistantContent, StreamedUserContent, ToolCallDeltaContent};
 
 use crate::config::{ChatProviderConfig, ChatProviderKind};
 use crate::error::ChatError;
@@ -202,8 +203,8 @@ where
     Ok(response.output)
 }
 
-/// Drive one streaming turn, reporting text deltas through [on_event] and
-/// returning the accumulated assistant text.
+/// Drive one streaming turn, reporting text deltas and tool-call lifecycle
+/// events through [on_event] and returning the accumulated assistant text.
 async fn drive_stream<M>(
     agent: &Agent<M>,
     prompt: &str,
@@ -219,11 +220,60 @@ where
         .max_turns(max_turns)
         .await;
     let mut accumulated = String::new();
+    // Tool calls already announced via `ToolCallStart`, so a later complete
+    // `ToolCall` item for the same call is not reported twice.
+    let mut announced_calls: HashSet<String> = HashSet::new();
     while let Some(item) = stream.next().await {
         match item {
-            Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Text(text))) => {
-                accumulated.push_str(&text.text);
-                on_event(ChatEvent::TextDelta(text.text));
+            Ok(MultiTurnStreamItem::StreamAssistantItem(content)) => match content {
+                StreamedAssistantContent::Text(text) => {
+                    accumulated.push_str(&text.text);
+                    on_event(ChatEvent::TextDelta(text.text));
+                }
+                StreamedAssistantContent::ToolCall {
+                    tool_call,
+                    internal_call_id,
+                } => {
+                    if announced_calls.insert(internal_call_id.clone()) {
+                        on_event(ChatEvent::ToolCallStart {
+                            id: internal_call_id.clone(),
+                            name: tool_call.function.name,
+                        });
+                        on_event(ChatEvent::ToolCallArgsDelta {
+                            id: internal_call_id,
+                            delta: tool_call.function.arguments.to_string(),
+                        });
+                    }
+                }
+                StreamedAssistantContent::ToolCallDelta {
+                    internal_call_id,
+                    content,
+                    ..
+                } => match content {
+                    ToolCallDeltaContent::Name(name) => {
+                        if announced_calls.insert(internal_call_id.clone()) {
+                            on_event(ChatEvent::ToolCallStart {
+                                id: internal_call_id,
+                                name,
+                            });
+                        }
+                    }
+                    ToolCallDeltaContent::Delta(delta) => {
+                        on_event(ChatEvent::ToolCallArgsDelta {
+                            id: internal_call_id,
+                            delta,
+                        });
+                    }
+                },
+                _ => {}
+            },
+            Ok(MultiTurnStreamItem::StreamUserItem(StreamedUserContent::ToolResult {
+                internal_call_id,
+                ..
+            })) => {
+                on_event(ChatEvent::ToolCallEnd {
+                    id: internal_call_id,
+                });
             }
             Ok(MultiTurnStreamItem::FinalResponse(_)) => break,
             Ok(_) => {}
