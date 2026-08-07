@@ -15,6 +15,7 @@ import "package:eve_fit_assistant/features/app_update/state/app_version_state_st
 import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/native/frb_generated.dart";
+import "package:eve_fit_assistant/storage/chat/service.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
@@ -78,6 +79,7 @@ Future<InitializedStores> initSingletons() async {
     await const StoragePathMigrator().migrateIfNeeded();
   }
   await AppSettingService.init();
+  await ChatStorageService.init();
   GlobalLogger.init(
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,

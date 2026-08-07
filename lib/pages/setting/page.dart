@@ -27,6 +27,12 @@ class SettingPage extends ConsumerWidget {
           title: context.l10n.settingTileAppSettingsTitle,
           onTap: () => unawaited(context.router.push(const AppSettingsRoute())),
         ),
+        if (!kIsWeb)
+          ConfigListTile.item(
+            icon: const Icon(Icons.smart_toy_outlined),
+            title: context.l10n.settingTileAiChatTitle,
+            onTap: () => unawaited(context.router.push(const AiChatSettingsRoute())),
+          ),
         if (showRemoteContent)
           ConfigListTile.item(
             icon: const Icon(Icons.cloud_sync_outlined),

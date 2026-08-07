@@ -153,6 +153,82 @@
   },
   "@@_SETTING_TAB": {},
   "settingTileAppSettingsTitle": "设置",
+  "settingTileAiChatTitle": "AI 助手",
+  "aiChatSettingsTitle": "AI 助手",
+  "aiChatSettingsSectionConnection": "连接",
+  "aiChatSettingsSectionModels": "模型",
+  "aiChatSettingsSectionActions": "操作",
+  "aiChatBaseUrlTitle": "接口地址",
+  "aiChatBaseUrlHint": "OpenAI 兼容接口地址",
+  "aiChatApiKeyTitle": "API 密钥",
+  "aiChatApiKeyHint": "输入 API 密钥",
+  "aiChatApiKeyConfigured": "已配置",
+  "aiChatApiKeyNotConfigured": "未配置",
+  "aiChatApiKeyClear": "清除密钥",
+  "aiChatDefaultModelTitle": "默认模型",
+  "aiChatAddModel": "添加模型",
+  "aiChatFetchModels": "从服务器获取模型列表",
+  "aiChatFetchModelsSuccess": "已获取 {count} 个模型",
+  "@aiChatFetchModelsSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiChatFetchModelsFailed": "获取模型列表失败:{error}",
+  "@aiChatFetchModelsFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aiChatFetchModelsCooldown": "{seconds} 秒后可再次获取",
+  "@aiChatFetchModelsCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "chatModelListEmpty": "暂无可用模型,请从服务器获取或手动添加",
+  "aiChatTestConnection": "测试连接",
+  "aiChatTestConnectionSuccess": "连接成功",
+  "aiChatTestConnectionFailed": "连接失败:{error}",
+  "@aiChatTestConnectionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chatPageTitle": "AI 助手",
+  "chatHistoryPageTitle": "聊天记录",
+  "chatInputHint": "输入消息…",
+  "chatEmptyHint": "开始新对话",
+  "chatNewConversationTooltip": "新对话",
+  "chatHistoryTooltip": "历史记录",
+  "chatModelSelectTitle": "选择模型",
+  "chatCustomModelLabel": "自定义模型",
+  "chatCustomModelHint": "输入模型名称",
+  "chatNotConfiguredTitle": "尚未配置 AI 助手",
+  "chatNotConfiguredDescription": "请先在设置中配置 API 密钥与接口地址。",
+  "chatGoToSettings": "前往设置",
+  "chatSendFailed": "发送失败:{error}",
+  "@chatSendFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "retry": "重试",
+  "chatDeleteConversationConfirm": "删除该对话?",
+  "chatClearAll": "清空对话",
+  "chatClearAllConfirm": "清空所有对话?",
+  "chatConversationEmpty": "暂无对话",
+  "workspaceTabAiChatTitle": "AI 助手",
   "settingTileRemoteContentTitle": "远程内容",
   "settingTileVersionTitle": "版本",
   "sponsorshipTileTitle": "赞助我们",

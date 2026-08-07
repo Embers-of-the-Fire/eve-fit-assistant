@@ -30,6 +30,48 @@ abstract class RemoteContentSetting with _$RemoteContentSetting {
 }
 
 @freezed
+abstract class AiChatModel with _$AiChatModel {
+  const factory AiChatModel({required String id, String? ownedBy}) = _AiChatModel;
+
+  factory AiChatModel.fromJson(Map<String, dynamic> json) => _$AiChatModelFromJson(json);
+}
+
+List<AiChatModel> _aiChatModelsFromJson(List<dynamic> json) => [
+  for (final entry in json)
+    if (entry is String)
+      AiChatModel(id: entry)
+    else
+      AiChatModel.fromJson((entry as Map).cast<String, dynamic>()),
+];
+
+List<dynamic> _aiChatModelsToJson(List<AiChatModel> models) => [
+  for (final model in models) model.toJson(),
+];
+
+@freezed
+abstract class AiChatSetting with _$AiChatSetting {
+  const factory AiChatSetting({
+    @Default("https://api.openai.com/v1") String baseUrl,
+    @Default("gpt-4o-mini") String model,
+    @_AiChatModelsConverter()
+    @Default([AiChatModel(id: "gpt-4o-mini"), AiChatModel(id: "gpt-4o")])
+    List<AiChatModel> models,
+  }) = _AiChatSetting;
+
+  factory AiChatSetting.fromJson(Map<String, dynamic> json) => _$AiChatSettingFromJson(json);
+}
+
+class _AiChatModelsConverter implements JsonConverter<List<AiChatModel>, List<dynamic>> {
+  const _AiChatModelsConverter();
+
+  @override
+  List<AiChatModel> fromJson(List<dynamic> json) => _aiChatModelsFromJson(json);
+
+  @override
+  List<dynamic> toJson(List<AiChatModel> models) => _aiChatModelsToJson(models);
+}
+
+@freezed
 abstract class AppSetting with _$AppSetting {
   const factory AppSetting({
     @JsonKey(unknownEnumValue: Locale.en) required Locale locale,
@@ -51,6 +93,7 @@ abstract class AppSetting with _$AppSetting {
     @Default(false) bool silentUpdate,
     @Default(false) bool welcomeCompleted,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
+    @Default(AiChatSetting()) AiChatSetting aiChat,
     @Default("") String marketServerFallback,
     @Default(1.0) double fontScale,
     @JsonKey(

@@ -43,6 +43,12 @@ class _StubFitEngine implements native_server.FitEngine {
 }
 
 class _StubRustLibApi extends RustLibApi {
+  // Members not overridden below (e.g. the chat API, which this suite never
+  // touches) fall through to this forwarder so adding new bridge functions
+  // does not break the stub.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   @override
   Future<native_server.FitEngineData> crateApiServerFitEngineDataInit({
     required native_server.FitEnginePath path,
