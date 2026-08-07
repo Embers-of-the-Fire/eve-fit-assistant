@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/constant/links.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -41,6 +42,11 @@ class SettingPage extends ConsumerWidget {
           icon: const Icon(Icons.feedback_outlined),
           title: context.l10n.workspaceTabReportTitle,
           onTap: () => unawaited(context.router.push(ReportFeedbackRoute())),
+        ),
+        ConfigListTile.item(
+          icon: const Icon(Icons.volunteer_activism_outlined),
+          title: context.l10n.sponsorshipTileTitle,
+          onTap: () => unawaited(openSponsorshipPage(context)),
         ),
         ConfigListTile.custom(_buildVersionTile(context, ref)),
       ],

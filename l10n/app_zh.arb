@@ -155,6 +155,8 @@
   "settingTileAppSettingsTitle": "设置",
   "settingTileRemoteContentTitle": "远程内容",
   "settingTileVersionTitle": "版本",
+  "sponsorshipTileTitle": "赞助我们",
+  "sponsorshipOpenError": "无法打开链接",
   "appSettingsPageSectionCheckout": "数据集检查",
   "appSettingsPageCheckoutImpactWarningTitle": "数据集影响警告",
   "appSettingsPageCheckoutImpactWarningDescription": "当切换数据集或导入增量补丁可能影响已保存的配置或角色时显示警告。",
