@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::sync::{Arc, Mutex, RwLock};
 
-use efa_chat::config::PromptLanguage;
-use efa_chat::fit::{ActiveFit, AttributeNames, FitCallbacks, FitToolContext, FitToolError};
+use efa_chat::core::config::PromptLanguage;
+use efa_chat::tools::fit::{ActiveFit, AttributeNames, FitCallbacks, FitToolContext, FitToolError};
 use eve_fit_os::calculate::{DamageProfile, calculate};
 use eve_fit_os::fit::{
     FitContainer, ItemCharge, ItemDrone, ItemFit, ItemModule, ItemSlot, ItemSlotType, ItemState,
@@ -187,7 +187,7 @@ fn tool_errors_surface_actionable_model_feedback() {
     );
     // The reported failure: `get_current_fit` with no attached fit must hand
     // the model the actionable reason, not rig's redacted "the tool failed".
-    let tool = efa_chat::fit::tools::GetCurrentFitTool::new(context);
+    let tool = efa_chat::tools::fit::tools::GetCurrentFitTool::new(context);
     let mapped = tool.map_error(FitToolError::NoActiveFit);
     assert_eq!(mapped.kind(), ToolErrorKind::NotFound);
     assert_eq!(
@@ -213,7 +213,7 @@ fn propose_edit_adds_module_and_projects_stats() {
     let context = test_context();
     let before_modules = test_fit().fit.modules.len();
     let proposal = context
-        .propose_edit(&[efa_chat::fit::edit::FitEditOp::AddModule {
+        .propose_edit(&[efa_chat::tools::fit::edit::FitEditOp::AddModule {
             slot_type: "medium".to_string(),
             type_id: 10850,
             state: Some("active".to_string()),
@@ -235,11 +235,11 @@ fn propose_edit_rejects_unknown_slot_and_missing_module() {
     let context = test_context();
     let proposal = context
         .propose_edit(&[
-            efa_chat::fit::edit::FitEditOp::RemoveModule {
+            efa_chat::tools::fit::edit::FitEditOp::RemoveModule {
                 slot_type: "not_a_slot".to_string(),
                 index: 0,
             },
-            efa_chat::fit::edit::FitEditOp::SetModuleState {
+            efa_chat::tools::fit::edit::FitEditOp::SetModuleState {
                 slot_type: "high".to_string(),
                 index: 99,
                 state: "overload".to_string(),
@@ -252,9 +252,9 @@ fn propose_edit_rejects_unknown_slot_and_missing_module() {
 
 #[test]
 fn tool_descriptions_follow_context_language() {
-    let en_tools = efa_chat::fit::tools::fit_tools(test_context());
+    let en_tools = efa_chat::tools::fit::tools::fit_tools(test_context());
     let zh_tools =
-        efa_chat::fit::tools::fit_tools(test_context().with_language(PromptLanguage::Zh));
+        efa_chat::tools::fit::tools::fit_tools(test_context().with_language(PromptLanguage::Zh));
     assert!(!en_tools.is_empty());
     assert_eq!(en_tools.len(), zh_tools.len());
     for (en_tool, zh_tool) in en_tools.iter().zip(zh_tools.iter()) {
@@ -279,10 +279,10 @@ fn search_items_passes_language_to_callback() {
         load_fit: Arc::new(|_| Box::pin(async move { "{}".to_string() })),
     };
     let context = test_context().with_callbacks(Arc::new(callbacks));
-    efa_chat::runtime()
+    efa_chat::host::runtime::runtime()
         .block_on(context.search_items("extender", Some("zh")))
         .unwrap();
-    efa_chat::runtime()
+    efa_chat::host::runtime::runtime()
         .block_on(context.search_items("large shield extender", None))
         .unwrap();
     assert_eq!(
@@ -293,7 +293,7 @@ fn search_items_passes_language_to_callback() {
         ]
     );
     // The tool schema advertises the optional language parameter.
-    let tools = efa_chat::fit::tools::fit_tools(context);
+    let tools = efa_chat::tools::fit::tools::fit_tools(context);
     let search = tools.iter().find(|t| t.name() == "search_items").unwrap();
     assert!(search.definition().parameters["properties"]["language"].is_object());
 }
@@ -303,12 +303,12 @@ fn propose_edit_set_charge_and_state() {
     let context = test_context();
     let proposal = context
         .propose_edit(&[
-            efa_chat::fit::edit::FitEditOp::SetModuleCharge {
+            efa_chat::tools::fit::edit::FitEditOp::SetModuleCharge {
                 slot_type: "high".to_string(),
                 index: 0,
                 charge_type_id: Some(2613),
             },
-            efa_chat::fit::edit::FitEditOp::SetModuleState {
+            efa_chat::tools::fit::edit::FitEditOp::SetModuleState {
                 slot_type: "high".to_string(),
                 index: 0,
                 state: "overload".to_string(),

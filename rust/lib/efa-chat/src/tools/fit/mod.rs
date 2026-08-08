@@ -17,7 +17,7 @@ use rig::tool::ToolExecutionError;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::config::PromptLanguage;
+use crate::core::config::PromptLanguage;
 
 /// Times one chat tool call, logging a start record and — via [`Drop`] — a
 /// completion record with the elapsed duration, so every exit path (including
