@@ -39,6 +39,7 @@ class ChatController extends _$ChatController {
   String? _sessionConfigFingerprint;
   native_server.FitEngine? _attachedEngine;
   bool _attrNamesAttached = false;
+  Future<void>? _manualCorpusReady;
 
   @override
   ChatState build() => const ChatState();
@@ -91,6 +92,9 @@ class ChatController extends _$ChatController {
     }
 
     await _syncFitContext(session);
+    // The system prompt always advertises the manual tools, so the turn must
+    // not start before the corpus is attached (failures degrade gracefully).
+    await _manualCorpusReady;
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final userMessage = ChatMessage(
@@ -236,7 +240,7 @@ class ChatController extends _$ChatController {
       _sessionConfigFingerprint = fingerprint;
       _attachedEngine = null;
       _attrNamesAttached = false;
-      unawaited(_attachManualCorpus(session));
+      _manualCorpusReady = _attachManualCorpus(session);
       unawaited(registerFitCallbacks(ref, session));
       // The fit itself is re-pushed by `send()` right before each turn
       // (`await _syncFitContext`); doing it here too would only race the turn.
