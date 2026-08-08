@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
@@ -287,7 +288,7 @@ class _AssistantMessage extends ConsumerWidget {
                 selectable: !streaming,
                 onTapLink: onTapLink,
               ),
-              ChatToolCallSegment() => _ToolCallChip(segment: segment),
+              ChatToolCallSegment() => _ToolCallBlock(segment: segment),
             },
           if (waiting) const _LoadingBubble(),
         ],
@@ -343,53 +344,130 @@ class _AssistantTextBlock extends StatelessWidget {
   );
 }
 
-class _ToolCallChip extends StatelessWidget {
-  const _ToolCallChip({required this.segment});
+class _ToolCallBlock extends StatefulWidget {
+  const _ToolCallBlock({required this.segment});
 
   final ChatToolCallSegment segment;
 
   @override
+  State<_ToolCallBlock> createState() => _ToolCallBlockState();
+}
+
+class _ToolCallBlockState extends State<_ToolCallBlock> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = context.theme.colorScheme;
-    return Tooltip(
-      message: context.l10n.chatToolCallTooltip,
-      child: Container(
-        margin: const .only(top: 2, bottom: 2),
-        padding: const .symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainer,
-          border: Border.all(color: colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: .min,
-          children: [
-            Icon(Icons.terminal, size: 14, color: colorScheme.onSurfaceVariant),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                segment.name,
-                style: context.theme.textTheme.bodySmall?.copyWith(
-                  fontFamily: "monospace",
-                  color: colorScheme.onSurfaceVariant,
+    final segment = widget.segment;
+    return Container(
+      margin: const .only(top: 2, bottom: 2),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: colorScheme.outlineVariant, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          Tooltip(
+            message: context.l10n.chatToolCallTooltip,
+            child: InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Padding(
+                padding: const .symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisSize: .min,
+                  children: [
+                    Icon(
+                      _expanded ? Icons.expand_more : Icons.chevron_right,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        segment.name,
+                        style: context.theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: "monospace",
+                          fontStyle: .italic,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        overflow: .ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (segment.done)
+                      Icon(Icons.check, size: 14, color: colorScheme.primary)
+                    else
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
                 ),
-                overflow: .ellipsis,
               ),
             ),
-            const SizedBox(width: 6),
+          ),
+          if (_expanded) ...[
+            _ToolCallDetail(
+              label: context.l10n.chatToolCallInput,
+              content: _prettyJson(segment.args),
+            ),
             if (segment.done)
-              Icon(Icons.check, size: 14, color: colorScheme.primary)
-            else
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+              _ToolCallDetail(label: context.l10n.chatToolCallOutput, content: segment.result),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  static String _prettyJson(String raw) {
+    if (raw.isEmpty) return raw;
+    try {
+      return const JsonEncoder.withIndent("  ").convert(jsonDecode(raw));
+    } on Object {
+      return raw;
+    }
+  }
+}
+
+class _ToolCallDetail extends StatelessWidget {
+  const _ToolCallDetail({required this.label, required this.content});
+
+  final String label;
+  final String content;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.theme.colorScheme;
+    return Padding(
+      padding: const .only(left: 8, right: 8, bottom: 6),
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          Text(
+            label,
+            style: context.theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            width: double.infinity,
+            padding: const .all(8),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SelectableText(
+              content,
+              style: context.theme.textTheme.bodySmall?.copyWith(fontFamily: "monospace"),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -178,6 +178,25 @@ fn tools_error_without_active_fit() {
 }
 
 #[test]
+fn tool_errors_surface_actionable_model_feedback() {
+    use rig::tool::{PortableTool, ToolErrorKind};
+    let context = FitToolContext::new(
+        Arc::new(test_database()),
+        Arc::new(RwLock::new(None)),
+        Arc::new(AttributeNames::default()),
+    );
+    // The reported failure: `get_current_fit` with no attached fit must hand
+    // the model the actionable reason, not rig's redacted "the tool failed".
+    let tool = efa_chat::fit::tools::GetCurrentFitTool::new(context);
+    let mapped = tool.map_error(FitToolError::NoActiveFit);
+    assert_eq!(mapped.kind(), ToolErrorKind::NotFound);
+    assert_eq!(
+        mapped.model_feedback(),
+        Some("no fit is currently attached to this chat session")
+    );
+}
+
+#[test]
 fn calculate_matches_engine_directly() {
     let context = test_context();
     // Sanity: the context's engine handle produces the same ship as a direct call.

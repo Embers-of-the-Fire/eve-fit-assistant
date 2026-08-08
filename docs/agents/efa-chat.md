@@ -17,7 +17,7 @@ Anthropic, and DeepSeek.
 | `src/agent.rs` | `ChatAgent` — stores the config plus a `Vec<Message>` history and builds a fresh provider agent per turn (`TurnAgent` enum over `Agent<openai::CompletionModel>` / `Agent<anthropic::…>` / `Agent<deepseek::…>`; each arm attaches the manual tools when a corpus is set). `chat_turn` is a one-shot completion; `stream_turn` drives each provider's multi-turn stream through the generic `drive_stream` helper and reports via `FnMut(ChatEvent)`. |
 | `src/manual.rs` | In-memory manual corpus + rig `PortableTool`s. `ManualCorpus` groups `ManualDocText` localizations by path-joined doc id (`from_rows`); `search(keywords, language, limit)` does case-insensitive substring matching (zh-safe) ranked by distinct-keyword count then title>summary>body field weight, with a char-window snippet; `get(id, language)` returns the full body. Locale resolution mirrors Dart's `resolveLocalizedKey` (exact → language prefix → `en` → first); `language: None` searches all locales. Tools: `search_manual` (`{keywords[], language?, limit?}` → hits with `id`/`url`/`snippet`/`matched_keywords`) and `get_manual_doc` (`{id, language?}` → full content); hit `url` is `efa://manual/<doc-id>`, which the in-app router already resolves. |
 | `src/models.rs` | `list_models(provider, api_key, base_url)` — thin wrapper over rig's native `ModelListingClient` per provider (auth headers and pagination handled by rig); results sorted and deduped by id. Note: OpenAI-compatible listing goes through `openai::Client` (the Responses-ext client), because rig's `OpenAIModelLister` is bound to that client type. |
-| `src/event.rs` | `ChatEvent::{TextDelta, Done, Error}`. |
+| `src/event.rs` | `ChatEvent::{TextDelta, ToolCallStart, ToolCallArgsDelta, ToolCallEnd, Done, Error}`; `ToolCallEnd` carries the flattened textual tool result (text items joined, JSON items serialized, images skipped). |
 | `src/error.rs` | `ChatError` (thiserror): `InvalidConfig`, `Client`, `Completion`, `Stream`, `ModelListing`. |
 
 Behavioral notes:
@@ -45,9 +45,10 @@ Exposes the crate to Dart. Follows the FRB threading rules from AGENTS.md:
   are `#[frb(sync)]` (cheap).
 - `prompt` and `list_available_models` are **normal** FRB fns that `block_on` the efa-chat
   runtime on a pool thread — keeps rig/reqwest off FRB's executor.
-- `stream_prompt(sink, text)` pushes `ChatStreamEvent::{TextDelta, Done, Error}` over a
-  `StreamSink`. Stream errors are delivered as `Error` events, **not** a failed future, so Dart
-  has a single error channel over the stream's lifetime.
+- `stream_prompt(sink, text)` pushes `ChatStreamEvent::{TextDelta, ToolCallStart,
+  ToolCallArgsDelta, ToolCallEnd, Done, Error}` over a `StreamSink`. Stream errors are delivered
+  as `Error` events, **not** a failed future, so Dart has a single error channel over the
+  stream's lifetime.
 - `ChatHistoryMessage` + `ChatRole` seed session history when resuming a persisted conversation.
 - `ChatManualDoc` + `ChatSession::set_manual_docs` (`#[frb(sync)]`) hand the bundled manual
   corpus (flat doc×locale rows) to the agent, enabling the manual tools.

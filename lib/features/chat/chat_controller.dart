@@ -135,8 +135,8 @@ class ChatController extends _$ChatController {
           case native_chat.ChatStreamEvent_ToolCallArgsDelta(:final id, :final delta):
             _updateToolSegment(segments, id, (s) => s.copyWith(args: s.args + delta));
             publish();
-          case native_chat.ChatStreamEvent_ToolCallEnd(:final id):
-            _updateToolSegment(segments, id, (s) => s.copyWith(done: true));
+          case native_chat.ChatStreamEvent_ToolCallEnd(:final id, :final result):
+            _updateToolSegment(segments, id, (s) => s.copyWith(done: true, result: result));
             publish();
           case native_chat.ChatStreamEvent_Done(:final fullText):
             final done = DateTime.now().millisecondsSinceEpoch;

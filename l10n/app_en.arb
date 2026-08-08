@@ -108,6 +108,8 @@
   "chatNotConfiguredDescription": "Set the API key and endpoint in settings first.",
   "chatGoToSettings": "Open settings",
   "chatToolCallTooltip": "Tool call",
+  "chatToolCallInput": "Input",
+  "chatToolCallOutput": "Output",
   "chatSendFailed": "Failed to send: {error}",
   "retry": "Retry",
   "appLinkInvalid": "Invalid link",

@@ -88,6 +88,10 @@ impl PortableTool for GetCurrentFitTool {
         })
     }
 
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
+    }
+
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
         self.context
@@ -124,6 +128,10 @@ impl PortableTool for GetFitStatsTool {
 
     fn parameters(&self) -> serde_json::Value {
         serde_json::json!({ "type": "object", "properties": {} })
+    }
+
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
     }
 
     async fn call(&self, _args: Self::Args) -> Result<Self::Output, Self::Error> {
@@ -178,6 +186,10 @@ impl PortableTool for GetItemTool {
             },
             "required": ["item_type"]
         })
+    }
+
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
@@ -240,6 +252,10 @@ impl PortableTool for GetAttrTool {
         })
     }
 
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
+    }
+
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
         self.context.attr_detail(
@@ -279,6 +295,10 @@ impl PortableTool for ValidateFitTool {
 
     fn parameters(&self) -> serde_json::Value {
         serde_json::json!({ "type": "object", "properties": {} })
+    }
+
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
     }
 
     async fn call(&self, _args: Self::Args) -> Result<Self::Output, Self::Error> {
@@ -347,6 +367,10 @@ impl PortableTool for ProposeFitEditTool {
         })
     }
 
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
+    }
+
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
         self.context.propose_edit(&args.edits)
@@ -400,6 +424,10 @@ impl PortableTool for SearchItemsTool {
         })
     }
 
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
+    }
+
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
         self.context
@@ -437,6 +465,10 @@ impl PortableTool for ListUserFitsTool {
 
     fn parameters(&self) -> serde_json::Value {
         serde_json::json!({ "type": "object", "properties": {} })
+    }
+
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
     }
 
     async fn call(&self, _args: Self::Args) -> Result<Self::Output, Self::Error> {
@@ -485,6 +517,10 @@ impl PortableTool for LoadFitTool {
             },
             "required": ["fit_id"]
         })
+    }
+
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {

@@ -222,7 +222,15 @@
   "chatGoToSettings": "前往设置",
   "chatToolCallTooltip": "工具调用",
   "@chatToolCallTooltip": {
-    "description": "Tooltip for a tool-call chip rendered inside an assistant chat message."
+    "description": "Tooltip for a tool-call row rendered inside an assistant chat message."
+  },
+  "chatToolCallInput": "输入",
+  "@chatToolCallInput": {
+    "description": "Label of the tool-call input (arguments) section in the chat inspector."
+  },
+  "chatToolCallOutput": "输出",
+  "@chatToolCallOutput": {
+    "description": "Label of the tool-call output (result) section in the chat inspector."
   },
   "chatSendFailed": "发送失败:{error}",
   "@chatSendFailed": {

@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use futures::StreamExt;
 use rig::agent::Agent;
 use rig::completion::CompletionModel;
-use rig::message::Message;
+use rig::message::{Message, ToolResultContent};
 use rig::prelude::*;
 use rig::providers::{anthropic, deepseek, openai};
 use rig::streaming::{StreamedAssistantContent, StreamedUserContent, ToolCallDeltaContent};
@@ -349,11 +349,12 @@ where
                 _ => {}
             },
             Ok(MultiTurnStreamItem::StreamUserItem(StreamedUserContent::ToolResult {
+                tool_result,
                 internal_call_id,
-                ..
             })) => {
                 on_event(ChatEvent::ToolCallEnd {
                     id: internal_call_id,
+                    result: tool_result_text(&tool_result.content),
                 });
             }
             Ok(MultiTurnStreamItem::FinalResponse(_)) => break,
@@ -365,6 +366,30 @@ where
         }
     }
     Ok(accumulated)
+}
+
+/// Flatten a tool result's content items into displayable text: text items
+/// are joined verbatim, JSON items serialized, and images skipped.
+fn tool_result_text(content: &OneOrMany<ToolResultContent>) -> String {
+    let mut out = String::new();
+    for item in content.iter() {
+        match item {
+            ToolResultContent::Text(text) => {
+                if !out.is_empty() {
+                    out.push('\n');
+                }
+                out.push_str(&text.text);
+            }
+            ToolResultContent::Json { value } => {
+                if !out.is_empty() {
+                    out.push('\n');
+                }
+                out.push_str(&value.to_string());
+            }
+            ToolResultContent::Image(_) => {}
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -591,6 +616,24 @@ mod tests {
         agent.restore_history(vec![Message::user("hi"), Message::assistant("hello")]);
         agent.set_manual_corpus(crate::manual::ManualCorpus::new(vec![]));
         assert_eq!(agent.history().len(), 2);
+    }
+
+    #[test]
+    fn tool_result_text_joins_text_and_json_items() {
+        let content = OneOrMany::many([
+            ToolResultContent::Text(rig::message::Text::new("alpha")),
+            ToolResultContent::Json {
+                value: serde_json::json!({"k": 1}),
+            },
+        ])
+        .unwrap();
+        assert_eq!(tool_result_text(&content), "alpha\n{\"k\":1}");
+    }
+
+    #[test]
+    fn tool_result_text_single_text_item() {
+        let content = OneOrMany::one(ToolResultContent::Text(rig::message::Text::new("beta")));
+        assert_eq!(tool_result_text(&content), "beta");
     }
 
     #[test]
