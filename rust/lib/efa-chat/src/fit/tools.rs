@@ -367,6 +367,7 @@ impl SearchItemsTool {
 #[derive(Debug, Deserialize)]
 pub struct SearchItemsArgs {
     pub query: String,
+    pub language: Option<String>,
 }
 
 impl PortableTool for SearchItemsTool {
@@ -389,6 +390,10 @@ impl PortableTool for SearchItemsTool {
                 "query": {
                     "type": "string",
                     "description": "Item name fragment in the user's language, e.g. \"Large Shield Extender\""
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Optional language code of the item name (e.g. \"en\", \"zh\"); omit to use the app's display language"
                 }
             },
             "required": ["query"]
@@ -397,7 +402,9 @@ impl PortableTool for SearchItemsTool {
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
-        self.context.search_items(&args.query).await
+        self.context
+            .search_items(&args.query, args.language.as_deref())
+            .await
     }
 }
 

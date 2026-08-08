@@ -51,6 +51,9 @@ Exposes the crate to Dart. Follows the FRB threading rules from AGENTS.md:
 - `ChatHistoryMessage` + `ChatRole` seed session history when resuming a persisted conversation.
 - `ChatManualDoc` + `ChatSession::set_manual_docs` (`#[frb(sync)]`) hand the bundled manual
   corpus (flat doc×locale rows) to the agent, enabling the manual tools.
+- `ChatSession::set_fit_callbacks` (`#[frb(sync)]`) registers the app-state callbacks behind
+  `search_items`/`list_user_fits`/`load_fit`; `search_items` receives `(query, language?)`,
+  where `language` selects the name localization to search (omitted → app display language).
 
 After changing these signatures run `./x generate rust`.
 
@@ -63,6 +66,7 @@ After changing these signatures run `./x generate rust`.
 | `lib/features/chat/api_key_store.dart` | Per-provider API keys in `flutter_secure_storage` (`ai_chat_api_key_<provider>`; the legacy provider-agnostic key migrates to OpenAI on first read). `aiChatApiKeyProvider` tracks the *active* provider's key. |
 | `lib/features/chat/system_prompt.dart` | `chatSystemPromptProvider` — extra system-prompt sections (the in-app link manifest; the persona + manual-tools base is bundled in the efa-chat crate under `prompt/`) shared by chat sessions and the settings connection test. The manifest is rendered (`render/prompt_renderer.dart`) from `linkSurfaceProvider`, which derives the linkable surface from `routeCollectionProvider` (overridden in `main.dart` with the real router's collection). Routes opt in via `DeepLinkMeta` annotations in `router.dart`. Assistant bubbles route link taps through `appLinkHandlerProvider`, which validates paths against the router before pushing. |
 | `lib/features/chat/manual_corpus.dart` | `chatManualCorpusProvider` — flattens the bundled manual (`manualTreeProvider` + `ManualRepository.loadContent`) into doc×locale `ChatManualDoc` rows covering **all** bundled locales; `ChatController` pushes them into each new session via `setManualDocs` (failures leave the session usable, just without the tools). |
+| `lib/features/chat/fit_context.dart` | Fit-context wiring: attaches the engine, attribute names, and the fit page's currently open fit (`pushAttachedFit`), and registers the app-state tool callbacks via `setFitCallbacks`. The `search_items` callback resolves the model-supplied `language` tag to a localization-db locale (zh*→zh, anything else→en; omitted/blank→app display locale). |
 | `lib/features/chat/model_list.dart` | `refreshAvailableModels()` fetches the active provider's model list with a shared 30 s cooldown across entry points; persists results into that provider's connection and auto-selects the first model if none chosen. |
 | `lib/storage/chat/` | `ChatConversation`/`ChatMessage` freezed models + `ChatStorageService` — per-conversation JSON files via `createUserDocStore(UserDataDomain.chat)`, serialized writes through a `_pendingSync` chain, sorted by `updatedAt` desc. |
 | `lib/storage/setting/setting.dart` | `AiChatSetting` — `{provider, connections: Map<ChatProvider, AiChatConnection>}`; each provider keeps its own `{baseUrl, model, models}` (blank baseUrl/model resolve to provider defaults via getters, so `s.aiChat.baseUrl`/`.model`/`.models` keep working). Legacy flat `{baseUrl, model, models}` JSON migrates into the OpenAI-compatible connection in `fromJson`; unknown provider keys are skipped. |
