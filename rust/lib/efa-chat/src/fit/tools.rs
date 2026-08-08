@@ -70,11 +70,10 @@ impl PortableTool for GetCurrentFitTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Get the ship fit currently attached to this chat session: ship hull, fitted modules \
-         grouped by slot with their state and charge, drones and fighters (grouped with counts), \
-         implants and boosters. Pass `include_skills: true` to also list the character's skill \
-         levels. Use this first when the user asks about their fit."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/get_current_fit/en.prompt"),
+            include_str!("../../prompt/tool/get_current_fit/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -117,14 +116,10 @@ impl PortableTool for GetFitStatsTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Compute the headline stats of the attached fit by running the full fitting engine: \
-         damage (DPS with/without reload, volley, alpha, drone/fighter DPS), defense (EHP per \
-         layer, raw HP, effective resists), capacitor (capacity, peak recharge/load/delta, \
-         depletion time in seconds - a negative or huge value means stable), mobility (velocity, \
-         align time, mass, warp speed), fitting resources (CPU/powergrid output and free), and \
-         targeting (max locked targets, scan resolution, signature radius). Use `get_item` or \
-         `get_attr` for anything more specific."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/get_fit_stats/en.prompt"),
+            include_str!("../../prompt/tool/get_fit_stats/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -161,12 +156,10 @@ impl PortableTool for GetItemTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Inspect one calculated item of the attached fit with every attribute (id, name, base \
-         value, computed value). `item_type` is one of: hull (the ship itself), module (fitted \
-         high/medium/low/rig/subsystem modules), drone, fighter, implant, booster, character. \
-         `index` selects the item within that section (0-based, in fitted order) and is required \
-         for all sections except hull and character."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/get_item/en.prompt"),
+            include_str!("../../prompt/tool/get_item/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -219,13 +212,10 @@ impl PortableTool for GetAttrTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Inspect a single dogma attribute of one calculated item: base vs computed value, \
-         metadata (default value, whether higher is better), and the modifier tree explaining \
-         which effects/skills/buffs changed it and by how much. `attribute` is the dogma \
-         attribute name, e.g. \"shieldCapacity\", \"maxVelocity\", or patch attributes like \
-         \"damagePerSecondWithoutReload\", \"ehp\", \"capacitorDepletesIn\". `item_type`/`index` \
-         select the item exactly like `get_item`."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/get_attr/en.prompt"),
+            include_str!("../../prompt/tool/get_attr/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -281,12 +271,10 @@ impl PortableTool for ValidateFitTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Validate the attached fit against the fitting rules: turret/launcher hardpoint limits, \
-         module-vs-ship group/type restrictions, rig size compatibility, duplicate booster \
-         slots, charge size/capacity/group compatibility, missing charges, and mutually \
-         exclusive active module groups. Returns errors and warnings; an empty list means the \
-         fit is legal."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/validate_fit/en.prompt"),
+            include_str!("../../prompt/tool/validate_fit/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -322,16 +310,10 @@ impl PortableTool for ProposeFitEditTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Propose fit changes and preview the outcome WITHOUT modifying the user's actual fit. \
-         Applies each edit to a copy of the attached fit and returns the projected stats and \
-         validation issues. Edit ops: {\"op\":\"add_module\",\"slot_type\":\"high|medium|low|rig\",\
-         \"type_id\":<int>,\"state\":\"active|online|passive|overload\"?,\"charge_type_id\":<int>?}; \
-         {\"op\":\"remove_module\",\"slot_type\":...,\"index\":<int>}; \
-         {\"op\":\"set_module_charge\",\"slot_type\":...,\"index\":<int>,\"charge_type_id\":<int>?}; \
-         {\"op\":\"set_module_state\",\"slot_type\":...,\"index\":<int>,\"state\":...}. This is a \
-         what-if simulation: the user must still make the change in the fitting editor. Use \
-         `search_items` to resolve an item name to a `type_id` first."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/propose_fit_edit/en.prompt"),
+            include_str!("../../prompt/tool/propose_fit_edit/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -394,11 +376,10 @@ impl PortableTool for SearchItemsTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Search the game's item database by (localized) name substring. Returns up to 20 \
-         matches with `type_id`, `name`, `group_id`, and `category_id`. Use this to resolve an \
-         item the user mentions by name before reasoning about it; category 6 is ships, 7 \
-         modules, 8 charges, 18 drones, 20 implants, 22 deployables."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/search_items/en.prompt"),
+            include_str!("../../prompt/tool/search_items/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -441,10 +422,10 @@ impl PortableTool for ListUserFitsTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "List the user's saved fits with `fit_id`, `name`, `ship_type_id`, and \
-         `last_modified`. Use this when the user refers to one of their fits by name instead of \
-         the currently attached one, then switch to it with `load_fit`."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/list_user_fits/en.prompt"),
+            include_str!("../../prompt/tool/list_user_fits/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {
@@ -480,10 +461,10 @@ impl PortableTool for LoadFitTool {
     type Error = FitToolError;
 
     fn description(&self) -> String {
-        "Switch the attached fit to one of the user's saved fits by `fit_id` (see \
-         `list_user_fits`). The loaded fit becomes the current fit for all subsequent tool \
-         calls, including within this same conversation turn; the tool returns its summary."
-            .to_string()
+        self.context.tool_prompt(
+            include_str!("../../prompt/tool/load_fit/en.prompt"),
+            include_str!("../../prompt/tool/load_fit/zh.prompt"),
+        )
     }
 
     fn parameters(&self) -> serde_json::Value {

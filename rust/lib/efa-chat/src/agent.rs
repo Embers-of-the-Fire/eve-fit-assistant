@@ -124,7 +124,8 @@ impl ChatAgent {
                     engine.clone(),
                     self.active_fit.clone(),
                     self.attr_names.clone(),
-                );
+                )
+                .with_language(self.config.language);
                 if let Some(callbacks) = &self.fit_callbacks {
                     context = context.with_callbacks(callbacks.clone());
                 }
@@ -139,8 +140,8 @@ impl ChatAgent {
         };
         if let Some(corpus) = &self.manual_corpus {
             builder = builder
-                .tool(ManualSearchTool::new(corpus.clone()))
-                .tool(ManualDocTool::new(corpus.clone()));
+                .tool(ManualSearchTool::new(corpus.clone(), self.config.language))
+                .tool(ManualDocTool::new(corpus.clone(), self.config.language));
         }
         builder.build()
     }

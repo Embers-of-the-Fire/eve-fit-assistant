@@ -1,0 +1,1 @@
+List the user's saved fits with `fit_id`, `name`, `ship_type_id`, and `last_modified`. Use this when the user refers to one of their fits by name instead of the currently attached one, then switch to it with `load_fit`.

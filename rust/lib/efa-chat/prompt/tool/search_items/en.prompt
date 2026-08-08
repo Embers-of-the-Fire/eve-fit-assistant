@@ -1,0 +1,1 @@
+Search the game's item database by (localized) name substring. Returns up to 20 matches with `type_id`, `name`, `group_id`, and `category_id`. Use this to resolve an item the user mentions by name before reasoning about it; category 6 is ships, 7 modules, 8 charges, 18 drones, 20 implants, 22 deployables.

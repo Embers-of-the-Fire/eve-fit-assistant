@@ -1,0 +1,1 @@
+查看某一个已计算装备的单项 dogma 属性：基础值与计算值、元数据（默认值、是否数值越高越好）以及修饰器树（解释哪些效果/技能/增益修改了它、修改了多少）。`attribute` 是 dogma 属性名，例如 "shieldCapacity"、"maxVelocity"，或补丁属性如 "damagePerSecondWithoutReload"、"ehp"、"capacitorDepletesIn"。`item_type`/`index` 的选择方式与 `get_item` 完全一致。

@@ -1,0 +1,1 @@
+Get the ship fit currently attached to this chat session: ship hull, fitted modules grouped by slot with their state and charge, drones and fighters (grouped with counts), implants and boosters. Pass `include_skills: true` to also list the character's skill levels. Use this first when the user asks about their fit.

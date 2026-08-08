@@ -1,0 +1,1 @@
+Validate the attached fit against the fitting rules: turret/launcher hardpoint limits, module-vs-ship group/type restrictions, rig size compatibility, duplicate booster slots, charge size/capacity/group compatibility, missing charges, and mutually exclusive active module groups. Returns errors and warnings; an empty list means the fit is legal.
