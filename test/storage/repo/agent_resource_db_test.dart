@@ -66,6 +66,7 @@ void main() {
       3839: "Large Shield Extender I",
       3841: "Large Shield Extender II",
     });
+    expect(hits.keys.toList(), [3839, 3841, 16146]);
   });
 
   test("search is locale-scoped", () async {
