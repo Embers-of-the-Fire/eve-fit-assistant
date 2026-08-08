@@ -1,0 +1,1 @@
+Switch the attached fit to one of the user's saved fits by `fit_id` (see `list_user_fits`). The loaded fit becomes the current fit for all subsequent tool calls, including within this same conversation turn; the tool returns its summary.

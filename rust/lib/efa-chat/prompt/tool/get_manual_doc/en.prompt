@@ -1,0 +1,1 @@
+Read the full content of a page of the bundled EVE Fit Assistant user manual by its id (e.g. "fitting/modules"), as returned by `search_manual`. Pass `language` to pick a localization.

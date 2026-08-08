@@ -1,0 +1,1 @@
+查看挂载装配中某一个已计算装备的全部属性（id、名称、基础值、计算值）。`item_type` 取值为：hull（舰船本身）、module（已装配的高槽/中槽/低槽/改装件/子系统模块）、drone、fighter、implant、booster、character。`index` 用于选择该部分内的装备（从 0 开始，按装配顺序），除 hull 和 character 外，其余部分均必填。

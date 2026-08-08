@@ -1,0 +1,1 @@
+Search the bundled EVE Fit Assistant user manual with 1-5 short keywords. Pass `language` matching the user's conversation language (e.g. "en" or "zh") to search that localization; omit it to search all languages. Returns matching pages with their id, `efa://manual/...` URL, and a body snippet. Use `get_manual_doc` with a returned id to read a page in full.

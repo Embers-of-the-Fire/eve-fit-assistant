@@ -4,6 +4,7 @@ use rig::tool::PortableTool;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::config::PromptLanguage;
 use crate::fit::ToolTimer;
 
 const DEFAULT_LIMIT: usize = 8;
@@ -291,11 +292,12 @@ pub struct SearchManualOutput {
 #[derive(Clone)]
 pub struct ManualSearchTool {
     corpus: Arc<ManualCorpus>,
+    language: PromptLanguage,
 }
 
 impl ManualSearchTool {
-    pub fn new(corpus: Arc<ManualCorpus>) -> Self {
-        Self { corpus }
+    pub fn new(corpus: Arc<ManualCorpus>, language: PromptLanguage) -> Self {
+        Self { corpus, language }
     }
 }
 
@@ -306,11 +308,12 @@ impl PortableTool for ManualSearchTool {
     type Error = ManualToolError;
 
     fn description(&self) -> String {
-        "Search the bundled EVE Fit Assistant user manual with 1-5 short keywords. \
-         Pass `language` matching the user's conversation language (e.g. \"en\" or \
-         \"zh\") to search that localization; omit it to search all languages. \
-         Returns matching pages with their id, `efa://manual/...` URL, and a body \
-         snippet. Use `get_manual_doc` with a returned id to read a page in full."
+        self.language
+            .pick(
+                include_str!("../prompt/tool/search_manual/en.prompt"),
+                include_str!("../prompt/tool/search_manual/zh.prompt"),
+            )
+            .trim()
             .to_string()
     }
 
@@ -356,11 +359,12 @@ pub struct GetManualDocArgs {
 #[derive(Clone)]
 pub struct ManualDocTool {
     corpus: Arc<ManualCorpus>,
+    language: PromptLanguage,
 }
 
 impl ManualDocTool {
-    pub fn new(corpus: Arc<ManualCorpus>) -> Self {
-        Self { corpus }
+    pub fn new(corpus: Arc<ManualCorpus>, language: PromptLanguage) -> Self {
+        Self { corpus, language }
     }
 }
 
@@ -371,9 +375,12 @@ impl PortableTool for ManualDocTool {
     type Error = ManualToolError;
 
     fn description(&self) -> String {
-        "Read the full content of a page of the bundled EVE Fit Assistant user \
-         manual by its id (e.g. \"fitting/modules\"), as returned by \
-         `search_manual`. Pass `language` to pick a localization."
+        self.language
+            .pick(
+                include_str!("../prompt/tool/get_manual_doc/en.prompt"),
+                include_str!("../prompt/tool/get_manual_doc/zh.prompt"),
+            )
+            .trim()
             .to_string()
     }
 
@@ -601,5 +608,19 @@ mod tests {
             .search(&["modules".into()], Some("en"), 10)
             .unwrap();
         assert_eq!(hits[0].url, "efa://manual/fitting/modules");
+    }
+
+    #[test]
+    fn tool_descriptions_follow_language() {
+        let corpus = Arc::new(corpus());
+        let en_search = ManualSearchTool::new(corpus.clone(), PromptLanguage::En);
+        let zh_search = ManualSearchTool::new(corpus.clone(), PromptLanguage::Zh);
+        assert_ne!(en_search.description(), zh_search.description());
+        assert!(en_search.description().starts_with("Search the bundled"));
+        assert!(zh_search.description().contains("用户手册"));
+        let en_doc = ManualDocTool::new(corpus.clone(), PromptLanguage::En);
+        let zh_doc = ManualDocTool::new(corpus, PromptLanguage::Zh);
+        assert_ne!(en_doc.description(), zh_doc.description());
+        assert!(zh_doc.description().contains("用户手册"));
     }
 }

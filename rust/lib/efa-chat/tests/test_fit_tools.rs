@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::sync::{Arc, RwLock};
 
+use efa_chat::config::PromptLanguage;
 use efa_chat::fit::{ActiveFit, AttributeNames, FitToolContext, FitToolError};
 use eve_fit_os::calculate::{DamageProfile, calculate};
 use eve_fit_os::fit::{
@@ -228,6 +229,22 @@ fn propose_edit_rejects_unknown_slot_and_missing_module() {
         .unwrap();
     assert!(proposal.applied.is_empty());
     assert_eq!(proposal.rejected.len(), 2);
+}
+
+#[test]
+fn tool_descriptions_follow_context_language() {
+    let en_tools = efa_chat::fit::tools::fit_tools(test_context());
+    let zh_tools =
+        efa_chat::fit::tools::fit_tools(test_context().with_language(PromptLanguage::Zh));
+    assert!(!en_tools.is_empty());
+    assert_eq!(en_tools.len(), zh_tools.len());
+    for (en_tool, zh_tool) in en_tools.iter().zip(zh_tools.iter()) {
+        assert_eq!(en_tool.name(), zh_tool.name());
+        let en = en_tool.definition().description;
+        let zh = zh_tool.definition().description;
+        assert!(!en.trim().is_empty());
+        assert_ne!(en, zh);
+    }
 }
 
 #[test]

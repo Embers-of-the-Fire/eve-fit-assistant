@@ -1,0 +1,1 @@
+按 id（例如 "fitting/modules"）完整阅读内置 EVE Fit Assistant 用户手册的某一页面，id 由 `search_manual` 返回。传入 `language` 可选择本地化版本。

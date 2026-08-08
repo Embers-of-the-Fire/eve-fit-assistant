@@ -28,6 +28,14 @@ impl PromptLanguage {
             Self::En
         }
     }
+
+    /// Pick one of two bundled texts by language.
+    pub fn pick(self, en: &'static str, zh: &'static str) -> &'static str {
+        match self {
+            Self::En => en,
+            Self::Zh => zh,
+        }
+    }
 }
 
 /// The prompt sections bundled for one (provider, language) pair. The

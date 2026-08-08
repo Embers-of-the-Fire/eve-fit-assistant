@@ -16,6 +16,8 @@ use eve_fit_os::protobuf::Database;
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::config::PromptLanguage;
+
 /// Times one chat tool call, logging a start record and — via [`Drop`] — a
 /// completion record with the elapsed duration, so every exit path (including
 /// early `?` returns) is covered.
@@ -104,6 +106,7 @@ pub struct FitToolContext {
     active: Arc<RwLock<Option<ActiveFit>>>,
     attr_names: Arc<AttributeNames>,
     callbacks: Option<Arc<FitCallbacks>>,
+    language: PromptLanguage,
 }
 
 impl FitToolContext {
@@ -117,6 +120,7 @@ impl FitToolContext {
             active,
             attr_names,
             callbacks: None,
+            language: PromptLanguage::default(),
         }
     }
 
@@ -127,6 +131,17 @@ impl FitToolContext {
 
     pub fn has_callbacks(&self) -> bool {
         self.callbacks.is_some()
+    }
+
+    /// Select the language of the bundled tool description prompts.
+    pub fn with_language(mut self, language: PromptLanguage) -> Self {
+        self.language = language;
+        self
+    }
+
+    /// Select a bundled tool description by the session language.
+    pub(crate) fn tool_prompt(&self, en: &'static str, zh: &'static str) -> String {
+        self.language.pick(en, zh).trim().to_string()
     }
 
     fn with_active<R>(&self, f: impl FnOnce(&ActiveFit) -> R) -> Result<R, FitToolError> {
