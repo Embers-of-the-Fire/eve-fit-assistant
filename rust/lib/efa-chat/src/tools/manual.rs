@@ -4,8 +4,8 @@ use rig::tool::{PortableTool, ToolExecutionError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::config::PromptLanguage;
-use crate::fit::ToolTimer;
+use crate::core::config::PromptLanguage;
+use crate::tools::fit::ToolTimer;
 
 const DEFAULT_LIMIT: usize = 8;
 const MAX_LIMIT: usize = 20;
@@ -323,8 +323,8 @@ impl PortableTool for ManualSearchTool {
     fn description(&self) -> String {
         self.language
             .pick(
-                include_str!("../prompt/tool/search_manual/en.prompt"),
-                include_str!("../prompt/tool/search_manual/zh.prompt"),
+                include_str!("../../prompt/tool/search_manual/en.prompt"),
+                include_str!("../../prompt/tool/search_manual/zh.prompt"),
             )
             .trim()
             .to_string()
@@ -394,8 +394,8 @@ impl PortableTool for ManualDocTool {
     fn description(&self) -> String {
         self.language
             .pick(
-                include_str!("../prompt/tool/get_manual_doc/en.prompt"),
-                include_str!("../prompt/tool/get_manual_doc/zh.prompt"),
+                include_str!("../../prompt/tool/get_manual_doc/en.prompt"),
+                include_str!("../../prompt/tool/get_manual_doc/zh.prompt"),
             )
             .trim()
             .to_string()

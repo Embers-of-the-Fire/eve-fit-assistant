@@ -1,4 +1,4 @@
-use crate::error::ChatError;
+use crate::core::error::ChatError;
 
 pub const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 
@@ -84,42 +84,54 @@ impl ChatProviderKind {
         use PromptLanguage::{En, Zh};
         match (*self, language) {
             (Self::OpenAiCompatible, En) => PromptBundle {
-                constraint_system: include_str!("../prompt/constraint/system/en.prompt"),
-                constraint_provider: include_str!("../prompt/constraint/provider/openai/en.prompt"),
-                appendix_provider: include_str!("../prompt/appendix/provider/openai/en.prompt"),
+                constraint_system: include_str!("../../prompt/constraint/system/en.prompt"),
+                constraint_provider: include_str!(
+                    "../../prompt/constraint/provider/openai/en.prompt"
+                ),
+                appendix_provider: include_str!("../../prompt/appendix/provider/openai/en.prompt"),
             },
             (Self::OpenAiCompatible, Zh) => PromptBundle {
-                constraint_system: include_str!("../prompt/constraint/system/zh.prompt"),
-                constraint_provider: include_str!("../prompt/constraint/provider/openai/zh.prompt"),
-                appendix_provider: include_str!("../prompt/appendix/provider/openai/zh.prompt"),
+                constraint_system: include_str!("../../prompt/constraint/system/zh.prompt"),
+                constraint_provider: include_str!(
+                    "../../prompt/constraint/provider/openai/zh.prompt"
+                ),
+                appendix_provider: include_str!("../../prompt/appendix/provider/openai/zh.prompt"),
             },
             (Self::Anthropic, En) => PromptBundle {
-                constraint_system: include_str!("../prompt/constraint/system/en.prompt"),
+                constraint_system: include_str!("../../prompt/constraint/system/en.prompt"),
                 constraint_provider: include_str!(
-                    "../prompt/constraint/provider/anthropic/en.prompt"
+                    "../../prompt/constraint/provider/anthropic/en.prompt"
                 ),
-                appendix_provider: include_str!("../prompt/appendix/provider/anthropic/en.prompt"),
+                appendix_provider: include_str!(
+                    "../../prompt/appendix/provider/anthropic/en.prompt"
+                ),
             },
             (Self::Anthropic, Zh) => PromptBundle {
-                constraint_system: include_str!("../prompt/constraint/system/zh.prompt"),
+                constraint_system: include_str!("../../prompt/constraint/system/zh.prompt"),
                 constraint_provider: include_str!(
-                    "../prompt/constraint/provider/anthropic/zh.prompt"
+                    "../../prompt/constraint/provider/anthropic/zh.prompt"
                 ),
-                appendix_provider: include_str!("../prompt/appendix/provider/anthropic/zh.prompt"),
+                appendix_provider: include_str!(
+                    "../../prompt/appendix/provider/anthropic/zh.prompt"
+                ),
             },
             (Self::DeepSeek, En) => PromptBundle {
-                constraint_system: include_str!("../prompt/constraint/system/en.prompt"),
+                constraint_system: include_str!("../../prompt/constraint/system/en.prompt"),
                 constraint_provider: include_str!(
-                    "../prompt/constraint/provider/deepseek/en.prompt"
+                    "../../prompt/constraint/provider/deepseek/en.prompt"
                 ),
-                appendix_provider: include_str!("../prompt/appendix/provider/deepseek/en.prompt"),
+                appendix_provider: include_str!(
+                    "../../prompt/appendix/provider/deepseek/en.prompt"
+                ),
             },
             (Self::DeepSeek, Zh) => PromptBundle {
-                constraint_system: include_str!("../prompt/constraint/system/zh.prompt"),
+                constraint_system: include_str!("../../prompt/constraint/system/zh.prompt"),
                 constraint_provider: include_str!(
-                    "../prompt/constraint/provider/deepseek/zh.prompt"
+                    "../../prompt/constraint/provider/deepseek/zh.prompt"
                 ),
-                appendix_provider: include_str!("../prompt/appendix/provider/deepseek/zh.prompt"),
+                appendix_provider: include_str!(
+                    "../../prompt/appendix/provider/deepseek/zh.prompt"
+                ),
             },
         }
     }
@@ -188,13 +200,13 @@ impl ChatProviderConfig {
         let appendix_provider = bundle.appendix_provider.trim();
         let rendered = match self.language {
             PromptLanguage::En => format!(
-                include_str!("../prompt/system/en.prompt"),
+                include_str!("../../prompt/system/en.prompt"),
                 constraint_system = constraint_system,
                 constraint_provider = constraint_provider,
                 appendix_provider = appendix_provider,
             ),
             PromptLanguage::Zh => format!(
-                include_str!("../prompt/system/zh.prompt"),
+                include_str!("../../prompt/system/zh.prompt"),
                 constraint_system = constraint_system,
                 constraint_provider = constraint_provider,
                 appendix_provider = appendix_provider,

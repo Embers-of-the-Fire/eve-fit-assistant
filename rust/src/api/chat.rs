@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use efa_chat::Message;
-use efa_chat::agent::ChatAgent;
-use efa_chat::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage};
-use efa_chat::event::ChatEvent;
-use efa_chat::fit::{ActiveFit, FitCallbacks};
-use efa_chat::manual::{ManualCorpus, ManualDocText};
+use efa_chat::core::agent::ChatAgent;
+use efa_chat::core::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage};
+use efa_chat::core::event::ChatEvent;
+use efa_chat::tools::fit::{ActiveFit, FitCallbacks};
+use efa_chat::tools::manual::{ManualCorpus, ManualDocText};
 use flutter_rust_bridge::DartFnFuture;
 use flutter_rust_bridge::frb;
 
@@ -133,16 +133,16 @@ unsafe impl<F> Send for ThreadSafeFn<F> {}
 unsafe impl<F> Sync for ThreadSafeFn<F> {}
 
 impl<F> ThreadSafeFn<F> {
-    fn call(&self) -> efa_chat::fit::FitToolFuture
+    fn call(&self) -> efa_chat::tools::fit::FitToolFuture
     where
-        F: Fn() -> efa_chat::fit::FitToolFuture,
+        F: Fn() -> efa_chat::tools::fit::FitToolFuture,
     {
         (self.0)()
     }
 
-    fn call_with(&self, arg: String) -> efa_chat::fit::FitToolFuture
+    fn call_with(&self, arg: String) -> efa_chat::tools::fit::FitToolFuture
     where
-        F: Fn(String) -> efa_chat::fit::FitToolFuture,
+        F: Fn(String) -> efa_chat::tools::fit::FitToolFuture,
     {
         (self.0)(arg)
     }
@@ -151,9 +151,9 @@ impl<F> ThreadSafeFn<F> {
         &self,
         query: String,
         language: Option<String>,
-    ) -> efa_chat::fit::FitToolFuture
+    ) -> efa_chat::tools::fit::FitToolFuture
     where
-        F: Fn(String, Option<String>) -> efa_chat::fit::FitToolFuture,
+        F: Fn(String, Option<String>) -> efa_chat::tools::fit::FitToolFuture,
     {
         (self.0)(query, language)
     }
@@ -186,7 +186,7 @@ pub fn list_available_models(
     api_key: String,
     base_url: String,
 ) -> anyhow::Result<Vec<ChatModelInfo>> {
-    let models = efa_chat::runtime().block_on(efa_chat::models::list_models(
+    let models = efa_chat::runtime().block_on(efa_chat::core::models::list_models(
         provider.into(),
         &api_key,
         &base_url,

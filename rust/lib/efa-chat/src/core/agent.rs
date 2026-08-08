@@ -9,11 +9,11 @@ use rig::prelude::*;
 use rig::providers::{anthropic, deepseek, openai};
 use rig::streaming::{StreamedAssistantContent, StreamedUserContent, ToolCallDeltaContent};
 
-use crate::config::{ChatProviderConfig, ChatProviderKind};
-use crate::error::ChatError;
-use crate::event::ChatEvent;
-use crate::fit::{ActiveFit, AttributeNames, FitCallbacks, FitToolContext};
-use crate::manual::{ManualCorpus, ManualDocTool, ManualSearchTool};
+use crate::core::config::{ChatProviderConfig, ChatProviderKind};
+use crate::core::error::ChatError;
+use crate::core::event::ChatEvent;
+use crate::tools::fit::{ActiveFit, AttributeNames, FitCallbacks, FitToolContext};
+use crate::tools::manual::{ManualCorpus, ManualDocTool, ManualSearchTool};
 
 pub struct ChatAgent {
     config: ChatProviderConfig,
@@ -130,7 +130,7 @@ impl ChatAgent {
                     context = context.with_callbacks(callbacks.clone());
                 }
                 builder.dynamic_tools(
-                    crate::fit::tools::fit_tools(context)
+                    crate::tools::fit::tools::fit_tools(context)
                         .into_iter()
                         .map(rig::tool::DynamicTool::from)
                         .collect(),
@@ -395,7 +395,7 @@ fn tool_result_text(content: &OneOrMany<ToolResultContent>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::core::config::DEFAULT_BASE_URL;
 
     fn test_config() -> ChatProviderConfig {
         ChatProviderConfig::new(
@@ -433,12 +433,15 @@ mod tests {
             ChatProviderConfig::new(ChatProviderKind::Anthropic, "key", "  ", "claude").unwrap();
         assert_eq!(
             config.resolved_base_url(),
-            crate::config::ANTHROPIC_BASE_URL
+            crate::core::config::ANTHROPIC_BASE_URL
         );
         let config =
             ChatProviderConfig::new(ChatProviderKind::DeepSeek, "key", "", "deepseek-chat")
                 .unwrap();
-        assert_eq!(config.resolved_base_url(), crate::config::DEEPSEEK_BASE_URL);
+        assert_eq!(
+            config.resolved_base_url(),
+            crate::core::config::DEEPSEEK_BASE_URL
+        );
         let config = ChatProviderConfig::new(
             ChatProviderKind::OpenAiCompatible,
             "key",
@@ -567,7 +570,7 @@ mod tests {
 
     #[test]
     fn zh_language_renders_zh_template_and_sections() {
-        let config = test_config().with_language(crate::config::PromptLanguage::Zh);
+        let config = test_config().with_language(crate::core::config::PromptLanguage::Zh);
         let full = config.full_system_prompt();
         assert!(full.contains("## 约束"));
         assert!(full.contains("## 附录"));
@@ -576,7 +579,7 @@ mod tests {
 
     #[test]
     fn prompt_language_resolves_from_locale_tags() {
-        use crate::config::PromptLanguage;
+        use crate::core::config::PromptLanguage;
         assert_eq!(PromptLanguage::from_locale("zh"), PromptLanguage::Zh);
         assert_eq!(PromptLanguage::from_locale("zh-CN"), PromptLanguage::Zh);
         assert_eq!(PromptLanguage::from_locale("en"), PromptLanguage::En);
@@ -602,19 +605,19 @@ mod tests {
     #[test]
     fn max_turns_defaults_to_20_and_overrides() {
         let config = test_config();
-        assert_eq!(config.max_turns, crate::config::DEFAULT_MAX_TURNS);
+        assert_eq!(config.max_turns, crate::core::config::DEFAULT_MAX_TURNS);
         assert_eq!(config.max_turns, 20);
         let config = test_config().with_max_turns(5);
         assert_eq!(config.max_turns, 5);
         let config = test_config().with_max_turns(0);
-        assert_eq!(config.max_turns, crate::config::DEFAULT_MAX_TURNS);
+        assert_eq!(config.max_turns, crate::core::config::DEFAULT_MAX_TURNS);
     }
 
     #[test]
     fn set_manual_corpus_keeps_history() {
         let mut agent = ChatAgent::new(test_config()).unwrap();
         agent.restore_history(vec![Message::user("hi"), Message::assistant("hello")]);
-        agent.set_manual_corpus(crate::manual::ManualCorpus::new(vec![]));
+        agent.set_manual_corpus(crate::tools::manual::ManualCorpus::new(vec![]));
         assert_eq!(agent.history().len(), 2);
     }
 
@@ -641,7 +644,7 @@ mod tests {
         let mut agent = ChatAgent::new(test_config()).unwrap();
         let corpus = ManualCorpus::from_rows(vec![(
             "a".to_string(),
-            crate::manual::ManualDocText {
+            crate::tools::manual::ManualDocText {
                 locale: "en".to_string(),
                 title: "A".to_string(),
                 summary: String::new(),

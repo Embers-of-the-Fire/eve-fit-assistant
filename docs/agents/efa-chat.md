@@ -10,15 +10,37 @@ engine. Built on `rig` (0.41). Three providers are supported via enum dispatch (
 dynamic-model-creation pattern): OpenAI-compatible (any Chat Completions endpoint),
 Anthropic, and DeepSeek.
 
+The crate is organized into three top-level modules: `core` (the agent layer),
+`host` (non-agent host glue), and `tools` (the rig toolset).
+
+### `src/core/` — the agent layer
+
 | File | Contents |
 | ------ | ---------- |
-| `src/lib.rs` | Module exports, re-exports `rig::message::Message`, and `runtime()` — a lazily-initialized shared multi-thread tokio runtime (2 worker threads). All async work runs on this runtime, never on FRB's executor. |
-| `src/config.rs` | `ChatProviderKind` (`OpenAiCompatible`/`Anthropic`/`DeepSeek`, each with a default base URL and a `prompt_dir()` name: `openai`/`anthropic`/`deepseek`); `PromptLanguage` (`En`/`Zh`, `from_locale` maps any non-`zh*` tag to `En`); `ChatProviderConfig` (provider / api_key / base_url / model / language / system_prompt / max_turns) with eager validation. A blank `base_url` resolves to the provider default (`resolved_base_url`). Prompts are bundled from `prompt/` at compile time (`include_str!`): `prompt/system/{en,zh}.prompt` is the shared header **and** a rust-fmt template (`format!(include_str!(...), constraint_system = ..., constraint_provider = ..., appendix_provider = ...)`) whose wrappers (e.g. a `## Constraint` section marked "must be followed as-is") frame three section args — `prompt/constraint/system/{lang}.prompt` (shared rules), `prompt/constraint/provider/<dir>/{lang}.prompt` and `prompt/appendix/provider/<dir>/{lang}.prompt` (per-provider, e.g. the DeepSeek DSML strict-ASCII rule plus its examples appendix). `system_prompt` holds *extra sections* appended after the rendered template (`with_system_prompt`, blank ignored); `full_system_prompt()` composes template + extra sections; `max_turns` is the multi-turn depth (tool-call roundtrips per turn, `DEFAULT_MAX_TURNS` = 20, `with_max_turns` overrides, 0 ignored). Tool descriptions are bundled the same way under `prompt/tool/<tool-name>/{en,zh}.prompt` (one directory per rig tool, named by the tool's `NAME`) and selected by the session language via `PromptLanguage::pick`. |
-| `src/agent.rs` | `ChatAgent` — stores the config plus a `Vec<Message>` history and builds a fresh provider agent per turn (`TurnAgent` enum over `Agent<openai::CompletionModel>` / `Agent<anthropic::…>` / `Agent<deepseek::…>`; each arm attaches the manual tools when a corpus is set). `chat_turn` is a one-shot completion; `stream_turn` drives each provider's multi-turn stream through the generic `drive_stream` helper and reports via `FnMut(ChatEvent)`. |
-| `src/manual.rs` | In-memory manual corpus + rig `PortableTool`s. `ManualCorpus` groups `ManualDocText` localizations by path-joined doc id (`from_rows`); `search(keywords, language, limit)` does case-insensitive substring matching (zh-safe) ranked by distinct-keyword count then title>summary>body field weight, with a char-window snippet; `get(id, language)` returns the full body. Locale resolution mirrors Dart's `resolveLocalizedKey` (exact → language prefix → `en` → first); `language: None` searches all locales. Tools: `search_manual` (`{keywords[], language?, limit?}` → hits with `id`/`url`/`snippet`/`matched_keywords`) and `get_manual_doc` (`{id, language?}` → full content); hit `url` is `efa://manual/<doc-id>`, which the in-app router already resolves. |
-| `src/models.rs` | `list_models(provider, api_key, base_url)` — thin wrapper over rig's native `ModelListingClient` per provider (auth headers and pagination handled by rig); results sorted and deduped by id. Note: OpenAI-compatible listing goes through `openai::Client` (the Responses-ext client), because rig's `OpenAIModelLister` is bound to that client type. |
-| `src/event.rs` | `ChatEvent::{TextDelta, ToolCallStart, ToolCallArgsDelta, ToolCallEnd, Done, Error}`; `ToolCallEnd` carries the flattened textual tool result (text items joined, JSON items serialized, images skipped). |
-| `src/error.rs` | `ChatError` (thiserror): `InvalidConfig`, `Client`, `Completion`, `Stream`, `ModelListing`. |
+| `mod.rs` | Re-exports `config`, `agent`, `error`, `event`, `models`. |
+| `config.rs` | `ChatProviderKind` (`OpenAiCompatible`/`Anthropic`/`DeepSeek`, each with a default base URL and a `prompt_dir()` name: `openai`/`anthropic`/`deepseek`); `PromptLanguage` (`En`/`Zh`, `from_locale` maps any non-`zh*` tag to `En`); `ChatProviderConfig` (provider / api_key / base_url / model / language / system_prompt / max_turns) with eager validation. A blank `base_url` resolves to the provider default (`resolved_base_url`). Prompts are bundled from `prompt/` at compile time (`include_str!`): `prompt/system/{en,zh}.prompt` is the shared header **and** a rust-fmt template (`format!(include_str!(...), constraint_system = ..., constraint_provider = ..., appendix_provider = ...)`) whose wrappers (e.g. a `## Constraint` section marked "must be followed as-is") frame three section args — `prompt/constraint/system/{lang}.prompt` (shared rules), `prompt/constraint/provider/<dir>/{lang}.prompt` and `prompt/appendix/provider/<dir>/{lang}.prompt` (per-provider, e.g. the DeepSeek DSML strict-ASCII rule plus its examples appendix). `system_prompt` holds *extra sections* appended after the rendered template (`with_system_prompt`, blank ignored); `full_system_prompt()` composes template + extra sections; `max_turns` is the multi-turn depth (tool-call roundtrips per turn, `DEFAULT_MAX_TURNS` = 20, `with_max_turns` overrides, 0 ignored). Tool descriptions are bundled the same way under `prompt/tool/<tool-name>/{en,zh}.prompt` (one directory per rig tool, named by the tool's `NAME`) and selected by the session language via `PromptLanguage::pick`. |
+| `agent.rs` | `ChatAgent` — stores the config plus a `Vec<Message>` history and builds a fresh provider agent per turn (`TurnAgent` enum over `Agent<openai::CompletionModel>` / `Agent<anthropic::…>` / `Agent<deepseek::…>`; each arm attaches the manual tools when a corpus is set). `chat_turn` is a one-shot completion; `stream_turn` drives each provider's multi-turn stream through the generic `drive_stream` helper and reports via `FnMut(ChatEvent)`. |
+| `models.rs` | `list_models(provider, api_key, base_url)` — thin wrapper over rig's native `ModelListingClient` per provider (auth headers and pagination handled by rig); results sorted and deduped by id. Note: OpenAI-compatible listing goes through `openai::Client` (the Responses-ext client), because rig's `OpenAIModelLister` is bound to that client type. |
+| `event.rs` | `ChatEvent::{TextDelta, ToolCallStart, ToolCallArgsDelta, ToolCallEnd, Done, Error}`; `ToolCallEnd` carries the flattened textual tool result (text items joined, JSON items serialized, images skipped). |
+| `error.rs` | `ChatError` (thiserror): `InvalidConfig`, `Client`, `Completion`, `Stream`, `ModelListing`. |
+
+### `src/host/` — non-agent host glue
+
+| File | Contents |
+| ------ | ---------- |
+| `mod.rs` | Re-exports `runtime`; the home for non-agent plumbing that bridges the crate to its host (log forwarding, host runtime wiring). |
+| `runtime.rs` | `runtime()` — the lazily-initialized shared multi-thread tokio runtime (2 worker threads). All async work runs on this runtime, never on FRB's executor. Re-exported at the crate root as `efa_chat::runtime()`. |
+
+### `src/tools/` — the rig toolset
+
+| File | Contents |
+| ------ | ---------- |
+| `mod.rs` | Re-exports `manual` and `fit`. |
+| `manual.rs` | In-memory manual corpus + rig `PortableTool`s. `ManualCorpus` groups `ManualDocText` localizations by path-joined doc id (`from_rows`); `search(keywords, language, limit)` does case-insensitive substring matching (zh-safe) ranked by distinct-keyword count then title>summary>body field weight, with a char-window snippet; `get(id, language)` returns the full body. Locale resolution mirrors Dart's `resolveLocalizedKey` (exact → language prefix → `en` → first); `language: None` searches all locales. Tools: `search_manual` (`{keywords[], language?, limit?}` → hits with `id`/`url`/`snippet`/`matched_keywords`) and `get_manual_doc` (`{id, language?}` → full content); hit `url` is `efa://manual/<doc-id>`, which the in-app router already resolves. |
+| `fit/mod.rs` | `FitToolContext`, `FitToolError`, and the fit summary/stat/attr/validation report structs backed by the fitting engine. |
+| `fit/schema.rs` | DTOs for the fit payload pushed by the app (used by `load_fit`). |
+| `fit/edit.rs` | What-if fit edit operations applied to a copy of the attached fit. |
+| `fit/tools.rs` | The fit tool definitions (`get_current_fit`, `get_fit_stats`, `get_item`, `get_attr`, `validate_fit`, `propose_fit_edit`, and the app-state `search_items`/`list_user_fits`/`load_fit`). |
 
 Behavioral notes:
 

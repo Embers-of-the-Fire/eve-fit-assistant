@@ -2,8 +2,8 @@ use rig::client::ModelListingClient;
 use rig::model::ModelList;
 use rig::providers::{anthropic, deepseek, openai};
 
-use crate::config::ChatProviderKind;
-use crate::error::ChatError;
+use crate::core::config::ChatProviderKind;
+use crate::core::error::ChatError;
 
 /// A model exposed by a provider's list endpoint.
 #[derive(Debug)]
@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn rejects_empty_api_key() {
-        let err = crate::runtime()
+        let err = crate::host::runtime::runtime()
             .block_on(list_models(
                 ChatProviderKind::OpenAiCompatible,
                 "",

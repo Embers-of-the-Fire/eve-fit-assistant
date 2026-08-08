@@ -71,8 +71,8 @@ impl PortableTool for GetCurrentFitTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/get_current_fit/en.prompt"),
-            include_str!("../../prompt/tool/get_current_fit/zh.prompt"),
+            include_str!("../../../prompt/tool/get_current_fit/en.prompt"),
+            include_str!("../../../prompt/tool/get_current_fit/zh.prompt"),
         )
     }
 
@@ -121,8 +121,8 @@ impl PortableTool for GetFitStatsTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/get_fit_stats/en.prompt"),
-            include_str!("../../prompt/tool/get_fit_stats/zh.prompt"),
+            include_str!("../../../prompt/tool/get_fit_stats/en.prompt"),
+            include_str!("../../../prompt/tool/get_fit_stats/zh.prompt"),
         )
     }
 
@@ -165,8 +165,8 @@ impl PortableTool for GetItemTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/get_item/en.prompt"),
-            include_str!("../../prompt/tool/get_item/zh.prompt"),
+            include_str!("../../../prompt/tool/get_item/en.prompt"),
+            include_str!("../../../prompt/tool/get_item/zh.prompt"),
         )
     }
 
@@ -225,8 +225,8 @@ impl PortableTool for GetAttrTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/get_attr/en.prompt"),
-            include_str!("../../prompt/tool/get_attr/zh.prompt"),
+            include_str!("../../../prompt/tool/get_attr/en.prompt"),
+            include_str!("../../../prompt/tool/get_attr/zh.prompt"),
         )
     }
 
@@ -288,8 +288,8 @@ impl PortableTool for ValidateFitTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/validate_fit/en.prompt"),
-            include_str!("../../prompt/tool/validate_fit/zh.prompt"),
+            include_str!("../../../prompt/tool/validate_fit/en.prompt"),
+            include_str!("../../../prompt/tool/validate_fit/zh.prompt"),
         )
     }
 
@@ -331,8 +331,8 @@ impl PortableTool for ProposeFitEditTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/propose_fit_edit/en.prompt"),
-            include_str!("../../prompt/tool/propose_fit_edit/zh.prompt"),
+            include_str!("../../../prompt/tool/propose_fit_edit/en.prompt"),
+            include_str!("../../../prompt/tool/propose_fit_edit/zh.prompt"),
         )
     }
 
@@ -402,8 +402,8 @@ impl PortableTool for SearchItemsTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/search_items/en.prompt"),
-            include_str!("../../prompt/tool/search_items/zh.prompt"),
+            include_str!("../../../prompt/tool/search_items/en.prompt"),
+            include_str!("../../../prompt/tool/search_items/zh.prompt"),
         )
     }
 
@@ -458,8 +458,8 @@ impl PortableTool for ListUserFitsTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/list_user_fits/en.prompt"),
-            include_str!("../../prompt/tool/list_user_fits/zh.prompt"),
+            include_str!("../../../prompt/tool/list_user_fits/en.prompt"),
+            include_str!("../../../prompt/tool/list_user_fits/zh.prompt"),
         )
     }
 
@@ -501,8 +501,8 @@ impl PortableTool for LoadFitTool {
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../prompt/tool/load_fit/en.prompt"),
-            include_str!("../../prompt/tool/load_fit/zh.prompt"),
+            include_str!("../../../prompt/tool/load_fit/en.prompt"),
+            include_str!("../../../prompt/tool/load_fit/zh.prompt"),
         )
     }
 
