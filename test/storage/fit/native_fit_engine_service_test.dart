@@ -28,6 +28,9 @@ class _StubFitEngineData implements native_server.FitEngineData {
 
   @override
   bool get isDisposed => false;
+
+  @override
+  native_server.FitEngineData share() => this;
 }
 
 class _StubFitEngine implements native_server.FitEngine {
@@ -36,6 +39,9 @@ class _StubFitEngine implements native_server.FitEngine {
 
   @override
   bool get isDisposed => false;
+
+  @override
+  native_server.FitEngineData shareData() => _StubFitEngineData();
 
   @override
   Future<native_output.Ship> emulate({required native_storage.FitStorage fit}) =>

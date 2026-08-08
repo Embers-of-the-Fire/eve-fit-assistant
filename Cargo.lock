@@ -2094,7 +2094,10 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 name = "efa-chat"
 version = "0.1.0"
 dependencies = [
+ "dotenvy",
+ "eve-fit-os",
  "futures",
+ "log",
  "rig",
  "serde",
  "serde_json",
@@ -5634,6 +5637,7 @@ dependencies = [
  "efa-chat",
  "eve-fit-os",
  "flutter_rust_bridge",
+ "log",
 ]
 
 [[package]]

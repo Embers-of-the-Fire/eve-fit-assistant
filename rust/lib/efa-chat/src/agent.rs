@@ -1,5 +1,5 @@
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, RwLock};
 
 use futures::StreamExt;
 use rig::agent::Agent;
@@ -12,12 +12,17 @@ use rig::streaming::{StreamedAssistantContent, StreamedUserContent, ToolCallDelt
 use crate::config::{ChatProviderConfig, ChatProviderKind};
 use crate::error::ChatError;
 use crate::event::ChatEvent;
+use crate::fit::{ActiveFit, AttributeNames, FitCallbacks, FitToolContext};
 use crate::manual::{ManualCorpus, ManualDocTool, ManualSearchTool};
 
 pub struct ChatAgent {
     config: ChatProviderConfig,
     history: Vec<Message>,
     manual_corpus: Option<Arc<ManualCorpus>>,
+    fit_engine: Option<Arc<eve_fit_os::protobuf::Database>>,
+    attr_names: Arc<AttributeNames>,
+    active_fit: Arc<RwLock<Option<ActiveFit>>>,
+    fit_callbacks: Option<Arc<FitCallbacks>>,
 }
 
 /// A per-turn agent for one of the supported providers (enum dispatch over
@@ -35,6 +40,10 @@ impl ChatAgent {
             config,
             history: Vec::new(),
             manual_corpus: None,
+            fit_engine: None,
+            attr_names: Arc::new(AttributeNames::default()),
+            active_fit: Arc::new(RwLock::new(None)),
+            fit_callbacks: None,
         })
     }
 
@@ -69,6 +78,37 @@ impl ChatAgent {
         };
     }
 
+    /// Attach the fitting-engine database, exposing the fit tools
+    /// (`get_current_fit`, `get_fit_stats`, `get_item`, `get_attr`,
+    /// `validate_fit`) to the model on subsequent turns.
+    pub fn set_fit_engine(&mut self, engine: Arc<eve_fit_os::protobuf::Database>) {
+        self.fit_engine = Some(engine);
+    }
+
+    /// Detach the fitting engine and any attached fit, hiding the fit tools.
+    pub fn clear_fit_engine(&mut self) {
+        self.fit_engine = None;
+        self.set_active_fit(None);
+    }
+
+    /// Update the dogma-attribute name lookup used by the `get_attr` and
+    /// `get_item` tools; keyed by attribute id.
+    pub fn set_attribute_names(&mut self, names: HashMap<i32, String>) {
+        self.attr_names = Arc::new(AttributeNames::from_by_id(names));
+    }
+
+    /// Attach (or clear, with `None`) the fit the fit tools operate on.
+    pub fn set_active_fit(&mut self, fit: Option<ActiveFit>) {
+        let mut guard = self.active_fit.write().unwrap_or_else(|e| e.into_inner());
+        *guard = fit;
+    }
+
+    /// Attach the app-provided callbacks backing the app-state fit tools
+    /// (`search_items`, `list_user_fits`, `load_fit`).
+    pub fn set_fit_callbacks(&mut self, callbacks: FitCallbacks) {
+        self.fit_callbacks = Some(Arc::new(callbacks));
+    }
+
     fn attach_tools<M>(&self, builder: rig::agent::AgentBuilder<M>) -> Agent<M>
     where
         M: CompletionModel + 'static,
@@ -76,13 +116,33 @@ impl ChatAgent {
         let builder = builder
             .preamble(&self.config.full_system_prompt())
             .temperature(0.2);
-        match &self.manual_corpus {
-            Some(corpus) => builder
+        // The static `.tool()` builder is type-state based and cannot be
+        // conditional, so the fit toolset goes through the dynamic-tool path.
+        let mut builder = match &self.fit_engine {
+            Some(engine) => {
+                let mut context = FitToolContext::new(
+                    engine.clone(),
+                    self.active_fit.clone(),
+                    self.attr_names.clone(),
+                );
+                if let Some(callbacks) = &self.fit_callbacks {
+                    context = context.with_callbacks(callbacks.clone());
+                }
+                builder.dynamic_tools(
+                    crate::fit::tools::fit_tools(context)
+                        .into_iter()
+                        .map(rig::tool::DynamicTool::from)
+                        .collect(),
+                )
+            }
+            None => builder.dynamic_tools(vec![]),
+        };
+        if let Some(corpus) = &self.manual_corpus {
+            builder = builder
                 .tool(ManualSearchTool::new(corpus.clone()))
-                .tool(ManualDocTool::new(corpus.clone()))
-                .build(),
-            None => builder.build(),
+                .tool(ManualDocTool::new(corpus.clone()));
         }
+        builder.build()
     }
 
     fn build_agent(&self) -> Result<TurnAgent, ChatError> {
@@ -117,90 +177,110 @@ impl ChatAgent {
         Ok(agent)
     }
 
-    pub async fn chat_turn(&mut self, prompt: &str) -> Result<String, ChatError> {
-        let agent = self.build_agent()?;
-        let max_turns = self.config.max_turns;
-        match &agent {
-            TurnAgent::OpenAiCompatible(agent) => {
-                drive_chat(agent, prompt, &mut self.history, max_turns).await
-            }
-            TurnAgent::Anthropic(agent) => {
-                drive_chat(agent, prompt, &mut self.history, max_turns).await
-            }
-            TurnAgent::DeepSeek(agent) => {
-                drive_chat(agent, prompt, &mut self.history, max_turns).await
-            }
+    /// Snapshot everything a single turn needs (the per-turn agent, history
+    /// and multi-turn depth) so it can run WITHOUT holding the session lock.
+    /// Fast; callers should hold the session lock only for this call.
+    pub fn prepare_turn(&self) -> Result<PreparedTurn, ChatError> {
+        Ok(PreparedTurn {
+            agent: self.build_agent()?,
+            history: self.history.clone(),
+            max_turns: self.config.max_turns,
+        })
+    }
+
+    /// Commit a completed non-streaming turn's messages to history. Fast;
+    /// callers should hold the session lock only for this call.
+    pub fn commit_chat_turn(&mut self, messages: Option<Vec<Message>>) {
+        if let Some(messages) = messages {
+            self.history.extend(messages);
         }
     }
 
-    pub async fn stream_turn(
-        &mut self,
+    /// Commit a completed streaming turn to history. Fast; callers should
+    /// hold the session lock only for this call.
+    pub fn commit_stream_turn(&mut self, prompt: &str, accumulated: &str) {
+        self.history.push(Message::user(prompt));
+        self.history.push(Message::assistant(accumulated));
+    }
+}
+
+/// A single turn fully prepared from a [`ChatAgent`] snapshot. It owns
+/// everything the turn needs, so it can run without holding the session lock;
+/// only the outcome is committed back via [`ChatAgent::commit_chat_turn`] or
+/// [`ChatAgent::commit_stream_turn`].
+pub struct PreparedTurn {
+    agent: TurnAgent,
+    history: Vec<Message>,
+    max_turns: usize,
+}
+
+impl PreparedTurn {
+    /// Run one non-streaming turn. Returns the assistant output plus the
+    /// turn's messages, to commit via [`ChatAgent::commit_chat_turn`].
+    pub async fn chat(self, prompt: &str) -> Result<(String, Option<Vec<Message>>), ChatError> {
+        let PreparedTurn {
+            agent,
+            history,
+            max_turns,
+        } = self;
+        match &agent {
+            TurnAgent::OpenAiCompatible(agent) => {
+                drive_chat(agent, prompt, history, max_turns).await
+            }
+            TurnAgent::Anthropic(agent) => drive_chat(agent, prompt, history, max_turns).await,
+            TurnAgent::DeepSeek(agent) => drive_chat(agent, prompt, history, max_turns).await,
+        }
+    }
+
+    /// Run one streaming turn, reporting events through [on_event]. Emits
+    /// [`ChatEvent::Done`] on success and returns the accumulated assistant
+    /// text, to commit via [`ChatAgent::commit_stream_turn`].
+    pub async fn stream(
+        self,
         prompt: &str,
         mut on_event: impl FnMut(ChatEvent),
-    ) -> Result<(), ChatError> {
-        let agent = self.build_agent()?;
-        let max_turns = self.config.max_turns;
+    ) -> Result<String, ChatError> {
+        let PreparedTurn {
+            agent,
+            history,
+            max_turns,
+        } = self;
         let accumulated = match &agent {
             TurnAgent::OpenAiCompatible(agent) => {
-                drive_stream(
-                    agent,
-                    prompt,
-                    self.history.clone(),
-                    max_turns,
-                    &mut on_event,
-                )
-                .await?
+                drive_stream(agent, prompt, history, max_turns, &mut on_event).await?
             }
             TurnAgent::Anthropic(agent) => {
-                drive_stream(
-                    agent,
-                    prompt,
-                    self.history.clone(),
-                    max_turns,
-                    &mut on_event,
-                )
-                .await?
+                drive_stream(agent, prompt, history, max_turns, &mut on_event).await?
             }
             TurnAgent::DeepSeek(agent) => {
-                drive_stream(
-                    agent,
-                    prompt,
-                    self.history.clone(),
-                    max_turns,
-                    &mut on_event,
-                )
-                .await?
+                drive_stream(agent, prompt, history, max_turns, &mut on_event).await?
             }
         };
-        self.history.push(Message::user(prompt));
-        self.history.push(Message::assistant(accumulated.clone()));
-        on_event(ChatEvent::Done(accumulated));
-        Ok(())
+        on_event(ChatEvent::Done(accumulated.clone()));
+        Ok(accumulated)
     }
 }
 
 /// Drive one non-streaming turn (rig's `Chat::chat` with a configurable
-/// multi-turn depth), appending the turn's messages to [history].
+/// multi-turn depth). Returns the assistant output plus the turn's messages;
+/// the caller commits them to session history.
 async fn drive_chat<M>(
     agent: &Agent<M>,
     prompt: &str,
-    history: &mut Vec<Message>,
+    history: Vec<Message>,
     max_turns: usize,
-) -> Result<String, ChatError>
+) -> Result<(String, Option<Vec<Message>>), ChatError>
 where
     M: CompletionModel + 'static,
 {
     let response = agent
         .prompt(prompt.to_string())
-        .history(history.clone())
+        .history(history)
         .max_turns(max_turns)
         .extended_details()
         .await
         .map_err(|e| ChatError::Completion(e.to_string()))?;
-    if let Some(messages) = response.messages {
-        history.extend(messages);
-    }
-    Ok(response.output)
+    Ok((response.output, response.messages))
 }
 
 /// Drive one streaming turn, reporting text deltas and tool-call lifecycle
@@ -397,6 +477,32 @@ mod tests {
         assert_eq!(agent.history().len(), 2);
         agent.clear_history();
         assert!(agent.history().is_empty());
+    }
+
+    #[test]
+    fn prepare_turn_snapshots_without_touching_history() {
+        let mut agent = ChatAgent::new(test_config()).unwrap();
+        agent.restore_history(vec![Message::user("a")]);
+        // Preparing must not mutate history; the prepared turn owns a snapshot.
+        agent.prepare_turn().unwrap();
+        assert_eq!(agent.history().len(), 1);
+    }
+
+    #[test]
+    fn commit_stream_turn_appends_user_and_assistant() {
+        let mut agent = ChatAgent::new(test_config()).unwrap();
+        agent.commit_stream_turn("hello", "world");
+        assert_eq!(agent.history().len(), 2);
+    }
+
+    #[test]
+    fn commit_chat_turn_extends_with_returned_messages() {
+        let mut agent = ChatAgent::new(test_config()).unwrap();
+        agent.commit_chat_turn(Some(vec![Message::user("a"), Message::assistant("b")]));
+        assert_eq!(agent.history().len(), 2);
+        // `None` (a provider that returned no message list) commits nothing.
+        agent.commit_chat_turn(None);
+        assert_eq!(agent.history().len(), 2);
     }
 
     #[test]

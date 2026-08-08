@@ -171,6 +171,34 @@ class LocalizationDbService {
     };
   }
 
+  /// Searches localized names by case-insensitive substring, returning up to
+  /// [limit] `id → name` matches ordered by shortest (most specific) name
+  /// first. Used by the chat fit tools to resolve item names to type ids.
+  Future<Map<int, String>> searchNames(String query, String locale, {int limit = 20}) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return const {};
+    final escaped = trimmed
+        .replaceAll(r"\", r"\\")
+        .replaceAll("%", r"\%")
+        .replaceAll("_", r"\_");
+    try {
+      final rows = await _db.getAll(
+        "SELECT id, value FROM strings "
+        "WHERE locale = ? AND value LIKE ? ESCAPE '\\' "
+        "ORDER BY LENGTH(value) ASC LIMIT ?",
+        [locale, "%$escaped%", limit],
+      );
+      return {
+        for (final row in rows)
+          if (row["value"]! is String && (row["value"]! as String).isNotEmpty)
+            row["id"]! as int: row["value"]! as String,
+      };
+    } on Object catch (e, st) {
+      warning("Localization name search failed: $e", stackTrace: st);
+      return const {};
+    }
+  }
+
   /// Schedules a flush of all pending lookups.
   ///
   /// A batch that follows an idle period (e.g. a list opening) flushes on the

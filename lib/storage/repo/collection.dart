@@ -368,6 +368,7 @@ class RepoCollectionService {
   pb_meta.MetaGroup? getMetaGroup(int metaGroupId) => _metaGroups[metaGroupId];
   pb_units.DogmaUnit? getDogmaUnit(int unitId) => _dogmaUnits[unitId];
   pb_attrs.DogmaAttribute? getDogmaAttribute(int attributeId) => _dogmaAttributes[attributeId];
+  IMap<int, pb_attrs.DogmaAttribute> get dogmaAttributes => _dogmaAttributes;
   Subsystem? getSubsystem(int typeId) => _subsystems[typeId];
   pb_materials.TypeMaterial? getTypeMaterial(int typeId) => _typeMaterials[typeId];
   pb_dynamic.DynamicMutator? getDynamicMutator(int mutatorId) => _dynamicMutators[mutatorId];
