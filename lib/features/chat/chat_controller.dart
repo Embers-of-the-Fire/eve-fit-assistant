@@ -79,15 +79,17 @@ class ChatController extends _$ChatController {
     final trimmed = text.trim();
     if (trimmed.isEmpty || state.sending) return;
 
+    state = state.copyWith(sending: true);
+
     final apiKey = await ref.read(aiChatApiKeyProvider.future);
     if (apiKey == null || apiKey.isEmpty) {
-      state = state.copyWith(error: "missing-api-key", failedText: trimmed);
+      state = state.copyWith(sending: false, error: "missing-api-key", failedText: trimmed);
       return;
     }
 
     final session = _ensureSession(apiKey);
     if (session == null) {
-      state = state.copyWith(error: "session-init-failed", failedText: trimmed);
+      state = state.copyWith(sending: false, error: "session-init-failed", failedText: trimmed);
       return;
     }
 
