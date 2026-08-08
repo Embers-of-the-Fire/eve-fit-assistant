@@ -13,8 +13,9 @@ served from Cloudflare Pages.
 
 ## Deployment Pipeline
 
-- `web-preview.yml` — PRs to `dev` that touch web bundle inputs get a branch
-  preview on `efa-app-nightly`; closing the PR deletes the preview.
+- `web-preview.yml` — PRs to `dev` that touch web bundle inputs and carry the
+  `D-CI-Page Preview` label (or `D-Full CI`) get a branch preview on
+  `efa-app-nightly`; closing the PR deletes the preview.
 - `site-nightly.yml` — daily cron that rebuilds and deploys `dev` to
   `efa-app-nightly` when the bundle changed.
 - `_release.yml` — real releases deploy to `efa-app` (test mode deploys to

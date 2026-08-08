@@ -5,6 +5,7 @@ permissions:
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     branches: [dev]
 
 concurrency:
@@ -45,11 +46,16 @@ jobs:
     # Fork PRs cannot access the deployment environments, so they get no
     # preview; skip the build entirely. Release PRs (V-Release) get their web
     # bundle built and deployed by release-full.yml's site/site-deploy jobs
-    # instead, so skip the duplicate build here.
+    # instead, so skip the duplicate build here. Otherwise the preview is
+    # gated on an explicit CI label.
     if: >-
       needs.changes.outputs.build == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      !contains(github.event.pull_request.labels.*.name, 'V-Release')
+      !contains(github.event.pull_request.labels.*.name, 'V-Release') &&
+      (
+        contains(github.event.pull_request.labels.*.name, 'D-CI-Page Preview') ||
+        contains(github.event.pull_request.labels.*.name, 'D-Full CI')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
