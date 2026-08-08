@@ -10,6 +10,7 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/repo/agent_resource_db.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -154,12 +155,21 @@ Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) asyn
 }
 
 Future<String> _searchItems(Ref ref, String query, String? language) async {
+  final collection = ref.read(repoCollectionProvider);
+  if (collection == null) return "[]";
+  // Hard dependency, but Dart exceptions cannot cross the FRB callback
+  // boundary (the generated binding panics on them), so an unavailable
+  // database is reported to the model as an error payload instead.
+  final AgentResourceDbService agentDb;
   try {
-    final collection = ref.read(repoCollectionProvider);
-    final localization = await ref.read(localizationDbServiceProvider.future);
-    if (collection == null || localization == null) return "[]";
+    agentDb = await ref.read(agentResourceDbServiceProvider.future);
+  } on Object catch (e, st) {
+    warning("chat: search_items database unavailable: $e", stackTrace: st);
+    return jsonEncode({"error": "item search is unavailable: $e"});
+  }
+  try {
     final locale = _searchLocale(ref, language);
-    final hits = await localization.searchNames(query, locale, limit: 40);
+    final hits = await agentDb.searchTypeNames(query, locale, limit: 40);
     final results = <Map<String, Object?>>[];
     for (final entry in hits.entries) {
       final type = collection.getType(entry.key);
