@@ -5,7 +5,12 @@ class EveConstCategoryId {
   const EveConstCategoryId._();
 
   static const int ship = 6;
+  static const int module = 7;
+  static const int charge = 8;
   static const int skill = 16;
+  static const int drone = 18;
+  static const int implant = 20;
+  static const int fighter = 87;
 }
 
 class EveConstMarketGroupId {

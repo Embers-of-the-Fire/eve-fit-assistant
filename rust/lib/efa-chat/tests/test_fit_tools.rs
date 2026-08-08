@@ -267,12 +267,12 @@ fn tool_descriptions_follow_context_language() {
 }
 
 #[test]
-fn search_items_passes_language_to_callback() {
+fn search_items_passes_language_and_kind_to_callback() {
     let captured = Arc::new(Mutex::new(Vec::new()));
     let sink = captured.clone();
     let callbacks = FitCallbacks {
-        search_items: Arc::new(move |query, language| {
-            sink.lock().unwrap().push((query, language));
+        search_items: Arc::new(move |query, language, kind| {
+            sink.lock().unwrap().push((query, language, kind));
             Box::pin(async move { "[]".to_string() })
         }),
         list_fits: Arc::new(|| Box::pin(async move { "[]".to_string() })),
@@ -280,22 +280,23 @@ fn search_items_passes_language_to_callback() {
     };
     let context = test_context().with_callbacks(Arc::new(callbacks));
     efa_chat::host::runtime::runtime()
-        .block_on(context.search_items("extender", Some("zh")))
+        .block_on(context.search_items("extender", Some("zh"), None))
         .unwrap();
     efa_chat::host::runtime::runtime()
-        .block_on(context.search_items("large shield extender", None))
+        .block_on(context.search_items("halcyon", None, Some("booster")))
         .unwrap();
     assert_eq!(
         *captured.lock().unwrap(),
         vec![
-            ("extender".to_string(), Some("zh".to_string())),
-            ("large shield extender".to_string(), None),
+            ("extender".to_string(), Some("zh".to_string()), None),
+            ("halcyon".to_string(), None, Some("booster".to_string())),
         ]
     );
-    // The tool schema advertises the optional language parameter.
+    // The tool schema advertises the optional language and kind parameters.
     let tools = efa_chat::tools::fit::tools::fit_tools(context);
     let search = tools.iter().find(|t| t.name() == "search_items").unwrap();
     assert!(search.definition().parameters["properties"]["language"].is_object());
+    assert!(search.definition().parameters["properties"]["kind"].is_object());
 }
 
 #[test]
@@ -317,4 +318,159 @@ fn propose_edit_set_charge_and_state() {
         .unwrap();
     assert_eq!(proposal.applied.len(), 2);
     assert!(proposal.rejected.is_empty());
+}
+
+#[test]
+fn propose_edit_adds_and_removes_drones() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let context = test_context();
+    let proposal = context
+        .propose_edit(&[
+            // Existing drone type: joins the same group.
+            Op::AddDrone {
+                type_id: 2488,
+                state: None,
+            },
+            // New drone type in space.
+            Op::AddDrone {
+                type_id: 23525,
+                state: Some("space".to_string()),
+            },
+        ])
+        .unwrap();
+    assert_eq!(proposal.applied.len(), 2);
+    assert!(proposal.rejected.is_empty());
+    assert!(proposal.applied[0].contains("bay"));
+    assert!(proposal.applied[1].contains("space"));
+
+    let proposal = context
+        .propose_edit(&[
+            Op::SetDroneState {
+                type_id: 2488,
+                state: "space".to_string(),
+            },
+            Op::RemoveDrone { type_id: 2488 },
+            Op::RemoveDrone { type_id: 99999 },
+        ])
+        .unwrap();
+    assert_eq!(proposal.applied.len(), 2);
+    assert_eq!(proposal.rejected.len(), 1);
+    assert!(proposal.rejected[0].contains("99999"));
+
+    // The user's attached fit still has its original two drones.
+    let summary = context.current_fit(false).unwrap();
+    assert_eq!(
+        summary
+            .drones
+            .iter()
+            .map(|group| group.count)
+            .sum::<usize>(),
+        2
+    );
+}
+
+#[test]
+fn propose_edit_rejects_bad_drone_state() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let context = test_context();
+    let proposal = context
+        .propose_edit(&[Op::AddDrone {
+            type_id: 2488,
+            state: Some("overload".to_string()),
+        }])
+        .unwrap();
+    assert!(proposal.applied.is_empty());
+    assert_eq!(proposal.rejected.len(), 1);
+}
+
+#[test]
+fn propose_edit_adds_and_removes_fighters() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let context = test_context();
+    let proposal = context
+        .propose_edit(&[
+            Op::AddFighter {
+                type_id: 40560,
+                ability: None,
+            },
+            Op::AddFighter {
+                type_id: 40560,
+                ability: Some(0b0101),
+            },
+        ])
+        .unwrap();
+    assert_eq!(proposal.applied.len(), 2);
+    assert!(proposal.rejected.is_empty());
+    assert!(proposal.applied[0].contains("ability 0"));
+    assert!(proposal.applied[1].contains("ability 5"));
+
+    let proposal = context
+        .propose_edit(&[
+            Op::RemoveFighter { type_id: 40560 },
+            Op::RemoveFighter { type_id: 99999 },
+        ])
+        .unwrap();
+    // Nothing was attached for real; both removals reject.
+    assert!(proposal.applied.is_empty());
+    assert_eq!(proposal.rejected.len(), 2);
+}
+
+#[test]
+fn propose_edit_sets_and_removes_implants_and_boosters() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let context = test_context();
+    let proposal = context
+        .propose_edit(&[
+            Op::SetImplant {
+                type_id: 33516,
+                slot: 1,
+            },
+            // Replacing the same slot succeeds.
+            Op::SetImplant {
+                type_id: 33525,
+                slot: 1,
+            },
+            Op::SetBooster {
+                type_id: 81083,
+                slot: 2,
+            },
+        ])
+        .unwrap();
+    assert_eq!(proposal.applied.len(), 3);
+    assert!(proposal.rejected.is_empty());
+
+    let proposal = context
+        .propose_edit(&[
+            Op::RemoveImplant { slot: 1 },
+            Op::RemoveBooster { slot: 2 },
+            Op::RemoveImplant { slot: 9 },
+        ])
+        .unwrap();
+    // The attached fit has no implants/boosters, so all removals reject.
+    assert!(proposal.applied.is_empty());
+    assert_eq!(proposal.rejected.len(), 3);
+}
+
+#[test]
+fn propose_edit_rejects_out_of_range_slots() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let context = test_context();
+    let proposal = context
+        .propose_edit(&[
+            Op::SetImplant {
+                type_id: 33516,
+                slot: 0,
+            },
+            Op::SetImplant {
+                type_id: 33516,
+                slot: 11,
+            },
+            Op::SetBooster {
+                type_id: 81083,
+                slot: 4,
+            },
+        ])
+        .unwrap();
+    assert!(proposal.applied.is_empty());
+    assert_eq!(proposal.rejected.len(), 3);
 }

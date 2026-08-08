@@ -39,7 +39,7 @@ The crate is organized into three top-level modules: `core` (the agent layer),
 | `manual.rs` | In-memory manual corpus + rig `PortableTool`s. `ManualCorpus` groups `ManualDocText` localizations by path-joined doc id (`from_rows`); `search(keywords, language, limit)` does case-insensitive substring matching (zh-safe) ranked by distinct-keyword count then title>summary>body field weight, with a char-window snippet; `get(id, language)` returns the full body. Locale resolution mirrors Dart's `resolveLocalizedKey` (exact → language prefix → `en` → first); `language: None` searches all locales. Tools: `search_manual` (`{keywords[], language?, limit?}` → hits with `id`/`url`/`snippet`/`matched_keywords`) and `get_manual_doc` (`{id, language?}` → full content); hit `url` is `efa://manual/<doc-id>`, which the in-app router already resolves. |
 | `fit/mod.rs` | `FitToolContext`, `FitToolError`, and the fit summary/stat/attr/validation report structs backed by the fitting engine. |
 | `fit/schema.rs` | DTOs for the fit payload pushed by the app (used by `load_fit`). |
-| `fit/edit.rs` | What-if fit edit operations applied to a copy of the attached fit. |
+| `fit/edit.rs` | What-if fit edit operations applied to a copy of the attached fit: module ops (`add_module`/`remove_module`/`set_module_charge`/`set_module_state`), drone ops (`add_drone`/`remove_drone`/`set_drone_state`; state is `bay`/`space`, same-type drones share a group), fighter ops (`add_fighter`/`remove_fighter`; `ability` bitmask 1/2/4/8 = attack turret/missiles/attack missile/bomb, default 0), and slot ops (`set_implant`/`remove_implant` slots 1-10, `set_booster`/`remove_booster` slots 1-3; `set_*` replaces the slot's current item). |
 | `fit/tools.rs` | The fit tool definitions (`get_current_fit`, `get_fit_stats`, `get_item`, `get_attr`, `validate_fit`, `propose_fit_edit`, and the app-state `search_items`/`list_user_fits`/`load_fit`). |
 
 Behavioral notes:
@@ -75,8 +75,12 @@ Exposes the crate to Dart. Follows the FRB threading rules from AGENTS.md:
 - `ChatManualDoc` + `ChatSession::set_manual_docs` (`#[frb(sync)]`) hand the bundled manual
   corpus (flat doc×locale rows) to the agent, enabling the manual tools.
 - `ChatSession::set_fit_callbacks` (`#[frb(sync)]`) registers the app-state callbacks behind
-  `search_items`/`list_user_fits`/`load_fit`; `search_items` receives `(query, language?)`,
-  where `language` selects the name localization to search (omitted → app display language).
+  `search_items`/`list_user_fits`/`load_fit`; `search_items` receives `(query, language?, kind?)`,
+  where `language` selects the name localization to search (omitted → app display language) and
+  `kind` optionally restricts results to one item kind (`ship`/`module`/`charge`/`drone`/
+  `fighter`/`implant`/`booster`). The kind filter is applied inside the agent resource database
+  query (schema v2 `type_names` columns `group_id`/`category_id`/`slot_index`/`slot_kind`);
+  implant and booster hits carry `slot_index` for `propose_fit_edit`'s `set_implant`/`set_booster`.
 
 After changing these signatures run `./x generate rust`.
 
