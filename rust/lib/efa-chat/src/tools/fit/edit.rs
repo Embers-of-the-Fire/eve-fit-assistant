@@ -361,24 +361,31 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
             },
 
             FitEditOp::AddFighter { type_id, ability } => {
-                let ability = FighterAbility::from_bits_retain(ability.unwrap_or(0));
-                let group_id = next_group_id(
-                    edited
-                        .fit
-                        .fighters
-                        .iter()
-                        .map(|fighter| (fighter.type_id, fighter.group_id)),
-                    *type_id,
-                );
-                edited.fit.fighters.push(ItemFighter {
-                    type_id: *type_id,
-                    group_id,
-                    ability,
-                });
-                applied.push(format!(
-                    "add fighter {type_id} (ability {})",
-                    ability.bits()
-                ));
+                let bits = ability.unwrap_or(0);
+                match FighterAbility::from_bits(bits) {
+                    Some(ability) => {
+                        let group_id = next_group_id(
+                            edited
+                                .fit
+                                .fighters
+                                .iter()
+                                .map(|fighter| (fighter.type_id, fighter.group_id)),
+                            *type_id,
+                        );
+                        edited.fit.fighters.push(ItemFighter {
+                            type_id: *type_id,
+                            group_id,
+                            ability,
+                        });
+                        applied.push(format!(
+                            "add fighter {type_id} (ability {})",
+                            ability.bits()
+                        ));
+                    }
+                    None => rejected.push(format!(
+                        "add_fighter {type_id}: unsupported ability bits {bits:#06b} (only 0..=0b1111 are defined)"
+                    )),
+                }
             }
 
             FitEditOp::RemoveFighter { type_id } => {

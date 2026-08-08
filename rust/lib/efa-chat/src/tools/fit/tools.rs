@@ -369,7 +369,7 @@ impl PortableTool for ProposeFitEditTool {
                             },
                             "charge_type_id": { "type": "integer", "description": "Charge type id, or omit to clear" },
                             "slot": { "type": "integer", "description": "Implant (1-10) or booster (1-3) slot; take it from the search_items slot_index" },
-                            "ability": { "type": "integer", "description": "Fighter ability bitmask: 1 attack turret, 2 missiles, 4 attack missile, 8 bomb (default 0)" }
+                            "ability": { "type": "integer", "minimum": 0, "maximum": 15, "description": "Fighter ability bitmask: 1 attack turret, 2 missiles, 4 attack missile, 8 bomb (default 0)" }
                         },
                         "required": ["op"]
                     }

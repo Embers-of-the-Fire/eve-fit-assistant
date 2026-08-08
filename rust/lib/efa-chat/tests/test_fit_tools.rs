@@ -397,12 +397,17 @@ fn propose_edit_adds_and_removes_fighters() {
                 type_id: 40560,
                 ability: Some(0b0101),
             },
+            Op::AddFighter {
+                type_id: 40560,
+                ability: Some(0b1_0000),
+            },
         ])
         .unwrap();
     assert_eq!(proposal.applied.len(), 2);
-    assert!(proposal.rejected.is_empty());
+    assert_eq!(proposal.rejected.len(), 1);
     assert!(proposal.applied[0].contains("ability 0"));
     assert!(proposal.applied[1].contains("ability 5"));
+    assert!(proposal.rejected[0].contains("unsupported ability bits"));
 
     let proposal = context
         .propose_edit(&[
