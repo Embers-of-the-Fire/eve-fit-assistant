@@ -89,8 +89,10 @@ pub type FitToolFuture = Pin<Box<dyn Future<Output = String> + Send>>;
 /// `list_user_fits`, `load_fit`). All callbacks return JSON strings.
 #[derive(Clone)]
 pub struct FitCallbacks {
-    /// `(query) -> [{type_id, name, group_id, category_id}, ...]`
-    pub search_items: Arc<dyn Fn(String) -> FitToolFuture + Send + Sync>,
+    /// `(query, language) -> [{type_id, name, group_id, category_id}, ...]`;
+    /// `language` is the localization to search (`None` selects the app's
+    /// display language).
+    pub search_items: Arc<dyn Fn(String, Option<String>) -> FitToolFuture + Send + Sync>,
     /// `() -> [{fit_id, name, ship_type_id, last_modified}, ...]`
     pub list_fits: Arc<dyn Fn() -> FitToolFuture + Send + Sync>,
     /// `(fit_id) -> FitPayload JSON (see `schema::FitPayload`) or
@@ -758,12 +760,19 @@ impl FitToolContext {
     }
 
     /// Search the app's item database by (localized) name substring.
-    pub async fn search_items(&self, query: &str) -> Result<serde_json::Value, FitToolError> {
+    /// [language] selects the localization to search (`None` defers to the
+    /// app's display language).
+    pub async fn search_items(
+        &self,
+        query: &str,
+        language: Option<&str>,
+    ) -> Result<serde_json::Value, FitToolError> {
         let Some(callbacks) = &self.callbacks else {
             return Err(FitToolError::CallbacksUnavailable);
         };
         let started = Instant::now();
-        let raw = (callbacks.search_items)(query.to_string()).await;
+        let raw =
+            (callbacks.search_items)(query.to_string(), language.map(|l| l.to_string())).await;
         log::debug!(
             "[chat] search_items: Dart callback returned in {}ms",
             started.elapsed().as_millis()

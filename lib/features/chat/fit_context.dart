@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
@@ -53,9 +54,9 @@ native_server.FitEngine? attachFitEngine(Ref ref, native_chat.ChatSession sessio
 void attachAttributeNames(Ref ref, native_chat.ChatSession session) {
   final collection = ref.read(repoCollectionProvider);
   if (collection == null) return;
-  session.setAttributeNames(names: {
-    for (final entry in collection.dogmaAttributes.entries) entry.key: entry.value.name,
-  });
+  session.setAttributeNames(
+    names: {for (final entry in collection.dogmaAttributes.entries) entry.key: entry.value.name},
+  );
 }
 
 /// Push the fit attached via [chatAttachedFitIdProvider] into [session].
@@ -85,10 +86,10 @@ Future<void> pushAttachedFit(Ref ref, native_chat.ChatSession session) async {
   final locale = ref.read(localeProvider).name;
   final localization = await ref.read(localizationDbServiceProvider.future);
   if (localization == null) return;
-  final names = await localization.localizedNames(
-    {...referencedTypeIds(fit), ...skills.keys},
-    locale,
-  );
+  final names = await localization.localizedNames({
+    ...referencedTypeIds(fit),
+    ...skills.keys,
+  }, locale);
 
   session.setFitContext(name: fit.metadata.name, fit: nativeFit, names: names);
   debug("chat: attached fit ${fit.metadata.fitId} to chat session");
@@ -143,7 +144,7 @@ Set<int> referencedTypeIds(FitStorage fit) {
 Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) async {
   try {
     session.setFitCallbacks(
-      searchItems: (query) => _searchItems(ref, query),
+      searchItems: (query, language) => _searchItems(ref, query, language),
       listFits: () => _listFits(ref),
       loadFit: (fitId) => _loadFit(ref, fitId),
     );
@@ -152,12 +153,12 @@ Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) asyn
   }
 }
 
-Future<String> _searchItems(Ref ref, String query) async {
+Future<String> _searchItems(Ref ref, String query, String? language) async {
   try {
     final collection = ref.read(repoCollectionProvider);
     final localization = await ref.read(localizationDbServiceProvider.future);
     if (collection == null || localization == null) return "[]";
-    final locale = ref.read(localeProvider).name;
+    final locale = _searchLocale(ref, language);
     final hits = await localization.searchNames(query, locale, limit: 40);
     final results = <Map<String, Object?>>[];
     for (final entry in hits.entries) {
@@ -176,6 +177,15 @@ Future<String> _searchItems(Ref ref, String query) async {
     warning("chat: search_items failed: $e", stackTrace: st);
     return "[]";
   }
+}
+
+/// Resolves the localization to search item names in: an explicit [language]
+/// tag from the model (zh* → zh, anything else → en, mirroring the prompt
+/// language resolution), or the app's display language when omitted/blank.
+String _searchLocale(Ref ref, String? language) {
+  final tag = language?.trim().toLowerCase() ?? "";
+  if (tag.isEmpty) return ref.read(localeProvider).name;
+  return tag.startsWith("zh") ? Locale.zh.name : Locale.en.name;
 }
 
 Future<String> _listFits(Ref ref) async {
@@ -225,14 +235,9 @@ Future<String> _loadFit(Ref ref, String fitId) async {
     final localization = await ref.read(localizationDbServiceProvider.future);
     final names = localization == null
         ? const <int, String>{}
-        : await localization.localizedNames(
-            {...referencedTypeIds(fit), ...skills.keys},
-            locale,
-          );
+        : await localization.localizedNames({...referencedTypeIds(fit), ...skills.keys}, locale);
 
-    return jsonEncode(
-      encodeFitPayload(fit, characterSkills: skills, names: names),
-    );
+    return jsonEncode(encodeFitPayload(fit, characterSkills: skills, names: names));
   } on Object catch (e, st) {
     warning("chat: load_fit failed for $fitId: $e", stackTrace: st);
     return jsonEncode({"error": "$e"});
@@ -312,10 +317,7 @@ Map<String, Object?> _encodeNativeFit(native_storage.Fit fit) => {
 };
 
 Map<String, Object?> _encodeNativeModule(native_storage.Module m) => {
-  "item_id": m.itemId.when(
-    item: (id) => {"item": id},
-    dynamic_: (id) => {"dynamic": id},
-  ),
+  "item_id": m.itemId.when(item: (id) => {"item": id}, dynamic_: (id) => {"dynamic": id}),
   "slot": {"slot_type": _slotTypeName(m.slot.slotType), "index": m.slot.index},
   "state": _stateName(m.state),
   if (m.charge case final charge?) "charge": {"type_id": charge.typeId},

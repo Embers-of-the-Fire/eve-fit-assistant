@@ -115,10 +115,11 @@ pub struct ChatModelInfo {
 /// callbacks in a shared context that the rig runtime accesses from its
 /// worker threads, so both markers are asserted here.
 ///
-/// The [`ThreadSafeFn::call`]/[`ThreadSafeFn::call_with`] accessors matter:
-/// a closure that invokes them captures the *whole* wrapper (which is
-/// `Send + Sync`), whereas inlining `(wrapper.0)(...)` would make Rust
-/// capture only the non-`Send` inner field.
+/// The [`ThreadSafeFn::call`]/[`ThreadSafeFn::call_with`]/
+/// [`ThreadSafeFn::call_with_search`] accessors matter: a closure that
+/// invokes them captures the *whole* wrapper (which is `Send + Sync`),
+/// whereas inlining `(wrapper.0)(...)` would make Rust capture only the
+/// non-`Send` inner field.
 ///
 /// SAFETY: the wrapped value is only ever a flutter_rust_bridge Dart closure
 /// (see [`ChatSession::set_fit_callbacks`]), whose invocation is thread-safe
@@ -143,11 +144,22 @@ impl<F> ThreadSafeFn<F> {
     {
         (self.0)(arg)
     }
+
+    fn call_with_search(
+        &self,
+        query: String,
+        language: Option<String>,
+    ) -> efa_chat::fit::FitToolFuture
+    where
+        F: Fn(String, Option<String>) -> efa_chat::fit::FitToolFuture,
+    {
+        (self.0)(query, language)
+    }
 }
 
 /// Wrap the three FRB Dart closures into the shared [`FitCallbacks`].
 fn build_fit_callbacks(
-    search_items: impl Fn(String) -> DartFnFuture<String> + 'static,
+    search_items: impl Fn(String, Option<String>) -> DartFnFuture<String> + 'static,
     list_fits: impl Fn() -> DartFnFuture<String> + 'static,
     load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
 ) -> FitCallbacks {
@@ -155,7 +167,9 @@ fn build_fit_callbacks(
     let list_fits = ThreadSafeFn(list_fits);
     let load_fit = ThreadSafeFn(load_fit);
     FitCallbacks {
-        search_items: Arc::new(move |query| search_items.call_with(query)),
+        search_items: Arc::new(move |query, language| {
+            search_items.call_with_search(query, language)
+        }),
         list_fits: Arc::new(move || list_fits.call()),
         load_fit: Arc::new(move |fit_id| load_fit.call_with(fit_id)),
     }
@@ -302,7 +316,9 @@ impl ChatSession {
     /// Register the app-provided callbacks backing the app-state fit tools
     /// (`search_items`, `list_user_fits`, `load_fit`). Each callback returns
     /// a JSON string; `load_fit` must return the fit payload JSON described
-    /// by the chat crate's fit schema (or `{"error": ...}`).
+    /// by the chat crate's fit schema (or `{"error": ...}`). `search_items`
+    /// receives the query plus an optional localization language code
+    /// (`None` defers to the app's display language).
     ///
     /// Deliberately `#[frb(sync)]` with bare `impl Fn(...) -> DartFnFuture<...>`
     /// parameters: that shape is what flutter_rust_bridge recognizes as a Dart
@@ -312,7 +328,7 @@ impl ChatSession {
     #[frb(sync)]
     pub fn set_fit_callbacks(
         &self,
-        search_items: impl Fn(String) -> DartFnFuture<String> + 'static,
+        search_items: impl Fn(String, Option<String>) -> DartFnFuture<String> + 'static,
         list_fits: impl Fn() -> DartFnFuture<String> + 'static,
         load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
     ) {

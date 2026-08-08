@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use efa_chat::config::PromptLanguage;
-use efa_chat::fit::{ActiveFit, AttributeNames, FitToolContext, FitToolError};
+use efa_chat::fit::{ActiveFit, AttributeNames, FitCallbacks, FitToolContext, FitToolError};
 use eve_fit_os::calculate::{DamageProfile, calculate};
 use eve_fit_os::fit::{
     FitContainer, ItemCharge, ItemDrone, ItemFit, ItemModule, ItemSlot, ItemSlotType, ItemState,
@@ -245,6 +245,38 @@ fn tool_descriptions_follow_context_language() {
         assert!(!en.trim().is_empty());
         assert_ne!(en, zh);
     }
+}
+
+#[test]
+fn search_items_passes_language_to_callback() {
+    let captured = Arc::new(Mutex::new(Vec::new()));
+    let sink = captured.clone();
+    let callbacks = FitCallbacks {
+        search_items: Arc::new(move |query, language| {
+            sink.lock().unwrap().push((query, language));
+            Box::pin(async move { "[]".to_string() })
+        }),
+        list_fits: Arc::new(|| Box::pin(async move { "[]".to_string() })),
+        load_fit: Arc::new(|_| Box::pin(async move { "{}".to_string() })),
+    };
+    let context = test_context().with_callbacks(Arc::new(callbacks));
+    efa_chat::runtime()
+        .block_on(context.search_items("extender", Some("zh")))
+        .unwrap();
+    efa_chat::runtime()
+        .block_on(context.search_items("large shield extender", None))
+        .unwrap();
+    assert_eq!(
+        *captured.lock().unwrap(),
+        vec![
+            ("extender".to_string(), Some("zh".to_string())),
+            ("large shield extender".to_string(), None),
+        ]
+    );
+    // The tool schema advertises the optional language parameter.
+    let tools = efa_chat::fit::tools::fit_tools(context);
+    let search = tools.iter().find(|t| t.name() == "search_items").unwrap();
+    assert!(search.definition().parameters["properties"]["language"].is_object());
 }
 
 #[test]
