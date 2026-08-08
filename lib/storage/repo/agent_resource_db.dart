@@ -62,7 +62,11 @@ class AgentResourceDbService {
     }
 
     if (!await checkoutDbSchemaSupported(db, kAgentResourceDbSpec)) {
-      await db.close();
+      final closeFuture = db.close();
+      // Same ordering as close(): OPFS cleanup must wait for the worker to
+      // release its SyncAccessHandles in the database's OPFS directory.
+      registerCheckoutDbClose(closeFuture);
+      await closeFuture;
       throw StateError("Agent resource database has an unsupported schema version.");
     }
     return AgentResourceDbService._(db);

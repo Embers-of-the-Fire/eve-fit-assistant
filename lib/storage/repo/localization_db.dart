@@ -103,7 +103,11 @@ class LocalizationDbService {
           "Localization database has an unsupported schema version;"
           " localized names are unavailable.",
         );
-        await db.close();
+        final closeFuture = db.close();
+        // Same ordering as close(): OPFS cleanup must wait for the worker to
+        // release its SyncAccessHandles in the database's OPFS directory.
+        registerLocalizationDbClose(closeFuture);
+        await closeFuture;
         return null;
       }
       return service;
