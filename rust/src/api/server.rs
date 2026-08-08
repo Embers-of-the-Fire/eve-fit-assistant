@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use eve_fit_os::{calculate::calculate, protobuf::Database};
 use flutter_rust_bridge::frb;
 
-use crate::api::{output::Ship, storage::FitStorage, validation::validate_fit};
+use crate::api::{output::Ship, storage::FitStorage, validation::ValidationIssue};
 
 /// Resolved file paths for the five `.pb2` data files the fitting engine requires.
 ///
@@ -91,15 +93,45 @@ impl FitEngine {
     /// potentially expensive calculation off the browser event loop.
     #[frb]
     pub fn emulate(&self, fit: &FitStorage) -> Ship {
-        let out = calculate(fit.get_container(), &self.data.database);
+        let database = self.data.database();
+        let out = calculate(fit.get_container(), database.as_ref());
+        let issues =
+            eve_fit_os::validate::validate_fit(fit.get_container(), &out, database.as_ref());
         let mut ship = Ship::from_native(out);
-        ship.validation_issues = validate_fit(fit, &ship, &self.data.database);
+        ship.validation_issues = issues
+            .into_iter()
+            .map(ValidationIssue::from_engine)
+            .collect();
         ship
+    }
+
+    /// A shareable handle to the underlying engine data (cheap `Arc` clone),
+    /// e.g. for attaching the engine to a chat session.
+    #[frb(sync)]
+    pub fn share_data(&self) -> FitEngineData {
+        self.data.share()
     }
 }
 
+#[derive(Clone)]
 pub struct FitEngineData {
-    database: Database,
+    database: Arc<Database>,
+}
+
+impl FitEngineData {
+    /// Shared access to the engine database, for in-process consumers such as
+    /// the chat fit tools.
+    pub(crate) fn database(&self) -> &Arc<Database> {
+        &self.database
+    }
+
+    /// A cheap clone sharing the same underlying database (`Arc`), so the
+    /// engine can be attached to other subsystems (e.g. a chat session)
+    /// without reloading the `.pb2` files.
+    #[frb(sync)]
+    pub fn share(&self) -> Self {
+        self.clone()
+    }
 }
 
 impl FitEngineData {
@@ -117,13 +149,13 @@ impl FitEngineData {
     #[frb]
     pub fn init(path: FitEnginePath) -> anyhow::Result<Self> {
         Ok(Self {
-            database: Database::init_from_files(
+            database: Arc::new(Database::init_from_files(
                 &path.types,
                 &path.dogma_attributes,
                 &path.dogma_effects,
                 &path.type_dogma,
                 &path.buff_collections,
-            )?,
+            )?),
         })
     }
 
@@ -145,13 +177,13 @@ impl FitEngineData {
         buff_collections: Vec<u8>,
     ) -> anyhow::Result<Self> {
         Ok(Self {
-            database: Database::init_from_bytes(
+            database: Arc::new(Database::init_from_bytes(
                 &dogma_attributes,
                 &dogma_effects,
                 &type_dogma,
                 &types,
                 &buff_collections,
-            )?,
+            )?),
         })
     }
 }

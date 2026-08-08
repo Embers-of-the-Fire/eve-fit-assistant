@@ -4,6 +4,8 @@ use rig::tool::PortableTool;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::fit::ToolTimer;
+
 const DEFAULT_LIMIT: usize = 8;
 const MAX_LIMIT: usize = 20;
 const MAX_KEYWORDS: usize = 8;
@@ -335,6 +337,7 @@ impl PortableTool for ManualSearchTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        let _timer = ToolTimer::start(Self::NAME);
         let limit = args.limit.unwrap_or(DEFAULT_LIMIT);
         let results = self
             .corpus
@@ -392,6 +395,7 @@ impl PortableTool for ManualDocTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        let _timer = ToolTimer::start(Self::NAME);
         self.corpus.get(&args.id, args.language.as_deref())
     }
 }

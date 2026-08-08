@@ -2,6 +2,7 @@ pub mod agent;
 pub mod config;
 pub mod error;
 pub mod event;
+pub mod fit;
 pub mod manual;
 pub mod models;
 

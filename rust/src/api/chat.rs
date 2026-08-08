@@ -1,12 +1,17 @@
-use std::sync::{Mutex, MutexGuard};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use efa_chat::Message;
 use efa_chat::agent::ChatAgent;
 use efa_chat::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage};
 use efa_chat::event::ChatEvent;
+use efa_chat::fit::{ActiveFit, FitCallbacks};
 use efa_chat::manual::{ManualCorpus, ManualDocText};
+use flutter_rust_bridge::DartFnFuture;
 use flutter_rust_bridge::frb;
 
+use crate::api::server::FitEngineData;
+use crate::api::storage::FitStorage;
 use crate::frb_generated::StreamSink;
 
 /// The chat completion provider backing a session.
@@ -100,6 +105,60 @@ pub enum ChatStreamEvent {
 pub struct ChatModelInfo {
     pub id: String,
     pub owned_by: Option<String>,
+}
+
+/// Newtype asserting `Send + Sync` for a wrapped value.
+///
+/// flutter_rust_bridge Dart closures route every call through message ports
+/// and are designed to be invoked from any thread, yet their generated Rust
+/// type implements neither `Send` nor `Sync`. The fit tools store these
+/// callbacks in a shared context that the rig runtime accesses from its
+/// worker threads, so both markers are asserted here.
+///
+/// The [`ThreadSafeFn::call`]/[`ThreadSafeFn::call_with`] accessors matter:
+/// a closure that invokes them captures the *whole* wrapper (which is
+/// `Send + Sync`), whereas inlining `(wrapper.0)(...)` would make Rust
+/// capture only the non-`Send` inner field.
+///
+/// SAFETY: the wrapped value is only ever a flutter_rust_bridge Dart closure
+/// (see [`ChatSession::set_fit_callbacks`]), whose invocation is thread-safe
+/// by construction.
+struct ThreadSafeFn<F>(F);
+
+// SAFETY: see the doc comment on [`ThreadSafeFn`].
+unsafe impl<F> Send for ThreadSafeFn<F> {}
+unsafe impl<F> Sync for ThreadSafeFn<F> {}
+
+impl<F> ThreadSafeFn<F> {
+    fn call(&self) -> efa_chat::fit::FitToolFuture
+    where
+        F: Fn() -> efa_chat::fit::FitToolFuture,
+    {
+        (self.0)()
+    }
+
+    fn call_with(&self, arg: String) -> efa_chat::fit::FitToolFuture
+    where
+        F: Fn(String) -> efa_chat::fit::FitToolFuture,
+    {
+        (self.0)(arg)
+    }
+}
+
+/// Wrap the three FRB Dart closures into the shared [`FitCallbacks`].
+fn build_fit_callbacks(
+    search_items: impl Fn(String) -> DartFnFuture<String> + 'static,
+    list_fits: impl Fn() -> DartFnFuture<String> + 'static,
+    load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
+) -> FitCallbacks {
+    let search_items = ThreadSafeFn(search_items);
+    let list_fits = ThreadSafeFn(list_fits);
+    let load_fit = ThreadSafeFn(load_fit);
+    FitCallbacks {
+        search_items: Arc::new(move |query| search_items.call_with(query)),
+        list_fits: Arc::new(move || list_fits.call()),
+        load_fit: Arc::new(move |fit_id| load_fit.call_with(fit_id)),
+    }
 }
 
 /// Fetch the model list exposed by the provider, used to populate the
@@ -196,24 +255,105 @@ impl ChatSession {
             .set_manual_corpus(ManualCorpus::from_rows(rows));
     }
 
+    /// Attach the fitting engine (via [`FitEngineData::share`]), exposing the
+    /// fit tools (`get_current_fit`, `get_fit_stats`, `get_item`, `get_attr`,
+    /// `validate_fit`) to the model.
+    #[frb(sync)]
+    pub fn set_fit_engine(&self, engine: FitEngineData) {
+        self.lock_agent().set_fit_engine(engine.database().clone());
+    }
+
+    /// Detach the fitting engine and any attached fit, hiding the fit tools.
+    #[frb(sync)]
+    pub fn clear_fit_engine(&self) {
+        self.lock_agent().clear_fit_engine();
+    }
+
+    /// Update the dogma-attribute name lookup (attribute id → attribute name,
+    /// e.g. `263 -> "shieldCapacity"`) used by the `get_attr`/`get_item` tools.
+    #[frb(sync)]
+    pub fn set_attribute_names(&self, names: HashMap<i32, String>) {
+        self.lock_agent().set_attribute_names(names);
+    }
+
+    /// Attach the fit the fit tools operate on. `names` maps every referenced
+    /// type id (ship, modules, charges, drones, implants, boosters, skills)
+    /// to its display name.
+    #[frb(sync)]
+    pub fn set_fit_context(
+        &self,
+        name: Option<String>,
+        fit: FitStorage,
+        names: HashMap<i32, String>,
+    ) {
+        self.lock_agent().set_active_fit(Some(ActiveFit {
+            name,
+            container: fit.into_container(),
+            names,
+        }));
+    }
+
+    /// Detach the current fit; fit tools will report that no fit is attached.
+    #[frb(sync)]
+    pub fn clear_fit_context(&self) {
+        self.lock_agent().set_active_fit(None);
+    }
+
+    /// Register the app-provided callbacks backing the app-state fit tools
+    /// (`search_items`, `list_user_fits`, `load_fit`). Each callback returns
+    /// a JSON string; `load_fit` must return the fit payload JSON described
+    /// by the chat crate's fit schema (or `{"error": ...}`).
+    ///
+    /// Deliberately `#[frb(sync)]` with bare `impl Fn(...) -> DartFnFuture<...>`
+    /// parameters: that shape is what flutter_rust_bridge recognizes as a Dart
+    /// closure, and running synchronously keeps FRB from moving the (not
+    /// `Send`) closure onto its thread pool. The closures are only *stored*
+    /// here, wrapped in [`ThreadSafeFn`] for the shared tool context.
+    #[frb(sync)]
+    pub fn set_fit_callbacks(
+        &self,
+        search_items: impl Fn(String) -> DartFnFuture<String> + 'static,
+        list_fits: impl Fn() -> DartFnFuture<String> + 'static,
+        load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
+    ) {
+        let callbacks = build_fit_callbacks(search_items, list_fits, load_fit);
+        self.lock_agent().set_fit_callbacks(callbacks);
+    }
+
     /// One-shot completion turn (used for connection tests).
     ///
     /// Deliberately a *normal* FRB function: it blocks a thread-pool thread on
-    /// the efa-chat tokio runtime, keeping rig/reqwest off FRB's executor.
+    /// the efa-chat tokio runtime, keeping rig/reqwest off FRB's executor. The
+    /// agent lock is held only to prepare and commit, never across the turn,
+    /// so a concurrent `#[frb(sync)]` session call never blocks the Dart
+    /// isolate on an in-flight turn (which would also deadlock any fit tool
+    /// that calls back into Dart mid-turn).
     #[frb]
     pub fn prompt(&self, text: String) -> anyhow::Result<String> {
-        let mut agent = self.lock_agent();
-        Ok(efa_chat::runtime().block_on(agent.chat_turn(&text))?)
+        let prepared = self.lock_agent().prepare_turn()?;
+        let (output, messages) = efa_chat::runtime().block_on(prepared.chat(&text))?;
+        self.lock_agent().commit_chat_turn(messages);
+        Ok(output)
     }
 
     /// Streaming completion turn; deltas are pushed to [sink].
     ///
     /// Errors are reported as [`ChatStreamEvent::Error`] events rather than a
-    /// failed future so the Dart side has a single error channel.
+    /// failed future so the Dart side has a single error channel. The agent
+    /// lock is held only to prepare and commit, never across the turn (see
+    /// [`ChatSession::prompt`]).
     #[frb]
     pub fn stream_prompt(&self, sink: StreamSink<ChatStreamEvent>, text: String) {
-        let mut agent = self.lock_agent();
-        let _ = efa_chat::runtime().block_on(agent.stream_turn(&text, |event| {
+        let prepared = match self.lock_agent().prepare_turn() {
+            Ok(prepared) => prepared,
+            Err(e) => {
+                let _ = sink.add(ChatStreamEvent::Error {
+                    message: e.to_string(),
+                });
+                return;
+            }
+        };
+        let result = efa_chat::runtime().block_on(prepared.stream(&text, |event| {
             let mapped = match event {
                 ChatEvent::TextDelta(text) => ChatStreamEvent::TextDelta { text },
                 ChatEvent::ToolCallStart { id, name } => {
@@ -228,5 +368,8 @@ impl ChatSession {
             };
             let _ = sink.add(mapped);
         }));
+        if let Ok(accumulated) = result {
+            self.lock_agent().commit_stream_turn(&text, &accumulated);
+        }
     }
 }

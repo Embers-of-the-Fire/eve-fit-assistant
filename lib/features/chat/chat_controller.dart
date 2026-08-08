@@ -2,12 +2,15 @@ import "dart:async";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
+import "package:eve_fit_assistant/features/chat/fit_context.dart";
 import "package:eve_fit_assistant/features/chat/manual_corpus.dart";
 import "package:eve_fit_assistant/features/chat/provider.dart";
 import "package:eve_fit_assistant/features/chat/system_prompt.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
+import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/chat/models.dart";
 import "package:eve_fit_assistant/storage/chat/service.dart";
+import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -34,6 +37,8 @@ class ChatController extends _$ChatController {
 
   native_chat.ChatSession? _session;
   String? _sessionConfigFingerprint;
+  native_server.FitEngine? _attachedEngine;
+  bool _attrNamesAttached = false;
 
   @override
   ChatState build() => const ChatState();
@@ -84,6 +89,8 @@ class ChatController extends _$ChatController {
       state = state.copyWith(error: "session-init-failed", failedText: trimmed);
       return;
     }
+
+    await _syncFitContext(session);
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final userMessage = ChatMessage(
@@ -227,7 +234,12 @@ class ChatController extends _$ChatController {
       }
       _session = session;
       _sessionConfigFingerprint = fingerprint;
+      _attachedEngine = null;
+      _attrNamesAttached = false;
       unawaited(_attachManualCorpus(session));
+      unawaited(registerFitCallbacks(ref, session));
+      // The fit itself is re-pushed by `send()` right before each turn
+      // (`await _syncFitContext`); doing it here too would only race the turn.
       return session;
     } on Object catch (e, st) {
       error("chat: failed to create session", error: e, stackTrace: st);
@@ -243,6 +255,26 @@ class ChatController extends _$ChatController {
       session.setManualDocs(docs: docs);
     } on Object catch (e, st) {
       warning("chat: failed to attach manual corpus: $e", stackTrace: st);
+    }
+  }
+
+  /// Attach the fitting engine, the attribute-name table, and the currently
+  /// attached fit to [session]. Idempotent for the engine/attribute table;
+  /// the fit itself is re-pushed on every call so each turn sees fresh data.
+  /// Failures leave the session usable, just without (some) fit tools.
+  Future<void> _syncFitContext(native_chat.ChatSession session) async {
+    try {
+      final engine = ref.read(nativeFitEngineServiceProvider).engineOrNull;
+      if (engine != null && !identical(engine, _attachedEngine)) {
+        _attachedEngine = attachFitEngine(ref, session);
+      }
+      if (!_attrNamesAttached) {
+        attachAttributeNames(ref, session);
+        _attrNamesAttached = true;
+      }
+      await pushAttachedFit(ref, session);
+    } on Object catch (e, st) {
+      warning("chat: failed to sync fit context: $e", stackTrace: st);
     }
   }
 
