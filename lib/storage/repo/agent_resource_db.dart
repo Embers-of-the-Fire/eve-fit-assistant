@@ -134,3 +134,34 @@ Future<AgentResourceDbService> agentResourceDbService(Ref ref) async {
   ref.onDispose(service.close);
   return service;
 }
+
+/// Local availability of the agent resource database for the active checkout.
+enum AgentDbAvailability {
+  /// The blob is present locally and ready to open.
+  available,
+
+  /// The index carries the resource but the blob is not downloaded yet.
+  downloadable,
+
+  /// The active checkout's index predates the agent resource; a data update
+  /// is required.
+  updateRequired,
+}
+
+/// Availability of the agent resource database for the active checkout.
+///
+/// Assumes an active checkout exists (callers gate on that first). A
+/// `downloadable` result means the AI gate can fetch the blob on demand;
+/// `updateRequired` means only a full data update can bring the resource in.
+@riverpod
+Future<AgentDbAvailability> agentDbAvailability(Ref ref) async {
+  final proxy = await ref.watch(resourceBlobProxyProvider.future);
+  if (proxy == null) return AgentDbAvailability.updateRequired;
+
+  final ident = proxy.ident(kAgentResourceDbResourceId);
+  if (ident == null) return AgentDbAvailability.updateRequired;
+
+  final store = ref.watch(assetStoreProvider);
+  final exists = await store.blobExists(ident.identHash, ident.contentHash);
+  return exists ? AgentDbAvailability.available : AgentDbAvailability.downloadable;
+}

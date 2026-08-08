@@ -55,7 +55,7 @@ class WorkspacePage extends ConsumerWidget {
         _WorkspaceShortcutItem(
           title: context.l10n.workspaceTabAiChatTitle,
           icon: Icons.smart_toy_outlined,
-          onTap: () => context.router.push(const ChatRoute()),
+          onTap: () => context.router.push(const AiRoute()),
         ),
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabManualTitle,

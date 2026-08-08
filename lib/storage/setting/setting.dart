@@ -183,6 +183,8 @@ abstract class AppSetting with _$AppSetting {
     @Default(false) bool ignoreBugfixUpdates,
     @Default(false) bool silentUpdate,
     @Default(false) bool welcomeCompleted,
+    @Default(false) bool aiAssistantEnabled,
+    @Default(false) bool aiAssistantDisclaimerAcked,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default(AiChatSetting()) AiChatSetting aiChat,
     @Default("") String marketServerFallback,
@@ -215,6 +217,12 @@ bool developerMode(Ref ref) => ref.watch(appSettingServiceProvider).developerMod
 
 @riverpodSingleton
 bool attributeDebugView(Ref ref) => ref.watch(appSettingServiceProvider).attributeDebugView;
+
+/// Whether the AI assistant feature is enabled. Gated behind a one-time
+/// disclaimer acknowledgement ([AppSetting.aiAssistantDisclaimerAcked]) and,
+/// once on, makes the agent resource database a forced checkout dependency.
+@riverpodSingleton
+bool aiAssistantEnabled(Ref ref) => ref.watch(appSettingServiceProvider).aiAssistantEnabled;
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {
