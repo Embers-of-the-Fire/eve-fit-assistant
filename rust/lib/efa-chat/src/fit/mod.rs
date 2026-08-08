@@ -13,6 +13,7 @@ use eve_fit_os::calculate::{Ship, calculate};
 use eve_fit_os::constant::patches::attr as patch_attr;
 use eve_fit_os::fit::{FitContainer, ItemState};
 use eve_fit_os::protobuf::Database;
+use rig::tool::ToolExecutionError;
 use serde::Serialize;
 use thiserror::Error;
 
@@ -197,6 +198,27 @@ pub enum FitToolError {
     CallbacksUnavailable,
     #[error("invalid payload from the app: {0}")]
     BadPayload(String),
+}
+
+/// Surface fit tool failures to the model verbatim. rig's default
+/// `map_error` goes through `ToolExecutionError::from_error`, which redacts
+/// the model-visible output to the generic "the tool failed"; the
+/// [`FitToolError`] messages are deliberately actionable (e.g. attribute
+/// suggestions) and must reach the model so it can self-correct.
+impl From<FitToolError> for ToolExecutionError {
+    fn from(error: FitToolError) -> Self {
+        let message = error.to_string();
+        match error {
+            FitToolError::NoActiveFit => Self::not_found(message),
+            FitToolError::UnknownSection(_)
+            | FitToolError::IndexOutOfRange { .. }
+            | FitToolError::UnknownAttribute { .. }
+            | FitToolError::AttributeNotPresent(_) => Self::invalid_args(message),
+            FitToolError::CallbacksUnavailable | FitToolError::BadPayload(_) => {
+                Self::other(message)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1128,5 +1150,54 @@ fn validation_issue_entry(issue: eve_fit_os::validate::ValidationIssue) -> Valid
         severity: severity.to_string(),
         code: code.to_string(),
         details,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rig::tool::ToolErrorKind;
+
+    #[test]
+    fn fit_tool_errors_keep_actionable_model_feedback() {
+        let cases = [
+            (FitToolError::NoActiveFit, ToolErrorKind::NotFound),
+            (
+                FitToolError::UnknownSection("warp_core".to_string()),
+                ToolErrorKind::InvalidArgs,
+            ),
+            (
+                FitToolError::IndexOutOfRange {
+                    section: "module".to_string(),
+                    index: 9,
+                    len: 3,
+                },
+                ToolErrorKind::InvalidArgs,
+            ),
+            (
+                FitToolError::UnknownAttribute {
+                    name: "foo".to_string(),
+                    suggestions: "shieldCapacity".to_string(),
+                },
+                ToolErrorKind::InvalidArgs,
+            ),
+            (
+                FitToolError::AttributeNotPresent(123),
+                ToolErrorKind::InvalidArgs,
+            ),
+            (FitToolError::CallbacksUnavailable, ToolErrorKind::Other),
+            (
+                FitToolError::BadPayload("bad json".to_string()),
+                ToolErrorKind::Other,
+            ),
+        ];
+        for (error, kind) in cases {
+            let expected = error.to_string();
+            let mapped = ToolExecutionError::from(error);
+            assert_eq!(mapped.kind(), kind);
+            // The message must reach the model verbatim, not rig's
+            // redacted "the tool failed".
+            assert_eq!(mapped.model_feedback(), Some(expected.as_str()));
+        }
     }
 }

@@ -177,10 +177,7 @@ class LocalizationDbService {
   Future<Map<int, String>> searchNames(String query, String locale, {int limit = 20}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const {};
-    final escaped = trimmed
-        .replaceAll(r"\", r"\\")
-        .replaceAll("%", r"\%")
-        .replaceAll("_", r"\_");
+    final escaped = trimmed.replaceAll(r"\", r"\\").replaceAll("%", r"\%").replaceAll("_", r"\_");
     try {
       final rows = await _db.getAll(
         "SELECT id, value FROM strings "

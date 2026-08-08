@@ -16,6 +16,7 @@ sealed class ChatSegment with _$ChatSegment {
     required String name,
     @Default("") String args,
     @Default(false) bool done,
+    @Default("") String result,
   }) = ChatToolCallSegment;
 
   factory ChatSegment.fromJson(Map<String, dynamic> json) => _$ChatSegmentFromJson(json);

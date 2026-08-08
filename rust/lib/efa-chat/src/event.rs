@@ -12,9 +12,11 @@ pub enum ChatEvent {
         id: String,
         delta: String,
     },
-    /// The tool call with this `id` finished (a result was committed).
+    /// The tool call with this `id` finished (a result was committed);
+    /// `result` is the textual tool output returned to the model.
     ToolCallEnd {
         id: String,
+        result: String,
     },
     Done(String),
     Error(String),

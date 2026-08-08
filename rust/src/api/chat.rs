@@ -89,9 +89,11 @@ pub enum ChatStreamEvent {
         id: String,
         delta: String,
     },
-    /// The tool call with this `id` finished (a result was committed).
+    /// The tool call with this `id` finished (a result was committed);
+    /// `result` is the textual tool output returned to the model.
     ToolCallEnd {
         id: String,
+        result: String,
     },
     Done {
         full_text: String,
@@ -378,7 +380,9 @@ impl ChatSession {
                 ChatEvent::ToolCallArgsDelta { id, delta } => {
                     ChatStreamEvent::ToolCallArgsDelta { id, delta }
                 }
-                ChatEvent::ToolCallEnd { id } => ChatStreamEvent::ToolCallEnd { id },
+                ChatEvent::ToolCallEnd { id, result } => {
+                    ChatStreamEvent::ToolCallEnd { id, result }
+                }
                 ChatEvent::Done(full_text) => ChatStreamEvent::Done { full_text },
                 ChatEvent::Error(message) => ChatStreamEvent::Error { message },
             };

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rig::tool::PortableTool;
+use rig::tool::{PortableTool, ToolExecutionError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -94,6 +94,19 @@ pub enum ManualToolError {
     NoKeywords,
     #[error("manual doc `{0}` not found; available ids containing it: {1}")]
     DocNotFound(String, String),
+}
+
+/// Surface manual tool failures to the model verbatim; rig's default
+/// `map_error` redacts them to the generic "the tool failed" (see the
+/// matching `From<FitToolError>` impl in the fit module).
+impl From<ManualToolError> for ToolExecutionError {
+    fn from(error: ManualToolError) -> Self {
+        let message = error.to_string();
+        match error {
+            ManualToolError::NoKeywords => Self::invalid_args(message),
+            ManualToolError::DocNotFound(_, _) => Self::not_found(message),
+        }
+    }
 }
 
 impl ManualCorpus {
@@ -339,6 +352,10 @@ impl PortableTool for ManualSearchTool {
         })
     }
 
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
+    }
+
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
         let limit = args.limit.unwrap_or(DEFAULT_LIMIT);
@@ -399,6 +416,10 @@ impl PortableTool for ManualDocTool {
             },
             "required": ["id"]
         })
+    }
+
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
@@ -622,5 +643,25 @@ mod tests {
         let zh_doc = ManualDocTool::new(corpus, PromptLanguage::Zh);
         assert_ne!(en_doc.description(), zh_doc.description());
         assert!(zh_doc.description().contains("用户手册"));
+    }
+
+    #[test]
+    fn manual_tool_errors_keep_actionable_model_feedback() {
+        use rig::tool::{ToolErrorKind, ToolExecutionError};
+        let cases = [
+            (ManualToolError::NoKeywords, ToolErrorKind::InvalidArgs),
+            (
+                ManualToolError::DocNotFound("a/b".to_string(), "a/c".to_string()),
+                ToolErrorKind::NotFound,
+            ),
+        ];
+        for (error, kind) in cases {
+            let expected = error.to_string();
+            let mapped = ToolExecutionError::from(error);
+            assert_eq!(mapped.kind(), kind);
+            // The message must reach the model verbatim, not rig's
+            // redacted "the tool failed".
+            assert_eq!(mapped.model_feedback(), Some(expected.as_str()));
+        }
     }
 }

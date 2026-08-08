@@ -110,22 +110,19 @@ Future<InitializedStores> initSingletons() async {
 /// without cross-origin isolation), where the FRB runtime never initializes.
 void _setupRustLogging() {
   try {
-    native_logging.createLogStream().listen(
-      (entry) {
-        final message = "[${entry.target}] ${entry.message}";
-        switch (entry.level) {
-          case "ERROR":
-            error(message);
-          case "WARN":
-            warning(message);
-          case "INFO":
-            info(message);
-          default:
-            debug(message);
-        }
-      },
-      onError: (Object e) => debugPrint("Rust log stream error: $e"),
-    );
+    native_logging.createLogStream().listen((entry) {
+      final message = "[${entry.target}] ${entry.message}";
+      switch (entry.level) {
+        case "ERROR":
+          error(message);
+        case "WARN":
+          warning(message);
+        case "INFO":
+          info(message);
+        default:
+          debug(message);
+      }
+    }, onError: (Object e) => debugPrint("Rust log stream error: $e"));
   } on Object catch (e) {
     debugPrint("Failed to set up Rust logging: $e");
   }

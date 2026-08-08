@@ -44,4 +44,30 @@ void main() {
     expect(decoded.model, "");
     expect(decoded.messages, isEmpty);
   });
+
+  test("ChatSegment toolCall roundtrip preserves the tool result", () {
+    const segment = ChatSegment.toolCall(
+      id: "call-1",
+      name: "search_manual",
+      args: '{"keywords":["fit"]}',
+      done: true,
+      result: '{"hits":[]}',
+    );
+    final decoded = ChatSegment.fromJson(
+      jsonDecode(jsonEncode(segment.toJson())) as Map<String, dynamic>,
+    );
+    expect(decoded, segment);
+  });
+
+  test("ChatSegment toolCall tolerates legacy payloads without a result", () {
+    final decoded = ChatSegment.fromJson(
+      jsonDecode(
+        '{"runtimeType":"toolCall","id":"call-1","name":"search_manual"}',
+      ) as Map<String, dynamic>,
+    );
+    expect(
+      decoded,
+      const ChatSegment.toolCall(id: "call-1", name: "search_manual"),
+    );
+  });
 }
