@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" show min;
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/repo/checkout_db.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db_native.dart"
     if (dart.library.js_interop) "package:eve_fit_assistant/storage/repo/localization_db_native_stub.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db_web.dart"
@@ -18,32 +19,38 @@ part "localization_db.g.dart";
 /// Resource id of the checkout's SQLite localization database.
 const String kLocalizationDbResourceId = "resource://localization/localization.db";
 
+/// Checkout database spec for the localization database.
+const CheckoutDbSpec kLocalizationDbSpec = CheckoutDbSpec(
+  resourceId: kLocalizationDbResourceId,
+  dbNamePrefix: "localization",
+  supportedSchemaVersion: "1",
+  label: "localization",
+);
+
 /// Root of the OPFS directory tree sqlite3_web uses for its databases
 /// (`drift_db/<dbName>/database`).
 ///
 /// Web-only at runtime, but declared here so the web reset path can wipe the
 /// tree without importing web-only code.
-const String kLocalizationDbOpfsRoot = "drift_db";
+const String kLocalizationDbOpfsRoot = kCheckoutDbOpfsRoot;
 
 /// OPFS database name for the localization database copy of [contentHash].
 ///
 /// Web-only at runtime, but pure so tests on any platform can pin the naming
 /// scheme: embedding the content hash makes the OPFS path uniquely identify
 /// the content.
-String localizationDbNameForHash(String contentHash) => "localization_$contentHash";
+String localizationDbNameForHash(String contentHash) =>
+    checkoutDbNameForHash(kLocalizationDbSpec.dbNamePrefix, contentHash);
 
 /// OPFS file path sqlite3_web expects for [dbName]
 /// (`drift_db/<dbName>/database`).
-String localizationDbFilePath(String dbName) => "$kLocalizationDbOpfsRoot/$dbName/database";
+String localizationDbFilePath(String dbName) => checkoutDbFilePath(dbName);
 
 /// Whether [dirName] — a direct child of [kLocalizationDbOpfsRoot] — is a
 /// stale localization database directory that should be pruned while [keepName]
 /// is retained.
 bool isStaleLocalizationDbDir(String dirName, {required String keepName}) =>
-    dirName.startsWith("localization_") && dirName != keepName;
-
-/// Schema version of the localization database this client understands.
-const String _kSupportedSchemaVersion = "1";
+    isStaleCheckoutDbDir(kLocalizationDbSpec.dbNamePrefix, dirName, keepName: keepName);
 
 /// Maximum ids per `IN (...)` query.
 const int _kQueryChunkSize = 500;
@@ -96,7 +103,11 @@ class LocalizationDbService {
           "Localization database has an unsupported schema version;"
           " localized names are unavailable.",
         );
-        await db.close();
+        final closeFuture = db.close();
+        // Same ordering as close(): OPFS cleanup must wait for the worker to
+        // release its SyncAccessHandles in the database's OPFS directory.
+        registerLocalizationDbClose(closeFuture);
+        await closeFuture;
         return null;
       }
       return service;
@@ -114,15 +125,7 @@ class LocalizationDbService {
 
   static Future<SqliteDatabase?> _openWeb(ResourceBlobProxy proxy) => openWebLocalizationDb(proxy);
 
-  Future<bool> _schemaSupported() async {
-    try {
-      final row = await _db.getOptional("SELECT value FROM meta WHERE key = 'schema_version'");
-      return row?["value"] == _kSupportedSchemaVersion;
-    } on Object catch (e, st) {
-      warning("Localization database schema check failed: $e", stackTrace: st);
-      return false;
-    }
-  }
+  Future<bool> _schemaSupported() => checkoutDbSchemaSupported(_db, kLocalizationDbSpec);
 
   /// Resolves the localized string for [id] in [locale].
   ///

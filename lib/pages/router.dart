@@ -1,6 +1,8 @@
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/features/deeplink/deeplink_meta.dart";
 import "package:eve_fit_assistant/features/manual/repository/manual_feedback_api.dart";
+import "package:eve_fit_assistant/pages/ai/page.dart";
+import "package:eve_fit_assistant/pages/ai/settings_page.dart";
 import "package:eve_fit_assistant/pages/announcements/feed_page.dart";
 import "package:eve_fit_assistant/pages/chat/chat_history_page.dart";
 import "package:eve_fit_assistant/pages/chat/chat_page.dart";
@@ -10,7 +12,6 @@ import "package:eve_fit_assistant/pages/manual/feedback_page.dart";
 import "package:eve_fit_assistant/pages/manual/node_page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
-import "package:eve_fit_assistant/pages/setting/ai-chat/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/collect_logs_page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/remote_content.dart";
@@ -63,7 +64,17 @@ class AppRouter extends RootStackRouter {
       },
     ),
     AutoRoute(
-      path: "/setting/ai-chat",
+      path: "/ai",
+      page: AiRoute.page,
+      meta: const {
+        DeepLinkMeta.key: DeepLinkMeta(
+          title: "AI assistant",
+          usage: "the AI assistant hub: chat, history and configuration",
+        ),
+      },
+    ),
+    AutoRoute(
+      path: "/ai/settings",
       page: AiChatSettingsRoute.page,
       meta: const {
         DeepLinkMeta.key: DeepLinkMeta(

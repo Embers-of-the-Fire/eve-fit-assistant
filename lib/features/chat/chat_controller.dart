@@ -39,9 +39,14 @@ class ChatController extends _$ChatController {
   String? _sessionConfigFingerprint;
   native_server.FitEngine? _attachedEngine;
   bool _attrNamesAttached = false;
+  Future<void>? _manualCorpusReady;
+  Future<void>? _fitCallbacksReady;
 
   @override
-  ChatState build() => const ChatState();
+  ChatState build() {
+    ref.onDispose(cancelFitCallbacks);
+    return const ChatState();
+  }
 
   void newConversation() {
     _session?.clearHistory();
@@ -78,19 +83,27 @@ class ChatController extends _$ChatController {
     final trimmed = text.trim();
     if (trimmed.isEmpty || state.sending) return;
 
+    state = state.copyWith(sending: true);
+
     final apiKey = await ref.read(aiChatApiKeyProvider.future);
     if (apiKey == null || apiKey.isEmpty) {
-      state = state.copyWith(error: "missing-api-key", failedText: trimmed);
+      state = state.copyWith(sending: false, error: "missing-api-key", failedText: trimmed);
       return;
     }
 
     final session = _ensureSession(apiKey);
     if (session == null) {
-      state = state.copyWith(error: "session-init-failed", failedText: trimmed);
+      state = state.copyWith(sending: false, error: "session-init-failed", failedText: trimmed);
       return;
     }
 
     await _syncFitContext(session);
+    // The system prompt always advertises the manual tools, so the turn must
+    // not start before the corpus is attached (failures degrade gracefully).
+    await _manualCorpusReady;
+    // Same for the app-state fit tools (`search_items`/`list_user_fits`/
+    // `load_fit`): the callback channel must be open before the turn starts.
+    await _fitCallbacksReady;
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final userMessage = ChatMessage(
@@ -236,8 +249,8 @@ class ChatController extends _$ChatController {
       _sessionConfigFingerprint = fingerprint;
       _attachedEngine = null;
       _attrNamesAttached = false;
-      unawaited(_attachManualCorpus(session));
-      unawaited(registerFitCallbacks(ref, session));
+      _manualCorpusReady = _attachManualCorpus(session);
+      _fitCallbacksReady = registerFitCallbacks(ref, session);
       // The fit itself is re-pushed by `send()` right before each turn
       // (`await _syncFitContext`); doing it here too would only race the turn.
       return session;

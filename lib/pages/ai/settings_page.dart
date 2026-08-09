@@ -6,6 +6,8 @@ import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate_controller.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
 import "package:eve_fit_assistant/features/chat/model_list.dart";
 import "package:eve_fit_assistant/features/chat/provider.dart";
@@ -24,19 +26,33 @@ class AiChatSettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Layout(
     title: context.l10n.aiChatSettingsTitle,
-    child: ConfigListView(
+    child: Column(
       children: [
         ConfigListTile.title(context.l10n.aiChatSettingsSectionConnection),
         const ConfigListTile.custom(_ProviderTile()),
+        const Divider(height: 0, thickness: 0.5),
         const ConfigListTile.custom(_BaseUrlTile()),
+        const Divider(height: 0, thickness: 0.5),
         const ConfigListTile.custom(_ApiKeyTile()),
-        ConfigListTile.title(context.l10n.aiChatSettingsSectionModels),
-        const ConfigListTile.custom(_DefaultModelTile()),
-        const ConfigListTile.custom(_FetchModelsTile()),
-        const ConfigListTile.custom(_ModelListEditor()),
-        ConfigListTile.title(context.l10n.aiChatSettingsSectionActions),
-        const ConfigListTile.custom(_TestConnectionTile()),
-        const ConfigListTile.custom(_ClearConversationsTile()),
+        const Divider(height: 0, thickness: 0.5),
+        Expanded(
+          child: AiFeatureGate(
+            child: ConfigListView(
+              children: [
+                ConfigListTile.title(context.l10n.aiChatSettingsSectionModels),
+                const ConfigListTile.custom(_DefaultModelTile()),
+                const ConfigListTile.custom(_FetchModelsTile()),
+                const ConfigListTile.custom(_ModelListEditor()),
+                ConfigListTile.title(context.l10n.aiChatSettingsSectionActions),
+                const ConfigListTile.custom(_TestConnectionTile()),
+                const ConfigListTile.custom(_ClearConversationsTile()),
+                const ConfigListTile.custom(_RefreshAgentDbTile()),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 0, thickness: 0.5),
+        const ConfigListTile.custom(_DisableAssistantTile()),
       ],
     ),
   );
@@ -405,6 +421,34 @@ class _ClearConversationsTile extends ConsumerWidget {
       final confirmed = await showConfirmDialog(context, title: context.l10n.chatClearAllConfirm);
       if (confirmed) {
         await ref.read(chatStorageServiceProvider.notifier).clear();
+      }
+    },
+  );
+}
+
+class _RefreshAgentDbTile extends ConsumerWidget {
+  const _RefreshAgentDbTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListTile(
+    leading: const Icon(Icons.refresh),
+    title: Text(context.l10n.aiChatRefreshDataTitle),
+    subtitle: Text(context.l10n.aiChatRefreshDataDescription),
+    onTap: () => unawaited(ref.read(aiGateControllerProvider.notifier).refreshAgentDb()),
+  );
+}
+
+class _DisableAssistantTile extends ConsumerWidget {
+  const _DisableAssistantTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListTile(
+    leading: const Icon(Icons.power_settings_new),
+    title: Text(context.l10n.aiChatDisableTitle),
+    onTap: () async {
+      final confirmed = await showConfirmDialog(context, title: context.l10n.aiChatDisableConfirm);
+      if (confirmed) {
+        ref.read(aiGateControllerProvider.notifier).disableAssistant();
       }
     },
   );

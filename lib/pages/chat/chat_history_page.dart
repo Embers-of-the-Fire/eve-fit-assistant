@@ -3,6 +3,9 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate_controller.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate_state.dart";
 import "package:eve_fit_assistant/features/chat/chat_controller.dart";
 import "package:eve_fit_assistant/storage/chat/models.dart";
 import "package:eve_fit_assistant/storage/chat/service.dart";
@@ -17,28 +20,33 @@ class ChatHistoryPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final conversations = ref.watch(chatStorageServiceProvider);
+    final gateReady = ref.watch(aiGateControllerProvider) is AiGateReady;
     return Layout(
       title: context.l10n.chatHistoryPageTitle,
       actions: [
-        if (conversations.isNotEmpty)
+        if (gateReady && conversations.isNotEmpty)
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
             tooltip: context.l10n.chatClearAll,
             onPressed: () => unawaited(_clearAll(context, ref)),
           ),
       ],
-      child: conversations.isEmpty
-          ? Center(
-              child: Text(
-                context.l10n.chatConversationEmpty,
-                style: context.theme.textTheme.bodyMedium?.copyWith(color: context.theme.hintColor),
+      child: AiFeatureGate(
+        child: conversations.isEmpty
+            ? Center(
+                child: Text(
+                  context.l10n.chatConversationEmpty,
+                  style: context.theme.textTheme.bodyMedium?.copyWith(
+                    color: context.theme.hintColor,
+                  ),
+                ),
+              )
+            : ListView.builder(
+                itemCount: conversations.length,
+                itemBuilder: (context, index) =>
+                    _ConversationTile(conversation: conversations[index]),
               ),
-            )
-          : ListView.builder(
-              itemCount: conversations.length,
-              itemBuilder: (context, index) =>
-                  _ConversationTile(conversation: conversations[index]),
-            ),
+      ),
     );
   }
 

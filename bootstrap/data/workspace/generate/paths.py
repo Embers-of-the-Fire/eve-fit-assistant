@@ -67,6 +67,21 @@ class PathManager:
         return self.localization_root_path / "localization.db"
 
     @property
+    def agent_root_path(self) -> Path:
+        path = self.full_generate_out_path / "agent"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def agent_resource_db_path(self) -> Path:
+        """SQLite database with AI-agent (chat) support data.
+
+        Ships as a dedicated database (separate from `localization.db`) so
+        agent-only payloads stay out of the general localization corpus.
+        """
+        return self.agent_root_path / "agent_resource.db"
+
+    @property
     def native_root_path(self) -> Path:
         path = self.static_root_path / "native"
         path.mkdir(parents=True, exist_ok=True)

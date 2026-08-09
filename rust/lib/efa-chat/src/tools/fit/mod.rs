@@ -6,7 +6,10 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
-use std::time::Instant;
+
+// `web_time::Instant` is std's Instant on native targets and a
+// `performance.now()` shim on wasm32, where `std::time::Instant` panics.
+use web_time::Instant;
 
 use eve_fit_os::calculate::item::{Item, SlotType};
 use eve_fit_os::calculate::{Ship, calculate};
@@ -86,14 +89,20 @@ impl ActiveFit {
 /// Boxed future returned by the app-provided fit callbacks.
 pub type FitToolFuture = Pin<Box<dyn Future<Output = String> + Send>>;
 
+/// The `search_items` callback signature — see [`FitCallbacks::search_items`].
+pub type SearchItemsCallback =
+    Arc<dyn Fn(String, Option<String>, Option<String>) -> FitToolFuture + Send + Sync>;
+
 /// App-provided callbacks backing the app-state fit tools (`search_items`,
 /// `list_user_fits`, `load_fit`). All callbacks return JSON strings.
 #[derive(Clone)]
 pub struct FitCallbacks {
-    /// `(query, language) -> [{type_id, name, group_id, category_id}, ...]`;
-    /// `language` is the localization to search (`None` selects the app's
-    /// display language).
-    pub search_items: Arc<dyn Fn(String, Option<String>) -> FitToolFuture + Send + Sync>,
+    /// `(query, language, kind) -> [{type_id, name, group_id, category_id,
+    /// slot_index?, slot_kind?}, ...]`; `language` is the localization to
+    /// search (`None` selects the app's display language); `kind` is an
+    /// optional item-kind filter (`ship`/`module`/`charge`/`drone`/`fighter`/
+    /// `implant`/`booster`).
+    pub search_items: SearchItemsCallback,
     /// `() -> [{fit_id, name, ship_type_id, last_modified}, ...]`
     pub list_fits: Arc<dyn Fn() -> FitToolFuture + Send + Sync>,
     /// `(fit_id) -> FitPayload JSON (see `schema::FitPayload`) or
@@ -783,18 +792,25 @@ impl FitToolContext {
 
     /// Search the app's item database by (localized) name substring.
     /// [language] selects the localization to search (`None` defers to the
-    /// app's display language).
+    /// app's display language); [kind] optionally restricts results to one
+    /// item kind (`ship`/`module`/`charge`/`drone`/`fighter`/`implant`/
+    /// `booster`).
     pub async fn search_items(
         &self,
         query: &str,
         language: Option<&str>,
+        kind: Option<&str>,
     ) -> Result<serde_json::Value, FitToolError> {
         let Some(callbacks) = &self.callbacks else {
             return Err(FitToolError::CallbacksUnavailable);
         };
         let started = Instant::now();
-        let raw =
-            (callbacks.search_items)(query.to_string(), language.map(|l| l.to_string())).await;
+        let raw = (callbacks.search_items)(
+            query.to_string(),
+            language.map(|l| l.to_string()),
+            kind.map(|k| k.to_string()),
+        )
+        .await;
         log::debug!(
             "[chat] search_items: Dart callback returned in {}ms",
             started.elapsed().as_millis()

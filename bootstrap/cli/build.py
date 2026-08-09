@@ -24,7 +24,7 @@ from bootstrap.utils import get_bin_size
 from bootstrap.utils import get_file_sha1
 
 
-_GENERATOR_TYPES = {"static", "native", "localization", "images"}
+_GENERATOR_TYPES = {"static", "native", "localization", "agent", "images"}
 
 _ABI_FLUTTER_TO_APK = {
     "armeabi-v7a": "armv7",

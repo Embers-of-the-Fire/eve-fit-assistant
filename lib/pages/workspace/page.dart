@@ -3,6 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/badge/notification_dot.dart";
 import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
+import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/pages/router.dart";
@@ -51,11 +52,11 @@ class WorkspacePage extends ConsumerWidget {
           onTap: () => context.router.push(AnnouncementFeedRoute()),
           isUpdatesCard: true,
         ),
-      if (!kIsWeb)
+      if (NativeEngineAvailability.available)
         _WorkspaceShortcutItem(
           title: context.l10n.workspaceTabAiChatTitle,
           icon: Icons.smart_toy_outlined,
-          onTap: () => context.router.push(const ChatRoute()),
+          onTap: () => context.router.push(const AiRoute()),
         ),
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabManualTitle,

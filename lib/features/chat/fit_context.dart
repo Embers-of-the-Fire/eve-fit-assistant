@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:eve_fit_assistant/config/locale.dart";
@@ -10,6 +11,7 @@ import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/repo/agent_resource_db.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -139,39 +141,109 @@ Set<int> referencedTypeIds(FitStorage fit) {
   return ids;
 }
 
+/// The live subscription of the active session's callback channel; only one
+/// chat session is active at a time (see `ChatController`). Cancelled when a
+/// new session registers its callbacks, and via [cancelFitCallbacks] when the
+/// owning `ChatController` provider is disposed.
+StreamSubscription<native_chat.ChatCallbackRequest>? _fitCallbackSub;
+
+/// Cancel the active session's callback-channel subscription, if any.
+/// Registered as a disposal hook by `ChatController`.
+void cancelFitCallbacks() {
+  unawaited(_fitCallbackSub?.cancel());
+  _fitCallbackSub = null;
+}
+
 /// Register the app-state callbacks backing the `search_items`,
 /// `list_user_fits`, and `load_fit` chat tools on [session].
+///
+/// Opens the session's callback channel: Rust pushes
+/// [native_chat.ChatCallbackRequest]s over a stream, and each request is
+/// answered with a JSON string via `deliverCallbackResult`. (FRB Dart
+/// closures are not used: they cannot cross to Rust on dart2wasm.)
 Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) async {
   try {
-    session.setFitCallbacks(
-      searchItems: (query, language) => _searchItems(ref, query, language),
-      listFits: () => _listFits(ref),
-      loadFit: (fitId) => _loadFit(ref, fitId),
+    cancelFitCallbacks();
+    _fitCallbackSub = session.openCallbackChannel().listen(
+      (request) => unawaited(_dispatchCallbackRequest(ref, session, request)),
+      onError: (Object e, StackTrace st) =>
+          warning("chat: callback channel error: $e", stackTrace: st),
     );
   } on Object catch (e, st) {
     warning("chat: failed to register fit callbacks: $e", stackTrace: st);
   }
 }
 
-Future<String> _searchItems(Ref ref, String query, String? language) async {
+/// Handle one callback request from [session] and deliver its JSON result.
+/// Every failure path still delivers an error payload so the waiting tool
+/// future never hangs.
+Future<void> _dispatchCallbackRequest(
+  Ref ref,
+  native_chat.ChatSession session,
+  native_chat.ChatCallbackRequest request,
+) async {
+  final callId = switch (request) {
+    native_chat.ChatCallbackRequest_SearchItems(:final callId) => callId,
+    native_chat.ChatCallbackRequest_ListFits(:final callId) => callId,
+    native_chat.ChatCallbackRequest_LoadFit(:final callId) => callId,
+  };
+  String result;
   try {
-    final collection = ref.read(repoCollectionProvider);
-    final localization = await ref.read(localizationDbServiceProvider.future);
-    if (collection == null || localization == null) return "[]";
-    final locale = _searchLocale(ref, language);
-    final hits = await localization.searchNames(query, locale, limit: 40);
-    final results = <Map<String, Object?>>[];
-    for (final entry in hits.entries) {
-      final type = collection.getType(entry.key);
-      if (type == null) continue;
-      results.add({
-        "type_id": entry.key,
-        "name": entry.value,
-        "group_id": type.groupId,
-        "category_id": collection.getGroup(type.groupId)?.categoryId,
+    result = await switch (request) {
+      native_chat.ChatCallbackRequest_SearchItems(:final query, :final language, :final kind) =>
+        _searchItems(ref, query, language, kind),
+      native_chat.ChatCallbackRequest_ListFits() => _listFits(ref),
+      native_chat.ChatCallbackRequest_LoadFit(:final fitId) => _loadFit(ref, fitId),
+    };
+  } on Object catch (e, st) {
+    warning("chat: callback handler failed: $e", stackTrace: st);
+    result = jsonEncode({"error": "$e"});
+  }
+  try {
+    await session.deliverCallbackResult(callId: callId, result: result);
+  } on Object catch (e, st) {
+    warning("chat: failed to deliver callback result: $e", stackTrace: st);
+  }
+}
+
+Future<String> _searchItems(Ref ref, String query, String? language, String? kind) async {
+  final AgentSearchKind? parsedKind;
+  if (kind == null || kind.trim().isEmpty) {
+    parsedKind = null;
+  } else {
+    parsedKind = AgentSearchKind.parse(kind);
+    if (parsedKind == null) {
+      return jsonEncode({
+        "error":
+            "unknown kind `$kind`; expected one of: "
+            "${AgentSearchKind.values.map((k) => k.name).join(", ")}",
       });
-      if (results.length >= 20) break;
     }
+  }
+  // Hard dependency, but Dart exceptions cannot cross the FRB callback
+  // boundary (the generated binding panics on them), so an unavailable
+  // database is reported to the model as an error payload instead.
+  final AgentResourceDbService agentDb;
+  try {
+    agentDb = await ref.read(agentResourceDbServiceProvider.future);
+  } on Object catch (e, st) {
+    warning("chat: search_items database unavailable: $e", stackTrace: st);
+    return jsonEncode({"error": "item search is unavailable: $e"});
+  }
+  try {
+    final locale = _searchLocale(ref, language);
+    final hits = await agentDb.searchTypes(query, locale, kind: parsedKind);
+    final results = <Map<String, Object?>>[
+      for (final hit in hits)
+        {
+          "type_id": hit.typeId,
+          "name": hit.name,
+          "group_id": hit.groupId,
+          "category_id": hit.categoryId,
+          if (hit.slotIndex != null) "slot_index": hit.slotIndex,
+          if (hit.slotKind != null) "slot_kind": hit.slotKind,
+        },
+    ];
     return jsonEncode(results);
   } on Object catch (e, st) {
     warning("chat: search_items failed: $e", stackTrace: st);

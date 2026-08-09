@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:riverpod/riverpod.dart" show ProviderListenableSelect;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "setting.freezed.dart";
@@ -183,6 +184,8 @@ abstract class AppSetting with _$AppSetting {
     @Default(false) bool ignoreBugfixUpdates,
     @Default(false) bool silentUpdate,
     @Default(false) bool welcomeCompleted,
+    @Default(false) bool aiAssistantEnabled,
+    @Default(false) bool aiAssistantDisclaimerAcked,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default(AiChatSetting()) AiChatSetting aiChat,
     @Default("") String marketServerFallback,
@@ -215,6 +218,13 @@ bool developerMode(Ref ref) => ref.watch(appSettingServiceProvider).developerMod
 
 @riverpodSingleton
 bool attributeDebugView(Ref ref) => ref.watch(appSettingServiceProvider).attributeDebugView;
+
+/// Whether the AI assistant feature is enabled. Gated behind a one-time
+/// disclaimer acknowledgement ([AppSetting.aiAssistantDisclaimerAcked]) and,
+/// once on, makes the agent resource database a forced checkout dependency.
+@riverpodSingleton
+bool aiAssistantEnabled(Ref ref) =>
+    ref.watch(appSettingServiceProvider.select((s) => s.aiAssistantEnabled));
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {

@@ -4,10 +4,12 @@ import "package:eve_fit_assistant/compat/isolate.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
+import "package:eve_fit_assistant/storage/repo/agent_resource_db.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:flutter/foundation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -109,6 +111,12 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
     // checkout switches, so a stale warm-up here is harmless.
     unawaited(_warmLocalizationDb());
 
+    // While the AI assistant is enabled its agent database is a hard
+    // dependency of the chat tools; warm it alongside the other resources.
+    if (ref.read(appSettingServiceProvider).aiAssistantEnabled) {
+      unawaited(_warmAgentDb());
+    }
+
     try {
       final collection = await _decodeInIsolate(proxy);
       if (generation != _generation || !ref.mounted) return;
@@ -165,6 +173,18 @@ class DataReadinessNotifier extends _$DataReadinessNotifier {
       await ref.read(localizationDbServiceProvider.future);
     } on Object catch (e, st) {
       debug("DataReadiness: localization db warm-up failed: $e", stackTrace: st);
+    }
+  }
+
+  /// Opens the agent resource database ahead of first use.
+  ///
+  /// Best-effort like [_warmLocalizationDb]: the AI gate surfaces real
+  /// availability problems; failures here are only logged.
+  Future<void> _warmAgentDb() async {
+    try {
+      await ref.read(agentResourceDbServiceProvider.future);
+    } on Object catch (e, st) {
+      debug("DataReadiness: agent db warm-up failed: $e", stackTrace: st);
     }
   }
 

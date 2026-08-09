@@ -8,6 +8,7 @@ from bootstrap.config import DEV_CONFIGURATION
 from bootstrap.data.schema import collections_pb2
 from bootstrap.log import info
 
+from . import agent
 from . import images
 from . import localizations
 from . import native
@@ -40,6 +41,8 @@ async def run_generator(
             await native.generate(datasource)
         if "localization" not in skip:
             await localizations.generate(datasource)
+        if "agent" not in skip:
+            await agent.generate(datasource)
         if "images" not in skip:
             if collection_cache is None:
                 info("Collection cache not provided, loading from disk...")
