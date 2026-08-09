@@ -1,0 +1,12 @@
+id: ai
+name:
+  zh: AI 助手
+  en: AI Assistant
+description:
+  zh: 与 AI 助手交互的页面。
+  en: Pages for working with the AI assistant.
+children:
+  - ai-hub
+  - ai-chat
+  - ai-chat-history
+  - ai-settings

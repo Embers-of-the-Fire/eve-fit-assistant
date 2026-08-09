@@ -1,0 +1,13 @@
+id: data
+name:
+  zh: 数据
+  en: Data
+description:
+  zh: 管理与检查游戏数据和下载内容的页面。
+  en: Pages for managing and inspecting game data and downloaded content.
+children:
+  - storage
+  - channel-metadata
+  - checkouts
+  - checkout-history
+  - channel-overview

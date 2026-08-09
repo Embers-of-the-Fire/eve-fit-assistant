@@ -1,0 +1,13 @@
+id: fitting
+name:
+  zh: 配装
+  en: Fitting
+description:
+  zh: 装配器中用于创建与编辑配装的页面。
+  en: Pages for creating and editing fits in the fitting editor.
+children:
+  - create-fit
+  - fit
+  - item-detail
+  - attribute-detail
+  - fit-screenshot
