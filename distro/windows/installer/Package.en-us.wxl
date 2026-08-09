@@ -4,8 +4,8 @@
   <String Id="ProductDescription" Value="EVE Fit Assistant: plan, simulate, and share EVE Online ship fittings." />
   <String Id="ShortcutName" Value="EFA" />
   <String Id="DowngradeErrorMessage" Value="A newer version of EFA is already installed." />
-  <String Id="InstallDirDlgTitle" Value="Destination Folder" />
+  <String Id="InstallDirDlgTitle" Value="{\WixUI_Font_Title}Destination Folder" />
   <String Id="InstallDirDlgDescription" Value="Choose the folder where EFA will be installed, then click Next." />
-  <String Id="BrowseDlgTitle" Value="Change Folder" />
+  <String Id="BrowseDlgTitle" Value="{\WixUI_Font_Title}Change Folder" />
   <String Id="BrowseDlgDescription" Value="Select the folder where EFA will be installed." />
 </WixLocalization>
