@@ -12,6 +12,6 @@ The Developer Tools page (Developer Settings → Developer Tools) is accessible 
 - **Trigger Feedback Dialog** — resets the feedback state and shows the feedback prompt immediately.
 - **Reset All Storage** — deletes all local data and returns to the first-run setup flow.
 
-> **Warning:** **Reset All Storage** permanently deletes every setting, fit, character, checkout, cached remote data, and log — there is no undo. On native platforms it wipes the app directories and restarts the app; on the web it clears the browser data and reloads the page. For everyday cache and data cleanup, use [Storage Management](efa://manual/data/storage-management).
+> **Warning:** **Reset All Storage** permanently deletes every setting, fit, character, checkout, cached remote data, and log — there is no undo. On native platforms it wipes the app directories and restarts the app; on the web it clears the browser data and reloads the page. For everyday cache and data cleanup, use [Storage Management](efa://manual/pages/data/storage).
 
 To attach logs to a report, open **Collect Logs** from [Developer Settings](efa://manual/pages/settings/developer-settings). See [Developer Mode](efa://manual/settings/developer-mode) for how to enable it.

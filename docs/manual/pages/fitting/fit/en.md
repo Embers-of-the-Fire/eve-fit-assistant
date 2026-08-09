@@ -33,7 +33,7 @@ You can switch tabs by tapping the tab bar at the top of any pane, or by swiping
 
 ### Character
 
-Pick the [character](efa://manual/characters/assign-character-to-fit) (skill profile) this fit uses. Tap the character row at the top to open a picker with the built-in All-V, Alpha-All-V, and All-0 profiles plus any custom characters you have created.
+Pick the [character](efa://manual/characters/assign-character-to-fit) (skill profile) this fit uses. Tap the character row at the top to open a picker with the built-in All V, Alpha Max, and All 0 profiles plus any custom characters you have created.
 
 Below the picker, the character tab has two sub-tabs:
 
@@ -86,7 +86,7 @@ See [Attributes and Statistics](efa://manual/fitting/attributes-stats) for how t
 Ships with fighter tubes get a **Fighter** tab; all others get a **Drone** tab.
 
 - **Drones** — add and clear buttons at the top; each drone row offers quantity controls (x1 / x5, +1 / -1, delete).
-- **Fighters** — the header shows light/support/heavy fighter counts against their limits (H/L/S) plus used launcher tubes; each row toggles the abilities that fighter type supports (turret, missiles, volley, bomb) and shows the quantity against the squadron maximum.
+- **Fighters** — the header shows heavy/light/support fighter counts against their limits (H/L/S) plus used launcher tubes; each row toggles the abilities that fighter type supports (turret, missiles, volley, bomb) and shows the quantity against the squadron maximum.
 
 See [Drones and Fighters](efa://manual/fitting/drones-fighters).
 

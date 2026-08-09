@@ -23,7 +23,7 @@ summary: 与 AI 助手对话、查看工具调用过程,并管理当前对话。
 
 回答问题时,助手可以使用两类工具:
 
-- **手册工具** — 助手可搜索并阅读使用手册文档(`search_manual` / `get_manual_doc`),例如解释"如何导入配装"。手册工具需要所选模型支持工具调用,否则无法使用。
-- **配装工具** — 当你在[配装页面](efa://manual/pages/fitting/fit)打开某个配装时,该配装会"附加"到对话:助手可读取当前配装、查看属性与统计、运行配装校验,并通过 `propose_fit_edit` 给出修改建议(`get_current_fit`、`get_fit_stats`、`get_item`、`get_attr`、`validate_fit`)。助手也可以搜索物品、列出并加载你保存的配装(`search_items`、`list_user_fits`、`load_fit`)。
+- **手册工具** — 助手可搜索并阅读使用手册文档(`search_manual` / `get_manual_doc`),例如解释"如何导入配置"。手册工具需要所选模型支持工具调用,否则无法使用。
+- **配置工具** — 当你在[配置页面](efa://manual/pages/fitting/fit)打开某个配置时,该配置会"附加"到对话:助手可读取当前配置、查看属性与统计、运行配置校验,并通过 `propose_fit_edit` 给出修改建议(`get_current_fit`、`get_fit_stats`、`get_item`、`get_attr`、`validate_fit`)。助手也可以搜索物品、列出并加载你保存的配置(`search_items`、`list_user_fits`、`load_fit`)。
 
 AI 助手仅在原生平台(Android、桌面)可用,Web 版不提供此功能。

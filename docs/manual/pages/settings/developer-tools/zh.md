@@ -12,6 +12,6 @@ summary: 开发者专属的诊断与维护工具，包括频道概览、重启�
 - **Trigger Feedback Dialog（触发反馈对话框）** — 重置反馈状态并立即弹出使用体验反馈提示。
 - **Reset All Storage（重置全部存储）** — 删除所有本地数据并重新进入首次使用引导流程。
 
-> **警告：** **Reset All Storage** 会永久删除所有设置、配装、角色、数据检出、缓存的远程数据与日志，无法撤销。原生平台会清空应用目录并重启应用；网页版会清空浏览器中的数据并重新加载页面。日常的缓存与数据清理请使用[存储管理](efa://manual/data/storage-management)。
+> **警告：** **Reset All Storage** 会永久删除所有设置、配装、角色、数据检出、缓存的远程数据与日志，无法撤销。原生平台会清空应用目录并重启应用；网页版会清空浏览器中的数据并重新加载页面。日常的缓存与数据清理请使用[存储管理](efa://manual/pages/data/storage)。
 
 如需随反馈附上日志，可在[开发者设置](efa://manual/pages/settings/developer-settings)中打开**收集日志**。开发者模式相关说明见[开发者模式](efa://manual/settings/developer-mode)。
