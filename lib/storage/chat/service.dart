@@ -45,7 +45,7 @@ class ChatStorageService extends _$ChatStorageService {
     _conversations = _conversations.where((c) => c.id != id).toList();
     final store = _store;
     if (store != null) {
-      _pendingSync = _pendingSync.catchError(_logSyncError).then((_) => store.delete(_key(id)));
+      _pendingSync = _pendingSync.then((_) => store.delete(_key(id))).catchError(_logSyncError);
     }
     state = build();
   }
@@ -55,11 +55,13 @@ class ChatStorageService extends _$ChatStorageService {
     _conversations = [];
     final store = _store;
     if (store != null) {
-      _pendingSync = _pendingSync.catchError(_logSyncError).then((_) async {
-        for (final id in ids) {
-          await store.delete(_key(id));
-        }
-      });
+      _pendingSync = _pendingSync
+          .then<void>((_) async {
+            for (final id in ids) {
+              await store.delete(_key(id));
+            }
+          })
+          .catchError(_logSyncError);
     }
     state = build();
   }
@@ -75,8 +77,8 @@ class ChatStorageService extends _$ChatStorageService {
     if (store == null) return;
     final text = jsonEncode(conversation.toJson());
     _pendingSync = _pendingSync
-        .catchError(_logSyncError)
-        .then((_) => store.write(_key(conversation.id), text));
+        .then((_) => store.write(_key(conversation.id), text))
+        .catchError(_logSyncError);
   }
 
   static Future<void> _readFromStore() async {

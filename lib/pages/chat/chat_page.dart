@@ -68,7 +68,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         IconButton(
           icon: const Icon(Icons.add_comment_outlined),
           tooltip: context.l10n.chatNewConversationTooltip,
-          onPressed: gateReady
+          onPressed: gateReady && !chatState.sending
               ? () => ref.read(chatControllerProvider.notifier).newConversation()
               : null,
         ),

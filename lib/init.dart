@@ -111,7 +111,9 @@ Future<InitializedStores> initSingletons() async {
 void _setupRustLogging() {
   if (!NativeEngineAvailability.available) return;
   try {
-    native_logging.createLogStream().listen((entry) {
+    native_logging.createLogStream(debug: AppSettingService.appSetting.enableDebugLog).listen((
+      entry,
+    ) {
       final message = "[${entry.target}] ${entry.message}";
       switch (entry.level) {
         case "ERROR":

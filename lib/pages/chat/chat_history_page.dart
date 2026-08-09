@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/ai_gate/ai_gate.dart";
 import "package:eve_fit_assistant/features/ai_gate/ai_gate_controller.dart";
 import "package:eve_fit_assistant/features/ai_gate/ai_gate_state.dart";
 import "package:eve_fit_assistant/features/chat/chat_controller.dart";
+import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/chat/models.dart";
 import "package:eve_fit_assistant/storage/chat/service.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -87,7 +88,14 @@ class _ConversationTile extends ConsumerWidget {
       trailing: conversation.model.isEmpty ? null : Text(conversation.model),
       onTap: () {
         unawaited(ref.read(chatControllerProvider.notifier).openConversation(conversation.id));
-        context.router.pop();
+        final router = context.router;
+        // History can be pushed from the AI hub as well as from the chat page;
+        // only pop when a chat page is actually underneath.
+        if (router.stack.any((route) => route.name == ChatRoute.name)) {
+          router.popUntilRouteWithName(ChatRoute.name);
+        } else {
+          unawaited(router.replace(const ChatRoute()));
+        }
       },
     ),
   );

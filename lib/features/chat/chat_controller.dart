@@ -127,7 +127,11 @@ class ChatController extends _$ChatController {
     await _persist(conversation);
 
     final segments = <ChatSegment>[];
+    // A turn becomes stale when the user switches or clears the conversation
+    // mid-stream; stale turns must not touch state or storage anymore.
+    bool isStale() => state.conversation?.id != conversation.id;
     void publish() {
+      if (isStale()) return;
       state = state.copyWith(streamingSegments: List.of(segments));
     }
 
@@ -152,6 +156,7 @@ class ChatController extends _$ChatController {
             _updateToolSegment(segments, id, (s) => s.copyWith(done: true, result: result));
             publish();
           case native_chat.ChatStreamEvent_Done(:final fullText):
+            if (isStale()) break;
             final done = DateTime.now().millisecondsSinceEpoch;
             final completed = _appendMessage(
               conversation,
@@ -173,16 +178,20 @@ class ChatController extends _$ChatController {
             await _persist(completed);
           case native_chat.ChatStreamEvent_Error(:final message):
             warning("chat: stream error: $message");
-            state = ChatState(
-              conversation: state.conversation,
-              error: message,
-              failedText: trimmed,
-            );
+            if (isStale()) break;
+            // The Rust session never commits a failed turn, so drop the
+            // unsent user message too; retry() re-appends it via send().
+            final reverted = _removeMessage(conversation, userMessage.id);
+            state = ChatState(conversation: reverted, error: message, failedText: trimmed);
+            await _persist(reverted);
         }
       }
     } on Object catch (e, st) {
       error("chat: stream failed", error: e, stackTrace: st);
-      state = ChatState(conversation: state.conversation, error: e.toString(), failedText: trimmed);
+      if (isStale()) return;
+      final reverted = _removeMessage(conversation, userMessage.id);
+      state = ChatState(conversation: reverted, error: e.toString(), failedText: trimmed);
+      await _persist(reverted);
     }
   }
 
@@ -295,6 +304,14 @@ class ChatController extends _$ChatController {
       conversation.copyWith(
         messages: [...conversation.messages, message],
         updatedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+
+  ChatConversation _removeMessage(ChatConversation conversation, String messageId) =>
+      conversation.copyWith(
+        messages: [
+          for (final message in conversation.messages)
+            if (message.id != messageId) message,
+        ],
       );
 
   Future<void> _persist(ChatConversation conversation) =>

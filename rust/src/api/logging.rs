@@ -21,12 +21,17 @@ static LOG_SINK: OnceLock<StreamSink<LogEntry>> = OnceLock::new();
 ///
 /// The sink is stored in a `static` so it is never dropped — dropping the
 /// [`StreamSink`] is what signals stream-close — which keeps the stream open
-/// for the lifetime of the process.
+/// for the lifetime of the process. `debug` mirrors the app's debug-log
+/// setting so verbose records only cross the sink when it is enabled.
 #[frb]
-pub fn create_log_stream(sink: StreamSink<LogEntry>) {
+pub fn create_log_stream(sink: StreamSink<LogEntry>, debug: bool) {
     if LOG_SINK.set(sink).is_ok() {
         let _ = log::set_logger(&FRB_LOG_LOGGER);
-        log::set_max_level(log::LevelFilter::Debug);
+        log::set_max_level(if debug {
+            log::LevelFilter::Debug
+        } else {
+            log::LevelFilter::Info
+        });
     }
 }
 
