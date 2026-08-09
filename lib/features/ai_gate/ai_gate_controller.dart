@@ -94,6 +94,7 @@ class AiGateController extends _$AiGateController {
   /// the former checkout and the gate state is re-derived for the current
   /// checkout instead.
   void _publishTerminal(String? checkoutId, AiGateState terminal) {
+    if (!ref.mounted) return;
     if (ref.read(activeCheckoutIdProvider).toNullable() != checkoutId) {
       ref.invalidateSelf();
       return;
@@ -145,6 +146,7 @@ class AiGateController extends _$AiGateController {
             identHash,
             entry.contentHash,
             onReceiveProgress: (received, total) {
+              if (!ref.mounted) return;
               state = AiGateState.downloading(
                 downloadedBytes: received,
                 totalBytes: total > 0 ? total : expectedBytes,
