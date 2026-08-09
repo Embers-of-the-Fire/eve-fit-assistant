@@ -6,6 +6,7 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
@@ -67,6 +68,8 @@ void main() {
   setUpAll(() {
     registerFallbackValue((int received, int total) {});
     registerFallbackValue(Uint8List(0));
+    final logDir = Directory.systemTemp.createTempSync("efa_ai_gate_test_log_");
+    GlobalLogger.init(logDir.path, enableDebugLog: false);
   });
 
   late String tempDir;

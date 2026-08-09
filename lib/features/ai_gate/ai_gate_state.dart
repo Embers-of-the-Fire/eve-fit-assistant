@@ -7,6 +7,19 @@ part "ai_gate_state.freezed.dart";
 /// The hub page (and every AI surface wrapped by `AiFeatureGate`) renders
 /// exactly one of these states; the actual feature content is only reachable
 /// in [AiGateReady].
+/// Why an agent database download failed. The gate maps this reason to a
+/// localized message; the raw error text is only written to the logs.
+enum AiGateDownloadFailureReason {
+  /// The fetch failed at the network layer.
+  network,
+
+  /// The downloaded payload did not match the expected content hash.
+  integrity,
+
+  /// Any other failure.
+  unknown,
+}
+
 @freezed
 sealed class AiGateState with _$AiGateState {
   /// First contact: the user has not acknowledged the AI service notice yet.
@@ -23,7 +36,8 @@ sealed class AiGateState with _$AiGateState {
       AiGateDownloading;
 
   /// The agent database download failed and can be retried.
-  const factory AiGateState.downloadFailed({required String message}) = AiGateDownloadFailed;
+  const factory AiGateState.downloadFailed({required AiGateDownloadFailureReason reason}) =
+      AiGateDownloadFailed;
 
   /// AI is enabled but no checkout exists; the user must set up data first.
   const factory AiGateState.dataRequiredNoCheckout() = AiGateDataRequiredNoCheckout;

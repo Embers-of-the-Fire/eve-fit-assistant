@@ -32,7 +32,7 @@ class AiFeatureGate extends ConsumerWidget {
       downloadedBytes: downloadedBytes,
       totalBytes: totalBytes,
     ),
-    AiGateDownloadFailed(:final message) => _DownloadFailedView(message: message),
+    AiGateDownloadFailed(:final reason) => _DownloadFailedView(reason: reason),
     AiGateDataRequiredNoCheckout() => const _DataRequiredView(
       description: _DataRequiredKind.noCheckout,
     ),
@@ -142,15 +142,19 @@ class _DownloadingView extends StatelessWidget {
 }
 
 class _DownloadFailedView extends ConsumerWidget {
-  const _DownloadFailedView({required this.message});
+  const _DownloadFailedView({required this.reason});
 
-  final String message;
+  final AiGateDownloadFailureReason reason;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => _NoticeView(
     icon: Icons.error_outline,
     title: context.l10n.aiDownloadFailedTitle,
-    description: message,
+    description: switch (reason) {
+      .network => context.l10n.aiDownloadFailedNetworkDescription,
+      .integrity => context.l10n.aiDownloadFailedIntegrityDescription,
+      .unknown => context.l10n.aiDownloadFailedUnknownDescription,
+    },
     action: ElevatedButton(
       onPressed: () => unawaited(ref.read(aiGateControllerProvider.notifier).downloadAgentDb()),
       child: Text(context.l10n.retry),

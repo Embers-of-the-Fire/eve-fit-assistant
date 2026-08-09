@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/ai_gate/ai_gate_state.dart";
 import "package:eve_fit_assistant/storage/repo/agent_resource_db.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
@@ -152,10 +153,18 @@ class AiGateController extends _$AiGateController {
           );
       if (result.isLeft()) {
         final err = result.getLeft().toNullable()!;
+        final detail = switch (err) {
+          CatalogNetworkError(:final message, :final statusCode) =>
+            "$message (status: $statusCode)",
+          CatalogNotFoundError(:final message) || CatalogParseError(:final message) => message,
+        };
+        warning("AI gate: agent database download failed: $detail");
         _publishTerminal(
           checkoutId,
           AiGateState.downloadFailed(
-            message: err is CatalogNetworkError ? err.message : "Failed to download agent database",
+            reason: err is CatalogNetworkError
+                ? AiGateDownloadFailureReason.network
+                : AiGateDownloadFailureReason.unknown,
           ),
         );
         return;
@@ -163,9 +172,10 @@ class AiGateController extends _$AiGateController {
 
       final bytes = result.getRight().toNullable()!;
       if (RepoHash.hashContent(bytes) != entry.contentHash) {
+        warning("AI gate: agent database content hash mismatch");
         _publishTerminal(
           checkoutId,
-          const AiGateState.downloadFailed(message: "Agent database content hash mismatch"),
+          const AiGateState.downloadFailed(reason: AiGateDownloadFailureReason.integrity),
         );
         return;
       }
@@ -183,8 +193,12 @@ class AiGateController extends _$AiGateController {
       // Re-derive the gate state for the current checkout instead of
       // opening the gate with the former checkout's database.
       _publishTerminal(checkoutId, const AiGateState.ready());
-    } on Object catch (e) {
-      _publishTerminal(checkoutId, AiGateState.downloadFailed(message: e.toString()));
+    } on Object catch (e, st) {
+      warning("AI gate: agent database download failed: $e", stackTrace: st);
+      _publishTerminal(
+        checkoutId,
+        const AiGateState.downloadFailed(reason: AiGateDownloadFailureReason.unknown),
+      );
     } finally {
       _downloadInFlight = false;
     }
