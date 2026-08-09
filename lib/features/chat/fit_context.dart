@@ -163,7 +163,8 @@ Future<String> _searchItems(Ref ref, String query, String? language, String? kin
     if (parsedKind == null) {
       return jsonEncode({
         "error":
-            "unknown kind `$kind`; expected one of: ship, module, charge, drone, fighter, implant, booster",
+            "unknown kind `$kind`; expected one of: "
+            "${AgentSearchKind.values.map((k) => k.name).join(", ")}",
       });
     }
   }
