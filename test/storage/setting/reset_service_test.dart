@@ -17,6 +17,7 @@ void main() {
     PathProvider.documentsPath = p.join(tempRoot.path, "documents");
     PathProvider.tempPath = p.join(tempRoot.path, "temp");
     PathProvider.appSupportPath = p.join(tempRoot.path, "support");
+    PathProvider.defaultAppSupportPath = PathProvider.appSupportPath;
     PathProvider.downloadsPath = null;
     PathProvider.cachesPath = p.join(tempRoot.path, "cache");
     await RemoteCache.init();
