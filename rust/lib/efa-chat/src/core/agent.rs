@@ -113,9 +113,7 @@ impl ChatAgent {
     where
         M: CompletionModel + 'static,
     {
-        let builder = builder
-            .preamble(&self.config.full_system_prompt())
-            .temperature(0.2);
+        let builder = builder.preamble(&self.config.full_system_prompt());
         // The static `.tool()` builder is type-state based and cannot be
         // conditional, so the fit toolset goes through the dynamic-tool path.
         let mut builder = match &self.fit_engine {
