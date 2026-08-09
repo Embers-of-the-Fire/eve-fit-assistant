@@ -51,12 +51,11 @@ class WorkspacePage extends ConsumerWidget {
           onTap: () => context.router.push(AnnouncementFeedRoute()),
           isUpdatesCard: true,
         ),
-      if (!kIsWeb)
-        _WorkspaceShortcutItem(
-          title: context.l10n.workspaceTabAiChatTitle,
-          icon: Icons.smart_toy_outlined,
-          onTap: () => context.router.push(const AiRoute()),
-        ),
+      _WorkspaceShortcutItem(
+        title: context.l10n.workspaceTabAiChatTitle,
+        icon: Icons.smart_toy_outlined,
+        onTap: () => context.router.push(const AiRoute()),
+      ),
       _WorkspaceShortcutItem(
         title: context.l10n.workspaceTabManualTitle,
         icon: Icons.menu_book_outlined,

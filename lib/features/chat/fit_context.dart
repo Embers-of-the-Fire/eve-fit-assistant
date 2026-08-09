@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:eve_fit_assistant/config/locale.dart";
@@ -140,17 +141,59 @@ Set<int> referencedTypeIds(FitStorage fit) {
   return ids;
 }
 
+/// The live subscription of the active session's callback channel; only one
+/// chat session is active at a time (see `ChatController`).
+StreamSubscription<void>? _fitCallbackSub;
+
 /// Register the app-state callbacks backing the `search_items`,
 /// `list_user_fits`, and `load_fit` chat tools on [session].
+///
+/// Opens the session's callback channel: Rust pushes
+/// [native_chat.ChatCallbackRequest]s over a stream, and each request is
+/// answered with a JSON string via `deliverCallbackResult`. (FRB Dart
+/// closures are not used: they cannot cross to Rust on dart2wasm.)
 Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) async {
   try {
-    session.setFitCallbacks(
-      searchItems: (query, language, kind) => _searchItems(ref, query, language, kind),
-      listFits: () => _listFits(ref),
-      loadFit: (fitId) => _loadFit(ref, fitId),
+    await _fitCallbackSub?.cancel();
+    _fitCallbackSub = session.openCallbackChannel().listen(
+      (request) => unawaited(_dispatchCallbackRequest(ref, session, request)),
+      onError: (Object e, StackTrace st) =>
+          warning("chat: callback channel error: $e", stackTrace: st),
     );
   } on Object catch (e, st) {
     warning("chat: failed to register fit callbacks: $e", stackTrace: st);
+  }
+}
+
+/// Handle one callback request from [session] and deliver its JSON result.
+/// Every failure path still delivers an error payload so the waiting tool
+/// future never hangs.
+Future<void> _dispatchCallbackRequest(
+  Ref ref,
+  native_chat.ChatSession session,
+  native_chat.ChatCallbackRequest request,
+) async {
+  final callId = switch (request) {
+    native_chat.ChatCallbackRequest_SearchItems(:final callId) => callId,
+    native_chat.ChatCallbackRequest_ListFits(:final callId) => callId,
+    native_chat.ChatCallbackRequest_LoadFit(:final callId) => callId,
+  };
+  String result;
+  try {
+    result = await switch (request) {
+      native_chat.ChatCallbackRequest_SearchItems(:final query, :final language, :final kind) =>
+        _searchItems(ref, query, language, kind),
+      native_chat.ChatCallbackRequest_ListFits() => _listFits(ref),
+      native_chat.ChatCallbackRequest_LoadFit(:final fitId) => _loadFit(ref, fitId),
+    };
+  } on Object catch (e, st) {
+    warning("chat: callback handler failed: $e", stackTrace: st);
+    result = jsonEncode({"error": "$e"});
+  }
+  try {
+    await session.deliverCallbackResult(callId: callId, result: result);
+  } on Object catch (e, st) {
+    warning("chat: failed to deliver callback result: $e", stackTrace: st);
   }
 }
 

@@ -1,14 +1,16 @@
 use std::collections::HashMap;
+use std::future::Future;
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use efa_chat::Message;
 use efa_chat::core::agent::ChatAgent;
 use efa_chat::core::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage};
 use efa_chat::core::event::ChatEvent;
-use efa_chat::tools::fit::{ActiveFit, FitCallbacks};
+use efa_chat::tools::fit::{ActiveFit, FitCallbacks, FitToolFuture};
 use efa_chat::tools::manual::{ManualCorpus, ManualDocText};
-use flutter_rust_bridge::DartFnFuture;
 use flutter_rust_bridge::frb;
+use futures::channel::oneshot;
 
 use crate::api::server::FitEngineData;
 use crate::api::storage::FitStorage;
@@ -109,89 +111,158 @@ pub struct ChatModelInfo {
     pub owned_by: Option<String>,
 }
 
-/// Newtype asserting `Send + Sync` for a wrapped value.
-///
-/// flutter_rust_bridge Dart closures route every call through message ports
-/// and are designed to be invoked from any thread, yet their generated Rust
-/// type implements neither `Send` nor `Sync`. The fit tools store these
-/// callbacks in a shared context that the rig runtime accesses from its
-/// worker threads, so both markers are asserted here.
-///
-/// The [`ThreadSafeFn::call`]/[`ThreadSafeFn::call_with`]/
-/// [`ThreadSafeFn::call_with_search`] accessors matter: a closure that
-/// invokes them captures the *whole* wrapper (which is `Send + Sync`),
-/// whereas inlining `(wrapper.0)(...)` would make Rust capture only the
-/// non-`Send` inner field.
-///
-/// SAFETY: the wrapped value is only ever a flutter_rust_bridge Dart closure
-/// (see [`ChatSession::set_fit_callbacks`]), whose invocation is thread-safe
-/// by construction.
-struct ThreadSafeFn<F>(F);
-
-// SAFETY: see the doc comment on [`ThreadSafeFn`].
-unsafe impl<F> Send for ThreadSafeFn<F> {}
-unsafe impl<F> Sync for ThreadSafeFn<F> {}
-
-impl<F> ThreadSafeFn<F> {
-    fn call(&self) -> efa_chat::tools::fit::FitToolFuture
-    where
-        F: Fn() -> efa_chat::tools::fit::FitToolFuture,
-    {
-        (self.0)()
-    }
-
-    fn call_with(&self, arg: String) -> efa_chat::tools::fit::FitToolFuture
-    where
-        F: Fn(String) -> efa_chat::tools::fit::FitToolFuture,
-    {
-        (self.0)(arg)
-    }
-
-    fn call_with_search(
-        &self,
+/// A request pushed from an app-state fit tool (`search_items`,
+/// `list_user_fits`, `load_fit`) to the Dart host over the session's
+/// callback channel (see [`ChatSession::open_callback_channel`]). Dart
+/// answers through [`ChatSession::deliver_callback_result`], keyed by
+/// `call_id`.
+pub enum ChatCallbackRequest {
+    /// `search_items(query, language, kind)` — see the chat crate's
+    /// `FitCallbacks::search_items` for the argument contract.
+    SearchItems {
+        call_id: i32,
         query: String,
         language: Option<String>,
         kind: Option<String>,
-    ) -> efa_chat::tools::fit::FitToolFuture
-    where
-        F: Fn(String, Option<String>, Option<String>) -> efa_chat::tools::fit::FitToolFuture,
-    {
-        (self.0)(query, language, kind)
+    },
+    /// `list_user_fits()`.
+    ListFits { call_id: i32 },
+    /// `load_fit(fit_id)`.
+    LoadFit { call_id: i32, fit_id: String },
+}
+
+/// Host-callback plumbing for the app-state fit tools.
+///
+/// flutter_rust_bridge Dart closures (DartFn) do not work on dart2wasm: the
+/// invoke message crosses a `BroadcastChannel` as a raw `JSValue`, which
+/// FRB's Dart-side port manager cannot decode (it expects a `List<dynamic>`
+/// and only dart2js auto-converts), crashing the port listener and hanging
+/// the tool future. The bridge therefore runs its own request/response
+/// channel built from primitives that work on every platform: a
+/// [`StreamSink`] carries [`ChatCallbackRequest`]s to Dart, and
+/// [`ChatSession::deliver_callback_result`] returns the JSON result.
+struct CallbackRegistry {
+    sink: Mutex<Option<StreamSink<ChatCallbackRequest>>>,
+    pending: Mutex<HashMap<i32, oneshot::Sender<String>>>,
+    next_call_id: AtomicI32,
+}
+
+impl CallbackRegistry {
+    fn new() -> Self {
+        Self {
+            sink: Mutex::new(None),
+            pending: Mutex::new(HashMap::new()),
+            next_call_id: AtomicI32::new(1),
+        }
+    }
+
+    fn lock_sink(&self) -> MutexGuard<'_, Option<StreamSink<ChatCallbackRequest>>> {
+        self.sink.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn lock_pending(&self) -> MutexGuard<'_, HashMap<i32, oneshot::Sender<String>>> {
+        self.pending.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Post one callback request and return the future the fit tool awaits.
+    /// Failures (no channel yet, closed channel) resolve to an error payload
+    /// the model can read, never a hang.
+    fn invoke(self: &Arc<Self>, request: impl FnOnce(i32) -> ChatCallbackRequest) -> FitToolFuture {
+        const ERR_NO_CHANNEL: &str = "{\"error\":\"app callbacks are not registered\"}";
+        const ERR_POST_FAILED: &str = "{\"error\":\"failed to reach the app\"}";
+        const ERR_CHANNEL_CLOSED: &str = "{\"error\":\"callback channel closed\"}";
+
+        // The sink lock is held across `add` (StreamSink is not Clone); it is
+        // always the outer lock relative to `pending`, so no deadlock.
+        let guard = self.lock_sink();
+        let Some(sink) = guard.as_ref() else {
+            return Box::pin(async move { ERR_NO_CHANNEL.to_string() });
+        };
+        let call_id = self.next_call_id.fetch_add(1, Ordering::Relaxed);
+        let (sender, receiver) = oneshot::channel::<String>();
+        self.lock_pending().insert(call_id, sender);
+        if sink.add(request(call_id)).is_err() {
+            self.lock_pending().remove(&call_id);
+            return Box::pin(async move { ERR_POST_FAILED.to_string() });
+        }
+        Box::pin(async move {
+            receiver
+                .await
+                .unwrap_or_else(|_| ERR_CHANNEL_CLOSED.to_string())
+        })
+    }
+
+    fn complete(&self, call_id: i32, result: String) {
+        if let Some(sender) = self.lock_pending().remove(&call_id) {
+            let _ = sender.send(result);
+        }
     }
 }
 
-/// Wrap the three FRB Dart closures into the shared [`FitCallbacks`].
-fn build_fit_callbacks(
-    search_items: impl Fn(String, Option<String>, Option<String>) -> DartFnFuture<String> + 'static,
-    list_fits: impl Fn() -> DartFnFuture<String> + 'static,
-    load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
-) -> FitCallbacks {
-    let search_items = ThreadSafeFn(search_items);
-    let list_fits = ThreadSafeFn(list_fits);
-    let load_fit = ThreadSafeFn(load_fit);
+/// Build the [`FitCallbacks`] closures that route through [registry].
+fn build_fit_callbacks(registry: &Arc<CallbackRegistry>) -> FitCallbacks {
+    let search_items = registry.clone();
+    let list_fits = registry.clone();
+    let load_fit = registry.clone();
     FitCallbacks {
         search_items: Arc::new(move |query, language, kind| {
-            search_items.call_with_search(query, language, kind)
+            search_items.invoke(|call_id| ChatCallbackRequest::SearchItems {
+                call_id,
+                query,
+                language,
+                kind,
+            })
         }),
-        list_fits: Arc::new(move || list_fits.call()),
-        load_fit: Arc::new(move |fit_id| load_fit.call_with(fit_id)),
+        list_fits: Arc::new(move || {
+            list_fits.invoke(|call_id| ChatCallbackRequest::ListFits { call_id })
+        }),
+        load_fit: Arc::new(move |fit_id| {
+            load_fit.invoke(|call_id| ChatCallbackRequest::LoadFit { call_id, fit_id })
+        }),
     }
+}
+
+/// Drives a chat turn future to completion.
+///
+/// On native targets the future runs on the efa-chat tokio runtime (rig /
+/// reqwest need its reactor), spawned as a task so this `async` FRB function
+/// never blocks its own executor thread. On wasm32 there is no runtime to
+/// spawn onto: FRB executes async functions on the browser event loop, which
+/// is exactly where reqwest's fetch-based futures resolve, so the future is
+/// awaited directly. (`block_on` on wasm would deadlock: the promise
+/// callbacks that resolve fetch futures can only run when the worker's event
+/// loop turns.)
+#[cfg(not(target_arch = "wasm32"))]
+async fn drive_turn<F>(future: F) -> F::Output
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    efa_chat::runtime()
+        .spawn(future)
+        .await
+        .expect("efa-chat runtime task panicked")
+}
+
+/// See the native [`drive_turn`]; on wasm32 the future is awaited in place.
+#[cfg(target_arch = "wasm32")]
+async fn drive_turn<F: Future>(future: F) -> F::Output {
+    future.await
 }
 
 /// Fetch the model list exposed by the provider, used to populate the
 /// predefined model choices. A blank `base_url` selects the provider's
 /// default endpoint.
 #[frb]
-pub fn list_available_models(
+pub async fn list_available_models(
     provider: ChatProvider,
     api_key: String,
     base_url: String,
 ) -> anyhow::Result<Vec<ChatModelInfo>> {
-    let models = efa_chat::runtime().block_on(efa_chat::core::models::list_models(
-        provider.into(),
-        &api_key,
-        &base_url,
-    ))?;
+    let models = drive_turn(async move {
+        efa_chat::core::models::list_models(provider.into(), &api_key, &base_url).await
+    })
+    .await?;
     Ok(models
         .into_iter()
         .map(|m| ChatModelInfo {
@@ -203,6 +274,7 @@ pub fn list_available_models(
 
 pub struct ChatSession {
     agent: Mutex<ChatAgent>,
+    callbacks: Arc<CallbackRegistry>,
 }
 
 impl ChatSession {
@@ -222,6 +294,7 @@ impl ChatSession {
         .with_language(PromptLanguage::from_locale(&config.language));
         Ok(Self {
             agent: Mutex::new(ChatAgent::new(config)?),
+            callbacks: Arc::new(CallbackRegistry::new()),
         })
     }
 
@@ -316,42 +389,47 @@ impl ChatSession {
         self.lock_agent().set_active_fit(None);
     }
 
-    /// Register the app-provided callbacks backing the app-state fit tools
-    /// (`search_items`, `list_user_fits`, `load_fit`). Each callback returns
-    /// a JSON string; `load_fit` must return the fit payload JSON described
-    /// by the chat crate's fit schema (or `{"error": ...}`). `search_items`
-    /// receives the query plus an optional localization language code
-    /// (`None` defers to the app's display language) and an optional item-kind
-    /// filter (`ship`/`module`/`charge`/`drone`/`fighter`/`implant`/`booster`).
+    /// Open the session's host-callback channel: the app-state fit tools
+    /// (`search_items`, `list_user_fits`, `load_fit`) push
+    /// [`ChatCallbackRequest`]s to [sink], and Dart returns each result as a
+    /// JSON string through [`ChatSession::deliver_callback_result`]. Opening
+    /// the channel also (re)registers the callbacks on the agent.
     ///
-    /// Deliberately `#[frb(sync)]` with bare `impl Fn(...) -> DartFnFuture<...>`
-    /// parameters: that shape is what flutter_rust_bridge recognizes as a Dart
-    /// closure, and running synchronously keeps FRB from moving the (not
-    /// `Send`) closure onto its thread pool. The closures are only *stored*
-    /// here, wrapped in [`ThreadSafeFn`] for the shared tool context.
-    #[frb(sync)]
-    pub fn set_fit_callbacks(
-        &self,
-        search_items: impl Fn(String, Option<String>, Option<String>) -> DartFnFuture<String> + 'static,
-        list_fits: impl Fn() -> DartFnFuture<String> + 'static,
-        load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
-    ) {
-        let callbacks = build_fit_callbacks(search_items, list_fits, load_fit);
+    /// Deliberately *not* flutter_rust_bridge Dart closures (DartFn): those
+    /// are delivered through FRB's handler port, whose dart2wasm receiver
+    /// cannot decode the invoke message (see [`CallbackRegistry`]). A
+    /// `StreamSink` plus explicit result delivery only uses primitives that
+    /// work on every platform.
+    #[frb]
+    pub fn open_callback_channel(&self, sink: StreamSink<ChatCallbackRequest>) {
+        *self.callbacks.lock_sink() = Some(sink);
+        let callbacks = build_fit_callbacks(&self.callbacks);
         self.lock_agent().set_fit_callbacks(callbacks);
+    }
+
+    /// Deliver the JSON result of a [`ChatCallbackRequest`] back to the
+    /// waiting fit tool. Unknown or stale call ids are ignored.
+    ///
+    /// Async so that, on web, the oneshot completing the parked tool future
+    /// is signalled on the browser event loop — the same thread the turn
+    /// future is suspended on.
+    #[frb]
+    pub async fn deliver_callback_result(&self, call_id: i32, result: String) {
+        self.callbacks.complete(call_id, result);
     }
 
     /// One-shot completion turn (used for connection tests).
     ///
-    /// Deliberately a *normal* FRB function: it blocks a thread-pool thread on
-    /// the efa-chat tokio runtime, keeping rig/reqwest off FRB's executor. The
-    /// agent lock is held only to prepare and commit, never across the turn,
-    /// so a concurrent `#[frb(sync)]` session call never blocks the Dart
-    /// isolate on an in-flight turn (which would also deadlock any fit tool
-    /// that calls back into Dart mid-turn).
+    /// The agent lock is held only to prepare and commit, never across the
+    /// turn, so a concurrent `#[frb(sync)]` session call never blocks the
+    /// Dart isolate on an in-flight turn (which would also deadlock any fit
+    /// tool that calls back into Dart mid-turn). Turn execution goes through
+    /// [`drive_turn`]: the efa-chat tokio runtime on native, a direct await
+    /// on the browser event loop on web.
     #[frb]
-    pub fn prompt(&self, text: String) -> anyhow::Result<String> {
+    pub async fn prompt(&self, text: String) -> anyhow::Result<String> {
         let prepared = self.lock_agent().prepare_turn()?;
-        let (output, messages) = efa_chat::runtime().block_on(prepared.chat(&text))?;
+        let (output, messages) = drive_turn(async move { prepared.chat(&text).await }).await?;
         self.lock_agent().commit_chat_turn(messages);
         Ok(output)
     }
@@ -363,7 +441,7 @@ impl ChatSession {
     /// lock is held only to prepare and commit, never across the turn (see
     /// [`ChatSession::prompt`]).
     #[frb]
-    pub fn stream_prompt(&self, sink: StreamSink<ChatStreamEvent>, text: String) {
+    pub async fn stream_prompt(&self, sink: StreamSink<ChatStreamEvent>, text: String) {
         let prepared = match self.lock_agent().prepare_turn() {
             Ok(prepared) => prepared,
             Err(e) => {
@@ -373,23 +451,29 @@ impl ChatSession {
                 return;
             }
         };
-        let result = efa_chat::runtime().block_on(prepared.stream(&text, |event| {
-            let mapped = match event {
-                ChatEvent::TextDelta(text) => ChatStreamEvent::TextDelta { text },
-                ChatEvent::ToolCallStart { id, name } => {
-                    ChatStreamEvent::ToolCallStart { id, name }
-                }
-                ChatEvent::ToolCallArgsDelta { id, delta } => {
-                    ChatStreamEvent::ToolCallArgsDelta { id, delta }
-                }
-                ChatEvent::ToolCallEnd { id, result } => {
-                    ChatStreamEvent::ToolCallEnd { id, result }
-                }
-                ChatEvent::Done(full_text) => ChatStreamEvent::Done { full_text },
-                ChatEvent::Error(message) => ChatStreamEvent::Error { message },
-            };
-            let _ = sink.add(mapped);
-        }));
+        let turn_text = text.clone();
+        let result = drive_turn(async move {
+            prepared
+                .stream(&turn_text, |event| {
+                    let mapped = match event {
+                        ChatEvent::TextDelta(text) => ChatStreamEvent::TextDelta { text },
+                        ChatEvent::ToolCallStart { id, name } => {
+                            ChatStreamEvent::ToolCallStart { id, name }
+                        }
+                        ChatEvent::ToolCallArgsDelta { id, delta } => {
+                            ChatStreamEvent::ToolCallArgsDelta { id, delta }
+                        }
+                        ChatEvent::ToolCallEnd { id, result } => {
+                            ChatStreamEvent::ToolCallEnd { id, result }
+                        }
+                        ChatEvent::Done(full_text) => ChatStreamEvent::Done { full_text },
+                        ChatEvent::Error(message) => ChatStreamEvent::Error { message },
+                    };
+                    let _ = sink.add(mapped);
+                })
+                .await
+        })
+        .await;
         if let Ok(accumulated) = result {
             self.lock_agent().commit_stream_turn(&text, &accumulated);
         }

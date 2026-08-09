@@ -2103,6 +2103,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "web-time",
 ]
 
 [[package]]
@@ -5637,6 +5638,7 @@ dependencies = [
  "efa-chat",
  "eve-fit-os",
  "flutter_rust_bridge",
+ "futures",
  "log",
 ]
 

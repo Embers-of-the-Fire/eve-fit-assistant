@@ -65,22 +65,32 @@ Exposes the crate to Dart. Follows the FRB threading rules from AGENTS.md:
 - `ChatConfig.provider` (`ChatProvider` enum) selects the rig provider; blank `base_url`
   means the provider default. `create`, `set_model`, `restore_history`, `clear_history`
   are `#[frb(sync)]` (cheap).
-- `prompt` and `list_available_models` are **normal** FRB fns that `block_on` the efa-chat
-  runtime on a pool thread — keeps rig/reqwest off FRB's executor.
-- `stream_prompt(sink, text)` pushes `ChatStreamEvent::{TextDelta, ToolCallStart,
-  ToolCallArgsDelta, ToolCallEnd, Done, Error}` over a `StreamSink`. Stream errors are delivered
-  as `Error` events, **not** a failed future, so Dart has a single error channel over the
-  stream's lifetime.
+- `prompt` and `list_available_models` are **async** FRB fns driven through the `drive_turn`
+  helper: on native the turn future is spawned onto the efa-chat tokio runtime (keeping
+  rig/reqwest off FRB's executor without blocking it); on wasm32 it is awaited directly —
+  FRB runs async fns on the browser event loop, where reqwest's fetch-based futures resolve
+  (`block_on` on wasm would deadlock the worker event loop).
+- `stream_prompt(sink, text)` (also async, same `drive_turn` split) pushes
+  `ChatStreamEvent::{TextDelta, ToolCallStart, ToolCallArgsDelta, ToolCallEnd, Done, Error}`
+  over a `StreamSink`. Stream errors are delivered as `Error` events, **not** a failed future,
+  so Dart has a single error channel over the stream's lifetime.
 - `ChatHistoryMessage` + `ChatRole` seed session history when resuming a persisted conversation.
 - `ChatManualDoc` + `ChatSession::set_manual_docs` (`#[frb(sync)]`) hand the bundled manual
   corpus (flat doc×locale rows) to the agent, enabling the manual tools.
-- `ChatSession::set_fit_callbacks` (`#[frb(sync)]`) registers the app-state callbacks behind
-  `search_items`/`list_user_fits`/`load_fit`; `search_items` receives `(query, language?, kind?)`,
-  where `language` selects the name localization to search (omitted → app display language) and
-  `kind` optionally restricts results to one item kind (`ship`/`module`/`charge`/`drone`/
-  `fighter`/`implant`/`booster`). The kind filter is applied inside the agent resource database
-  query (schema v2 `type_names` columns `group_id`/`category_id`/`slot_index`/`slot_kind`);
-  implant and booster hits carry `slot_index` for `propose_fit_edit`'s `set_implant`/`set_booster`.
+- `ChatSession::open_callback_channel` + `deliver_callback_result` back the app-state tools
+  (`search_items`/`list_user_fits`/`load_fit`). FRB Dart closures (DartFn) are **not** used:
+  their invoke message crosses a `BroadcastChannel` as a raw `JSValue` that FRB's Dart port
+  manager cannot decode on dart2wasm (only dart2js auto-converts), crashing the port listener.
+  The bridge therefore runs its own request/response channel: a `StreamSink` pushes
+  `ChatCallbackRequest::{SearchItems, ListFits, LoadFit}` (each with a `call_id`) to Dart, and
+  the async `deliver_callback_result(call_id, result)` completes the oneshot the tool future
+  awaits (async so the wake happens on the browser event loop on web). `search_items` receives
+  `(query, language?, kind?)`, where `language` selects the name localization to search
+  (omitted → app display language) and `kind` optionally restricts results to one item kind
+  (`ship`/`module`/`charge`/`drone`/`fighter`/`implant`/`booster`). The kind filter is applied
+  inside the agent resource database query (schema v2 `type_names` columns `group_id`/
+  `category_id`/`slot_index`/`slot_kind`); implant and booster hits carry `slot_index` for
+  `propose_fit_edit`'s `set_implant`/`set_booster`.
 
 After changing these signatures run `./x generate rust`.
 
