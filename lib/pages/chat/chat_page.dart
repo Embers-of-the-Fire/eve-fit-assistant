@@ -5,6 +5,8 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/ai_gate/ai_gate.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate_controller.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate_state.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
 import "package:eve_fit_assistant/features/chat/chat_controller.dart";
 import "package:eve_fit_assistant/features/chat/model_list.dart";
@@ -41,6 +43,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final chatState = ref.watch(chatControllerProvider);
     final apiKey = ref.watch(aiChatApiKeyProvider).value;
     final configured = apiKey != null && apiKey.isNotEmpty;
+    final gateReady = ref.watch(aiGateControllerProvider.select((s) => s is AiGateReady));
 
     ref
       ..listen(chatControllerProvider.select((s) => s.conversation?.messages.length), (_, _) {
@@ -65,12 +68,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         IconButton(
           icon: const Icon(Icons.add_comment_outlined),
           tooltip: context.l10n.chatNewConversationTooltip,
-          onPressed: () => ref.read(chatControllerProvider.notifier).newConversation(),
+          onPressed: gateReady
+              ? () => ref.read(chatControllerProvider.notifier).newConversation()
+              : null,
         ),
         IconButton(
           icon: const Icon(Icons.history),
           tooltip: context.l10n.chatHistoryTooltip,
-          onPressed: () => unawaited(context.router.push(const ChatHistoryRoute())),
+          onPressed: gateReady
+              ? () => unawaited(context.router.push(const ChatHistoryRoute()))
+              : null,
         ),
       ],
       child: AiFeatureGate(
