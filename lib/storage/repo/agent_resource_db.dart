@@ -234,13 +234,13 @@ enum AgentDbAvailability {
 /// `updateRequired` means only a full data update can bring the resource in.
 @riverpod
 Future<AgentDbAvailability> agentDbAvailability(Ref ref) async {
+  final store = ref.watch(assetStoreProvider);
   final proxy = await ref.watch(resourceBlobProxyProvider.future);
   if (proxy == null) return AgentDbAvailability.updateRequired;
 
   final ident = proxy.ident(kAgentResourceDbResourceId);
   if (ident == null) return AgentDbAvailability.updateRequired;
 
-  final store = ref.watch(assetStoreProvider);
   final exists = await store.blobExists(ident.identHash, ident.contentHash);
   return exists ? AgentDbAvailability.available : AgentDbAvailability.downloadable;
 }
