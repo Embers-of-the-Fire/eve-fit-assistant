@@ -17,6 +17,9 @@ jobs:
     name: Build and test release
     permissions:
       contents: write
+      # _release.yml's site-deploy job declares pull-requests: write; caller
+      # grants must cover it even though deploy_web: false skips that job.
+      pull-requests: write
     if: |
       (
         contains(github.event.pull_request.labels.*.name, 'D-Full CI') ||
