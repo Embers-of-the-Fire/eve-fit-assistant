@@ -165,8 +165,8 @@ impl CallbackRegistry {
     }
 
     /// Post one callback request and return the future the fit tool awaits.
-    /// Failures (no channel yet, closed channel) resolve to an error payload
-    /// the model can read, never a hang.
+    /// Failures (no channel yet, closed channel, channel replaced) resolve
+    /// to an error payload the model can read, never a hang.
     fn invoke(self: &Arc<Self>, request: impl FnOnce(i32) -> ChatCallbackRequest) -> FitToolFuture {
         const ERR_NO_CHANNEL: &str = "{\"error\":\"app callbacks are not registered\"}";
         const ERR_POST_FAILED: &str = "{\"error\":\"failed to reach the app\"}";
@@ -190,6 +190,15 @@ impl CallbackRegistry {
                 .await
                 .unwrap_or_else(|_| ERR_CHANNEL_CLOSED.to_string())
         })
+    }
+
+    /// Fail every outstanding request. Dropping a sender resolves its
+    /// receiver with `Err(Canceled)`, which the parked tool future maps to
+    /// the channel-closed payload; called when the channel is replaced, since
+    /// requests posted on the previous sink are cancelled with it and will
+    /// never be answered.
+    fn fail_all(&self) {
+        self.lock_pending().clear();
     }
 
     fn complete(&self, call_id: i32, result: String) {
@@ -402,7 +411,16 @@ impl ChatSession {
     /// work on every platform.
     #[frb]
     pub fn open_callback_channel(&self, sink: StreamSink<ChatCallbackRequest>) {
-        *self.callbacks.lock_sink() = Some(sink);
+        // Replacing the sink orphans requests posted on the previous one:
+        // Dart cancels that subscription when re-registering (see
+        // `registerFitCallbacks`), so those requests are never dispatched or
+        // delivered. Fail them while holding the sink lock — the same lock
+        // `invoke` holds across post — so the parked tool futures resolve
+        // instead of hanging the turn.
+        let mut guard = self.callbacks.lock_sink();
+        self.callbacks.fail_all();
+        *guard = Some(sink);
+        drop(guard);
         let callbacks = build_fit_callbacks(&self.callbacks);
         self.lock_agent().set_fit_callbacks(callbacks);
     }
