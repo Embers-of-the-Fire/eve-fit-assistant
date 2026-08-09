@@ -127,8 +127,9 @@ class AiGateController extends _$AiGateController {
   /// hash-verified before it is persisted into the content-addressed store.
   Future<void> downloadAgentDb() async {
     if (_downloadInFlight) return;
-    _downloadInFlight = true;
     final checkoutId = ref.read(activeCheckoutIdProvider).toNullable();
+    if (checkoutId == null) return;
+    _downloadInFlight = true;
     state = const AiGateState.downloading(downloadedBytes: 0, totalBytes: 0);
     try {
       final proxy = await ref.read(resourceBlobProxyProvider.future);

@@ -340,6 +340,25 @@ void main() {
   });
 
   group("AiGateController.refreshAgentDb", () {
+    test("refresh without an active checkout does not fetch the agent database", () async {
+      final sub = container.listen(aiGateControllerProvider, (_, _) {}, fireImmediately: true);
+      addTearDown(sub.close);
+
+      container.read(_checkoutIdProvider.notifier).set(null);
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateDataRequiredNoCheckout>());
+
+      await container.read(aiGateControllerProvider.notifier).refreshAgentDb();
+      await pumpEventQueue();
+
+      expect(container.read(aiGateControllerProvider), isA<AiGateDataRequiredNoCheckout>());
+      verifyNever(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      );
+      verifyNever(() => mockAssetStore.writeBlobUncheckedAt(any(), any()));
+    });
+
     test(
       "a concurrent refresh while a download is in flight does not start a second fetch",
       () async {
