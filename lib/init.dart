@@ -109,6 +109,7 @@ Future<InitializedStores> initSingletons() async {
 /// Best-effort: skipped when the native engine is unavailable (e.g. web
 /// without cross-origin isolation), where the FRB runtime never initializes.
 void _setupRustLogging() {
+  if (!NativeEngineAvailability.available) return;
   try {
     native_logging.createLogStream().listen((entry) {
       final message = "[${entry.target}] ${entry.message}";
