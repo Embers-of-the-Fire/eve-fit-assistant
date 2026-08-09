@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:riverpod/riverpod.dart" show ProviderListenableSelect;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "setting.freezed.dart";
@@ -222,7 +223,8 @@ bool attributeDebugView(Ref ref) => ref.watch(appSettingServiceProvider).attribu
 /// disclaimer acknowledgement ([AppSetting.aiAssistantDisclaimerAcked]) and,
 /// once on, makes the agent resource database a forced checkout dependency.
 @riverpodSingleton
-bool aiAssistantEnabled(Ref ref) => ref.watch(appSettingServiceProvider).aiAssistantEnabled;
+bool aiAssistantEnabled(Ref ref) =>
+    ref.watch(appSettingServiceProvider.select((s) => s.aiAssistantEnabled));
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {
