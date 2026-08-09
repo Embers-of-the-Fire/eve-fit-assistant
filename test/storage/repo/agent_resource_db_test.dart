@@ -113,9 +113,9 @@ void main() {
     expect(await service.searchTypes("_", "en"), isEmpty);
   });
 
-  test("empty values are excluded", () async {
+  test("rows with empty names never surface in search results", () async {
     final hits = await service.searchTypes("大型", "zh");
-    expect(hits.map((hit) => hit.typeId), isNot(contains(40000)));
+    expect(hits.map((hit) => hit.typeId), [3839]);
   });
 
   test("limit caps the result count", () async {
