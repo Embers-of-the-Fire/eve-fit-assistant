@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/config/storage_root.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
@@ -77,6 +78,9 @@ Future<InitializedStores> initSingletons() async {
   }
   await PathProvider.init();
   if (!kIsWeb) {
+    // The configured storage root must apply before any store opens; it is
+    // read from a bootstrap file under the platform-default support dir.
+    PathProvider.applyStorageRootOverride(await StorageRootPreference.read());
     await const StoragePathMigrator().migrateIfNeeded();
   }
   await AppSettingService.init();

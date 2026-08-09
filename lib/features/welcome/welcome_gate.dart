@@ -1,4 +1,5 @@
 import "package:eve_fit_assistant/components/wizard/wizard.dart";
+import "package:eve_fit_assistant/config/storage_root.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
@@ -7,6 +8,7 @@ import "package:eve_fit_assistant/features/welcome/language_step.dart";
 import "package:eve_fit_assistant/features/welcome/page.dart";
 import "package:eve_fit_assistant/features/welcome/provisioning_step.dart";
 import "package:eve_fit_assistant/features/welcome/server_step.dart";
+import "package:eve_fit_assistant/features/welcome/storage_step.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -64,7 +66,9 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
   IList<ProvisioningTarget>? _selectedTargets;
   String? _generationHash;
 
-  int get _totalSteps => 5;
+  int get _stepCount => 4 + (storageRootEditable ? 1 : 0);
+
+  int get _totalSteps => 1 + _stepCount;
 
   void _startInitialize() {
     setState(() {
@@ -77,6 +81,12 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
     setState(() {
       _initializing = false;
       _stepIndex = 0;
+    });
+  }
+
+  void _previousStep() {
+    setState(() {
+      _stepIndex--;
     });
   }
 
@@ -135,37 +145,38 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
           return WelcomePage(onInitialize: _startInitialize, onSkip: _skip);
         }
 
-        switch (_stepIndex) {
-          case 1:
-            return LanguageStepPage(onContinue: _nextStep, onSkip: _skip, onBack: _backToIntro);
-          case 2:
-            return ChannelStepPage(
-              onContinue: (channelName) {
-                setState(() => _selectedChannel = channelName);
-                _nextStep();
-              },
-              onSkip: _skip,
-              onBack: () => setState(() => _stepIndex = 1),
-            );
-          case 3:
-            return ServerStepPage(
-              channelName: _selectedChannel,
-              onContinue: _onServerContinue,
-              onSkip: _skip,
-              onBack: () => setState(() => _stepIndex = 2),
-            );
-          case 4:
-            return ProvisioningStepPage(
-              channel: Channel.tryParse(_selectedChannel) ?? Channel.defaultChannel,
-              channelName: _selectedChannel,
-              generationHash: _generationHash!,
-              targets: _selectedTargets!,
-              onComplete: () => widget.onComplete(),
-              onBack: () => setState(() => _stepIndex = 3),
-            );
-          default:
-            return WelcomePage(onInitialize: _startInitialize, onSkip: _skip);
+        final steps = <Widget Function()>[
+          () => LanguageStepPage(onContinue: _nextStep, onSkip: _skip, onBack: _backToIntro),
+          if (storageRootEditable)
+            () => StorageStepPage(onContinue: _nextStep, onSkip: _skip, onBack: _previousStep),
+          () => ChannelStepPage(
+            onContinue: (channelName) {
+              setState(() => _selectedChannel = channelName);
+              _nextStep();
+            },
+            onSkip: _skip,
+            onBack: _previousStep,
+          ),
+          () => ServerStepPage(
+            channelName: _selectedChannel,
+            onContinue: _onServerContinue,
+            onSkip: _skip,
+            onBack: _previousStep,
+          ),
+          () => ProvisioningStepPage(
+            channel: Channel.tryParse(_selectedChannel) ?? Channel.defaultChannel,
+            channelName: _selectedChannel,
+            generationHash: _generationHash!,
+            targets: _selectedTargets!,
+            onComplete: () => widget.onComplete(),
+            onBack: _previousStep,
+          ),
+        ];
+
+        if (_stepIndex < 1 || _stepIndex > steps.length) {
+          return WelcomePage(onInitialize: _startInitialize, onSkip: _skip);
         }
+        return steps[_stepIndex - 1]();
       },
     ),
   );

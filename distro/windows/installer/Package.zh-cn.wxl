@@ -4,4 +4,8 @@
   <String Id="ProductDescription" Value="EVE Fit Assistant：规划、模拟并分享 EVE Online 舰船装配方案。" />
   <String Id="ShortcutName" Value="EFA" />
   <String Id="DowngradeErrorMessage" Value="已安装更新版本的 EFA。" />
+  <String Id="InstallDirDlgTitle" Value="{\WixUI_Font_Title}安装位置" />
+  <String Id="InstallDirDlgDescription" Value="选择 EFA 的安装文件夹，然后点击“下一步”。" />
+  <String Id="BrowseDlgTitle" Value="{\WixUI_Font_Title}更改文件夹" />
+  <String Id="BrowseDlgDescription" Value="选择 EFA 的安装文件夹。" />
 </WixLocalization>

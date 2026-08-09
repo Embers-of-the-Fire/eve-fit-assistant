@@ -288,6 +288,27 @@
   "appSettingsPageSectionMarket": "市场价格",
   "appSettingsPageMarketServerFallbackTitle": "回退价格服务器",
   "appSettingsPageMarketServerFallbackDescription": "当当前数据集未声明价格服务器时使用的市场价格来源。默认禁用。",
+  "appSettingsPageSectionStorage": "存储",
+  "appSettingsPageStorageRootTitle": "存储位置",
+  "appSettingsPageStorageRootDescription": "应用数据（设置、数据集、日志）存储在此目录中。",
+  "appSettingsPageStorageRootDefaultDescription": "应用数据（设置、数据集、日志）存储在默认目录中。",
+  "appSettingsPageStorageRootChangeConfirmTitle": "更改存储位置？",
+  "appSettingsPageStorageRootChangeConfirmDescription": "应用数据将被移动到：\n{path}\n\n完成后应用将重启。",
+  "@appSettingsPageStorageRootChangeConfirmDescription": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "appSettingsPageStorageRootResetConfirmTitle": "恢复默认存储位置？",
+  "appSettingsPageStorageRootResetConfirmDescription": "应用数据将被移动回默认目录，完成后应用将重启。",
+  "appSettingsPageStorageRootResetButton": "恢复默认",
+  "appSettingsPageStorageRootMigrating": "正在移动应用数据…",
+  "appSettingsPageStorageRootRestartTitle": "需要重启",
+  "appSettingsPageStorageRootRestartDescription": "存储位置已更改，应用现在将重启以应用更改。",
+  "appSettingsPageStorageRootRestartButton": "立即重启",
+  "appSettingsPageStorageRootErrorTitle": "无法更改存储位置",
   "marketServerFallbackDefault": "默认（禁用）",
   "marketServerSerenity": "晨曦",
   "marketServerTranquility": "宁静",
@@ -1857,6 +1878,11 @@
   "welcomeSkipButton": "跳过",
   "welcomeLanguageTitle": "语言",
   "welcomeLanguageSubtitle": "选择默认语言",
+  "welcomeStorageTitle": "存储位置",
+  "welcomeStorageSubtitle": "选择应用数据的存储目录，之后仍可在设置中更改。",
+  "welcomeStorageDefaultOption": "默认位置（推荐）",
+  "welcomeStorageCustomOption": "自定义位置…",
+  "welcomeStorageCustomHint": "点击选择目录",
   "welcomeLanguageDetectedBadge": "已检测",
   "welcomeContinueButton": "继续",
   "welcomeBackButton": "返回",

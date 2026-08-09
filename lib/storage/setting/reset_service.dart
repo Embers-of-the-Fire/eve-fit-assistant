@@ -1,6 +1,7 @@
 import "package:eve_fit_assistant/compat/io.dart";
 
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/config/storage_root.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/repo_store.dart";
@@ -53,6 +54,10 @@ class ResetStorageService {
     for (final path in dirs) {
       await _deleteRecursively(Directory(path));
     }
+
+    // Drop the storage-root preference so the next launch boots from the
+    // platform-default directory again.
+    await StorageRootPreference.write(null);
   }
 
   Future<void> _resetWeb() async {

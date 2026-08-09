@@ -15,7 +15,11 @@
     <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="!(loc.DowngradeErrorMessage)" />
     <MediaTemplate EmbedCab="yes" />
 
-    <ui:WixUI Id="WixUI_Minimal" />
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <!-- The InstallDir dialog writes the user-selected folder into this
+         directory Id; the default stays %LocalAppData%\Programs\eve_fit_assistant
+         per the directory definition below. -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.RepoRoot)\distro\windows\installer\LICENSE.rtf" />
 
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
